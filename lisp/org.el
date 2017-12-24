@@ -414,7 +414,7 @@ Matched keyword is in group 1.")
 
 (defconst org-deadline-time-hour-regexp
   (concat "\\<" org-deadline-string
-	  " *<\\([^>]+[0-9]\\{1,2\\}:[0-9]\\{2\\}[0-9-+:hdwmy \t.]*\\)>")
+	  " *<\\([^>]+[0-9]\\{1,2\\}:[0-9]\\{2\\}[0-9-+:hdwmy \t.]*\\(?:#[^#]+#* \\)?\\)>")
   "Matches the DEADLINE keyword together with a time-and-hour stamp.")
 
 (defconst org-deadline-line-regexp
@@ -430,7 +430,7 @@ Matched keyword is in group 1.")
 
 (defconst org-scheduled-time-hour-regexp
   (concat "\\<" org-scheduled-string
-	  " *<\\([^>]+[0-9]\\{1,2\\}:[0-9]\\{2\\}[0-9-+:hdwmy \t.]*\\)>")
+	  " *<\\([^>]+[0-9]\\{1,2\\}:[0-9]\\{2\\}[0-9-+:hdwmy \t.]*\\(?:#[^#]+#* \\)?\\)>")
   "Matches the SCHEDULED keyword together with a time-and-hour stamp.")
 
 (defconst org-closed-time-regexp
@@ -17474,6 +17474,46 @@ NODEFAULT, hour and minute fields will be nil if not given."
 	 ;; minimal requirement.
 	 (decode-time (seconds-to-time (org-matcher-time s))))
 	(t (error "Not a standard Org time string: %s" s))))
+
+(define-advice org-parse-time-string (:around (oldfun s &optional NODEFAULT) org-parse-timezone)
+  "Convert time stamp to local time if time zone information is present.
+Do not handle time stamps without time.
+Time zone is located like '<YYYY-MM-DD HH:MM #TIMEZONE#>'.
+TIMEZONE is according to system timezone format (as accepted by `current-time-zone')."
+  (let ((return-val (funcall oldfun s NODEFAULT)))
+    (if (and (string-match org-ts-regexp0 s)
+	     (not NODEFAULT))
+	(if (string-match "#\\([^#]+\\)#" s)
+	    (let ((result (decode-time (- (float-time (apply 'encode-time
+							     return-val))
+					  (- (car (current-time-zone nil (match-string 1 s)))
+					     (car (current-time-zone)))))))
+	      (setf (car result) 0)
+              (append (butlast result 3) '(nil nil nil)))
+	  return-val)
+      return-val)))
+
+(define-advice org-parse-time-string (:around (oldfun s &optional NODEFAULT) org-convert-atpm-to-24)
+  "Honor am/pm format by `org-parse-time-string'."
+  (let* ((match (string-match " *#[^#]+#" s)) ; avoid infinite recursion loop with time zone parsing in `org-get-time-of-day'
+	 (timeofday (org-get-time-of-day (if match
+					     (replace-match "" nil nil s)
+					   s)
+					 'string)))
+    (if (or (string-match "\\<\\([012]?[0-9]\\)\\(:\\([0-5][0-9]\\)\\)\\([AaPp][Mm]\\)?\\> *" s)
+	    (string-match "\\<\\([012]?[0-9]\\)\\(:\\([0-5][0-9]\\)\\)?\\([AaPp][Mm]\\)\\> *" s))
+	(funcall oldfun (replace-match timeofday nil nil s) NODEFAULT)
+      (funcall oldfun s NODEFAULT))))
+
+(define-advice org-parse-time-string (:around (oldfun s &optional NODEFAULT) org-timestamp-parse-no-date)
+  "Make `org-parse-time-string' work with time stamps without date (just consider today)."
+  (when (and (not (string-match "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}" s))
+	     (or (string-match "\\<\\(\\([012]?[0-9]\\)\\(:\\([0-5][0-9]\\)\\)\\([AaPp][Mm]\\)?\\> *\\)" s)
+		 (string-match "\\<\\(\\([012]?[0-9]\\)\\(:\\([0-5][0-9]\\)\\)?\\([AaPp][Mm]\\)\\> *\\)" s)))
+    (setf s (replace-match (concat (format-time-string "%Y-%m-%d %a " (org-matcher-time "<today>"))
+				   "\\&")
+			   nil nil s)))
+  (funcall oldfun s NODEFAULT))
 
 (defun org-timestamp-up (&optional arg)
   "Increase the date item at the cursor by one.

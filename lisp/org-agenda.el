@@ -6260,7 +6260,7 @@ scheduled items with an hour specification like [h]h:mm."
 		     ;; a reminder.
 		     ((and (/= current schedule) (/= current repeat)) nil)
 		     ((string-match " \\([012]?[0-9]:[0-9][0-9]\\)" s)
-		      (concat (substring s (match-beginning 1)) " "))
+		      (concat (org-get-time-of-day s t) " "))
 		     (t 'time)))
 		   (item
 		    (org-agenda-format-item
@@ -6772,6 +6772,16 @@ HH:MM."
 			 (if (< t0 10)  "0" "")
 			 (int-to-string t0))))
 	(if string (concat (substring t1 -4 -2) ":" (substring t1 -2)) t0)))))
+
+(define-advice org-get-time-of-day (:around (oldfun s &optional string mod24) org-timestamp-convert-to-local-timezone)
+  "Convert time stamp with #TIMEZONE# to time stamp in local time zone."
+  (if (string-match "#[^#]+#" s)
+      (funcall oldfun (format-time-string "%Y-%m-%d %k:%M"
+					  (apply #'encode-time
+						 (org-parse-time-string s)))
+	       string mod24)
+    (funcall oldfun s string mod24)))
+
 
 (defvar org-agenda-before-sorting-filter-function nil
   "Function to be applied to agenda items prior to sorting.
