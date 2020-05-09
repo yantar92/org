@@ -682,7 +682,7 @@ When NEXT is non-nil, check the next line instead."
 
 
 
-;;; Overlays
+;;; Overlays and text properties
 
 (defun org-overlay-display (ovl text &optional face evap)
   "Make overlay OVL display TEXT with face FACE."
@@ -708,15 +708,25 @@ If DELETE is non-nil, delete all those overlays."
 (defun org-flag-region (from to flag spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the invisibility spec, as a symbol."
-  (remove-overlays from to 'invisible spec)
-  ;; Use `front-advance' since text right before to the beginning of
-  ;; the overlay belongs to the visible line than to the contents.
-  (when flag
-    (let ((o (make-overlay from to nil 'front-advance)))
-      (overlay-put o 'evaporate t)
-      (overlay-put o 'invisible spec)
-      (overlay-put o 'isearch-open-invisible #'delete-overlay))))
-
+  (pcase spec
+    ('outline
+     (remove-overlays from to 'invisible spec)
+     ;; Use `front-advance' since text right before to the beginning of
+     ;; the overlay belongs to the visible line than to the contents.
+     (when flag
+       (let ((o (make-overlay from to nil 'front-advance)))
+	 (overlay-put o 'evaporate t)
+	 (overlay-put o 'invisible spec)
+	 (overlay-put o 'isearch-open-invisible #'delete-overlay))))
+    (_
+     ;; Use text properties instead of overlays for speed.
+     ;; Overlays are too slow (Emacs Bug#35453).
+     (with-silent-modifications
+       (remove-text-properties from to '(invisible nil))
+       (when flag
+	 (put-text-property from to 'rear-non-sticky nil)
+	 (put-text-property from to 'front-sticky t)
+	 (put-text-property from to 'invisible spec))))))
 
 
 ;;; Regexp matching
