@@ -705,6 +705,23 @@ If DELETE is non-nil, delete all those overlays."
 	    (delete (delete-overlay ov))
 	    (t (push ov found))))))
 
+(defun org--find-text-property-region (pos prop)
+  "Find a region containing PROP text property around point POS."
+  (org-with-point-at pos
+    (let* ((beg (and (get-text-property pos prop) pos))
+	   (end beg))
+      (when beg
+        ;; when beg is the first point in the region, `previous-single-property-change'
+        ;; will return nil.
+	(setq beg (or (previous-single-property-change pos prop)
+		      beg))
+        ;; when end is the last point in the region, `next-single-property-change'
+        ;; will return nil.
+	(setq end (or (next-single-property-change pos prop)
+		      end))
+        (unless (equal beg end) ; this should not happen
+          (cons beg end))))))
+
 (defun org-flag-region (from to flag spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the invisibility spec, as a symbol."
