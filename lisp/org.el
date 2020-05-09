@@ -5864,9 +5864,22 @@ If TAG is a number, get the corresponding match group."
 	 (inhibit-modification-hooks t)
 	 deactivate-mark buffer-file-name buffer-file-truename)
     (decompose-region beg end)
+    ;; do not remove invisible text properties specified by
+    ;; 'org-hide-block and 'org-hide-drawer (but remove  'org-link)
+    ;; this is needed to keep the drawers and blocks hidden unless
+    ;; they are toggled by user
+    ;; Note: The below may be too specific and create troubles
+    ;; if more invisibility specs are added to org in future
+    (alter-text-property beg end 'invisible
+			 (lambda (spec)
+                           (when (memq spec (list 'org-hide-block
+						  'org-hide-drawer))
+                             spec)))
     (remove-text-properties beg end
 			    '(mouse-face t keymap t org-linked-text t
-					 invisible t intangible t
+					 ;; Do not remove all invisible during fontification
+					 ;; invisible t
+                                         intangible t
 					 org-emphasis t))
     (org-remove-font-lock-display-properties beg end)))
 
