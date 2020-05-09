@@ -20948,8 +20948,9 @@ of text properties. The created overlays will be stored in
 `org--isearch-overlays'."
   (let ((pos beg))
     (while (< pos end)
-      (when-let ((spec (memq (get-text-property pos 'invisible) org-isearch-specs))
-		 (region (org--find-text-property-region pos 'invisible)))
+      (when-let* ((spec (get-text-property pos 'invisible))
+		  (spec (memq spec org-isearch-specs))
+		  (region (org--find-text-property-region pos 'invisible)))
         ;; Changing text properties is considered buffer modification.
         ;; We do not want it here.
 	(with-silent-modifications
