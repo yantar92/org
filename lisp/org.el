@@ -6688,8 +6688,13 @@ information."
     ;; expose it.
     (dolist (o (overlays-at (point)))
       (when (memq (overlay-get o 'invisible)
-		  '(org-hide-block org-hide-drawer outline))
+		  '(outline))
 	(delete-overlay o)))
+    (when (memq (get-text-property (point) 'invisible)
+		'(org-hide-block org-hide-drawer))
+      (let ((spec (get-text-property (point) 'invisible))
+	    (region (org--find-text-property-region (point) 'invisible)))
+	(org-flag-region (car region) (cdr region) nil spec)))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
