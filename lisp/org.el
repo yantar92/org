@@ -10838,8 +10838,8 @@ EXTRA is additional text that will be inserted into the notes buffer."
 	 (unless (eq org-log-note-purpose 'clock-out)
 	   (goto-char (org-log-beginning t)))
 	 ;; Make sure point is at the beginning of an empty line.
-	 (cond ((not (bolp)) (let ((inhibit-read-only t)) (insert "\n")))
-	       ((looking-at "[ \t]*\\S-") (save-excursion (insert "\n"))))
+	 (cond ((not (bolp)) (let ((inhibit-read-only t)) (insert-and-inherit "\n")))
+	       ((looking-at "[ \t]*\\S-") (save-excursion (insert-and-inherit "\n"))))
 	 ;; In an existing list, add a new item at the top level.
 	 ;; Otherwise, indent line like a regular one.
 	 (let ((itemp (org-in-item-p)))
@@ -10849,12 +10849,12 @@ EXTRA is additional text that will be inserted into the notes buffer."
 				(goto-char itemp) (org-list-struct))))
 		  (org-list-get-ind (org-list-get-top-point struct) struct)))
 	     (org-indent-line)))
-	 (insert (org-list-bullet-string "-") (pop lines))
+	 (insert-and-inherit (org-list-bullet-string "-") (pop lines))
 	 (let ((ind (org-list-item-body-column (line-beginning-position))))
 	   (dolist (line lines)
-	     (insert "\n")
+	     (insert-and-inherit "\n")
 	     (indent-line-to ind)
-	     (insert line)))
+	     (insert-and-inherit line)))
 	 (message "Note stored")
 	 (org-back-to-heading t))
 	;; Fix `buffer-undo-list' when `org-store-log-note' is called
@@ -13025,10 +13025,10 @@ decreases scheduled or deadline date by one day."
 	      (progn (delete-region (match-beginning 0) (match-end 0))
 		     (goto-char (match-beginning 0)))
 	    (goto-char end)
-	    (insert "\n")
+	    (insert-and-inherit "\n")
 	    (backward-char))
-	  (insert ":" property ":")
-	  (when value (insert " " value))
+	  (insert-and-inherit ":" property ":")
+	  (when value (insert-and-inherit " " value))
 	  (org-indent-line)))))
     (run-hook-with-args 'org-property-changed-functions property value)))
 
@@ -14166,7 +14166,7 @@ The command returns the inserted time stamp."
   (let ((fmt (funcall (if with-hm 'cdr 'car) org-time-stamp-formats))
 	stamp)
     (when inactive (setq fmt (concat "[" (substring fmt 1 -1) "]")))
-    (insert-before-markers (or pre ""))
+    (insert-before-markers-and-inherit (or pre ""))
     (when (listp extra)
       (setq extra (car extra))
       (if (and (stringp extra)
@@ -14177,8 +14177,8 @@ The command returns the inserted time stamp."
 	(setq extra nil)))
     (when extra
       (setq fmt (concat (substring fmt 0 -1) extra (substring fmt -1))))
-    (insert-before-markers (setq stamp (format-time-string fmt time)))
-    (insert-before-markers (or post ""))
+    (insert-before-markers-and-inherit (setq stamp (format-time-string fmt time)))
+    (insert-before-markers-and-inherit (or post ""))
     (setq org-last-inserted-timestamp stamp)))
 
 (defun org-toggle-time-stamp-overlays ()

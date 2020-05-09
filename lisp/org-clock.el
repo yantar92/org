@@ -1359,14 +1359,14 @@ the default behavior."
 	   (sit-for 2)
 	   (throw 'abort nil))
 	  (t
-	   (insert-before-markers "\n")
+	   (insert-before-markers-and-inherit "\n")
 	   (backward-char 1)
 	   (when (and (save-excursion
 			(end-of-line 0)
 			(org-in-item-p)))
 	     (beginning-of-line 1)
 	     (indent-line-to (- (current-indentation) 2)))
-	   (insert org-clock-string " ")
+	   (insert-and-inherit org-clock-string " ")
 	   (setq org-clock-effort (org-entry-get (point) org-effort-property))
 	   (setq org-clock-total-time (org-clock-sum-current-item
 				       (org-clock-get-sum-start)))
@@ -1658,7 +1658,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 	    (if fail-quietly (throw 'exit nil) (error "Clock start time is gone")))
 	  (goto-char (match-end 0))
 	  (delete-region (point) (point-at-eol))
-	  (insert "--")
+	  (insert-and-inherit "--")
 	  (setq te (org-insert-time-stamp (or at-time now) 'with-hm 'inactive))
 	  (setq s (org-time-convert-to-integer
 		   (time-subtract
@@ -1666,7 +1666,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 		    (org-time-string-to-time ts)))
 		h (floor s 3600)
 		m (floor (mod s 3600) 60))
-	  (insert " => " (format "%2d:%02d" h m))
+	  (insert-and-inherit " => " (format "%2d:%02d" h m))
 	  (move-marker org-clock-marker nil)
 	  (move-marker org-clock-hd-marker nil)
 	  ;; Possibly remove zero time clocks.  However, do not add
