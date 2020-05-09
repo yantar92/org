@@ -718,7 +718,7 @@ If DELETE is non-nil, delete all those overlays."
       ;; will return nil.
       (setq end (or (next-single-property-change pos prop)
 		    end))
-      (unless (equal beg end) ; this should not happen
+      (unless (= beg end) ; this should not happen
         (cons beg end)))))
 
 (defun org-flag-region (from to flag spec)
