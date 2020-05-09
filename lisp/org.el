@@ -20981,6 +20981,8 @@ value listed in `org-isearch-specs' visible to Isearch."
     ;; We do not want it here.
     (with-silent-modifications
       (put-text-property (overlay-start ov) (overlay-end ov) 'invisible spec)))
+  (when (member ov isearch-opened-overlays)
+    (setq isearch-opened-overlays (delete ov isearch-opened-overlays)))
   (delete-overlay ov))
 
 (defun org--clear-isearch-overlays ()
