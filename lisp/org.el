@@ -5870,11 +5870,15 @@ If TAG is a number, get the corresponding match group."
     ;; they are toggled by user
     ;; Note: The below may be too specific and create troubles
     ;; if more invisibility specs are added to org in future
-    (alter-text-property beg end 'invisible
-			 (lambda (spec)
-                           (when (memq spec (list 'org-hide-block
-						  'org-hide-drawer))
-                             spec)))
+    (let ((pos beg)
+	  next spec)
+      (while (< pos end)
+	(setq next (next-single-property-change pos 'invisible nil end)
+              spec (get-text-property pos 'invisible))
+        (unless (memq spec (list 'org-hide-block
+				 'org-hide-drawer))
+          (remove-text-properties pos next '(invisible t)))
+        (setq pos next)))
     (remove-text-properties beg end
 			    '(mouse-face t keymap t org-linked-text t
 					 ;; Do not remove all invisible during fontification
