@@ -8720,8 +8720,7 @@ When called with a prefix argument, include all archive files as well."
     (dotimes (c n)
       (when (next-single-property-change (point-at-eol) 'org-marker)
 	(move-end-of-line 1)
-	(goto-char (next-single-property-change (point) 'org-marker))
-        (when (point-at-eol) (forward-char))))
+	(goto-char (next-single-property-change (point) 'org-marker))))
     (org-move-to-column col))
   (org-agenda-do-context-action))
 
