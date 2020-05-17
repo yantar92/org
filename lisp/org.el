@@ -4765,18 +4765,22 @@ reveal the hidden text in former drawer/block."
 	       (org-property-drawer-re (concat "^[ \t]*:PROPERTIES:[ \t]*\n"
 					    "\\(?:.*\n\\)*?"
                                             "[ \t]*:END:[ \t]*$"))
-               (newel (org-element-at-point)))
+               (newel (org-element-at-point))
+               (spec (if (string-match-p "block" (symbol-name (org-element-type el)))
+			 'org-hide-block
+                       (if (string-match-p "drawer" (symbol-name (org-element-type el)))
+			   'org-hide-drawer
+                         t))))
 	  (if (and (equal (org-element-type el) (org-element-type newel))
 		   (equal (point-min) (org-element-property :begin newel))
 		   (equal (point-max) (org-element-property :end newel)))
-	      (when (or (text-property-any (point-min) (point-max) 'invisible 'org-hide-drawer)
-			(text-property-any (point-min) (point-max) 'invisible 'org-hide-block))
+	      (when (text-property-any (point-min) (point-max) 'invisible spec)
 		(if (memq this-command '(self-insert-command))
-                    ;; reveal if change was made by typing
+		    ;; reveal if change was made by typing
 		    (org-hide-drawer-toggle 'off)
-                  ;; re-hide the inserted text
-                  ;; FIXME: opening the drawer before hiding should not be needed here
-                  (org-hide-drawer-toggle 'off) ; this is needed to avoid showing double ellipsis
+		  ;; re-hide the inserted text
+		  ;; FIXME: opening the drawer before hiding should not be needed here
+		  (org-hide-drawer-toggle 'off) ; this is needed to avoid showing double ellipsis
 		  (org-hide-drawer-toggle 'hide)))
             ;; The element was destroyed. Reveal everything.
             (org-flag-region (point-min) (point-max) nil 'org-hide-drawer)))))))
