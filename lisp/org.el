@@ -4792,6 +4792,9 @@ reveal the hidden text in former drawer/block."
             ;; The element was destroyed. Reveal everything.
             (org-flag-region (marker-position (org-element-property :begin el))
 			  (marker-position (org-element-property :end el))
+			  nil spec)
+            (org-flag-region (org-element-property :begin newel)
+			  (org-element-property :end newel)
 			  nil spec)))))))
 
 (defvar org-track-modification-elements (list (cons 'center-block #'org--drawer-or-block-change-function)
