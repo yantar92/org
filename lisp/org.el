@@ -4744,10 +4744,21 @@ This is for getting out of special buffers like capture.")
 
 (defvar-local org--modified-elements nil
   "List of unmodified versions of recently modified elements.
+
 The :begin and :end element properties contain markers instead of positions.")
+
+(defvar org--property-drawer-modified-re (concat (replace-regexp-in-string "\\$$" "\n" org-property-start-re)
+					      "\\(?:.*\n\\)*?"
+                                              (replace-regexp-in-string "^\\^" "" org-property-end-re))
+  "Matches entire property drawer, including its state during modification.
+
+This should be different from `org-property-drawer-re' because
+property drawer may contain empty or incomplete lines in the middle of
+modification.")
 
 (defun org--drawer-or-block-change-function (el)
   "Update visibility of changed drawer/block EL.
+
 If text was added to hidden drawer/block,
 make sure that the text is also hidden, unless
 the change was done by `self-insert-command'.
@@ -4756,33 +4767,21 @@ reveal the hidden text in former drawer/block."
   (save-match-data
     (save-excursion
       (save-restriction
-	(narrow-to-region (org-element-property :begin el) (org-element-property :end el))
-	(goto-char (point-min))
-	(let* (;; Property drawers may have empty lines or incomplete
-	       ;; property spec in the middle of modification
-	       ;; FIXME: setting `property-drawer-re' here may cause
-	       ;; issues if the global value is ever changed
-	       (org-property-drawer-re (concat "^[ \t]*:PROPERTIES:[ \t]*\n"
-					    "\\(?:.*\n\\)*?"
-                                            "[ \t]*:END:[ \t]*$"))
-	       ;; `org-element-at-point' is not consistent with results
-	       ;; of `org-element-parse-buffer' for :post-blank
-               ;; Using `org--find-elements-in-region' to keep consistent
-               ;; parse results with `org--before-element-change-function'
-               (newel (car (org--find-elements-in-region (point-min)
-						   (point-max)
-						   (list (org-element-type el)))))
+	(goto-char (org-element-property :begin el))
+	(let* ((newel (org-element-at-point))
                (spec (if (string-match-p "block" (symbol-name (org-element-type el)))
 			 'org-hide-block
                        (if (string-match-p "drawer" (symbol-name (org-element-type el)))
 			   'org-hide-drawer
 			 t))))
 	  (if (and (equal (org-element-type el) (org-element-type newel))
-		   (equal (point-min) (org-element-property :begin newel))
-                   ;; we don't care about blank lines at the end
-		   (equal (point-max) (- (org-element-property :end newel)
-					 (org-element-property :post-blank newel))))
-	      (when (text-property-any (point-min) (point-max) 'invisible spec)
+		   (equal (marker-position (org-element-property :begin el))
+			  (org-element-property :begin newel))
+		   (equal (marker-position (org-element-property :end el))
+			  (org-element-property :end newel)))
+	      (when (text-property-any (marker-position (org-element-property :begin el))
+				       (marker-position (org-element-property :end el))
+                                       'invisible spec)
 		(if (memq this-command '(self-insert-command))
 		    ;; reveal if change was made by typing
 		    (org-hide-drawer-toggle 'off)
@@ -4791,7 +4790,9 @@ reveal the hidden text in former drawer/block."
 		  (org-hide-drawer-toggle 'off) ; this is needed to avoid showing double ellipsis
 		  (org-hide-drawer-toggle 'hide)))
             ;; The element was destroyed. Reveal everything.
-            (org-flag-region (point-min) (point-max) nil 'org-hide-drawer)))))))
+            (org-flag-region (marker-position (org-element-property :begin el))
+			  (marker-position (org-element-property :end el))
+			  nil spec)))))))
 
 (defvar org-track-modification-elements (list (cons 'center-block #'org--drawer-or-block-change-function)
 					      (cons 'drawer #'org--drawer-or-block-change-function)
@@ -4844,46 +4845,44 @@ Include elements if they are partially inside region when INCLUDE-PARTIAL is non
             (if has-element
 		(setq granularity 'element)
               (setq granularity 'headline))))
-        (let (;; Property drawers may have empty lines or incomplete
-	      ;; property spec in the middle of modification
-	      ;; FIXME: setting `property-drawer-re' here may cause
-	      ;; issues if the global value is ever changed
-	      (org-property-drawer-re (concat "^[ \t]*:PROPERTIES:[ \t]*\n"
-					   "\\(?:.*\n\\)*?"
-                                           "[ \t]*:END:[ \t]*$")))
-	  (org-element-map (org-element-parse-buffer granularity) elements #'identity))))))
+	(org-element-map (org-element-parse-buffer granularity) elements #'identity)))))
 
 (defun org--before-element-change-function (beg end)
   "Register upcoming element modifications in `org--modified-elements' for all elements interesting with BEG END."
-  (save-match-data
-    (save-excursion
-      (save-restriction
-	(dolist (el (org--find-elements-in-region beg
-					       end
-                                               (mapcar #'car org-track-modification-elements)
-                                               'include-partial))
-	  (let* ((beg-marker (copy-marker (org-element-property :begin el) 't))
-		 ;; we don't care about blank lines at the end
-		 (end-marker (copy-marker (- (org-element-property :end el)
-					     (org-element-property :post-blank el))
-                                          't)))
-	    (when (and (marker-position beg-marker) (marker-position end-marker))
-	      (org-element-put-property el :begin beg-marker)
-	      (org-element-put-property el :end end-marker)
-	      (add-to-list 'org--modified-elements el))))))))
+  (let ((org-property-drawer-re org--property-drawer-modified-re))
+    (save-match-data
+      (save-excursion
+	(save-restriction
+	  (dolist (el (org--find-elements-in-region beg
+						 end
+						 (mapcar #'car org-track-modification-elements)
+						 'include-partial))
+            ;; `org-element-at-point' is not consistent with results
+	    ;; of `org-element-parse-buffer' for :post-blank and :end
+            ;; Using `org-element-at-point to keep consistent
+            ;; parse results with `org--after-element-change-function'
+	    (let* ((el (org-with-point-at (org-element-property :begin el)
+			 (org-element-at-point)))
+		   (beg-marker (copy-marker (org-element-property :begin el) 't))
+		   (end-marker (copy-marker (org-element-property :end el) 't)))
+	      (when (and (marker-position beg-marker) (marker-position end-marker))
+		(org-element-put-property el :begin beg-marker)
+		(org-element-put-property el :end end-marker)
+		(add-to-list 'org--modified-elements el)))))))))
 
 ;; FIXME: this function may be called many times during routine modifications
 ;; The normal way to avoid this is `combine-after-change-calls' - not
 ;; the case in most org primitives.
 (defun org--after-element-change-function (&rest _)
   "Handle changed elements from `org--modified-elements'."
-  (dolist (el org--modified-elements)
-    (save-match-data
-      (save-excursion
-        (save-restriction
-	  (let* ((type (org-element-type el))
-		 (change-func (alist-get type org-track-modification-elements)))
-	    (funcall (symbol-function change-func) el))))))
+  (let ((org-property-drawer-re org--property-drawer-modified-re))
+    (dolist (el org--modified-elements)
+      (save-match-data
+	(save-excursion
+          (save-restriction
+	    (let* ((type (org-element-type el))
+		   (change-func (alist-get type org-track-modification-elements)))
+	      (funcall (symbol-function change-func) el)))))))
   (setq org--modified-elements nil))
 
 (defvar org-mode-map)
