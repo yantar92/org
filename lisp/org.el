@@ -4765,15 +4765,23 @@ reveal the hidden text in former drawer/block."
 	       (org-property-drawer-re (concat "^[ \t]*:PROPERTIES:[ \t]*\n"
 					    "\\(?:.*\n\\)*?"
                                             "[ \t]*:END:[ \t]*$"))
-               (newel (org-element-at-point))
+	       ;; `org-element-at-point' is not consistent with results
+	       ;; of `org-element-parse-buffer' for :post-blank
+               ;; Using `org--find-elements-in-region' to keep consistent
+               ;; parse results with `org--before-element-change-function'
+               (newel (car (org--find-elements-in-region (point-min)
+						   (point-max)
+						   (list (org-element-type el)))))
                (spec (if (string-match-p "block" (symbol-name (org-element-type el)))
 			 'org-hide-block
                        (if (string-match-p "drawer" (symbol-name (org-element-type el)))
 			   'org-hide-drawer
-                         t))))
+			 t))))
 	  (if (and (equal (org-element-type el) (org-element-type newel))
 		   (equal (point-min) (org-element-property :begin newel))
-		   (equal (point-max) (org-element-property :end newel)))
+                   ;; we don't care about blank lines at the end
+		   (equal (point-max) (- (org-element-property :end newel)
+					 (org-element-property :post-blank newel))))
 	      (when (text-property-any (point-min) (point-max) 'invisible spec)
 		(if (memq this-command '(self-insert-command))
 		    ;; reveal if change was made by typing
@@ -4855,7 +4863,10 @@ Include elements if they are partially inside region when INCLUDE-PARTIAL is non
                                                (mapcar #'car org-track-modification-elements)
                                                'include-partial))
 	  (let* ((beg-marker (copy-marker (org-element-property :begin el) 't))
-		 (end-marker (copy-marker (org-element-property :end el) 't)))
+		 ;; we don't care about blank lines at the end
+		 (end-marker (copy-marker (- (org-element-property :end el)
+					     (org-element-property :post-blank el))
+                                          't)))
 	    (when (and (marker-position beg-marker) (marker-position end-marker))
 	      (org-element-put-property el :begin beg-marker)
 	      (org-element-put-property el :end end-marker)
