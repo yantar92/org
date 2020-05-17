@@ -4856,6 +4856,7 @@ Include elements if they are partially inside region when INCLUDE-PARTIAL is non
     (save-match-data
       (save-excursion
 	(save-restriction
+          (widen)
 	  (dolist (el (org--find-elements-in-region beg
 						 end
 						 (mapcar #'car org-track-modification-elements)
@@ -4883,9 +4884,11 @@ Include elements if they are partially inside region when INCLUDE-PARTIAL is non
       (save-match-data
 	(save-excursion
           (save-restriction
+            (widen)
 	    (let* ((type (org-element-type el))
 		   (change-func (alist-get type org-track-modification-elements)))
-	      (funcall (symbol-function change-func) el)))))))
+              (unwind-protect
+		  (funcall (symbol-function change-func) el))))))))
   (setq org--modified-elements nil))
 
 (defvar org-mode-map)
