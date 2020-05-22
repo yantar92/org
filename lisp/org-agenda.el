@@ -3018,7 +3018,8 @@ Agenda views are separated by `org-agenda-block-separator'."
 	(erase-buffer)
 	(insert (eval-when-compile
 		  (let ((header
-			 "Press key for an agenda command:
+			 (copy-sequence
+			  "Press key for an agenda command:
 --------------------------------        <   Buffer, subtree/region restriction
 a   Agenda for current week or day      >   Remove restriction
 t   List of all TODO entries            e   Export agenda views
@@ -3027,7 +3028,7 @@ s   Search for keywords                 M   Like m, but only TODO entries
 /   Multi-occur                         S   Like s, but only TODO entries
 ?   Find :FLAGGED: entries              C   Configure custom agenda commands
 *   Toggle sticky agenda views          #   List stuck projects (!=configure)
-")
+"))
 			(start 0))
 		    (while (string-match
 			    "\\(^\\|   \\|(\\)\\(\\S-\\)\\( \\|=\\)"
@@ -4082,8 +4083,10 @@ continue from there."
     (when (or
 	   (save-excursion (goto-char p) (looking-at comment-start-skip))
 	   (and org-agenda-skip-archived-trees (not org-agenda-archives-mode)
-		(get-text-property p :org-archived)
-		(org-end-of-subtree t))
+		(or (and (get-text-property p :org-archived)
+			 (org-end-of-subtree t))
+		    (and (member org-archive-tag org-file-tags)
+			 (goto-char (point-max)))))
 	   (and org-agenda-skip-comment-trees
 		(get-text-property p :org-comment)
 		(org-end-of-subtree t))
@@ -9092,7 +9095,7 @@ fold drawers."
 	  (ignore-errors (scroll-up)))
       (org-agenda-goto t)
       (org-show-entry)
-      (if arg (org-cycle-hide-drawers 'children)
+      (if arg (org-cycle-hide-property-drawers 'children)
 	(org-with-wide-buffer
 	 (narrow-to-region (org-entry-beginning-position)
 			   (org-entry-end-position))
@@ -9117,8 +9120,7 @@ The prefix arg selects the amount of information to display:
 1   just show the entry according to defaults.
 2   show the children view
 3   show the subtree view
-4   show the entire subtree and any LOGBOOK drawers
-5   show the entire subtree and any drawers
+4   show the entire subtree and any drawers
 With prefix argument FULL-ENTRY, make the entire entry visible
 if it was hidden in the outline."
   (interactive "p")
@@ -9148,13 +9150,7 @@ if it was hidden in the outline."
 	(org-back-to-heading)
 	(run-hook-with-args 'org-cycle-hook 'subtree))
       (message "Remote: SUBTREE"))
-     ((= more 4)
-      (outline-show-subtree)
-      (save-excursion
-	(org-back-to-heading)
-	(org-cycle-hide-drawers 'subtree '("LOGBOOK")))
-      (message "Remote: SUBTREE AND LOGBOOK"))
-     ((> more 4)
+     ((> more 3)
       (outline-show-subtree)
       (message "Remote: SUBTREE AND ALL DRAWERS")))
     (select-window win)))

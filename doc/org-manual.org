@@ -400,9 +400,9 @@ the entire show and hide functionalities into a single command,
 #+vindex: org-special-ctrl-k
 #+vindex: org-ctrl-k-protect-subtree
 
-Headlines define the structure of an outline tree.  The headlines in
-Org start with one or more stars, on the left margin[fn:3].  For
-example:
+Headlines define the structure of an outline tree.   headlines in
+Org start on the left margin[fn:3] with one or more stars followed by
+a space.  For example:
 
 #+begin_example
 ,* Top level headline
@@ -489,10 +489,12 @@ Org uses just two commands, bound to {{{kbd(TAB)}}} and
   '--------------------------------------'
   #+end_example
 
-  When {{{kbd(S-TAB)}}} is called with a numeric prefix argument N,
-  the CONTENTS view up to headlines of level N are shown.  Note that
-  inside tables (see [[*Tables]]), {{{kbd(S-TAB)}}} jumps to the previous
-  field instead.
+  When {{{kbd(S-TAB)}}} is called with a numeric prefix argument
+  {{{var(N)}}}, view contents only up to headlines of level
+  {{{var(N)}}}.
+
+  Note that inside tables (see [[*Tables]]), {{{kbd(S-TAB)}}} jumps to the
+  previous field instead.
 
   #+vindex: org-cycle-global-at-bob
   You can run global cycling using {{{kbd(TAB)}}} only if point is at
@@ -520,10 +522,10 @@ Org uses just two commands, bound to {{{kbd(TAB)}}} and
   #+kindex: C-c C-r
   #+findex: org-reveal
   Reveal context around point, showing the current entry, the
-  following heading and the hierarchy above.  Useful for working near
-  a location that has been exposed by a sparse tree command (see
+  following heading and the hierarchy above.  It is useful for working
+  near a location that has been exposed by a sparse tree command (see
   [[*Sparse Trees]]) or an agenda command (see [[*Commands in the Agenda
-  Buffer]]).  With a prefix argument show, on each level, all sibling
+  Buffer]]).  With a prefix argument, show, on each level, all sibling
   headings.  With a double prefix argument, also show the entire
   subtree of the parent.
 
@@ -532,8 +534,7 @@ Org uses just two commands, bound to {{{kbd(TAB)}}} and
   #+cindex: show branches, command
   #+kindex: C-c C-k
   #+findex: outline-show-branches
-  Expose all the headings of the subtree, CONTENTS view for just one
-  subtree.
+  Expose all the headings of the subtree, but not their bodies.
 
 - {{{kbd(C-c TAB)}}} (~outline-show-children~) ::
 
@@ -541,17 +542,18 @@ Org uses just two commands, bound to {{{kbd(TAB)}}} and
   #+kindex: C-c TAB
   #+findex: outline-show-children
   Expose all direct children of the subtree.  With a numeric prefix
-  argument N, expose all children down to level N.
+  argument {{{var(N)}}}, expose all children down to level
+  {{{var(N)}}}.
 
 - {{{kbd(C-c C-x b)}}} (~org-tree-to-indirect-buffer~) ::
 
   #+kindex: C-c C-x b
   #+findex: org-tree-to-indirect-buffer
   Show the current subtree in an indirect buffer[fn:5].  With
-  a numeric prefix argument, N, go up to level N and then take that
-  tree.  If N is negative then go up that many levels.  With
-  a {{{kbd(C-u)}}} prefix, do not remove the previously used indirect
-  buffer.
+  a numeric prefix argument {{{var(N)}}}, go up to level {{{var(N)}}}
+  and then take that tree.  If {{{var(N)}}} is negative then go up
+  that many levels.  With a {{{kbd(C-u)}}} prefix, do not remove the
+  previously used indirect buffer.
 
 - {{{kbd(C-c C-x v)}}} (~org-copy-visible~) ::
 
@@ -566,8 +568,8 @@ Org uses just two commands, bound to {{{kbd(TAB)}}} and
 
 #+vindex: org-startup-folded
 When Emacs first visits an Org file, the global state is set to
-OVERVIEW, i.e., only the top level headlines are visible[fn:6].  This
-can be configured through the variable ~org-startup-folded~, or on
+~showeverything~, i.e., all file content is visible[fn:6].  This can
+be configured through the variable ~org-startup-folded~, or on
 a per-file basis by adding one of the following lines anywhere in the
 buffer:
 
@@ -5211,11 +5213,11 @@ not be used as keys in the properties drawer:
 |                | ~org-clock-sum-today~ must be run first to compute the         |
 |                | values in the current buffer.                                  |
 | =CLOSED=       | When was this entry closed?                                    |
-| =DEADLINE=     | The deadline time string, without the angular brackets.        |
+| =DEADLINE=     | The deadline timestamp.                                        |
 | =FILE=         | The filename the entry is located in.                          |
 | =ITEM=         | The headline of the entry.                                     |
 | =PRIORITY=     | The priority of the entry, a string with a single letter.      |
-| =SCHEDULED=    | The scheduling timestamp, without the angular brackets.        |
+| =SCHEDULED=    | The scheduling timestamp.                                      |
 | =TAGS=         | The tags defined directly in the headline.                     |
 | =TIMESTAMP=    | The first keyword-less timestamp in the entry.                 |
 | =TIMESTAMP_IA= | The first inactive timestamp in the entry.                     |
@@ -7909,8 +7911,8 @@ See the docstring of the variable for more information.
 It is often useful to associate reference material with an outline
 node.  Small chunks of plain text can simply be stored in the subtree
 of a project.  Hyperlinks (see [[*Hyperlinks]]) can establish associations
-with files that live elsewhere on your computer or in the cloud, like
-emails or source code files belonging to a project.
+with files that live elsewhere on a local, or even remote, computer,
+like emails or source code files belonging to a project.
 
 Another method is /attachments/, which are files located in a
 directory belonging to an outline node.  Org uses directories either
@@ -7920,15 +7922,17 @@ named by a unique ID of each entry, or by a =DIR= property.
 :PROPERTIES:
 :DESCRIPTION: How to access attachment commands
 :END:
-By default, org-attach will use ID properties when adding attachments
-to outline nodes.  This makes working with attachments fully
-automated.  There is no decision needed for folder-name or location.
-ID-based directories are by default located in the =data/= directory,
-which lives in the same directory where your Org file lives[fn:89].
-For more control over the setup, see [[*Attachment options]].
+
+By default, Org attach uses ID properties when adding attachments to
+outline nodes.  This makes working with attachments fully automated.
+There is no decision needed for folder-name or location.  ID-based
+directories are by default located in the =data/= directory, which
+lives in the same directory where your Org file lives[fn:89].
 
 When attachments are made using ~org-attach~ a default tag =ATTACH= is
 added to the node that gets the attachments.
+
+For more control over the setup, see [[*Attachment options]].
 
 The following commands deal with attachments:
 
@@ -8039,6 +8043,7 @@ The following commands deal with attachments:
 :PROPERTIES:
 :DESCRIPTION: Configuring the attachment system
 :END:
+
 There are a couple of options for attachments that are worth
 mentioning.
 
@@ -8057,7 +8062,7 @@ mentioning.
   #+vindex: org-attach-use-inheritance
   By default folders attached to an outline node are inherited from
   parents according to ~org-use-property-inheritance~.  If one instead
-  want to set inheritance specifically for org-attach that can be done
+  want to set inheritance specifically for Org attach that can be done
   using ~org-attach-use-inheritance~.  Inheriting documents through
   the node hierarchy makes a lot of sense in most cases.  Especially
   when using attachment links (see [[*Attachment links]]).  The following
@@ -8143,6 +8148,7 @@ default settings.
 :PROPERTIES:
 :DESCRIPTION: Hyperlink access to attachments
 :END:
+
 Attached files and folders can be referenced using attachment links.
 This makes it easy to refer to the material added to an outline node.
 Especially if it was attached using the unique ID of the entry!
@@ -8161,6 +8167,7 @@ See [[*External Links]] for more information about these links.
 :PROPERTIES:
 :DESCRIPTION: Everything safely stored away
 :END:
+
 If the directory attached to an outline node is a Git repository, Org
 can be configured to automatically commit changes to that repository
 when it sees them.
@@ -8178,6 +8185,7 @@ the following to your Emacs config:
 :END:
 #+cindex: attach from Dired
 #+findex: org-attach-dired-to-subtree
+
 It is possible to attach files to a subtree from a Dired buffer.  To
 use this feature, have one window in Dired mode containing the file(s)
 to be attached and another window with point in the subtree that shall
@@ -18871,8 +18879,8 @@ changes.
   #+vindex: org-startup-folded
   The first set of options deals with the initial visibility of the
   outline tree.  The corresponding variable for global default
-  settings is ~org-startup-folded~ with a default value of ~t~, which
-  is the same as ~overview~.
+  settings is ~org-startup-folded~ with a default value of
+  ~showeverything~.
 
   | =overview=       | Top-level headlines only.  |
   | =content=        | All headlines.             |
@@ -21752,7 +21760,7 @@ In-Buffer Settings]]).
 
 [fn:142] For shell source blocks, the default is to return the output.
 If you want to enforce returning the exit status, add =:results value=
-explicitely.
+explicitly.
 
 [fn:143] C++ language is handled in =ob-C.el=.  Even though the
 identifier for such source blocks is =C++=, you activate it by loading

@@ -165,7 +165,6 @@ This string must include a \"%s\" which will be replaced by the results."
   "Non-nil means show the time the code block was evaluated in the result hash."
   :group 'org-babel
   :type 'boolean
-  :version "26.1"
   :package-version '(Org . "9.0")
   :safe #'booleanp)
 
@@ -488,11 +487,21 @@ For the format of SAFE-LIST, see `org-babel-safe-header-args'."
   "Regexp matching a NAME keyword.")
 
 (defconst org-babel-result-regexp
-  (format "^[ \t]*#\\+%s\\(?:\\[\\(?:%s \\)?\\([[:alnum:]]+\\)\\]\\)?:[ \t]*"
-	  org-babel-results-keyword
-	  ;; <%Y-%m-%d %H:%M:%S>
-	  "<\\(?:[0-9]\\{4\\}-[0-1][0-9]-[0-3][0-9] \
-[0-2][0-9]\\(?::[0-5][0-9]\\)\\{2\\}\\)>")
+  (rx (seq bol
+           (zero-or-more (any "\t "))
+           "#+results"
+           (opt "["
+		;; Time stamp part.
+		(opt "("
+                     (= 4 digit) (= 2 "-" (= 2 digit))
+                     " "
+                     (= 2 digit) (= 2 ":" (= 2 digit))
+                     ") ")
+		;; SHA1 hash.
+		(group (one-or-more hex-digit))
+		"]")
+           ":"
+           (zero-or-more (any "\t "))))
   "Regular expression used to match result lines.
 If the results are associated with a hash key then the hash will
 be saved in match group 1.")
@@ -1302,10 +1311,9 @@ CONTEXT specifies the context of evaluation.  It can be `:eval',
   "Return the current in-buffer hash."
   (let ((result (org-babel-where-is-src-block-result nil info)))
     (when result
-      (org-with-wide-buffer
-       (goto-char result)
-       (looking-at org-babel-result-regexp)
-       (match-string-no-properties 1)))))
+      (org-with-point-at result
+	(let ((case-fold-search t)) (looking-at org-babel-result-regexp))
+	(match-string-no-properties 1)))))
 
 (defun org-babel-hide-hash ()
   "Hide the hash in the current results line.
@@ -1313,7 +1321,8 @@ Only the initial `org-babel-hash-show' characters of the hash
 will remain visible."
   (add-to-invisibility-spec '(org-babel-hide-hash . t))
   (save-excursion
-    (when (and (re-search-forward org-babel-result-regexp nil t)
+    (when (and (let ((case-fold-search t))
+		 (re-search-forward org-babel-result-regexp nil t))
                (match-string 1))
       (let* ((start (match-beginning 1))
              (hide-start (+ org-babel-hash-show start))
@@ -1331,11 +1340,12 @@ Only the initial `org-babel-hash-show' characters of each hash
 will remain visible.  This function should be called as part of
 the `org-mode-hook'."
   (save-excursion
-    (while (and (not org-babel-hash-show-time)
-		(re-search-forward org-babel-result-regexp nil t))
-      (goto-char (match-beginning 0))
-      (org-babel-hide-hash)
-      (goto-char (match-end 0)))))
+    (let ((case-fold-search t))
+      (while (and (not org-babel-hash-show-time)
+		  (re-search-forward org-babel-result-regexp nil t))
+	(goto-char (match-beginning 0))
+	(org-babel-hide-hash)
+	(goto-char (match-end 0))))))
 (add-hook 'org-mode-hook 'org-babel-hide-all-hashes)
 
 (defun org-babel-hash-at-point (&optional point)
@@ -1364,9 +1374,10 @@ portions of results lines."
   (interactive)
   (org-babel-show-result-all)
   (save-excursion
-    (while (re-search-forward org-babel-result-regexp nil t)
-      (save-excursion (goto-char (match-beginning 0))
-                      (org-babel-hide-result-toggle-maybe)))))
+    (let ((case-fold-search t))
+      (while (re-search-forward org-babel-result-regexp nil t)
+	(save-excursion (goto-char (match-beginning 0))
+			(org-babel-hide-result-toggle-maybe))))))
 
 (defun org-babel-show-result-all ()
   "Unfold all results in the current buffer."
@@ -1378,52 +1389,50 @@ portions of results lines."
   "Toggle visibility of result at point."
   (interactive)
   (let ((case-fold-search t))
-    (if (save-excursion
-          (beginning-of-line 1)
-          (looking-at org-babel-result-regexp))
-        (progn (org-babel-hide-result-toggle)
-               t) ;; to signal that we took action
-      nil))) ;; to signal that we did not
+    (and (org-match-line org-babel-result-regexp)
+         (progn (org-babel-hide-result-toggle) t))))
 
 (defun org-babel-hide-result-toggle (&optional force)
   "Toggle the visibility of the current result."
   (interactive)
   (save-excursion
     (beginning-of-line)
-    (if (re-search-forward org-babel-result-regexp nil t)
-        (let ((start (progn (beginning-of-line 2) (- (point) 1)))
-	      (end (progn
-		     (while (looking-at org-babel-multi-line-header-regexp)
-		       (forward-line 1))
-		     (goto-char (- (org-babel-result-end) 1)) (point)))
-	      ov)
-          (if (memq t (mapcar (lambda (overlay)
-                                (eq (overlay-get overlay 'invisible)
-				    'org-babel-hide-result))
-                              (overlays-at start)))
-              (when (or (not force) (eq force 'off))
-		(mapc (lambda (ov)
-			(when (member ov org-babel-hide-result-overlays)
-			  (setq org-babel-hide-result-overlays
-				(delq ov org-babel-hide-result-overlays)))
-			(when (eq (overlay-get ov 'invisible)
-				  'org-babel-hide-result)
-			  (delete-overlay ov)))
-		      (overlays-at start)))
-            (setq ov (make-overlay start end))
-            (overlay-put ov 'invisible 'org-babel-hide-result)
-            ;; make the block accessible to isearch
-            (overlay-put
-             ov 'isearch-open-invisible
-             (lambda (ov)
-               (when (member ov org-babel-hide-result-overlays)
-                 (setq org-babel-hide-result-overlays
-                       (delq ov org-babel-hide-result-overlays)))
-               (when (eq (overlay-get ov 'invisible)
-                         'org-babel-hide-result)
-                 (delete-overlay ov))))
-            (push ov org-babel-hide-result-overlays)))
-      (error "Not looking at a result line"))))
+    (let ((case-fold-search t))
+      (unless (re-search-forward org-babel-result-regexp nil t)
+	(error "Not looking at a result line")))
+    (let ((start (progn (beginning-of-line 2) (1- (point))))
+	  (end (progn
+		 (while (looking-at org-babel-multi-line-header-regexp)
+		   (forward-line 1))
+		 (goto-char (1- (org-babel-result-end)))
+		 (point)))
+	  ov)
+      (if (memq t (mapcar (lambda (overlay)
+			    (eq (overlay-get overlay 'invisible)
+				'org-babel-hide-result))
+			  (overlays-at start)))
+	  (when (or (not force) (eq force 'off))
+	    (mapc (lambda (ov)
+		    (when (member ov org-babel-hide-result-overlays)
+		      (setq org-babel-hide-result-overlays
+			    (delq ov org-babel-hide-result-overlays)))
+		    (when (eq (overlay-get ov 'invisible)
+			      'org-babel-hide-result)
+		      (delete-overlay ov)))
+		  (overlays-at start)))
+	(setq ov (make-overlay start end))
+	(overlay-put ov 'invisible 'org-babel-hide-result)
+	;; make the block accessible to isearch
+	(overlay-put
+	 ov 'isearch-open-invisible
+	 (lambda (ov)
+	   (when (member ov org-babel-hide-result-overlays)
+	     (setq org-babel-hide-result-overlays
+		   (delq ov org-babel-hide-result-overlays)))
+	   (when (eq (overlay-get ov 'invisible)
+		     'org-babel-hide-result)
+	     (delete-overlay ov))))
+	(push ov org-babel-hide-result-overlays)))))
 
 ;; org-tab-after-check-for-cycling-hook
 (add-hook 'org-tab-first-hook 'org-babel-hide-result-toggle-maybe)
@@ -1940,7 +1949,7 @@ the results hash, or nil.  Leave point before the keyword."
 		  (cond ((not hash) nil)
 			(org-babel-hash-show-time
 			 (format "[%s %s]"
-				 (format-time-string "<%F %T>")
+				 (format-time-string "(%F %T)")
 				 hash))
 			(t (format "[%s]" hash)))
 		  ":"
@@ -1966,7 +1975,7 @@ point, along with related contents.  Do nothing if HASH is nil.
 Return a non-nil value if results were cleared.  In this case,
 leave point where new results should be inserted."
   (when hash
-    (looking-at org-babel-result-regexp)
+    (let ((case-fold-search t)) (looking-at org-babel-result-regexp))
     (unless (string= (match-string 1) hash)
       (let* ((e (org-element-at-point))
 	     (post (copy-marker (org-element-property :post-affiliated e))))
@@ -2480,7 +2489,8 @@ INFO may provide the values of these header arguments (in the
 (defun org-babel-remove-result (&optional info keep-keyword)
   "Remove the result of the current source block."
   (interactive)
-  (let ((location (org-babel-where-is-src-block-result nil info)))
+  (let ((location (org-babel-where-is-src-block-result nil info))
+	(case-fold-search t))
     (when location
       (save-excursion
         (goto-char location)
