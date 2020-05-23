@@ -325,7 +325,7 @@ use it."
   (save-excursion
     (when narrow
       (org-narrow-to-subtree))
-    (outline-show-all)))
+    (org-show-all)))
 
 (defun org-velocity-edit-entry/inline (heading)
   "Edit entry at HEADING in the original buffer."

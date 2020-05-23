@@ -6365,6 +6365,29 @@ open and agenda-wise Org files."
 
 ;;;; Headlines visibility
 
+(defun org-hide-entry ()
+  "Hide the body directly following this heading."
+  (interactive)
+  (save-excursion
+    (outline-back-to-heading)
+    (outline-end-of-heading)
+    (org-flag-region (point) (progn (outline-next-preface) (point)) t 'outline)))
+
+(defun org-hide-subtree ()
+  "Hide everything after this heading at deeper levels."
+  (interactive)
+  (org-flag-subtree t))
+
+(defun org-hide-sublevels (levels)
+  "Hide everything but the top LEVELS levels of headers, in whole buffer.
+This also unhides the top heading-less body, if any.
+
+Interactively, the prefix argument supplies the value of LEVELS.
+When invoked without a prefix argument, LEVELS defaults to the level
+of the current heading, or to 1 if the current line is not a heading."
+  (cl-letf (((symbol-function 'outline-flag-region) #'org-flag-region))
+    (org-hide-sublevels levels)))
+
 (defun org-show-entry ()
   "Show the body directly following this heading.
 Show the heading too, if it is currently invisible."
@@ -6382,6 +6405,16 @@ Show the heading too, if it is currently invisible."
        nil
        'outline)
       (org-cycle-hide-property-drawers 'children))))
+
+(defun org-show-heading ()
+  "Show the current heading and move to its end."
+  (org-flag-region (- (point)
+ 		   (if (bobp) 0
+ 		     (if (and outline-blank-line
+                              (eq (char-before (1- (point))) ?\n))
+ 			 2 1)))
+		(progn (outline-end-of-heading) (point))
+		nil))
 
 (defun org-show-children (&optional level)
   "Show all direct subheadings of this heading.
@@ -6425,6 +6458,11 @@ heading to appear."
   (interactive)
   (org-flag-region
    (point) (save-excursion (org-end-of-subtree t t)) nil 'outline))
+
+(defun org-show-branches ()
+  "Show all subheadings of this heading, but not their bodies."
+  (interactive)
+  (org-show-children 1000))
 
 ;;;; Blocks and drawers visibility
 
@@ -6931,7 +6969,7 @@ With a numeric prefix, show all headlines up to that level."
 		     (org-narrow-to-subtree)
 		     (org-content))))
 		((or "all" "showall")
-		 (outline-show-subtree))
+		 (org-show-subtree))
 		(_ nil)))
 	    (org-end-of-subtree)))))))
 
@@ -7004,7 +7042,7 @@ This function is the default value of the hook `org-cycle-hook'."
 	  (while (re-search-forward re nil t)
 	    (when (and (not (org-invisible-p))
 		       (org-invisible-p (line-end-position)))
-	      (outline-hide-entry))))
+	      (org-hide-entry))))
 	(org-cycle-hide-property-drawers 'all)
 	(org-cycle-show-empty-lines 'overview)))))
 
@@ -8061,7 +8099,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
      (skip-chars-forward " \t\n\r")
      (setq beg (point))
      (when (and (org-invisible-p) visp)
-       (save-excursion (outline-show-heading)))
+       (save-excursion (org-show-heading)))
      ;; Shift if necessary.
      (unless (= shift 0)
        (save-restriction
@@ -8503,7 +8541,7 @@ function is being called interactively."
 		       (point))
 	    what "children")
       (goto-char start)
-      (outline-show-subtree)
+      (org-show-subtree)
       (outline-next-heading))
      (t
       ;; we will sort the top-level entries in this file
@@ -18012,11 +18050,11 @@ Move point to the beginning of first heading or end of buffer."
 (defun org-show-branches-buffer ()
   "Show all branches in the buffer."
   (org-flag-above-first-heading)
-  (outline-hide-sublevels 1)
+  (org-hide-sublevels 1)
   (unless (eobp)
-    (outline-show-branches)
+    (org-show-branches)
     (while (outline-get-next-sibling)
-      (outline-show-branches)))
+      (org-show-branches)))
   (goto-char (point-min)))
 
 (defun org-kill-note-or-show-branches ()
@@ -18030,8 +18068,8 @@ Move point to the beginning of first heading or end of buffer."
 	(t
 	 (let ((beg (progn (org-back-to-heading) (point)))
 	       (end (save-excursion (org-end-of-subtree t t) (point))))
-	   (outline-hide-subtree)
-	   (outline-show-branches)
+	   (org-hide-subtree)
+	   (org-show-branches)
 	   (org-hide-archived-subtrees beg end)))))
 
 (defun org-delete-indentation (&optional arg)
@@ -18187,9 +18225,9 @@ Otherwise, call `org-show-children'.  ARG is the level to hide."
     (if (org-before-first-heading-p)
         (progn
           (org-flag-above-first-heading)
-          (outline-hide-sublevels (or arg 1))
+          (org-hide-sublevels (or arg 1))
           (goto-char (point-min)))
-      (outline-hide-subtree)
+      (org-hide-subtree)
       (org-show-children arg))))
 
 (defun org-ctrl-c-star ()

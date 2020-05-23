@@ -330,7 +330,7 @@ direct children of this heading."
 		      (insert (if datetree-date "" "\n") heading "\n")
 		      (end-of-line 0))
 		    ;; Make the subtree visible
-		    (outline-show-subtree)
+		    (org-show-subtree)
 		    (if org-archive-reversed-order
 			(progn
 			  (org-back-to-heading t)

@@ -139,12 +139,8 @@ This is a floating point number if the size is too large for an integer."
 ;;; Emacs < 25.1 compatibility
 
 (when (< emacs-major-version 25)
-  (defalias 'outline-hide-entry 'hide-entry)
-  (defalias 'outline-hide-sublevels 'hide-sublevels)
-  (defalias 'outline-hide-subtree 'hide-subtree)
   (defalias 'outline-show-branches 'show-branches)
   (defalias 'outline-show-children 'show-children)
-  (defalias 'outline-show-entry 'show-entry)
   (defalias 'outline-show-subtree 'show-subtree)
   (defalias 'xref-find-definitions 'find-tag)
   (defalias 'format-message 'format)
