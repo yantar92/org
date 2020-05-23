@@ -5428,8 +5428,8 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 	      (when verbatim?
 		(org-remove-flyspell-overlays-in
 		 (match-beginning 0) (match-end 0))
-		(remove-text-properties (match-beginning 2) (match-end 2)
-					'(display t invisible t intangible t)))
+		(org-remove-text-properties (match-beginning 2) (match-end 2)
+					 '(display t invisible t intangible t)))
 	      (add-text-properties (match-beginning 2) (match-end 2)
 				   '(font-lock-multiline t org-emphasis t))
 	      (when (and org-hide-emphasis-markers
@@ -5544,7 +5544,7 @@ This includes angle, plain, and bracket links."
 	    (if (not (eq 'bracket style))
 		(add-text-properties start end properties)
 	      ;; Handle invisible parts in bracket links.
-	      (remove-text-properties start end '(invisible nil))
+	      (org-remove-text-properties start end '(invisible nil))
 	      (let ((hidden
 		     (append `(invisible
 			       ,(or (org-link-get-parameter type :display)
@@ -5564,8 +5564,8 @@ This includes angle, plain, and bracket links."
 (defun org-activate-code (limit)
   (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
     (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
-    (remove-text-properties (match-beginning 0) (match-end 0)
-			    '(display t invisible t intangible t))
+    (org-remove-text-properties (match-beginning 0) (match-end 0)
+			     '(display t invisible t intangible t))
     t))
 
 (defcustom org-src-fontify-natively t
@@ -5636,8 +5636,8 @@ by a #."
 	    (setq block-end (match-beginning 0)) ; includes the final newline.
 	    (when quoting
 	      (org-remove-flyspell-overlays-in bol-after-beginline nl-before-endline)
-	      (remove-text-properties beg end-of-endline
-				      '(display t invisible t intangible t)))
+	      (org-remove-text-properties beg end-of-endline
+				       '(display t invisible t intangible t)))
 	    (add-text-properties
 	     beg end-of-endline '(font-lock-fontified t font-lock-multiline t))
 	    (org-remove-flyspell-overlays-in beg bol-after-beginline)
@@ -5691,8 +5691,8 @@ by a #."
 	     '(font-lock-fontified t face org-document-info))))
 	 ((string-prefix-p "+caption" dc1)
 	  (org-remove-flyspell-overlays-in (match-end 2) (match-end 0))
-	  (remove-text-properties (match-beginning 0) (match-end 0)
-				  '(display t invisible t intangible t))
+	  (org-remove-text-properties (match-beginning 0) (match-end 0)
+				   '(display t invisible t intangible t))
 	  ;; Handle short captions.
 	  (save-excursion
 	    (beginning-of-line)
@@ -5714,8 +5714,8 @@ by a #."
 	   '(font-lock-fontified t face font-lock-comment-face)))
 	 (t ;; just any other in-buffer setting, but not indented
 	  (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
-	  (remove-text-properties (match-beginning 0) (match-end 0)
-				  '(display t invisible t intangible t))
+	  (org-remove-text-properties (match-beginning 0) (match-end 0)
+				   '(display t invisible t intangible t))
 	  (add-text-properties beg (match-end 0)
 			       '(font-lock-fontified t face org-meta-line))
 	  t))))))
@@ -6237,10 +6237,10 @@ If TAG is a number, get the corresponding match group."
 	 (inhibit-modification-hooks t)
 	 deactivate-mark buffer-file-name buffer-file-truename)
     (decompose-region beg end)
-    ;; do not remove invisible text properties specified by
-    ;; 'org-hide-block and 'org-hide-drawer (but remove  'org-link)
-    ;; this is needed to keep the drawers and blocks hidden unless
-    ;; they are toggled by user
+    ;; do not remove invisible text properties specified by 'outline,
+    ;; 'org-hide-block, and 'org-hide-drawer (but remove 'org-link) this is
+    ;; needed to keep outlines, drawers, and blocks hidden unless they
+    ;; are toggled by user
     ;; Note: The below may be too specific and create troubles
     ;; if more invisibility specs are added to org in future
     (let ((pos beg)
@@ -6249,15 +6249,15 @@ If TAG is a number, get the corresponding match group."
 	(setq next (next-single-property-change pos 'invisible nil end)
               spec (get-text-property pos 'invisible))
         (unless (memq spec (list 'org-hide-block
-				 'org-hide-drawer))
-          (remove-text-properties pos next '(invisible t)))
+				 'org-hide-drawer
+                                 'outline))
+          (org-remove-text-properties pos next '(invisible t)))
         (setq pos next)))
-    (remove-text-properties beg end
-			    '(mouse-face t keymap t org-linked-text t
-					 ;; Do not remove all invisible during fontification
-					 ;; invisible t
-                                         intangible t
-					 org-emphasis t))
+    (org-remove-text-properties beg end
+			     '(mouse-face t keymap t org-linked-text t
+					  invisible t
+                                          intangible t
+					  org-emphasis t))
     (org-remove-font-lock-display-properties beg end)))
 
 (defconst org-script-display  '(((raise -0.3) (height 0.7))
@@ -21376,7 +21376,7 @@ of text properties. The created overlays will be stored in
             ;; for the region. The region will remain visible.
 	    (overlay-put o 'isearch-open-invisible #'delete-overlay)
             (push o org--isearch-overlays))
-	  (remove-text-properties (car region) (cdr region) '(invisible nil))))
+	  (org-remove-text-properties (car region) (cdr region) '(invisible nil))))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
 (defun org--isearch-filter-predicate (beg end)
