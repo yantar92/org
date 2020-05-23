@@ -6497,8 +6497,8 @@ Return a non-nil value when toggling is successful."
 	(unless (let ((eol (line-end-position)))
 		  (and (> eol start) (/= eol end)))
 	  (let* ((spec (cond ((eq category 'block) 'org-hide-block)
-			     ((eq type 'property-drawer) 'outline)
-			     (t 'org-hide-drawer)))
+			     ((eq category 'drawer) 'org-hide-drawer)
+			     (t 'outline)))
 		 (flag
 		  (cond ((eq force 'off) nil)
 			(force t)
@@ -6591,10 +6591,7 @@ STATE should be one of the symbols listed in the docstring of
 	       (when (org-at-property-drawer-p)
 		 (let* ((case-fold-search t)
 			(end (re-search-forward org-property-end-re)))
-		   ;; Property drawers use `outline' invisibility spec
-		   ;; so they can be swallowed once we hide the
-		   ;; outline.
-		   (org-flag-region start end t 'outline)))))))))))
+		   (org-flag-region start end t 'org-hide-drawer)))))))))))
 
 ;;;; Visibility cycling
 
@@ -13588,7 +13585,7 @@ drawer is immediately hidden."
 	   (inhibit-read-only t))
        (unless (bobp) (insert "\n"))
        (insert ":PROPERTIES:\n:END:")
-       (org-flag-region (line-end-position 0) (point) t 'outline)
+       (org-flag-region (line-end-position 0) (point) t 'org-hide-drawer)
        (when (or (eobp) (= begin (point-min))) (insert "\n"))
        (org-indent-region begin (point))))))
 
