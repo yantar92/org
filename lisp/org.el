@@ -6242,22 +6242,6 @@ If TAG is a number, get the corresponding match group."
 	 (inhibit-modification-hooks t)
 	 deactivate-mark buffer-file-name buffer-file-truename)
     (decompose-region beg end)
-    ;; do not remove invisible text properties specified by 'outline,
-    ;; 'org-hide-block, and 'org-hide-drawer (but remove 'org-link) this is
-    ;; needed to keep outlines, drawers, and blocks hidden unless they
-    ;; are toggled by user
-    ;; Note: The below may be too specific and create troubles
-    ;; if more invisibility specs are added to org in future
-    (let ((pos beg)
-	  next spec)
-      (while (< pos end)
-	(setq next (next-single-property-change pos 'invisible nil end)
-              spec (get-text-property pos 'invisible))
-        (unless (memq spec (list 'org-hide-block
-				 'org-hide-drawer
-                                 'outline))
-          (org-remove-text-properties pos next '(invisible t)))
-        (setq pos next)))
     (org-remove-text-properties beg end
 			     '(mouse-face t keymap t org-linked-text t
 					  invisible t
