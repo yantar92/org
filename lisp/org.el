@@ -5047,7 +5047,12 @@ first :end:."
 			 'org-hide-block
 		       (if (string-match-p "drawer" (symbol-name (org-element-type el)))
 			   'org-hide-drawer
-			 t))))
+			 t)))
+               (toggle-func (if (eq spec 'org-hide-drawer)
+				#'org-hide-drawer-toggle
+                              (if (eq spec 'org-hide-block)
+				  #'org-hide-block-toggle
+                                #'ignore)))) ; this should not happen
 	  (if (and (equal (org-element-type el) (org-element-type newel))
 		   (equal (marker-position (org-element-property :begin el))
 			  (org-element-property :begin newel))
@@ -5059,11 +5064,11 @@ first :end:."
                 (goto-char (org-element-property :begin newel))
 		(if (memq this-command org-track-element-modification-default-sensitive-commands)
 		    ;; reveal if change was made by typing
-		    (org-hide-drawer-toggle 'off)
+		    (funcall toggle-func 'off)
 		  ;; re-hide the inserted text
 		  ;; FIXME: opening the drawer before hiding should not be needed here
-		  (org-hide-drawer-toggle 'off) ; this is needed to avoid showing double ellipsis
-		  (org-hide-drawer-toggle 'hide)))
+		  (funcall toggle-func 'off) ; this is needed to avoid showing double ellipsis
+		  (funcall toggle-func 'hide)))
             ;; The element was destroyed. Reveal everything.
             (org-flag-region (marker-position (org-element-property :begin el))
 			  (marker-position (org-element-property :end el))
