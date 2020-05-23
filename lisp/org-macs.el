@@ -774,29 +774,30 @@ SPEC is the invisibility spec, as a symbol."
 					      (eq old-spec 'outline))
 					  stack
 					(cons old-spec stack)))))
-	     (goto-char end)))))
+	     (goto-char end))))
 
-     ;; cleanup everything
-     (remove-text-properties from to '(invisible nil))
+       ;; cleanup everything
+       (remove-text-properties from to '(invisible nil))
 
-     ;; Recover properties from the backup stack
-     (unless flag
-       (save-excursion
-	 (goto-char from)
-	 (while (< (point) to)
-           (let ((stack (get-text-property (point) 'org-property-stack-invisible))
-		 (end (next-single-property-change (point) 'org-property-stack-invisible nil to)))
-             (if (not stack)
-		 (remove-text-properties (point) end '(org-property-stack-invisible nil))
-	       (put-text-property (point) end 'invisible (car stack))
-	       (alter-text-property (point) end 'org-property-stack-invisible
-				    (lambda (stack)
-				      (cdr stack))))
-             (goto-char end)))))
-     (when flag
-       (put-text-property from to 'rear-non-sticky nil)
-       (put-text-property from to 'front-sticky t)
-       (put-text-property from to 'invisible spec)))))
+       ;; Recover properties from the backup stack
+       (unless flag
+	 (save-excursion
+	   (goto-char from)
+	   (while (< (point) to)
+             (let ((stack (get-text-property (point) 'org-property-stack-invisible))
+		   (end (next-single-property-change (point) 'org-property-stack-invisible nil to)))
+               (if (not stack)
+		   (remove-text-properties (point) end '(org-property-stack-invisible nil))
+		 (put-text-property (point) end 'invisible (car stack))
+		 (alter-text-property (point) end 'org-property-stack-invisible
+				      (lambda (stack)
+					(cdr stack))))
+               (goto-char end)))))
+       
+       (when flag
+	 (put-text-property from to 'rear-non-sticky nil)
+	 (put-text-property from to 'front-sticky t)
+	 (put-text-property from to 'invisible spec))))))
 
 
 ;;; Regexp matching
