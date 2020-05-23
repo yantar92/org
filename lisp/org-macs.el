@@ -760,11 +760,43 @@ SPEC is the invisibility spec, as a symbol."
      ;; Use text properties instead of overlays for speed.
      ;; Overlays are too slow (Emacs Bug#35453).
      (with-silent-modifications
-       (remove-text-properties from to '(invisible nil))
-       (when flag
-	 (put-text-property from to 'rear-non-sticky nil)
-	 (put-text-property from to 'front-sticky t)
-	 (put-text-property from to 'invisible spec))))))
+       ;; keep a backup stack of old text properties
+       (save-excursion
+	 (goto-char from)
+	 (while (< (point) to)
+	   (let ((old-spec (get-text-property (point) 'invisible))
+		 (end (next-single-property-change (point) 'invisible nil to)))
+	     (when old-spec
+	       (alter-text-property (point) end 'org-property-stack-invisible
+				    (lambda (stack)
+				      (if (or (eq old-spec (car stack))
+					      (eq spec old-spec)
+					      (eq old-spec 'outline))
+					  stack
+					(cons old-spec stack)))))
+	     (goto-char end)))))
+
+     ;; cleanup everything
+     (remove-text-properties from to '(invisible nil))
+
+     ;; Recover properties from the backup stack
+     (unless flag
+       (save-excursion
+	 (goto-char from)
+	 (while (< (point) to)
+           (let ((stack (get-text-property (point) 'org-property-stack-invisible))
+		 (end (next-single-property-change (point) 'org-property-stack-invisible nil to)))
+             (if (not stack)
+		 (remove-text-properties (point) end '(org-property-stack-invisible nil))
+	       (put-text-property (point) end 'invisible (car stack))
+	       (alter-text-property (point) end 'org-property-stack-invisible
+				    (lambda (stack)
+				      (cdr stack))))
+             (goto-char end)))))
+     (when flag
+       (put-text-property from to 'rear-non-sticky nil)
+       (put-text-property from to 'front-sticky t)
+       (put-text-property from to 'invisible spec)))))
 
 
 ;;; Regexp matching
