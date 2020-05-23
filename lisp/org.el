@@ -21388,6 +21388,7 @@ of text properties. The created overlays will be stored in
       (when-let* ((spec (get-text-property pos 'invisible))
 		  (spec (memq spec org-isearch-specs))
 		  (region (org--find-text-property-region pos 'invisible)))
+        (setq spec (get-text-property pos 'invisible))
         ;; Changing text properties is considered buffer modification.
         ;; We do not want it here.
 	(with-silent-modifications
@@ -21400,7 +21401,7 @@ of text properties. The created overlays will be stored in
             ;; for the region. The region will remain visible.
 	    (overlay-put o 'isearch-open-invisible #'delete-overlay)
             (push o org--isearch-overlays))
-	  (org-remove-text-properties (car region) (cdr region) '(invisible nil))))
+	  (org-flag-region (car region) (cdr region) nil spec)))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
 (defun org--isearch-filter-predicate (beg end)
@@ -21417,7 +21418,7 @@ value listed in `org-isearch-specs' visible to Isearch."
     ;; Changing text properties is considered buffer modification.
     ;; We do not want it here.
     (with-silent-modifications
-      (put-text-property (overlay-start ov) (overlay-end ov) 'invisible spec)))
+      (org-flag-region (overlay-start ov) (overlay-end ov) t spec)))
   (when (member ov isearch-opened-overlays)
     (setq isearch-opened-overlays (delete ov isearch-opened-overlays)))
   (delete-overlay ov))
