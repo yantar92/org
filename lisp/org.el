@@ -6403,7 +6403,8 @@ Show the heading too, if it is currently invisible."
                               (eq (char-before (1- (point))) ?\n))
  			 2 1)))
 		(progn (outline-end-of-heading) (point))
-		nil))
+		nil
+                'outline))
 
 (defun org-show-children (&optional level)
   "Show all direct subheadings of this heading.
