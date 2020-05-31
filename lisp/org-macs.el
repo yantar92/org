@@ -743,6 +743,31 @@ invisibility specs are added to org in future"
       (unless (= beg end) ; this should not happen
         (cons beg end)))))
 
+(defun org--add-to-list-text-property (from to prop element)
+  "Add element to text property PROP, whos value should be a list."
+  (add-text-properties from to `(,prop ,(list element))) ; create if none
+  ;; add to existing
+  (alter-text-property from to
+		       prop
+		       (lambda (val)
+			  (cons element val))))
+
+(defun org--remove-from-list-text-property (from to prop element)
+  "Remove ELEMENT from text propery PROP, whos value should be a list."
+  (let ((pos from))
+    (while (< pos to)
+      (if (equal (get-text-property pos prop) (list element))
+	(remove-text-properties pos (next-single-char-property-change pos prop) ,(list prop nil))
+        (put-text-property pos (next-single-char-property-change pos prop)
+        prop (remove element (get-text-property pos prop)))
+        )
+      (setq pos (next-single-char-property-change pos prop)))))
+
+(defun org--hide-region (from to)
+  "Hide text in region if it is followed by folded text."
+  (when-let ((spec (get-text-property to 'invisible)))
+    (org-flag-region from to 't spec)))
+
 (defun org-flag-region (from to flag spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the invisibility spec, as a symbol."
@@ -778,7 +803,8 @@ SPEC is the invisibility spec, as a symbol."
 
        ;; cleanup everything
        (remove-text-properties from to '(invisible nil))
-
+       (org--remove-from-list-text-property from to 'insert-in-front-hooks #'org--hide-region)
+       
        ;; Recover properties from the backup stack
        (unless flag
 	 (save-excursion
@@ -793,10 +819,9 @@ SPEC is the invisibility spec, as a symbol."
 				      (lambda (stack)
 					(cdr stack))))
                (goto-char end)))))
-       
+
        (when flag
-	 (put-text-property from to 'rear-non-sticky nil)
-	 (put-text-property from to 'front-sticky t)
+	 (org--add-to-list-text-property from to 'insert-in-front-hooks #'org--hide-region)
 	 (put-text-property from to 'invisible spec))))))
 
 

@@ -4744,16 +4744,6 @@ This is for getting out of special buffers like capture.")
   "Every change indicates that a table might need an update."
   (setq org-table-may-need-update t))
 
-(defvar-local org--modified-elements nil
-  "List of elements, marked as recently modified.
-There is no guarantee that the elements in this list are fully parsed.
-Only the element type, :begin and :end properties of the elements are
-guaranteed to be available. The :begin and :end element properties
-contain markers instead of positions.")
-
-(defvar org-track-element-modification-default-sensitive-commands '(self-insert-command)
-  "List of commands triggerring element modifications unconditionally.")
-
 (defvar org--element-beginning-re-alist `((center-block . "^[ \t]*#\\+begin_center[ \t]*$")
                                        (property-drawer . ,org-property-start-re)
 				       (drawer . ,org-drawer-regexp)
@@ -4771,31 +4761,13 @@ Group 1 in the regexps (if any) contains the element type.")
 Group 1 in the regexps (if any) contains the element type or END.")
 
 (defvar org-track-element-modifications
-  `((property-drawer  . (:after-change-function
-                         org--drawer-or-block-unfold-maybe))
-    (drawer  . (:after-change-function
-                org--drawer-or-block-unfold-maybe))
-    (center-block . (:after-change-function
-                     org--drawer-or-block-unfold-maybe))
-    (quote-block  . (:after-change-function
-                     org--drawer-or-block-unfold-maybe))
-    (special-block  . (:after-change-function
-                       org--drawer-or-block-unfold-maybe)))
+  `(property-drawer
+    drawer
+    center-block
+    quote-block
+    special-block)
   "Alist of elements to be tracked for modifications.
-The modification is only triggered according to :sensitive-re-list and
-:sensitive-command-list (see below).
-Each element of the alist is a cons of an element symbol and plist
-defining how and when the modifications are handled.
-In case of recursive elements/duplicates, the first element from the
-list is considered.
-The plist can have the following properties:
-- :element-beginning-re   :: regex matching beginning of the element
-  (default)               :: (alist-get element org--element-beginning-re-alist)
-- :element-end-re         :: regex matching end of the element
-  (default)               :: (alist-get element org--element-end-re-alist)
-- :after-change-function  :: function called after the modification
-The function must accept a single argument - element from
-`org--modified-elements'.")
+The modification is only triggered when beginning/end line of the element is modified.")
 
 (defun org--get-element-region-at-point (types)
   "Return TYPES element at point or nil.
@@ -4814,13 +4786,12 @@ parsed here."
             (end-limit (or (save-excursion (outline-next-heading))
 			   (point-max)))
             (point (point))
-	    begin end closest-begin)
+	    begin end)
 	(when (and begin-re end-re)
 	  (save-excursion
 	    (end-of-line)
 	    (when (re-search-backward begin-re begin-limit 'noerror) (setq begin (point)))
 	    (when (re-search-forward end-re end-limit 'noerror) (setq end (point)))
-            (setq closest-begin begin)
             ;; slurp unmatched begin-re
 	    (when (and begin end)
               (goto-char begin)
@@ -4832,6 +4803,9 @@ parsed here."
 		       (list type
 			     (list
 			      :begin begin
+                              :post-affiliated begin
+                              :contents-begin (save-excursion (goto-char begin) (1+ (line-end-position)))
+                              :contents-end (save-excursion (goto-char end) (1- (line-beginning-position)))
 			      :end end)))))))))))
 
 (defun org--get-next-element-region-at-point (types &optional limit previous)
@@ -4854,24 +4828,17 @@ parsed here."
 				     (point)))
 				(or (save-excursion (outline-next-heading))
 				    (point-max)))))
-	     begin end)
+	     el)
 	(when (and begin-re end-re)
 	  (save-excursion
             (if previous
                 (when (re-search-backward begin-re limit 'noerror)
-		  (when-let ((el (org--get-element-region-at-point type)))
-		    (setq begin (org-element-property :begin el))
-		    (setq end (org-element-property :end el))))
+		  (setq el (org--get-element-region-at-point type)))
 	      (when (re-search-forward begin-re limit 'noerror)
-                (when-let ((el (org--get-element-region-at-point type)))
-		  (setq begin (org-element-property :begin el))
-		  (setq end (org-element-property :end el))))))
-	  (when (and begin end)
+		(setq el (org--get-element-region-at-point type)))))
+	  (when el
             (throw 'exit
-		   (list type
-			 (list
-			  :begin begin
-			  :end end)))))))))
+		   el)))))))
 
 (defun org--find-elements-in-region (beg end elements &optional include-partial include-neighbours)
   "Find all elements from ELEMENTS in region BEG . END.
@@ -4918,200 +4885,16 @@ INCLUDE-NEIGHBOURS is non-nil."
           (goto-char (org-element-property :end el)))
         result))))
 
-(defun org--drawer-or-block-unfold-maybe (el)
-  "Update visibility of modified folded drawer/block EL.
-If text was added to hidden drawer/block, make sure that the text is
-also hidden, unless the change was done by a command listed in
-`org-track-element-modification-default-sensitive-commands'.  If the
-modification destroyed the drawer/block, reveal the hidden text in
-former drawer/block.  If the modification shrinked/expanded the
-drawer/block beyond the hidden text, reveal the affected
-drawers/blocks as well.
-Examples:
-----------------------------------------------
-----------------------------------------------
-Case #1 (the element content is hidden):
-----------------------------------------------
-:PROPERTIES:
-:ID:       279e797c-f4a7-47bb-80f6-e72ac6f3ec55
-:END:
-----------------------------------------------
-is changed to
-----------------------------------------------
-:ROPERTIES:
-:ID:       279e797c-f4a7-47bb-80f6-e72ac6f3ec55
-:END:
-----------------------------------------------
-Text is revealed, because we have drawer in place of property-drawer
-----------------------------------------------
-----------------------------------------------
-Case #2 (the element content is hidden):
-----------------------------------------------
-:ROPERTIES:
-:ID:       279e797c-f4a7-47bb-80f6-e72ac6f3ec55
-:END:
-----------------------------------------------
-is changed to
-----------------------------------------------
-:OPERTIES:
-:ID:       279e797c-f4a7-47bb-80f6-e72ac6f3ec55
-:END:
-----------------------------------------------
-The text remains hidden since it is still a drawer.
-----------------------------------------------
-----------------------------------------------
-Case #3: (the element content is hidden):
-----------------------------------------------
-:FOO:
-bar
-tmp
-:END:
-----------------------------------------------
-is changed to
-----------------------------------------------
-:FOO:
-bar
-:END:
-tmp
-:END:
-----------------------------------------------
-The text is revealed because the drawer contents shrank.
-----------------------------------------------
-----------------------------------------------
-Case #4: (the element content is hidden in both the drawers):
-----------------------------------------------
-:FOO:
-bar
-tmp
-:END:
-:BAR:
-jjd
-:END:
-----------------------------------------------
-is changed to
-----------------------------------------------
-:FOO:
-bar
-tmp
-:BAR:
-jjd
-:END:
-----------------------------------------------
-The text is revealed in both the drawers because the drawers are merged
-into a new drawer.
-----------------------------------------------
-----------------------------------------------
-Case #5: (the element content is hidden)
-----------------------------------------------
-:test:
-Vivamus id enim.
-:end:
-----------------------------------------------
-is changed to
-----------------------------------------------
-:drawer:
-:test:
-Vivamus id enim.
-:end:
-----------------------------------------------
-The text is revealed in the drawer because the drawer expended.
-----------------------------------------------
-----------------------------------------------
-Case #6: (the element content is hidden):
-----------------------------------------------
-:test:
-Vivamus id enim.
-:end:
-----------------------------------------------
-is changed to
-----------------------------------------------
-:test:
-Vivamus id enim.
-:end:
-Nam a sapien.
-:end:
-----------------------------------------------
-The text remains hidden because drawer contents is always before the
-first :end:."
-  (save-match-data
-    (save-excursion
-      (save-restriction
-	(goto-char (org-element-property :begin el))
-	(let* ((newel (org--get-element-region-at-point
-		       (mapcar (lambda (el)
-				 (when (string-match-p (regexp-opt '("block" "drawer"))
-						       (symbol-name (car el)))
-                                   (car el)))
-                               org-track-element-modifications)))
-	       (spec (if (string-match-p "block" (symbol-name (org-element-type el)))
-			 'org-hide-block
-		       (if (string-match-p "drawer" (symbol-name (org-element-type el)))
-			   'org-hide-drawer
-			 t)))
-               (toggle-func (if (eq spec 'org-hide-drawer)
-				#'org-hide-drawer-toggle
-                              (if (eq spec 'org-hide-block)
-				  #'org-hide-block-toggle
-                                #'ignore)))) ; this should not happen
-	  (if (and (equal (org-element-type el) (org-element-type newel))
-		   (equal (marker-position (org-element-property :begin el))
-			  (org-element-property :begin newel))
-		   (equal (marker-position (org-element-property :end el))
-			  (org-element-property :end newel)))
-	      (when (text-property-any (marker-position (org-element-property :begin el))
-				       (marker-position (org-element-property :end el))
-				       'invisible spec)
-                (goto-char (org-element-property :begin newel))
-		(if (memq this-command org-track-element-modification-default-sensitive-commands)
-		    ;; reveal if change was made by typing
-		    (funcall toggle-func 'off)
-		  ;; re-hide the inserted text
-		  ;; FIXME: opening the drawer before hiding should not be needed here
-		  (funcall toggle-func 'off) ; this is needed to avoid showing double ellipsis
-		  (funcall toggle-func 'hide)))
-            ;; The element was destroyed. Reveal everything.
-            (org-flag-region (marker-position (org-element-property :begin el))
-			  (marker-position (org-element-property :end el))
-			  nil spec)
-            (when newel
-              (org-flag-region (org-element-property :begin newel)
-			    (org-element-property :end newel)
-			    nil spec))))))))
-
-(defun org--before-element-change-function (beg end)
-  "Register upcoming element modifications in `org--modified-elements' for all elements interesting with BEG END."
-  (save-match-data
-    (save-excursion
-      (save-restriction
-        (widen)
-	(dolist (el (org--find-elements-in-region beg
-					       end
-					       (mapcar #'car org-track-element-modifications)
-					       'include-partial
-                                               'include-neighbours))
-	  (let* ((beg-marker (copy-marker (org-element-property :begin el) 't))
-		 (end-marker (copy-marker (org-element-property :end el) 't)))
-	    (when (and (marker-position beg-marker) (marker-position end-marker))
-	      (org-element-put-property el :begin beg-marker)
-	      (org-element-put-property el :end end-marker)
-	      (add-to-list 'org--modified-elements el))))))))
-
-;; FIXME: this function may be called many times during routine modifications
-;; The normal way to avoid this is `combine-after-change-calls' - not
-;; the case in most org primitives.
-(defun org--after-element-change-function (&rest _)
-  "Handle changed elements from `org--modified-elements'."
-  (dolist (el org--modified-elements)
-    (save-match-data
-      (save-excursion
-        (save-restriction
-          (widen)
-	  (when-let* ((type (org-element-type el))
-		      (change-func (plist-get (alist-get type org-track-element-modifications)
-					      :after-change-function)))
-	    (with-demoted-errors
-		(funcall (symbol-function change-func) el)))))))
-  (setq org--modified-elements nil))
+(defun org--unfold-elements-in-region (beg end)
+  "Unfold all the elements in region BEG . END."
+  (when-let ((elements (org--find-elements-in-region beg end org-track-element-modifications 'include-partial)))
+    (dolist (el elements)
+      (when-let ((category (if (string-match-p "block" (symbol-name (org-element-type el)))
+			       'block
+			     (when (string-match-p "drawer" (symbol-name (org-element-type el)))
+			       'drawer))))
+        (org-with-point-at (org-element-property :begin el)
+          (org--hide-wrapper-toggle el category 'off nil))))))
 
 (defvar org-mode-map)
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
@@ -5194,9 +4977,6 @@ The following commands are available:
   ;; Activate before-change-function
   (setq-local org-table-may-need-update t)
   (add-hook 'before-change-functions 'org-before-change-function nil 'local)
-  (add-hook 'before-change-functions 'org--before-element-change-function nil 'local)
-  ;; Activate after-change-function
-  (add-hook 'after-change-functions 'org--after-element-change-function nil 'local)
   ;; Check for running clock before killing a buffer
   (add-hook 'kill-buffer-hook 'org-check-running-clock nil 'local)
   ;; Initialize macros templates.
@@ -6494,6 +6274,16 @@ Return a non-nil value when toggling is successful."
 			(force t)
 			((eq (get-char-property start 'invisible) spec) nil)
 			(t t))))
+            (with-silent-modifications
+              (if (not flag)
+		  (org--remove-from-list-text-property (org-element-property :begin element) end
+						    'modification-hooks #'org--unfold-elements-in-region)
+                ;; first line
+		(org--add-to-list-text-property (org-element-property :begin element) start
+					     'modification-hooks #'org--unfold-elements-in-region)
+                ;; last line
+                (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
+					     'modification-hooks #'org--unfold-elements-in-region)))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
 	  ;; a visible part of the buffer.
