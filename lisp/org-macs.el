@@ -765,24 +765,31 @@ invisibility specs are added to org in future"
 			     prop (remove element (get-text-property pos prop)))))
       (setq pos (next-single-char-property-change pos prop nil to)))))
 
+(defvar org--buffer-local-text-property-cache (make-hash-table :test 'equal)
+  "Pre-computed buffer-local values for text properties.")
+
 (defun org--get-buffer-local-text-property-symbol (prop &optional buffer)
   "Compute unique symbol suitable to be used as buffer-local in BUFFER for PROP."
-  (let* ((buf (or buffer (current-buffer)))
-	 (local-prop (make-symbol (format "org--%s-buffer-local-%S" (symbol-name prop) (sxhash buf)))))
-    (with-current-buffer buf
-      (unless (string-equal (symbol-name (car (alist-get prop char-property-alias-alist)))
-			    (symbol-name local-prop))
-        ;; copy old property
-        (when-let ((old-prop (car (alist-get prop char-property-alias-alist))))
-          (org-with-wide-buffer
-           (let ((pos (point-min)))
-             (while (< pos (point-max))
-               (when-let (val (get-text-property pos old-prop))
-		 (put-text-property pos (next-single-char-property-change pos old-prop) local-prop val))
-               (setq pos (next-single-char-property-change pos old-prop))))))
-	(add-to-list 'char-property-alias-alist (list prop local-prop))
-        )
-      (car (alist-get prop char-property-alias-alist)))))
+  (let* ((buf (or buffer (current-buffer))))
+    (if-let ((local-prop (gethash (cons prop buf) org--buffer-local-text-property-cache)))
+	local-prop
+      (let ((local-prop (make-symbol (format "org--%s-buffer-local-%S" (symbol-name prop) (sxhash buf)))))
+	(with-current-buffer buf
+	  (unless (string-equal (symbol-name (car (alist-get prop char-property-alias-alist)))
+				(symbol-name local-prop))
+            ;; copy old property
+            (when-let ((old-prop (car (alist-get prop char-property-alias-alist))))
+              (org-with-wide-buffer
+               (let ((pos (point-min)))
+		 (while (< pos (point-max))
+		   (when-let (val (get-text-property pos old-prop))
+		     (put-text-property pos (next-single-char-property-change pos old-prop) local-prop val))
+		   (setq pos (next-single-char-property-change pos old-prop))))))
+	    (setf (alist-get prop char-property-alias-alist) (list local-prop)))
+          (puthash (cons prop buf)
+		   (car (alist-get prop char-property-alias-alist))
+		   org--buffer-local-text-property-cache)
+	  (car (alist-get prop char-property-alias-alist)))))))
 
 (defun org-flag-region (from to flag spec)
   "Hide or show lines from FROM to TO, according to FLAG.
