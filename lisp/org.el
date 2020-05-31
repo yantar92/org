@@ -4744,6 +4744,14 @@ This is for getting out of special buffers like capture.")
   "Every change indicates that a table might need an update."
   (setq org-table-may-need-update t))
 
+(defun org-after-change-function (from to len)
+  "Hide text in region if it follows and is followedby invisible text."
+  (when-let ((spec-to (get-text-property to 'invisible))
+	     (spec-from (get-text-property (max (point-min) (1- from)) 'invisible)))
+    (when (eq spec-to spec-from)
+      (org-flag-region from to 't spec-to))))
+
+
 (defvar org--element-beginning-re-alist `((center-block . "^[ \t]*#\\+begin_center[ \t]*$")
                                        (property-drawer . ,org-property-start-re)
 				       (drawer . ,org-drawer-regexp)
@@ -4977,6 +4985,8 @@ The following commands are available:
   ;; Activate before-change-function
   (setq-local org-table-may-need-update t)
   (add-hook 'before-change-functions 'org-before-change-function nil 'local)
+  ;; Activate after-change-function
+  (add-hook 'after-change-functions 'org-after-change-function nil 'local)
   ;; Check for running clock before killing a buffer
   (add-hook 'kill-buffer-hook 'org-check-running-clock nil 'local)
   ;; Initialize macros templates.
@@ -6274,15 +6284,21 @@ Return a non-nil value when toggling is successful."
 			(force t)
 			((eq (get-char-property start 'invisible) spec) nil)
 			(t t))))
+            ;; Make beginning/end of blocks sensitive to modifications
+            ;; we never remove the hooks because modification of parts
+            ;; of blocks is practically more rare in comparison with
+            ;; folding/unfolding. Removing modification hooks would
+            ;; cost more CPU time.
             (with-silent-modifications
-              (if (not flag)
-		  (org--remove-from-list-text-property (org-element-property :begin element) end
-						    'modification-hooks #'org--unfold-elements-in-region)
-                ;; first line
+              (when (and flag
+			 (not (member #'org--unfold-elements-in-region
+				    (get-text-property (org-element-property :begin element)
+						       'modification-hooks))))
+		;; first line
 		(org--add-to-list-text-property (org-element-property :begin element) start
 					     'modification-hooks #'org--unfold-elements-in-region)
-                ;; last line
-                (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
+		;; last line
+		(org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
 					     'modification-hooks #'org--unfold-elements-in-region)))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
@@ -6363,9 +6379,10 @@ STATE should be one of the symbols listed in the docstring of
 		      (t (save-excursion (org-end-of-subtree t))))))
       (org-with-point-at beg
 	(while (re-search-forward org-property-start-re end t)
-	  (pcase (get-char-property-and-overlay (point) 'invisible)
+	  (pcase (get-char-property (point) 'invisible)
 	    ;; Do not fold already folded drawers.
-	    (`(outline . ,o) (goto-char (overlay-end o)))
+	    ('outline
+             (goto-char (min end (next-single-char-property-change (point) 'invisible))))
 	    (_
 	     (let ((start (match-end 0)))
 	       (when (org-at-property-drawer-p)
@@ -6891,10 +6908,6 @@ information."
     (org-show-entry)
     ;; If point is hidden within a drawer or a block, make sure to
     ;; expose it.
-    (dolist (o (overlays-at (point)))
-      (when (memq (overlay-get o 'invisible)
-		  '(outline))
-	(delete-overlay o)))
     (when (memq (get-text-property (point) 'invisible)
 		'(org-hide-block org-hide-drawer))
       (let ((spec (get-text-property (point) 'invisible))
@@ -7115,9 +7128,10 @@ unconditionally."
       ;; When INVISIBLE-OK is non-nil, ensure newly created headline
       ;; is visible.
       (unless invisible-ok
-	(pcase (get-char-property-and-overlay (point) 'invisible)
-	  (`(outline . ,o)
-	   (move-overlay o (overlay-start o) (line-end-position 0)))
+	(pcase (get-char-property (point) 'invisible)
+	  ('outline
+           (let ((region (org--find-text-property-region (point) 'invisible)))
+	     (org-flag-region (line-end-position 0) (cdr region) nil 'outline)))
 	  (_ nil))))
      ;; At a headline...
      ((org-at-heading-p)
@@ -7714,7 +7728,6 @@ case."
      (setq txt (buffer-substring beg end))
      (org-save-markers-in-region beg end)
      (delete-region beg end)
-     (org-remove-empty-overlays-at beg)
      (unless (= beg (point-min)) (org-flag-region (1- beg) beg nil 'outline))
      (unless (bobp) (org-flag-region (1- (point)) (point) nil 'outline))
      (and (not (bolp)) (looking-at "\n") (forward-char 1))
@@ -20682,16 +20695,16 @@ With ARG, repeats or can move backward if negative."
       (end-of-line))
     (while (and (< arg 0) (re-search-backward regexp nil :move))
       (unless (bobp)
-	(pcase (get-char-property-and-overlay (point) 'invisible)
-	  (`(outline . ,o)
-	   (goto-char (overlay-start o))
+	(pcase (get-char-property (point) 'invisible)
+	  ('outline
+	   (goto-char (car (org--find-text-property-region (point) 'invisible)))
 	   (beginning-of-line))
 	  (_ nil)))
       (cl-incf arg))
     (while (and (> arg 0) (re-search-forward regexp nil :move))
-      (pcase (get-char-property-and-overlay (point) 'invisible)
-	(`(outline . ,o)
-	 (goto-char (overlay-end o))
+      (pcase (get-char-property (point) 'invisible)
+	('outline
+	 (goto-char (cdr (org--find-text-property-region (point) 'invisible)))
 	 (end-of-line 2))
 	(_
 	 (end-of-line)))

@@ -750,87 +750,90 @@ invisibility specs are added to org in future"
   (alter-text-property from to
 		       prop
 		       (lambda (val)
-			  (cons element val))))
+			 (if (member element val)
+                             val
+			   (cons element val)))))
 
 (defun org--remove-from-list-text-property (from to prop element)
   "Remove ELEMENT from text propery PROP, whos value should be a list."
   (let ((pos from))
     (while (< pos to)
-      (if (equal (get-text-property pos prop) (list element))
-	(remove-text-properties pos (next-single-char-property-change pos prop) ,(list prop nil))
-        (put-text-property pos (next-single-char-property-change pos prop)
-        prop (remove element (get-text-property pos prop)))
-        )
-      (setq pos (next-single-char-property-change pos prop)))))
+      (when-let ((val (get-text-property pos prop)))
+	(if (equal val (list element))
+	    (remove-text-properties pos (next-single-char-property-change pos prop nil to) (list prop nil))
+	  (put-text-property pos (next-single-char-property-change pos prop nil to)
+			     prop (remove element (get-text-property pos prop)))))
+      (setq pos (next-single-char-property-change pos prop nil to)))))
 
-(defun org--hide-region (from to)
-  "Hide text in region if it is followed by folded text."
-  (when-let ((spec (get-text-property to 'invisible)))
-    (org-flag-region from to 't spec)))
+(defun org--get-buffer-local-text-property-symbol (prop &optional buffer)
+  "Compute unique symbol suitable to be used as buffer-local in BUFFER for PROP."
+  (let* ((buf (or buffer (current-buffer)))
+	 (local-prop (make-symbol (format "org--%s-buffer-local-%S" (symbol-name prop) (sxhash buf)))))
+    (with-current-buffer buf
+      (unless (string-equal (symbol-name (car (alist-get prop char-property-alias-alist)))
+			    (symbol-name local-prop))
+        ;; copy old property
+        (when-let ((old-prop (car (alist-get prop char-property-alias-alist))))
+          (org-with-wide-buffer
+           (let ((pos (point-min)))
+             (while (< pos (point-max))
+               (when-let (val (get-text-property pos old-prop))
+		 (put-text-property pos (next-single-char-property-change pos old-prop) local-prop val))
+               (setq pos (next-single-char-property-change pos old-prop))))))
+	(add-to-list 'char-property-alias-alist (list prop local-prop))
+        )
+      (car (alist-get prop char-property-alias-alist)))))
 
 (defun org-flag-region (from to flag spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the invisibility spec, as a symbol."
-  (pcase spec
-    ('outline
-     (remove-overlays from to 'invisible spec)
-     ;; Use `front-advance' since text right before to the beginning of
-     ;; the overlay belongs to the visible line than to the contents.
-     (when flag
-       (let ((o (make-overlay from to nil 'front-advance)))
-	 (overlay-put o 'evaporate t)
-	 (overlay-put o 'invisible spec)
-	 (overlay-put o 'isearch-open-invisible #'delete-overlay))))
-    (_
-     ;; Use text properties instead of overlays for speed.
-     ;; Overlays are too slow (Emacs Bug#35453).
-     (with-silent-modifications
-       ;; keep a backup stack of old text properties
-       (save-excursion
-	 (goto-char from)
-	 (while (< (point) to)
-	   (let ((old-spec (get-text-property (point) 'invisible))
-		 (end (next-single-property-change (point) 'invisible nil to)))
-	     (when old-spec
-	       (alter-text-property (point) end 'org-property-stack-invisible
-				    (lambda (stack)
-				      (if (or (eq old-spec (car stack))
-					      (eq spec old-spec)
-					      (eq old-spec 'outline))
-					  stack
-					(cons old-spec stack)))))
-	     (goto-char end))))
+  ;; Use text properties instead of overlays for speed.
+  ;; Overlays are too slow (Emacs Bug#35453).
+  (with-silent-modifications
+    ;; keep a backup stack of old text properties
+    (save-excursion
+      (goto-char from)
+      (while (< (point) to)
+	(let ((old-spec (get-text-property (point) (org--get-buffer-local-text-property-symbol 'invisible)))
+	      (end (next-single-property-change (point) (org--get-buffer-local-text-property-symbol 'invisible) nil to)))
+	  (when old-spec
+	    (alter-text-property (point) end (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible)
+				 (lambda (stack)
+				   (if (or (eq old-spec (car stack))
+					   (eq spec old-spec)
+					   (eq old-spec 'outline))
+				       stack
+				     (cons old-spec stack)))))
+	  (goto-char end))))
 
-       ;; cleanup everything
-       (remove-text-properties from to '(invisible nil))
-       (org--remove-from-list-text-property from to 'insert-in-front-hooks #'org--hide-region)
-       
-       ;; Recover properties from the backup stack
-       (unless flag
-	 (save-excursion
-	   (goto-char from)
-	   (while (< (point) to)
-             (let ((stack (get-text-property (point) 'org-property-stack-invisible))
-		   (end (next-single-property-change (point) 'org-property-stack-invisible nil to)))
-               (if (not stack)
-		   (remove-text-properties (point) end '(org-property-stack-invisible nil))
-		 (put-text-property (point) end 'invisible (car stack))
-		 (alter-text-property (point) end 'org-property-stack-invisible
-				      (lambda (stack)
-					(cdr stack))))
-               (goto-char end)))))
+    ;; cleanup everything
+    (remove-text-properties from to (list (org--get-buffer-local-text-property-symbol 'invisible) nil))
+    
+    ;; Recover properties from the backup stack
+    (unless flag
+      (save-excursion
+	(goto-char from)
+	(while (< (point) to)
+          (let ((stack (get-text-property (point) (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible)))
+		(end (next-single-property-change (point) (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible) nil to)))
+            (if (not stack)
+		(remove-text-properties (point) end '(org-property-stack-invisible nil))
+	      (put-text-property (point) end (org--get-buffer-local-text-property-symbol 'invisible) (car stack))
+	      (alter-text-property (point) end (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible)
+				   (lambda (stack)
+				     (cdr stack))))
+            (goto-char end)))))
 
-       (when flag
-	 (org--add-to-list-text-property from to 'insert-in-front-hooks #'org--hide-region)
-	 (put-text-property from to 'invisible spec))))))
+    (when flag
+      (put-text-property from to (org--get-buffer-local-text-property-symbol 'invisible) spec))))
 
 
 ;;; Regexp matching
 
 (defsubst org-pos-in-match-range (pos n)
-  (and (match-beginning n)
-       (<= (match-beginning n) pos)
-       (>= (match-end n) pos)))
+(and (match-beginning n)
+     (<= (match-beginning n) pos)
+     (>= (match-end n) pos)))
 
 (defun org-skip-whitespace ()
   "Skip over space, tabs and newline characters."
