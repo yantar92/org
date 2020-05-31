@@ -400,8 +400,8 @@ the entire show and hide functionalities into a single command,
 #+vindex: org-special-ctrl-k
 #+vindex: org-ctrl-k-protect-subtree
 
-Headlines define the structure of an outline tree.   headlines in
-Org start on the left margin[fn:3] with one or more stars followed by
+Headlines define the structure of an outline tree.  Org headlines
+start on the left margin[fn:3] with one or more stars followed by
 a space.  For example:
 
 #+begin_example
@@ -8455,9 +8455,13 @@ commands:
   to specify the number of context lines for each match, default is
   1.
 
-- {{{kbd(#)}}}, {{{kbd(!)}}} ::
+- {{{kbd(#)}}} ::
 
   Create a list of stuck projects (see [[*Stuck projects]]).
+
+- {{{kbd(!)}}} ::
+
+  Configure the list of stuck projects (see [[*Stuck projects]]).
 
 - {{{kbd(<)}}} ::
 
@@ -10300,8 +10304,10 @@ Another possibility is the construction of agenda views that comprise
 the results of /several/ commands, each of which creates a block in
 the agenda buffer.  The available commands include ~agenda~ for the
 daily or weekly agenda (as created with {{{kbd(a)}}}) , ~alltodo~ for
-the global TODO list (as constructed with {{{kbd(t)}}}), and the
+the global TODO list (as constructed with {{{kbd(t)}}}), ~stuck~ for
+the list of stuck projects (as obtained with {{{kbd(#)}}}) and the
 matching commands discussed above: ~todo~, ~tags~, and ~tags-todo~.
+
 Here are two examples:
 
 #+begin_src emacs-lisp
@@ -20929,7 +20935,7 @@ be complete if the ones above were not mentioned in this manual.
 :UNNUMBERED: notoc
 :END:
 
-- Russel Adams came up with the idea for drawers.
+- Russell Adams came up with the idea for drawers.
 
 - Thomas Baumann wrote =ol-bbdb.el= and =ol-mhe.el=.
 

@@ -232,7 +232,13 @@ its header arguments."
 	       (list
 		;; includes
 		(mapconcat
-		 (lambda (inc) (format "#include %s" inc))
+		 (lambda (inc)
+		   ;; :includes '(<foo> <bar>) gives us a list of
+		   ;; symbols; convert those to strings.
+		   (when (symbolp inc) (setq inc (symbol-name inc)))
+		   (if (string-prefix-p "<" inc)
+		       (format "#include %s" inc)
+		     (format "#include \"%s\"" inc)))
 		 includes "\n")
 		;; defines
 		(mapconcat

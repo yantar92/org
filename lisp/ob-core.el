@@ -1890,9 +1890,9 @@ region is not active then the point is demarcated."
 	 (block (and start (match-string 0)))
 	 (headers (and start (match-string 4)))
 	 (stars (concat (make-string (or (org-current-level) 1) ?*) " "))
-	 (lower-case-p (and block
+	 (upper-case-p (and block
 			    (let (case-fold-search)
-			      (string-match-p "#\\+begin_src" block)))))
+			      (string-match-p "#\\+BEGIN_SRC" block)))))
     (if info
         (mapc
          (lambda (place)
@@ -1906,9 +1906,9 @@ region is not active then the point is demarcated."
 		 (delete-region (point-at-bol) (point-at-eol)))
                (insert (concat
 			(if (looking-at "^") "" "\n")
-			indent (funcall (if lower-case-p 'downcase 'upcase) "#+end_src\n")
+			indent (if upper-case-p "#+END_SRC\n" "#+end_src\n")
 			(if arg stars indent) "\n"
-			indent (funcall (if lower-case-p 'downcase 'upcase) "#+begin_src ")
+			indent (if upper-case-p "#+BEGIN_SRC\n" "#+begin_src\n")
 			lang
 			(if (> (length headers) 1)
 			    (concat " " headers) headers)
@@ -1929,14 +1929,16 @@ region is not active then the point is demarcated."
 		   (if (org-region-active-p) (mark) (point)) (point))))
 	(insert (concat (if (looking-at "^") "" "\n")
 			(if arg (concat stars "\n") "")
-			(funcall (if lower-case-p 'downcase 'upcase) "#+begin_src ")
-			lang "\n"
-			body
+			(if upper-case-p "#+BEGIN_SRC " "#+begin_src ")
+			lang "\n" body
 			(if (or (= (length body) 0)
 				(string-suffix-p "\r" body)
-				(string-suffix-p "\n" body)) "" "\n")
-			(funcall (if lower-case-p 'downcase 'upcase) "#+end_src\n")))
-	(goto-char start) (move-end-of-line 1)))))
+				(string-suffix-p "\n" body))
+			    ""
+			  "\n")
+			(if upper-case-p "#+END_SRC\n" "#+end_src\n")))
+	(goto-char start)
+	(move-end-of-line 1)))))
 
 (defun org-babel--insert-results-keyword (name hash)
   "Insert RESULTS keyword with NAME value at point.
@@ -2989,24 +2991,27 @@ Otherwise return nil."
 (defun org-babel-import-elisp-from-file (file-name &optional separator)
   "Read the results located at FILE-NAME into an elisp table.
 If the table is trivial, then return it as a scalar."
-  (save-window-excursion
-    (let ((result
-	   (with-temp-buffer
-	     (condition-case err
-		 (progn
-		   (org-table-import file-name separator)
-		   (delete-file file-name)
-		   (delq nil
-			 (mapcar (lambda (row)
-				   (and (not (eq row 'hline))
-					(mapcar #'org-babel-string-read row)))
-				 (org-table-to-lisp))))
-	       (error (message "Error reading results: %s" err) nil)))))
-      (pcase result
-	(`((,scalar)) scalar)
-	(`((,_ ,_ . ,_)) result)
-	(`(,scalar) scalar)
-	(_ result)))))
+  (let ((result
+	 (with-temp-buffer
+	   (condition-case err
+	       (progn
+		 (org-table-import file-name separator)
+		 (delete-file file-name)
+		 (delq nil
+		       (mapcar (lambda (row)
+				 (and (not (eq row 'hline))
+				      (mapcar #'org-babel-string-read row)))
+			       (org-table-to-lisp))))
+	     (error
+	      (display-warning 'org-babel
+			       (format "Error reading results: %S" err)
+			       :error)
+	      nil)))))
+    (pcase result
+      (`((,scalar)) scalar)
+      (`((,_ ,_ . ,_)) result)
+      (`(,scalar) scalar)
+      (_ result))))
 
 (defun org-babel-string-read (cell)
   "Strip nested \"s from around strings."

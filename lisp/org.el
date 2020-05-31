@@ -5502,12 +5502,12 @@ by a #."
 			       '(font-lock-fontified t face org-block))
 	  t)
 	 ((member dc3 '(" " ""))
-	  ; Just a comment, the plus was not there
+	  ;; Just a comment, the plus was not there
 	  (org-remove-flyspell-overlays-in beg (match-end 0))
 	  (add-text-properties
 	   beg (match-end 0)
 	   '(font-lock-fontified t face font-lock-comment-face)))
-	 (t ;; just any other in-buffer setting, but not indented
+	 (t ;; Just any other in-buffer setting, but not indented
 	  (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
 	  (org-remove-text-properties (match-beginning 0) (match-end 0)
 				   '(display t invisible t intangible t))
@@ -10702,7 +10702,11 @@ TYPE is either `deadline' or `scheduled'.  See `org-deadline' or
 		org-last-inserted-timestamp)))))
 
 (defun org-deadline (arg &optional time)
-  "Insert the \"DEADLINE:\" string with a timestamp to make a deadline.
+  "Insert a \"DEADLINE:\" string with a timestamp to make a deadline.
+
+When called interactively, this command pops up the Emacs calendar to let
+the user select a date.
+
 With one universal prefix argument, remove any deadline from the item.
 With two universal prefix arguments, prompt for a warning delay.
 With argument TIME, set the deadline at the corresponding date.  TIME
@@ -10719,7 +10723,11 @@ can either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
     (org--deadline-or-schedule arg 'deadline time)))
 
 (defun org-schedule (arg &optional time)
-  "Insert the SCHEDULED: string with a timestamp to schedule a TODO item.
+  "Insert a \"SCHEDULED:\" string with a timestamp to schedule an item.
+
+When called interactively, this command pops up the Emacs calendar to let
+the user select a date.
+
 With one universal prefix argument, remove any scheduling date from the item.
 With two universal prefix arguments, prompt for a delay cookie.
 With argument TIME, scheduled at the corresponding date.  TIME can
@@ -17567,6 +17575,7 @@ Otherwise, return a user error."
 	 (pcase (org-element-type context)
 	   (`footnote-reference (org-edit-footnote-reference))
 	   (`inline-src-block (org-edit-inline-src-code))
+	   (`latex-fragment (org-edit-latex-fragment))
 	   (`timestamp (if (eq 'inactive (org-element-property :type context))
 			   (call-interactively #'org-time-stamp-inactive)
 			 (call-interactively #'org-time-stamp)))
@@ -20705,11 +20714,12 @@ With ARG, repeats or can move backward if negative."
       (pcase (get-char-property (point) 'invisible)
 	('outline
 	 (goto-char (cdr (org--find-text-property-region (point) 'invisible)))
-	 (end-of-line 2))
+         (skip-chars-forward " \t\n")
+	 (end-of-line))
 	(_
 	 (end-of-line)))
       (cl-decf arg))
-    (when (/= arg initial-arg) (beginning-of-line))))
+    (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
 
 (defun org-previous-visible-heading (arg)
   "Move to the previous visible heading.
