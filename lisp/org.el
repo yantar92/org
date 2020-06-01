@@ -20695,8 +20695,7 @@ Stop at the first and last subheadings of a superior heading."
   "Move to the next visible heading line.
 With ARG, repeats or can move backward if negative."
   (interactive "p")
-  (let ((regexp (concat "^" (org-get-limited-outline-regexp)))
-	(initial-arg arg))
+  (let ((regexp (concat "^" (org-get-limited-outline-regexp))))
     (if (< arg 0)
 	(beginning-of-line)
       (end-of-line))
@@ -21056,10 +21055,11 @@ ones already marked."
 	(set-mark
 	 (save-excursion
 	   (goto-char (mark))
-	   (goto-char (org-element-property :end (org-element-at-point)))))
+	   (goto-char (org-element-property :end (org-element-at-point)))
+	   (point)))
       (let ((element (org-element-at-point)))
 	(end-of-line)
-	(push-mark (org-element-property :end element) t t)
+	(push-mark (min (point-max) (org-element-property :end element)) t t)
 	(goto-char (org-element-property :begin element))))))
 
 (defun org-narrow-to-element ()
