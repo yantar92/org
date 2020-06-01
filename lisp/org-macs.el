@@ -786,8 +786,11 @@ invisibility specs are added to org in future"
 		   (when-let (val (get-text-property pos old-prop))
 		     (put-text-property pos (next-single-char-property-change pos old-prop) local-prop val))
 		   (setq pos (next-single-char-property-change pos old-prop))))))
-	    (setf (alist-get prop char-property-alias-alist) (list local-prop))))
-        ;; (puthash (cons prop buf)
+	    (setq-local char-property-alias-alist
+			(cons (list prop local-prop)
+                              (remove (assq prop char-property-alias-alist)
+				      char-property-alias-alist)))))
+	;; (puthash (cons prop buf)
 	;; 	 (car (alist-get prop char-property-alias-alist))
 	;; 	 org--buffer-local-text-property-cache)
 	(car (alist-get prop char-property-alias-alist))))))
