@@ -6353,24 +6353,16 @@ Return a non-nil value when toggling is successful."
 
 (defun org-hide-drawer-all ()
   "Fold all drawers in the current buffer."
-  (org-show-all '(drawers))
   (save-excursion
     (goto-char (point-min))
     (while (re-search-forward org-drawer-regexp nil t)
-      (let* ((drawer (org-element-at-point))
-	     (type (org-element-type drawer)))
-	(when (memq type '(drawer property-drawer))
-	  ;; We are sure regular drawers are unfolded because of
-	  ;; `org-show-all' call above.  However, property drawers may
-	  ;; be folded, or in a folded headline.  In that case, do not
-	  ;; re-hide it.
-	  (unless (and (eq type 'property-drawer)
-		       (eq 'outline (get-char-property (point) 'invisible)))
-	    (org-hide-drawer-toggle t nil drawer))
-	  ;; Make sure to skip drawer entirely or we might flag it
-	  ;; another time when matching its ending line with
-	  ;; `org-drawer-regexp'.
-	  (goto-char (org-element-property :end drawer)))))))
+      (when-let* ((drawer (org--get-element-region-at-point '(property-drawer drawer)))
+		  (type (org-element-type drawer)))
+	(org-hide-drawer-toggle t nil drawer)
+	;; Make sure to skip drawer entirely or we might flag it
+	;; another time when matching its ending line with
+	;; `org-drawer-regexp'.
+	(goto-char (org-element-property :end drawer))))))
 
 (defun org-cycle-hide-property-drawers (state)
   "Re-hide all drawers after a visibility state change.
