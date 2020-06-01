@@ -4808,13 +4808,17 @@ parsed here."
 		(setq begin (point)))
               (when (and (>= point begin) (<= point end))
 		(throw 'exit
-		       (list type
-			     (list
-			      :begin begin
-                              :post-affiliated begin
-                              :contents-begin (save-excursion (goto-char begin) (1+ (line-end-position)))
-                              :contents-end (save-excursion (goto-char end) (1- (line-beginning-position)))
-			      :end end)))))))))))
+                       (let ((begin (copy-marker begin 't))
+			     (end (copy-marker end nil)))
+			 (list type
+			       (list
+				:begin begin
+				:post-affiliated begin
+				:contents-begin (save-excursion (goto-char begin) (copy-marker (1+ (line-end-position))
+											       't))
+				:contents-end (save-excursion (goto-char end) (copy-marker (1- (line-beginning-position))
+											   nil))
+				:end end))))))))))))
 
 (defun org--get-next-element-region-at-point (types &optional limit previous)
   "Return TYPES element after point or nil.
@@ -4893,16 +4897,14 @@ INCLUDE-NEIGHBOURS is non-nil."
           (goto-char (org-element-property :end el)))
         result))))
 
-(defun org--unfold-elements-in-region (beg end)
-  "Unfold all the elements in region BEG . END."
-  (when-let ((elements (org--find-elements-in-region beg end org-track-element-modifications 'include-partial)))
-    (dolist (el elements)
-      (when-let ((category (if (string-match-p "block" (symbol-name (org-element-type el)))
-			       'block
-			     (when (string-match-p "drawer" (symbol-name (org-element-type el)))
-			       'drawer))))
-        (org-with-point-at (org-element-property :begin el)
-          (org--hide-wrapper-toggle el category 'off nil))))))
+(defun org--unfold-elements-in-region (el &rest _)
+  "Unfold EL element."
+  (when-let ((category (if (string-match-p "block" (symbol-name (org-element-type el)))
+			   'block
+			 (when (string-match-p "drawer" (symbol-name (org-element-type el)))
+			   'drawer))))
+    (org-with-point-at (org-element-property :begin el)
+      (org--hide-wrapper-toggle el category 'off nil))))
 
 (defvar org-mode-map)
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
@@ -6289,17 +6291,25 @@ Return a non-nil value when toggling is successful."
             ;; of blocks is practically more rare in comparison with
             ;; folding/unfolding. Removing modification hooks would
             ;; cost more CPU time.
-            ;; (with-silent-modifications
-            ;;   (when (and flag
-	    ;; 		 (not (member #'org--unfold-elements-in-region
-	    ;; 			    (get-text-property (org-element-property :begin element)
-	    ;; 					       'modification-hooks))))
-	    ;; 	;; first line
-	    ;; 	(org--add-to-list-text-property (org-element-property :begin element) start
-	    ;; 				     'modification-hooks #'org--unfold-elements-in-region)
-	    ;; 	;; last line
-	    ;; 	(org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
-	    ;; 				     'modification-hooks #'org--unfold-elements-in-region)))
+            (with-silent-modifications
+              (when (and flag
+			 (not (member (apply-partially #'org--unfold-elements-in-region
+						     (org--get-element-region-at-point
+                                                      (org-element-type element)))
+				    (get-text-property (org-element-property :begin element)
+						       'modification-hooks))))
+		;; first line
+		(org--add-to-list-text-property (org-element-property :begin element) start
+					     'modification-hooks
+                                             (apply-partially #'org--unfold-elements-in-region
+							      (org--get-element-region-at-point
+                                                               (org-element-type element))))
+		;; last line
+		(org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
+					     'modification-hooks
+                                             (apply-partially #'org--unfold-elements-in-region
+							      (org--get-element-region-at-point
+                                                               (org-element-type element))))))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
 	  ;; a visible part of the buffer.
