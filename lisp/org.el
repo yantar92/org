@@ -6291,21 +6291,21 @@ Return a non-nil value when toggling is successful."
             ;; of blocks is practically more rare in comparison with
             ;; folding/unfolding. Removing modification hooks would
             ;; cost more CPU time.
-            (with-silent-modifications
-              (let ((el (org--get-element-region-at-point
-                         (org-element-type element))))
-		(when (and flag
-			   (not (member (apply-partially #'org--unfold-elements-in-region el)
-				      (get-text-property (org-element-property :begin element)
-							 'modification-hooks))))
-		  ;; first line
-		  (org--add-to-list-text-property (org-element-property :begin element) start
-					       'modification-hooks
-                                               (apply-partially #'org--unfold-elements-in-region el))
-		  ;; last line
-		  (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
-					       'modification-hooks
-                                               (apply-partially #'org--unfold-elements-in-region el)))))
+            (when flag
+              (with-silent-modifications
+		(let ((el (org--get-element-region-at-point
+                           (org-element-type element))))
+		  (unless (member (apply-partially #'org--unfold-elements-in-region el)
+				  (get-text-property (org-element-property :begin element)
+						     'modification-hooks))
+		    ;; first line
+		    (org--add-to-list-text-property (org-element-property :begin element) start
+						 'modification-hooks
+						 (apply-partially #'org--unfold-elements-in-region el))
+		    ;; last line
+		    (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
+						 'modification-hooks
+						 (apply-partially #'org--unfold-elements-in-region el))))))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
 	  ;; a visible part of the buffer.
