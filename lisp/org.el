@@ -6302,9 +6302,15 @@ Return a non-nil value when toggling is successful."
 		    (org--add-to-list-text-property (org-element-property :begin element) start
 						 'modification-hooks
 						 (apply-partially #'org--unfold-elements-in-region el))
+                    (org--add-to-list-text-property (org-element-property :begin element) start
+						 'insert-behind-hooks
+						 (apply-partially #'org--unfold-elements-in-region el))
 		    ;; last line
 		    (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
 						 'modification-hooks
+						 (apply-partially #'org--unfold-elements-in-region el))
+                    (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
+						 'insert-behind-hooks
 						 (apply-partially #'org--unfold-elements-in-region el))))))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
