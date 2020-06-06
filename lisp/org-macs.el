@@ -765,76 +765,58 @@ invisibility specs are added to org in future"
 			     prop (remove element (get-text-property pos prop)))))
       (setq pos (next-single-char-property-change pos prop nil to)))))
 
-(defun org--get-buffer-local-text-property-symbol (prop &optional buffer)
-  "Compute unique symbol suitable to be used as buffer-local in BUFFER for PROP."
-  (let* ((buf (or buffer (current-buffer))))
-    (let ((local-prop-string (format "org--%s-buffer-local-%S"
-				     (symbol-name prop)
-                                     ;; (sxhash buf) appears to be not constant over time.
-                                     ;; Using buffer-name is safe, since the only place where
-                                     ;; buffer-local text property actually matters is an indirect
-                                     ;; buffer, where the name cannot be same anyway.
-				     (sxhash (buffer-name buf)))))
-      (with-current-buffer buf
-	(unless (string-equal (symbol-name (car (alist-get prop char-property-alias-alist)))
-			      local-prop-string)
-          (let ((local-prop (make-symbol local-prop-string)))
-            ;; copy old property
-            (when-let ((old-prop (car (alist-get prop char-property-alias-alist))))
-              (org-with-wide-buffer
-               (let ((pos (point-min)))
-		 (while (< pos (point-max))
-		   (when-let (val (get-text-property pos old-prop))
-		     (put-text-property pos (next-single-char-property-change pos old-prop) local-prop val))
-		   (setq pos (next-single-char-property-change pos old-prop))))))
-	    (setq-local char-property-alias-alist
-			(cons (list prop local-prop)
-                              (remove (assq prop char-property-alias-alist)
-				      char-property-alias-alist)))))
-	(car (alist-get prop char-property-alias-alist))))))
+(defvar org--invisible-spec-priority-list '(outline org-hide-drawer org-hide-block)
+  "Priority of invisibility specs.")
+
+(defun org--get-buffer-local-invisible-property-symbol (spec &optional buffer return-only)
+  "Return unique symbol suitable to be used as buffer-local in BUFFER for 'invisible SPEC.
+If the buffer already have buffer-local setup in `char-property-alias-alist'
+and the setup appears to be created for different buffer,
+copy the old invisibility state into new buffer-local text properties,
+unless RETURN-ONLY is non-nil."
+  (if (not (member spec org--invisible-spec-priority-list))
+      (user-error "%s should be a valid invisibility spec" spec)
+    (let* ((buf (or buffer (current-buffer))))
+      (let ((local-prop (intern (format "org--invisible-%s-buffer-local-%S"
+					(symbol-name spec)
+					;; (sxhash buf) appears to be not constant over time.
+					;; Using buffer-name is safe, since the only place where
+					;; buffer-local text property actually matters is an indirect
+					;; buffer, where the name cannot be same anyway.
+					(sxhash (buffer-name buf))))))
+        (prog1
+            local-prop
+          (unless return-only
+	    (with-current-buffer buf
+	      (unless (member local-prop (alist-get 'invisible char-property-alias-alist))
+		;; copy old property
+		(dolist (old-prop (alist-get 'invisible char-property-alias-alist))
+		  (org-with-wide-buffer
+		   (let* ((pos (point-min))
+			  (spec (seq-find (lambda (spec)
+					    (string-match-p (symbol-name spec)
+							    (symbol-name old-prop)))
+					  org--invisible-spec-priority-list))
+			  (new-prop (org--get-buffer-local-invisible-property-symbol spec nil 'return-only)))
+		     (while (< pos (point-max))
+		       (when-let (val (get-text-property pos old-prop))
+			 (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val))
+		       (setq pos (next-single-char-property-change pos old-prop))))))
+		(setq-local char-property-alias-alist
+			    (cons (cons 'invisible
+					(mapcar (lambda (spec)
+						  (org--get-buffer-local-invisible-property-symbol spec nil 'return-only))
+						org--invisible-spec-priority-list))
+				  (remove (assq 'invisible char-property-alias-alist)
+					  char-property-alias-alist)))))))))))
 
 (defun org-flag-region (from to flag spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the invisibility spec, as a symbol."
-  ;; Use text properties instead of overlays for speed.
-  ;; Overlays are too slow (Emacs Bug#35453).
   (with-silent-modifications
-    ;; keep a backup stack of old text properties
-    (save-excursion
-      (goto-char from)
-      (while (< (point) to)
-	(let ((old-spec (get-text-property (point) (org--get-buffer-local-text-property-symbol 'invisible)))
-	      (end (next-single-property-change (point) (org--get-buffer-local-text-property-symbol 'invisible) nil to)))
-	  (when old-spec
-	    (alter-text-property (point) end (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible)
-				 (lambda (stack)
-				   (if (or (eq old-spec (car stack))
-					   (eq spec old-spec)
-					   (eq old-spec 'outline))
-				       stack
-				     (cons old-spec stack)))))
-	  (goto-char end))))
-
-    ;; cleanup everything
-    (remove-text-properties from to (list (org--get-buffer-local-text-property-symbol 'invisible) nil))
-    
-    ;; Recover properties from the backup stack
-    (unless flag
-      (save-excursion
-	(goto-char from)
-	(while (< (point) to)
-          (let ((stack (get-text-property (point) (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible)))
-		(end (next-single-property-change (point) (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible) nil to)))
-            (if (not stack)
-		(remove-text-properties (point) end '(org-property-stack-invisible nil))
-	      (put-text-property (point) end (org--get-buffer-local-text-property-symbol 'invisible) (car stack))
-	      (alter-text-property (point) end (org--get-buffer-local-text-property-symbol 'org-property-stack-invisible)
-				   (lambda (stack)
-				     (cdr stack))))
-            (goto-char end)))))
-
+    (remove-text-properties from to (list (org--get-buffer-local-invisible-property-symbol spec) nil))
     (when flag
-      (put-text-property from to (org--get-buffer-local-text-property-symbol 'invisible) spec))))
+      (put-text-property from to (org--get-buffer-local-invisible-property-symbol spec) spec))))
 
 
 ;;; Regexp matching
