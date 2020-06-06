@@ -768,7 +768,13 @@ invisibility specs are added to org in future"
 (defun org--get-buffer-local-text-property-symbol (prop &optional buffer)
   "Compute unique symbol suitable to be used as buffer-local in BUFFER for PROP."
   (let* ((buf (or buffer (current-buffer))))
-    (let ((local-prop-string (format "org--%s-buffer-local-%S" (symbol-name prop) (sxhash buf))))
+    (let ((local-prop-string (format "org--%s-buffer-local-%S"
+				     (symbol-name prop)
+                                     ;; (sxhash buf) appears to be not constant over time.
+                                     ;; Using buffer-name is safe, since the only place where
+                                     ;; buffer-local text property actually matters is an indirect
+                                     ;; buffer, where the name cannot be same anyway.
+				     (sxhash (buffer-name buf)))))
       (with-current-buffer buf
 	(unless (string-equal (symbol-name (car (alist-get prop char-property-alias-alist)))
 			      local-prop-string)
