@@ -4751,161 +4751,6 @@ This is for getting out of special buffers like capture.")
     (when (eq spec-to spec-from)
       (org-flag-region from to 't spec-to))))
 
-
-(defvar org--element-beginning-re-alist `((center-block . "^[ \t]*#\\+begin_center[ \t]*$")
-                                       (property-drawer . ,org-property-start-re)
-				       (drawer . ,org-drawer-regexp)
-                                       (quote-block . "^[ \t]*#\\+begin_quote[ \t]*$")
-                                       (special-block . "^[ \t]*#\\+begin_\\([^ ]+\\).*$"))
-  "Alist of regexps matching beginning of elements.
-Group 1 in the regexps (if any) contains the element type.")
-
-(defvar org--element-end-re-alist `((center-block . "^[ \t]*#\\+end_center[ \t]*$")
-				 (property-drawer . ,org-property-end-re)
-				 (drawer . ,org-property-end-re)
-				 (quote-block . "^[ \t]*#\\+end_quote[ \t]*$")
-				 (special-block . "^[ \t]*#\\+end_\\([^ ]+\\).*$"))
-  "Alist of regexps matching end of elements.
-Group 1 in the regexps (if any) contains the element type or END.")
-
-(defvar org-track-element-modifications
-  `(property-drawer
-    drawer
-    center-block
-    quote-block
-    special-block)
-  "Alist of elements to be tracked for modifications.
-The modification is only triggered when beginning/end line of the element is modified.")
-
-(defun org--get-element-region-at-point (types)
-  "Return TYPES element at point or nil.
-If TYPES is a list, return first element at point from the list.  The
-returned value is partially parsed element only containing :begin and
-:end properties.  Only elements listed in
-org--element-beginning-re-alist and org--element-end-re-alist can be
-parsed here."
-  (catch 'exit
-    (dolist (type (if (listp types) types (list types)))
-      (let ((begin-re (alist-get type org--element-beginning-re-alist))
-	    (end-re (alist-get type org--element-end-re-alist))
-            (begin-limit (save-excursion (org-with-limited-levels
-					  (org-back-to-heading-or-point-min 'invisible-ok))
-					 (point)))
-            (end-limit (or (save-excursion (outline-next-heading))
-			   (point-max)))
-            (point (point))
-	    begin end)
-	(when (and begin-re end-re)
-	  (save-excursion
-	    (end-of-line)
-	    (when (re-search-backward begin-re begin-limit 'noerror) (setq begin (point)))
-	    (when (re-search-forward end-re end-limit 'noerror) (setq end (point)))
-            ;; slurp unmatched begin-re
-	    (when (and begin end)
-              (goto-char begin)
-              (while (and (re-search-backward begin-re begin-limit 'noerror)
-			  (= end (save-excursion (re-search-forward end-re end-limit 'noerror))))
-		(setq begin (point)))
-              (when (and (>= point begin) (<= point end))
-		(throw 'exit
-                       (let ((begin (copy-marker begin 't))
-			     (end (copy-marker end nil)))
-			 (list type
-			       (list
-				:begin begin
-				:post-affiliated begin
-				:contents-begin (save-excursion (goto-char begin) (copy-marker (1+ (line-end-position))
-											       't))
-				:contents-end (save-excursion (goto-char end) (copy-marker (1- (line-beginning-position))
-											   nil))
-				:end end))))))))))))
-
-(defun org--get-next-element-region-at-point (types &optional limit previous)
-  "Return TYPES element after point or nil.
-If TYPES is a list, return first element after point from the list.
-If PREVIOUS is non-nil, return first TYPES element before point.
-Limit search by LIMIT or previous/next heading.
-The returned value is partially parsed element only containing :begin
-and :end properties.  Only elements listed in
-org--element-beginning-re-alist and org--element-end-re-alist can be
-parsed here."
-  (catch 'exit
-    (dolist (type (if (listp types) types (list types)))
-      (let* ((begin-re (alist-get type org--element-beginning-re-alist))
-	     (end-re (alist-get type org--element-end-re-alist))
-             (limit (or limit (if previous
-				  (save-excursion
-				    (org-with-limited-levels
-				     (org-back-to-heading-or-point-min 'invisible-ok)
-				     (point)))
-				(or (save-excursion (outline-next-heading))
-				    (point-max)))))
-	     el)
-	(when (and begin-re end-re)
-	  (save-excursion
-            (if previous
-                (when (re-search-backward begin-re limit 'noerror)
-		  (setq el (org--get-element-region-at-point type)))
-	      (when (re-search-forward begin-re limit 'noerror)
-		(setq el (org--get-element-region-at-point type)))))
-	  (when el
-            (throw 'exit
-		   el)))))))
-
-(defun org--find-elements-in-region (beg end elements &optional include-partial include-neighbours)
-  "Find all elements from ELEMENTS in region BEG . END.
-All the listed elements must be resolvable by
-`org--get-element-region-at-point'.
-Include elements if they are partially inside region when
-INCLUDE-PARTIAL is non-nil.
-Include preceding/subsequent neighbouring elements when no partial
-element is found at the beginning/end of the region and
-INCLUDE-NEIGHBOURS is non-nil."
-  (when include-partial
-    (org-with-point-at beg
-      (let ((new-beg (org-element-property :begin (org--get-element-region-at-point elements))))
-	(if new-beg
-	    (setq beg new-beg)
-          (when (and include-neighbours
-		     (setq new-beg (org-element-property :begin
-						      (org--get-next-element-region-at-point elements
-											  (point-min)
-											  'previous))))
-            (setq beg new-beg))))
-      (when (memq 'headline elements)
-	(when-let ((new-beg (save-excursion
-			      (org-with-limited-levels (outline-previous-heading)))))
-          (setq beg new-beg))))
-    (org-with-point-at end
-      (let ((new-end (org-element-property :end (org--get-element-region-at-point elements))))
-	(if new-end
-	    (setq end new-end)
-          (when (and include-neighbours
-		     (setq new-end (org-element-property :end
-						      (org--get-next-element-region-at-point elements (point-max)))))
-            (setq end new-end))))
-      (when (memq 'headline elements)
-	(when-let ((new-end (org-with-limited-levels (outline-next-heading))))
-          (setq end (1- new-end))))))
-  (save-excursion
-    (save-restriction
-      (narrow-to-region beg end)
-      (goto-char (point-min))
-      (let (result el)
-	(while (setq el (org--get-next-element-region-at-point elements end))
-          (push el result)
-          (goto-char (org-element-property :end el)))
-        result))))
-
-(defun org--unfold-elements-in-region (el &rest _)
-  "Unfold EL element."
-  (when-let ((category (if (string-match-p "block" (symbol-name (org-element-type el)))
-			   'block
-			 (when (string-match-p "drawer" (symbol-name (org-element-type el)))
-			   'drawer))))
-    (org-with-point-at (org-element-property :begin el)
-      (org--hide-wrapper-toggle el category 'off nil))))
-
 (defvar org-mode-map)
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
 (defvar org-agenda-keep-modes nil)      ; Dynamically-scoped param.
@@ -6286,32 +6131,6 @@ Return a non-nil value when toggling is successful."
 			(force t)
 			((eq (get-char-property start 'invisible) spec) nil)
 			(t t))))
-            ;; Make beginning/end of blocks sensitive to modifications
-            ;; we never remove the hooks because modification of parts
-            ;; of blocks is practically more rare in comparison with
-            ;; folding/unfolding. Removing modification hooks would
-            ;; cost more CPU time.
-            (when flag
-              (with-silent-modifications
-		(let ((el (org--get-element-region-at-point
-                           (org-element-type element))))
-		  (unless (member (apply-partially #'org--unfold-elements-in-region el)
-				  (get-text-property (org-element-property :begin element)
-						     'modification-hooks))
-		    ;; first line
-		    (org--add-to-list-text-property (org-element-property :begin element) start
-						 'modification-hooks
-						 (apply-partially #'org--unfold-elements-in-region el))
-                    (org--add-to-list-text-property (org-element-property :begin element) start
-						 'insert-behind-hooks
-						 (apply-partially #'org--unfold-elements-in-region el))
-		    ;; last line
-		    (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
-						 'modification-hooks
-						 (apply-partially #'org--unfold-elements-in-region el))
-                    (org--add-to-list-text-property (save-excursion (goto-char end) (line-beginning-position)) end
-						 'insert-behind-hooks
-						 (apply-partially #'org--unfold-elements-in-region el))))))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
 	  ;; a visible part of the buffer.
@@ -6362,8 +6181,7 @@ Return a non-nil value when toggling is successful."
   (save-excursion
     (goto-char (point-min))
     (while (re-search-forward org-drawer-regexp nil t)
-      (when-let* ((drawer (org--get-element-region-at-point '(property-drawer drawer)))
-		  (type (org-element-type drawer)))
+      (when-let* ((drawer (org-element-at-point)))
 	(org-hide-drawer-toggle t nil drawer)
 	;; Make sure to skip drawer entirely or we might flag it
 	;; another time when matching its ending line with
