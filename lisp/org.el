@@ -16746,7 +16746,7 @@ The detailed reaction depends on the user option `org-catch-invisible-edits'."
       (when (or invisible-at-point invisible-before-point)
 	(when (eq org-catch-invisible-edits 'error)
 	  (user-error "Editing in invisible areas is prohibited, make them visible first"))
-	(if (and org-custom-properties-overlays
+	(if (and org-custom-properties-hidden-p
 		 (y-or-n-p "Display invisible properties in this buffer? "))
 	    (org-toggle-custom-properties-visibility)
 	  ;; Make the area visible
