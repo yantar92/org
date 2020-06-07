@@ -4938,6 +4938,7 @@ The following commands are available:
   (when org-link-descriptive (add-to-invisibility-spec '(org-link)))
   (add-to-invisibility-spec '(org-hide-block . t))
   (add-to-invisibility-spec '(org-hide-drawer . t))
+  (add-to-invisibility-spec 'org-hide-custom-property)
   (setq-local outline-regexp org-outline-regexp)
   (setq-local outline-level 'org-outline-level)
   (setq bidi-paragraph-direction 'left-to-right)
@@ -5876,35 +5877,56 @@ needs to be inserted at a specific position in the font-lock sequence.")
       (decompose-region (point-min) (point-max))
       (message "Entities are now displayed as plain text"))))
 
-(defvar-local org-custom-properties-overlays nil
-  "List of overlays used for custom properties.")
+(defvar-local org-custom-properties-hidden-p nil
+  "Non-nil when custom properties are hidden.")
+
+(defcustom org-custom-properties-hide-emptied-drawers nil
+  "Non-nil means that drawers containing only `org-custom-properties' will be hidden together with the properties."
+  :group 'org
+  :type '(choice
+	  (const :tag "Don't hide emptied drawers" nil)
+	  (const :tag "Hide emptied drawers" t)))
 
 (defun org-toggle-custom-properties-visibility ()
   "Display or hide properties in `org-custom-properties'."
   (interactive)
-  (if org-custom-properties-overlays
-      (progn (mapc #'delete-overlay org-custom-properties-overlays)
-	     (setq org-custom-properties-overlays nil))
+  (if org-custom-properties-hidden-p
+      (let (match)
+	(setq org-custom-properties-hidden-p nil)
+	(org-with-wide-buffer
+         (goto-char (point-min))
+         (with-silent-modifications
+           (while (setq match (text-property-search-forward 'invisible 'org-hide-custom-property t))
+             (org-remove-text-properties (prop-match-beginning match)
+				      (prop-match-end match)
+                                      '(invisible nil))))))
     (when org-custom-properties
+      (setq org-custom-properties-hidden-p t)
       (org-with-wide-buffer
-       (goto-char (point-min))
-       (let ((regexp (org-re-property (regexp-opt org-custom-properties) t t)))
+       (let* ((regexp (org-re-property (regexp-opt org-custom-properties) t t))
+	      (regexp-drawer (format "%s\n\\(?:%s\\)+\n%s"
+				     (replace-regexp-in-string "\\$$" "" org-drawer-regexp)
+                                     (replace-regexp-in-string "\\(^\\^\\|\\$$\\)" "" regexp)
+                                     (replace-regexp-in-string "^\\^" "" org-property-end-re))))
+         
+         (when org-custom-properties-hide-emptied-drawers
+	   (goto-char (point-min))
+           (while (re-search-forward regexp-drawer nil t)
+             (with-silent-modifications
+               (put-text-property (1- (match-beginning 0)) (match-end 0) 'invisible 'org-hide-custom-property))))
+         
+         (goto-char (point-min))
 	 (while (re-search-forward regexp nil t)
 	   (let ((end (cdr (save-match-data (org-get-property-block)))))
 	     (when (and end (< (point) end))
 	       ;; Hide first custom property in current drawer.
-	       (let ((o (make-overlay (match-beginning 0) (1+ (match-end 0)))))
-		 (overlay-put o 'invisible t)
-		 (overlay-put o 'org-custom-property t)
-		 (push o org-custom-properties-overlays))
-	       ;; Hide additional custom properties in the same drawer.
-	       (while (re-search-forward regexp end t)
-		 (let ((o (make-overlay (match-beginning 0) (1+ (match-end 0)))))
-		   (overlay-put o 'invisible t)
-		   (overlay-put o 'org-custom-property t)
-		   (push o org-custom-properties-overlays)))))
-	   ;; Each entry is limited to a single property drawer.
-	   (outline-next-heading)))))))
+	       (with-silent-modifications
+		 (put-text-property (match-beginning 0) (1+ (match-end 0)) 'invisible 'org-hide-custom-property)
+		 ;; Hide additional custom properties in the same drawer.
+		 (while (re-search-forward regexp end t)
+		   (put-text-property (match-beginning 0) (1+ (match-end 0)) 'invisible 'org-hide-custom-property))))))
+	 ;; Each entry is limited to a single property drawer.
+	 (outline-next-heading))))))
 
 (defun org-fontify-entities (limit)
   "Find an entity to fontify."
@@ -6159,7 +6181,7 @@ Show the heading too, if it is currently invisible."
        (line-end-position 0)
        (save-excursion
 	 (if (re-search-forward
-	      (concat "[\r\n]\\(" org-outline-regexp "\\)") nil t)
+	      (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
 	     (match-beginning 1)
 	   (point-max)))
        nil
