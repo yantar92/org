@@ -4938,7 +4938,6 @@ The following commands are available:
   (when org-link-descriptive (add-to-invisibility-spec '(org-link)))
   (add-to-invisibility-spec '(org-hide-block . t))
   (add-to-invisibility-spec '(org-hide-drawer . t))
-  (add-to-invisibility-spec 'org-hide-custom-property)
   (setq-local outline-regexp org-outline-regexp)
   (setq-local outline-level 'org-outline-level)
   (setq bidi-paragraph-direction 'left-to-right)
@@ -5890,16 +5889,19 @@ needs to be inserted at a specific position in the font-lock sequence.")
 (defun org-toggle-custom-properties-visibility ()
   "Display or hide properties in `org-custom-properties'."
   (interactive)
+  (require 'org-macs)
+  (add-to-invisibility-spec 'org-hide-custom-property)
+  (add-to-list 'org--invisible-spec-priority-list 'org-hide-custom-property)
   (if org-custom-properties-hidden-p
       (let (match)
 	(setq org-custom-properties-hidden-p nil)
 	(org-with-wide-buffer
          (goto-char (point-min))
          (with-silent-modifications
-           (while (setq match (text-property-search-forward 'invisible 'org-hide-custom-property t))
-             (org-remove-text-properties (prop-match-beginning match)
-				      (prop-match-end match)
-                                      '(invisible nil))))))
+           (while (setq match (text-property-search-forward (org--get-buffer-local-invisible-property-symbol 'org-hide-custom-property) 'org-hide-custom-property t))
+             (org-flag-region (prop-match-beginning match)
+			      (prop-match-end match)
+			      nil 'org-hide-custom-property)))))
     (when org-custom-properties
       (setq org-custom-properties-hidden-p t)
       (org-with-wide-buffer
@@ -5913,7 +5915,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	   (goto-char (point-min))
            (while (re-search-forward regexp-drawer nil t)
              (with-silent-modifications
-               (put-text-property (1- (match-beginning 0)) (match-end 0) 'invisible 'org-hide-custom-property))))
+               (org-flag-region (1- (match-beginning 0)) (match-end 0) t 'org-hide-custom-property))))
          
          (goto-char (point-min))
 	 (while (re-search-forward regexp nil t)
@@ -5921,10 +5923,10 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	     (when (and end (< (point) end))
 	       ;; Hide first custom property in current drawer.
 	       (with-silent-modifications
-		 (put-text-property (match-beginning 0) (1+ (match-end 0)) 'invisible 'org-hide-custom-property)
+		 (org-flag-region (match-beginning 0) (1+ (match-end 0)) t 'org-hide-custom-property)
 		 ;; Hide additional custom properties in the same drawer.
 		 (while (re-search-forward regexp end t)
-		   (put-text-property (match-beginning 0) (1+ (match-end 0)) 'invisible 'org-hide-custom-property))))))
+		   (org-flag-region (match-beginning 0) (1+ (match-end 0)) t 'org-hide-custom-property))))))
 	 ;; Each entry is limited to a single property drawer.
 	 (outline-next-heading))))))
 
