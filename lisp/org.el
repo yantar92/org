@@ -1542,7 +1542,7 @@ the values `folded', `children', or `subtree'."
   :type 'hook)
 
 (defcustom org-cycle-hook '(org-cycle-hide-archived-subtrees
-			    org-cycle-hide-property-drawers
+			    org-cycle-hide-drawers
 			    org-cycle-show-empty-lines
 			    org-optimize-window-after-visibility-change)
   "Hook that is run after `org-cycle' has changed the buffer visibility.
@@ -3702,7 +3702,7 @@ After a match, the match groups contain these elements:
 
 ;; This used to be a defcustom (Org <8.0) but allowing the users to
 ;; set this option proved cumbersome.  See this message/thread:
-;; http://article.gmane.org/gmane.emacs.orgmode/68681
+;; https://orgmode.org/list/B72CDC2B-72F6-43A8-AC70-E6E6295766EC@gmail.com
 (defvar org-emphasis-regexp-components
   '("-[:space:]('\"{" "-[:space:].,:!?;'\")}\\[" "[:space:]" "." 1)
   "Components used to build the regular expression for emphasis.
@@ -6188,7 +6188,7 @@ Show the heading too, if it is currently invisible."
 	   (point-max)))
        nil
        'outline)
-      (org-cycle-hide-property-drawers 'children))))
+      (org-cycle-hide-drawers 'children))))
 
 (defun org-show-heading ()
   "Show the current heading and move to its end."
@@ -6287,7 +6287,7 @@ Return a non-nil value when toggling is successful."
 		 (flag
 		  (cond ((eq force 'off) nil)
 			(force t)
-			((eq (get-char-property start 'invisible) spec) nil)
+			((eq spec (get-char-property start 'invisible)) nil)
 			(t t))))
 	    (org-flag-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
@@ -6348,14 +6348,14 @@ Return a non-nil value when toggling is successful."
 	  ;; be folded, or in a folded headline.  In that case, do not
 	  ;; re-hide it.
 	  (unless (and (eq type 'property-drawer)
-		       (eq 'outline (get-char-property (point) 'invisible)))
+		       (eq 'org-hide-drawer (get-char-property (point) 'invisible)))
 	    (org-hide-drawer-toggle t nil drawer))
 	  ;; Make sure to skip drawer entirely or we might flag it
 	  ;; another time when matching its ending line with
 	  ;; `org-drawer-regexp'.
 	  (goto-char (org-element-property :end drawer)))))))
 
-(defun org-cycle-hide-property-drawers (state)
+(defun org-cycle-hide-drawers (state)
   "Re-hide all drawers after a visibility state change.
 STATE should be one of the symbols listed in the docstring of
 `org-cycle-hook'."
@@ -6365,19 +6365,21 @@ STATE should be one of the symbols listed in the docstring of
 	   (beg (if global? (point-min) (line-beginning-position)))
 	   (end (cond (global? (point-max))
 		      ((eq state 'children) (org-entry-end-position))
-		      (t (save-excursion (org-end-of-subtree t))))))
+		      (t (save-excursion (org-end-of-subtree t t))))))
       (org-with-point-at beg
-	(while (re-search-forward org-property-start-re end t)
+	(while (re-search-forward org-drawer-regexp end t)
 	  (pcase (get-char-property (point) 'invisible)
 	    ;; Do not fold already folded drawers.
 	    ('outline
              (goto-char (min end (next-single-char-property-change (point) 'invisible))))
 	    (_
-	     (let ((start (match-end 0)))
-	       (when (org-at-property-drawer-p)
-		 (let* ((case-fold-search t)
-			(end (re-search-forward org-property-end-re)))
-		   (org-flag-region start end t 'org-hide-drawer)))))))))))
+	     (let ((drawer (org-element-at-point)))
+	       (when (memq (org-element-type drawer) '(drawer property-drawer))
+		 (org-hide-drawer-toggle t nil drawer)
+		 ;; Make sure to skip drawer entirely or we might flag
+		 ;; it another time when matching its ending line with
+		 ;; `org-drawer-regexp'.
+		 (goto-char (org-element-property :end drawer)))))))))))
 
 ;;;; Visibility cycling
 
@@ -6609,8 +6611,10 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	    (setq has-children (org-list-has-child-p (point) struct)))
 	(org-back-to-heading)
 	(setq eoh (save-excursion (outline-end-of-heading) (point)))
-	(setq eos (save-excursion (org-end-of-subtree t t)
-				  (when (bolp) (backward-char)) (point)))
+	(setq eos (save-excursion
+		    (org-end-of-subtree t t)
+		    (unless (eobp) (forward-char -1))
+		    (point)))
 	(setq has-children
 	      (or
 	       (save-excursion
@@ -6623,7 +6627,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 		      (org-list-search-forward (org-item-beginning-re) eos t))))))
       ;; Determine end invisible part of buffer (EOL)
       (beginning-of-line 2)
-      (while (and (not (eobp)) ;This is like `next-line'.
+      (while (and (not (eobp))		;this is like `next-line'
 		  (get-char-property (1- (point)) 'invisible))
 	(goto-char (next-single-char-property-change (point) 'invisible))
 	(and (eolp) (beginning-of-line 2)))
@@ -6725,7 +6729,7 @@ With a numeric prefix, show all headlines up to that level."
     (when org-hide-block-startup (org-hide-block-all))
     (org-set-visibility-according-to-property)
     (org-cycle-hide-archived-subtrees 'all)
-    (org-cycle-hide-property-drawers 'all)
+    (org-cycle-hide-drawers 'all)
     (org-cycle-show-empty-lines t)))
 
 (defun org-set-visibility-according-to-property ()
@@ -6759,7 +6763,7 @@ With a numeric prefix, show all headlines up to that level."
 (defun org-overview ()
   "Switch to overview mode, showing only top-level headlines."
   (interactive)
-  (org-show-all '(headings))
+  (org-show-all '(headings drawers))
   (save-excursion
     (goto-char (point-min))
     (when (re-search-forward org-outline-regexp-bol nil t)
@@ -6777,7 +6781,7 @@ With a numeric prefix, show all headlines up to that level."
   "Show all headlines in the buffer, like a table of contents.
 With numerical argument N, show content up to level N."
   (interactive "p")
-  (org-show-all '(headings))
+  (org-show-all '(headings drawers))
   (save-excursion
     (goto-char (point-max))
     (let ((regexp (if (and (wholenump arg) (> arg 0))
@@ -6826,7 +6830,7 @@ This function is the default value of the hook `org-cycle-hook'."
 	    (when (and (not (org-invisible-p))
 		       (org-invisible-p (line-end-position)))
 	      (org-hide-entry))))
-	(org-cycle-hide-property-drawers 'all)
+	(org-cycle-hide-drawers 'all)
 	(org-cycle-show-empty-lines 'overview)))))
 
 (defun org-cycle-show-empty-lines (state)
@@ -7013,7 +7017,7 @@ frame is not changed."
       (pop-to-buffer ibuf))
      (t (error "Invalid value")))
     (narrow-to-region beg end)
-    (org-show-all '(headings blocks))
+    (org-show-all '(headings drawers blocks))
     (goto-char pos)
     (run-hook-with-args 'org-cycle-hook 'all)
     (and (window-live-p cwin) (select-window cwin))))
@@ -8336,7 +8340,7 @@ function is being called interactively."
       (setq end (point-max))
       (setq what "top-level")
       (goto-char start)
-      (org-show-all '(headings blocks))))
+      (org-show-all '(headings drawers blocks))))
 
     (setq beg (point))
     (when (>= beg end) (goto-char start) (user-error "Nothing to sort"))
@@ -8473,7 +8477,7 @@ function is being called interactively."
 			      "(empty for default `sort-subr' predicate): ")
 		      'allow-empty))))
 	   ((member dcst '(?p ?t ?s ?d ?c ?k)) '<))))
-	(org-cycle-hide-property-drawers 'all)
+	(org-cycle-hide-drawers 'all)
 	(when restore-clock?
 	  (move-marker org-clock-marker
 		       (1+ (next-single-property-change
@@ -19115,29 +19119,28 @@ list structure.  Instead, use \\<org-mode-map>`\\[org-shiftmetaleft]' or \
 
 Also align node properties according to `org-property-format'."
   (interactive)
-  (if (org-at-heading-p) 'noindent
+  (unless (org-at-heading-p)
     (let* ((element (save-excursion (beginning-of-line) (org-element-at-point)))
 	   (type (org-element-type element)))
       (cond ((and (memq type '(plain-list item))
 		  (= (line-beginning-position)
 		     (org-element-property :post-affiliated element)))
-	     'noindent)
+	     nil)
 	    ((and (eq type 'latex-environment)
 		  (>= (point) (org-element-property :post-affiliated element))
-		  (< (point) (org-with-wide-buffer
-			      (goto-char (org-element-property :end element))
-			      (skip-chars-backward " \r\t\n")
-			      (line-beginning-position 2))))
-	     'noindent)
+		  (< (point)
+		     (org-with-point-at (org-element-property :end element)
+		       (skip-chars-backward " \t\n")
+		       (line-beginning-position 2))))
+	     nil)
 	    ((and (eq type 'src-block)
 		  org-src-tab-acts-natively
 		  (> (line-beginning-position)
 		     (org-element-property :post-affiliated element))
 		  (< (line-beginning-position)
-		     (org-with-wide-buffer
-		      (goto-char (org-element-property :end element))
-		      (skip-chars-backward " \r\t\n")
-		      (line-beginning-position))))
+		     (org-with-point-at (org-element-property :end element)
+		       (skip-chars-backward " \t\n")
+		       (line-beginning-position))))
 	     (org-babel-do-key-sequence-in-edit-buffer (kbd "TAB")))
 	    (t
 	     (let ((column (org--get-expected-indentation element nil)))
