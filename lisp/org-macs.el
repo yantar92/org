@@ -743,27 +743,6 @@ invisibility specs are added to org in future"
       (unless (= beg end) ; this should not happen
         (cons beg end)))))
 
-(defun org--add-to-list-text-property (from to prop element)
-  "Add element to text property PROP, whos value should be a list."
-  (add-text-properties from to `(,prop ,(list element))) ; create if none
-  ;; add to existing
-  (alter-text-property from to
-		       prop
-		       (lambda (val)
-			 (if (member element val)
-                             val
-			   (cons element val)))))
-
-(defun org--remove-from-list-text-property (from to prop element)
-  "Remove ELEMENT from text propery PROP, whos value should be a list."
-  (let ((pos from))
-    (while (< pos to)
-      (when-let ((val (get-text-property pos prop)))
-	(if (equal val (list element))
-	    (remove-text-properties pos (next-single-char-property-change pos prop nil to) (list prop nil))
-	  (put-text-property pos (next-single-char-property-change pos prop nil to)
-			     prop (remove element (get-text-property pos prop)))))
-      (setq pos (next-single-char-property-change pos prop nil to)))))
 
 (defvar org--invisible-spec-priority-list '(outline org-hide-drawer org-hide-block)
   "Priority of invisibility specs.")
