@@ -705,7 +705,6 @@ If DELETE is non-nil, delete all those overlays."
 	    (delete (delete-overlay ov))
 	    (t (push ov found))))))
 
-
 (defun org--find-text-property-region (pos prop)
   "Find a region around POS containing PROP text property.
 Return nil when PROP is not set at POS."
@@ -720,9 +719,7 @@ Return nil when PROP is not set at POS."
       ;; will return nil.
       (setq end (or (next-single-property-change pos prop)
 		    end))
-      (unless (= beg end) ; this should not happen
-        (cons beg end)))))
-
+      (cons beg end))))
 
 (defvar org--invisible-spec-priority-list '(outline org-hide-drawer org-hide-block)
   "Priority of invisibility specs.")
