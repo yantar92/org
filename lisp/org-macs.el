@@ -707,15 +707,16 @@ If DELETE is non-nil, delete all those overlays."
 
 
 (defun org--find-text-property-region (pos prop)
-  "Find a region containing PROP text property around point POS."
+  "Find a region around POS containing PROP text property.
+Return nil when PROP is not set at POS."
   (let* ((beg (and (get-text-property pos prop) pos))
 	 (end beg))
     (when beg
-      ;; when beg is the first point in the region, `previous-single-property-change'
+      ;; When beg is the first point in the region, `previous-single-property-change'
       ;; will return nil.
       (setq beg (or (previous-single-property-change pos prop)
 		    beg))
-      ;; when end is the last point in the region, `next-single-property-change'
+      ;; When end is the last point in the region, `next-single-property-change'
       ;; will return nil.
       (setq end (or (next-single-property-change pos prop)
 		    end))
