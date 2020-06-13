@@ -705,27 +705,6 @@ If DELETE is non-nil, delete all those overlays."
 	    (delete (delete-overlay ov))
 	    (t (push ov found))))))
 
-(defun org-remove-text-properties (start end properties &optional object)
-  "Remove text properties as in `remove-text-properties', but keep 'invisibility specs for folded regions.
-Do not remove invisible text properties specified by 'outline,
-'org-hide-block, and 'org-hide-drawer (but remove i.e. 'org-link) this
-is needed to keep outlines, drawers, and blocks hidden unless they are
-toggled by user.
-Note: The below may be too specific and create troubles if more
-invisibility specs are added to org in future"
-  (when (plist-member properties 'invisible)
-    (let ((pos start)
-	  next spec)
-      (while (< pos end)
-	(setq next (next-single-property-change pos 'invisible nil end)
-              spec (get-text-property pos 'invisible))
-	(unless (memq spec (list 'org-hide-block
-				 'org-hide-drawer
-				 'outline))
-          (remove-text-properties pos next '(invisible nil) object))
-	(setq pos next))))
-  (when-let ((properties-stripped (org-plist-delete properties 'invisible)))
-    (remove-text-properties start end properties-stripped object)))
 
 (defun org--find-text-property-region (pos prop)
   "Find a region containing PROP text property around point POS."
