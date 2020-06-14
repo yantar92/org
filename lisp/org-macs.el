@@ -713,11 +713,11 @@ Return nil when PROP is not set at POS."
     (when beg
       ;; When beg is the first point in the region, `previous-single-property-change'
       ;; will return nil.
-      (setq beg (or (previous-single-property-change pos prop)
+      (setq beg (or (previous-single-property-change pos prop nil (point-min))
 		    beg))
       ;; When end is the last point in the region, `next-single-property-change'
       ;; will return nil.
-      (setq end (or (next-single-property-change pos prop)
+      (setq end (or (next-single-property-change pos prop nil (point-max))
 		    end))
       (cons beg end))))
 

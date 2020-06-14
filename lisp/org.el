@@ -21177,37 +21177,39 @@ is set to 't.")
 ;; One might want to reveal hidden text in, for example, hidden parts of the links.
 ;; Currently, hidden text in links is never revealed by isearch.
 (defvar org-isearch-specs '(org-hide-block
-			 org-hide-drawer)
+			 org-hide-drawer
+                         outline)
   "List of text invisibility specs to be searched by isearch.
 By default ([2020-05-09 Sat]), isearch does not search in hidden text,
-which was made invisible using text properties. Isearch will be forced
+which was made invisible using text properties.  Isearch will be forced
 to search in hidden text with any of the listed 'invisible property value.")
 
 (defun org--create-isearch-overlays (beg end)
   "Replace text property invisibility spec by overlays between BEG and END.
 All the regions with invisibility text property spec from
 `org-isearch-specs' will be changed to use overlays instead
-of text properties. The created overlays will be stored in
+of text properties.  The created overlays will be stored in
 `org--isearch-overlays'."
   (let ((pos beg))
     (while (< pos end)
-      (when-let* ((spec (get-text-property pos 'invisible))
-		  (spec (memq spec org-isearch-specs))
-		  (region (org--find-text-property-region pos 'invisible)))
-        (setq spec (get-text-property pos 'invisible))
-        ;; Changing text properties is considered buffer modification.
-        ;; We do not want it here.
-	(with-silent-modifications
-          ;; The overlay is modelled after `org-flag-region' [2020-05-09 Sat]
-          ;; overlay for 'outline blocks.
-          (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
-	    (overlay-put o 'evaporate t)
-	    (overlay-put o 'invisible spec)
-            ;; `delete-overlay' here means that spec information will be lost
-            ;; for the region. The region will remain visible.
-	    (overlay-put o 'isearch-open-invisible #'delete-overlay)
-            (push o org--isearch-overlays))
-	  (org-flag-region (car region) (cdr region) nil spec)))
+      ;; We need loop below to make sure that we clean all invisible
+      ;; properties, which may be nested.
+      (while (memq (get-text-property pos 'invisible) org-isearch-specs)
+	(let* ((spec (get-text-property pos 'invisible))
+               (region (org--find-text-property-region pos (org--get-buffer-local-invisible-property-symbol spec))))
+	  ;; Changing text properties is considered buffer modification.
+	  ;; We do not want it here.
+	  (with-silent-modifications
+            (org-flag-region (car region) (cdr region) nil spec)
+	    ;; The overlay is modelled after `outline-flag-region'
+	    ;; [2020-05-09 Sat] overlay for 'outline blocks.
+	    (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
+	      (overlay-put o 'evaporate t)
+	      (overlay-put o 'invisible spec)
+	      ;; `delete-overlay' here means that spec information will be lost
+	      ;; for the region. The region will remain visible.
+	      (overlay-put o 'isearch-open-invisible #'delete-overlay)
+	      (push o org--isearch-overlays)))))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
 (defun org--isearch-filter-predicate (beg end)
