@@ -2001,7 +2001,7 @@ toggle `org-table-follow-field-mode'."
    (arg
     (let ((b (save-excursion (skip-chars-backward "^|") (point)))
 	  (e (save-excursion (skip-chars-forward "^|\r\n") (point))))
-      (org-remove-text-properties b e '(invisible t intangible t))
+      (remove-text-properties b e '(invisible t intangible t))
       (if (and (boundp 'font-lock-mode) font-lock-mode)
 	  (font-lock-fontify-block))))
    (t
@@ -2028,7 +2028,7 @@ toggle `org-table-follow-field-mode'."
       (setq word-wrap t)
       (goto-char (setq p (point-max)))
       (insert (org-trim field))
-      (org-remove-text-properties p (point-max) '(invisible t intangible t))
+      (remove-text-properties p (point-max) '(invisible t intangible t))
       (goto-char p)
       (setq-local org-finish-function 'org-table-finish-edit-field)
       (setq-local org-window-configuration cw)

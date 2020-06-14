@@ -529,8 +529,8 @@ Leave point in edit buffer."
 	(org-src-switch-to-buffer buffer 'edit)
 	;; Insert contents.
 	(insert contents)
-	(org-remove-text-properties (point-min) (point-max)
-				    '(display nil invisible nil intangible nil))
+	(remove-text-properties (point-min) (point-max)
+				'(display nil invisible nil intangible nil))
 	(unless preserve-ind (org-do-remove-indentation))
 	(set-buffer-modified-p nil)
 	(setq buffer-file-name nil)
