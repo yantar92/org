@@ -4744,135 +4744,111 @@ This is for getting out of special buffers like capture.")
   "Every change indicates that a table might need an update."
   (setq org-table-may-need-update t))
 
-(defun org-after-change-function (from to len)
+(defun org-fold--fix-folded-region (from to len)
   "Process changes in folded elements.
 If a text was inserted into invisible region, hide the inserted text.
 If the beginning/end line of a folded drawer/block was changed, unfold it.
 If a valid end line was inserted in the middle of the folded drawer/block, unfold it."
-  ;; re-hide text inserted in the middle of a folded region
-  (dolist (spec org--invisible-spec-priority-list)
-    (let ((spec-to (get-text-property to (org--get-buffer-local-invisible-property-symbol spec)))
-	  (spec-from (get-text-property (max (point-min) (1- from)) (org--get-buffer-local-invisible-property-symbol spec))))
-      (when (and spec-from spec-to (eq spec-to spec-from))
-	(org-flag-region from to 't spec-to))))
-  ;; Process all the folded text between `from' and `to'
+  ;; Re-hide text inserted in the middle of a folded region.
+  (unless (equal from to)
+    (dolist (spec org--invisible-spec-priority-list)
+      (let ((spec-to (get-text-property to (org--get-buffer-local-invisible-property-symbol spec)))
+	    (spec-from (get-text-property (max (point-min) (1- from)) (org--get-buffer-local-invisible-property-symbol spec))))
+	(when (and spec-from spec-to (eq spec-to spec-from))
+	  (org-flag-region from to t spec-to)))))
+  ;; Process all the folded text between `from' and `to'.
   (org-with-wide-buffer
-   (if (< to from)
-       (let ((tmp from))
-	 (setq from to)
-         (setq to tmp)))
-   ;; Include next/previous line into the changed region.
-   ;; This is needed to catch edits in beginning line of a folded
-   ;; element.
-   (setq to (save-excursion (goto-char to) (forward-line) (point)))
-   (setq from (save-excursion (goto-char from) (forward-line -1) (point)))
+   ;; If the edit is done in the first line of a folded drawer/block,
+   ;; the folded text is only starting from the next line and needs to
+   ;; be checked.
+   (setq to (save-excursion (goto-char to) (line-beginning-position 2)))
+   ;; If the ":END:" line of the drawer is deleted, the folded text is
+   ;; only ending at the previous line and needs to be checked.
+   (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
    ;; Expand the considered region to include partially present folded
    ;; drawer/block.
    (when (get-text-property from (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer))
      (setq from (previous-single-char-property-change from (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer))))
    (when (get-text-property from (org--get-buffer-local-invisible-property-symbol 'org-hide-block))
      (setq from (previous-single-char-property-change from (org--get-buffer-local-invisible-property-symbol 'org-hide-block))))
-   ;; check folded drawers
-   (let ((pos from))
-     (unless (get-text-property pos (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer))
-       (setq pos (next-single-char-property-change pos
-						   (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer))))
-     (while (< pos to)
-       (let ((drawer-begin (and (get-text-property pos (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer))
-				pos))
-	     (drawer-end (next-single-char-property-change pos (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer))))
-         (when (and drawer-begin drawer-end)
-	   (let (unfold?)
-             ;; the line before folded text should be beginning of the drawer
-             (save-excursion
-               (goto-char drawer-begin)
-               (backward-char)
-               (beginning-of-line)
-               (unless (looking-at-p org-drawer-regexp)
-		 (setq unfold? t)))
-             ;; the last line of the folded text should be :END:
-             (save-excursion
-               (goto-char drawer-end)
-               (beginning-of-line)
-               (unless (let ((case-fold-search t)) (looking-at-p org-property-end-re))
-		 (setq unfold? t)))
-             ;; there should be no :END: anywhere in the drawer body
-             (save-excursion
-               (goto-char drawer-begin)
-               (when (save-excursion
-		       (let ((case-fold-search t))
-			 (re-search-forward org-property-end-re
-					    (max (point)
-						 (1- (save-excursion
-						       (goto-char drawer-end)
-                                                       (line-beginning-position))))
-                                            't)))
-		 (setq unfold? t)))
-             ;; there should be no new entry anywhere in the drawer body
-             (save-excursion
-               (goto-char drawer-begin)
-               (when (save-excursion
-		       (let ((case-fold-search t))
-			 (re-search-forward org-outline-regexp-bol
-					    (max (point)
-						 (1- (save-excursion
-						       (goto-char drawer-end)
-                                                       (line-beginning-position))))
-                                            't)))
-		 (setq unfold? t)))
-             (when unfold? (org-flag-region drawer-begin drawer-end nil 'org-hide-drawer)))))
-       (setq pos (next-single-char-property-change pos (org--get-buffer-local-invisible-property-symbol 'org-hide-drawer)))))
-   ;; check folded blocks
-   (let ((pos from))
-     (unless (get-text-property pos (org--get-buffer-local-invisible-property-symbol 'org-hide-block))
-       (setq pos (next-single-char-property-change pos
-						   (org--get-buffer-local-invisible-property-symbol 'org-hide-block))))
-     (while (< pos to)
-       (let ((block-begin (and (get-text-property pos (org--get-buffer-local-invisible-property-symbol 'org-hide-block))
-			       pos))
-	     (block-end (next-single-char-property-change pos (org--get-buffer-local-invisible-property-symbol 'org-hide-block))))
-         (when (and block-begin block-end)
-	   (let (unfold?)
-             ;; the line before folded text should be beginning of the block
-             (save-excursion
-               (goto-char block-begin)
-               (backward-char)
-               (beginning-of-line)
-               (unless (looking-at-p org-dblock-start-re)
-		 (setq unfold? t)))
-             ;; the last line of the folded text should be end of the block
-             (save-excursion
-               (goto-char block-end)
-               (beginning-of-line)
-               (unless (looking-at-p org-dblock-end-re)
-		 (setq unfold? t)))
-             ;; there should be no #+end anywhere in the block body
-             (save-excursion
-               (goto-char block-begin)
-               (when (save-excursion
-		       (re-search-forward org-dblock-end-re
-					  (max (point)
-					       (1- (save-excursion
-						     (goto-char block-end)
-						     (line-beginning-position))))
-                                          't))
-		 (setq unfold? t)))
-             ;; there should be no new entry anywhere in the block body
-             (save-excursion
-               (goto-char block-begin)
-               (when (save-excursion
-		       (let ((case-fold-search t))
-			 (re-search-forward org-outline-regexp-bol
-					    (max (point)
-						 (1- (save-excursion
-						       (goto-char block-end)
-                                                       (line-beginning-position))))
-                                            't)))
-		 (setq unfold? t)))
-             (when unfold? (org-flag-region block-begin block-end nil 'org-hide-block)))))
-       (setq pos
-	     (next-single-char-property-change pos
-					       (org--get-buffer-local-invisible-property-symbol 'org-hide-block)))))))
+   ;; Check folded drawers and blocks.
+   (dolist (spec '(org-hide-drawer org-hide-block))
+     (let ((pos from)
+	   (begin-re (pcase spec
+		       ('org-hide-drawer org-drawer-regexp)
+                       ;; Group one below contains the type of the block.
+                       ('org-hide-block (rx bol
+					 (zero-or-more (any " " "\t"))
+					 "#+begin"
+					 (or ":"
+					     (seq "_"
+						  (group (one-or-more (not (syntax whitespace))))))))))
+           ;; To be determined later. May depend on `begin-re' match (i.e. for blocks).
+           end-re)
+       ;; Move to the first hidden drawer/block.
+       (unless (get-text-property pos (org--get-buffer-local-invisible-property-symbol spec))
+	 (setq pos (next-single-char-property-change pos
+						     (org--get-buffer-local-invisible-property-symbol spec))))
+       ;; Cycle over all the hidden drawers/blocks.
+       (while (< pos to)
+	 (save-match-data ; we should not clobber match-data in after-change-functions
+	   (let ((fold-begin (and (get-text-property pos (org--get-buffer-local-invisible-property-symbol spec))
+				  pos))
+		 (fold-end (next-single-char-property-change pos (org--get-buffer-local-invisible-property-symbol spec))))
+             (when (and fold-begin fold-end)
+	       (let (unfold?)
+		 (catch :exit
+		   ;; The line before folded text should be beginning of
+		   ;; the drawer/block.
+		   (save-excursion
+		     (goto-char fold-begin)
+		     ;; The line before beginning of the fold should be the
+		     ;; first line of the drawer/block.
+		     (backward-char)
+		     (beginning-of-line)
+		     (unless (let ((case-fold-search t))
+			       (looking-at begin-re)) ; the match-data will be used later
+		       (throw :exit (setq unfold? t))))
+                   ;; Set `end-re' for the current drawer/block.
+                   (setq end-re
+			 (pcase spec
+			   ('org-hide-drawer org-property-end-re)
+			   ('org-hide-block
+			    (let ((block-type (match-string 1))) ; the last match is from `begin-re'
+			      (concat (rx bol (zero-or-more (any " " "\t")) "#+end")
+				      (if block-type
+					  (concat "_"
+						  (regexp-quote block-type)
+						  (rx (zero-or-more (any " " "\t")) eol))
+					(rx (opt ":") (zero-or-more (any " " "\t")) eol)))))))
+		   ;; The last line of the folded text should match `end-re'.
+		   (save-excursion
+		     (goto-char fold-end)
+		     (beginning-of-line)
+		     (unless (let ((case-fold-search t))
+			       (looking-at end-re))
+		       (throw :exit (setq unfold? t))))
+		   ;; there should be no `end-re' or
+		   ;; `org-outline-regexp-bol' anywhere in the
+		   ;; drawer/block body.
+		   (save-excursion
+		     (goto-char fold-begin)
+		     (when (save-excursion
+			     (let ((case-fold-search t))
+			       (re-search-forward (rx (or (regex end-re)
+							  (regex org-outline-regexp-bol)))
+						  (max (point)
+						       (1- (save-excursion
+							     (goto-char fold-end)
+							     (line-beginning-position))))
+						  't)))
+		       (throw :exit (setq unfold? t)))))
+		 (when unfold?
+		   (org-flag-region fold-begin fold-end nil spec))))))
+	 ;; Move to next hidden drawer/block.
+	 (setq pos
+               (next-single-char-property-change pos
+						 (org--get-buffer-local-invisible-property-symbol spec))))))))
 
 (defvar org-mode-map)
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
@@ -4956,7 +4932,7 @@ The following commands are available:
   (setq-local org-table-may-need-update t)
   (add-hook 'before-change-functions 'org-before-change-function nil 'local)
   ;; Activate after-change-function
-  (add-hook 'after-change-functions 'org-after-change-function nil 'local)
+  (add-hook 'after-change-functions 'org-fold--fix-folded-region nil 'local)
   ;; Check for running clock before killing a buffer
   (add-hook 'kill-buffer-hook 'org-check-running-clock nil 'local)
   ;; Initialize macros templates.
