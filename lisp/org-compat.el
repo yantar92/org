@@ -138,12 +138,8 @@ This is a floating point number if the size is too large for an integer."
 ;;; Emacs < 25.1 compatibility
 
 (when (< emacs-major-version 25)
-  (defalias 'outline-hide-entry 'hide-entry)
-  (defalias 'outline-hide-sublevels 'hide-sublevels)
-  (defalias 'outline-hide-subtree 'hide-subtree)
   (defalias 'outline-show-branches 'show-branches)
   (defalias 'outline-show-children 'show-children)
-  (defalias 'outline-show-entry 'show-entry)
   (defalias 'outline-show-subtree 'show-subtree)
   (defalias 'xref-find-definitions 'find-tag)
   (defalias 'format-message 'format)
@@ -644,7 +640,7 @@ When optional argument ELEMENT is a parsed drawer, as returned by
 When buffer positions BEG and END are provided, hide or show that
 region as a drawer without further ado."
   (declare (obsolete "use `org-hide-drawer-toggle' instead." "Org 9.4"))
-  (if (and beg end) (org-flag-region beg end flag 'outline)
+  (if (and beg end) (org-flag-region beg end flag 'org-hide-drawer)
     (let ((drawer
 	   (or element
 	       (and (save-excursion
@@ -658,7 +654,7 @@ region as a drawer without further ado."
 	   (save-excursion (goto-char (org-element-property :end drawer))
 			   (skip-chars-backward " \t\n")
 			   (line-end-position))
-	   flag 'outline)
+	   flag 'org-hide-drawer)
 	  ;; When the drawer is hidden away, make sure point lies in
 	  ;; a visible part of the buffer.
 	  (when (invisible-p (max (1- (point)) (point-min)))

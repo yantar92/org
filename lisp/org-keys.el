@@ -437,7 +437,7 @@ COMMANDS is a list of alternating OLDDEF NEWDEF command names."
   #'org-next-visible-heading)
 (define-key org-mode-map [remap outline-previous-visible-heading]
   #'org-previous-visible-heading)
-(define-key org-mode-map [remap show-children] #'org-show-children)
+(define-key org-mode-map [remap outline-show-children] #'org-show-children)
 
 ;;;; Make `C-c C-x' a prefix key
 (org-defkey org-mode-map (kbd "C-c C-x") (make-sparse-keymap))

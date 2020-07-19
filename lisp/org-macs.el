@@ -249,6 +249,44 @@ ignored in this case."
          (shrink-window-if-larger-than-buffer window)))
   (or window (selected-window)))
 
+(defun org-buffer-list (&optional predicate exclude-tmp)
+  "Return a list of Org buffers.
+PREDICATE can be `export', `files' or `agenda'.
+
+export   restrict the list to Export buffers.
+files    restrict the list to buffers visiting Org files.
+agenda   restrict the list to buffers visiting agenda files.
+
+If EXCLUDE-TMP is non-nil, ignore temporary buffers."
+  (let* ((bfn nil)
+	 (agenda-files (and (eq predicate 'agenda)
+			    (mapcar 'file-truename (org-agenda-files t))))
+	 (filter
+	  (cond
+	   ((eq predicate 'files)
+	    (lambda (b) (with-current-buffer b (derived-mode-p 'org-mode))))
+	   ((eq predicate 'export)
+	    (lambda (b) (string-match "\\*Org .*Export" (buffer-name b))))
+	   ((eq predicate 'agenda)
+	    (lambda (b)
+	      (with-current-buffer b
+		(and (derived-mode-p 'org-mode)
+		     (setq bfn (buffer-file-name b))
+		     (member (file-truename bfn) agenda-files)))))
+	   (t (lambda (b) (with-current-buffer b
+			    (or (derived-mode-p 'org-mode)
+				(string-match "\\*Org .*Export"
+					      (buffer-name b)))))))))
+    (delq nil
+	  (mapcar
+	   (lambda(b)
+	     (if (and (funcall filter b)
+		      (or (not exclude-tmp)
+			  (not (string-match "tmp" (buffer-name b)))))
+		 b
+	       nil))
+	   (buffer-list)))))
+
 
 
 ;;; File
@@ -683,7 +721,7 @@ When NEXT is non-nil, check the next line instead."
 
 
 
-;;; Overlays
+;;; Overlays and text properties
 
 (defun org-overlay-display (ovl text &optional face evap)
   "Make overlay OVL display TEXT with face FACE."
@@ -706,20 +744,21 @@ If DELETE is non-nil, delete all those overlays."
 	    (delete (delete-overlay ov))
 	    (t (push ov found))))))
 
-(defun org-flag-region (from to flag spec)
-  "Hide or show lines from FROM to TO, according to FLAG.
-SPEC is the invisibility spec, as a symbol."
-  (remove-overlays from to 'invisible spec)
-  ;; Use `front-advance' since text right before to the beginning of
-  ;; the overlay belongs to the visible line than to the contents.
-  (when flag
-    (let ((o (make-overlay from to nil 'front-advance)))
-      (overlay-put o 'evaporate t)
-      (overlay-put o 'invisible spec)
-      (overlay-put o
-		   'isearch-open-invisible
-		   (lambda (&rest _) (org-show-context 'isearch))))))
-
+(defun org--find-text-property-region (pos prop)
+  "Find a region around POS containing PROP text property.
+Return nil when PROP is not set at POS."
+  (let* ((beg (and (get-text-property pos prop) pos))
+	 (end beg))
+    (when beg
+      ;; When beg is the first point in the region, `previous-single-property-change'
+      ;; will return nil.
+      (setq beg (or (previous-single-property-change pos prop nil (point-min))
+		    beg))
+      ;; When end is the last point in the region, `next-single-property-change'
+      ;; will return nil.
+      (setq end (or (next-single-property-change pos prop nil (point-max))
+		    end))
+      (cons beg end))))
 
 
 ;;; Regexp matching
