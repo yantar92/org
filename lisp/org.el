@@ -20310,7 +20310,10 @@ interactive command with similar behavior."
 (defun org-back-to-heading (&optional invisible-ok)
   "Call `outline-back-to-heading', but provide a better error message."
   (condition-case nil
-      (outline-back-to-heading invisible-ok)
+      (if (org-inlinetask-in-task-p)
+	  (outline-back-to-heading invisible-ok)
+	(org-with-limited-levels
+	 (outline-back-to-heading invisible-ok)))
     (error
      (user-error "Before first headline at position %d in buffer %s"
 		 (point) (current-buffer)))))
@@ -20320,7 +20323,10 @@ interactive command with similar behavior."
 If point is before first heading go to first point in buffer
 instead of back to heading."
   (condition-case nil
-      (outline-back-to-heading invisible-ok)
+      (if (org-inlinetask-in-task-p)
+	  (outline-back-to-heading invisible-ok)
+	(org-with-limited-levels
+	 (outline-back-to-heading invisible-ok)))
     (error
      (goto-char (point-min)))))
 
