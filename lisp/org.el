@@ -89,7 +89,7 @@
        (message "You need to run \"make\" or \"make autoloads\" from Org lisp directory")
        (sit-for 3))))
 
-(eval-and-compile (require 'org-macs))
+(require 'org-macs)
 (require 'org-compat)
 (require 'org-keys)
 (require 'ol)
@@ -6135,7 +6135,7 @@ Interactively, the prefix argument supplies the value of LEVELS.
 When invoked without a prefix argument, LEVELS defaults to the level
 of the current heading, or to 1 if the current line is not a heading."
   (cl-letf (((symbol-function 'outline-flag-region) #'org-flag-region))
-    (org-hide-sublevels levels)))
+    (outline-hide-sublevels levels)))
 
 (defun org-show-entry ()
   "Show the body directly following this heading.
@@ -15367,44 +15367,6 @@ prefix, restrict available buffers to agenda files."
      (completing-read "Org buffer: "
 		      (mapcar #'list (mapcar #'buffer-name blist))
 		      nil t))))
-
-(defun org-buffer-list (&optional predicate exclude-tmp)
-  "Return a list of Org buffers.
-PREDICATE can be `export', `files' or `agenda'.
-
-export   restrict the list to Export buffers.
-files    restrict the list to buffers visiting Org files.
-agenda   restrict the list to buffers visiting agenda files.
-
-If EXCLUDE-TMP is non-nil, ignore temporary buffers."
-  (let* ((bfn nil)
-	 (agenda-files (and (eq predicate 'agenda)
-			    (mapcar 'file-truename (org-agenda-files t))))
-	 (filter
-	  (cond
-	   ((eq predicate 'files)
-	    (lambda (b) (with-current-buffer b (derived-mode-p 'org-mode))))
-	   ((eq predicate 'export)
-	    (lambda (b) (string-match "\\*Org .*Export" (buffer-name b))))
-	   ((eq predicate 'agenda)
-	    (lambda (b)
-	      (with-current-buffer b
-		(and (derived-mode-p 'org-mode)
-		     (setq bfn (buffer-file-name b))
-		     (member (file-truename bfn) agenda-files)))))
-	   (t (lambda (b) (with-current-buffer b
-			    (or (derived-mode-p 'org-mode)
-				(string-match "\\*Org .*Export"
-					      (buffer-name b)))))))))
-    (delq nil
-	  (mapcar
-	   (lambda(b)
-	     (if (and (funcall filter b)
-		      (or (not exclude-tmp)
-			  (not (string-match "tmp" (buffer-name b)))))
-		 b
-	       nil))
-	   (buffer-list)))))
 
 (defun org-agenda-files (&optional unrestricted archives)
   "Get the list of agenda files.
