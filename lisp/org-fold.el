@@ -111,6 +111,7 @@ SPEC will have highest priority among the previously defined specs.
 When optional APPEND argument is non-nil, SPEC will have the lowest
 priority instead.  If SPEC was already defined earlier, it will be
 redefined according to provided optional arguments."
+  (when (eq spec 'all) (user-error "Folding spec name 'all is not allowed"))
   (when (eq buffer 'all)
     (mapc (lambda (buf)
 	    (org-fold-add-folding-spec spec buf no-ellipsis-p no-isearch-open-p append))
@@ -188,7 +189,7 @@ If SPEC is 'all, return the list of all present folding specs.
 Return nil if there is no folding at point or POM.
 If SPEC is a valid folding spec, return value is SPEC if the point is
 within region folded using SPEC or nil otherwise."
-  (when spec (org-fold--check-spec spec))
+  (when (and spec (not (eq spec 'all))) (org-fold--check-spec spec))
   (org-with-point-at (or pom (point))
     (if (and spec (not (eq spec 'all)))
 	(get-char-property (point) (org-fold--property-symbol-get-create spec nil t))
