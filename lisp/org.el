@@ -6727,8 +6727,8 @@ information."
     ;; expose it.
     (when (memq (org-fold-get-folding-spec)
 		'(org-hide-block org-hide-drawer))
-      (let ((spec (org-fold-get-folding-spec))
-	    (region (org-fold-get-region-at-point spec)))
+      (let* ((spec (org-fold-get-folding-spec))
+	     (region (org-fold-get-region-at-point spec)))
 	(org-fold-region (car region) (cdr region) nil spec)))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
