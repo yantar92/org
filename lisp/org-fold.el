@@ -381,7 +381,24 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
       (let ((spec-to (org-fold-get-folding-spec spec to))
 	    (spec-from (org-fold-get-folding-spec spec (max (point-min) (1- from)))))
 	(when (and spec-from spec-to (eq spec-to spec-from))
-	  (org-fold-region from to t spec-to)))))
+	  (org-fold-region from to t (or spec-from spec-to))))))
+  ;; Re-hide text inserted right in front/back of a folded region
+  ;; Example: beginning of a folded drawer
+  (unless (equal from to)
+    (when (xor (org-fold-invisible-p from) (org-fold-invisible-p to))
+      (org-fold-region from to t (or (org-fold-get-folding-spec nil from) (org-fold-get-folding-spec nil to)))))
+  ;; Reveal the whole region if inserted in the middle of
+  ;; visible text. This is needed, for example, when one is
+  ;; trying to copy text from indirect buffer to main buffer. If
+  ;; the text is unfolded in the indirect buffer, but folded in
+  ;; the main buffer, the text properties responsible for
+  ;; folding will be activated as soon as the text is pasted
+  ;; into the main buffer. Thus, we need to unfold the inserted
+  ;; text to make org-mode behave as expected (the inserted text
+  ;; is visible).
+  (unless (equal from to)
+    (when (and (not (org-fold-invisible-p from)) (not (org-fold-invisible-p to)))
+      (org-fold-region from to nil)))
   ;; Process all the folded text between `from' and `to'.
   (org-with-wide-buffer
    ;; If the edit is done in the first line of a folded drawer/block,
