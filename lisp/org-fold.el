@@ -27,7 +27,8 @@
 ;;; Code:
 
 (require 'org-macs)
-(require 'org-element)
+
+(declare-function isearch-filter-visible "isearch" (beg end))
 
 ;;; Customization
 
@@ -88,7 +89,7 @@ unless RETURN-ONLY is non-nil."
 		(setq-local char-property-alias-alist
 			    (cons (cons 'invisible
 					(mapcar (lambda (spec)
-						  (org--get-buffer-local-invisible-property-symbol spec nil 'return-only))
+						  (org-fold--property-symbol-get-create spec nil 'return-only))
 						org-fold--spec-priority-list))
 				  (remove (assq 'invisible char-property-alias-alist)
 					  char-property-alias-alist)))))))))))
@@ -117,11 +118,11 @@ redefined according to provided optional arguments."
     (setq-default org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
     (add-to-list 'org-fold--spec-priority-list spec append)
     (setq-default org-fold--spec-priority-list org-fold--spec-priority-list)
-    (setq-default org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
+    (when no-ellipsis-p (setq-default org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
     (unless no-ellipsis-p
       (add-to-list 'org-fold--spec-with-ellipsis spec)
       (setq-default org-fold--spec-with-ellipsis org-fold--spec-with-ellipsis))
-    (setq-default org-fold--isearch-specs (delq spec org-fold--isearch-specs))
+    (when no-isearch-open-p (setq-default org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
     (unless no-isearch-open-p
       (add-to-list 'org-fold--isearch-specs spec)
       (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
@@ -130,9 +131,9 @@ redefined according to provided optional arguments."
       (add-to-invisibility-spec (cons spec (not no-ellipsis-p)))
       (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
       (add-to-list 'org-fold--spec-priority-list spec append)
-      (setq-local org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
+      (when no-ellipsis-p (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
       (unless no-ellipsis-p (add-to-list 'org-fold--spec-with-ellipsis spec))
-      (setq-local org-fold--isearch-specs (delq spec org-fold--isearch-specs))
+      (when no-isearch-open-p (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
       (unless no-isearch-open-p (add-to-list 'org-fold--isearch-specs spec)))))
 
 (defun org-fold-remove-folding-spec (spec &optional buffer)
@@ -154,8 +155,8 @@ or 'all to remove SPEC in all open org-mode buffers and all future org buffers."
       (remove-from-invisibility-spec (cons spec t))
       (remove-from-invisibility-spec spec)
       (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-      (setq-local org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
-      (setq-local org-fold--isearch-specs (delq spec org-fold--isearch-specs)))))
+      (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
+      (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))))
 
 (defun org-fold-initialize ()
   "Setup org-fold in current buffer."
@@ -187,13 +188,13 @@ If SPEC is 'all, return the list of all present folding specs.
 Return nil if there is no folding at point or POM.
 If SPEC is a valid folding spec, return value is SPEC if the point is
 within region folded using SPEC or nil otherwise."
-  (org-fold--check-spec spec)
+  (when spec (org-fold--check-spec spec))
   (org-with-point-at (or pom (point))
     (if (and spec (not (eq spec 'all)))
-	(get-char-property (point) (org--get-buffer-local-invisible-property-symbol spec nil t))
+	(get-char-property (point) (org-fold--property-symbol-get-create spec nil t))
       (let ((result))
 	(dolist (spec org-fold--spec-priority-list)
-	  (let ((val (get-char-property (point) (org--get-buffer-local-invisible-property-symbol spec nil t))))
+	  (let ((val (get-char-property (point) (org-fold--property-symbol-get-create spec nil t))))
 	    (when val
 	      (push val result))))
         (if (eq spec 'all)
@@ -205,7 +206,7 @@ within region folded using SPEC or nil otherwise."
 If SPEC is nil, return the largest possible folded region.
 The return value is a cons of beginning and the end of the region.
 Return nil when no fold is present at point of POM."
-  (org-fold--check-spec spec)
+  (when spec (org-fold--check-spec spec))
   (org-with-point-at (or pom (point))
     (if spec
 	(org--find-text-property-region (point) (org-fold--property-symbol-get-create spec nil t))
@@ -218,6 +219,28 @@ Return nil when no fold is present at point of POM."
           (setq end (or (next-single-property-change end 'invisible nil (point-max))
 			end)))
         (cons beg end)))))
+
+(defun org-fold-next-visibility-change (&optional spec pos limit)
+  "Return next point where folding state SPEC changes relative to POS or LIMIT.
+If SPEC is nil, return next point where visibility changes."
+  (when spec (org-fold--check-spec spec))
+  (let ((pos (or pos (point)))
+	(prop (if spec
+		  (org-fold--property-symbol-get-create spec nil t)
+                'invisible)))
+    (or (next-single-char-property-change pos prop nil (or limit (point-max)))
+	pos)))
+
+(defun org-fold-previous-visibility-change (&optional spec pos limit)
+  "Return previous point where folding state SPEC changes relative to POS or LIMIT.
+If SPEC is nil, return previous point where visibility changes."
+  (when spec (org-fold--check-spec spec))
+  (let ((pos (or pos (point)))
+	(prop (if spec
+		  (org-fold--property-symbol-get-create spec nil t)
+                'invisible)))
+    (or (previous-single-char-property-change pos prop nil (or limit (point-min)))
+	pos)))
 
 (defun org-fold-search-forward (spec &optional limit)
   "Search next region folded via folding SPEC up to LIMIT.
@@ -290,7 +313,7 @@ of text properties.  The created overlays will be stored in
       ;; properties, which may be nested.
       (while (memq (get-text-property pos 'invisible) org-fold--isearch-specs)
 	(let* ((spec (get-text-property pos 'invisible))
-               (region (org--find-text-property-region pos (org-fold--property-symbol-get-create spec))))
+               (region (org--find-text-property-region pos (org-fold--property-symbol-get-create spec nil t))))
 	  ;; Changing text properties is considered buffer modification.
 	  ;; We do not want it here.
 	  (with-silent-modifications
@@ -342,10 +365,10 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
   ;; Re-hide text inserted in the middle of a folded region.
   (unless (equal from to)
     (dolist (spec org-fold--spec-priority-list)
-      (let ((spec-to (get-text-property to (org-fold--property-symbol-get-create spec)))
-	    (spec-from (get-text-property (max (point-min) (1- from)) (org-fold--property-symbol-get-create spec))))
+      (let ((spec-to (org-fold-get-folding-spec spec to))
+	    (spec-from (org-fold-get-folding-spec spec (max (point-min) (1- from)))))
 	(when (and spec-from spec-to (eq spec-to spec-from))
-	  (org-flag-region from to t spec-to)))))
+	  (org-fold-region from to t spec-to)))))
   ;; Process all the folded text between `from' and `to'.
   (org-with-wide-buffer
    ;; If the edit is done in the first line of a folded drawer/block,
@@ -357,10 +380,10 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
    (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
    ;; Expand the considered region to include partially present folded
    ;; drawer/block.
-   (when (get-text-property from (org-fold--property-symbol-get-create 'org-hide-drawer))
-     (setq from (previous-single-char-property-change from (org-fold--property-symbol-get-create 'org-hide-drawer))))
-   (when (get-text-property from (org-fold--property-symbol-get-create 'org-hide-block))
-     (setq from (previous-single-char-property-change from (org-fold--property-symbol-get-create 'org-hide-block))))
+   (when (org-fold-get-folding-spec 'org-hide-drawer from)
+     (setq from (org-fold-previous-visibility-change 'org-hide-drawer from)))
+   (when (org-fold-get-folding-spec 'org-hide-block from)
+     (setq from (org-fold-previous-visibility-change 'org-hide-block from)))
    ;; Check folded drawers and blocks.
    (dolist (spec '(org-hide-drawer org-hide-block))
      (let ((pos from)
@@ -376,15 +399,14 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
            ;; To be determined later. May depend on `begin-re' match (i.e. for blocks).
            end-re)
        ;; Move to the first hidden drawer/block.
-       (unless (get-text-property pos (org-fold--property-symbol-get-create spec))
-	 (setq pos (next-single-char-property-change pos
-						     (org-fold--property-symbol-get-create spec))))
+       (unless (org-fold-get-folding-spec spec pos)
+	 (setq pos (org-fold-next-visibility-change spec pos)))
        ;; Cycle over all the hidden drawers/blocks.
        (while (< pos to)
 	 (save-match-data ; we should not clobber match-data in after-change-functions
-	   (let ((fold-begin (and (get-text-property pos (org-fold--property-symbol-get-create spec))
+	   (let ((fold-begin (and (org-fold-get-folding-spec spec pos)
 				  pos))
-		 (fold-end (next-single-char-property-change pos (org-fold--property-symbol-get-create spec))))
+		 (fold-end (org-fold-next-visibility-change spec pos)))
              (when (and fold-begin fold-end)
 	       (let (unfold?)
 		 (catch :exit
@@ -437,8 +459,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 		   (org-fold-region fold-begin fold-end nil spec))))))
 	 ;; Move to next hidden drawer/block.
 	 (setq pos
-               (next-single-char-property-change pos
-						 (org-fold--property-symbol-get-create spec))))))))
+               (org-fold-next-visibility-change spec pos)))))))
 
 (provide 'org-fold)
 
