@@ -384,9 +384,12 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 	(when (and spec-from spec-to (eq spec-to spec-from))
 	  (org-fold-region from to t (or spec-from spec-to))))))
   ;; Re-hide text inserted right in front/back of a folded region
-  ;; Example: beginning of a folded drawer
+  ;; Examples: beginning of a folded drawer, first line of folded
+  ;; headline (schedule).
+  ;; However, do not hide headline text
   (unless (equal from to)
-    (when (xor (org-fold-invisible-p from) (org-fold-invisible-p to))
+    (when (and (xor (org-fold-invisible-p from) (org-fold-invisible-p to))
+	       (not (org-at-heading-p)))
       (org-fold-region from to t (or (org-fold-get-folding-spec nil from) (org-fold-get-folding-spec nil to)))))
   ;; Reveal the whole region if inserted in the middle of
   ;; visible text. This is needed, for example, when one is
