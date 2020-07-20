@@ -8464,12 +8464,13 @@ the whole buffer."
 			(org-end-of-subtree t t))
 		       ((outline-next-heading))
 		       ((point-max))))))
-      (if (symbolp tprop)
-	  ;; TPROP is a text property symbol.
-	  (put-text-property start end tprop p)
-	;; TPROP is an alist with (property . function) elements.
-	(pcase-dolist (`(,prop . ,f) tprop)
-	  (put-text-property start end prop (funcall f p)))))))
+      (with-silent-modifications
+	(if (symbolp tprop)
+	    ;; TPROP is a text property symbol.
+	    (put-text-property start end tprop p)
+	  ;; TPROP is an alist with (property . function) elements.
+	  (pcase-dolist (`(,prop . ,f) tprop)
+	    (put-text-property start end prop (funcall f p))))))))
 
 (defun org-refresh-category-properties ()
   "Refresh category text properties in the buffer."
