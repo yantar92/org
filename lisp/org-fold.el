@@ -263,13 +263,26 @@ Move point right after the end of the region, to LIMIT, or
 
 ;;;; Regions visibility
 
-(defun org-fold-region (from to flag spec)
+(defun org-fold-region (from to flag &optional spec)
   "Hide or show lines from FROM to TO, according to FLAG.
-SPEC is the folding spec, as a symbol."
+SPEC is the folding spec, as a symbol.
+If SPEC is omitted and FLAG is nil, unfold everything in the region."
+  (when spec (org-fold--check-spec spec))
   (with-silent-modifications
     (if flag
-	(put-text-property from to (org-fold--property-symbol-get-create spec) spec)
-      (remove-text-properties from to (list (org-fold--property-symbol-get-create spec) nil)))))
+	(if spec
+	    (put-text-property from to
+			       (org-fold--property-symbol-get-create spec)
+                               spec)
+          (user-error "Calling `org-fold-region' with missing SPEC."))
+      (if spec
+	  (remove-text-properties from to
+				  (list (org-fold--property-symbol-get-create spec)
+					nil))
+        (dolist (spec org-fold--spec-priority-list)
+          (remove-text-properties from to
+				  (list (org-fold--property-symbol-get-create spec)
+					nil)))))))
 
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
