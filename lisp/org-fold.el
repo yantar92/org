@@ -270,20 +270,21 @@ SPEC is the folding spec, as a symbol.
 If SPEC is omitted and FLAG is nil, unfold everything in the region."
   (when spec (org-fold--check-spec spec))
   (with-silent-modifications
-    (if flag
-	(if spec
-	    (put-text-property from to
-			       (org-fold--property-symbol-get-create spec)
-                               spec)
-          (user-error "Calling `org-fold-region' with missing SPEC."))
-      (if spec
-	  (remove-text-properties from to
-				  (list (org-fold--property-symbol-get-create spec)
-					nil))
-        (dolist (spec org-fold--spec-priority-list)
-          (remove-text-properties from to
-				  (list (org-fold--property-symbol-get-create spec)
-					nil)))))))
+    (org-with-wide-buffer
+     (if flag
+	 (if spec
+	     (put-text-property from to
+				(org-fold--property-symbol-get-create spec)
+				spec)
+           (user-error "Calling `org-fold-region' with missing SPEC."))
+       (if spec
+	   (remove-text-properties from to
+				   (list (org-fold--property-symbol-get-create spec)
+					 nil))
+         (dolist (spec org-fold--spec-priority-list)
+           (remove-text-properties from to
+				   (list (org-fold--property-symbol-get-create spec)
+					 nil))))))))
 
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
