@@ -8098,8 +8098,8 @@ grouptags."
 (defun org-agenda-filter-hide-line (type)
   "If current line is TYPE, hide it in the agenda buffer."
   (let* (buffer-invisibility-spec
-	 (beg (max (point-min) (1- (point-at-bol))))
-	 (end (point-at-eol)))
+	 (beg (point-at-bol))
+	 (end (min (point-max) (1+ (point-at-eol)))))
     (let ((inhibit-read-only t))
       (add-text-properties
        beg end `(invisible org-filtered org-filter-type ,type)))))
