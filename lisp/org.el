@@ -6020,7 +6020,7 @@ Show the heading too, if it is currently invisible."
      (line-end-position 0)
      (save-excursion
        (if (re-search-forward
-	    (concat "[\r\n]\\(" org-outline-regexp "\\)") nil t)
+	    (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
 	   (match-beginning 1)
 	 (point-max)))
      nil
