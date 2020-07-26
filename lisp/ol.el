@@ -721,7 +721,7 @@ White spaces are not significant."
 	(let ((object (org-element-context)))
 	  (when (eq (org-element-type object) 'radio-target)
 	    (goto-char (org-element-property :begin object))
-	    (org-show-context 'link-search)
+	    (org-fold-show-context 'link-search)
 	    (throw :radio-match nil))))
       (goto-char origin)
       (user-error "No match for radio target: %s" target))))
@@ -1243,7 +1243,7 @@ of matched result, which is either `dedicated' or `fuzzy'."
 	(error "No match for fuzzy expression: %s" normalized)))
     ;; Disclose surroundings of match, if appropriate.
     (when (and (derived-mode-p 'org-mode) (not stealth))
-      (org-show-context 'link-search))
+      (org-fold-show-context 'link-search))
     type))
 
 (defun org-link-heading-search-string (&optional string)
@@ -1408,7 +1408,7 @@ is non-nil, move backward."
 	    (`nil nil)
 	    (link
 	     (goto-char (org-element-property :begin link))
-	     (when (org-invisible-p) (org-show-context))
+	     (when (org-invisible-p) (org-fold-show-context))
 	     (throw :found t)))))
       (goto-char pos)
       (setq org-link--search-failed t)

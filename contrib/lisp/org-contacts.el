@@ -673,7 +673,7 @@ description."
     (when marker
       (switch-to-buffer-other-window (marker-buffer marker))
       (goto-char marker)
-      (when (eq major-mode 'org-mode) (org-show-context 'agenda)))))
+      (when (eq major-mode 'org-mode) (org-fold-show-context 'agenda)))))
 
 (with-no-warnings (defvar date)) ;; unprefixed, from calendar.el
 (defun org-contacts-anniversaries (&optional field format)

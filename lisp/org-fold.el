@@ -32,9 +32,86 @@
 
 ;;; Customization
 
+
+(defcustom org-fold-show-context-detail '((agenda . local)
+				  (bookmark-jump . lineage)
+				  (isearch . lineage)
+				  (default . ancestors))
+  "Alist between context and visibility span when revealing a location.
+
+\\<org-mode-map>Some actions may move point into invisible
+locations.  As a consequence, Org always expose a neighborhood
+around point.  How much is shown depends on the initial action,
+or context.  Valid contexts are
+
+  agenda         when exposing an entry from the agenda
+  org-goto       when using the command `org-goto' (`\\[org-goto]')
+  occur-tree     when using the command `org-occur' (`\\[org-sparse-tree] /')
+  tags-tree      when constructing a sparse tree based on tags matches
+  link-search    when exposing search matches associated with a link
+  mark-goto      when exposing the jump goal of a mark
+  bookmark-jump  when exposing a bookmark location
+  isearch        when exiting from an incremental search
+  default        default for all contexts not set explicitly
+
+Allowed visibility spans are
+
+  minimal        show current headline; if point is not on headline,
+                 also show entry
+
+  local          show current headline, entry and next headline
+
+  ancestors      show current headline and its direct ancestors; if
+                 point is not on headline, also show entry
+
+  lineage        show current headline, its direct ancestors and all
+                 their children; if point is not on headline, also show
+                 entry and first child
+
+  tree           show current headline, its direct ancestors and all
+                 their children; if point is not on headline, also show
+                 entry and all children
+
+  canonical      show current headline, its direct ancestors along with
+                 their entries and children; if point is not located on
+                 the headline, also show current entry and all children
+
+As special cases, a nil or t value means show all contexts in
+`minimal' or `canonical' view, respectively.
+
+Some views can make displayed information very compact, but also
+make it harder to edit the location of the match.  In such
+a case, use the command `org-reveal' (`\\[org-reveal]') to show
+more context."
+  :group 'org-reveal-location
+  :version "26.1"
+  :package-version '(Org . "9.0")
+  :type '(choice
+	  (const :tag "Canonical" t)
+	  (const :tag "Minimal" nil)
+	  (repeat :greedy t :tag "Individual contexts"
+		  (cons
+		   (choice :tag "Context"
+			   (const agenda)
+			   (const org-goto)
+			   (const occur-tree)
+			   (const tags-tree)
+			   (const link-search)
+			   (const mark-goto)
+			   (const bookmark-jump)
+			   (const isearch)
+			   (const default))
+		   (choice :tag "Detail level"
+			   (const minimal)
+			   (const local)
+			   (const ancestors)
+			   (const lineage)
+			   (const tree)
+			   (const canonical))))))
+
 ;;; Core functionality
 
-;;; Buffer-local folding specs
+;;;; Buffer-local folding specs
 
 (defvar-local org-fold--spec-priority-list '(outline org-hide-drawer org-hide-block)
   "Priority of folding specs.
@@ -166,7 +243,7 @@ or 'all to remove SPEC in all open org-mode buffers and all future org buffers."
   (add-hook 'after-change-functions 'org-fold--fix-folded-region nil 'local)
   ;; Make isearch reveal context
   (setq-local outline-isearch-open-invisible-function
-	      (lambda (&rest _) (org-show-context 'isearch)))
+	      (lambda (&rest _) (org-fold-show-context 'isearch)))
   ;; Make isearch search in blocks hidden via text properties
   (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate)
   (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-overlays nil 'local))
@@ -262,7 +339,7 @@ Move point right after the end of the region, to LIMIT, or
 
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
 
-;;;; Regions visibility
+;;;;; Region visibility
 
 (defun org-fold-region (from to flag &optional spec)
   "Hide or show lines from FROM to TO, according to FLAG.
@@ -276,7 +353,7 @@ If SPEC is omitted and FLAG is nil, unfold everything in the region."
 	     (put-text-property from to
 				(org-fold--property-symbol-get-create spec)
 				spec)
-           (user-error "Calling `org-fold-region' with missing SPEC."))
+           (error "Calling `org-fold-region' with missing SPEC."))
        (if spec
 	   (remove-text-properties from to
 				   (list (org-fold--property-symbol-get-create spec)
@@ -299,6 +376,337 @@ When optional argument TYPE is a list of symbols among `blocks',
 	       (`drawers 'org-hide-drawer)
 	       (`headings 'outline)
 	       (_ (error "Invalid type: %S" type))))))
+
+;;;;; Heading visibility
+
+(defun org-fold-heading (flag &optional entry)
+  "Fold/unfold the current heading.  FLAG non-nil means make invisible.
+When ENTRY is non-nil, show the entire entry."
+  (save-excursion
+    (org-back-to-heading t)
+    ;; Check if we should show the entire entry
+    (if (not entry)
+	(org-fold-region
+	 (line-end-position 0) (line-end-position) flag 'outline)
+      (org-fold-show-entry)
+      (save-excursion
+	;; FIXME: potentially catches inlinetasks
+	(and (outline-next-heading)
+	     (org-fold-heading nil))))))
+
+(defun org-fold-hide-entry ()
+  "Hide the body directly following this heading."
+  (interactive)
+  (save-excursion
+    (org-back-to-heading)
+    ;; FIXME: use org version
+    (outline-end-of-heading)
+    (org-fold-region (point) (progn (outline-next-preface) (point)) t 'outline)))
+
+(defun org-fold-subtree (flag)
+  (save-excursion
+    (org-back-to-heading t)
+    (org-fold-region (line-end-position)
+	     (progn (org-end-of-subtree t) (point))
+	     flag
+	     'outline)))
+
+(defun org-fold-hide-subtree ()
+  "Hide everything after this heading at deeper levels."
+  (interactive)
+  (org-fold-subtree t))
+
+(defun org-fold-hide-sublevels (levels)
+  "Hide everything but the top LEVELS levels of headers, in whole buffer.
+This also unhides the top heading-less body, if any.
+
+Interactively, the prefix argument supplies the value of LEVELS.
+When invoked without a prefix argument, LEVELS defaults to the level
+of the current heading, or to 1 if the current line is not a heading."
+  (interactive (list
+		(cond
+		 (current-prefix-arg (prefix-numeric-value current-prefix-arg))
+		 ((save-excursion (beginning-of-line)
+				  (looking-at outline-regexp))
+		  (funcall outline-level))
+		 (t 1))))
+  (if (< levels 1)
+      (error "Must keep at least one level of headers"))
+  (save-excursion
+    (let* ((beg (progn
+                  (goto-char (point-min))
+                  ;; Skip the prelude, if any.
+                  (unless (org-at-heading-p) (outline-next-heading))
+                  (point)))
+           (end (progn
+                  (goto-char (point-max))
+                  ;; Keep empty last line, if available.
+                  (max (point-min) (if (bolp) (1- (point)) (point))))))
+      (if (< end beg)
+	  (setq beg (prog1 end (setq end beg))))
+      ;; First hide everything.
+      (org-fold-region beg end t 'outline)
+      ;; Then unhide the top level headers.
+      (org-map-region
+       (lambda ()
+	 (when (<= (funcall outline-level) levels)
+	   (org-fold-show-entry)
+           (org-fold-hide-entry)))
+       beg end)
+      ;; Finally unhide any trailing newline.
+      (goto-char (point-max))
+      (if (and (bolp) (not (bobp)) (outline-invisible-p (1- (point))))
+          (org-fold-region (max (point-min) (1- (point))) (point) nil)))))
+
+(defun org-fold-show-entry ()
+  "Show the body directly following its heading.
+Show the heading too, if it is currently invisible."
+  (interactive)
+  (save-excursion
+    (org-back-to-heading-or-point-min t)
+    (org-fold-region
+     (line-end-position 0)
+     (save-excursion
+       (if (re-search-forward
+	    (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
+	   (match-beginning 1)
+	 (point-max)))
+     nil
+     'outline)))
+
+;; FIXME: defalias instead?
+(defun org-show-hidden-entry ()
+  "Show an entry where even the heading is hidden."
+  (save-excursion
+    (org-fold-show-entry)))
+
+(defun org-fold-show-siblings ()
+  "Show all siblings of the current headline."
+  (save-excursion
+    (while (org-goto-sibling) (org-fold-heading nil)))
+  (save-excursion
+    (while (org-goto-sibling 'previous)
+      (org-fold-heading nil))))
+
+(defun org-fold-show-children (&optional level)
+  "Show all direct subheadings of this heading.
+Prefix arg LEVEL is how many levels below the current level
+should be shown.  Default is enough to cause the following
+heading to appear."
+  (interactive "p")
+  (save-excursion
+    (org-back-to-heading t)
+    (let* ((current-level (funcall outline-level))
+	   (max-level (org-get-valid-level
+		       current-level
+		       (if level (prefix-numeric-value level) 1)))
+	   (end (save-excursion (org-end-of-subtree t t)))
+	   (regexp-fmt "^\\*\\{%d,%s\\}\\(?: \\|$\\)")
+	   (past-first-child nil)
+           ;; FIXME: maybe modify org-get-limited-outline-regexp and use it here
+	   ;; Make sure to skip inlinetasks.
+	   (re (format regexp-fmt
+		       current-level
+		       (cond
+			((not (featurep 'org-inlinetask)) "")
+			(org-odd-levels-only (- (* 2 org-inlinetask-min-level)
+						3))
+			(t (1- org-inlinetask-min-level))))))
+      ;; Display parent heading.
+      (org-fold-heading nil)
+      (forward-line)
+      ;; Display children.  First child may be deeper than expected
+      ;; MAX-LEVEL.  Since we want to display it anyway, adjust
+      ;; MAX-LEVEL accordingly.
+      (while (re-search-forward re end t)
+	(unless past-first-child
+	  (setq re (format regexp-fmt
+			   current-level
+			   (max (funcall outline-level) max-level)))
+	  (setq past-first-child t))
+	(org-fold-heading nil)))))
+
+(defun org-fold-show-subtree ()
+  "Show everything after this heading at deeper levels."
+  (interactive)
+  (org-fold-region
+   (point) (save-excursion (org-end-of-subtree t t)) nil 'outline))
+
+(defun org-fold-show-branches ()
+  "Show all subheadings of this heading, but not their bodies."
+  (interactive)
+  (org-fold-show-children 1000))
+
+(defun org-fold-show-branches-buffer ()
+  "Show all branches in the buffer."
+  (org-flag-above-first-heading)
+  (org-fold-hide-sublevels 1)
+  (unless (eobp)
+    (org-fold-show-branches)
+    (while (outline-get-next-sibling)
+      (org-fold-show-branches)))
+  (goto-char (point-min)))
+
+(defun org-fold-flag-above-first-heading (&optional arg)
+  "Hide from bob up to the first heading.
+Move point to the beginning of first heading or end of buffer."
+  (goto-char (point-min))
+  (unless (org-at-heading-p)
+    (outline-next-heading))
+  (unless (bobp)
+    (org-fold-region 1 (1- (point)) (not arg) 'outline)))
+
+;;;;; Blocks and drawers visibility
+
+(defun org-fold--hide-wrapper-toggle (element category force no-error)
+  "Toggle visibility for ELEMENT.
+
+ELEMENT is a block or drawer type parsed element.  CATEGORY is
+either `block' or `drawer'.  When FORCE is `off', show the block
+or drawer.  If it is non-nil, hide it unconditionally.  Throw an
+error when not at a block or drawer, unless NO-ERROR is non-nil.
+
+Return a non-nil value when toggling is successful."
+  (let ((type (org-element-type element)))
+    (cond
+     ((memq type
+	    (pcase category
+	      (`drawer '(drawer property-drawer))
+	      (`block '(center-block
+			comment-block dynamic-block example-block export-block
+			quote-block special-block src-block verse-block))
+	      (_ (error "Unknown category: %S" category))))
+      (let* ((post (org-element-property :post-affiliated element))
+	     (start (save-excursion
+		      (goto-char post)
+		      (line-end-position)))
+	     (end (save-excursion
+		    (goto-char (org-element-property :end element))
+		    (skip-chars-backward " \t\n")
+		    (line-end-position))))
+	;; Do nothing when not before or at the block opening line or
+	;; at the block closing line.
+	(unless (let ((eol (line-end-position)))
+		  (and (> eol start) (/= eol end)))
+	  (let* ((spec (cond ((eq category 'block) 'org-hide-block)
+			     ((eq category 'drawer) 'org-hide-drawer)
+			     (t 'outline)))
+		 (flag
+		  (cond ((eq force 'off) nil)
+			(force t)
+			((org-fold-get-folding-spec nil start) nil)
+			(t t))))
+	    (org-fold-region start end flag spec))
+	  ;; When the block is hidden away, make sure point is left in
+	  ;; a visible part of the buffer.
+	  (when (invisible-p (max (1- (point)) (point-min)))
+	    (goto-char post))
+	  ;; Signal success.
+	  t)))
+     (no-error nil)
+     (t
+      (user-error (if (eq category 'drawer)
+		      "Not at a drawer"
+		    "Not at a block"))))))
+
+(defun org-fold-hide-block-toggle (&optional force no-error element)
+  "Toggle the visibility of the current block.
+
+When optional argument FORCE is `off', make block visible.  If it
+is non-nil, hide it unconditionally.  Throw an error when not at
+a block, unless NO-ERROR is non-nil.  When optional argument
+ELEMENT is provided, consider it instead of the current block.
+
+Return a non-nil value when toggling is successful."
+  (interactive)
+  (org-fold--hide-wrapper-toggle
+   (or element (org-element-at-point)) 'block force no-error))
+
+(defun org-fold-hide-drawer-toggle (&optional force no-error element)
+  "Toggle the visibility of the current drawer.
+
+When optional argument FORCE is `off', make drawer visible.  If
+it is non-nil, hide it unconditionally.  Throw an error when not
+at a drawer, unless NO-ERROR is non-nil.  When optional argument
+ELEMENT is provided, consider it instead of the current drawer.
+
+Return a non-nil value when toggling is successful."
+  (interactive)
+  (org-fold--hide-wrapper-toggle
+   (or element (org-element-at-point)) 'drawer force no-error))
+
+(defun org-fold-hide-block-all ()
+  "Fold all blocks in the current buffer."
+  (interactive)
+  (org-fold-show-all '(blocks))
+  (org-block-map 'org-fold-hide-block-toggle))
+
+(defun org-fold-hide-drawer-all ()
+  "Fold all drawers in the current buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward org-drawer-regexp nil t)
+      (let* ((drawer (org-element-at-point))
+	     (type (org-element-type drawer)))
+	(when (memq type '(drawer property-drawer))
+	  ;; We are sure regular drawers are unfolded because of
+	  ;; `org-show-all' call above.  However, property drawers may
+	  ;; be folded, or in a folded headline.  In that case, do not
+	  ;; re-hide it.
+	  (unless (and (eq type 'property-drawer)
+		       (org-fold-get-folding-spec 'org-hide-drawer)))
+	  (org-fold-hide-drawer-toggle t nil drawer)
+	  ;; Make sure to skip drawer entirely or we might flag it
+	  ;; another time when matching its ending line with
+	  ;; `org-drawer-regexp'.
+	  (goto-char (org-element-property :end drawer)))))))
+
+;;;;; Reveal point location
+
+(defun org-fold-show-context (&optional key)
+  "Make sure point and context are visible.
+Optional argument KEY, when non-nil, is a symbol.  See
+`org-show-context-detail' for allowed values and how much is to
+be shown."
+  (org-fold-show-set-visibility
+   (cond ((symbolp org-fold-show-context-detail) org-fold-show-context-detail)
+	 ((cdr (assq key org-fold-show-context-detail)))
+	 (t (cdr (assq 'default org-fold-show-context-detail))))))
+
+(defun org-fold-show-set-visibility (detail)
+  "Set visibility around point according to DETAIL.
+DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
+`tree', `canonical' or t.  See `org-show-context-detail' for more
+information."
+  ;; Show current heading and possibly its entry, following headline
+  ;; or all children.
+  (if (and (org-at-heading-p) (not (eq detail 'local)))
+      (org-fold-heading nil)
+    (org-fold-show-entry)
+    ;; If point is hidden within a drawer or a block, make sure to
+    ;; expose it.
+    (when (memq (org-fold-get-folding-spec)
+		'(org-hide-block org-hide-drawer))
+      (let* ((spec (org-fold-get-folding-spec))
+	     (region (org-fold-get-region-at-point spec)))
+	(org-fold-region (car region) (cdr region) nil spec)))
+    (unless (org-before-first-heading-p)
+      (org-with-limited-levels
+       (cl-case detail
+	 ((tree canonical t) (org-fold-show-children))
+	 ((nil minimal ancestors))
+	 (t (save-excursion
+	      (outline-next-heading)
+	      (org-fold-heading nil)))))))
+  ;; Show all siblings.
+  (when (eq detail 'lineage) (org-fold-show-siblings))
+  ;; Show ancestors, possibly with their children.
+  (when (memq detail '(ancestors lineage tree canonical t))
+    (save-excursion
+      (while (org-up-heading-safe)
+	(org-fold-heading nil)
+	(when (memq detail '(canonical t)) (org-fold-show-entry))
+	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
 
 ;;; Internal functions
 

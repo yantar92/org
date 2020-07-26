@@ -246,7 +246,7 @@ seconds.  The default value for SECS is 20."
           (switch-to-buffer (find-file-noselect file))
           (org-with-wide-buffer
            (goto-char begin)
-           (org-show-entry))
+           (org-fold-show-entry))
           (goto-char begin)
           (search-forward "DEADLINE: <")
           (search-forward ":")

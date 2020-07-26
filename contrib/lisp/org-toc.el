@@ -197,7 +197,7 @@ specified, then make `org-toc-recenter' use this value."
       (setq ov (make-overlay beg end)))
     ;; change the folding status of this headline
     (cond ((or (null status) (eq status 'folded))
-	   (org-show-children)
+	   (org-fold-show-children)
 	   (message "CHILDREN")
 	   (overlay-put ov 'status 'children))
 	  ((eq status 'children)
@@ -290,9 +290,9 @@ If CYCLE is non-nil, cycle the targeted subtree in the Org window."
     (if cycle (org-cycle)
       (progn (org-overview)
 	     (if org-toc-show-subtree-mode
-		 (org-show-subtree)
-	       (org-show-entry))
-	     (org-show-context)))
+		 (org-fold-show-subtree)
+	       (org-fold-show-entry))
+	     (org-fold-show-context)))
     (if org-toc-recenter-mode
 	(if (>= org-toc-recenter 1000) (recenter)
 	  (recenter org-toc-recenter)))
@@ -441,7 +441,7 @@ current table of contents to it."
 	    (setq ov (make-overlay (match-beginning 0)
 				   (match-end 0))))
 	  (cond ((eq (cdr hlcfg0) 'children)
-		 (org-show-children)
+		 (org-fold-show-children)
 		 (message "CHILDREN")
 		 (overlay-put ov 'status 'children))
 		((eq (cdr hlcfg0) 'branches)

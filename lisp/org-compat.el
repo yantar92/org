@@ -46,14 +46,14 @@
 (declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
 (declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
 (declare-function org-get-tags "org" (&optional pos local))
-(declare-function org-hide-block-toggle "org" (&optional force no-error element))
+(declare-function org-fold-hide-block-toggle "org-fold" (&optional force no-error element))
 (declare-function org-link-display-format "ol" (s))
 (declare-function org-link-set-parameters "ol" (type &rest rest))
 (declare-function org-log-into-drawer "org" ())
 (declare-function org-make-tag-string "org" (tags))
 (declare-function org-reduced-level "org" (l))
 (declare-function org-return "org" (&optional indent arg interactive))
-(declare-function org-show-context "org" (&optional key))
+(declare-function org-fold-show-context "org-fold" (&optional key))
 (declare-function org-table-end "org-table" (&optional table-type))
 (declare-function outline-next-heading "outline" ())
 (declare-function speedbar-line-directory "speedbar" (&optional depth))
@@ -640,7 +640,7 @@ When optional argument ELEMENT is a parsed drawer, as returned by
 When buffer positions BEG and END are provided, hide or show that
 region as a drawer without further ado."
   (declare (obsolete "use `org-hide-drawer-toggle' instead." "Org 9.4"))
-  (if (and beg end) (org-flag-region beg end flag 'org-hide-drawer)
+  (if (and beg end) (org-fold-region beg end flag 'org-hide-drawer)
     (let ((drawer
 	   (or element
 	       (and (save-excursion
@@ -666,7 +666,7 @@ Unlike to `org-hide-block-toggle', this function does not throw
 an error.  Return a non-nil value when toggling is successful."
   (declare (obsolete "use `org-hide-block-toggle' instead." "Org 9.4"))
   (interactive)
-  (org-hide-block-toggle nil t))
+  (org-fold-hide-block-toggle nil t))
 
 (defun org-hide-block-toggle-all ()
   "Toggle the visibility of all blocks in the current buffer."
@@ -682,7 +682,7 @@ an error.  Return a non-nil value when toggling is successful."
 	(save-excursion
 	  (save-match-data
             (goto-char (match-beginning 0))
-            (org-hide-block-toggle)))))))
+            (org-fold-hide-block-toggle)))))))
 
 (defun org-return-indent ()
   "Goto next table row or insert a newline and indent.
@@ -907,7 +907,7 @@ This also applied for speedbar access."
      (add-hook 'imenu-after-jump-hook
 	       (lambda ()
 		 (when (derived-mode-p 'org-mode)
-		   (org-show-context 'org-goto))))
+		   (org-fold-show-context 'org-goto))))
      (add-hook 'org-mode-hook
 	       (lambda ()
 		 (setq imenu-create-index-function 'org-imenu-get-tree)))))
@@ -972,7 +972,7 @@ To get rid of the restriction, use `\\[org-agenda-remove-restriction-lock]'."
      (define-key speedbar-file-key-map ">" 'org-agenda-remove-restriction-lock)
      (define-key speedbar-file-key-map "\C-c\C-x>" 'org-agenda-remove-restriction-lock)
      (add-hook 'speedbar-visiting-tag-hook
-	       (lambda () (and (derived-mode-p 'org-mode) (org-show-context 'org-goto))))))
+	       (lambda () (and (derived-mode-p 'org-mode) (org-fold-show-context 'org-goto))))))
 
 ;;;; Add Log
 
@@ -1085,7 +1085,7 @@ ELEMENT is the element at point."
        (or (org-invisible-p)
 	   (save-excursion (goto-char (max (point-min) (1- (point))))
 			   (org-invisible-p)))
-       (org-show-context 'bookmark-jump)))
+       (org-fold-show-context 'bookmark-jump)))
 
 ;; Make `bookmark-jump' shows the jump location if it was hidden.
 (eval-after-load "bookmark"
@@ -1160,7 +1160,7 @@ key."
   '(defadvice ecb-method-clicked (after esf/org-show-context activate)
      "Make hierarchy visible when jumping into location from ECB tree buffer."
      (when (derived-mode-p 'org-mode)
-       (org-show-context))))
+       (org-fold-show-context))))
 
 ;;;; Simple
 
@@ -1168,7 +1168,7 @@ key."
   "Make the point visible with `org-show-context' after jumping to the mark."
   (when (and (derived-mode-p 'org-mode)
 	     (org-invisible-p))
-    (org-show-context 'mark-goto)))
+    (org-fold-show-context 'mark-goto)))
 
 (eval-after-load "simple"
   '(defadvice pop-to-mark-command (after org-make-visible activate)

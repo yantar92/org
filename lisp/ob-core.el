@@ -1780,7 +1780,7 @@ If the point is not on a source block then return nil."
   (let ((point (org-babel-find-named-block name)))
     (if point
         ;; Taken from `org-open-at-point'.
-        (progn (org-mark-ring-push) (goto-char point) (org-show-context))
+        (progn (org-mark-ring-push) (goto-char point) (org-fold-show-context))
       (message "source-code block `%s' not found in this buffer" name))))
 
 (defun org-babel-find-named-block (name)
@@ -1820,7 +1820,7 @@ to `org-babel-named-src-block-regexp'."
   (let ((point (org-babel-find-named-result name)))
     (if point
         ;; taken from `org-open-at-point'
-        (progn (goto-char point) (org-show-context))
+        (progn (goto-char point) (org-fold-show-context))
       (message "result `%s' not found in this buffer" name))))
 
 (defun org-babel-find-named-result (name)

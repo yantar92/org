@@ -347,8 +347,8 @@ it can be a list structured like an entry in `org-feed-alist'."
 	      (setq olds (nth 2 (assoc (plist-get e :guid) old-status)))
 	      (if (and olds
 		       (not (string= (sha1
-				      (plist-get e :item-full-text))
-				     olds)))
+				    (plist-get e :item-full-text))
+				   olds)))
 		  (push e changed))))
 
 	  ;; Parse the relevant entries fully
@@ -412,8 +412,8 @@ it can be a list structured like an entry in `org-feed-alist'."
 
 	  ;; Normalize the visibility of the inbox tree
 	  (goto-char inbox-pos)
-	  (org-flag-subtree t)
-	  (org-show-children)
+	  (org-fold-subtree t) []
+	  (org-fold-show-children)
 
 	  ;; Hooks and messages
 	  (when org-feed-save-after-adding (save-buffer))

@@ -104,7 +104,7 @@ Emacs Lisp representation of the value of the variable."
 	  (pop-to-buffer-same-window (marker-buffer m))
 	  (goto-char m)
 	  (move-marker m nil)
-	  (org-show-context)
+	  (org-fold-show-context)
 	  t))))
 
 (defun org-babel-ref-headline-body ()

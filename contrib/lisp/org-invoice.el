@@ -393,7 +393,7 @@ I place mine under a third-level heading like so:
   (let ((report (org-invoice-in-report-p)))
     (when (and (not report) jump)
       (when (re-search-forward "^#\\+BEGIN:[ \t]+invoice" nil t)
-        (org-show-entry)
+        (org-fold-show-entry)
         (beginning-of-line)
         (setq report (point))))
     (if report (goto-char report)

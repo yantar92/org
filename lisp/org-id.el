@@ -323,7 +323,7 @@ Move the cursor to that entry in that buffer."
     (pop-to-buffer-same-window (marker-buffer m))
     (goto-char m)
     (move-marker m nil)
-    (org-show-context)))
+    (org-fold-show-context)))
 
 ;;;###autoload
 (defun org-id-find (id &optional markerp)
@@ -716,7 +716,7 @@ optional argument MARKERP, return the position as a new marker."
 	(funcall cmd (marker-buffer m)))
     (goto-char m)
     (move-marker m nil)
-    (org-show-context)))
+    (org-fold-show-context)))
 
 (org-link-set-parameters "id" :follow #'org-id-open)
 

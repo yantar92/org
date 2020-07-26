@@ -315,7 +315,7 @@ direct children of this heading."
 		       org-odd-levels-only
 		     tr-org-odd-levels-only)))
 	      (goto-char (point-min))
-	      (org-show-all '(headings blocks))
+	      (org-fold-show-all '(headings blocks))
 	      (if (and heading (not (and datetree-date (not datetree-subheading-p))))
 		  (progn
 		    (if (re-search-forward
@@ -330,7 +330,7 @@ direct children of this heading."
 		      (insert (if datetree-date "" "\n") heading "\n")
 		      (end-of-line 0))
 		    ;; Make the subtree visible
-		    (org-show-subtree)
+		    (org-fold-show-subtree)
 		    (if org-archive-reversed-order
 			(progn
 			  (org-back-to-heading t)
@@ -478,7 +478,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	 (format-time-string
 	  (substring (cdr org-time-stamp-formats) 1 -1)))
 	(outline-up-heading 1 t)
-	(org-flag-subtree t)
+	(org-fold-subtree t)
 	(org-cycle-show-empty-lines 'folded)
 	(when org-provide-todo-statistics
 	  ;; Update TODO statistics of parent.

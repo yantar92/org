@@ -115,6 +115,7 @@
   (declare (debug (body)))
   `(let ((inhibit-read-only t)) ,@body))
 
+;; FIXME: rewrite to org-fold
 (defmacro org-save-outline-visibility (use-markers &rest body)
   "Save and restore outline visibility around BODY.
 If USE-MARKERS is non-nil, use markers for the positions.  This
@@ -1128,6 +1129,7 @@ the value in cdr."
       (get-text-property (or (next-single-property-change 0 prop s) 0)
 			 prop s)))
 
+;; FIXME: move to org-fold
 (defun org-invisible-p (&optional pos folding-only)
   "Non-nil if the character after POS is invisible.
 If POS is nil, use `point' instead.  When optional argument

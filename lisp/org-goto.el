@@ -238,9 +238,9 @@ position or nil."
 	    (error (make-indirect-buffer (current-buffer) "*org-goto*"))))
 	 (let (temp-buffer-show-function temp-buffer-show-hook)
 	   (with-output-to-temp-buffer "*Org Help*"
-	   (princ (format help (if org-goto-auto-isearch
-				   "  Just type for auto-isearch."
-				 "  n/p/f/b/u to navigate, q to quit.")))))
+	     (princ (format help (if org-goto-auto-isearch
+				     "  Just type for auto-isearch."
+				   "  n/p/f/b/u to navigate, q to quit.")))))
 	 (org-fit-window-to-buffer (get-buffer-window "*Org Help*"))
 	 (setq buffer-read-only nil)
 	 (let ((org-startup-truncated t)
@@ -253,7 +253,7 @@ position or nil."
 		  (integer-or-marker-p org-goto-start-pos))
 	     (progn (goto-char org-goto-start-pos)
 		    (when (org-invisible-p)
-		      (org-show-set-visibility 'lineage)))
+		      (org-fold-show-set-visibility 'lineage)))
 	   (goto-char (point-min)))
 	 (let (org-special-ctrl-a/e) (org-beginning-of-line))
 	 (message "Select location and press RET")
@@ -304,7 +304,7 @@ With a prefix argument, use the alternative interface: e.g., if
 	  (org-mark-ring-push org-goto-start-pos)
 	  (goto-char selected-point)
 	  (when (or (org-invisible-p) (org-invisible-p2))
-	    (org-show-context 'org-goto)))
+	    (org-fold-show-context 'org-goto)))
       (message "Quit"))))
 
 (provide 'org-goto)

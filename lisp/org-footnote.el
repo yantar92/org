@@ -51,7 +51,7 @@
 (declare-function org-inside-LaTeX-fragment-p "org" ())
 (declare-function org-inside-latex-macro-p "org" ())
 (declare-function org-mark-ring-push "org" (&optional pos buffer))
-(declare-function org-show-context "org" (&optional key))
+(declare-function org-fold-show-context "org-fold" (&optional key))
 (declare-function outline-next-heading "outline")
 
 (defvar electric-indent-mode)
@@ -546,7 +546,7 @@ value if point was successfully moved."
     (goto-char def-start)
     (looking-at (format "\\[fn:%s[]:]" (regexp-quote label)))
     (goto-char (match-end 0))
-    (org-show-context 'link-search)
+    (org-fold-show-context 'link-search)
     (when (derived-mode-p 'org-mode)
       (message "%s" (substitute-command-keys
 		     "Edit definition and go back with \
@@ -572,7 +572,7 @@ value if point was successfully moved."
 	   (user-error "Reference is outside narrowed part of buffer")))
     (org-mark-ring-push)
     (goto-char start)
-    (org-show-context 'link-search)))
+    (org-fold-show-context 'link-search)))
 
 
 ;;;; Getters
