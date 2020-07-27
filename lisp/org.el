@@ -19581,20 +19581,14 @@ With ARG, repeats or can move backward if negative."
       (end-of-line))
     (while (and (< arg 0) (re-search-backward regexp nil :move))
       (unless (bobp)
-	(pcase (org-fold-get-folding-spec)
-	  ('outline
-	   (goto-char (car (org-fold-get-region-at-point)))
-	   (beginning-of-line))
-	  (_ nil)))
+	(when (org-fold-invisible-p)
+	  (goto-char (org-fold-previous-visibility-change 'outline))))
       (cl-incf arg))
     (while (and (> arg 0) (re-search-forward regexp nil :move))
-      (pcase (org-fold-get-folding-spec)
-	('outline
-	 (goto-char (cdr (org-fold-get-region-at-point)))
-         (skip-chars-forward " \t\n")
-	 (end-of-line))
-	(_
-	 (end-of-line)))
+      (when (org-fold-invisible-p)
+	(goto-char (org-fold-next-visibility-change 'outline))
+        (skip-chars-forward " \t\n")
+	(end-of-line))
       (cl-decf arg))
     (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
 
