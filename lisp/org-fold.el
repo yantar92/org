@@ -247,9 +247,12 @@ or 'all to remove SPEC in all open org-mode buffers and all future org buffers."
   ;; Make isearch reveal context
   (setq-local outline-isearch-open-invisible-function
 	      (lambda (&rest _) (org-fold-show-context 'isearch)))
-  ;; Make isearch search in blocks hidden via text properties
-  (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate)
-  (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-overlays nil 'local))
+  (require 'isearch)
+  (if (boundp 'isearch-opened-regions)
+      ;; Use new implementation of isearch allowing to search inside text
+      ;; hidden via text properties.
+      (org-fold--isearch-setup 'text-properties)
+    (org-fold--isearch-setup 'overlays)))
 
 ;;;; Searching and examining folded text
 
@@ -352,19 +355,23 @@ If SPEC is omitted and FLAG is nil, unfold everything in the region."
   (with-silent-modifications
     (org-with-wide-buffer
      (if flag
-	 (if spec
-	     (put-text-property from to
-				(org-fold--property-symbol-get-create spec)
-				spec)
-           (error "Calling `org-fold-region' with missing SPEC."))
-       (if spec
-	   (remove-text-properties from to
-				   (list (org-fold--property-symbol-get-create spec)
-					 nil))
-         (dolist (spec org-fold--spec-priority-list)
-           (remove-text-properties from to
-				   (list (org-fold--property-symbol-get-create spec)
-					 nil))))))))
+	 (if (not spec)
+             (error "Calling `org-fold-region' with missing SPEC")
+	   (put-text-property from to
+			      (org-fold--property-symbol-get-create spec)
+			      spec)
+	   (put-text-property from to
+			      'isearch-open-invisible
+			      #'org-fold--isearch-show)
+	   (put-text-property from to
+			      'isearch-open-invisible-temporary
+			      #'org-fold--isearch-show-temporary))
+       (if (not spec)
+           (dolist (spec org-fold--spec-priority-list)
+             (remove-text-properties from to
+				     (list (org-fold--property-symbol-get-create spec) nil)))
+	 (remove-text-properties from to
+				 (list (org-fold--property-symbol-get-create spec) nil)))))))
 
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
@@ -748,6 +755,46 @@ This is used to allow searching in regions hidden via text properties.
 As for [2020-05-09 Sat], Isearch only has special handling of hidden overlays.
 Any text hidden via text properties is not revealed even if `search-invisible'
 is set to 't.")
+
+(defvar-local org-fold--isearch-local-regions (make-hash-table :test 'equal)
+  "Hash table storing temporarily shown folds from isearch matches.")
+
+(defun org-fold--isearch-setup (type)
+  "Initialize isearch in org buffer.
+TYPE can be either `text-properties' or `overlays'."
+  (pcase type
+    ('text-properties
+     (setq-local search-invisible 'open-all)
+     (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-state nil 'local)
+     (add-hook 'isearch-mode-hook #'org-fold--clear-isearch-state nil 'local))
+    ('overlays
+     (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate)
+     (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-overlays nil 'local))
+    (_ (error "%s: Unknown type of setup for `org-fold--isearch-setup'" type))))
+
+(defun org-fold--clear-isearch-state ()
+  "Clear `org-fold--isearch-local-regions'."
+  (clrhash org-fold--isearch-local-regions))
+
+(defun org-fold--isearch-show (region)
+  "Reveal text in REGION found by isearch."
+  (org-with-point-at (car region)
+    (while (< (point) (cdr region))
+      (org-fold-show-set-visibility 'isearch)
+      (goto-char (org-fold-next-visibility-change nil (point) (cdr region))))))
+
+(defun org-fold--isearch-show-temporary (region hide-p)
+  "Temporarily reveal text in REGION.
+Hide text instead if HIDE-P is non-nil."
+  (if (not hide-p)
+      (let ((pos (car region)))
+	(while (< pos (cdr region))
+	  (dolist (spec (org-fold-get-folding-spec 'all))
+	    (push (cons spec (org-fold-get-region-at-point spec)) (gethash region org-fold--isearch-local-regions)))
+          (org-fold--isearch-show region)
+	  (setq pos (org-fold-next-visibility-change nil nil (cdr region)))))
+    (mapc (lambda (val) (org-fold-region (cadr val) (cddr val) t (car val))) (gethash region org-fold--isearch-local-regions))
+    (remhash region org-fold--isearch-local-regions)))
 
 (defun org-fold--create-isearch-overlays (beg end)
   "Replace text property invisibility spec by overlays between BEG and END.
