@@ -645,7 +645,7 @@ Return a non-nil value when toggling is successful."
   (org-block-map 'org-fold-hide-block-toggle))
 
 (defun org-fold-hide-drawer-all ()
-  "Fold all drawers in the current buffer."
+  "Fold all drawers in the current buffer or narrow."
   (save-excursion
     (goto-char (point-min))
     (while (re-search-forward org-drawer-regexp nil t)
