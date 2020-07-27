@@ -474,15 +474,14 @@ Show the heading too, if it is currently invisible."
   (interactive)
   (save-excursion
     (org-back-to-heading-or-point-min t)
-    (org-fold-region
-     (line-end-position 0)
-     (save-excursion
-       (if (re-search-forward
-	    (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
-	   (match-beginning 1)
-	 (point-max)))
-     nil
-     'outline)))
+    (let ((beg (line-end-position 0))
+	  (end (save-excursion
+		 (if (re-search-forward
+		      (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
+		     (match-beginning 1)
+		   (point-max)))))
+      (org-fold-region beg end nil 'outline)
+      (org-fold-hide-drawer-all))))
 
 ;; FIXME: defalias instead?
 (defun org-show-hidden-entry ()
