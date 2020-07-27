@@ -311,7 +311,7 @@ Assume `epg-context' is set."
    'org-mode-hook
    (lambda () (add-hook 'before-save-hook 'org-encrypt-entries nil t))))
 
-(add-hook 'org-reveal-start-hook 'org-decrypt-entry)
+(add-hook 'org-fold-reveal-start-hook 'org-decrypt-entry)
 
 (provide 'org-crypt)
 

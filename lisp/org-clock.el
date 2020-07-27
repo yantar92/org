@@ -1833,7 +1833,7 @@ With prefix arg SELECT, offer recently clocked tasks for selection."
     (org-fold-show-entry)
     (org-back-to-heading t)
     (recenter org-clock-goto-before-context)
-    (org-reveal)
+    (org-fold-reveal)
     (if recent
 	(message "No running clock, this is the most recently clocked task"))
     (run-hooks 'org-clock-goto-hook)))

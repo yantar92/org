@@ -400,7 +400,7 @@ With a numeric prefix, show all headlines up to that level."
 	    (save-excursion
 	      (org-back-to-heading t)
 	      (org-fold-subtree t)
-	      (org-reveal)
+	      (org-fold-reveal)
 	      (pcase state
 		("folded"
 		 (org-fold-subtree t))

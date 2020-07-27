@@ -408,7 +408,7 @@ direct children of this heading."
 		 (if (eq this-buffer buffer)
 		     (concat "under heading: " heading)
 		   (concat "in file: " (abbreviate-file-name afile)))))))
-    (org-reveal)
+    (org-fold-reveal)
     (if (looking-at "^[ \t]*$")
 	(outline-next-visible-heading 1))))
 
@@ -484,7 +484,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	  ;; Update TODO statistics of parent.
 	  (org-update-parent-todo-statistics))
 	(goto-char pos)))
-    (org-reveal)
+    (org-fold-reveal)
     (if (looking-at "^[ \t]*$")
 	(outline-next-visible-heading 1))))
 

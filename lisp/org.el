@@ -1157,11 +1157,6 @@ are matched against file names, and values."
   :tag "Org Structure"
   :group 'org)
 
-(defgroup org-reveal-location nil
-  "Options about how to make context of a location visible."
-  :tag "Org Reveal Location"
-  :group 'org-structure)
-
 (defcustom org-indirect-buffer-display 'other-window
   "How should indirect tree buffers be displayed?
 
@@ -7863,7 +7858,7 @@ If the file does not exist, throw an error."
       (funcall (cdr (assq 'file org-link-frame-setup)) file)
       (widen)
       (cond (line (org-goto-line line)
-		  (when (derived-mode-p 'org-mode) (org-reveal)))
+		  (when (derived-mode-p 'org-mode) (org-fold-reveal)))
 	    (search (condition-case err
 			(org-link-search search)
 		      ;; Save position before error-ing out so user
@@ -17083,7 +17078,7 @@ an argument, unconditionally call `org-insert-heading'."
      ["Cycle Visibility" org-cycle :active (or (bobp) (outline-on-heading-p))]
      ["Cycle Global Visibility" org-shifttab :active (not (org-at-table-p))]
      ["Sparse Tree..." org-sparse-tree t]
-     ["Reveal Context" org-reveal t]
+     ["Reveal Context" org-fold-reveal t]
      ["Show All" org-fold-show-all t]
      "--"
      ["Subtree to indirect buffer" org-tree-to-indirect-buffer t])
@@ -17780,7 +17775,7 @@ block from point."
      regexp)))
 
 (add-hook 'occur-mode-find-occurrence-hook
-	  (lambda () (when (derived-mode-p 'org-mode) (org-reveal))))
+	  (lambda () (when (derived-mode-p 'org-mode) (org-fold-reveal))))
 
 (defun org-occur-link-in-agenda-files ()
   "Create a link and search for it in the agendas.

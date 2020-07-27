@@ -149,7 +149,7 @@
 (declare-function org-resolve-clocks "org" (&optional only-dangling-p prompt-fn last-valid))
 (declare-function org-return "org" (&optional indent))
 (declare-function org-return-and-maybe-indent "org" ())
-(declare-function org-reveal "org" (&optional siblings))
+(declare-function org-fold-reveal "org-fold" (&optional siblings))
 (declare-function org-schedule "org" (arg &optional time))
 (declare-function org-self-insert-command "org" (N))
 (declare-function org-set-effort "org" (&optional increment value))
@@ -554,7 +554,7 @@ COMMANDS is a list of alternating OLDDEF NEWDEF command names."
 
 ;;;; All the other keys
 (org-defkey org-mode-map (kbd "|") #'org-force-self-insert)
-(org-defkey org-mode-map (kbd "C-c C-r") #'org-reveal)
+(org-defkey org-mode-map (kbd "C-c C-r") #'org-fold-reveal)
 (org-defkey org-mode-map (kbd "C-M-t") #'org-transpose-element)
 (org-defkey org-mode-map (kbd "M-}") #'org-forward-element)
 (org-defkey org-mode-map (kbd "ESC }") #'org-forward-element)

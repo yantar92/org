@@ -9843,7 +9843,7 @@ buffer, display it in another window."
        (find-file-noselect org-agenda-diary-file))
       (require 'org-datetree)
       (org-datetree-find-date-create d1)
-      (org-reveal t))
+      (org-fold-reveal t))
      (t (user-error "Invalid selection character `%c'" char)))))
 
 (defcustom org-agenda-insert-diary-strategy 'date-tree
@@ -9945,7 +9945,7 @@ the resulting entry will not be shown.  When TEXT is empty, switch to
 	  (message "%s entry added to %s"
 		   (capitalize (symbol-name type))
 		   (abbreviate-file-name org-agenda-diary-file)))
-      (org-reveal t)
+      (org-fold-reveal t)
       (message "Please finish entry here"))))
 
 (defun org-agenda-insert-diary-as-top-level (text)

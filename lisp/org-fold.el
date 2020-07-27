@@ -32,6 +32,11 @@
 
 ;;; Customization
 
+(defgroup org-fold-reveal-location nil
+  "Options about how to make context of a location visible."
+  :tag "Org Reveal Location"
+  :group 'org-structure)
+
 
 (defcustom org-fold-show-context-detail '((agenda . local)
 				  (bookmark-jump . lineage)
@@ -81,9 +86,9 @@ As special cases, a nil or t value means show all contexts in
 
 Some views can make displayed information very compact, but also
 make it harder to edit the location of the match.  In such
-a case, use the command `org-reveal' (`\\[org-reveal]') to show
+a case, use the command `org-fold-reveal' (`\\[org-fold-reveal]') to show
 more context."
-  :group 'org-reveal-location
+  :group 'org-fold-reveal-location
   :version "26.1"
   :package-version '(Org . "9.0")
   :type '(choice
