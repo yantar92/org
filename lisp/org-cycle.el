@@ -534,33 +534,6 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
 	       (= (match-end 0) (point-max)))
       (org-fold-region (point) (match-end 0) nil 'outline))))
 
-;;; Org reveal
-
-(defvar org-reveal-start-hook nil
-  "Hook run before revealing a location.")
-
-(defun org-reveal (&optional siblings)
-  "Show current entry, hierarchy above it, and the following headline.
-
-This can be used to show a consistent set of context around
-locations exposed with `org-fold-show-context'.
-
-With optional argument SIBLINGS, on each level of the hierarchy all
-siblings are shown.  This repairs the tree structure to what it would
-look like when opened with hierarchical calls to `org-cycle'.
-
-With a \\[universal-argument] \\[universal-argument] prefix, \
-go to the parent and show the entire tree."
-  (interactive "P")
-  (run-hooks 'org-reveal-start-hook)
-  (cond ((equal siblings '(4)) (org-fold-show-set-visibility 'canonical))
-	((equal siblings '(16))
-	 (save-excursion
-	   (when (org-up-heading-safe)
-	     (org-fold-show-subtree)
-	     (run-hook-with-args 'org-cycle-hook 'subtree))))
-	(t (org-fold-show-set-visibility 'lineage))))
-
 (provide 'org-cycle)
 
 ;;; org-cycle.el ends here
