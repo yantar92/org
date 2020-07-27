@@ -273,7 +273,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	      (or
 	       (save-excursion
 		 (let ((level (funcall outline-level)))
-		   (outline-next-heading)
+                   (org-with-limited-levels
+		    (outline-next-heading))
 		   (and (org-at-heading-p t)
 			(> (funcall outline-level) level))))
 	       (and (eq org-cycle-include-plain-lists 'integrate)
@@ -296,7 +297,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (setq org-cycle-subtree-status nil)
       (save-excursion
 	(goto-char eos)
-	(outline-next-heading)
+        (org-with-limited-levels
+	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil))))
      ((and (or (>= eol eos)
 	       (not (string-match "\\S-" (buffer-substring eol eos))))
@@ -326,7 +328,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (org-unlogged-message "CHILDREN")
       (save-excursion
 	(goto-char eos)
-	(outline-next-heading)
+        (org-with-limited-levels
+	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil)))
       (setq org-cycle-subtree-status 'children)
       (unless (org-before-first-heading-p)
