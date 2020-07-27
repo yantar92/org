@@ -669,7 +669,7 @@ Return a non-nil value when toggling is successful."
 (defun org-fold-show-context (&optional key)
   "Make sure point and context are visible.
 Optional argument KEY, when non-nil, is a symbol.  See
-`org-show-context-detail' for allowed values and how much is to
+`org-fold-show-context-detail' for allowed values and how much is to
 be shown."
   (org-fold-show-set-visibility
    (cond ((symbolp org-fold-show-context-detail) org-fold-show-context-detail)
@@ -679,7 +679,7 @@ be shown."
 (defun org-fold-show-set-visibility (detail)
   "Set visibility around point according to DETAIL.
 DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
-`tree', `canonical' or t.  See `org-show-context-detail' for more
+`tree', `canonical' or t.  See `org-fold-show-context-detail' for more
 information."
   ;; Show current heading and possibly its entry, following headline
   ;; or all children.
