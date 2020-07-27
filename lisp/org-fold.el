@@ -311,7 +311,7 @@ Return nil when no fold is present at point of POM."
 
 (defun org-fold-next-visibility-change (&optional spec pos limit)
   "Return next point where folding state SPEC changes relative to POS or LIMIT.
-If SPEC is nil, return next point where visibility changes."
+If SPEC is nil, return next point where _any_ spec changes."
   (when spec (org-fold--check-spec spec))
   (let ((pos (or pos (point)))
 	(prop (if spec
@@ -322,7 +322,7 @@ If SPEC is nil, return next point where visibility changes."
 
 (defun org-fold-previous-visibility-change (&optional spec pos limit)
   "Return previous point where folding state SPEC changes relative to POS or LIMIT.
-If SPEC is nil, return previous point where visibility changes."
+If SPEC is nil, return previous point where _any_ spec changes."
   (when spec (org-fold--check-spec spec))
   (let ((pos (or pos (point)))
 	(prop (if spec
