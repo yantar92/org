@@ -319,7 +319,7 @@ Search backwards is PREVIOUS-P is non-nil."
 		  (org-fold--property-symbol-get-create spec nil t)
                 'invisible)))
     (or (if previous-p
-	    (previous-single-char-property-change pos prop nil (or limit (point-max)))
+	    (previous-single-char-property-change pos prop nil (or limit (point-min)))
 	  (next-single-char-property-change pos prop nil (or limit (point-max))))
 	pos)))
 
