@@ -144,7 +144,7 @@ because otherwise all these markers will point to nowhere."
 	  (dolist (type ,invisible-types)
 	    (remove-overlays (point-min) (point-max) 'invisible type))
 	  (pcase-dolist (`(,beg ,end ,type) (delq nil ,data))
-	    (org-flag-region beg end t type)
+	    (org-fold-region beg end t type)
 	    (when ,markers?
 	      (set-marker beg nil)
 	      (set-marker end nil))))))))
