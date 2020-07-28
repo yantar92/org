@@ -653,10 +653,12 @@ Return a non-nil value when toggling is successful."
   (org-block-map 'org-fold-hide-block-toggle))
 
 (defun org-fold-hide-drawer-all ()
-  "Fold all drawers in the current buffer or narrow."
+  "Fold all visible drawers in the current buffer or narrow."
   (save-excursion
     (goto-char (point-min))
     (while (re-search-forward org-drawer-regexp nil t)
+      ;; Skip drawers in folded headings
+      (when (org-fold-get-folding-spec) (goto-char (org-fold-next-visibility-change 'outline)))
       (let* ((drawer (org-element-at-point))
 	     (type (org-element-type drawer)))
 	(when (memq type '(drawer property-drawer))
