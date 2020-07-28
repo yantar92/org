@@ -215,6 +215,12 @@ Case is significant."
 (define-obsolete-function-alias 'org-select-frame-set-input-focus 'select-frame-set-input-focus "Org 9.0")
 (define-obsolete-function-alias 'org-file-remote-p 'file-remote-p "Org 9.2")
 
+(define-obsolete-function-alias 'org-reveal 'org-fold-reveal "Org 9.4")
+(define-obsolete-function-alias 'org-show-context 'org-fold-show-context "Org 9.4")
+(define-obsolete-function-alias 'org-show-entry 'org-fold-show-entry "Org 9.4")
+(define-obsolete-function-alias 'org-show-children 'org-fold-show-children "Org 9.4")
+
+
 (defmacro org-re (s)
   "Replace posix classes in regular expression S."
   (declare (debug (form))
