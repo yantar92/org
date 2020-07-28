@@ -309,27 +309,24 @@ Return nil when no fold is present at point of POM."
 			end)))
         (cons beg end)))))
 
-(defun org-fold-next-visibility-change (&optional spec pos limit)
+(defun org-fold-next-visibility-change (&optional spec pos limit previous-p)
   "Return next point where folding state SPEC changes relative to POS or LIMIT.
-If SPEC is nil, return next point where _any_ spec changes."
+If SPEC is nil, return next point where _any_ spec changes.
+Search backwards is PREVIOUS-P is non-nil."
   (when spec (org-fold--check-spec spec))
   (let ((pos (or pos (point)))
 	(prop (if spec
 		  (org-fold--property-symbol-get-create spec nil t)
                 'invisible)))
-    (or (next-single-char-property-change pos prop nil (or limit (point-max)))
+    (or (if previous-p
+	    (previous-single-char-property-change pos prop nil (or limit (point-max)))
+	  (next-single-char-property-change pos prop nil (or limit (point-max))))
 	pos)))
 
 (defun org-fold-previous-visibility-change (&optional spec pos limit)
   "Return previous point where folding state SPEC changes relative to POS or LIMIT.
 If SPEC is nil, return previous point where _any_ spec changes."
-  (when spec (org-fold--check-spec spec))
-  (let ((pos (or pos (point)))
-	(prop (if spec
-		  (org-fold--property-symbol-get-create spec nil t)
-                'invisible)))
-    (or (previous-single-char-property-change pos prop nil (or limit (point-min)))
-	pos)))
+  (org-fold-next-visibility-change spec pos limit 'previous))
 
 (defun org-fold-search-forward (spec &optional limit)
   "Search next region folded via folding SPEC up to LIMIT.
