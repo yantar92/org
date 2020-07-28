@@ -655,7 +655,7 @@ region as a drawer without further ado."
 		    (org-element-at-point)))))
       (when (memq (org-element-type drawer) '(drawer property-drawer))
 	(let ((post (org-element-property :post-affiliated drawer)))
-	  (org-flag-region
+	  (org-fold-region
 	   (save-excursion (goto-char post) (line-end-position))
 	   (save-excursion (goto-char (org-element-property :end drawer))
 			   (skip-chars-backward " \t\n")
