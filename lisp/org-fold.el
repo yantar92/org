@@ -667,8 +667,8 @@ Return a non-nil value when toggling is successful."
 	  ;; be folded, or in a folded headline.  In that case, do not
 	  ;; re-hide it.
 	  (unless (and (eq type 'property-drawer)
-		       (org-fold-get-folding-spec 'org-hide-drawer)))
-	  (org-fold-hide-drawer-toggle t nil drawer)
+		       (org-fold-get-folding-spec))
+	    (org-fold-hide-drawer-toggle t nil drawer))
 	  ;; Make sure to skip drawer entirely or we might flag it
 	  ;; another time when matching its ending line with
 	  ;; `org-drawer-regexp'.
