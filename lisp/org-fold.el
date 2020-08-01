@@ -157,9 +157,9 @@ unless RETURN-ONLY is non-nil."
             local-prop
           (unless return-only
 	    (with-current-buffer buf
-	      (unless (member local-prop (alist-get 'invisible char-property-alias-alist))
+	      (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
 		;; copy old property
-		(dolist (old-prop (alist-get 'invisible char-property-alias-alist))
+		(dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
 		  (org-with-wide-buffer
 		   (let* ((pos (point-min))
 			  (spec (seq-find (lambda (spec)
