@@ -300,7 +300,7 @@ Return nil when no fold is present at point of POM."
   (when spec (org-fold--check-spec spec))
   (org-with-point-at (or pom (point))
     (if spec
-	(org--find-text-property-region (point) (org-fold--property-symbol-get-create spec nil t))
+	(org-find-text-property-region (point) (org-fold--property-symbol-get-create spec nil t))
       (let ((beg (point))
 	    (end (point)))
         (while (get-text-property beg 'invisible)
@@ -868,7 +868,7 @@ of text properties.  The created overlays will be stored in
       ;; properties, which may be nested.
       (while (memq (get-text-property pos 'invisible) org-fold--isearch-specs)
 	(let* ((spec (get-text-property pos 'invisible))
-               (region (org--find-text-property-region pos (org-fold--property-symbol-get-create spec nil t))))
+               (region (org-find-text-property-region pos (org-fold--property-symbol-get-create spec nil t))))
 	  ;; Changing text properties is considered buffer modification.
 	  ;; We do not want it here.
 	  (with-silent-modifications
