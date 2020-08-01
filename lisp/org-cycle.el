@@ -284,7 +284,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (beginning-of-line 2)
       (while (and (not (eobp))		;this is like `next-line'
 		  (org-fold-get-folding-spec nil (1- (point))))
-	(goto-char (next-single-char-property-change (point) 'invisible))
+	(goto-char (org-fold-next-visibility-change (point)))
 	(and (eolp) (beginning-of-line 2)))
       (setq eol (point)))
     ;; Find out what to do next and set `this-command'
