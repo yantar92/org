@@ -1243,8 +1243,7 @@ Throw an error if there is no such buffer."
       (goto-char beg)
       (cond
        ;; Block is hidden; move at start of block.
-       ((cl-some (lambda (o) (eq (overlay-get o 'invisible) 'org-hide-block))
-		 (overlays-at (point)))
+       ((org-fold-get-folding-spec 'org-hide-block)
 	(beginning-of-line 0))
        (write-back (org-src--goto-coordinates coordinates beg end))))
     ;; Clean up left-over markers and restore window configuration.
