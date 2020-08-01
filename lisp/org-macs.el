@@ -1136,9 +1136,9 @@ If POS is nil, use `point' instead.  When optional argument
 FOLDING-ONLY is non-nil, only consider invisible parts due to
 folding of a headline, a block or a drawer, i.e., not because of
 fontification."
-  (let ((value (get-char-property (or pos (point)) 'invisible)))
+  (let ((value (invisible-p (or pos (point)))))
     (cond ((not value) nil)
-	  (folding-only (memq value '(org-hide-block outline)))
+	  (folding-only (org-fold-folded-p (or pos (point))))
 	  (t value))))
 
 (defun org-truely-invisible-p ()
