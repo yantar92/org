@@ -603,7 +603,7 @@ use of this function is for the stuck project list."
 (defun org-show-block-all ()
   "Unfold all blocks in the current buffer."
   (interactive)
-  (remove-overlays nil nil 'invisible 'org-hide-block))
+  (org-fold-show-all '(blocks)))
 
 (make-obsolete 'org-show-block-all
 	       "use `org-show-all' instead."
