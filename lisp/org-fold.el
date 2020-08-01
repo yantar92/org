@@ -162,10 +162,11 @@ unless RETURN-ONLY is non-nil."
 		(dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
 		  (org-with-wide-buffer
 		   (let* ((pos (point-min))
-			  (spec (seq-find (lambda (spec)
-					    (string-match-p (symbol-name spec)
-							    (symbol-name old-prop)))
-					  org-fold--spec-priority-list))
+			  (spec (catch :exit
+				  (dolist (spec org-fold--spec-priority-list)
+                                    (when (string-match-p (symbol-name spec)
+							  (symbol-name old-prop))
+                                      (throw :exit spec)))))
 			  (new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
 		     (while (< pos (point-max))
 		       (let (val (get-text-property pos old-prop))
