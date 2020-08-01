@@ -15656,16 +15656,16 @@ The detailed reaction depends on the user option `org-catch-invisible-edits'."
 	     (or (not (boundp 'visible-mode)) (not visible-mode))
 	     (or (org-invisible-p)
 		 (org-invisible-p (max (point-min) (1- (point))))))
-    ;; OK, we need to take a closer look.  Do not consider
-    ;; invisibility obtained through text properties (e.g., link
+    ;; OK, we need to take a closer look.  Only consider invisibility
+    ;; caused by folding, not by fontification (e.g., link
     ;; fontification), as it cannot be toggled.
-    (let* ((invisible-at-point (org-invisible-p))
+    (let* ((invisible-at-point (org-fold-folded-p))
 	   ;; Assume that point cannot land in the middle of an
 	   ;; overlay, or between two overlays.
 	   (invisible-before-point
 	    (and (not invisible-at-point)
 		 (not (bobp))
-		 (org-invisible-p (1- (point)))))
+		 (org-fold-folded-p (1- (point)))))
 	   (border-and-ok-direction
 	    (or
 	     ;; Check if we are acting predictably before invisible
@@ -15685,13 +15685,8 @@ The detailed reaction depends on the user option `org-catch-invisible-edits'."
 		 (y-or-n-p "Display invisible properties in this buffer? "))
 	    (org-toggle-custom-properties-visibility)
 	  ;; Make the area visible
-	  (save-excursion
-	    (when invisible-before-point
-	      (goto-char
-	       (previous-single-char-property-change (point) 'invisible)))
-            (dolist (spec (org-fold-get-folding-spec 'all))
-              (let ((region (org-fold-get-region-at-point spec)))
-		(org-fold-region (car region) (cdr region) nil spec))))
+          (save-excursion
+	    (org-fold-show-context 'minimal))
 	  (cond
 	   ((eq org-catch-invisible-edits 'show)
 	    ;; That's it, we do the edit after showing
