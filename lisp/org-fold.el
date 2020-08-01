@@ -168,8 +168,9 @@ unless RETURN-ONLY is non-nil."
 					  org-fold--spec-priority-list))
 			  (new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
 		     (while (< pos (point-max))
-		       (when-let (val (get-text-property pos old-prop))
-			 (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val))
+		       (let (val (get-text-property pos old-prop))
+			 (when val
+			   (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
 		       (setq pos (next-single-char-property-change pos old-prop))))))
 		(setq-local char-property-alias-alist
 			    (cons (cons 'invisible
