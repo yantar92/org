@@ -94,7 +94,6 @@
   :tag "Org Reveal Location"
   :group 'org-structure)
 
-
 (defcustom org-fold-show-context-detail '((agenda . local)
 				  (bookmark-jump . lineage)
 				  (isearch . lineage)
@@ -178,17 +177,21 @@ more context."
 
 ;;;; Buffer-local folding specs
 
-(defvar-local org-fold--spec-priority-list '(outline org-hide-drawer org-hide-block)
+(defvar-local org-fold--spec-priority-list '(org-fold-outline
+				     org-fold-drawer
+                                     org-fold-block)
   "Priority of folding specs.
 If a region has multiple folding specs at the same time, only the
 first property from this list will be considered.")
 
-(defvar-local org-fold--spec-with-ellipsis '(outline org-hide-drawer org-hide-block)
+(defvar-local org-fold--spec-with-ellipsis '(org-fold-outline
+				     org-fold-drawer
+                                     org-fold-block)
   "A list of folding specs, which should be indicated by `org-ellipsis'.")
 
-(defvar-local org-fold--isearch-specs '(org-hide-block
-				org-hide-drawer
-				outline)
+(defvar-local org-fold--isearch-specs '(org-fold-block
+				org-fold-drawer
+				'org-fold-outline)
   "List of text invisibility specs to be searched by isearch.
 By default ([2020-05-09 Sat]), isearch does not search in hidden text,
 which was made invisible using text properties.  Isearch will be forced
