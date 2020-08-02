@@ -24,6 +24,63 @@
 ;;
 ;;; Commentary:
 
+;; This file contains code handling temporary invisibility (folding)
+;; of text in org buffers.
+
+;; The file implements the following functionality:
+;; - Folding/unfolding text regions and org elements
+;; - Searching and examining folded text
+;; - Revealing text around point
+;; - Interactive searching in folded text (via isearch)
+;; - Handling edits in folded text
+
+;;; Folding/unfolding text regions and org elements
+
+;; User can temporarily fold/unfold arbitrary regions of text inside
+;; headlines, blocks, or drawers.
+
+;; Internally, different types of elements are marked with different
+;; folding specs (see `org-fold--spec-priority-list' for the list of available
+;; specs).  Overlapping folds marked with the same folding spec are
+;; automatically merged, while folds with different folding specs can
+;; coexist and be folded/unfolded independently.
+
+;; By default, we define tree types of folding specs:
+;; - for headlines
+;; - for all kinds of blocks
+;; - for drawers (including property drawers)
+
+;; If necessary, one can add extra folding specs using
+;; `org-fold-add-folding-spec'.
+
+;; Because of details of implementation of the folding, it is not
+;; recommended to set text visibility in org buffer directly by
+;; setting 'invisible text property to anything other than t.  While
+;; this should usually work just fine, normal org folding can be
+;; broken if one sets 'invisible text property to a value not listed
+;; in `buffer-invisibility-spec'.
+
+;;; Searching and examining folded text
+
+;; It is possible to examine folding specs (there may be several) of
+;; text at point or search for regions with the same folding spec.
+
+;; If one wants to search invisible text without using functions
+;; defined here, it is important to keep in mind that 'invisible text
+;; property in org buffers may have multiple possible values (not just nil
+;; and t). Hence, (next-single-char-property-change pos 'invisible) is
+;; not guarantied to return the boundary of invisible/visible text.
+
+;;; Revealing text around point
+
+;; In addition to unfolding individual org elements, it is possible to
+;; unfold meaningful headline structure around point using
+;; `org-fold-show-context' and `org-fold-reveal'.  There are several possible variants
+;; of structure to be revealed.  See `org-fold-show-context-detail' for the
+;; details.
+
+
+
 ;;; Code:
 
 (require 'org-macs)
