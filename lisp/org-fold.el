@@ -556,6 +556,15 @@ When optional argument TYPE is a list of symbols among `blocks',
 	       (`headings (org-fold-get-folding-spec-for-element 'headline))
 	       (_ (error "Invalid type: %S" type))))))
 
+(defun org-fold-flag-above-first-heading (&optional arg)
+  "Hide from bob up to the first heading.
+Move point to the beginning of first heading or end of buffer."
+  (goto-char (point-min))
+  (unless (org-at-heading-p)
+    (outline-next-heading))
+  (unless (bobp)
+    (org-fold-region 1 (1- (point)) (not arg) (org-fold-get-folding-spec-for-element 'headline))))
+
 ;;;;; Heading visibility
 
 (defun org-fold-heading (flag &optional entry)
@@ -724,15 +733,6 @@ heading to appear."
     (while (outline-get-next-sibling)
       (org-fold-show-branches)))
   (goto-char (point-min)))
-
-(defun org-fold-flag-above-first-heading (&optional arg)
-  "Hide from bob up to the first heading.
-Move point to the beginning of first heading or end of buffer."
-  (goto-char (point-min))
-  (unless (org-at-heading-p)
-    (outline-next-heading))
-  (unless (bobp)
-    (org-fold-region 1 (1- (point)) (not arg) 'outline)))
 
 ;;;;; Blocks and drawers visibility
 
