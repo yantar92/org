@@ -216,15 +216,32 @@ to search in hidden text with any of the listed 'invisible property value.")
     ('drawer 'org-fold-drawer)
     ('property-drawer 'org-fold-drawer)
     (_ nil)))
+
+;; This is the core function used to fold text in org buffers.  We use
+;; text properties to hide folded text, however 'invisible property is
+;; not directly used. Instead, we define unique text property (folding
+;; property) for every possible folding spec and add the resulting
+;; text properties into `char-property-alias-alist', so that
+;; 'invisible text property is automatically defined if any of the
+;; folding properties is non-nil.
+;; This approach lets us maintain multiple folds for the same text
+;; region - poor man's overlays (but much faster).
+;; Additionally, folding properties are ensured to be unique for
+;; different buffers (especially for indirect buffers). This is done
+;; to allow different folding states in indirect org buffers.
+;; If one changes folding state in a fresh indirect buffer, all the
+;; folding properties carried from the base buffer are updated to
+;; become unique in the new indirect buffer.
 (defun org-fold--property-symbol-get-create (spec &optional buffer return-only)
-  "Return unique symbol suitable to be used as folding SPEC in BUFFER.
+  "Return unique symbol suitable to be used as folding text property corresponding to folding SPEC in BUFFER.
 If the buffer already have buffer-local setup in `char-property-alias-alist'
 and the setup appears to be created for different buffer,
 copy the old invisibility state into new buffer-local text properties,
 unless RETURN-ONLY is non-nil."
   (if (not (member spec org-fold--spec-priority-list))
-      (user-error "%s should be a valid invisibility spec" spec)
+      (user-error "%s should be a valid folding spec" spec)
     (let* ((buf (or buffer (current-buffer))))
+      ;; Create unique property symbol for SPEC in BUFFER
       (let ((local-prop (intern (format "org-fold--spec-%s-%S"
 					(symbol-name spec)
 					;; (sxhash buf) appears to be not constant over time.
@@ -236,22 +253,36 @@ unless RETURN-ONLY is non-nil."
             local-prop
           (unless return-only
 	    (with-current-buffer buf
+              ;; Update folding properties carried over from other
+              ;; buffer (implying that current buffer is indirect
+              ;; buffer). Normally, `char-property-alias-alist' in new
+              ;; indirect buffer is a copy of the same variable from
+              ;; the base buffer. Then, `char-property-alias-alist'
+              ;; would contain folding properties, which are not
+              ;; matching the generated `local-prop'.
 	      (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
-		;; copy old property
+		;; Copy all the old folding properties to preserve the folding state
 		(dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
 		  (org-with-wide-buffer
 		   (let* ((pos (point-min))
+			  ;; We know that folding properties have
+			  ;; folding spec in their name. Extract that
+			  ;; spec.
 			  (spec (catch :exit
 				  (dolist (spec org-fold--spec-priority-list)
                                     (when (string-match-p (symbol-name spec)
 							  (symbol-name old-prop))
                                       (throw :exit spec)))))
+                          ;; Generate new buffer-unique folding property
 			  (new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
+                     ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
 		     (while (< pos (point-max))
 		       (let ((val (get-text-property pos old-prop)))
 			 (when val
 			   (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
 		       (setq pos (next-single-char-property-change pos old-prop))))))
+                ;; Update `char-property-alias-alist' with folding
+                ;; properties unique for the current buffer.
 		(setq-local char-property-alias-alist
 			    (cons (cons 'invisible
 					(mapcar (lambda (spec)
