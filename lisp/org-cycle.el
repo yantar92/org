@@ -50,7 +50,7 @@ STATE should be one of the symbols listed in the docstring of
 	(while (re-search-forward org-drawer-regexp end t)
 	  (if (org-fold-get-folding-spec)
 	      ;; Do not fold already folded drawers.
-              (goto-char (min end (org-fold-next-folding-state-change 'org-hide-drawer)))
+              (goto-char (min end (org-fold-next-folding-state-change (org-fold-get-folding-spec-for-element 'drawer))))
 	    (let ((drawer (org-element-at-point)))
 	      (when (memq (org-element-type drawer) '(drawer property-drawer))
 		(org-fold-hide-drawer-toggle t nil drawer)
@@ -341,7 +341,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       ;; now show everything.
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-pre-cycle-hook 'subtree))
-      (org-fold-region eoh eos nil 'outline)
+      (org-fold-region eoh eos nil (org-fold-get-folding-spec-for-element 'headline))
       (org-unlogged-message
        (if children-skipped "SUBTREE (NO CHILDREN)" "SUBTREE"))
       (setq org-cycle-subtree-status 'subtree)
@@ -350,7 +350,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
      (t
       ;; Default action: hide the subtree.
       (run-hook-with-args 'org-pre-cycle-hook 'folded)
-      (org-fold-region eoh eos t 'outline)
+      (org-fold-region eoh eos t (org-fold-get-folding-spec-for-element 'headline))
       (org-unlogged-message "FOLDED")
       (setq org-cycle-subtree-status 'folded)
       (unless (org-before-first-heading-p)
@@ -428,11 +428,11 @@ With a numeric prefix, show all headlines up to that level."
              (level (- (match-end 0) (match-beginning 0) 1))
              (regexp (format "^\\*\\{1,%d\\} " level)))
         (while (re-search-forward regexp nil :move)
-          (org-fold-region last (line-end-position 0) t 'outline)
+          (org-fold-region last (line-end-position 0) t (org-fold-get-folding-spec-for-element 'headline))
           (setq last (line-end-position))
           (setq level (- (match-end 0) (match-beginning 0) 1))
           (setq regexp (format "^\\*\\{1,%d\\} " level)))
-        (org-fold-region last (point) t 'outline)))))
+        (org-fold-region last (point) t (org-fold-get-folding-spec-for-element 'headline))))))
 
 (defun org-content (&optional arg)
   "Show all headlines in the buffer, like a table of contents.
@@ -446,7 +446,7 @@ With numerical argument N, show content up to level N."
                     "^\\*+ "))
           (last (point)))
       (while (re-search-backward regexp nil t)
-        (org-fold-region (line-end-position) last t 'outline)
+        (org-fold-region (line-end-position) last t (org-fold-get-folding-spec-for-element 'headline))
         (setq last (line-end-position 0))))))
 
 (defun org-optimize-window-after-visibility-change (state)
@@ -524,7 +524,7 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
 			   (goto-char (match-beginning 0))
 			   (skip-chars-backward " \t\n")
 			   (line-end-position)))))
-		(org-fold-region b e nil 'outline))))))))
+		(org-fold-region b e nil (org-fold-get-folding-spec-for-element 'headline)))))))))
   ;; Never hide empty lines at the end of the file.
   (save-excursion
     (goto-char (point-max))
@@ -532,7 +532,7 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
     (outline-end-of-heading)
     (when (and (looking-at "[ \t\n]+")
 	       (= (match-end 0) (point-max)))
-      (org-fold-region (point) (match-end 0) nil 'outline))))
+      (org-fold-region (point) (match-end 0) nil (org-fold-get-folding-spec-for-element 'headline)))))
 
 (provide 'org-cycle)
 

@@ -137,6 +137,25 @@ By default ([2020-05-09 Sat]), isearch does not search in hidden text,
 which was made invisible using text properties.  Isearch will be forced
 to search in hidden text with any of the listed 'invisible property value.")
 
+(defsubst org-fold-get-folding-spec-for-element (type)
+  "Return name of folding spec for element TYPE."
+  (pcase type
+    ('headline 'org-fold-outline)
+    ('inlinetask 'org-fold-outline)
+    ('plain-list 'org-fold-outline)
+    ('block 'org-fold-block)
+    ('center-block 'org-fold-block)
+    ('comment-block 'org-fold-block)
+    ('dynamic-block 'org-fold-block)
+    ('example-block 'org-fold-block)
+    ('export-block 'org-fold-block)
+    ('quote-block 'org-fold-block)
+    ('special-block 'org-fold-block)
+    ('src-block 'org-fold-block)
+    ('verse-block 'org-fold-block)
+    ('drawer 'org-fold-drawer)
+    ('property-drawer 'org-fold-drawer)
+    (_ nil)))
 (defun org-fold--property-symbol-get-create (spec &optional buffer return-only)
   "Return unique symbol suitable to be used as folding SPEC in BUFFER.
 If the buffer already have buffer-local setup in `char-property-alias-alist'
@@ -441,9 +460,9 @@ When optional argument TYPE is a list of symbols among `blocks',
   (dolist (type (or types '(blocks drawers headings)))
     (org-fold-region (point-min) (point-max) nil
 	     (pcase type
-	       (`blocks 'org-hide-block)
-	       (`drawers 'org-hide-drawer)
-	       (`headings 'outline)
+	       (`blocks (org-fold-get-folding-spec-for-element 'block))
+	       (`drawers (org-fold-get-folding-spec-for-element 'drawer))
+	       (`headings (org-fold-get-folding-spec-for-element 'headline))
 	       (_ (error "Invalid type: %S" type))))))
 
 ;;;;; Heading visibility
@@ -456,7 +475,7 @@ When ENTRY is non-nil, show the entire entry."
     ;; Check if we should show the entire entry
     (if (not entry)
 	(org-fold-region
-	 (line-end-position 0) (line-end-position) flag 'outline)
+	 (line-end-position 0) (line-end-position) flag (org-fold-get-folding-spec-for-element 'headline))
       (org-fold-show-entry)
       (save-excursion
 	;; FIXME: potentially catches inlinetasks
@@ -470,7 +489,7 @@ When ENTRY is non-nil, show the entire entry."
     (org-back-to-heading)
     ;; FIXME: use org version
     (outline-end-of-heading)
-    (org-fold-region (point) (progn (outline-next-preface) (point)) t 'outline)))
+    (org-fold-region (point) (progn (outline-next-preface) (point)) t (org-fold-get-folding-spec-for-element 'headline))))
 
 (defun org-fold-subtree (flag)
   (save-excursion
@@ -478,7 +497,7 @@ When ENTRY is non-nil, show the entire entry."
     (org-fold-region (line-end-position)
 	     (progn (org-end-of-subtree t) (point))
 	     flag
-	     'outline)))
+	     (org-fold-get-folding-spec-for-element 'headline))))
 
 (defun org-fold-hide-subtree ()
   "Hide everything after this heading at deeper levels."
@@ -514,7 +533,7 @@ of the current heading, or to 1 if the current line is not a heading."
       (if (< end beg)
 	  (setq beg (prog1 end (setq end beg))))
       ;; First hide everything.
-      (org-fold-region beg end t 'outline)
+      (org-fold-region beg end t (org-fold-get-folding-spec-for-element 'headline))
       ;; Then unhide the top level headers.
       (org-map-region
        (lambda ()
@@ -539,7 +558,7 @@ Show the heading too, if it is currently invisible."
 		      (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
 		     (match-beginning 1)
 		   (point-max)))))
-      (org-fold-region beg end nil 'outline)
+      (org-fold-region beg end nil (org-fold-get-folding-spec-for-element 'headline))
       (org-fold-hide-drawer-all))))
 
 ;; FIXME: defalias instead?
@@ -598,7 +617,7 @@ heading to appear."
   "Show everything after this heading at deeper levels."
   (interactive)
   (org-fold-region
-   (point) (save-excursion (org-end-of-subtree t t)) nil 'outline))
+   (point) (save-excursion (org-end-of-subtree t t)) nil (org-fold-get-folding-spec-for-element 'headline)))
 
 (defun org-fold-show-branches ()
   "Show all subheadings of this heading, but not their bodies."
@@ -656,9 +675,9 @@ Return a non-nil value when toggling is successful."
 	;; at the block closing line.
 	(unless (let ((eol (line-end-position)))
 		  (and (> eol start) (/= eol end)))
-	  (let* ((spec (cond ((eq category 'block) 'org-hide-block)
-			     ((eq category 'drawer) 'org-hide-drawer)
-			     (t 'outline)))
+	  (let* ((spec (cond ((eq category 'block) (org-fold-get-folding-spec-for-element 'block))
+			     ((eq category 'drawer) (org-fold-get-folding-spec-for-element 'drawer))
+			     (t (org-fold-get-folding-spec-for-element 'headline))))
 		 (flag
 		  (cond ((eq force 'off) nil)
 			(force t)
@@ -756,7 +775,7 @@ information."
     ;; If point is hidden within a drawer or a block, make sure to
     ;; expose it.
     (when (memq (org-fold-get-folding-spec)
-		'(org-hide-block org-hide-drawer))
+		(list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
       (let* ((spec (org-fold-get-folding-spec))
 	     (region (org-fold-get-region-at-point spec)))
 	(org-fold-region (car region) (cdr region) nil spec)))
@@ -955,22 +974,23 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
    (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
    ;; Expand the considered region to include partially present folded
    ;; drawer/block.
-   (when (org-fold-get-folding-spec 'org-hide-drawer from)
-     (setq from (org-fold-previous-folding-state-change 'org-hide-drawer from)))
-   (when (org-fold-get-folding-spec 'org-hide-block from)
-     (setq from (org-fold-previous-folding-state-change 'org-hide-block from)))
+   (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'drawer) from)
+     (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'drawer) from)))
+   (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'block) from)
+     (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'block) from)))
    ;; Check folded drawers and blocks.
-   (dolist (spec '(org-hide-drawer org-hide-block))
+   (dolist (spec (list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
      (let ((pos from)
-	   (begin-re (pcase spec
-		       ('org-hide-drawer org-drawer-regexp)
-                       ;; Group one below contains the type of the block.
-                       ('org-hide-block (rx bol
-					    (zero-or-more (any " " "\t"))
-					    "#+begin"
-					    (or ":"
-						(seq "_"
-						     (group (one-or-more (not (syntax whitespace))))))))))
+	   (begin-re (cond
+		      ((eq spec (org-fold-get-folding-spec-for-element 'drawer))
+		       org-drawer-regexp)
+		      ;; Group one below contains the type of the block.
+		      ((eq spec (org-fold-get-folding-spec-for-element 'block))
+		       (rx bol (zero-or-more (any " " "\t"))
+						      "#+begin"
+			   (or ":"
+			       (seq "_"
+				    (group (one-or-more (not (syntax whitespace))))))))))
            ;; To be determined later. May depend on `begin-re' match (i.e. for blocks).
            end-re)
        ;; Move to the first hidden drawer/block.
@@ -998,16 +1018,17 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 		       (throw :exit (setq unfold? t))))
                    ;; Set `end-re' for the current drawer/block.
                    (setq end-re
-			 (pcase spec
-			   ('org-hide-drawer org-property-end-re)
-			   ('org-hide-block
-			    (let ((block-type (match-string 1))) ; the last match is from `begin-re'
-			      (concat (rx bol (zero-or-more (any " " "\t")) "#+end")
-				      (if block-type
-					  (concat "_"
-						  (regexp-quote block-type)
-						  (rx (zero-or-more (any " " "\t")) eol))
-					(rx (opt ":") (zero-or-more (any " " "\t")) eol)))))))
+			 (cond
+			  ((eq spec (org-fold-get-folding-spec-for-element 'drawer))
+                           org-property-end-re)
+			  ((eq spec (org-fold-get-folding-spec-for-element 'block))
+			   (let ((block-type (match-string 1))) ; the last match is from `begin-re'
+			     (concat (rx bol (zero-or-more (any " " "\t")) "#+end")
+				     (if block-type
+					 (concat "_"
+						 (regexp-quote block-type)
+						 (rx (zero-or-more (any " " "\t")) eol))
+				       (rx (opt ":") (zero-or-more (any " " "\t")) eol)))))))
 		   ;; The last line of the folded text should match `end-re'.
 		   (save-excursion
 		     (goto-char fold-end)

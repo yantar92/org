@@ -6072,11 +6072,11 @@ unconditionally."
       ;; When INVISIBLE-OK is non-nil, ensure newly created headline
       ;; is visible.
       (unless invisible-ok
-	(pcase (org-fold-get-folding-spec)
-	  ('outline
-           (let ((region (org-fold-get-region-at-point)))
-	     (org-fold-region (line-end-position 0) (cdr region) nil 'outline)))
-	  (_ nil))))
+	(cond
+	 ((eq (org-fold-get-folding-spec) (org-fold-get-folding-spec-for-element 'headline))
+          (let ((region (org-fold-get-region-at-point)))
+	    (org-fold-region (line-end-position 0) (cdr region) nil (org-fold-get-folding-spec-for-element 'headline))))
+	 (t nil))))
      ;; At a headline...
      ((org-at-heading-p)
       (cond ((bolp)
@@ -6672,8 +6672,8 @@ case."
      (setq txt (buffer-substring beg end))
      (org-save-markers-in-region beg end)
      (delete-region beg end)
-     (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil 'outline))
-     (unless (bobp) (org-fold-region (1- (point)) (point) nil 'outline))
+     (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil (org-fold-get-folding-spec-for-element 'headline)))
+     (unless (bobp) (org-fold-region (1- (point)) (point) nil (org-fold-get-folding-spec-for-element 'headline)))
      (and (not (bolp)) (looking-at "\n") (forward-char 1))
      (let ((bbb (point)))
        (insert-before-markers txt)
@@ -9894,7 +9894,7 @@ narrowing."
 	       (insert ":" drawer ":\n:END:\n")
 	       (org-indent-region beg (point))
 	       (org-fold-region
-		(line-end-position -1) (1- (point)) t 'org-hide-drawer))
+		(line-end-position -1) (1- (point)) t (org-fold-get-folding-spec-for-element 'drawer)))
 	     (end-of-line -1)))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
@@ -11108,7 +11108,7 @@ This function assumes point is on a headline."
 	 ;; boundary, it can be inadvertently sucked into
 	 ;; invisibility.
 	 (unless (org-invisible-p (line-beginning-position))
-	   (org-fold-region (point) (line-end-position) nil 'outline))))
+	   (org-fold-region (point) (line-end-position) nil (org-fold-get-folding-spec-for-element 'headline)))))
      ;; Align tags, if any.
      (when tags (org-align-tags))
      (when tags-change? (run-hooks 'org-after-tags-change-hook)))))
@@ -12342,7 +12342,7 @@ drawer is immediately hidden."
 	   (inhibit-read-only t))
        (unless (bobp) (insert "\n"))
        (insert ":PROPERTIES:\n:END:")
-       (org-fold-region (line-end-position 0) (point) t 'org-hide-drawer)
+       (org-fold-region (line-end-position 0) (point) t (org-fold-get-folding-spec-for-element 'drawer))
        (when (or (eobp) (= begin (point-min))) (insert "\n"))
        (org-indent-region begin (point))))))
 
@@ -19729,7 +19729,8 @@ See `org-forward-paragraph'."
      ((eobp) nil)
      ;; When inside a folded part, move out of it.
      ((pcase (org-fold-get-folding-spec)
-	((or `outline `org-hide-block)
+	((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
+             (pred (eq (org-fold-get-folding-spec-for-element 'block))))
 	 (goto-char (cdr (org-fold-get-region-at-point)))
 	 (forward-line)
 	 t)
@@ -19747,7 +19748,8 @@ See `org-forward-paragraph'."
 	 ;; If the element is folded, skip it altogether.
 	 ((pcase (org-with-point-at post-affiliated
 		   (org-fold-get-folding-spec nil (line-end-position)))
-	    ((or `outline `org-hide-block)
+	    ((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
+		 (pred (eq (org-fold-get-folding-spec-for-element 'block))))
 	     (goto-char (cdr (org-fold-get-region-at-point)))
 	     (forward-line)
 	     t)
@@ -19804,7 +19806,8 @@ See `org-backward-paragraph'."
       (goto-char (point-min)))
      ;; When inside a folded part, move out of it.
      ((pcase (org-invisible-p (1- (point)))
-	((or `outline `org-hide-block)
+	((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
+             (pred (eq (org-fold-get-folding-spec-for-element 'block))))
 	 (goto-char (1- (org-fold-get-region-at-point nil (1- (point)))))
 	 (org--backward-paragraph-once)
 	 t)
