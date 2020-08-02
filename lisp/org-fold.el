@@ -217,6 +217,9 @@ to search in hidden text with any of the listed 'invisible property value.")
     ('property-drawer 'org-fold-drawer)
     (_ nil)))
 
+(defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
+  "Saved values of folding properties for (buffer . spec) conses.")
+
 ;; This is the core function used to fold text in org buffers.  We use
 ;; text properties to hide folded text, however 'invisible property is
 ;; not directly used. Instead, we define unique text property (folding
@@ -242,13 +245,16 @@ unless RETURN-ONLY is non-nil."
       (user-error "%s should be a valid folding spec" spec)
     (let* ((buf (or buffer (current-buffer))))
       ;; Create unique property symbol for SPEC in BUFFER
-      (let ((local-prop (intern (format "org-fold--spec-%s-%S"
-					(symbol-name spec)
-					;; (sxhash buf) appears to be not constant over time.
-					;; Using buffer-name is safe, since the only place where
-					;; buffer-local text property actually matters is an indirect
-					;; buffer, where the name cannot be same anyway.
-					(sxhash (buffer-name buf))))))
+      (let ((local-prop (or (gethash (cons buf spec) org-fold--property-symbol-cache)
+			    (puthash (cons buf spec)
+				     (intern (format "org-fold--spec-%s-%S"
+						     (symbol-name spec)
+						     ;; (sxhash buf) appears to be not constant over time.
+						     ;; Using buffer-name is safe, since the only place where
+						     ;; buffer-local text property actually matters is an indirect
+						     ;; buffer, where the name cannot be same anyway.
+						     (sxhash (buffer-name buf))))
+                                     org-fold--property-symbol-cache))))
         (prog1
             local-prop
           (unless return-only
