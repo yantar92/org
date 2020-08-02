@@ -421,6 +421,7 @@ Return nil when no fold is present at point of POM."
 			end)))
         (cons beg end)))))
 
+;; FIXME: Optimize performance
 (defun org-fold-next-visibility-change (&optional pos limit ignore-hidden-p previous-p)
   "Return next point from POS up to LIMIT where text becomes visible/invisible.
 By default, text hidden by any means (i.e. not only by folding, but
