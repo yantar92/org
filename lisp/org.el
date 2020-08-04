@@ -1599,29 +1599,6 @@ OK to kill that hidden subtree.  When nil, kill without remorse."
   :group 'org-edit-structure
   :type 'boolean)
 
-(defcustom org-catch-invisible-edits nil
-  "Check if in invisible region before inserting or deleting a character.
-Valid values are:
-
-nil              Do not check, so just do invisible edits.
-error            Throw an error and do nothing.
-show             Make point visible, and do the requested edit.
-show-and-error   Make point visible, then throw an error and abort the edit.
-smart            Make point visible, and do insertion/deletion if it is
-                 adjacent to visible text and the change feels predictable.
-                 Never delete a previously invisible character or add in the
-                 middle or right after an invisible region.  Basically, this
-                 allows insertion and backward-delete right before ellipses.
-                 FIXME: maybe in this case we should not even show?"
-  :group 'org-edit-structure
-  :version "24.1"
-  :type '(choice
-	  (const :tag "Do not check" nil)
-	  (const :tag "Throw error when trying to edit" error)
-	  (const :tag "Unhide, but do not do the edit" show-and-error)
-	  (const :tag "Show invisible part and do the edit" show)
-	  (const :tag "Be smart and do the right thing" smart)))
-
 (defcustom org-yank-folded-subtrees t
   "Non-nil means when yanking subtrees, fold them.
 If the kill is a single subtree, or a sequence of subtrees, i.e. if
@@ -15581,12 +15558,20 @@ buffer boundaries with possible narrowing."
 (defvar org-self-insert-command-undo-counter 0)
 (defvar org-speed-command nil)
 
+(defun org-fix-tags-on-the-fly ()
+  "Align tags in headline at point.
+Unlike `org-align-tags', this function does nothing if point is
+either not currently on a tagged headline or on a tag."
+  (when (and (org-match-line org-tag-line-re)
+	     (< (point) (match-beginning 1)))
+    (org-align-tags)))
+
 (defun org-self-insert-command (N)
   "Like `self-insert-command', use overwrite-mode for whitespace in tables.
 If the cursor is in a table looking at whitespace, the whitespace is
 overwritten, and the table is not marked as requiring realignment."
   (interactive "p")
-  (org-check-before-invisible-edit 'insert)
+  (org-fold-check-before-invisible-edit 'insert)
   (cond
    ((and org-use-speed-commands
 	 (let ((kv (this-command-keys-vector)))
@@ -15648,66 +15633,6 @@ overwritten, and the table is not marked as requiring realignment."
 	  (setq org-self-insert-command-undo-counter
 		(1+ org-self-insert-command-undo-counter))))))))
 
-(defun org-check-before-invisible-edit (kind)
-  "Check is editing if kind KIND would be dangerous with invisible text around.
-The detailed reaction depends on the user option `org-catch-invisible-edits'."
-  ;; First, try to get out of here as quickly as possible, to reduce overhead
-  (when (and org-catch-invisible-edits
-	     (or (not (boundp 'visible-mode)) (not visible-mode))
-	     (or (org-invisible-p)
-		 (org-invisible-p (max (point-min) (1- (point))))))
-    ;; OK, we need to take a closer look.  Only consider invisibility
-    ;; caused by folding, not by fontification (e.g., link
-    ;; fontification), as it cannot be toggled.
-    (let* ((invisible-at-point (org-fold-folded-p))
-	   ;; Assume that point cannot land in the middle of an
-	   ;; overlay, or between two overlays.
-	   (invisible-before-point
-	    (and (not invisible-at-point)
-		 (not (bobp))
-		 (org-fold-folded-p (1- (point)))))
-	   (border-and-ok-direction
-	    (or
-	     ;; Check if we are acting predictably before invisible
-	     ;; text.
-	     (and invisible-at-point
-		  (memq kind '(insert delete-backward)))
-	     ;; Check if we are acting predictably after invisible text
-	     ;; This works not well, and I have turned it off.  It seems
-	     ;; better to always show and stop after invisible text.
-	     ;; (and (not invisible-at-point) invisible-before-point
-	     ;;  (memq kind '(insert delete)))
-	     )))
-      (when (or invisible-at-point invisible-before-point)
-	(when (eq org-catch-invisible-edits 'error)
-	  (user-error "Editing in invisible areas is prohibited, make them visible first"))
-	(if (and org-custom-properties-hidden-p
-		 (y-or-n-p "Display invisible properties in this buffer? "))
-	    (org-toggle-custom-properties-visibility)
-	  ;; Make the area visible
-          (save-excursion
-	    (org-fold-show-context 'minimal))
-	  (cond
-	   ((eq org-catch-invisible-edits 'show)
-	    ;; That's it, we do the edit after showing
-	    (message
-	     "Unfolding invisible region around point before editing")
-	    (sit-for 1))
-	   ((and (eq org-catch-invisible-edits 'smart)
-		 border-and-ok-direction)
-	    (message "Unfolding invisible region around point before editing"))
-	   (t
-	    ;; Don't do the edit, make the user repeat it in full visibility
-	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
-
-(defun org-fix-tags-on-the-fly ()
-  "Align tags in headline at point.
-Unlike `org-align-tags', this function does nothing if point is
-either not currently on a tagged headline or on a tag."
-  (when (and (org-match-line org-tag-line-re)
-	     (< (point) (match-beginning 1)))
-    (org-align-tags)))
-
 (defun org-delete-backward-char (N)
   "Like `delete-backward-char', insert whitespace at field end in tables.
 When deleting backwards, in tables this function will insert whitespace in
@@ -15716,7 +15641,7 @@ still be marked for re-alignment if the field did fill the entire column,
 because, in this case the deletion might narrow the column."
   (interactive "p")
   (save-match-data
-    (org-check-before-invisible-edit 'delete-backward)
+    (org-fold-check-before-invisible-edit 'delete-backward)
     (if (and (= N 1)
 	     (not overwrite-mode)
 	     (not (org-region-active-p))
@@ -15736,7 +15661,7 @@ still be marked for re-alignment if the field did fill the entire column,
 because, in this case the deletion might narrow the column."
   (interactive "p")
   (save-match-data
-    (org-check-before-invisible-edit 'delete)
+    (org-fold-check-before-invisible-edit 'delete)
     (cond
      ((or (/= N 1)
 	  (eq (char-after) ?|)
@@ -17053,7 +16978,7 @@ Calls `org-insert-heading', `org-insert-item' or
 `org-table-wrap-region', depending on context.  When called with
 an argument, unconditionally call `org-insert-heading'."
   (interactive "P")
-  (org-check-before-invisible-edit 'insert)
+  (org-fold-check-before-invisible-edit 'insert)
   (or (run-hook-with-args-until-success 'org-metareturn-hook)
       (call-interactively (cond (arg #'org-insert-heading)
 				((org-at-table-p) #'org-table-wrap-region)
