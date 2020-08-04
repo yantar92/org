@@ -1105,6 +1105,7 @@ value listed in `org-fold--isearch-specs' visible to Isearch."
 
 (defun org-fold--fix-folded-region (from to len)
   "Process changes in folded elements.
+This function intended to be used inside `after-change-functions'.
 If a text was inserted into invisible region, hide the inserted text.
 If the beginning/end line of a folded drawer/block was changed, unfold it.
 If a valid end line was inserted in the middle of the folded drawer/block, unfold it."
@@ -1120,9 +1121,9 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
   ;; headline (schedule).
   ;; However, do not hide headline text
   (unless (equal from to)
-    (when (and (xor (org-fold-folded-p from) (org-fold-folded-p to))
+    (when (and (xor (org-fold-folded-p (max (point-min) (1- from))) (org-fold-folded-p to))
 	       (not (org-at-heading-p)))
-      (org-fold-region from to t (or (org-fold-get-folding-spec nil from) (org-fold-get-folding-spec nil to)))))
+      (org-fold-region from to t (or (org-fold-get-folding-spec nil (max (point-min) (1- from))) (org-fold-get-folding-spec nil to)))))
   ;; Reveal the whole region if inserted in the middle of
   ;; visible text. This is needed, for example, when one is
   ;; trying to copy text from indirect buffer to main buffer. If
@@ -1133,7 +1134,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
   ;; text to make org-mode behave as expected (the inserted text
   ;; is visible).
   (unless (equal from to)
-    (when (and (not (org-fold-folded-p from)) (not (org-fold-folded-p to)))
+    (when (and (not (org-fold-folded-p (max (point-min) (1- from)))) (not (org-fold-folded-p to)))
       (org-fold-region from to nil)))
   ;; Process all the folded text between `from' and `to'.
   (org-with-wide-buffer
