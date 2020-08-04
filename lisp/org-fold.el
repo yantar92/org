@@ -2,7 +2,7 @@
 ;;
 ;; Copyright (C) 2020-2020 Free Software Foundation, Inc.
 ;;
-;; Author: Ihor Radchenko <yantar92 at gmail dot com>
+;; Author: ???
 ;; Keywords: folding, invisible text
 ;; Homepage: https://orgmode.org
 ;;
@@ -24,19 +24,19 @@
 ;;
 ;;; Commentary:
 
-;; This file contains code handling temporary invisibility (folding)
-;; of text in org buffers.
+;; This file contains code handling temporary invisibility (folding
+;; and unfolding) of text in org buffers.
 
 ;; The file implements the following functionality:
 ;; - Folding/unfolding text regions and org elements
-;; - Searching and examining folded text
+;; - Searching and examining boundaries of folded text
 ;; - Revealing text around point
 ;; - Interactive searching in folded text (via isearch)
 ;; - Handling edits in folded text
 
 ;;; Folding/unfolding text regions and org elements
 
-;; User can temporarily fold/unfold arbitrary regions of text inside
+;; User can temporarily fold/unfold arbitrary regions or text inside
 ;; headlines, blocks, or drawers.
 
 ;; Internally, different types of elements are marked with different
@@ -60,13 +60,13 @@
 ;; broken if one sets 'invisible text property to a value not listed
 ;; in `buffer-invisibility-spec'.
 
-;;; Searching and examining folded text
+;;; Searching and examining boundaries of folded text
 
 ;; It is possible to examine folding specs (there may be several) of
 ;; text at point or search for regions with the same folding spec.
 
 ;; If one wants to search invisible text without using functions
-;; defined here, it is important to keep in mind that 'invisible text
+;; defined below, it is important to keep in mind that 'invisible text
 ;; property in org buffers may have multiple possible values (not just nil
 ;; and t). Hence, (next-single-char-property-change pos 'invisible) is
 ;; not guarantied to return the boundary of invisible/visible text.
@@ -79,7 +79,21 @@
 ;; of structure to be revealed.  See `org-fold-show-context-detail' for the
 ;; details.
 
+;;; Handling edits inside invisible text
 
+;; Accidental user edits inside invisible text may easily mess up org
+;; documents.  Here, we provide a framework to catch such edits and
+;; throw error if necessary.  This framework is used, for example, by
+;; `org-self-insert-command' and `org-delete-backward-char', See
+;; `org-fold-catch-invisible-edits' for available customisation.
+
+;; Some edits inside folded text are not accidental and done by
+;; various Org functions.  Setting scheduled time, deadlines,
+;; properties, etc often involve adding or changing text insided
+;; folded headlines or drawers.  Normally, such edits do not reveal
+;; the folded text.  However, the edited text is revealed when
+;; document structure is disturbed by edits.  See more details in
+;; `org-fold--fix-folded-region'.
 
 ;;; Code:
 
