@@ -1159,7 +1159,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 		      ;; Group one below contains the type of the block.
 		      ((eq spec (org-fold-get-folding-spec-for-element 'block))
 		       (rx bol (zero-or-more (any " " "\t"))
-						      "#+begin"
+			   "#+begin"
 			   (or ":"
 			       (seq "_"
 				    (group (one-or-more (not (syntax whitespace))))))))))
