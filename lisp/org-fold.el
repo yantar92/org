@@ -445,6 +445,16 @@ within region folded using SPEC or nil otherwise."
             result
           (car (last result)))))))
 
+(defun org-fold-get-folding-specs-in-region (beg end)
+  "Get all folding specs in region from BEG to END."
+  (let ((pos beg)
+	all-specs)
+    (while (< pos end)
+      (setq all-specs (append all-specs (org-fold-get-folding-spec nil pos)))
+      (setq pos (org-fold-next-folding-state-change nil pos end)))
+    (unless (listp all-specs) (setq all-specs (list all-specs)))
+    (delete-dups all-specs)))
+
 (defun org-fold-get-region-at-point (&optional spec pom)
   "Return region folded using SPEC at point or POM.
 If SPEC is nil, return the largest possible folded region.
@@ -980,11 +990,38 @@ TYPE can be either `text-properties' or `overlays'."
     ('text-properties
      (setq-local search-invisible 'open-all)
      (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-state nil 'local)
-     (add-hook 'isearch-mode-hook #'org-fold--clear-isearch-state nil 'local))
+     (add-hook 'isearch-mode-hook #'org-fold--clear-isearch-state nil 'local)
+     (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate-text-properties))
     ('overlays
-     (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate)
+     (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate-overlays)
      (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-overlays nil 'local))
     (_ (error "%s: Unknown type of setup for `org-fold--isearch-setup'" type))))
+
+(defun org-fold--isearch-filter-predicate-text-properties (beg end)
+  "Make sure that text hidden by any means other than `org-fold--isearch-specs' is not searchable."
+  (and
+   ;; Check folding specs that cannot be searched
+   (seq-every-p (lambda (spec) (member spec org-fold--isearch-specs)) (org-fold-get-folding-specs-in-region beg end))
+   ;; Check 'invisible properties that are not folding specs
+   (or (eq search-invisible t) ; User wants to search, allow it
+       (let ((pos beg)
+	     unknown-invisible-property)
+	 (while (and (< pos end)
+		     (not unknown-invisible-property))
+	   (when (and (get-text-property pos 'invisible)
+		      (not (member (get-text-property pos 'invisible) org-fold--isearch-specs)))
+	     (setq unknown-invisible-property t))
+	   (setq pos (next-single-char-property-change pos 'invisible)))
+	 (not unknown-invisible-property)))
+   (or (and (eq search-invisible t)
+	    ;; FIXME: this opens regions permanenly for now.
+            ;; I also tried to force search-invisible 'open-all around
+            ;; `isearch-range-invisible', but that somehow causes
+            ;; infinite loop in `isearch-lazy-highlight'.
+            (prog1 t
+	      ;; We still need to reveal the folded location
+	      (org-fold--isearch-show-temporary (cons beg end) nil)))
+       (not (isearch-range-invisible beg end)))))
 
 (defun org-fold--clear-isearch-state ()
   "Clear `org-fold--isearch-local-regions'."
@@ -1038,7 +1075,7 @@ of text properties.  The created overlays will be stored in
 	      (push o org-fold--isearch-overlays)))))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
-(defun org-fold--isearch-filter-predicate (beg end)
+(defun org-fold--isearch-filter-predicate-overlays (beg end)
   "Return non-nil if text between BEG and END is deemed visible by Isearch.
 This function is intended to be used as `isearch-filter-predicate'.
 Unlike `isearch-filter-visible', make text with 'invisible text property
