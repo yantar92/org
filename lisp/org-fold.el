@@ -228,7 +228,7 @@ first property from this list will be considered.")
 
 (defvar-local org-fold--isearch-specs '(org-fold-block
 				org-fold-drawer
-				'org-fold-outline)
+				org-fold-outline)
   "List of text invisibility specs to be searched by isearch.
 By default ([2020-05-09 Sat]), isearch does not search in hidden text,
 which was made invisible using text properties.  Isearch will be forced
