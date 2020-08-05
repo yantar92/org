@@ -115,7 +115,6 @@
   (declare (debug (body)))
   `(let ((inhibit-read-only t)) ,@body))
 
-;; FIXME: rewrite to org-fold
 (defmacro org-save-outline-visibility (use-markers &rest body)
   "Save and restore outline visibility around BODY.
 If USE-MARKERS is non-nil, use markers for the positions.  This
@@ -123,28 +122,32 @@ means that the buffer may change while running BODY, but it also
 means that the buffer should stay alive during the operation,
 because otherwise all these markers will point to nowhere."
   (declare (debug (form body)) (indent 1))
-  (org-with-gensyms (data invisible-types markers?)
-    `(let* ((,invisible-types '(org-hide-block outline))
+  (org-with-gensyms (data invisible-specs markers?)
+    `(let* ((,invisible-specs '(,(org-fold-get-folding-spec-for-element 'block)
+				,(org-fold-get-folding-spec-for-element 'headline)))
 	    (,markers? ,use-markers)
 	    (,data
-	     (mapcar (lambda (o)
-		       (let ((beg (overlay-start o))
-			     (end (overlay-end o))
-			     (type (overlay-get o 'invisible)))
-			 (and beg end
-			      (> end beg)
-			      (memq type ,invisible-types)
-			      (list (if ,markers? (copy-marker beg) beg)
-				    (if ,markers? (copy-marker end t) end)
-				    type))))
-		     (org-with-wide-buffer
-		      (overlays-in (point-min) (point-max))))))
+             (org-with-wide-buffer
+              (let ((pos (point-min))
+		    data-val)
+		(while (< pos (point-max))
+                  (dolist (spec (org-fold-get-folding-spec 'all pos))
+                    (when (memq type ,invisible-specs)
+                      (let ((region (org-fold-get-region-at-point spec pos)))
+			(if ,markers?
+			    (push (list (copy-marker (car region))
+					(copy-marker (cdr region) t)
+                                        spec)
+                                  data-val)
+                          (push (list (car region) (cdr region) spec)
+				data-val)))))
+                  (setq pos (org-fold-next-folding-state-change nil pos)))))))
        (unwind-protect (progn ,@body)
 	 (org-with-wide-buffer
-	  (dolist (type ,invisible-types)
-	    (remove-overlays (point-min) (point-max) 'invisible type))
-	  (pcase-dolist (`(,beg ,end ,type) (delq nil ,data))
-	    (org-fold-region beg end t type)
+	  (dolist (spec ,invisible-specs)
+	    (org-fold-region (point-min) (point-max) nil spec))
+	  (pcase-dolist (`(,beg ,end ,spec) (delq nil ,data))
+	    (org-fold-region beg end t spec)
 	    (when ,markers?
 	      (set-marker beg nil)
 	      (set-marker end nil))))))))
