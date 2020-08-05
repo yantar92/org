@@ -503,7 +503,7 @@ If PREVIOUS-P is non-nil, search backwards."
       (setq next (funcall next-change next)))
     next))
 
-(defun org-fold-previous-visibility-change (&optional pos limit ignore-hidden-p previous-p)
+(defun org-fold-previous-visibility-change (&optional pos limit ignore-hidden-p)
   "Call `org-fold-next-visibility-change' searching backwards."
   (org-fold-next-visibility-change pos limit ignore-hidden-p 'previous))
 
