@@ -648,10 +648,17 @@ When ENTRY is non-nil, show the entire entry."
   "Hide the body directly following this heading."
   (interactive)
   (save-excursion
-    (org-back-to-heading)
-    ;; FIXME: use org version
-    (outline-end-of-heading)
-    (org-fold-region (point) (progn (outline-next-preface) (point)) t (org-fold-get-folding-spec-for-element 'headline))))
+     (org-back-to-heading-or-point-min t)
+     (when (org-at-heading-p) (forward-line))
+     (org-fold-region
+      (line-end-position 0)
+      (save-excursion
+        (if (re-search-forward
+ 	    (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
+            (line-end-position 0)
+ 	 (point-max)))
+      t
+      (org-fold-get-folding-spec-for-element 'headline))))
 
 (defun org-fold-subtree (flag)
   (save-excursion
@@ -711,17 +718,19 @@ of the current heading, or to 1 if the current line is not a heading."
 (defun org-fold-show-entry ()
   "Show the body directly following its heading.
 Show the heading too, if it is currently invisible."
-  (interactive)
-  (save-excursion
-    (org-back-to-heading-or-point-min t)
-    (let ((beg (line-end-position 0))
-	  (end (save-excursion
-		 (if (re-search-forward
-		      (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
-		     (match-beginning 1)
-		   (point-max)))))
-      (org-fold-region beg end nil (org-fold-get-folding-spec-for-element 'headline))
-      (org-fold-hide-drawer-all))))
+   (interactive)
+   (save-excursion
+     (org-back-to-heading-or-point-min t)
+     (org-fold-region
+      (line-end-position 0)
+      (save-excursion
+        (if (re-search-forward
+ 	    (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
+ 	   (match-beginning 1)
+ 	 (point-max)))
+      nil
+      (org-fold-get-folding-spec-for-element 'headline))
+     (org-cycle-hide-drawers 'children)))
 
 ;; FIXME: defalias instead?
 (defun org-fold-show-hidden-entry ()
@@ -743,37 +752,37 @@ Prefix arg LEVEL is how many levels below the current level
 should be shown.  Default is enough to cause the following
 heading to appear."
   (interactive "p")
-  (save-excursion
-    (org-back-to-heading t)
-    (let* ((current-level (funcall outline-level))
-	   (max-level (org-get-valid-level
-		       current-level
-		       (if level (prefix-numeric-value level) 1)))
-	   (end (save-excursion (org-end-of-subtree t t)))
-	   (regexp-fmt "^\\*\\{%d,%s\\}\\(?: \\|$\\)")
-	   (past-first-child nil)
-           ;; FIXME: maybe modify org-get-limited-outline-regexp and use it here
-	   ;; Make sure to skip inlinetasks.
-	   (re (format regexp-fmt
-		       current-level
-		       (cond
-			((not (featurep 'org-inlinetask)) "")
-			(org-odd-levels-only (- (* 2 org-inlinetask-min-level)
-						3))
-			(t (1- org-inlinetask-min-level))))))
-      ;; Display parent heading.
-      (org-fold-heading nil)
-      (forward-line)
-      ;; Display children.  First child may be deeper than expected
-      ;; MAX-LEVEL.  Since we want to display it anyway, adjust
-      ;; MAX-LEVEL accordingly.
-      (while (re-search-forward re end t)
-	(unless past-first-child
-	  (setq re (format regexp-fmt
-			   current-level
-			   (max (funcall outline-level) max-level)))
-	  (setq past-first-child t))
-	(org-fold-heading nil)))))
+   (unless (org-before-first-heading-p)
+     (save-excursion
+       (org-with-limited-levels (org-back-to-heading t))
+       (let* ((current-level (funcall outline-level))
+ 	     (max-level (org-get-valid-level
+ 			 current-level
+ 			 (if level (prefix-numeric-value level) 1)))
+ 	     (end (save-excursion (org-end-of-subtree t t)))
+ 	     (regexp-fmt "^\\*\\{%d,%s\\}\\(?: \\|$\\)")
+ 	     (past-first-child nil)
+ 	     ;; Make sure to skip inlinetasks.
+ 	     (re (format regexp-fmt
+ 			 current-level
+ 			 (cond
+ 			  ((not (featurep 'org-inlinetask)) "")
+ 			  (org-odd-levels-only (- (* 2 org-inlinetask-min-level)
+ 						  3))
+ 			  (t (1- org-inlinetask-min-level))))))
+ 	;; Display parent heading.
+ 	(org-fold-heading nil)
+ 	(forward-line)
+ 	;; Display children.  First child may be deeper than expected
+ 	;; MAX-LEVEL.  Since we want to display it anyway, adjust
+ 	;; MAX-LEVEL accordingly.
+ 	(while (re-search-forward re end t)
+ 	  (unless past-first-child
+ 	    (setq re (format regexp-fmt
+ 			     current-level
+ 			     (max (funcall outline-level) max-level)))
+ 	    (setq past-first-child t))
+ 	  (org-fold-heading nil))))))
 
 (defun org-fold-show-subtree ()
   "Show everything after this heading at deeper levels."

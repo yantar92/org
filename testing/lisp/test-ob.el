@@ -1746,6 +1746,20 @@ line 1
 		   (cdr (assq :file (nth 2 (org-babel-get-src-block-info t))))))
     ))
 
+(ert-deftest test-ob/file-mode ()
+  "Ensure that :file-mode results in expected permissions."
+  (should
+   (equal #o755
+          (org-test-with-temp-text-in-file "
+#+begin_src emacs-lisp :results file :file t.sh :file-mode (identity #o755)
+nil
+#+end_src"
+            (org-babel-next-src-block)
+            (org-babel-execute-src-block)
+            (unwind-protect
+                (file-modes "t.sh")
+              (delete-file "t.sh"))))))
+
 (ert-deftest test-ob-core/dir-mkdirp ()
   "Test :mkdirp with :dir header combination."
   (should-not
@@ -1924,6 +1938,25 @@ default-directory
 		      ("query-export" . query)))
 	(message (car pair))
 	(should (eq (org-test-babel-confirm-evaluate (car pair)) (cdr pair)))))))
+
+(ert-deftest test-ob/check-eval-noweb-expanded ()
+  "`org-confirm-babel-evaluate' function receives expanded noweb refs."
+  (should
+   (equal t
+	  (org-test-with-temp-text "
+#+name: foo
+#+begin_src emacs-lisp
+  :bar
+#+end_src
+
+<point>#+begin_src emacs-lisp :noweb yes
+  <<foo>>
+#+end_src"
+	    (let ((org-confirm-babel-evaluate
+		   (lambda (_ body)
+		     (not (string-match-p ":bar" body)))))
+	      (org-babel-check-confirm-evaluate
+	       (org-babel-get-src-block-info)))))))
 
 (defun org-test-ob/update-block-body ()
   "Test `org-babel-update-block-body' specifications."

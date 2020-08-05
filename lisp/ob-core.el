@@ -239,7 +239,10 @@ should be asked whether to allow evaluation."
 		    (if (functionp org-confirm-babel-evaluate)
 			(funcall org-confirm-babel-evaluate
 				 ;; Language, code block body.
-				 (nth 0 info) (nth 1 info))
+				 (nth 0 info)
+				 (if (org-babel-noweb-p headers :eval)
+				     (org-babel-expand-noweb-references info)
+				   (nth 1 info)))
 		      org-confirm-babel-evaluate))))
     (cond
      (noeval nil)
@@ -401,6 +404,7 @@ then run `org-babel-switch-to-session'."
     (file	. :any)
     (file-desc  . :any)
     (file-ext   . :any)
+    (file-mode  . ((#o755 #o555 #o444 :any)))
     (hlines	. ((no yes)))
     (mkdirp	. ((yes no)))
     (no-expand)
@@ -732,7 +736,11 @@ block."
 		    (with-temp-file file
 		      (insert (org-babel-format-result
 			       result
-			       (cdr (assq :sep params))))))
+			       (cdr (assq :sep params)))))
+		    ;; Set file permissions if header argument
+		    ;; `:file-mode' is provided.
+		    (when (assq :file-mode params)
+		      (set-file-modes file (cdr (assq :file-mode params)))))
 		  (setq result file))
 		;; Possibly perform post process provided its
 		;; appropriate.  Dynamically bind "*this*" to the
