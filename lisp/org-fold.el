@@ -425,7 +425,7 @@ If POS is nil, use `point' instead."
 	  (t nil))))
 
 (defun org-fold-get-folding-spec (&optional spec pom)
-  "Get folding state SPEC at point or POM.
+  "Get folding state SPEC at POM.
 If SPEC is nil, return a folding spec with highest priority among
 present at point or POM.
 If SPEC is 'all, return the list of all present folding specs.
@@ -456,7 +456,7 @@ within region folded using SPEC or nil otherwise."
     (delete-dups all-specs)))
 
 (defun org-fold-get-region-at-point (&optional spec pom)
-  "Return region folded using SPEC at point or POM.
+  "Return region folded using SPEC at POM.
 If SPEC is nil, return the largest possible folded region.
 The return value is a cons of beginning and the end of the region.
 Return nil when no fold is present at point of POM."
@@ -570,6 +570,10 @@ Move point right after the end of the region, to LIMIT, or
 
 ;;;;; Region visibility
 
+;; This is the core function performing actual folding/unfolding.  The
+;; folding state is stored in text property (folding property)
+;; returned by `org-fold--property-symbol-get-create'.  The value of the
+;; folding property is folding spec symbol.
 (defun org-fold-region (from to flag &optional spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the folding spec, as a symbol.
@@ -599,7 +603,7 @@ If SPEC is omitted and FLAG is nil, unfold everything in the region."
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
 By default, the function expands headings, blocks and drawers.
-When optional argument TYPE is a list of symbols among `blocks',
+When optional argument TYPES is a list of symbols among `blocks',
 `drawers' and `headings', to only expand one specific type."
   (interactive)
   (dolist (type (or types '(blocks drawers headings)))
@@ -969,7 +973,7 @@ go to the parent and show the entire tree."
 (defun org-fold--check-spec (spec)
   "Throw an error if SPEC is not present in `org-fold--spec-priority-list'."
   (unless (and spec (memq spec org-fold--spec-priority-list))
-    (user-error "%s is not a valid folding spec." spec)))
+    (user-error "%s is not a valid folding spec" spec)))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
@@ -998,7 +1002,8 @@ TYPE can be either `text-properties' or `overlays'."
     (_ (error "%s: Unknown type of setup for `org-fold--isearch-setup'" type))))
 
 (defun org-fold--isearch-filter-predicate-text-properties (beg end)
-  "Make sure that text hidden by any means other than `org-fold--isearch-specs' is not searchable."
+  "Make sure that text hidden by any means other than `org-fold--isearch-specs' is not searchable.
+This function is intended to be used as `isearch-filter-predicate'."
   (and
    ;; Check folding specs that cannot be searched
    (seq-every-p (lambda (spec) (member spec org-fold--isearch-specs)) (org-fold-get-folding-specs-in-region beg end))
@@ -1076,10 +1081,10 @@ of text properties.  The created overlays will be stored in
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
 (defun org-fold--isearch-filter-predicate-overlays (beg end)
-  "Return non-nil if text between BEG and END is deemed visible by Isearch.
+  "Return non-nil if text between BEG and END is deemed visible by isearch.
 This function is intended to be used as `isearch-filter-predicate'.
-Unlike `isearch-filter-visible', make text with 'invisible text property
-value listed in `org-fold--isearch-specs' visible to Isearch."
+Unlike `isearch-filter-visible', make text with `invisible' text property
+value listed in `org-fold--isearch-specs'."
   (org-fold--create-isearch-overlays beg end) ;; trick isearch by creating overlays in place of invisible text
   (isearch-filter-visible beg end))
 
@@ -1105,7 +1110,7 @@ value listed in `org-fold--isearch-specs' visible to Isearch."
 
 (defun org-fold--fix-folded-region (from to len)
   "Process changes in folded elements.
-This function intended to be used inside `after-change-functions'.
+This function intended to be used as one of `after-change-functions'.
 If a text was inserted into invisible region, hide the inserted text.
 If the beginning/end line of a folded drawer/block was changed, unfold it.
 If a valid end line was inserted in the middle of the folded drawer/block, unfold it."
@@ -1232,7 +1237,6 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
                (org-fold-next-folding-state-change spec)))))))
 
 ;; Catching user edits inside invisible text
-
 (defun org-fold-check-before-invisible-edit (kind)
   "Check is editing if kind KIND would be dangerous with invisible text around.
 The detailed reaction depends on the user option `org-fold-catch-invisible-edits'."
