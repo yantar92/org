@@ -99,7 +99,11 @@
 
 (require 'org-macs)
 
+(defvar org-inlinetask-min-level)
+
 (declare-function isearch-filter-visible "isearch" (beg end))
+(declare-function org-element-type "org-element" (element))
+(declare-function org-element-property "org-element" (property element))
 
 ;;; Customization
 
@@ -1108,7 +1112,7 @@ value listed in `org-fold--isearch-specs'."
 
 ;;; Handling changes in folded elements
 
-(defun org-fold--fix-folded-region (from to len)
+(defun org-fold--fix-folded-region (from to _)
   "Process changes in folded elements.
 This function intended to be used as one of `after-change-functions'.
 If a text was inserted into invisible region, hide the inserted text.

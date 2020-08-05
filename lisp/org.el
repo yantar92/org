@@ -6810,7 +6810,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
      (skip-chars-forward " \t\n\r")
      (setq beg (point))
      (when (and (org-invisible-p) visp)
-       (save-excursion (org-fold-show-heading)))
+       (save-excursion (org-fold-heading nil)))
      ;; Shift if necessary.
      (unless (= shift 0)
        (save-restriction

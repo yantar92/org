@@ -26,6 +26,7 @@
 (require 'cl-lib)
 (require 'ob-eval)
 (require 'org-macs)
+(require 'org-fold)
 (require 'org-compat)
 
 (defconst org-babel-exeext

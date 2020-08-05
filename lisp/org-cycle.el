@@ -24,10 +24,19 @@
 ;;
 ;;; Commentary:
 
+;; This file contains code controlling global folding state in buffer
+;; and TAB-cycling.
+
 ;;; Code:
 
 (require 'org-macs)
 (require 'org-fold)
+
+(declare-function org-element-type "org-element" (element))
+(declare-function org-element-property "org-element" (property element))
+(declare-function org-element-lineage "org-element" (datum &optional types with-self))
+(declare-function org-inlinetask-at-task-p "org-inlinetask" ())
+(declare-function org-inlinetask-toggle-visibility "org-inlinetask" ())
 
 (defvar-local org-cycle-global-status nil)
 (put 'org-cycle-global-status 'org-state t)

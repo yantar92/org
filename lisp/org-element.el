@@ -5465,8 +5465,9 @@ the process stopped before finding the expected result."
         ;; There's a headline between cached value and POS: cached
         ;; value is invalid.  Start parsing from first element
         ;; following the headline.
-        ((re-search-backward
-          (org-with-limited-levels org-outline-regexp-bol) begin t)
+        ((and (> (point) begin)
+              (re-search-backward
+	       (org-with-limited-levels org-outline-regexp-bol) begin t))
          (forward-line)
          (skip-chars-forward " \r\t\n")
          (beginning-of-line)
