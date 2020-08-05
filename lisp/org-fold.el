@@ -720,7 +720,7 @@ Show the heading too, if it is currently invisible."
       (org-fold-hide-drawer-all))))
 
 ;; FIXME: defalias instead?
-(defun org-show-hidden-entry ()
+(defun org-fold-show-hidden-entry ()
   "Show an entry where even the heading is hidden."
   (save-excursion
     (org-fold-show-entry)))
