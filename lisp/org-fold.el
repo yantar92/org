@@ -1040,10 +1040,10 @@ Hide text instead if HIDE-P is non-nil."
   (if (not hide-p)
       (let ((pos (car region)))
 	(while (< pos (cdr region))
-	  (dolist (spec (org-fold-get-folding-spec 'all))
-	    (push (cons spec (org-fold-get-region-at-point spec)) (gethash region org-fold--isearch-local-regions)))
+	  (dolist (spec (org-fold-get-folding-spec 'all pos))
+	    (push (cons spec (org-fold-get-region-at-point spec pos)) (gethash region org-fold--isearch-local-regions)))
           (org-fold--isearch-show region)
-	  (setq pos (org-fold-next-visibility-change nil (cdr region)))))
+	  (setq pos (org-fold-next-folding-state-change nil pos (cdr region)))))
     (mapc (lambda (val) (org-fold-region (cadr val) (cddr val) t (car val))) (gethash region org-fold--isearch-local-regions))
     (remhash region org-fold--isearch-local-regions)))
 
