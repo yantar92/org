@@ -784,7 +784,7 @@ heading to appear."
 
 (defun org-fold-show-branches-buffer ()
   "Show all branches in the buffer."
-  (org-flag-above-first-heading)
+  (org-fold-flag-above-first-heading)
   (org-fold-hide-sublevels 1)
   (unless (eobp)
     (org-fold-show-branches)
