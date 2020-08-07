@@ -322,10 +322,73 @@ Counting starts at 1."
 (define-obsolete-function-alias 'org-remove-latex-fragment-image-overlays
   'org-clear-latex-preview "Org 9.3")
 
+(define-obsolete-function-alias 'org-hide-archived-subtrees
+  'org-fold-hide-archived-subtrees "Org 9.4")
+
+(define-obsolete-function-alias 'org-flag-subtree
+  'org-fold-subtree "Org 9.4")
+
+(define-obsolete-function-alias 'org-hide-entry
+  'org-fold-hide-entry "Org 9.4")
+
+(define-obsolete-function-alias 'org-show-subtree
+  'org-fold-show-subtree "Org 9.4")
+
+(define-obsolete-function-alias 'org--hide-wrapper-toggle
+  'org-fold--hide-wrapper-toggle "Org 9.4")
+
+(define-obsolete-function-alias 'org-hide-block-toggle
+  'org-fold-hide-block-toggle "Org 9.4")
+
+(define-obsolete-function-alias 'org-hide-drawer-toggle
+  'org-fold-hide-drawer-toggle "Org 9.4")
+
+(define-obsolete-function-alias 'org-hide-block-all
+  'org-fold-hide-block-all "Org 9.4")
+
+(define-obsolete-function-alias 'org-hide-drawer-all
+  'org-fold-hide-drawer-all "Org 9.4")
+
+(define-obsolete-function-alias 'org-show-all
+  'org-fold-show-all "Org 9.4")
+
+(define-obsolete-function-alias 'org-set-startup-visibility
+  'org-cycle-set-startup-visibility "Org 9.4")
+
+(define-obsolete-function-alias 'org-show-set-visibility
+  'org-fold-show-set-visibility "Org 9.4")
+
+(define-obsolete-function-alias 'org-check-before-invisible-edit
+  'org-fold-check-before-invisible-edit "Org 9.4")
+
+(define-obsolete-function-alias 'org-flag-above-first-heading
+  'org-fold-flag-above-first-heading "Org 9.4")
+
+(define-obsolete-function-alias 'org-show-branches-buffer
+  'org-fold-show-branches-buffer "Org 9.4")
+
+(define-obsolete-function-alias 'org-show-siblings
+  'org-fold-show-siblings "Org 9.4")
+
+(define-obsolete-function-alias 'org-show-hidden-entry
+  'org-fold-show-hidden-entry "Org 9.4")
+
+(define-obsolete-function-alias 'org-flag-heading
+  'org-fold-heading "Org 9.4")
+
 (define-obsolete-variable-alias 'org-attach-directory
   'org-attach-id-dir "Org 9.3")
 (make-obsolete 'org-attach-store-link "No longer used" "Org 9.4")
 (make-obsolete 'org-attach-expand-link "No longer used" "Org 9.4")
+
+(define-obsolete-variable-alias 'org-show-context-detail
+  'org-fold-show-context-detail "Org 9.4")
+
+(define-obsolete-variable-alias 'org-catch-invisible-edits
+  'org-fold-catch-invisible-edits "Org 9.4")
+
+(define-obsolete-variable-alias 'org-reveal-start-hook
+  'org-fold-reveal-start-hook "Org 9.4")
 
 (defun org-in-fixed-width-region-p ()
   "Non-nil if point in a fixed-width region."
