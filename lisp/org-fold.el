@@ -283,61 +283,60 @@ If the buffer already have buffer-local setup in `char-property-alias-alist'
 and the setup appears to be created for different buffer,
 copy the old invisibility state into new buffer-local text properties,
 unless RETURN-ONLY is non-nil."
-  (if (not (member spec org-fold--spec-priority-list))
-      (user-error "%s should be a valid folding spec" spec)
-    (let* ((buf (or buffer (current-buffer))))
-      ;; Create unique property symbol for SPEC in BUFFER
-      (let ((local-prop (or (gethash (cons buf spec) org-fold--property-symbol-cache)
-			    (puthash (cons buf spec)
-				     (intern (format "org-fold--spec-%s-%S"
-						     (symbol-name spec)
-						     ;; (sxhash buf) appears to be not constant over time.
-						     ;; Using buffer-name is safe, since the only place where
-						     ;; buffer-local text property actually matters is an indirect
-						     ;; buffer, where the name cannot be same anyway.
-						     (sxhash (buffer-name buf))))
-                                     org-fold--property-symbol-cache))))
-        (prog1
-            local-prop
-          (unless return-only
-	    (with-current-buffer buf
-              ;; Update folding properties carried over from other
-              ;; buffer (implying that current buffer is indirect
-              ;; buffer). Normally, `char-property-alias-alist' in new
-              ;; indirect buffer is a copy of the same variable from
-              ;; the base buffer. Then, `char-property-alias-alist'
-              ;; would contain folding properties, which are not
-              ;; matching the generated `local-prop'.
-	      (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
-		;; Copy all the old folding properties to preserve the folding state
-		(dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
-		  (org-with-wide-buffer
-		   (let* ((pos (point-min))
-			  ;; We know that folding properties have
-			  ;; folding spec in their name. Extract that
-			  ;; spec.
-			  (spec (catch :exit
-				  (dolist (spec org-fold--spec-priority-list)
-                                    (when (string-match-p (symbol-name spec)
-							  (symbol-name old-prop))
-                                      (throw :exit spec)))))
-                          ;; Generate new buffer-unique folding property
-			  (new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
-                     ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
-		     (while (< pos (point-max))
-		       (let ((val (get-text-property pos old-prop)))
-			 (when val
-			   (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
-		       (setq pos (next-single-char-property-change pos old-prop))))))
-                ;; Update `char-property-alias-alist' with folding
-                ;; properties unique for the current buffer.
-		(setq-local char-property-alias-alist
-			    (cons (cons 'invisible
-					(mapcar (lambda (spec)
-						  (org-fold--property-symbol-get-create spec nil 'return-only))
-						org-fold--spec-priority-list))
-				  (remove (assq 'invisible char-property-alias-alist)
-					  char-property-alias-alist)))))))))))
+  (org-fold--check-spec spec)
+  (let* ((buf (or buffer (current-buffer))))
+    ;; Create unique property symbol for SPEC in BUFFER
+    (let ((local-prop (or (gethash (cons buf spec) org-fold--property-symbol-cache)
+			  (puthash (cons buf spec)
+				   (intern (format "org-fold--spec-%s-%S"
+						   (symbol-name spec)
+						   ;; (sxhash buf) appears to be not constant over time.
+						   ;; Using buffer-name is safe, since the only place where
+						   ;; buffer-local text property actually matters is an indirect
+						   ;; buffer, where the name cannot be same anyway.
+						   (sxhash (buffer-name buf))))
+                                   org-fold--property-symbol-cache))))
+      (prog1
+          local-prop
+        (unless return-only
+	  (with-current-buffer buf
+            ;; Update folding properties carried over from other
+            ;; buffer (implying that current buffer is indirect
+            ;; buffer). Normally, `char-property-alias-alist' in new
+            ;; indirect buffer is a copy of the same variable from
+            ;; the base buffer. Then, `char-property-alias-alist'
+            ;; would contain folding properties, which are not
+            ;; matching the generated `local-prop'.
+	    (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
+	      ;; Copy all the old folding properties to preserve the folding state
+	      (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
+		(org-with-wide-buffer
+		 (let* ((pos (point-min))
+			;; We know that folding properties have
+			;; folding spec in their name. Extract that
+			;; spec.
+			(spec (catch :exit
+				(dolist (spec org-fold--spec-priority-list)
+                                  (when (string-match-p (symbol-name spec)
+							(symbol-name old-prop))
+                                    (throw :exit spec)))))
+                        ;; Generate new buffer-unique folding property
+			(new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
+                   ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
+		   (while (< pos (point-max))
+		     (let ((val (get-text-property pos old-prop)))
+		       (when val
+			 (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
+		     (setq pos (next-single-char-property-change pos old-prop))))))
+              ;; Update `char-property-alias-alist' with folding
+              ;; properties unique for the current buffer.
+	      (setq-local char-property-alias-alist
+			  (cons (cons 'invisible
+				      (mapcar (lambda (spec)
+						(org-fold--property-symbol-get-create spec nil 'return-only))
+					      org-fold--spec-priority-list))
+				(remove (assq 'invisible char-property-alias-alist)
+					char-property-alias-alist))))))))))
 
 ;;; API
 
