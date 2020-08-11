@@ -1121,134 +1121,147 @@ value listed in `org-fold--isearch-specs'."
 
 ;;; Handling changes in folded elements
 
+(defvar-local org-fold--last-buffer-chars-modified-tick nil
+  "Variable storing the last return value of `buffer-chars-modified-tick'.")
+
 (defun org-fold--fix-folded-region (from to _)
   "Process changes in folded elements.
 This function intended to be used as one of `after-change-functions'.
+
+This function does nothing if text the only modification was changing
+text properties (for the sake of reducing overheads).
+
 If a text was inserted into invisible region, hide the inserted text.
 If the beginning/end line of a folded drawer/block was changed, unfold it.
 If a valid end line was inserted in the middle of the folded drawer/block, unfold it."
-  ;; Re-hide text inserted in the middle of a folded region.
-  (unless (equal from to)
-    (dolist (spec org-fold--spec-priority-list)
-      (let ((spec-to (org-fold-get-folding-spec spec to))
-	    (spec-from (org-fold-get-folding-spec spec (max (point-min) (1- from)))))
-	(when (and spec-from spec-to (eq spec-to spec-from))
-	  (org-fold-region from to t (or spec-from spec-to))))))
-  ;; Re-hide text inserted right in front/back of a folded region
-  ;; Examples: beginning of a folded drawer, first line of folded
-  ;; headline (schedule).
-  ;; However, do not hide headline text
-  (unless (equal from to)
-    (when (and (xor (org-fold-folded-p (max (point-min) (1- from))) (org-fold-folded-p to))
-	       (not (org-at-heading-p)))
-      (org-fold-region from to t (or (org-fold-get-folding-spec nil (max (point-min) (1- from))) (org-fold-get-folding-spec nil to)))))
-  ;; Reveal the whole region if inserted in the middle of
-  ;; visible text. This is needed, for example, when one is
-  ;; trying to copy text from indirect buffer to main buffer. If
-  ;; the text is unfolded in the indirect buffer, but folded in
-  ;; the main buffer, the text properties responsible for
-  ;; folding will be activated as soon as the text is pasted
-  ;; into the main buffer. Thus, we need to unfold the inserted
-  ;; text to make org-mode behave as expected (the inserted text
-  ;; is visible).
-  ;; FIXME: this breaks when replacing buffer/region contents - we do not need to unfold in that case
-  ;; (unless (equal from to)
-  ;;   (when (and (not (org-fold-folded-p (max (point-min) (1- from)))) (not (org-fold-folded-p to)))
-  ;;     (org-fold-region from to nil)))
-  ;; Process all the folded text between `from' and `to'.
-  (org-with-wide-buffer
-   ;; If the edit is done in the first line of a folded drawer/block,
-   ;; the folded text is only starting from the next line and needs to
-   ;; be checked.
-   (setq to (save-excursion (goto-char to) (line-beginning-position 2)))
-   ;; If the ":END:" line of the drawer is deleted, the folded text is
-   ;; only ending at the previous line and needs to be checked.
-   (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
-   ;; Expand the considered region to include partially present folded
-   ;; drawer/block.
-   (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'drawer) from)
-     (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'drawer) from)))
-   (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'block) from)
-     (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'block) from)))
-   ;; Check folded drawers and blocks.
-   (dolist (spec (list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
-     (let ((pos from)
-	   (begin-re (cond
-		      ((eq spec (org-fold-get-folding-spec-for-element 'drawer))
-		       org-drawer-regexp)
-		      ;; Group one below contains the type of the block.
-		      ((eq spec (org-fold-get-folding-spec-for-element 'block))
-		       (rx bol (zero-or-more (any " " "\t"))
-			   "#+begin"
-			   (or ":"
-			       (seq "_"
-				    (group (one-or-more (not (syntax whitespace))))))))))
-           ;; To be determined later. May depend on `begin-re' match (i.e. for blocks).
-           end-re)
-       ;; Move to the first hidden drawer/block.
-       (unless (org-fold-get-folding-spec spec pos)
-	 (setq pos (org-fold-next-folding-state-change spec pos)))
-       ;; Cycle over all the hidden drawers/blocks.
-       (while (< pos to)
-	 (save-match-data ; we should not clobber match-data in after-change-functions
-	   (let ((fold-begin (and (org-fold-get-folding-spec spec pos)
-				  pos))
-		 (fold-end (org-fold-next-folding-state-change spec pos)))
-             (when (and fold-begin fold-end)
-	       (let (unfold?)
-		 (catch :exit
-		   ;; The line before folded text should be beginning of
-		   ;; the drawer/block.
-		   (save-excursion
-		     (goto-char fold-begin)
-		     ;; The line before beginning of the fold should be the
-		     ;; first line of the drawer/block.
-		     (backward-char)
-		     (beginning-of-line)
-		     (unless (let ((case-fold-search t))
-			       (looking-at begin-re)) ; the match-data will be used later
-		       (throw :exit (setq unfold? t))))
-                   ;; Set `end-re' for the current drawer/block.
-                   (setq end-re
-			 (cond
-			  ((eq spec (org-fold-get-folding-spec-for-element 'drawer))
-                           org-property-end-re)
-			  ((eq spec (org-fold-get-folding-spec-for-element 'block))
-			   (let ((block-type (match-string 1))) ; the last match is from `begin-re'
-			     (concat (rx bol (zero-or-more (any " " "\t")) "#+end")
-				     (if block-type
-					 (concat "_"
-						 (regexp-quote block-type)
-						 (rx (zero-or-more (any " " "\t")) eol))
-				       (rx (opt ":") (zero-or-more (any " " "\t")) eol)))))))
-		   ;; The last line of the folded text should match `end-re'.
-		   (save-excursion
-		     (goto-char fold-end)
-		     (beginning-of-line)
-		     (unless (let ((case-fold-search t))
-			       (looking-at end-re))
-		       (throw :exit (setq unfold? t))))
-		   ;; there should be no `end-re' or
-		   ;; `org-outline-regexp-bol' anywhere in the
-		   ;; drawer/block body.
-		   (save-excursion
-		     (goto-char fold-begin)
-		     (when (save-excursion
-			     (let ((case-fold-search t))
-			       (re-search-forward (rx (or (regex end-re)
-							  (regex org-outline-regexp-bol)))
-						  (max (point)
-						       (1- (save-excursion
-							     (goto-char fold-end)
-							     (line-beginning-position))))
-						  't)))
-		       (throw :exit (setq unfold? t)))))
-		 (when unfold?
-		   (org-fold-region fold-begin fold-end nil spec)))
-               (goto-char fold-end))))
-	 ;; Move to next hidden drawer/block.
-	 (setq pos
-               (org-fold-next-folding-state-change spec)))))))
+  ;; No insertions or deletions in buffer.
+  ;; Skip all the checks.
+  (unless (eq org-fold--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
+    ;; Store the new buffer modification state.
+    (setq org-fold--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
+    ;; Re-hide text inserted in the middle of a folded region.
+    (unless (equal from to)
+      (dolist (spec org-fold--spec-priority-list)
+	(let ((spec-to (org-fold-get-folding-spec spec to))
+	      (spec-from (org-fold-get-folding-spec spec (max (point-min) (1- from)))))
+	  (when (and spec-from spec-to (eq spec-to spec-from))
+	    (org-fold-region from to t (or spec-from spec-to))))))
+    ;; Re-hide text inserted right in front (but not at the back) of a
+    ;; folded region.
+    ;; Examples: beginning of a folded drawer, first line of folded
+    ;; headline (schedule).  However, do not hide headline text.
+    (unless (equal from to)
+      (when (and (not (org-fold-folded-p (max (point-min) (1- from))))
+		 (org-fold-folded-p to)
+		 (not (org-at-heading-p)))
+	(org-fold-region from to t (or (org-fold-get-folding-spec nil (max (point-min) (1- from))) (org-fold-get-folding-spec nil to)))))
+    ;; Reveal the whole region if inserted in the middle of
+    ;; visible text. This is needed, for example, when one is
+    ;; trying to copy text from indirect buffer to main buffer. If
+    ;; the text is unfolded in the indirect buffer, but folded in
+    ;; the main buffer, the text properties responsible for
+    ;; folding will be activated as soon as the text is pasted
+    ;; into the main buffer. Thus, we need to unfold the inserted
+    ;; text to make org-mode behave as expected (the inserted text
+    ;; is visible).
+    ;; FIXME: this breaks when replacing buffer/region contents - we do not need to unfold in that case
+    ;; (unless (equal from to)
+    ;;   (when (and (not (org-fold-folded-p (max (point-min) (1- from)))) (not (org-fold-folded-p to)))
+    ;;     (org-fold-region from to nil)))
+    ;; Process all the folded text between `from' and `to'.
+    (org-with-wide-buffer
+     ;; If the edit is done in the first line of a folded drawer/block,
+     ;; the folded text is only starting from the next line and needs to
+     ;; be checked.
+     (setq to (save-excursion (goto-char to) (line-beginning-position 2)))
+     ;; If the ":END:" line of the drawer is deleted, the folded text is
+     ;; only ending at the previous line and needs to be checked.
+     (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
+     ;; Expand the considered region to include partially present folded
+     ;; drawer/block.
+     (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'drawer) from)
+       (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'drawer) from)))
+     (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'block) from)
+       (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'block) from)))
+     ;; Check folded drawers and blocks.
+     (dolist (spec (list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
+       (let ((pos from)
+	     (begin-re (cond
+			((eq spec (org-fold-get-folding-spec-for-element 'drawer))
+			 org-drawer-regexp)
+			;; Group one below contains the type of the block.
+			((eq spec (org-fold-get-folding-spec-for-element 'block))
+			 (rx bol (zero-or-more (any " " "\t"))
+			     "#+begin"
+			     (or ":"
+				 (seq "_"
+				      (group (one-or-more (not (syntax whitespace))))))))))
+             ;; To be determined later. May depend on `begin-re' match (i.e. for blocks).
+             end-re)
+	 ;; Move to the first hidden drawer/block.
+	 (unless (org-fold-get-folding-spec spec pos)
+	   (setq pos (org-fold-next-folding-state-change spec pos)))
+	 ;; Cycle over all the hidden drawers/blocks.
+	 (while (< pos to)
+	   (save-match-data ; we should not clobber match-data in after-change-functions
+	     (let ((fold-begin (and (org-fold-get-folding-spec spec pos)
+				    pos))
+		   (fold-end (org-fold-next-folding-state-change spec pos)))
+               (when (and fold-begin fold-end)
+		 (let (unfold?)
+		   (catch :exit
+		     ;; The line before folded text should be beginning of
+		     ;; the drawer/block.
+		     (save-excursion
+		       (goto-char fold-begin)
+		       ;; The line before beginning of the fold should be the
+		       ;; first line of the drawer/block.
+		       (backward-char)
+		       (beginning-of-line)
+		       (unless (let ((case-fold-search t))
+				 (looking-at begin-re)) ; the match-data will be used later
+			 (throw :exit (setq unfold? t))))
+                     ;; Set `end-re' for the current drawer/block.
+                     (setq end-re
+			   (cond
+			    ((eq spec (org-fold-get-folding-spec-for-element 'drawer))
+                             org-property-end-re)
+			    ((eq spec (org-fold-get-folding-spec-for-element 'block))
+			     (let ((block-type (match-string 1))) ; the last match is from `begin-re'
+			       (concat (rx bol (zero-or-more (any " " "\t")) "#+end")
+				       (if block-type
+					   (concat "_"
+						   (regexp-quote block-type)
+						   (rx (zero-or-more (any " " "\t")) eol))
+					 (rx (opt ":") (zero-or-more (any " " "\t")) eol)))))))
+		     ;; The last line of the folded text should match `end-re'.
+		     (save-excursion
+		       (goto-char fold-end)
+		       (beginning-of-line)
+		       (unless (let ((case-fold-search t))
+				 (looking-at end-re))
+			 (throw :exit (setq unfold? t))))
+		     ;; there should be no `end-re' or
+		     ;; `org-outline-regexp-bol' anywhere in the
+		     ;; drawer/block body.
+		     (save-excursion
+		       (goto-char fold-begin)
+		       (when (save-excursion
+			       (let ((case-fold-search t))
+				 (re-search-forward (rx (or (regex end-re)
+							    (regex org-outline-regexp-bol)))
+						    (max (point)
+							 (1- (save-excursion
+							       (goto-char fold-end)
+							       (line-beginning-position))))
+						    't)))
+			 (throw :exit (setq unfold? t)))))
+		   (when unfold?
+		     (org-fold-region fold-begin fold-end nil spec)))
+		 (goto-char fold-end))))
+	   ;; Move to next hidden drawer/block.
+	   (setq pos
+		 (org-fold-next-folding-state-change spec))))))))
 
 ;; Catching user edits inside invisible text
 (defun org-fold-check-before-invisible-edit (kind)
