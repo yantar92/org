@@ -277,7 +277,8 @@ to search in hidden text with any of the listed 'invisible property value.")
 ;; folding properties carried from the base buffer are updated to
 ;; become unique in the new indirect buffer.
 (defun org-fold--property-symbol-get-create (spec &optional buffer return-only)
-  "Return unique symbol suitable to be used as folding text property corresponding to folding SPEC in BUFFER.
+  "Return a unique symbol suitable as folding text property.
+Return value is unique for folding SPEC in BUFFER.
 If the buffer already have buffer-local setup in `char-property-alias-alist'
 and the setup appears to be created for different buffer,
 copy the old invisibility state into new buffer-local text properties,
