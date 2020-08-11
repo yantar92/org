@@ -1151,9 +1151,10 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
   ;; into the main buffer. Thus, we need to unfold the inserted
   ;; text to make org-mode behave as expected (the inserted text
   ;; is visible).
-  (unless (equal from to)
-    (when (and (not (org-fold-folded-p (max (point-min) (1- from)))) (not (org-fold-folded-p to)))
-      (org-fold-region from to nil)))
+  ;; FIXME: this breaks when replacing buffer/region contents - we do not need to unfold in that case
+  ;; (unless (equal from to)
+  ;;   (when (and (not (org-fold-folded-p (max (point-min) (1- from)))) (not (org-fold-folded-p to)))
+  ;;     (org-fold-region from to nil)))
   ;; Process all the folded text between `from' and `to'.
   (org-with-wide-buffer
    ;; If the edit is done in the first line of a folded drawer/block,
