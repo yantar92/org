@@ -241,21 +241,21 @@ to search in hidden text with any of the listed 'invisible property value.")
 (defsubst org-fold-get-folding-spec-for-element (type)
   "Return name of folding spec for element TYPE."
   (pcase type
-    ('headline 'org-fold-outline)
-    ('inlinetask 'org-fold-outline)
-    ('plain-list 'org-fold-outline)
-    ('block 'org-fold-block)
-    ('center-block 'org-fold-block)
-    ('comment-block 'org-fold-block)
-    ('dynamic-block 'org-fold-block)
-    ('example-block 'org-fold-block)
-    ('export-block 'org-fold-block)
-    ('quote-block 'org-fold-block)
-    ('special-block 'org-fold-block)
-    ('src-block 'org-fold-block)
-    ('verse-block 'org-fold-block)
-    ('drawer 'org-fold-drawer)
-    ('property-drawer 'org-fold-drawer)
+    (`headline 'org-fold-outline)
+    (`inlinetask 'org-fold-outline)
+    (`plain-list 'org-fold-outline)
+    (`block 'org-fold-block)
+    (`center-block 'org-fold-block)
+    (`comment-block 'org-fold-block)
+    (`dynamic-block 'org-fold-block)
+    (`example-block 'org-fold-block)
+    (`export-block 'org-fold-block)
+    (`quote-block 'org-fold-block)
+    (`special-block 'org-fold-block)
+    (`src-block 'org-fold-block)
+    (`verse-block 'org-fold-block)
+    (`drawer 'org-fold-drawer)
+    (`property-drawer 'org-fold-drawer)
     (_ nil)))
 
 (defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
@@ -1004,12 +1004,12 @@ is set to 't.")
   "Initialize isearch in org buffer.
 TYPE can be either `text-properties' or `overlays'."
   (pcase type
-    ('text-properties
+    (`text-properties
      (setq-local search-invisible 'open-all)
      (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-state nil 'local)
      (add-hook 'isearch-mode-hook #'org-fold--clear-isearch-state nil 'local)
      (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate-text-properties))
-    ('overlays
+    (`overlays
      (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate-overlays)
      (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-overlays nil 'local))
     (_ (error "%s: Unknown type of setup for `org-fold--isearch-setup'" type))))
