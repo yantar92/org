@@ -938,9 +938,8 @@ information."
     ;; expose it.
     (when (memq (org-fold-get-folding-spec)
 		(list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
-      (let* ((spec (org-fold-get-folding-spec))
-	     (region (org-fold-get-region-at-point spec)))
-	(org-fold-region (car region) (cdr region) nil spec)))
+      (let ((region (org-fold-get-region-at-point)))
+	(org-fold-region (car region) (cdr region) nil)))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
