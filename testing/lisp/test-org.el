@@ -7803,12 +7803,12 @@ CLOCK: [2012-03-29 Thu 10:00]--[2012-03-29 Thu 16:40] =>  6:40"
      (get-char-property (point) 'invisible))))
 
 (ert-deftest test-org/hide-block-toggle-maybe ()
-  "Test `org-fold-hide-block-toggle-maybe' specifications."
+  "Test `org-fold-hide-block-toggle' specifications."
   (should
    (org-test-with-temp-text "#+BEGIN: dynamic\nContents\n#+END:"
-     (org-fold-hide-block-toggle-maybe)))
-  (should-not
-   (org-test-with-temp-text "Paragraph" (org-fold-hide-block-toggle-maybe))))
+     (org-hide-block-toggle)))
+  (should-error
+   (org-test-with-temp-text "Paragraph" (org-hide-block-toggle))))
 
 (ert-deftest test-org/show-set-visibility ()
   "Test `org-fold-show-set-visibility' specifications."
