@@ -1199,13 +1199,13 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
              end-re)
 	 ;; Move to the first hidden drawer/block.
 	 (unless (org-fold-get-folding-spec spec pos)
-	   (setq pos (org-fold-next-folding-state-change spec pos)))
+	   (setq pos (org-fold-next-folding-state-change spec pos to)))
 	 ;; Cycle over all the hidden drawers/blocks.
 	 (while (< pos to)
 	   (save-match-data ; we should not clobber match-data in after-change-functions
 	     (let ((fold-begin (and (org-fold-get-folding-spec spec pos)
 				    pos))
-		   (fold-end (org-fold-next-folding-state-change spec pos)))
+		   (fold-end (org-fold-next-folding-state-change spec pos to)))
                (when (and fold-begin fold-end)
 		 (let (unfold?)
 		   (catch :exit
@@ -1260,7 +1260,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 		 (goto-char fold-end))))
 	   ;; Move to next hidden drawer/block.
 	   (setq pos
-		 (org-fold-next-folding-state-change spec))))))))
+		 (org-fold-next-folding-state-change spec to))))))))
 
 ;; Catching user edits inside invisible text
 (defun org-fold-check-before-invisible-edit (kind)
