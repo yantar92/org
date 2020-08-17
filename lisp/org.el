@@ -19671,7 +19671,10 @@ See `org-forward-paragraph'."
 		   (org-fold-get-folding-spec nil (line-end-position)))
 	    ((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
 		 (pred (eq (org-fold-get-folding-spec-for-element 'block))))
-	     (goto-char (cdr (org-fold-get-region-at-point)))
+	     (goto-char (cdr (org-fold-get-region-at-point
+			      nil
+			      (org-with-point-at post-affiliated
+				(line-end-position)))))
 	     (forward-line)
 	     t)
 	    (_ nil)))
