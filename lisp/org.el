@@ -19729,10 +19729,10 @@ See `org-backward-paragraph'."
 	   (save-excursion (skip-chars-backward " \t\n") (bobp)))
       (goto-char (point-min)))
      ;; When inside a folded part, move out of it.
-     ((pcase (org-invisible-p (1- (point)))
+     ((pcase (org-fold-get-folding-spec nil (1- (point)))
 	((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
              (pred (eq (org-fold-get-folding-spec-for-element 'block))))
-	 (goto-char (1- (org-fold-get-region-at-point nil (1- (point)))))
+	 (goto-char (1- (car (org-fold-get-region-at-point nil (1- (point))))))
 	 (org--backward-paragraph-once)
 	 t)
 	(_ nil)))
