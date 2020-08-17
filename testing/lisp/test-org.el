@@ -4353,8 +4353,15 @@ Text.
 	    (while (search-forward "BEGIN_" nil t) (org-cycle))
 	    (search-backward "- item 1")
 	    (org-drag-element-backward)
-	    (mapcar (lambda (ov) (cons (overlay-start ov) (overlay-end ov)))
-		    (overlays-in (point-min) (point-max))))))
+            (let (regions)
+              (goto-char (point-min))
+              (while (< (point) (point-max))
+		(let ((region (org-fold-get-region-at-point)))
+                  (if (not region)
+                      (goto-char (org-fold-next-folding-state-change))
+                    (goto-char (cdr region))
+                    (push region regions))))
+              regions))))
   ;; Pathological case: handle call with point in blank lines right
   ;; after a headline.
   (should
@@ -4405,8 +4412,15 @@ Text.
     (should
      (equal
       '((63 . 82) (26 . 48))
-      (mapcar (lambda (ov) (cons (overlay-start ov) (overlay-end ov)))
-	      (overlays-in (point-min) (point-max)))))))
+      (let (regions)
+        (goto-char (point-min))
+        (while (< (point) (point-max))
+	  (let ((region (org-fold-get-region-at-point)))
+            (if (not region)
+                (goto-char (org-fold-next-folding-state-change))
+              (goto-char (cdr region))
+              (push region regions))))
+        regions)))))
 
 (ert-deftest test-org/next-block ()
   "Test `org-next-block' specifications."
