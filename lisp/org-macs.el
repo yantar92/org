@@ -741,7 +741,7 @@ If DELETE is non-nil, delete all those overlays."
 	    (t (push ov found))))))
 
 (defun org-find-text-property-region (pos prop)
-  "Find a region around POS containing PROP text property.
+  "Find a region around POS containing same non-nil value of PROP text property.
 Return nil when PROP is not set at POS."
   (let* ((beg (and (get-text-property pos prop) pos))
 	 (end beg))
@@ -754,7 +754,8 @@ Return nil when PROP is not set at POS."
 		  (not (eq (get-text-property end prop)
 			 (get-text-property (1+ end) prop))))
 	(setq end (next-single-property-change pos prop nil (point-max))))
-      (cons beg end))))
+      (unless (eq beg end)
+	(cons beg end)))))
 
 
 ;;; Regexp matching
