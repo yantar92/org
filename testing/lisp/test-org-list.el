@@ -582,7 +582,7 @@ b. Item 2<point>"
   ;; Preserve item visibility.
   (should
    (equal
-    '(outline outline)
+    (make-list 2 (org-fold-get-folding-spec-for-element 'headline))
     (org-test-with-temp-text
 	"* Headline\n<point>- item 1\n  body 1\n- item 2\n  body 2"
       (let ((org-cycle-include-plain-lists t))
@@ -592,10 +592,10 @@ b. Item 2<point>"
       (search-backward "- item 1")
       (org-move-item-down)
       (forward-line)
-      (list (org-invisible-p2)
+      (list (org-fold-get-folding-spec)
 	    (progn
 	      (search-backward " body 2")
-	      (org-invisible-p2))))))
+	      (org-fold-get-folding-spec))))))
   ;; Preserve children visibility.
   (org-test-with-temp-text "* Headline
 - item 1
