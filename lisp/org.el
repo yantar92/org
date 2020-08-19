@@ -19217,10 +19217,7 @@ interactive command with similar behavior."
 If point is before first heading go to first point in buffer
 instead of back to heading."
   (condition-case nil
-      (if (org-inlinetask-in-task-p)
-	  (outline-back-to-heading invisible-ok)
-	(org-with-limited-levels
-	 (outline-back-to-heading invisible-ok)))
+      (outline-back-to-heading invisible-ok)
     (error
      (goto-char (point-min)))))
 
