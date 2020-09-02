@@ -1101,12 +1101,15 @@ value listed in `org-fold--isearch-specs'."
 
 (defun org-fold--clear-isearch-overlay (ov)
   "Convert OV region back into using text properties."
-  (let ((spec (overlay-get ov 'invisible))) ;; ignore deleted overlays
-    (when spec
+  (let ((spec (overlay-get ov 'invisible)))
+    ;; Ignore deleted overlays.
+    (when (and spec
+	       (overlay-buffer ov))
       ;; Changing text properties is considered buffer modification.
       ;; We do not want it here.
       (with-silent-modifications
-	(org-fold-region (overlay-start ov) (overlay-end ov) t spec))))
+	(when (< (overlay-end ov) (point-max))
+	  (org-fold-region (overlay-start ov) (overlay-end ov) t spec)))))
   (when (member ov isearch-opened-overlays)
     (setq isearch-opened-overlays (delete ov isearch-opened-overlays)))
   (delete-overlay ov))
