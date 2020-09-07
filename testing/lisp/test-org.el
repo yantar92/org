@@ -2087,6 +2087,24 @@
      (goto-char (point-max))
      (org-in-commented-heading-p t))))
 
+(ert-deftest test-org/in-archived-heading-p ()
+  "Test `org-in-archived-heading-p' specifications."
+  ;; Archived headline.
+  (should
+   (org-test-with-temp-text "* Headline :ARCHIVE:\nBody"
+     (goto-char (point-max))
+     (org-in-archived-heading-p)))
+  ;; Archived ancestor.
+  (should
+   (org-test-with-temp-text "* Headline :ARCHIVE:\n** Level 2\nBody"
+     (goto-char (point-max))
+     (org-in-archived-heading-p)))
+  ;; Optional argument.
+  (should-not
+   (org-test-with-temp-text "* Headline :ARCHIVE:\n** Level 2\nBody"
+     (goto-char (point-max))
+     (org-in-archived-heading-p t))))
+
 (ert-deftest test-org/entry-blocked-p ()
   ;; Check other dependencies.
   (should
@@ -6964,6 +6982,17 @@ Paragraph<point>"
 	  (org-test-with-temp-text "* a<point> b"
 	    (cl-letf (((symbol-function 'completing-read)
 		       (lambda (&rest args) ":foo:")))
+	      (let ((org-use-fast-tag-selection nil)
+		    (org-tags-column 1))
+		(org-set-tags-command)))
+	    (buffer-substring (point) (line-end-position)))))
+  ;; Handle tags both set locally and inherited.
+  (should
+   (equal "b :foo:"
+	  (org-test-with-temp-text "* a :foo:\n** <point>b :foo:"
+	    (cl-letf (((symbol-function 'completing-read)
+		       (lambda (prompt coll &optional pred req initial &rest args)
+			 initial)))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))

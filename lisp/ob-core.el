@@ -80,6 +80,7 @@
 (declare-function org-src-coderef-regexp "org-src" (fmt &optional label))
 (declare-function org-src-get-lang-mode "org-src" (lang))
 (declare-function org-table-align "org-table" ())
+(declare-function org-table-convert-region "org-table" (beg0 end0 &optional separator))
 (declare-function org-table-end "org-table" (&optional table-type))
 (declare-function org-table-import "org-table" (file arg))
 (declare-function org-table-to-lisp "org-table" (&optional txt))
@@ -240,9 +241,7 @@ should be asked whether to allow evaluation."
 			(funcall org-confirm-babel-evaluate
 				 ;; Language, code block body.
 				 (nth 0 info)
-				 (if (org-babel-noweb-p headers :eval)
-				     (org-babel-expand-noweb-references info)
-				   (nth 1 info)))
+				 (org-babel--expand-body info))
 		      org-confirm-babel-evaluate))))
     (cond
      (noeval nil)
@@ -637,6 +636,17 @@ a list with the following pattern:
 	(setf (nth 2 info) (org-babel-generate-file-param name (nth 2 info)))
 	info))))
 
+(defun org-babel--expand-body (info)
+  "Expand noweb references in body and remove any coderefs."
+  (let ((coderef (nth 6 info))
+	(expand
+	 (if (org-babel-noweb-p (nth 2 info) :eval)
+	     (org-babel-expand-noweb-references info)
+	   (nth 1 info))))
+    (if (not coderef) expand
+      (replace-regexp-in-string
+       (org-src-coderef-regexp coderef) "" expand nil nil 1))))
+
 ;;;###autoload
 (defun org-babel-execute-src-block (&optional arg info params)
   "Execute the current source code block.
@@ -682,17 +692,7 @@ block."
 	 ((org-babel-confirm-evaluate info)
 	  (let* ((lang (nth 0 info))
 		 (result-params (cdr (assq :result-params params)))
-		 ;; Expand noweb references in BODY and remove any
-		 ;; coderef.
-		 (body
-		  (let ((coderef (nth 6 info))
-			(expand
-			 (if (org-babel-noweb-p params :eval)
-			     (org-babel-expand-noweb-references info)
-			   (nth 1 info))))
-		    (if (not coderef) expand
-		      (replace-regexp-in-string
-		       (org-src-coderef-regexp coderef) "" expand nil nil 1))))
+		 (body (org-babel--expand-body info))
 		 (dir (cdr (assq :dir params)))
 		 (mkdirp (cdr (assq :mkdirp params)))
 		 (default-directory
@@ -2573,13 +2573,16 @@ file's directory then expand relative links."
 	   (and (buffer-file-name (buffer-base-buffer))
 		(not (string= (expand-file-name default-directory)
 			    (expand-file-name
-			     (file-name-directory (buffer-file-name (buffer-base-buffer)))))))))
+			     (file-name-directory
+			      (buffer-file-name (buffer-base-buffer)))))))))
       (format "[[file:%s]%s]"
-	      (if (and default-directory (buffer-file-name (buffer-base-buffer)) same-directory?)
+	      (if (and default-directory
+		       (buffer-file-name (buffer-base-buffer)) same-directory?)
 		  (if (eq org-link-file-path-type 'adaptive)
 		      (file-relative-name
 		       (expand-file-name result default-directory)
-		       (file-name-directory (buffer-file-name (buffer-base-buffer))))
+		       (file-name-directory
+			(buffer-file-name (buffer-base-buffer))))
 		    (expand-file-name result default-directory))
 		result)
 	      (if description (concat "[" description "]") "")))))
@@ -2992,7 +2995,8 @@ situations in which is it not appropriate."
 (defun org-babel--string-to-number (string)
   "If STRING represents a number return its value.
 Otherwise return nil."
-  (unless (string-match-p "\\s-" (org-trim string))
+  (unless (or (string-match-p "\\s-" (org-trim string))
+	      (not (string-match-p "^[0-9-e.+ ]+$" string)))
     (let ((interned-string (ignore-errors (read string))))
       (when (numberp interned-string)
 	interned-string))))
@@ -3004,13 +3008,18 @@ If the table is trivial, then return it as a scalar."
 	 (with-temp-buffer
 	   (condition-case err
 	       (progn
-		 (org-table-import file-name separator)
+		 (insert-file-contents file-name)
 		 (delete-file file-name)
-		 (delq nil
-		       (mapcar (lambda (row)
-				 (and (not (eq row 'hline))
-				      (mapcar #'org-babel-string-read row)))
-			       (org-table-to-lisp))))
+		 (let ((pmax (point-max)))
+		   ;; If the file was empty, don't bother trying to
+		   ;; convert the table.
+		   (when (> pmax 1)
+		     (org-table-convert-region (point-min) pmax separator)
+		     (delq nil
+			   (mapcar (lambda (row)
+				     (and (not (eq row 'hline))
+					  (mapcar #'org-babel-string-read row)))
+				   (org-table-to-lisp))))))
 	     (error
 	      (display-warning 'org-babel
 			       (format "Error reading results: %S" err)

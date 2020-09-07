@@ -232,25 +232,23 @@ property on the headline itself.")
 
 (defconst org-html-scripts
   "<script type=\"text/javascript\">
-// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
 <!--/*--><![CDATA[/*><!--*/
      function CodeHighlightOn(elem, id)
      {
        var target = document.getElementById(id);
        if(null != target) {
-         elem.cacheClassElem = elem.className;
-         elem.cacheClassTarget = target.className;
-         target.className = \"code-highlighted\";
-         elem.className   = \"code-highlighted\";
+         elem.classList.add(\"code-highlighted\");
+         target.classList.add(\"code-highlighted\");
        }
      }
      function CodeHighlightOff(elem, id)
      {
        var target = document.getElementById(id);
-       if(elem.cacheClassElem)
-         elem.className = elem.cacheClassElem;
-       if(elem.cacheClassTarget)
-         target.className = elem.cacheClassTarget;
+       if(null != target) {
+         elem.classList.remove(\"code-highlighted\");
+         target.classList.remove(\"code-highlighted\");
+       }
      }
     /*]]>*///-->
 // @license-end
@@ -289,7 +287,7 @@ property on the headline itself.")
   }
   pre.src {
     position: relative;
-    overflow: visible;
+    overflow: auto;
     padding-top: 1.2em;
   }
   pre.src:before {
@@ -1640,7 +1638,8 @@ a communication channel."
      (org-html--make-attribute-string
       (org-combine-plists
        (list :src source
-	     :alt (if (string-match-p "^ltxpng/" source)
+	     :alt (if (string-match-p
+		       (concat "^" org-preview-latex-image-directory) source)
 		      (org-html-encode-plain-text
 		       (org-find-text-property-in-string 'org-latex-src source))
 		    (file-name-nondirectory source)))

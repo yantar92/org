@@ -366,7 +366,7 @@ FULL is given."
 
 ;;;; Keyword
 (defconst org-keyword-regexp "^[ \t]*#\\+\\(\\S-+?\\):[ \t]*\\(.*\\)$"
-  "Regular expression for keyword-lines")
+  "Regular expression for keyword-lines.")
 
 ;;;; Block
 
@@ -1582,8 +1582,8 @@ When t, the following will happen while the cursor is in the headline:
   :type 'boolean)
 
 (defcustom org-ctrl-k-protect-subtree nil
-  "Non-nil means, do not delete a hidden subtree with C-k.
-When set to the symbol `error', simply throw an error when C-k is
+  "Non-nil means, do not delete a hidden subtree with `C-k'.
+When set to the symbol `error', simply throw an error when `C-k' is
 used to kill (part-of) a headline that has hidden text behind it.
 Any other non-nil value will result in a query to the user, if it is
 OK to kill that hidden subtree.  When nil, kill without remorse."
@@ -2359,7 +2359,7 @@ step priority must not exceed the range from `org-priority-highest' to
 `org-priority-lowest' which means that `org-priority-default' has to be
 in this range exclusive or inclusive to the range boundaries.  Else the
 first step refuses to set the default and the second will fall back on
-(depending on the command used) the highest or lowest priority."
+\(depending on the command used) the highest or lowest priority."
   :group 'org-priorities
   :type '(choice
 	  (character :tag "Character")
@@ -2555,7 +2555,9 @@ stamps outside of this range."
 
 (defcustom org-read-date-display-live t
   "Non-nil means display current interpretation of date prompt live.
-This display will be in an overlay, in the minibuffer."
+This display will be in an overlay, in the minibuffer.  Note that
+live display is only active when `org-read-date-popup-calendar'
+is non-nil."
   :group 'org-time
   :type 'boolean)
 
@@ -2732,7 +2734,7 @@ automatically if necessary."
 When nil, you have to press RET to exit it.
 During fast tag selection, you can toggle this flag with `C-c'.
 This variable can also have the value `expert'.  In this case, the window
-displaying the tags menu is not even shown, until you press C-c again."
+displaying the tags menu is not even shown, until you press `C-c' again."
   :group 'org-tags
   :type '(choice
 	  (const :tag "No" nil)
@@ -5119,9 +5121,9 @@ by a #."
 	   limit t)
       (let ((beg (match-beginning 0))
 	    (end-of-beginline (match-end 0))
-	    (block-start (match-end 0))  ; includes the \n at end of #+begin line
+	    (block-start (match-end 0))  ; Includes the \n at end of #+begin line
 	    (block-end nil)              ; will include \n after end of block content
-	    (lang (match-string 7))      ; the language, if it is an src block
+	    (lang (match-string 7))      ; the language, if it is an src block.
 	    (bol-after-beginline (line-beginning-position 2))
 	    (dc1 (downcase (match-string 2)))
 	    (dc3 (downcase (match-string 3)))
@@ -5139,12 +5141,12 @@ by a #."
 						    ,(match-string 4)
 						    word-end
 						    (zero-or-more any)))))
-		 nil t)  ;; on purpose, we look further than LIMIT
-	    ;; We do have a matching #+end line
+		 nil t)  ; On purpose, we look further than LIMIT.
+	    ;; We do have a matching #+end line.
 	    (setq beg-of-endline (match-beginning 0)
 		  end-of-endline (match-end 0)
 		  nl-before-endline (1- (match-beginning 0)))
-	    (setq block-end (match-beginning 0)) ; includes the final newline.
+	    (setq block-end (match-beginning 0)) ; Includes the final newline.
 	    (when quoting
 	      (org-remove-flyspell-overlays-in bol-after-beginline nl-before-endline)
 	      (remove-text-properties beg end-of-endline
@@ -5173,7 +5175,10 @@ by a #."
 	     ((string= block-type "verse")
 	      (add-face-text-property
 	       bol-after-beginline beg-of-endline 'org-verse t)))
-	    ;; Fontify the #+begin and #+end lines of the blocks
+	    ;; Use the org-block face for all true blocks.
+	    (add-text-properties
+	     bol-after-beginline beg-of-endline (list 'face 'org-block))
+	    ;; Fontify the #+begin and #+end lines of the blocks.
 	    (add-text-properties
 	     beg (if whole-blockline bol-after-beginline end-of-beginline)
 	     '(face org-block-begin-line))
@@ -5832,7 +5837,7 @@ and subscripts."
   "Remove outline overlays that do not contain non-white stuff."
   (dolist (o (overlays-at pos))
     (and (eq 'outline (overlay-get o 'invisible))
-	 (not (string-match "\\S-" (buffer-substring (overlay-start o)
+	 (not (string-match-p "\\S-" (buffer-substring (overlay-start o)
 						     (overlay-end o))))
 	 (delete-overlay o))))
 
@@ -6490,9 +6495,11 @@ Assume point is at a heading or an inlinetask beginning."
      (forward-line)
      (org-indent-region (match-beginning 0) (match-end 0)))
    (when (looking-at org-logbook-drawer-re)
-     (goto-char (match-end 0))
-     (forward-line)
-     (org-indent-region (match-beginning 0) (match-end 0)))
+     (let ((end-marker  (move-marker (make-marker) (match-end 0)))
+	   (ci (current-indentation)))
+       (while (and (not (> (point) end-marker)) (>= ci diff))
+	 (indent-line-to (+ ci diff))
+	 (forward-line))))
    (catch 'no-shift
      (when (or (zerop diff) (not (eq org-adapt-indentation t)))
        (throw 'no-shift nil))
@@ -8422,8 +8429,7 @@ block can be inserted by pressing TAB after the string \"<KEY\"."
 (defun org--check-org-structure-template-alist (&optional checklist)
   "Check whether `org-structure-template-alist' is set up correctly.
 In particular, check if the Org 9.2 format is used as opposed to
-previous format.
-"
+previous format."
   (let ((elm (cl-remove-if-not (lambda (x) (listp (cdr x)))
 			       (or (eval checklist)
 				   org-structure-template-alist))))
@@ -9193,8 +9199,7 @@ when there is a statistics cookie in the headline!
  (defun org-summary-todo (n-done n-not-done)
    \"Switch entry to DONE when all subentries are done, to TODO otherwise.\"
    (let (org-log-done org-log-states)   ; turn off logging
-     (org-todo (if (= n-not-done 0) \"DONE\" \"TODO\"))))
-")
+     (org-todo (if (= n-not-done 0) \"DONE\" \"TODO\"))))")
 
 (defvar org-todo-statistics-hook nil
   "Hook that is run whenever Org thinks TODO statistics should be updated.
@@ -9832,8 +9837,9 @@ WHAT entry will also be removed."
 (defvar org-log-note-window-configuration nil)
 (defvar org-log-note-return-to (make-marker))
 (defvar org-log-note-effective-time nil
-  "Remembered current time so that dynamically scoped
-`org-extend-today-until' affects timestamps in state change log")
+  "Remembered current time.
+So that dynamically scoped `org-extend-today-until' affects
+timestamps in state change log.")
 
 (defvar org-log-post-message nil
   "Message to be displayed after a log note has been stored.
@@ -10133,7 +10139,7 @@ on `org-remove-highlights-with-change'), this variable is emptied
 as well.")
 
 (defun org-occur (regexp &optional keep-previous callback)
-  "Make a compact tree which shows all matches of REGEXP.
+  "Make a compact tree showing all matches of REGEXP.
 
 The tree will show the lines where the regexp matches, and any other context
 defined in `org-fold-show-context-detail', which see.
@@ -10603,7 +10609,7 @@ are also TODO tasks."
   (interactive "P")
   (org-agenda-prepare-buffers (list (current-buffer)))
   (let ((org--matcher-tags-todo-only todo-only))
-    (org-scan-tags 'sparse-tree (cdr (org-make-tags-matcher match))
+    (org-scan-tags 'sparse-tree (cdr (org-make-tags-matcher match t))
 		   org--matcher-tags-todo-only)))
 
 (defalias 'org-tags-sparse-tree 'org-match-sparse-tree)
@@ -10644,7 +10650,7 @@ instead of the agenda files."
 		   (if (car-safe files) files
 		     (org-agenda-files))))))))
 
-(defun org-make-tags-matcher (match)
+(defun org-make-tags-matcher (match &optional only-local-tags)
   "Create the TAGS/TODO matcher form for the selection string MATCH.
 
 Returns a cons of the selection string MATCH and a function
@@ -10662,6 +10668,9 @@ This function sets the variable `org--matcher-tags-todo-only' to
 a non-nil value if the matcher restricts matching to TODO
 entries, otherwise it is not touched.
 
+When ONLY-LOCAL-TAGS is non-nil, ignore the global tag completion
+table, only get buffer tags.
+
 See also `org-scan-tags'."
   (unless match
     ;; Get a new match request, with completion against the global
@@ -10669,7 +10678,8 @@ See also `org-scan-tags'."
     (let ((org-last-tags-completion-table
 	   (org--tag-add-to-alist
 	    (org-get-buffer-tags)
-	    (org-global-tags-completion-table))))
+	    (unless only-local-tags
+	      (org-global-tags-completion-table)))))
       (setq match
 	    (completing-read
 	     "Match: "
@@ -11413,7 +11423,8 @@ According to `org-use-tag-inheritance', tags may be inherited
 from parent headlines, and from the whole document, through
 `org-file-tags'.  In this case, the returned list of tags
 contains tags in this order: file tags, tags inherited from
-parent headlines, local tags.
+parent headlines, local tags.  If a tag appears multiple times,
+only the most local tag is returned.
 
 However, when optional argument LOCAL is non-nil, only return
 tags specified at the headline.
@@ -11429,12 +11440,13 @@ Inherited tags have the `inherited' text property."
         (let ((ltags (org--get-local-tags)) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
             (while (org-up-heading-safe)
-              (setq itags (append (mapcar #'org-add-prop-inherited
-                                          (org--get-local-tags))
-                                  itags)))
+              (setq itags (nconc (mapcar #'org-add-prop-inherited
+					 (org--get-local-tags))
+				 itags)))
             (setq itags (append org-file-tags itags))
-            (delete-dups
-             (append (org-remove-uninherited-tags itags) ltags))))))))
+            (nreverse
+	     (delete-dups
+	      (nreverse (nconc (org-remove-uninherited-tags itags) ltags))))))))))
 
 (defun org-get-buffer-tags ()
   "Get a table of all tags used in the buffer, for completion."
@@ -13697,7 +13709,7 @@ signaled."
 		       (cdr errdata))))))))
 
 (defun org-days-to-iso-week (days)
-  "Return the iso week number."
+  "Return the ISO week number."
   (require 'cal-iso)
   (car (calendar-iso-from-absolute days)))
 
@@ -15718,7 +15730,7 @@ word constituents."
 (defvar org-ctrl-c-ctrl-c-hook nil
   "Hook for functions attaching themselves to `C-c C-c'.
 
-This can be used to add additional functionality to the C-c C-c
+This can be used to add additional functionality to the `C-c C-c'
 key which executes context-dependent commands.  This hook is run
 before any other test, while `org-ctrl-c-ctrl-c-final-hook' is
 run after the last test.
@@ -15731,7 +15743,7 @@ context is wrong, just do nothing and return nil.")
 (defvar org-ctrl-c-ctrl-c-final-hook nil
   "Hook for functions attaching themselves to `C-c C-c'.
 
-This can be used to add additional functionality to the C-c C-c
+This can be used to add additional functionality to the `C-c C-c'
 key which executes context-dependent commands.  This hook is run
 after any other test, while `org-ctrl-c-ctrl-c-hook' is run
 before the first test.
@@ -16289,7 +16301,7 @@ this numeric value."
   (org-increase-number-at-point (- (or inc 1))))
 
 (defun org-ctrl-c-ret ()
-  "Call `org-table-hline-and-move' or `org-insert-heading' dep. on context."
+  "Call `org-table-hline-and-move' or `org-insert-heading'."
   (interactive)
   (cond
    ((org-at-table-p) (call-interactively 'org-table-hline-and-move))
@@ -16655,6 +16667,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	   "`\\[org-ctrl-c-ctrl-c]' can do nothing useful here"))))))))
 
 (defun org-mode-restart ()
+"Restart `org-mode'."
   (interactive)
   (let ((indent-status (bound-and-true-p org-indent-mode)))
     (funcall major-mode)
@@ -17321,6 +17334,7 @@ Your bug report will be posted to the Org mailing list.
 
 
 (defun org-install-agenda-files-menu ()
+  "Install agenda file menu."
   (let ((bl (buffer-list)))
     (save-excursion
       (while bl
@@ -19250,6 +19264,20 @@ unless optional argument NO-INHERITANCE is non-nil."
    (no-inheritance nil)
    (t
     (save-excursion (and (org-up-heading-safe) (org-in-commented-heading-p))))))
+
+(defun org-in-archived-heading-p (&optional no-inheritance)
+  "Non-nil if point is under an archived heading.
+This function also checks ancestors of the current headline,
+unless optional argument NO-INHERITANCE is non-nil."
+  (cond
+   ((org-before-first-heading-p) nil)
+   ((let ((tags (nth 5 (org-heading-components))))
+      (and tags
+	   (let ((case-fold-search nil))
+	     (string-match-p org-archive-tag tags)))))
+   (no-inheritance nil)
+   (t
+    (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p))))))
 
 (defun org-at-comment-p nil
   "Return t if cursor is in a commented line."

@@ -277,7 +277,7 @@ at the beginning of a line."
 	(org-babel-execute-src-block)))))
 
 (ert-deftest test-ob/inline-src_blk-default-results-replace-line-1 ()
-  (let ((test-line "src_sh{echo 1}")
+  (let ((test-line "src_sh[:results output]{echo 1}")
 	(org-babel-inline-result-wrap "=%s="))
     ;; src_ at bol line 1...
     (org-test-with-temp-text
@@ -548,7 +548,7 @@ echo \"[[file:./cv.cls]]\"
 (ert-deftest test-ob/just-one-results-block ()
   "Test that evaluating two times the same code block does not result in a
 duplicate results block."
-  (org-test-with-temp-text "#+begin_src sh\necho Hello\n#+end_src\n"
+  (org-test-with-temp-text "#+begin_src sh :results output\necho Hello\n#+end_src\n"
     (org-babel-execute-src-block)
     (org-babel-execute-src-block)     ; second code block execution
     (should (search-forward "Hello")) ; the string inside the source code block
@@ -1055,7 +1055,7 @@ x
 #+end_src
 
 * next heading")))
-	  '("sh" "emacs-lisp")))
+	  '("emacs-lisp")))
 
 (ert-deftest test-ob/org-babel-results-indented-wrap ()
   "Ensure that wrapped results are inserted correction when indented.
@@ -1487,7 +1487,7 @@ Paragraph"
 |  1 | bar  |
 |  2 | baz  |
 
-#+begin_src sh :var data=input-table :exports results :colnames '(Rev Author)
+#+begin_src sh :var data=input-table :results table :exports results :colnames '(Rev Author)
 echo \"$data\"
 #+end_src
 
@@ -1504,7 +1504,7 @@ echo \"$data\"
 |  1 | bar  |
 |  2 | baz  |
 
-#+begin_src sh :var data=input-table :exports results :colnames '(Rev Author)
+#+begin_src sh :var data=input-table :results table :exports results :colnames '(Rev Author)
 echo \"$data\"
 #+end_src
 "
@@ -1956,6 +1956,26 @@ default-directory
 		   (lambda (_ body)
 		     (not (string-match-p ":bar" body)))))
 	      (org-babel-check-confirm-evaluate
+	       (org-babel-get-src-block-info))))))
+  ;; The code block passed to `org-confirm-babel-evaluate' does not
+  ;; include coderefs.
+  (should
+   (equal t
+	  (org-test-with-temp-text "
+#+name: foo
+#+begin_src emacs-lisp
+  :bar
+#+end_src
+
+<point>#+begin_src emacs-lisp :noweb yes
+  #(ref:foo)
+  <<foo>>
+#+end_src"
+	    (let ((org-coderef-label-format "#(ref:%s)")
+		  (org-confirm-babel-evaluate
+		   (lambda (_ body)
+		     (string-match-p "ref:foo" body))))
+	      (org-babel-check-confirm-evaluate
 	       (org-babel-get-src-block-info)))))))
 
 (defun org-test-ob/update-block-body ()
@@ -2251,6 +2271,34 @@ abc
     (should (=  100    (org-babel--string-to-number "100")))
     (should (=  0.1    (org-babel--string-to-number "0.1")))
     (should (=  1.0    (org-babel--string-to-number "1.0"))))
+
+(ert-deftest test-ob/import-elisp-from-file ()
+  "Test `org-babel-import-elisp-from-file'."
+  (should
+   (equal
+    (org-test-with-temp-text-in-file "line 1\nline 2\n"
+      (cl-letf (((symbol-function 'display-warning)
+		 (lambda (&rest _) (error "No warnings should occur"))
+		 (org-table-convert-region-max-lines 2)))
+	(org-babel-import-elisp-from-file (buffer-file-name))))
+    '(("line" 1)
+      ("line" 2))))
+  ;; If an error occurs during table conversion, it is shown with
+  ;; `display-warning' rather than as a message to make sure the
+  ;; caller sees it.
+  (should-error
+   (org-test-with-temp-text-in-file "line 1\nline 2\n"
+     (cl-letf (((symbol-function 'display-warning)
+		(lambda (&rest _) (error "Warning should be displayed")))
+	       (org-table-convert-region-max-lines 1))
+       (org-babel-import-elisp-from-file (buffer-file-name)))))
+  ;; But an empty file (as is the case when there are no execution
+  ;; results) does not trigger a warning.
+  (should-not
+   (org-test-with-temp-text-in-file ""
+     (cl-letf (((symbol-function 'display-warning)
+		(lambda (&rest _) (error "No warnings should occur"))))
+       (org-babel-import-elisp-from-file (buffer-file-name))))))
 
 (provide 'test-ob)
 

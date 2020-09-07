@@ -1100,14 +1100,21 @@ reorganize-frame  Show only two windows on the current frame, the current
                   window and the agenda.
 other-frame       Use `switch-to-buffer-other-frame' to display agenda.
                   Also, when exiting the agenda, kill that frame.
+other-tab         Use `switch-to-buffer-other-tab' to display the
+                  agenda, making use of the `tab-bar-mode' introduced
+                  in Emacs version 27.1.  Also, kill that tab when
+                  exiting the agenda view.
+
 See also the variable `org-agenda-restore-windows-after-quit'."
   :group 'org-agenda-windows
   :type '(choice
 	  (const current-window)
 	  (const other-frame)
+	  (const other-tab)
 	  (const other-window)
 	  (const only-window)
-	  (const reorganize-frame)))
+	  (const reorganize-frame))
+  :package-version '(Org . "9.4"))
 
 (defcustom org-agenda-window-frame-fractions '(0.5 . 0.75)
   "The min and max height of the agenda window as a fraction of frame height.
@@ -1118,11 +1125,11 @@ It only matters if `org-agenda-window-setup' is `reorganize-frame'."
 
 (defcustom org-agenda-restore-windows-after-quit nil
   "Non-nil means restore window configuration upon exiting agenda.
-Before the window configuration is changed for displaying the agenda,
-the current status is recorded.  When the agenda is exited with
-`q' or `x' and this option is set, the old state is restored.  If
-`org-agenda-window-setup' is `other-frame', the value of this
-option will be ignored."
+Before the window configuration is changed for displaying the
+agenda, the current status is recorded.  When the agenda is
+exited with `q' or `x' and this option is set, the old state is
+restored.  If `org-agenda-window-setup' is `other-frame' or
+`other-tab', the value of this option will be ignored."
   :group 'org-agenda-windows
   :type 'boolean)
 
@@ -2008,7 +2015,7 @@ category, you can use:
 					  (string :tag "File or data")
 					  (symbol :tag "Type")
 					  (boolean :tag "Data?")
-					  (repeat :tag "Extra image properties" :inline t symbol))
+					  (repeat :tag "Extra image properties" :inline t sexp))
 				    (list :tag "Display properties" sexp))))
 
 (defgroup org-agenda-column-view nil
@@ -3769,6 +3776,10 @@ FILTER-ALIST is an alist of filters we need to apply when
       (org-switch-to-buffer-other-window abuf))
      ((eq org-agenda-window-setup 'other-frame)
       (switch-to-buffer-other-frame abuf))
+     ((eq org-agenda-window-setup 'other-tab)
+      (if (fboundp 'switch-to-buffer-other-tab)
+	  (switch-to-buffer-other-tab abuf)
+	(user-error "Your version of Emacs does not have tab bar support")))
      ((eq org-agenda-window-setup 'only-window)
       (delete-other-windows)
       (pop-to-buffer-same-window abuf))
@@ -7389,6 +7400,10 @@ agenda."
       (cond
        ((eq org-agenda-window-setup 'other-frame)
 	(delete-frame))
+       ((eq org-agenda-window-setup 'other-tab)
+	(if (fboundp 'tab-bar-close-tab)
+	    (tab-bar-close-tab)
+	  (user-error "Your version of Emacs does not have tab bar mode support")))
        ((and org-agenda-restore-windows-after-quit
 	     wconf)
 	;; Maybe restore the pre-agenda window configuration.  Reset
@@ -7508,7 +7523,7 @@ in the agenda."
     (and top-hl-filter (org-agenda-filter-top-headline-apply top-hl-filter))
     (and cols (called-interactively-p 'any) (org-agenda-columns))
     (org-goto-line line)
-    (recenter window-line)))
+    (when (called-interactively-p 'any) (recenter window-line))))
 
 (defun org-agenda-redo-all (&optional exhaustive)
   "Rebuild all agenda views in the current buffer.
@@ -7724,6 +7739,11 @@ the variable `org-agenda-auto-exclude-function'."
 	   (fe (if keep org-agenda-effort-filter))
 	   (fr (if keep org-agenda-regexp-filter))
 	   pm s)
+      ;; If the filter contains a double-quoted string, replace a
+      ;; single hyphen by the arbitrary and temporary string "~~~"
+      ;; to disambiguate such hyphens from syntactic ones.
+      (setq f-string (replace-regexp-in-string
+		      "\"\\([^\"]*\\)-\\([^\"]*\\)\"" "\"\\1~~~\\2\"" f-string))
       (while (string-match "^[ \t]*\\([-+]\\)?\\(\\([^-+<>=/ \t]+\\)\\|\\([<>=][0-9:]+\\)\\|\\(/\\([^/]+\\)/?\\)\\)" f-string)
 	(setq pm (if (match-beginning 1) (match-string 1 f-string) "+"))
 	(when negate
@@ -7731,12 +7751,15 @@ the variable `org-agenda-auto-exclude-function'."
 	(cond
 	 ((match-beginning 3)
 	  ;; category or tag
-	  (setq s (match-string 3 f-string))
+	  (setq s (replace-regexp-in-string ; Remove the temporary special string.
+		   "~~~" "-" (match-string 3 f-string)))
 	  (cond
 	   ((member s tag-list)
 	    (add-to-list 'ft (concat pm s) 'append 'equal))
 	   ((member s category-list)
-	    (add-to-list 'fc (concat pm s) 'append 'equal))
+	    (add-to-list 'fc (concat pm ; Remove temporary double quotes.
+				     (replace-regexp-in-string "\"\\(.*\\)\"" "\\1" s))
+			 'append 'equal))
 	   (t (message
 	       "`%s%s' filter ignored because tag/category is not represented"
 	       pm s))))
@@ -7909,7 +7932,10 @@ also press `-' or `+' to switch between filtering and excluding."
 				 pos 'org-category nil (point-max))))
 	    (push (get-text-property pos 'org-category) categories))
 	  (setq org-agenda-represented-categories
-		(nreverse (org-uniquify (delq nil categories))))))))
+		;; Enclose category names with a hyphen in double
+		;; quotes to process them specially in `org-agenda-filter'.
+		(mapcar (lambda (s) (if (string-match-p "-" s) (format "\"%s\"" s) s))
+			(nreverse (org-uniquify (delq nil categories)))))))))
 
 (defvar org-tag-groups-alist-for-agenda)
 (defun org-agenda-get-represented-tags ()
