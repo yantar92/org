@@ -229,7 +229,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 (defun org-cycle-internal-global ()
   "Do the global cycling action."
   ;; Hack to avoid display of messages for .org  attachments in Gnus
-  (let ((ga (string-match "\\*fontification" (buffer-name))))
+  (let ((ga (string-match-p "\\*fontification" (buffer-name))))
     (cond
      ((and (eq last-command this-command)
 	   (eq org-cycle-global-status 'overview))
@@ -309,8 +309,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
         (org-with-limited-levels
 	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil))))
-     ((and (or (>= eol eos)
-	       (not (string-match "\\S-" (buffer-substring eol eos))))
+     ((and (>= eol eos)
 	   (or has-children
 	       (not (setq children-skipped
 			org-cycle-skip-children-state-if-no-children))))
@@ -458,6 +457,8 @@ With numerical argument N, show content up to level N."
         (org-fold-region (line-end-position) last t (org-fold-get-folding-spec-for-element 'headline))
         (setq last (line-end-position 0))))))
 
+(defvar org-scroll-position-to-restore nil
+  "Temporarily store scroll position to restore.")
 (defun org-optimize-window-after-visibility-change (state)
   "Adjust the window after a change in outline visibility.
 This function is the default value of the hook `org-cycle-hook'."
@@ -465,9 +466,16 @@ This function is the default value of the hook `org-cycle-hook'."
     (cond
      ((eq state 'content)  nil)
      ((eq state 'all)      nil)
-     ((eq state 'folded)   nil)
-     ((eq state 'children) (or (org-subtree-end-visible-p) (recenter 1)))
-     ((eq state 'subtree)  (or (org-subtree-end-visible-p) (recenter 1))))))
+     ((and (eq state 'folded) (eq last-command this-command))
+      (set-window-start nil org-scroll-position-to-restore))
+     ((eq state 'folded) nil)
+     ((eq state 'children)
+      (setq org-scroll-position-to-restore (window-start))
+      (or (org-subtree-end-visible-p) (recenter 1)))
+     ((eq state 'subtree)
+      (when (not (eq last-command this-command))
+	(setq org-scroll-position-to-restore (window-start)))
+      (or (org-subtree-end-visible-p) (recenter 1))))))
 
 (defun org-clean-visibility-after-subtree-move ()
   "Fix visibility issues after moving a subtree."
