@@ -871,15 +871,15 @@ b. Item 2<point>"
   ;; Preserve list visibility when inserting an item.
   (should
    (equal
-    '(outline outline)
+    `(,(org-fold-get-folding-spec-for-element 'headline) ,(org-fold-get-folding-spec-for-element 'headline))
     (org-test-with-temp-text "- A\n  - B\n- C\n  - D"
       (let ((org-cycle-include-plain-lists t))
 	(org-cycle)
 	(forward-line 2)
 	(org-cycle)
 	(org-insert-item)
-	(list (get-char-property (line-beginning-position 0) 'invisible)
-	      (get-char-property (line-end-position 2) 'invisible))))))
+	(list (org-fold-get-folding-spec nil (line-beginning-position 0))
+	      (org-fold-get-folding-spec nil (line-end-position 2)))))))
   ;; Test insertion in area after a sub-list.  In particular, if point
   ;; is right at the end of the previous sub-list, still insert
   ;; a sub-item in that list.
