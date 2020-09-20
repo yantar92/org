@@ -223,6 +223,9 @@ then create.  Return the initialized session."
     (org-babel-python-session-buffer
      (org-babel-python-initiate-session-by-key session))))
 
+(defvar org-babel-python-eoe-indicator "org_babel_python_eoe"
+  "A string to indicate that evaluation has completed.")
+
 (defconst org-babel-python-wrapper-method
   "
 def main():
@@ -245,7 +248,10 @@ with open('%s') as f:
 Has a single %s escape, the tempfile containing the source code
 to evaluate.")
 
-(defconst org-babel-python--eval-ast "\
+(defun org-babel-python-format-session-value
+    (src-file result-file result-params)
+  "Return Python code to evaluate SRC-FILE and write result to RESULT-FILE."
+  (format "\
 import ast
 with open('%s') as f:
     __org_babel_python_ast = ast.parse(f.read())
@@ -264,12 +270,9 @@ if isinstance(__org_babel_python_final, ast.Expr):
 else:
     exec(compile(__org_babel_python_ast, '<string>', 'exec'))
     __org_babel_python_final = None"
-  "Template for Python session command with value results.
-
-Has three %s escapes to be filled in:
-1. Tempfile containing source to evaluate.
-2. Tempfile to write results to.
-3. Whether to pretty print, \"True\" or \"False\".")
+	  (org-babel-process-file-name src-file 'noquote)
+	  (org-babel-process-file-name result-file 'noquote)
+	  (if (member "pp" result-params) "True" "False")))
 
 (defun org-babel-python-evaluate
   (session body &optional result-type result-params preamble)
@@ -279,6 +282,19 @@ Has three %s escapes to be filled in:
        session body result-type result-params)
     (org-babel-python-evaluate-external-process
      body result-type result-params preamble)))
+
+(defun org-babel-python--shift-right (body &optional count)
+  (with-temp-buffer
+    (python-mode)
+    (insert body)
+    (goto-char (point-min))
+    (while (not (eobp))
+      (unless (python-syntax-context 'string)
+	(python-indent-shift-right (line-beginning-position)
+				   (line-end-position)
+				   count))
+      (forward-line 1))
+    (buffer-string)))
 
 (defun org-babel-python-evaluate-external-process
     (body &optional result-type result-params preamble)
@@ -300,16 +316,7 @@ last statement in BODY, as elisp."
 			(if (member "pp" result-params)
 			    org-babel-python-pp-wrapper-method
 			  org-babel-python-wrapper-method)
-			(with-temp-buffer
-			  (python-mode)
-			  (insert body)
-			  (goto-char (point-min))
-			  (while (not (eobp))
-			    (unless (python-syntax-context 'string)
-			      (python-indent-shift-right (line-beginning-position)
-							 (line-end-position)))
-			   (forward-line 1))
-			 (buffer-string))
+			(org-babel-python--shift-right body)
 			(org-babel-process-file-name tmp-file 'noquote))))
 		     (org-babel-eval-read-file tmp-file))))))
     (org-babel-result-cond result-params
@@ -324,7 +331,16 @@ Return output."
 	   (comint-output-filter-functions
 	    (cons (lambda (text) (setq string-buffer
 				       (concat string-buffer text)))
-		  comint-output-filter-functions)))
+		  comint-output-filter-functions))
+	   (body (format "\
+try:
+%s
+except:
+    raise
+finally:
+    print('%s')"
+			 (org-babel-python--shift-right body 4)
+			 org-babel-python-eoe-indicator)))
       (if (not (eq 'python-mode org-babel-python-mode))
 	  (let ((python-shell-buffer-name
 		 (org-babel-python-without-earmuffs session)))
@@ -333,13 +349,10 @@ Return output."
 	(py-shell-send-string body (get-buffer-process session)))
       ;; same as `python-shell-comint-end-of-output-p' in emacs-25.1+
       (while (not (string-match
-		   (concat "\r?\n?"
-			   (replace-regexp-in-string
-			    (rx string-start ?^) "" comint-prompt-regexp)
-			   (rx eos))
+		   org-babel-python-eoe-indicator
 		   string-buffer))
 	(accept-process-output (get-buffer-process (current-buffer))))
-      (substring string-buffer 0 (match-beginning 0)))))
+      (org-babel-chomp (substring string-buffer 0 (match-beginning 0))))))
 
 (defun org-babel-python-evaluate-session
     (session body &optional result-type result-params)
@@ -359,13 +372,8 @@ last statement in BODY, as elisp."
 		 (org-babel-python--send-string session body)))
               (`value
                (let* ((tmp-results-file (org-babel-temp-file "python-"))
-		      (body (format org-babel-python--eval-ast
-				    (org-babel-process-file-name
-				     tmp-src-file 'noquote)
-				    (org-babel-process-file-name
-				     tmp-results-file 'noquote)
-				    (if (member "pp" result-params)
-					"True" "False"))))
+		      (body (org-babel-python-format-session-value
+			     tmp-src-file tmp-results-file result-params)))
 		 (org-babel-python--send-string session body)
 		 (sleep-for 0 10)
 		 (org-babel-eval-read-file tmp-results-file)))))))

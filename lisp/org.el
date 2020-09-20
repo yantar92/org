@@ -8,7 +8,7 @@
 ;; Keywords: outlines, hypermedia, calendar, wp
 ;; Homepage: https://orgmode.org
 
-;; Version: 9.4-dev
+;; Version: 9.5-dev
 
 ;; This file is part of GNU Emacs.
 ;;
@@ -5109,21 +5109,23 @@ by a #."
   "Fontify #+ lines and blocks."
   (let ((case-fold-search t))
     (when (re-search-forward
-	   (rx bol (group (zero-or-more blank) "#"
+	   (rx bol (group (zero-or-more (any " \t")) "#"
 			  (group (group (or (seq "+" (one-or-more (any "a-zA-Z")) (optional ":"))
-					    space
+					    (any " \t")
 					    eol))
 				 (optional (group "_" (group (one-or-more (any "a-zA-Z"))))))
-			  (zero-or-more blank)
+			  (zero-or-more (any " \t"))
 			  (group (group (zero-or-more (not (any " \t\n"))))
-				 (zero-or-more blank)
+				 (zero-or-more (any " \t"))
 				 (group (zero-or-more any)))))
 	   limit t)
       (let ((beg (match-beginning 0))
 	    (end-of-beginline (match-end 0))
-	    (block-start (match-end 0))  ; Includes the \n at end of #+begin line
-	    (block-end nil)              ; will include \n after end of block content
-	    (lang (match-string 7))      ; the language, if it is an src block.
+	    ;; Including \n at end of #+begin line will include \n
+	    ;; after the end of block content.
+	    (block-start (match-end 0))
+	    (block-end nil)
+	    (lang (match-string 7)) ; The language, if it is a source block.
 	    (bol-after-beginline (line-beginning-position 2))
 	    (dc1 (downcase (match-string 2)))
 	    (dc3 (downcase (match-string 3)))
@@ -5133,20 +5135,22 @@ by a #."
 	 ((and (match-end 4) (equal dc3 "+begin"))
 	  ;; Truly a block
 	  (setq block-type (downcase (match-string 5))
-		quoting (member block-type org-protecting-blocks)) ; src, example, export, maybe more
+		;; Src, example, export, maybe more.
+		quoting (member block-type org-protecting-blocks))
 	  (when (re-search-forward
 		 (rx-to-string `(group bol (or (seq (one-or-more "*") space)
-					       (seq (zero-or-more blank)
+					       (seq (zero-or-more (any " \t"))
 						    "#+end"
 						    ,(match-string 4)
 						    word-end
 						    (zero-or-more any)))))
-		 nil t)  ; On purpose, we look further than LIMIT.
+		 ;; We look further than LIMIT on purpose.
+		 nil t)
 	    ;; We do have a matching #+end line.
 	    (setq beg-of-endline (match-beginning 0)
 		  end-of-endline (match-end 0)
 		  nl-before-endline (1- (match-beginning 0)))
-	    (setq block-end (match-beginning 0)) ; Includes the final newline.
+	    (setq block-end (match-beginning 0)) ; Include the final newline.
 	    (when quoting
 	      (org-remove-flyspell-overlays-in bol-after-beginline nl-before-endline)
 	      (remove-text-properties beg end-of-endline
@@ -5175,10 +5179,7 @@ by a #."
 	     ((string= block-type "verse")
 	      (add-face-text-property
 	       bol-after-beginline beg-of-endline 'org-verse t)))
-	    ;; Use the org-block face for all true blocks.
-	    (add-text-properties
-	     bol-after-beginline beg-of-endline (list 'face 'org-block))
-	    ;; Fontify the #+begin and #+end lines of the blocks.
+	    ;; Fontify the #+begin and #+end lines of the blocks
 	    (add-text-properties
 	     beg (if whole-blockline bol-after-beginline end-of-beginline)
 	     '(face org-block-begin-line))
@@ -5212,11 +5213,11 @@ by a #."
 	  ;; Handle short captions
 	  (save-excursion
 	    (beginning-of-line)
-	    (looking-at (rx (group (zero-or-more blank)
+	    (looking-at (rx (group (zero-or-more (any " \t"))
 				   "#+caption"
 				   (optional "[" (zero-or-more any) "]")
 				   ":")
-			    (zero-or-more blank))))
+			    (zero-or-more (any " \t")))))
 	  (add-text-properties (line-beginning-position) (match-end 1)
 			       '(font-lock-fontified t face org-meta-line))
 	  (add-text-properties (match-end 0) (line-end-position)
@@ -7160,8 +7161,11 @@ If JUST-RETURN-STRING is non-nil, return a string, don't display a message."
 	   (1- (frame-width))
 	   (and file bfn (concat (file-name-nondirectory bfn) separator))
 	   separator))
+    (add-face-text-property 0 (length res)
+			    `((t :height ,(face-attribute 'default :height)))
+			    nil res)
     (if just-return-string
-	(org-no-properties res)
+	res
       (org-unlogged-message "%s" res))))
 
 ;;; Outline Sorting
@@ -19459,26 +19463,50 @@ If there is no such heading, return nil."
 
 (defun org-end-of-meta-data (&optional full)
   "Skip planning line and properties drawer in current entry.
-When optional argument FULL is non-nil, also skip empty lines,
-clocking lines and regular drawers at the beginning of the
-entry."
+
+When optional argument FULL is t, also skip planning information,
+clocking lines and any kind of drawer.
+
+When FULL is non-nil but not t, skip planning information,
+clocking lines and only non-regular drawers, i.e. properties and
+logbook drawers."
   (org-back-to-heading t)
   (forward-line)
+  ;; Skip planning information.
   (when (looking-at-p org-planning-line-re) (forward-line))
+  ;; Skip property drawer.
   (when (looking-at org-property-drawer-re)
     (goto-char (match-end 0))
     (forward-line))
+  ;; When FULL is not nil, skip more.
   (when (and full (not (org-at-heading-p)))
     (catch 'exit
       (let ((end (save-excursion (outline-next-heading) (point)))
 	    (re (concat "[ \t]*$" "\\|" org-clock-line-re)))
 	(while (not (eobp))
-	  (cond ((looking-at-p org-drawer-regexp)
-		 (if (re-search-forward "^[ \t]*:END:[ \t]*$" end t)
-		     (forward-line)
-		   (throw 'exit t)))
-		((looking-at-p re) (forward-line))
-		(t (throw 'exit t))))))))
+	  (cond ;; Skip clock lines.
+	   ((looking-at-p re) (forward-line))
+	   ;; Skip logbook drawer.
+	   ((looking-at-p org-logbook-drawer-re)
+	    (if (re-search-forward "^[ \t]*:END:[ \t]*$" end t)
+		(forward-line)
+	      (throw 'exit t)))
+	   ;; When FULL is t, skip regular drawer too.
+	   ((and (eq full t) (looking-at-p org-drawer-regexp))
+	    (if (re-search-forward "^[ \t]*:END:[ \t]*$" end t)
+		(forward-line)
+	      (throw 'exit t)))
+	   (t (throw 'exit t))))))))
+
+(defun org--line-fully-invisible-p ()
+  "Return non-nil if the current line is fully invisible."
+  (let ((line-beg (line-beginning-position))
+	(line-pos (1- (line-end-position)))
+	(is-invisible t))
+    (while (and (< line-beg line-pos) is-invisible)
+      (setq is-invisible (org-invisible-p line-pos))
+      (setq line-pos (1- line-pos)))
+    is-invisible))
 
 (defun org-forward-heading-same-level (arg &optional invisible-ok)
   "Move forward to the ARG'th subheading at same level as this one.
@@ -19501,8 +19529,14 @@ non-nil it will also look at invisible ones."
 	    (cond ((< l level) (setq count 0))
 		  ((and (= l level)
 			(or invisible-ok
-			    (not (org-invisible-p
-				  (line-beginning-position)))))
+			    ;; FIXME: See commit a700fadd72 and the
+			    ;; related discussion on why using
+			    ;; `org--line-fully-invisible-p' is needed
+			    ;; here, which is to serve the needs of an
+			    ;; external package.  If the change is
+			    ;; wrong regarding Org itself, it should
+			    ;; be removed.
+			    (not (org--line-fully-invisible-p))))
 		   (cl-decf count)
 		   (when (= l level) (setq result (point)))))))
 	(goto-char result))
