@@ -6060,9 +6060,8 @@ unconditionally."
       ;; is visible.
       (unless invisible-ok
 	(cond
-	 ((eq (org-fold-get-folding-spec) (org-fold-get-folding-spec-for-element 'headline))
-          (let ((region (org-fold-get-region-at-point)))
-	    (org-fold-region (line-end-position 0) (cdr region) nil (org-fold-get-folding-spec-for-element 'headline))))
+	 ((eq (org-fold-get-folding-spec nil (line-beginning-position)) (org-fold-get-folding-spec-for-element 'headline))
+	  (org-fold-region (line-end-position 0) (line-end-position) nil (org-fold-get-folding-spec-for-element 'headline)))
 	 (t nil))))
      ;; At a headline...
      ((org-at-heading-p)
