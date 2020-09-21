@@ -1135,15 +1135,14 @@ text properties (for the sake of reducing overheads).
 If a text was inserted into invisible region, hide the inserted text.
 If the beginning/end line of a folded drawer/block was changed, unfold it.
 If a valid end line was inserted in the middle of the folded drawer/block, unfold it."
-  ;; No insertions or deletions in buffer.
-  ;; Skip all the checks.
+  ;; If no insertions or deletions in buffer, skip all the checks.
   (unless (eq org-fold--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
     ;; Store the new buffer modification state.
     (setq org-fold--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
     ;; Re-hide text inserted in the middle of a folded region.
     (unless (equal from to)
       (dolist (spec org-fold--spec-priority-list)
-	(let ((spec-to (org-fold-get-folding-spec spec to))
+	(let ((spec-to (org-fold-get-folding-spec spec (min to (1- (point-max)))))
 	      (spec-from (org-fold-get-folding-spec spec (max (point-min) (1- from)))))
 	  (when (and spec-from spec-to (eq spec-to spec-from))
 	    (org-fold-region from to t (or spec-from spec-to))))))
@@ -1152,9 +1151,15 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
     ;; Examples: beginning of a folded drawer, first line of folded
     ;; headline (schedule).  However, do not hide headline text.
     (unless (equal from to)
-      (when (and (not (org-fold-folded-p (max (point-min) (1- from))))
-		 (org-fold-folded-p to)
-		 (not (org-at-heading-p)))
+      (when (or
+	     ;; Prepending to folded region.
+	     (and (not (org-fold-folded-p (max (point-min) (1- from))))
+		  (org-fold-folded-p to)
+		  (not (org-at-heading-p)))
+	     ;; Appending to folded region.
+             (and (org-fold-folded-p (max (point-min) (1- from)))
+		  (not (org-fold-folded-p to))
+		  (not (org-at-heading-p))))
 	(org-fold-region from to t (or (org-fold-get-folding-spec nil (max (point-min) (1- from))) (org-fold-get-folding-spec nil to)))))
     ;; Reveal the whole region if inserted in the middle of
     ;; visible text. This is needed, for example, when one is
