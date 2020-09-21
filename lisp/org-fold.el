@@ -1152,15 +1152,18 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
     ;; headline (schedule).  However, do not hide headline text.
     (unless (equal from to)
       (when (or
-	     ;; Prepending to folded region.
+	     ;; Prepending to folded headline, block, or drawer.
 	     (and (not (org-fold-folded-p (max (point-min) (1- from))))
 		  (org-fold-folded-p to)
 		  (not (org-at-heading-p)))
-	     ;; Appending to folded region.
-             (and (org-fold-folded-p (max (point-min) (1- from)))
-		  (not (org-fold-folded-p to))
-		  (not (org-at-heading-p))))
-	(org-fold-region from to t (or (org-fold-get-folding-spec nil (max (point-min) (1- from))) (org-fold-get-folding-spec nil to)))))
+	     ;; Appending to folded headline. We cannot append to
+	     ;; folded block or drawer though.
+             (and (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'headline) (max (point-min) (1- from)))
+		  (not (org-fold-folded-p to))))
+	(org-fold-region from to t (or
+			    ;; Only headline spec for appended text.
+			    (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'headline) (max (point-min) (1- from)))
+			    (org-fold-get-folding-spec nil to)))))
     ;; Reveal the whole region if inserted in the middle of
     ;; visible text. This is needed, for example, when one is
     ;; trying to copy text from indirect buffer to main buffer. If
