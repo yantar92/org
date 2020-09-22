@@ -19225,7 +19225,7 @@ interactive command with similar behavior."
 (defun org-back-to-heading (&optional invisible-ok)
   "Call `outline-back-to-heading', but provide a better error message."
   (condition-case nil
-      (if (org-inlinetask-in-task-p)
+      (if (and (featurep 'org-inlinetask) (org-inlinetask-in-task-p))
 	  (outline-back-to-heading invisible-ok)
 	(org-with-limited-levels
 	 (outline-back-to-heading invisible-ok)))
