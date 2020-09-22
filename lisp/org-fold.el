@@ -112,14 +112,14 @@
   :tag "Org Reveal Location"
   :group 'org-structure)
 
-(defcustom org-fold-show-context-detail '((agenda . local)
-				  (bookmark-jump . lineage)
-				  (isearch . lineage)
-				  (default . ancestors))
+(defcustom org-show-context-detail '((agenda . local)
+				     (bookmark-jump . lineage)
+				     (isearch . lineage)
+				     (default . ancestors))
   "Alist between context and visibility span when revealing a location.
 
 \\<org-mode-map>Some actions may move point into invisible
-locations.  As a consequence, Org always expose a neighborhood
+locations.  As a consequence, Org always exposes a neighborhood
 around point.  How much is shown depends on the initial action,
 or context.  Valid contexts are
 
