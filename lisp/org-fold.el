@@ -544,7 +544,7 @@ Search backwards when PREVIOUS-P is non-nil."
 		  #'max
 		#'min))
          (next-change (if previous-p
-			  (lambda (prop) (max (or limit (point-min)) (1- (previous-single-char-property-change pos prop nil (or limit (point-min))))))
+			  (lambda (prop) (max (or limit (point-min)) (previous-single-char-property-change pos prop nil (or limit (point-min)))))
 			(lambda (prop) (next-single-char-property-change pos prop nil (or limit (point-max)))))))
     (apply cmp (mapcar next-change props))))
 
@@ -1192,6 +1192,10 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
        (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'drawer) from)))
      (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'block) from)
        (setq from (org-fold-previous-folding-state-change (org-fold-get-folding-spec-for-element 'block) from)))
+     (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'drawer) to)
+       (setq to (org-fold-next-folding-state-change (org-fold-get-folding-spec-for-element 'drawer) to)))
+     (when (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'block) to)
+       (setq from (org-fold-next-folding-state-change (org-fold-get-folding-spec-for-element 'block) to)))
      ;; Check folded drawers and blocks.
      (dolist (spec (list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
        (let ((pos from)
