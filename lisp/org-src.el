@@ -1243,7 +1243,7 @@ Throw an error if there is no such buffer."
       (goto-char beg)
       (cond
        ;; Block is hidden; move at start of block.
-       ((org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'block))
+       ((org-fold-folded-p nil 'block)
 	(beginning-of-line 0))
        (write-back (org-src--goto-coordinates coordinates beg end))))
     ;; Clean up left-over markers and restore window configuration.

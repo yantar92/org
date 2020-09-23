@@ -420,34 +420,49 @@ or 'all to remove SPEC in all open org-mode buffers and all future org buffers."
 
 ;;;; Searching and examining folded text
 
-(defun org-fold-folded-p (&optional pos)
+(defun org-fold-folded-p (&optional pos spec-or-element)
   "Non-nil if the character after POS is folded.
-If POS is nil, use `point' instead."
+If POS is nil, use `point' instead.
+If SPEC-OR-ELEMENT is a folding spec, only check the given folding spec.
+If SPEC-OR-ELEMENT is a foldable element (see
+`org-fold-get-folding-spec-for-element'), only check folding spec for
+the given element.  Note that multiple elements may have same folding
+specs."
   (let ((value (get-char-property (or pos (point)) 'invisible)))
     (cond ((not value) nil)
-	  ((memq value org-fold--spec-priority-list) value)
+	  ((memq value org-fold--spec-priority-list)
+	   (if spec-or-element
+               (org-fold-get-folding-spec spec-or-element pos)
+             value))
 	  (t nil))))
 
-(defun org-fold-get-folding-spec (&optional spec pom)
-  "Get folding state SPEC at POM.
-If SPEC is nil, return a folding spec with highest priority among
-present at point or POM.
-If SPEC is 'all, return the list of all present folding specs.
+(defun org-fold-get-folding-spec (&optional spec-or-element pom)
+  "Get folding state at `point' or POM.
 Return nil if there is no folding at point or POM.
-If SPEC is a valid folding spec, return value is SPEC if the point is
-within region folded using SPEC or nil otherwise."
-  (when (and spec (not (eq spec 'all))) (org-fold--check-spec spec))
-  (org-with-point-at (or pom (point))
-    (if (and spec (not (eq spec 'all)))
-	(get-char-property (point) (org-fold--property-symbol-get-create spec nil t))
-      (let ((result))
-	(dolist (spec org-fold--spec-priority-list)
-	  (let ((val (get-char-property (point) (org-fold--property-symbol-get-create spec nil t))))
-	    (when val
-	      (push val result))))
-        (if (eq spec 'all)
-            result
-          (car (last result)))))))
+If SPEC-OR-ELEMENT is nil, return a folding spec with highest priority
+among present at `point' or POM.
+If SPEC-OR-ELEMENT is 'all, return the list of all present folding
+specs.
+If SPEC-OR-ELEMENT is a valid folding spec, return the corresponding
+folding spec (if the text is folded using that spec).
+If SPEC-OR-ELEMENT is a foldable org element (see
+`org-fold-get-folding-spec-for-element'), act as if the element's
+folding spec was used as an argument.  Note that multiple elements may
+have same folding specs."
+  (let ((spec (or (org-fold-get-folding-spec-for-element spec-or-element)
+		  spec-or-element)))
+    (when (and spec (not (eq spec 'all))) (org-fold--check-spec spec))
+    (org-with-point-at (or pom (point))
+      (if (and spec (not (eq spec 'all)))
+	  (get-char-property (point) (org-fold--property-symbol-get-create spec nil t))
+	(let ((result))
+	  (dolist (spec org-fold--spec-priority-list)
+	    (let ((val (get-char-property (point) (org-fold--property-symbol-get-create spec nil t))))
+	      (when val
+		(push val result))))
+          (if (eq spec 'all)
+              result
+            (car (last result))))))))
 
 (defun org-fold-get-folding-specs-in-region (beg end)
   "Get all folding specs in region from BEG to END."
@@ -510,9 +525,10 @@ If PREVIOUS-P is non-nil, search backwards."
   "Call `org-fold-next-visibility-change' searching backwards."
   (org-fold-next-visibility-change pos limit ignore-hidden-p 'previous))
 
-(defun org-fold-next-folding-state-change (&optional spec pos limit previous-p)
-  "Return next point where folding state SPEC changes relative to POS up to LIMIT.
-If SPEC is nil, return next point where _any_ single folding type changes.
+(defun org-fold-next-folding-state-change (&optional spec-or-element pos limit previous-p)
+  "Return next point where folding state changes relative to POS up to LIMIT.
+If SPEC-OR-ELEMENT is nil, return next point where _any_ single folding
+type changes.
 For example, (org-fold-next-folding-state-change nil) with point
 somewhere in the below structure will return the nearest <...> point.
 
@@ -529,17 +545,29 @@ Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor
 ** Yet another headline
 <end of outline fold>
 
-If SPEC is a list, only consider changes of folding states from the list.
+If SPEC-OR-ELEMENT is a folding spec symbol, only consider that folded spec.
+If SPEC-OR-ELEMENT is a foldable element, consider that element's
+folding spec (see `org-fold-get-folding-spec-for-element').  Note that
+multiple elements may have the same folding spec.
+
+If SPEC-OR-ELEMENT is a list, only consider changes of folding states
+from the list.
 
 Search backwards when PREVIOUS-P is non-nil."
-  (when (and spec (symbolp spec))
-    (setq spec (list spec)))
-  (when spec (mapc #'org-fold--check-spec spec))
-  (unless spec
-    (setq spec org-fold--spec-priority-list))
+  (when (and spec-or-element (symbolp spec-or-element))
+    (setq spec-or-element (list spec-or-element)))
+  (when spec-or-element
+    (setq spec-or-element
+	  (mapcar (lambda (spec-or-element)
+		    (or (org-fold-get-folding-spec-for-element spec-or-element)
+			spec-or-element))
+                  spec-or-element))
+    (mapc #'org-fold--check-spec spec-or-element))
+  (unless spec-or-element
+    (setq spec-or-element org-fold--spec-priority-list))
   (let* ((pos (or pos (point)))
 	 (props (mapcar (lambda (el) (org-fold--property-symbol-get-create el nil t))
-			spec))
+			spec-or-element))
          (cmp (if previous-p
 		  #'max
 		#'min))
@@ -548,9 +576,9 @@ Search backwards when PREVIOUS-P is non-nil."
 			(lambda (prop) (next-single-char-property-change pos prop nil (or limit (point-max)))))))
     (apply cmp (mapcar next-change props))))
 
-(defun org-fold-previous-folding-state-change (&optional spec pos limit)
+(defun org-fold-previous-folding-state-change (&optional spec-or-element pos limit)
   "Call `org-fold-next-folding-state-change' searching backwards."
-  (org-fold-next-folding-state-change spec pos limit 'previous))
+  (org-fold-next-folding-state-change spec-or-element pos limit 'previous))
 
 (defun org-fold-search-forward (spec &optional limit)
   "Search next region folded via folding SPEC up to LIMIT.
@@ -577,31 +605,33 @@ Move point right after the end of the region, to LIMIT, or
 ;; folding state is stored in text property (folding property)
 ;; returned by `org-fold--property-symbol-get-create'.  The value of the
 ;; folding property is folding spec symbol.
-(defun org-fold-region (from to flag &optional spec)
+(defun org-fold-region (from to flag &optional spec-or-element)
   "Hide or show lines from FROM to TO, according to FLAG.
-SPEC is the folding spec, as a symbol.
-If SPEC is omitted and FLAG is nil, unfold everything in the region."
-  (when spec (org-fold--check-spec spec))
-  (with-silent-modifications
-    (org-with-wide-buffer
-     (if flag
+SPEC-OR-ELEMENT is the folding spec or foldable element, as a symbol.
+If SPEC-OR-ELEMENT is omitted and FLAG is nil, unfold everything in the region."
+  (let ((spec (or (org-fold-get-folding-spec-for-element spec-or-element)
+		  spec-or-element)))
+    (when spec (org-fold--check-spec spec))
+    (with-silent-modifications
+      (org-with-wide-buffer
+       (if flag
+	   (if (not spec)
+               (error "Calling `org-fold-region' with missing SPEC")
+	     (put-text-property from to
+				(org-fold--property-symbol-get-create spec)
+				spec)
+	     (put-text-property from to
+				'isearch-open-invisible
+				#'org-fold--isearch-show)
+	     (put-text-property from to
+				'isearch-open-invisible-temporary
+				#'org-fold--isearch-show-temporary))
 	 (if (not spec)
-             (error "Calling `org-fold-region' with missing SPEC")
-	   (put-text-property from to
-			      (org-fold--property-symbol-get-create spec)
-			      spec)
-	   (put-text-property from to
-			      'isearch-open-invisible
-			      #'org-fold--isearch-show)
-	   (put-text-property from to
-			      'isearch-open-invisible-temporary
-			      #'org-fold--isearch-show-temporary))
-       (if (not spec)
-           (dolist (spec org-fold--spec-priority-list)
-             (remove-text-properties from to
-				     (list (org-fold--property-symbol-get-create spec) nil)))
-	 (remove-text-properties from to
-				 (list (org-fold--property-symbol-get-create spec) nil)))))))
+             (dolist (spec org-fold--spec-priority-list)
+               (remove-text-properties from to
+				       (list (org-fold--property-symbol-get-create spec) nil)))
+	   (remove-text-properties from to
+				   (list (org-fold--property-symbol-get-create spec) nil))))))))
 
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
@@ -612,9 +642,9 @@ When optional argument TYPES is a list of symbols among `blocks',
   (dolist (type (or types '(blocks drawers headings)))
     (org-fold-region (point-min) (point-max) nil
 	     (pcase type
-	       (`blocks (org-fold-get-folding-spec-for-element 'block))
-	       (`drawers (org-fold-get-folding-spec-for-element 'drawer))
-	       (`headings (org-fold-get-folding-spec-for-element 'headline))
+	       (`blocks 'block)
+	       (`drawers 'drawer)
+	       (`headings 'headline)
 	       (_ (error "Invalid type: %S" type))))))
 
 (defun org-fold-flag-above-first-heading (&optional arg)
@@ -624,7 +654,7 @@ Move point to the beginning of first heading or end of buffer."
   (unless (org-at-heading-p)
     (outline-next-heading))
   (unless (bobp)
-    (org-fold-region 1 (1- (point)) (not arg) (org-fold-get-folding-spec-for-element 'headline))))
+    (org-fold-region 1 (1- (point)) (not arg) 'headline)))
 
 ;;;;; Heading visibility
 
@@ -636,7 +666,7 @@ When ENTRY is non-nil, show the entire entry."
     ;; Check if we should show the entire entry
     (if (not entry)
 	(org-fold-region
-	 (line-end-position 0) (line-end-position) flag (org-fold-get-folding-spec-for-element 'headline))
+	 (line-end-position 0) (line-end-position) flag 'headline)
       (org-fold-show-entry)
       (save-excursion
 	;; FIXME: potentially catches inlinetasks
@@ -647,17 +677,17 @@ When ENTRY is non-nil, show the entire entry."
   "Hide the body directly following this heading."
   (interactive)
   (save-excursion
-     (org-back-to-heading-or-point-min t)
-     (when (org-at-heading-p) (forward-line))
-     (org-fold-region
-      (line-end-position 0)
-      (save-excursion
-        (if (re-search-forward
+    (org-back-to-heading-or-point-min t)
+    (when (org-at-heading-p) (forward-line))
+    (org-fold-region
+     (line-end-position 0)
+     (save-excursion
+       (if (re-search-forward
  	    (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
-            (line-end-position 0)
+           (line-end-position 0)
  	 (point-max)))
-      t
-      (org-fold-get-folding-spec-for-element 'headline))))
+     t
+     'headline)))
 
 (defun org-fold-subtree (flag)
   (save-excursion
@@ -665,7 +695,7 @@ When ENTRY is non-nil, show the entire entry."
     (org-fold-region (line-end-position)
 	     (progn (org-end-of-subtree t) (point))
 	     flag
-	     (org-fold-get-folding-spec-for-element 'headline))))
+	     'headline)))
 
 (defun org-fold-hide-subtree ()
   "Hide everything after this heading at deeper levels."
@@ -701,7 +731,7 @@ of the current heading, or to 1 if the current line is not a heading."
       (if (< end beg)
 	  (setq beg (prog1 end (setq end beg))))
       ;; First hide everything.
-      (org-fold-region beg end t (org-fold-get-folding-spec-for-element 'headline))
+      (org-fold-region beg end t 'headline)
       ;; Then unhide the top level headers.
       (org-map-region
        (lambda ()
@@ -717,19 +747,19 @@ of the current heading, or to 1 if the current line is not a heading."
 (defun org-fold-show-entry ()
   "Show the body directly following its heading.
 Show the heading too, if it is currently invisible."
-   (interactive)
-   (save-excursion
-     (org-back-to-heading-or-point-min t)
-     (org-fold-region
-      (line-end-position 0)
-      (save-excursion
-        (if (re-search-forward
+  (interactive)
+  (save-excursion
+    (org-back-to-heading-or-point-min t)
+    (org-fold-region
+     (line-end-position 0)
+     (save-excursion
+       (if (re-search-forward
  	    (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
  	   (match-beginning 1)
  	 (point-max)))
-      nil
-      (org-fold-get-folding-spec-for-element 'headline))
-     (org-cycle-hide-drawers 'children)))
+     nil
+     'headline)
+    (org-cycle-hide-drawers 'children)))
 
 ;; FIXME: defalias instead?
 (defun org-fold-show-hidden-entry ()
@@ -787,7 +817,7 @@ heading to appear."
   "Show everything after this heading at deeper levels."
   (interactive)
   (org-fold-region
-   (point) (save-excursion (org-end-of-subtree t t)) nil (org-fold-get-folding-spec-for-element 'headline)))
+   (point) (save-excursion (org-end-of-subtree t t)) nil 'headline))
 
 (defun org-fold-show-branches ()
   "Show all subheadings of this heading, but not their bodies."
@@ -842,7 +872,7 @@ Return a non-nil value when toggling is successful."
 		 (flag
 		  (cond ((eq force 'off) nil)
 			(force t)
-			((org-fold-get-folding-spec nil start) nil)
+			((org-fold-folded-p start) nil)
 			(t t))))
 	    (org-fold-region start end flag spec))
 	  ;; When the block is hidden away, make sure point is left in
@@ -895,7 +925,7 @@ Return a non-nil value when toggling is successful."
     (goto-char (point-min))
     (while (re-search-forward org-drawer-regexp nil t)
       ;; Skip drawers in folded headings
-      (when (org-fold-get-folding-spec) (goto-char (org-fold-next-visibility-change nil nil 'ignore-hidden)))
+      (when (org-fold-folded-p) (goto-char (org-fold-next-visibility-change nil nil 'ignore-hidden)))
       (let* ((drawer (org-element-at-point))
 	     (type (org-element-type drawer)))
 	(when (memq type '(drawer property-drawer))
@@ -904,7 +934,7 @@ Return a non-nil value when toggling is successful."
 	  ;; be folded, or in a folded headline.  In that case, do not
 	  ;; re-hide it.
 	  (unless (and (eq type 'property-drawer)
-		       (org-fold-get-folding-spec))
+		       (org-fold-folded-p))
 	    (org-fold-hide-drawer-toggle t nil drawer))
 	  ;; Make sure to skip drawer entirely or we might flag it
 	  ;; another time when matching its ending line with
@@ -935,8 +965,8 @@ information."
     (org-fold-show-entry)
     ;; If point is hidden within a drawer or a block, make sure to
     ;; expose it.
-    (when (memq (org-fold-get-folding-spec)
-		(list (org-fold-get-folding-spec-for-element 'drawer) (org-fold-get-folding-spec-for-element 'block)))
+    (when (or (org-fold-folded-p nil 'drawer)
+	      (org-fold-folded-p nil 'block))
       (let ((region (org-fold-get-region-at-point)))
 	(org-fold-region (car region) (cdr region) nil)))
     (unless (org-before-first-heading-p)
@@ -1158,11 +1188,11 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 		  (not (org-at-heading-p)))
 	     ;; Appending to folded headline. We cannot append to
 	     ;; folded block or drawer though.
-             (and (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'headline) (max (point-min) (1- from)))
+             (and (org-fold-folded-p (max (point-min) (1- from)) 'headline)
 		  (not (org-fold-folded-p to))))
 	(org-fold-region from to t (or
 			    ;; Only headline spec for appended text.
-			    (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'headline) (max (point-min) (1- from)))
+			    (org-fold-get-folding-spec 'headline (max (point-min) (1- from)))
 			    (org-fold-get-folding-spec nil to)))))
     ;; Reveal the whole region if inserted in the middle of
     ;; visible text. This is needed, for example, when one is

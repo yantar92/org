@@ -6060,8 +6060,8 @@ unconditionally."
       ;; is visible.
       (unless invisible-ok
 	(cond
-	 ((eq (org-fold-get-folding-spec nil (line-beginning-position)) (org-fold-get-folding-spec-for-element 'headline))
-	  (org-fold-region (line-end-position 0) (line-end-position) nil (org-fold-get-folding-spec-for-element 'headline)))
+	 ((org-fold-folded-p (line-beginning-position) 'headline)
+	  (org-fold-region (line-end-position 0) (line-end-position) nil 'headline))
 	 (t nil))))
      ;; At a headline...
      ((org-at-heading-p)
@@ -6660,8 +6660,8 @@ case."
      (setq txt (buffer-substring beg end))
      (org-save-markers-in-region beg end)
      (delete-region beg end)
-     (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil (org-fold-get-folding-spec-for-element 'headline)))
-     (unless (bobp) (org-fold-region (1- (point)) (point) nil (org-fold-get-folding-spec-for-element 'headline)))
+     (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil 'headline))
+     (unless (bobp) (org-fold-region (1- (point)) (point) nil 'headline))
      (and (not (bolp)) (looking-at "\n") (forward-char 1))
      (let ((bbb (point)))
        (insert-before-markers txt)
@@ -9884,7 +9884,7 @@ narrowing."
 	       (insert ":" drawer ":\n:END:\n")
 	       (org-indent-region beg (point))
 	       (org-fold-region
-		(line-end-position -1) (1- (point)) t (org-fold-get-folding-spec-for-element 'drawer)))
+		(line-end-position -1) (1- (point)) t 'drawer))
 	     (end-of-line -1)))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
@@ -11102,7 +11102,7 @@ This function assumes point is on a headline."
 	 ;; boundary, it can be inadvertently sucked into
 	 ;; invisibility.
 	 (unless (org-invisible-p (line-beginning-position))
-	   (org-fold-region (point) (line-end-position) nil (org-fold-get-folding-spec-for-element 'headline)))))
+	   (org-fold-region (point) (line-end-position) nil 'headline))))
      ;; Align tags, if any.
      (when tags (org-align-tags))
      (when tags-change? (run-hooks 'org-after-tags-change-hook)))))
@@ -12338,7 +12338,7 @@ drawer is immediately hidden."
 	   (inhibit-read-only t))
        (unless (bobp) (insert "\n"))
        (insert ":PROPERTIES:\n:END:")
-       (org-fold-region (line-end-position 0) (point) t (org-fold-get-folding-spec-for-element 'drawer))
+       (org-fold-region (line-end-position 0) (point) t 'drawer)
        (when (or (eobp) (= begin (point-min))) (insert "\n"))
        (org-indent-region begin (point))))))
 

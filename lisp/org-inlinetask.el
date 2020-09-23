@@ -311,9 +311,9 @@ If the task has an end part, also demote it."
      ;; Nothing to show/hide.
      ((= end start))
      ;; Inlinetask was folded: expand it.
-     ((org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'headline) (1+ start))
-      (org-fold-region start end nil (org-fold-get-folding-spec-for-element 'headline)))
-     (t (org-fold-region start end t (org-fold-get-folding-spec-for-element 'headline))))))
+     ((org-fold-get-folding-spec 'headline (1+ start))
+      (org-fold-region start end nil 'headline))
+     (t (org-fold-region start end t 'headline)))))
 
 (defun org-inlinetask-hide-tasks (state)
   "Hide inline tasks in buffer when STATE is `contents' or `children'.

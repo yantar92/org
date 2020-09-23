@@ -2037,7 +2037,7 @@ Possible values are: `folded', `children' or `subtree'.  See
     (let ((item-end (org-list-get-item-end-before-blank item struct)))
       ;; Hide from eol
       (org-fold-region (save-excursion (goto-char item) (line-end-position))
-		       item-end t (org-fold-get-folding-spec-for-element 'headline))))
+		       item-end t 'headline)))
    ((eq view 'children)
     ;; First show everything.
     (org-list-set-item-visibility item struct 'subtree)
@@ -2049,7 +2049,7 @@ Possible values are: `folded', `children' or `subtree'.  See
    ((eq view 'subtree)
     ;; Show everything
     (let ((item-end (org-list-get-item-end item struct)))
-      (org-fold-region item item-end nil (org-fold-get-folding-spec-for-element 'headline))))))
+      (org-fold-region item item-end nil 'headline)))))
 
 (defun org-list-item-body-column (item)
   "Return column at which body of ITEM should start."
