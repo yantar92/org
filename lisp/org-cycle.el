@@ -57,7 +57,7 @@ STATE should be one of the symbols listed in the docstring of
       (save-excursion
 	(goto-char beg)
 	(while (re-search-forward org-drawer-regexp end t)
-	  (if (org-fold-get-folding-spec)
+	  (if (org-fold-get-folding-spec (org-fold-get-folding-spec-for-element 'drawer))
 	      ;; Do not fold already folded drawers.
               (goto-char (min end (org-fold-next-folding-state-change (org-fold-get-folding-spec-for-element 'drawer))))
 	    (let ((drawer (org-element-at-point)))
