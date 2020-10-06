@@ -112,10 +112,10 @@
   :tag "Org Reveal Location"
   :group 'org-structure)
 
-(defcustom org-show-context-detail '((agenda . local)
-				     (bookmark-jump . lineage)
-				     (isearch . lineage)
-				     (default . ancestors))
+(defcustom org-fold-show-context-detail '((agenda . local)
+				  (bookmark-jump . lineage)
+				  (isearch . lineage)
+				  (default . ancestors))
   "Alist between context and visibility span when revealing a location.
 
 \\<org-mode-map>Some actions may move point into invisible
