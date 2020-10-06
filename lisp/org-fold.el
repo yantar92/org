@@ -386,7 +386,7 @@ redefined according to provided optional arguments."
 
 SPEC must be a symbol.
 BUFFER can be a buffer to remove SPEC in, nil to remove SPEC in current buffer,
-or 'all to remove SPEC in all open org-mode buffers and all future org buffers."
+or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers."
   (org-fold--check-spec spec)
   (when (eq buffer 'all)
     (mapc (lambda (buf)
