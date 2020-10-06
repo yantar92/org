@@ -408,6 +408,8 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
   (dolist (spec org-fold--spec-priority-list)
     (org-fold-add-folding-spec spec nil (not (memq spec org-fold--spec-with-ellipsis)) (not (memq spec org-fold--isearch-specs))))
   (add-hook 'after-change-functions 'org-fold--fix-folded-region nil 'local)
+  ;; Setup killing text
+  (setq-local filter-buffer-substring-function #'org-fold--buffer-substring-filter)
   ;; Make isearch reveal context
   (setq-local outline-isearch-open-invisible-function
 	      (lambda (&rest _) (org-fold-show-context 'isearch)))
@@ -1358,6 +1360,76 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	   (t
 	    ;; Don't do the edit, make the user repeat it in full visibility
 	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
+
+;;; Hanlding killing/yanking of folded text
+
+;; By default, all the text properties of the killed text are
+;; preserved, including the folding text properties.  This can be
+;; awkward when we copy a text from an indirect buffer to another
+;; indirect buffer (or the base buffer).  The copied text might be
+;; visible in the source buffer, but might disappear if we yank it in
+;; another buffer.  This happens in the following situation:
+;; ---- base buffer ----
+;; * Headline<begin fold>
+;; Some text hidden in the base buffer, but revealed in the indirect
+;; buffer.<end fold>
+;; * Another headline
+;;
+;; ---- end of base buffer ----
+;; ---- indirect buffer ----
+;; * Headline
+;; Some text hidden in the base buffer, but revealed in the indirect
+;; buffer.
+;; * Another headline
+;;
+;; ---- end of indirect buffer ----
+;; If we copy the text under "Headline" from the indirect buffer and
+;; insert it under "Another headline" in the base buffer, the inserted
+;; text will be hidden since it's folding text properties are copyed.
+;; Basically, the copied text would have two sets of folding text
+;; properties: (1) Properties for base buffer telling that the text is
+;; hidden; (2) Properties for the indirect buffer telling that the
+;; text is visible.  The first set of the text properties in inactive
+;; in the indirect buffer, but will become active once we yank the
+;; text back into the base buffer.
+;;
+;; To avoid the above situation, we simply clear all the properties,
+;; unrealated to current buffer when a text is copied.
+;; FIXME: Ideally, we may want to carry the folding state of copied
+;; text between buffer (probably via user customisation).
+(defun org-fold--buffer-substring-filter (beg end &optional delete)
+  "Clear folding state in killed text.
+This function is intended to be used as `filter-buffer-substring-function'.
+The arguments and return value are as specified for `filter-buffer-substring'."
+  (let ((return-string (buffer-substring--filter beg end delete))
+	;; The list will be used as an argument to `remove-text-properties'.
+	props-list)
+    ;; There is no easy way to examine all the text properties of a
+    ;; string, so we utilise the fact that printed string
+    ;; representation lists all its properties.
+    ;; Loop over the elements of string representation.
+    (unless (string-empty-p return-string)
+      (dolist (plist
+	       ;; Yes, it is a hack.
+               ;; The below gives us string representation as a list.
+	       (read (replace-regexp-in-string "#" "" (format "%S" return-string))))
+	;; Only lists contain text properties.
+	(when (listp plist)
+	  ;; Collect all the relevant text properties.
+	  (while plist
+            (let* ((prop (car plist))
+		   (prop-name (symbol-name prop)))
+              ;; We do not care about values.
+              (setq plist (cddr plist))
+              (when (string-match-p "org-fold--spec" prop-name)
+		;; Leave folding specs from current buffer.  See comments
+		;; in `org-fold--property-symbol-get-create' to understand why it
+		;; works.
+		(unless (member prop (alist-get 'invisible char-property-alias-alist))
+		  (push t props-list)
+		  (push prop props-list)))))))
+      (remove-text-properties 0 (length return-string) props-list return-string))
+    return-string))
 
 (provide 'org-fold)
 
