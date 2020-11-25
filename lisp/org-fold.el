@@ -430,13 +430,7 @@ If SPEC-OR-ELEMENT is a foldable element (see
 `org-fold-get-folding-spec-for-element'), only check folding spec for
 the given element.  Note that multiple elements may have same folding
 specs."
-  (let ((value (get-char-property (or pos (point)) 'invisible)))
-    (cond ((not value) nil)
-	  ((memq value org-fold--spec-priority-list)
-	   (if spec-or-element
-               (org-fold-get-folding-spec spec-or-element pos)
-             value))
-	  (t nil))))
+  (org-fold-get-folding-spec (or (org-fold-get-folding-spec spec-or-element) spec-or-element) pos))
 
 (defun org-fold-get-folding-spec (&optional spec-or-element pom)
   "Get folding state at `point' or POM.
