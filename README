@@ -1,9 +1,17 @@
 -*- mode: org; fill-column:70 -*-
 
-This is a distribution of Org, a plain text notes and project planning
-tool for Emacs.
+* Org-mode::org-fold branch
+
+This branch is a re-implementation of org-mode folding mechanism hiding text using text properties instead of overlays. This should help with performance on large files.
+
+Org-mode mailing list discussion: https://orgmode.org/list/87h7x9e5jo.fsf@localhost/
+
+This repository is aiming to simplify testing of the branch. Feel free to open issues if you find bugs.
+
+ *Important*: I cannot accept all the pull requests to avoid copyright issues. Only people finished FSF copyright assignment can contribute to this branch. See [[https://orgmode.org/contribute.html][Org mode contribution instructions]] for details.
 
 Check the [[https://orgmode.org][homepage of Org]] and the [[https://orgmode.org/org.html#Installation][installations instructions]].
+
 
 * Contents of this distribution
 
