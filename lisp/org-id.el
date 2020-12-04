@@ -128,6 +128,12 @@ nil   Never use an ID to make a link, instead link using a text search for
   :group 'org-id
   :type 'string)
 
+(defcustom org-id-ts-format "%Y%m%dT%H%M%S.%6N"
+  "Default format for IDs generated using `ts' `org-id-method'.
+The format should be suitable to pass as an argument to `format-time-string'."
+  :type 'string
+  :package-version '(Org . "9.5"))
+
 (defcustom org-id-method 'uuid
   "The method that should be used to create new IDs.
 
@@ -380,7 +386,7 @@ So a typical ID could look like \"Org:4nd91V40HI\"."
 			    (concat "@" (message-make-fqdn))))))
 	(setq unique (concat etime postfix))))
      ((eq org-id-method 'ts)
-      (let ((ts (format-time-string "%Y%m%dT%H%M%S.%6N"))
+      (let ((ts (format-time-string org-id-ts-format))
 	    (postfix (if org-id-include-domain
 			 (progn
 			   (require 'message)
@@ -512,28 +518,31 @@ When FILES is given, scan also these files."
          (seen-ids nil)
          (ndup 0)
          (i 0))
-    (dolist (file files)
-      (when (file-exists-p file)
-        (unless silent
-          (cl-incf i)
-          (message "Finding ID locations (%d/%d files): %s" i nfiles file))
-        (with-current-buffer (find-file-noselect file t)
-          (let ((ids nil)
-                (case-fold-search t))
-            (org-with-point-at 1
-              (while (re-search-forward id-regexp nil t)
-                (when (org-at-property-p)
-                  (push (org-entry-get (point) "ID") ids)))
-              (when ids
-                (push (cons (abbreviate-file-name file) ids)
-                      org-id-locations)
-                (dolist (id ids)
-                  (cond
-                   ((not (member id seen-ids)) (push id seen-ids))
-                   (silent nil)
-                   (t
-                    (message "Duplicate ID %S" id)
-                    (cl-incf ndup))))))))))
+    (with-temp-buffer
+      (delay-mode-hooks
+	(org-mode)
+	(dolist (file files)
+	  (when (file-exists-p file)
+            (unless silent
+              (cl-incf i)
+              (message "Finding ID locations (%d/%d files): %s" i nfiles file))
+	    (insert-file-contents file nil nil nil 'replace)
+            (let ((ids nil)
+		  (case-fold-search t))
+              (org-with-point-at 1
+		(while (re-search-forward id-regexp nil t)
+		  (when (org-at-property-p)
+                    (push (org-entry-get (point) "ID") ids)))
+		(when ids
+		  (push (cons (abbreviate-file-name file) ids)
+			org-id-locations)
+		  (dolist (id ids)
+                    (cond
+                     ((not (member id seen-ids)) (push id seen-ids))
+                     (silent nil)
+                     (t
+                      (message "Duplicate ID %S" id)
+                      (cl-incf ndup)))))))))))
     (setq org-id-files (mapcar #'car org-id-locations))
     (org-id-locations-save)
     ;; Now convert to a hash table.
@@ -655,20 +664,27 @@ When FILES is given, scan also these files."
 
 (defun org-id-find-id-in-file (id file &optional markerp)
   "Return the position of the entry ID in FILE.
+
 If that files does not exist, or if it does not contain this ID,
 return nil.
+
 The position is returned as a cons cell (file-name . position).  With
 optional argument MARKERP, return the position as a new marker."
-  (let (org-agenda-new-buffers buf pos)
-    (cond
-     ((not file) nil)
-     ((not (file-exists-p file)) nil)
-     (t (with-current-buffer (setq buf (org-get-agenda-file-buffer file))
-	  (setq pos (org-find-entry-with-id id))
-	  (when pos
-	    (if markerp
-		(move-marker (make-marker) pos buf)
-	      (cons file pos))))))))
+  (cond
+   ((not file) nil)
+   ((not (file-exists-p file)) nil)
+   (t
+    (let* ((visiting (find-buffer-visiting file))
+	   (buffer (or visiting (find-file-noselect file))))
+      (unwind-protect
+	  (with-current-buffer buffer
+	    (let ((pos (org-find-entry-with-id id)))
+	      (cond
+	       ((null pos) nil)
+	       (markerp (move-marker (make-marker) pos buffer))
+	       (t (cons file pos)))))
+	;; Remove opened buffer in the process.
+	(unless (or visiting markerp) (kill-buffer buffer)))))))
 
 ;; id link type
 

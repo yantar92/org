@@ -212,13 +212,18 @@ relative  Relative to the current directory, i.e. the directory of the file
 absolute  Absolute path, if possible with ~ for home directory.
 noabbrev  Absolute path, no abbreviation of home directory.
 adaptive  Use relative path for files in the current directory and sub-
-          directories of it.  For other files, use an absolute path."
+          directories of it.  For other files, use an absolute path.
+
+Alternatively, users may supply a custom function that takes the
+full filename as an argument and returns the path."
   :group 'org-link
   :type '(choice
 	  (const relative)
 	  (const absolute)
 	  (const noabbrev)
-	  (const adaptive))
+	  (const adaptive)
+	  (function))
+  :package-version '(Org . "9.5")
   :safe #'symbolp)
 
 (defcustom org-link-abbrev-alist nil
@@ -1173,10 +1178,9 @@ of matched result, which is either `dedicated' or `fuzzy'."
 	     (catch :name-match
 	       (goto-char (point-min))
 	       (while (re-search-forward name nil t)
-		 (let ((element (org-element-at-point)))
-		   (when (equal words
-				(split-string
-				 (org-element-property :name element)))
+		 (let* ((element (org-element-at-point))
+			(name (org-element-property :name element)))
+		   (when (and name (equal words (split-string name)))
 		     (setq type 'dedicated)
 		     (beginning-of-line)
 		     (throw :name-match t))))
@@ -1876,6 +1880,9 @@ Use TAB to complete link prefixes, then RET for type-specific completion support
 	    (setq path (expand-file-name path)))
 	   ((eq org-link-file-path-type 'relative)
 	    (setq path (file-relative-name path)))
+	   ((functionp org-link-file-path-type)
+	    (setq path (funcall org-link-file-path-type
+				(expand-file-name path))))
 	   (t
 	    (save-match-data
 	      (if (string-match (concat "^" (regexp-quote

@@ -11,6 +11,124 @@ See the end of the file for license conditions.
 Please send Org bug reports to mailto:emacs-orgmode@gnu.org.
 
 * Version 9.5 (not yet released)
+** New options and settings
+*** Option ~org-hidden-keywords~ now also applies to #+SUBTITLE:
+
+The option ~org-hidden-keywords~ previously applied
+to #+TITLE:, #+AUTHOR:, #+DATE:, and #+EMAIL:.  Now it can also be
+used to hide the #+SUBTITLE: keyword.
+
+*** New formatting directive ~%L~ for org-capture
+
+The new ~%L~ formatting directive contains the bare link target, and
+may be used to create links with programmatically generated
+descriptions.
+
+*** New option ~org-id-ts-format~
+
+Earlier, IDs generated using =ts= method had a hard-coded format (i.e. =20200923T160237.891616=).
+The new option allows user to customise the format.
+Defaults are unchanged.
+
+*** New argument for ~file-desc~ babel header
+
+It is now possible to provide the =file-desc= header argument for a
+babel source block but omit the description by passing an empty vector
+as an argument (i.e., :file-desc []).  This can be useful because
+providing =file-desc= without an argument results in the result of
+=file= being used in the description.  Previously, the only way to
+omit a file description was to omit the header argument entirely,
+which made it difficult/impossible to provide a default value for
+=file-desc=.
+
+*** New option to set ~org-link-file-path-type~ to a function
+
+~org-link-file-path-type~ can now be set to a function that takes the
+full filename as an argument and returns the path to link to.
+
+For example, if you use ~project.el~, you can set this function to use
+relative links within a project as follows:
+
+#+begin_src emacs-lisp
+(setq (org-link-file-path-type
+       (lambda (path)
+         (let* ((proj (project-current))
+                (root (if proj (project-root proj) default-directory)))
+           (if (string-prefix-p (expand-file-name root) path)
+               (file-relative-name path)
+             (abbreviate-file-name path))))))
+#+end_src
+
+** New features
+*** =ob-python= improvements to =:return= header argument 
+
+The =:return= header argument in =ob-python= now works for session
+blocks as well as non-session blocks.  Also, it now works with the
+=:epilogue= header argument -- previously, setting the =:return=
+header would cause the =:epilogue= to be ignored.
+
+This change allows more easily moving boilerplate out of the main code
+block and into the header. For example, for plotting, we need to add
+boilerplate to save the figure to a file and return the
+filename. Instead of doing this within the code block, we can now
+handle it through the header arguments as follows:
+
+#+BEGIN_SRC org
+,#+header: :var fname="/home/jack/tmp/plot.svg"
+,#+header: :epilogue plt.savefig(fname)
+,#+header: :return fname
+,#+begin_src python :results value file
+  import matplotlib, numpy
+  import matplotlib.pyplot as plt
+  fig=plt.figure(figsize=(4,2))
+  x=numpy.linspace(-15,15)
+  plt.plot(numpy.sin(x)/x)
+  fig.tight_layout()
+,#+end_src
+
+,#+RESULTS:
+[[file:/home/jack/tmp/plot.svg]]
+#+END_SRC
+
+As another example, we can use =:return= with the external [[https://pypi.org/project/tabulate/][tabulate]]
+package, to convert pandas Dataframes into orgmode tables:
+
+#+begin_src org
+,#+header: :prologue from tabulate import tabulate
+,#+header: :return tabulate(table, headers=table.columns, tablefmt="orgtbl")
+,#+begin_src python :results value raw :session
+  import pandas as pd
+  table = pd.DataFrame({
+      "a": [1,2,3],
+      "b": [4,5,6]
+  })
+,#+end_src
+
+,#+RESULTS:
+|   | a | b |
+|---+---+---|
+| 0 | 1 | 4 |
+| 1 | 2 | 5 |
+| 2 | 3 | 6 |
+#+end_src
+
+*** New =u= table formula flag to enable Calc units simplification mode
+
+A new =u= mode flag for Calc formulas in Org tables has been added to
+enable Calc units simplification mode.
+
+** Miscellaneous
+*** =org-goto-first-child= now works before first heading
+
+When point is before first heading =org-goto-first-child= will move
+point to the first child heading, or return nil if no heading exist
+in buffer.  This is in line with the fact that everything before first
+heading is regarded as outline level 0, i.e. the parent level of all
+headings in the buffer.
+
+Previously =org-goto-first-child= would do nothing before first
+heading, except return nil.
+
 * Version 9.4
 ** Incompatible changes
 *** Possibly broken internal file links: please check and fix

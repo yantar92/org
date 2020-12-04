@@ -4133,7 +4133,9 @@ If STRING is the empty string or nil, return nil."
 	  (dolist (v local-variables)
 	    (ignore-errors
 	      (if (symbolp v) (makunbound v)
-		(set (make-local-variable (car v)) (cdr v)))))
+		;; Don't set file name to avoid mishandling hooks (bug#44524)
+		(unless (memq (car v) '(buffer-file-name buffer-file-truename))
+		  (set (make-local-variable (car v)) (cdr v))))))
 	  ;; Transferring local variables may put the temporary buffer
 	  ;; into a read-only state.  Make sure we can insert STRING.
 	  (let ((inhibit-read-only t)) (insert string))
@@ -4653,19 +4655,18 @@ to interpret.  Return Org syntax as a string."
   "Return ELEMENT's affiliated keywords as Org syntax.
 If there is no affiliated keyword, return the empty string."
   (let ((keyword-to-org
-	 (function
-	  (lambda (key value)
-	    (let (dual)
-	      (when (member key org-element-dual-keywords)
-		(setq dual (cdr value) value (car value)))
-	      (concat "#+" (downcase key)
-		      (and dual
-			   (format "[%s]" (org-element-interpret-data dual)))
-		      ": "
-		      (if (member key org-element-parsed-keywords)
-			  (org-element-interpret-data value)
-			value)
-		      "\n"))))))
+	 (lambda (key value)
+	   (let (dual)
+	     (when (member key org-element-dual-keywords)
+	       (setq dual (cdr value) value (car value)))
+	     (concat "#+" (downcase key)
+		     (and dual
+			  (format "[%s]" (org-element-interpret-data dual)))
+		     ": "
+		     (if (member key org-element-parsed-keywords)
+			 (org-element-interpret-data value)
+		       value)
+		     "\n")))))
     (mapconcat
      (lambda (prop)
        (let ((value (org-element-property prop element))
