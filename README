@@ -10,8 +10,36 @@ This repository is aiming to simplify testing of the branch. Feel free to open i
 
  *Important*: I cannot accept all the pull requests to avoid copyright issues. Only people finished FSF copyright assignment can contribute to this branch. See [[https://orgmode.org/contribute.html][Org mode contribution instructions]] for details.
 
-Check the [[https://orgmode.org][homepage of Org]] and the [[https://orgmode.org/org.html#Installation][installations instructions]].
+* Installation
 
+Quoting [[https://orgmode.org/org.html#Installation][original org-mode installation instructions]], but for this repo:
+
+You can clone Org’s repository and install Org like this:
+
+#+begin_src bash
+cd ~/src/
+git clone https://github.com/yantar92/org
+cd org-mode/
+make autoloads
+#+end_src
+
+Note that in this case, ‘make autoloads’ is mandatory: it defines Org’s version in ‘org-version.el’ and Org’s autoloads in ‘org-loaddefs.el’.
+
+Make sure you set the load path correctly in your Emacs init file:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "~/path/to/orgdir/lisp")
+#+end_src
+
+The repository contains contributed libraries that are not included in Emacs. If you want to use them, add the ‘contrib/’ directory to your load path:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "~/path/to/orgdir/contrib/lisp" t)
+#+end_src
+
+You can also compile with ‘make’, generate the documentation with ‘make doc’, create a local configuration with ‘make config’ and install Org with ‘make install’. Please run ‘make help’ to get the list of compilation/installation options.
+
+For more detailed explanations on Org’s build system, please check the Org Build System page on [[https://orgmode.org/worg/dev/org-build-system.html][Worg]].
 
 * Contents of this distribution
 
