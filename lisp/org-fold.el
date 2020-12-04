@@ -1407,7 +1407,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
       (dolist (plist
 	       ;; Yes, it is a hack.
                ;; The below gives us string representation as a list.
-	       (read (replace-regexp-in-string "#" "" (format "%S" return-string))))
+               (let ((data (read (replace-regexp-in-string "#" "" (format "%S" return-string)))))
+		 (if (listp data) data (list data))))
 	;; Only lists contain text properties.
 	(when (listp plist)
 	  ;; Collect all the relevant text properties.
