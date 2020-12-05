@@ -2,7 +2,7 @@
 ;;
 ;; Copyright (C) 2020-2020 Free Software Foundation, Inc.
 ;;
-;; Author: ???
+;; Author: Ihor Radchenko <yantar92 at gmail dot com>
 ;; Keywords: folding, invisible text
 ;; Homepage: https://orgmode.org
 ;;
@@ -33,6 +33,7 @@
 ;; - Revealing text around point
 ;; - Interactive searching in folded text (via isearch)
 ;; - Handling edits in folded text
+;; - Killing/yanking (copying/pasting) of the folded text
 
 ;;; Folding/unfolding text regions and org elements
 

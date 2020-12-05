@@ -6,7 +6,7 @@ This branch is a re-implementation of Org-mode folding mechanism. This should he
 
 The old mechanism is using [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Overlays.html#Overlays][overlays]], which are implemented with O(n) complexity in Emacs. It means that any attempt to move through hidden text in large org file will require time scaling with the number of drawers/folded subtrees. More details in my old [[https://lists.gnu.org/archive/html/bug-gnu-emacs/2019-04/msg01387.html][bug report]].
 
-This branch is hiding text using [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Text-Properties.html#Text-Properties][text properties]] instead of overlays. Text properties are much faster (just O(logN)). The effect should be noticeable in org files with more than ~1000 hidden elements (drawers or high-level headlines). More details about this branch development can be found in the Org-mode mailing list discussion thread: https://orgmode.org/list/87h7x9e5jo.fsf@localhost/ 
+This branch is hiding text using [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Text-Properties.html#Text-Properties][text properties]] instead of overlays. Text properties are much faster (just O(logN)). The effect should be noticeable in org files with more than ~1000 hidden elements (drawers or high-level headlines). More details about this branch development can be found in the Org-mode mailing list discussion thread: https://orgmode.org/list/87h7x9e5jo.fsf@localhost/. If one wants to know even more details, I tried my best to document all the logic in the comments of [[file:./lisp/org-fold.el]].
 
 This repository is aiming to simplify testing of the branch. Feel free to open issues if you find bugs.
 
