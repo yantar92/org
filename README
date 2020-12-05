@@ -14,6 +14,36 @@ This repository is aiming to simplify testing of the branch. Feel free to open i
 
 * Installation
 
+** Using [[https://github.com/hlissner/doom-emacs/][Doom Emacs]]
+
+Credit: https://old.reddit.com/r/orgmode/comments/k6f5fx/ann_experimental_orgmode_branch_improving/genltoj/
+#+begin_src emacs-lisp
+;; ~/.doom.d/packages.el
+(package! org-mode
+  :recipe (:host github
+           :repo "yantar92/org"
+           :branch "feature/org-fold"
+           :files ("*.el" "lisp/*.el" "contrib/lisp/*.el")
+           :build (with-temp-file (expand-file-name "org-version.el" (straight--repos-dir "org"))
+                    (insert "(fset 'org-release (lambda () \"9.5\"))\n"
+                            "(fset 'org-git-version #'ignore)\n"
+                            "(provide 'org-version)\n")))
+  :pin "308c4f57d26307c0f57ad387a4638b051f541a9c"
+  :shadow 'org)
+#+end_src
+
+Thanks to [[https://old.reddit.com/user/AloisJanicek][AloisJanicek]] for the code snippet.
+
+** Using [[https://github.com/raxod502/straight.el/][Straight.el]]
+
+#+begin_src emacs-lisp
+;; Should be placed inside init.el before anything loading org-mode 
+(straight-use-package '(org :host github :repo "yantar92/org" :branch "feature/org-fold"
+			    :files (:defaults "contrib/lisp/*.el")))
+#+end_src
+
+** Manual installation
+
 Quoting [[https://orgmode.org/org.html#Installation][original org-mode installation instructions]], but for this repo:
 
 You can clone Org’s repository and install Org like this:
