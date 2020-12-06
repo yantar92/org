@@ -1,5 +1,15 @@
 -*- mode: org; fill-column:70 -*-
 
+* Table of contents :TOC:
+- [[#org-modeorg-fold-branch][Org-mode::org-fold branch]]
+- [[#testing-the-branch][Testing the branch]]
+- [[#installation][Installation]]
+  - [[#using-doom-emacs][Using Doom Emacs]]
+  - [[#using-straightel][Using Straight.el]]
+  - [[#manual-installation][Manual installation]]
+- [[#contents-of-this-distribution][Contents of this distribution]]
+- [[#license][License]]
+
 * Org-mode::org-fold branch
 
 This branch is a re-implementation of Org-mode folding mechanism. This should help with performance on large files.
