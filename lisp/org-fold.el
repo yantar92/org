@@ -343,8 +343,14 @@ unless RETURN-ONLY is non-nil."
 
 ;;;; Modifying folding specs
 
-(defun org-fold-add-folding-spec (spec &optional buffer no-ellipsis-p no-isearch-open-p append)
+(defun org-fold-folding-spec-p (spec)
+  "Check if SPEC is a registered folding spec."
+  (and spec (memq spec org-fold--spec-priority-list)))
+
+(defun org-fold-add-folding-spec (spec &optional buffer no-ellipsis-p no-isearch-open-p append visible)
   "Add a new folding SPEC in BUFFER.
+
+If VISIBLE is non-nil, text will not be hidden when folded using SPEC.
 
 SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in, nil to
 set SPEC in current buffer, or 'all to set SPEC in all open `org-mode'
@@ -359,7 +365,7 @@ redefined according to provided optional arguments."
   (when (eq spec 'all) (user-error "Folding spec name 'all is not allowed"))
   (when (eq buffer 'all)
     (mapc (lambda (buf)
-	    (org-fold-add-folding-spec spec buf no-ellipsis-p no-isearch-open-p append))
+	    (org-fold-add-folding-spec spec buf no-ellipsis-p no-isearch-open-p append visible))
 	  (org-buffer-list))
     (setq-default org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
     (add-to-list 'org-fold--spec-priority-list spec append)
@@ -374,7 +380,9 @@ redefined according to provided optional arguments."
       (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (add-to-invisibility-spec (cons spec (not no-ellipsis-p)))
+      (if visible
+	  (remove-from-invisibility-spec spec)
+	(add-to-invisibility-spec (cons spec (not no-ellipsis-p))))
       (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
       (add-to-list 'org-fold--spec-priority-list spec append)
       (when no-ellipsis-p (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
