@@ -29,6 +29,7 @@
 
 (require 'org-compat)
 (require 'org-macs)
+(require 'org-fold)
 
 (defvar clean-buffer-list-kill-buffer-names)
 (defvar org-agenda-buffer-name)
@@ -1427,10 +1428,10 @@ If the link is in hidden text, expose it."
 
 ;;;###autoload
 (defun org-toggle-link-display ()
-  "Toggle the literal or descriptive display of links."
+  "Toggle the literal or descriptive display of links in current buffer."
   (interactive)
-  (if org-link-descriptive (remove-from-invisibility-spec '(org-link))
-    (add-to-invisibility-spec '(org-link)))
+  (if org-link-descriptive (org-fold-remove-folding-spec 'org-link)
+    (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
   (org-restart-font-lock)
   (setq org-link-descriptive (not org-link-descriptive)))
 
