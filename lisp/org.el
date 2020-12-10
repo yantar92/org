@@ -5058,11 +5058,11 @@ This includes angle, plain, and bracket links."
                   (add-face-text-property start end face-property)
 		  (add-text-properties start end properties))
 	      ;; Handle invisible parts in bracket links.
-              (org-fold-region start end nil 'org-link)
 	      (let ((spec (or (org-link-get-parameter type :display)
 			      'org-link)))
                 (unless (org-fold-folding-spec-p spec)
                   (org-fold-add-folding-spec spec nil nil nil 'append 'visible))
+		(org-fold-region start end nil spec)
                 (org-fold-region start visible-start t spec)
 		(add-text-properties start end properties)
                 (add-face-text-property visible-start visible-end face-property)
