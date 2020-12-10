@@ -408,6 +408,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
     (with-current-buffer buffer
       (remove-from-invisibility-spec (cons spec t))
       (remove-from-invisibility-spec spec)
+      (remove-from-invisibility-spec (list spec))
       (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
       (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
       (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))))
