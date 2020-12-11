@@ -1323,8 +1323,7 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	     (or (org-invisible-p)
 		 (org-invisible-p (max (point-min) (1- (point))))))
     ;; OK, we need to take a closer look.  Only consider invisibility
-    ;; caused by folding, not by fontification (e.g., link
-    ;; fontification), as it cannot be toggled.
+    ;; caused by folding.
     (let* ((invisible-at-point (org-fold-folded-p))
 	   ;; Assume that point cannot land in the middle of an
 	   ;; overlay, or between two overlays.
@@ -1341,8 +1340,8 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	     ;; Check if we are acting predictably after invisible text
 	     ;; This works not well, and I have turned it off.  It seems
 	     ;; better to always show and stop after invisible text.
-	     ;; (and (not invisible-at-point) invisible-before-point
-	     ;;  (memq kind '(insert delete)))
+	     (and (not invisible-at-point) invisible-before-point
+		  (memq kind '(insert delete)))
 	     )))
       (when (or invisible-at-point invisible-before-point)
 	(when (eq org-fold-catch-invisible-edits 'error)
@@ -1353,6 +1352,8 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	  ;; Make the area visible
           (save-excursion
 	    (org-fold-show-context 'minimal))
+          (when invisible-before-point
+            (org-with-point-at (1- (point)) (org-fold-show-context 'minimal)))
 	  (cond
 	   ((eq org-fold-catch-invisible-edits 'show)
 	    ;; That's it, we do the edit after showing
