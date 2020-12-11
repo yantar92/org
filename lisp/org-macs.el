@@ -751,11 +751,11 @@ Return nil when PROP is not set at POS."
 			 (get-text-property (1- beg) prop))))
 	(setq beg (previous-single-property-change pos prop nil (point-min))))
       (unless (or (equal end (point-max))
-		  (not (eq (get-text-property end prop)
-			 (get-text-property (1+ end) prop))))
+		  ;; (not (eq (get-text-property end prop)
+		  ;; 	 (get-text-property (1+ end) prop)))
+		  )
 	(setq end (next-single-property-change pos prop nil (point-max))))
-      (unless (eq beg end)
-	(cons beg end)))))
+      (cons beg end))))
 
 
 ;;; Regexp matching
