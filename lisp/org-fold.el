@@ -1004,10 +1004,8 @@ information."
   (if (and (org-at-heading-p) (not (eq detail 'local)))
       (org-fold-heading nil)
     (org-fold-show-entry)
-    ;; If point is hidden within a drawer or a block, make sure to
-    ;; expose it.
-    (when (or (org-fold-folded-p nil 'drawer)
-	      (org-fold-folded-p nil 'block))
+    ;; If point is hidden make sure to expose it.
+    (when (org-fold-folded-p)
       (let ((region (org-fold-get-region-at-point)))
 	(org-fold-region (car region) (cdr region) nil)))
     (unless (org-before-first-heading-p)
