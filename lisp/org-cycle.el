@@ -307,10 +307,11 @@ Use `\\[org-edit-special]' to edit table.el tables"))
         (org-with-limited-levels
 	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil))))
-     ((and (>= eol eos)
+     ((and (or (>= eol eos)
+	       (not (string-match "\\S-" (buffer-substring eol eos))))
 	   (or has-children
 	       (not (setq children-skipped
-			org-cycle-skip-children-state-if-no-children))))
+			  org-cycle-skip-children-state-if-no-children))))
       ;; Entire subtree is hidden in one line: children view
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-pre-cycle-hook 'children))
@@ -385,6 +386,14 @@ With a numeric prefix, show all headlines up to that level."
     (org-overview))
    ((eq org-startup-folded 'content)
     (org-content))
+   ((eq org-startup-folded 'show2levels)
+    (org-content 2))
+   ((eq org-startup-folded 'show3levels)
+    (org-content 3))
+   ((eq org-startup-folded 'show4levels)
+    (org-content 4))
+   ((eq org-startup-folded 'show5levels)
+    (org-content 5))
    ((or (eq org-startup-folded 'showeverything)
 	(eq org-startup-folded nil))
     (org-fold-show-all)))
@@ -461,19 +470,23 @@ With numerical argument N, show content up to level N."
   "Adjust the window after a change in outline visibility.
 This function is the default value of the hook `org-cycle-hook'."
   (when (get-buffer-window (current-buffer))
-    (cond
-     ((eq state 'content)  nil)
-     ((eq state 'all)      nil)
-     ((and (eq state 'folded) (eq last-command this-command))
-      (set-window-start nil org-scroll-position-to-restore))
-     ((eq state 'folded) nil)
-     ((eq state 'children)
-      (setq org-scroll-position-to-restore (window-start))
-      (or (org-subtree-end-visible-p) (recenter 1)))
-     ((eq state 'subtree)
-      (when (not (eq last-command this-command))
-	(setq org-scroll-position-to-restore (window-start)))
-      (or (org-subtree-end-visible-p) (recenter 1))))))
+    (let ((repeat (eq last-command this-command)))
+      (unless repeat
+	(setq org-scroll-position-to-restore nil))
+      (cond
+       ((eq state 'content)  nil)
+       ((eq state 'all)      nil)
+       ((and org-scroll-position-to-restore repeat
+	     (eq state 'folded))
+	(set-window-start nil org-scroll-position-to-restore))
+       ((eq state 'folded) nil)
+       ((eq state 'children)
+	(setq org-scroll-position-to-restore (window-start))
+	(or (org-subtree-end-visible-p) (recenter 1)))
+       ((eq state 'subtree)
+        (unless repeat
+	  (setq org-scroll-position-to-restore (window-start)))
+        (or (org-subtree-end-visible-p) (recenter 1)))))))
 
 (defun org-clean-visibility-after-subtree-move ()
   "Fix visibility issues after moving a subtree."
