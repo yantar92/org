@@ -4693,8 +4693,9 @@ The following commands are available:
   (org-fold-initialize)
   ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
   (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible)
-  ;; This is applied on the whole link.
-  (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append)
+  (when org-link-descriptive
+    ;; This is applied on the whole link.
+    (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
   (setq-local outline-regexp org-outline-regexp)
   (setq-local outline-level 'org-outline-level)
   (setq bidi-paragraph-direction 'left-to-right)
@@ -5080,11 +5081,10 @@ This includes angle, plain, and bracket links."
 			      'org-link)))
                 (unless (org-fold-folding-spec-p spec)
                   (org-fold-add-folding-spec spec nil nil nil 'append 'visible))
-                (unless (and (org-fold-folding-spec-p 'org-fold-link)
-			     (org-fold-folding-spec-p 'org-fold-link-description))
-		  ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
-		  (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible)
-		  ;; This is applied on the whole link.
+                (unless (org-fold-folding-spec-p 'org-link-description)
+		  (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible))
+                (unless (or (org-fold-folding-spec-p 'org-link)
+			    (not org-link-descriptive))
 		  (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
                 (org-fold-region start end nil 'org-link)
                 (org-fold-region start end nil 'org-link-description)
