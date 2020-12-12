@@ -1021,7 +1021,7 @@ go to the parent and show the entire tree."
 (defun org-fold--check-spec (spec)
   "Throw an error if SPEC is not present in `org-fold--spec-priority-list'."
   (unless (and spec (memq spec org-fold--spec-priority-list))
-    (user-error "%s is not a valid folding spec" spec)))
+    (error "%s is not a valid folding spec" spec)))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
