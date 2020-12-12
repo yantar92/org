@@ -1352,9 +1352,9 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	    (org-toggle-custom-properties-visibility)
 	  ;; Make the area visible
           (save-excursion
-	    (org-fold-show-context 'minimal))
+	    (org-fold-show-set-visibility 'local))
           (when invisible-before-point
-            (org-with-point-at (1- (point)) (org-fold-show-context 'minimal)))
+            (org-with-point-at (1- (point)) (org-fold-show-set-visibility 'local)))
 	  (cond
 	   ((eq org-fold-catch-invisible-edits 'show)
 	    ;; That's it, we do the edit after showing
