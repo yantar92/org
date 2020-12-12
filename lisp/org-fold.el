@@ -382,7 +382,8 @@ redefined according to provided optional arguments."
       (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (unless visible
+      (unless (or visible
+		  (member (cons spec (not no-ellipsis-p)) buffer-invisibility-spec))
 	(add-to-invisibility-spec (cons spec (not no-ellipsis-p))))
       (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
       (add-to-list 'org-fold--spec-priority-list spec append)
