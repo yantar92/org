@@ -350,7 +350,9 @@ unless RETURN-ONLY is non-nil."
 (defun org-fold-add-folding-spec (spec &optional buffer no-ellipsis-p no-isearch-open-p append visible)
   "Add a new folding SPEC in BUFFER.
 
-If VISIBLE is non-nil, text will not be hidden when folded using SPEC.
+If VISIBLE is non-nil, visibility of text folded using SPEC will be
+controlled by `buffer-invisibility-spec'.  The folded text will have
+'invisible property set to SPEC (with lowest possible priority).
 
 SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in, nil to
 set SPEC in current buffer, or 'all to set SPEC in all open `org-mode'
@@ -380,8 +382,7 @@ redefined according to provided optional arguments."
       (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (if visible
-	  (remove-from-invisibility-spec spec)
+      (unless visible
 	(add-to-invisibility-spec (cons spec (not no-ellipsis-p))))
       (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
       (add-to-list 'org-fold--spec-priority-list spec append)
