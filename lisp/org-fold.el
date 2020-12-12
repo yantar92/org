@@ -61,6 +61,39 @@
 ;; broken if one sets 'invisible text property to a value not listed
 ;; in `buffer-invisibility-spec'.
 
+;; It is also possible to use this library if one wants to show some
+;; parts of otherwise hidden text.  `org-fold-add-folding-spec' has an option
+;; to define a new spec, that does not hide folded text.  This option,
+;; for example, is used to hide some parts of org-mode links:
+
+;; Consider the following link:
+;; [[file:/path/to/file/file.ext][description]]
+;; Only the word "description" is normally visible in this link.
+;; 
+;; The way this partial visibility is achieved is combining two folding specs:
+;; 1. 'org-link, which is a normal spec hiding text
+;; 2. 'org-link-description, which is a "visible" folding spec
+;; 'org-link-description spec is defined with higher priority (it is
+;; added first) in comparison with 'org-link:
+;;
+;; (org-fold-add-folding-spec 'org-link-description nil t                'no-isearch-open 'append 'visible)
+;; (org-fold-add-folding-spec 'org-link             nil 'hide-completely 'no-isearch-open 'append nil)
+;;
+;; Then, the whole link is folded using 'org-link folding spec, but
+;; the visible part is additionally folded using
+;; 'org-link-description:
+;;
+;; <begin fold: 'org-link>[[file:/path/to/file/file.ext][<begin fold: 'org-link-description>description<end fold: 'org-link-description>]]<end fold: 'org-link>
+;; 
+;; Because 'org-link-description is visible folding spec and has
+;; higher priority than 'org-link, it suppresses all the
+;; lower-priority specs and thus reveal the description part of the
+;; link.
+;;
+;; Note that the above call to `org-fold-add-folding-spec' used 'append
+;; argument, so that default outline/drawer/block folding is ensured
+;; to be prioritised over the link description.
+
 ;;; Searching and examining boundaries of folded text
 
 ;; It is possible to examine folding specs (there may be several) of
