@@ -4953,7 +4953,12 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 				   '(font-lock-multiline t org-emphasis t))
 	      (when (and org-hide-emphasis-markers
 			 (not (org-at-comment-p)))
+                ;; We are folding the whole emphasised text with
+                ;; 'org-link first.  It makes everything invisible.
                 (org-fold-region (match-beginning 2) (match-end 2) t 'org-link)
+                ;; The visible part of the text is folded using
+                ;; 'org-link-description, which is forcing text to be
+                ;; visible.
                 (org-fold-region (match-end 3) (match-end 4) t 'org-link-description))
 	      (throw :exit t))))))))
 
@@ -5068,7 +5073,13 @@ This includes angle, plain, and bracket links."
                   (org-fold-add-folding-spec spec nil nil nil 'append 'visible))
                 (org-fold-region start end nil 'org-link)
                 (org-fold-region start end nil 'org-link-description)
+                ;; We are folding the whole emphasised text with SPEC
+                ;; first.  It makes everything invisible (or whatever
+                ;; the user wants).
                 (org-fold-region start end t spec)
+                ;; The visible part of the text is folded using
+                ;; 'org-link-description, which is forcing this part of
+                ;; the text to be visible.
                 (org-fold-region visible-start visible-end t 'org-link-description)
 		(add-text-properties start end properties)
                 (add-face-text-property visible-start visible-end face-property)
