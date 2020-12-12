@@ -5071,6 +5071,12 @@ This includes angle, plain, and bracket links."
 			      'org-link)))
                 (unless (org-fold-folding-spec-p spec)
                   (org-fold-add-folding-spec spec nil nil nil 'append 'visible))
+                (unless (and (org-fold-folding-spec-p 'org-fold-link)
+			     (org-fold-folding-spec-p 'org-fold-link-description))
+		  ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
+		  (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible)
+		  ;; This is applied on the whole link.
+		  (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
                 (org-fold-region start end nil 'org-link)
                 (org-fold-region start end nil 'org-link-description)
                 ;; We are folding the whole emphasised text with SPEC
