@@ -1210,7 +1210,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
       ;; Store the new buffer modification state.
       (setq org-fold--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
       ;; Re-hide text inserted in the middle of a folded region.
-      (unless (equal from to)
+      (unless (equal from to) ; Ignore deletions.
 	(dolist (spec org-fold--spec-priority-list)
 	  (let ((spec-to (org-fold-get-folding-spec spec (min to (1- (point-max)))))
 		(spec-from (org-fold-get-folding-spec spec (max (point-min) (1- from)))))
