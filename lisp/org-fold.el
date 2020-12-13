@@ -1195,7 +1195,7 @@ value listed in `org-fold--isearch-specs'."
   "Variable storing the last return value of `buffer-chars-modified-tick'.")
 
 (defun org-fold--fix-folded-region (from to _)
-  "Process changes in folded elements.
+  "Process modifications in folded elements within FROM . TO region.
 This function intended to be used as one of `after-change-functions'.
 
 This function does nothing if text the only modification was changing
