@@ -2151,7 +2151,7 @@ line directly before or after the table.
 
 \(fn &optional PARAMS)" t nil)
 
-(register-definition-prefixes "org-plot" '("org-plot"))
+(register-definition-prefixes "org-plot" '("org-"))
 
 ;;;***
 

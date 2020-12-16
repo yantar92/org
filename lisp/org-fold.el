@@ -1177,7 +1177,7 @@ value listed in `org-fold--isearch-specs'."
       ;; Changing text properties is considered buffer modification.
       ;; We do not want it here.
       (with-silent-modifications
-	(when (< (overlay-end ov) (point-max))
+	(when (<= (overlay-end ov) (point-max))
 	  (org-fold-region (overlay-start ov) (overlay-end ov) t spec)))))
   (when (member ov isearch-opened-overlays)
     (setq isearch-opened-overlays (delete ov isearch-opened-overlays)))
