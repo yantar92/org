@@ -1157,13 +1157,15 @@ are effectively trimmed).  If nil, all zero-length substrings are retained."
 
 (defun org-contacts-link-store ()
   "Store the contact in `org-contacts-files' with a link."
-  (when (eq major-mode 'org-mode)
-    ;; (member (buffer-file-name) (mapcar 'expand-file-name org-contacts-files))
-    (let ((headline-str (substring-no-properties (org-get-heading t t t t))))
-      (org-store-link-props
-       :type "org-contact"
-       :link headline-str
-       :description headline-str))))
+  (when (and (eq major-mode 'org-mode)
+	     (member (buffer-file-name) (mapcar 'expand-file-name org-contacts-files)))
+    (if org-id-link-to-org-use-id
+	(org-id-store-link)
+      (let ((headline-str (substring-no-properties (org-get-heading t t t t))))
+	(org-store-link-props
+	 :type "org-contact"
+	 :link headline-str
+	 :description headline-str)))))
 
 (defun org-contacts--all-contacts ()
   "Return an alist (name . (file . position)) of all contacts in `org-contacts-files'."
