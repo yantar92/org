@@ -415,6 +415,9 @@ redefined according to provided optional arguments."
       (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
+      (remove-from-invisibility-spec (cons spec t))
+      (remove-from-invisibility-spec spec)
+      (remove-from-invisibility-spec (list spec))
       (unless (or visible
 		  (member (cons spec (not no-ellipsis-p)) buffer-invisibility-spec))
 	(add-to-invisibility-spec (cons spec (not no-ellipsis-p))))
