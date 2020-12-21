@@ -7,6 +7,7 @@
   - [[#using-doom-emacs][Using Doom Emacs]]
   - [[#using-straightel][Using Straight.el]]
   - [[#manual-installation][Manual installation]]
+  - [[#manual-installation-on-windows-for-people-who-are-not-familiar-with-git][Manual installation on Windows (for people, who are not familiar with git)]]
 - [[#contents-of-this-distribution][Contents of this distribution]]
 - [[#license][License]]
 
@@ -96,6 +97,44 @@ The repository contains contributed libraries that are not included in Emacs. If
 You can also compile with ‘make’, generate the documentation with ‘make doc’, create a local configuration with ‘make config’ and install Org with ‘make install’. Please run ‘make help’ to get the list of compilation/installation options.
 
 For more detailed explanations on Org’s build system, please check the Org Build System page on [[https://orgmode.org/worg/dev/org-build-system.html][Worg]].
+
+** Manual installation on Windows (for people, who are not familiar with git)
+
+- Download the branch (Green "Code" button -> "download ZIP")
+
+- Unpack the downloaded ZIP file
+
+- Find "lisp" folder inside the unpacked "org" folder.  Note the path to the "lisp" folder
+
+- If you don't have init file, create/open it using =C-x C-f ~/.emacs= (or .emacs/init.el if you already have that)
+
+- Add =(setq load-path (append '("the/path/you/just/noted") load-path))= to your Emacs init file (on top of the file). Make sure that the path here has "lisp" folder at the end. Example:
+
+#+begin_src emacs-lisp
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/lisp") load-path))
+#+end_src
+
+- Find Find "cintrib/lisp" folder inside the unpacked "org" folder. Note the path.
+
+- Add =(setq load-path (append '("the/path/you/just/noted") load-path))= to your Emacs init file after the previously added line. Example:
+
+#+begin_src emacs-lisp
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/contrib/lisp") load-path))
+#+end_src
+
+- Add =(require 'org)= in the next line. At the end, you should have something similar to below:
+
+#+begin_src emacs-lisp
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/lisp") load-path))
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/contrib/lisp") load-path))
+(require 'org)
+#+end_src
+
+- Save the file =C-x C-s=.
+
+- Reload Emacs
+
+- Try to run `M-x org-version`. The message should contain the path to where you downloaded the org-fold branch. If it does not, feel free to open an issue on Github or drop me an email (see https://github.com/yantar92).
 
 * Contents of this distribution
 

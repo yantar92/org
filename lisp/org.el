@@ -5077,6 +5077,15 @@ This includes angle, plain, and bracket links."
 		(progn
                   (add-face-text-property start end face-property)
 		  (add-text-properties start end properties))
+              ;; Initialise folding when used ouside org-mode.
+              (unless (or (derived-mode-p 'org-mode)
+			  (and (org-fold-folding-spec-p 'org-link-description)
+                               (org-fold-folding-spec-p 'org-link)))
+		(org-fold-initialize)
+                (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible)
+                (when org-link-descriptive
+		  ;; This is applied on the whole link.
+		  (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append)))
 	      ;; Handle invisible parts in bracket links.
 	      (let ((spec (or (org-link-get-parameter type :display)
 			      'org-link)))
