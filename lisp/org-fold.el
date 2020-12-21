@@ -1452,9 +1452,12 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; Loop over the elements of string representation.
     (unless (string-empty-p return-string)
       (dolist (plist
+	       ;; FIXME: Is there any better way to do it?
 	       ;; Yes, it is a hack.
                ;; The below gives us string representation as a list.
-               (let ((data (read (replace-regexp-in-string "#" "" (format "%S" return-string)))))
+               ;; Note that we need to remove unreadable values, like markers (#<...>).
+               (let ((data (read (replace-regexp-in-string "^#" ""
+							   (replace-regexp-in-string "#<[^>]+>" "dummy" (format "%S" return-string))))))
 		 (if (listp data) data (list data))))
 	;; Only lists contain text properties.
 	(when (listp plist)
