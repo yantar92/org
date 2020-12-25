@@ -160,7 +160,11 @@ smart            Make point visible, and do insertion/deletion if it is
 
 ;;;; Buffer-local folding specs
 
-(defvar-local org-fold--specs nil
+(defvar-local org-fold--specs '((org-fold-visible
+				 (visible . t))
+                                (org-fold-hidden
+				 (ellipsis . "...")
+                                 (isearch-open . t)))
   "Folding specs defined in current buffer.
 
 Each spec is a list (SPEC-SYMBOL SPEC-PROPERTIES).
@@ -171,18 +175,18 @@ If a text region is folded using multiple specs, only the folding spec
 listed earlier is used.
 
 The following properties are known:
-- ellipsis         :: must be nil or string to show when text is folded
+- :ellipsis         :: must be nil or string to show when text is folded
                       using this spec.
-- isearch-ignore   :: non-nil means that folded text is not searchable
+- :isearch-ignore   :: non-nil means that folded text is not searchable
                       using isearch.
-- isearch-open     :: non-nil means that isearch can reveal text hidden
+- :isearch-open     :: non-nil means that isearch can reveal text hidden
                       using this spec.  This property does nothing
                       when 'isearch-ignore property is non-nil.
-- front-sticky     :: non-nil means that text prepended to the folded text
+- :front-sticky     :: non-nil means that text prepended to the folded text
                       is automatically folded.
-- rear-sticky      :: non-nil means that text appended to the folded text
+- :rear-sticky      :: non-nil means that text appended to the folded text
                       is folded.
-- visible          :: non-nil means that folding spec visibility is not managed.
+- :visible          :: non-nil means that folding spec visibility is not managed.
                       Instead, visibility settings in `buffer-invisibility-spec'
                       will be used as is.")
 
@@ -206,25 +210,46 @@ By default ([2020-05-09 Sat]), isearch does not search in hidden text,
 which was made invisible using text properties.  Isearch will be forced
 to search in hidden text with any of the listed 'invisible property value.")
 
-(defsubst org-fold-get-folding-spec-for-element (type)
-  "Return name of folding spec for element TYPE."
-  (pcase type
-    (`headline 'org-fold-outline)
-    (`inlinetask 'org-fold-outline)
-    (`plain-list 'org-fold-outline)
-    (`block 'org-fold-block)
-    (`center-block 'org-fold-block)
-    (`comment-block 'org-fold-block)
-    (`dynamic-block 'org-fold-block)
-    (`example-block 'org-fold-block)
-    (`export-block 'org-fold-block)
-    (`quote-block 'org-fold-block)
-    (`special-block 'org-fold-block)
-    (`src-block 'org-fold-block)
-    (`verse-block 'org-fold-block)
-    (`drawer 'org-fold-drawer)
-    (`property-drawer 'org-fold-drawer)
-    (_ nil)))
+;;; Utility functions
+
+(defsubst org-fold-folding-spec-list (&optional buffer)
+  "Return list of all the folding specs in BUFFER."
+  (with-current-buffer (or buffer (current-buffer))
+    (mapcar #'car org-fold--specs)))
+
+(defun org-fold-folding-spec-p (spec)
+  "Check if SPEC is a registered folding spec."
+  (and spec (memq spec (org-fold-folding-spec-list))))
+
+(defun org-fold-set-folding-spec-property (spec property value &optional init)
+  "Set PROPERTY of a folding SPEC to VALUE.
+Possible properties and values can be found in `org-fold--specs' docstring.
+When optional argument INIT is non-nil, initialise the PROPERTY."
+  (pcase property
+    (:ellipsis
+     (unless (and (not init)
+                  (equal value (org-fold-get-folding-spec-property spec :ellipsis)))
+       (remove-from-invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis)))
+       (unless (org-fold-get-folding-spec-property spec :visible)
+         (add-to-invisibility-spec (cons spec value)))))
+    (:visible
+     (when (or init
+               (xor value (org-fold-get-folding-spec-property spec :visible)))
+       (if value
+	   (remove-from-invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis)))
+         (add-to-invisibility-spec (cons spec value)))))
+    (:isearch-open nil)
+    (:isearch-ignore nil)
+    (:front-sticky nil)
+    (:rear-sticky nil)
+    (_ nil))
+  (setf (alist-get property org-fold--specs) value))
+
+(defun org-fold-get-folding-spec-property (spec property)
+  "Get PROPERTY of a folding SPEC.
+Possible properties can be found in `org-fold--specs' docstring."
+  (org-fold--check-spec spec)
+  (alist-get property (alist-get spec org-fold--specs)))
 
 (defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
   "Saved values of folding properties for (buffer . spec) conses.")
@@ -284,7 +309,7 @@ unless RETURN-ONLY is non-nil."
 			;; folding spec in their name. Extract that
 			;; spec.
 			(spec (catch :exit
-				(dolist (spec org-fold--spec-priority-list)
+				(dolist (spec (org-fold-folding-spec-list))
                                   (when (string-match-p (symbol-name spec)
 							(symbol-name old-prop))
                                     (throw :exit spec)))))
@@ -302,7 +327,7 @@ unless RETURN-ONLY is non-nil."
 			  (cons (cons 'invisible
 				      (mapcar (lambda (spec)
 						(org-fold--property-symbol-get-create spec nil 'return-only))
-					      org-fold--spec-priority-list))
+					      (org-fold-folding-spec-list)))
 				(remove (assq 'invisible char-property-alias-alist)
 					char-property-alias-alist))))))))))
 
@@ -310,55 +335,31 @@ unless RETURN-ONLY is non-nil."
 
 ;;;; Modifying folding specs
 
-(defun org-fold-folding-spec-p (spec)
-  "Check if SPEC is a registered folding spec."
-  (and spec (memq spec org-fold--spec-priority-list)))
-
-(defun org-fold-add-folding-spec (spec &optional buffer no-ellipsis-p no-isearch-open-p append visible)
+(defun org-fold-add-folding-spec (spec &optional buffer append properties)
   "Add a new folding SPEC in BUFFER.
 
-If VISIBLE is non-nil, visibility of text folded using SPEC will be
-controlled by `buffer-invisibility-spec'.  The folded text will have
-'invisible property set to SPEC (with lowest possible priority).
+SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in or nil to
+set SPEC in current buffer.
 
-SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in, nil to
-set SPEC in current buffer, or 'all to set SPEC in all open `org-mode'
-buffers and all future org buffers.  Non-nil optional argument
-NO-ELLIPSIS-P means that folded text will not be indicated by
-`org-ellipsis'.  Non-nil optional argument NO-ISEARCH-OPEN-P means
-that folded text cannot be searched by isearch.  By default, the added
-SPEC will have highest priority among the previously defined specs.
-When optional APPEND argument is non-nil, SPEC will have the lowest
-priority instead.  If SPEC was already defined earlier, it will be
-redefined according to provided optional arguments."
-  (when (eq spec 'all) (user-error "Folding spec name 'all is not allowed"))
-  (when (eq buffer 'all)
-    (mapc (lambda (buf)
-	    (org-fold-add-folding-spec spec buf no-ellipsis-p no-isearch-open-p append visible))
-	  (org-buffer-list))
-    (setq-default org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-    (add-to-list 'org-fold--spec-priority-list spec append)
-    (setq-default org-fold--spec-priority-list org-fold--spec-priority-list)
-    (when no-ellipsis-p (setq-default org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
-    (unless no-ellipsis-p
-      (add-to-list 'org-fold--spec-with-ellipsis spec)
-      (setq-default org-fold--spec-with-ellipsis org-fold--spec-with-ellipsis))
-    (when no-isearch-open-p (setq-default org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
-    (unless no-isearch-open-p
-      (add-to-list 'org-fold--isearch-specs spec)
-      (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
-  (let ((buffer (or buffer (current-buffer))))
-    (with-current-buffer buffer
-      (unless (or visible
-		  (member (cons spec (not no-ellipsis-p)) buffer-invisibility-spec))
-	(add-to-invisibility-spec (cons spec (not no-ellipsis-p))))
-      (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-      (add-to-list 'org-fold--spec-priority-list spec append)
-      (when no-ellipsis-p (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
-      (unless no-ellipsis-p (add-to-list 'org-fold--spec-with-ellipsis spec))
-      (when no-isearch-open-p (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
-      (unless no-isearch-open-p (add-to-list 'org-fold--isearch-specs spec)))))
-
+By default, the added SPEC will have highest priority among the
+previously defined specs.  When optional APPEND argument is non-nil,
+SPEC will have the lowest priority instead.  If SPEC was already
+defined earlier, it will be redefined according to provided optional
+arguments.
+`
+The folding spec properties will be set to PROPERTIES (see
+`org-fold--specs' for details)."
+  (with-current-buffer (or buffer (current-buffer))
+    (let ((full-spec (cons spec properties)))
+      (while properties
+	)
+      (add-to-list 'org-fold--specs full-spec append)
+      ()
+      (let ((invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis))))
+	(unless (or (org-fold-get-folding-spec-property spec :visible)
+		    (member invisibility-spec buffer-invisibility-spec))
+	  (add-to-invisibility-spec invisibility-spec))))))
+'
 (defun org-fold-remove-folding-spec (spec &optional buffer)
   "Remove a folding SPEC in BUFFER.
 
@@ -607,86 +608,6 @@ If SPEC-OR-ELEMENT is omitted and FLAG is nil, unfold everything in the region."
 				       (list (org-fold--property-symbol-get-create spec) nil)))
 	   (remove-text-properties from to
 				   (list (org-fold--property-symbol-get-create spec) nil))))))))
-
-(defun org-fold-show-all (&optional types)
-  "Show all contents in the visible part of the buffer.
-By default, the function expands headings, blocks and drawers.
-When optional argument TYPES is a list of symbols among `blocks',
-`drawers' and `headings', to only expand one specific type."
-  (interactive)
-  (dolist (type (or types '(blocks drawers headings)))
-    (org-fold-region (point-min) (point-max) nil
-		     (pcase type
-		       (`blocks 'block)
-		       (`drawers 'drawer)
-		       (`headings 'headline)
-		       (_ (error "Invalid type: %S" type))))))
-
-;;;;; Reveal point location
-
-(defun org-fold-show-context (&optional key)
-  "Make sure point and context are visible.
-Optional argument KEY, when non-nil, is a symbol.  See
-`org-fold-show-context-detail' for allowed values and how much is to
-be shown."
-  (org-fold-show-set-visibility
-   (cond ((symbolp org-fold-show-context-detail) org-fold-show-context-detail)
-	 ((cdr (assq key org-fold-show-context-detail)))
-	 (t (cdr (assq 'default org-fold-show-context-detail))))))
-
-(defun org-fold-show-set-visibility (detail)
-  "Set visibility around point according to DETAIL.
-DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
-`tree', `canonical' or t.  See `org-fold-show-context-detail' for more
-information."
-  ;; Show current heading and possibly its entry, following headline
-  ;; or all children.
-  (if (and (org-at-heading-p) (not (eq detail 'local)))
-      (org-fold-heading nil)
-    (org-fold-show-entry)
-    ;; If point is hidden make sure to expose it.
-    (when (org-fold-folded-p)
-      (let ((region (org-fold-get-region-at-point)))
-	(org-fold-region (car region) (cdr region) nil)))
-    (unless (org-before-first-heading-p)
-      (org-with-limited-levels
-       (cl-case detail
-	 ((tree canonical t) (org-fold-show-children))
-	 ((nil minimal ancestors))
-	 (t (save-excursion
-	      (outline-next-heading)
-	      (org-fold-heading nil)))))))
-  ;; Show all siblings.
-  (when (eq detail 'lineage) (org-fold-show-siblings))
-  ;; Show ancestors, possibly with their children.
-  (when (memq detail '(ancestors lineage tree canonical t))
-    (save-excursion
-      (while (org-up-heading-safe)
-	(org-fold-heading nil)
-	(when (memq detail '(canonical t)) (org-fold-show-entry))
-	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
-
-(defun org-fold-reveal (&optional siblings)
-  "Show current entry, hierarchy above it, and the following headline.
-
-This can be used to show a consistent set of context around
-locations exposed with `org-fold-show-context'.
-
-With optional argument SIBLINGS, on each level of the hierarchy all
-siblings are shown.  This repairs the tree structure to what it would
-look like when opened with hierarchical calls to `org-cycle'.
-
-With a \\[universal-argument] \\[universal-argument] prefix, \
-go to the parent and show the entire tree."
-  (interactive "P")
-  (run-hooks 'org-fold-reveal-start-hook)
-  (cond ((equal siblings '(4)) (org-fold-show-set-visibility 'canonical))
-	((equal siblings '(16))
-	 (save-excursion
-	   (when (org-up-heading-safe)
-	     (org-fold-show-subtree)
-	     (run-hook-with-args 'org-cycle-hook 'subtree))))
-	(t (org-fold-show-set-visibility 'lineage))))
 
 ;;; Internal functions
 
