@@ -225,7 +225,7 @@ more context."
 (defvar org-fold-reveal-start-hook nil
   "Hook run before revealing a location.")
 
-(defcustom org-fold-catch-invisible-edits nil
+(defcustom org-fold-catch-invisible-edits 'smart
   "Check if in invisible region before inserting or deleting a character.
 Valid values are:
 
