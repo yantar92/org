@@ -361,7 +361,14 @@ unless RETURN-ONLY is non-nil."
 		     (let ((val (get-text-property pos old-prop)))
 		       (when val
 			 (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
-		     (setq pos (next-single-char-property-change pos old-prop))))))
+		     (setq pos (next-single-char-property-change pos old-prop)))
+                   ;; Make sure that folding property is non-stiky
+                   (setq-local text-property-default-nonsticky (delq (cons old-prop t) text-property-default-nonsticky)))))
+              ;; Make sure that folding property is non-stiky
+              (mapcar (lambda (spec)
+                        (setq-local text-property-default-nonsticky (append (list (cons (org-fold--property-symbol-get-create spec nil 'return-only) t))
+                                                                            text-property-default-nonsticky)))
+                      org-fold--spec-priority-list)
               ;; Update `char-property-alias-alist' with folding
               ;; properties unique for the current buffer.
 	      (setq-local char-property-alias-alist
