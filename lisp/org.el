@@ -4948,30 +4948,29 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 					(match-string 2)))
 		   ;; Do not span over cells in table rows.
 		   (not (and (save-match-data (org-match-line "[ \t]*|"))
-			     (string-match-p "|" (match-string 4))))))
-	    (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
-			(m (if org-hide-emphasis-markers 4 2)))
-	      (font-lock-prepend-text-property
-	       (match-beginning m) (match-end m) 'face face)
-	      (when verbatim?
-		(org-remove-flyspell-overlays-in
-		 (match-beginning 0) (match-end 0))
-		(remove-text-properties (match-beginning 2) (match-end 2)
-					'(display t invisible t intangible t))
-                (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link)
-                (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link-description))
-	      (add-text-properties (match-beginning 2) (match-end 2)
-				   '(font-lock-multiline t org-emphasis t))
-	      (when (and org-hide-emphasis-markers
-			 (not (org-at-comment-p)))
-                ;; We are folding the whole emphasised text with
-                ;; 'org-link first.  It makes everything invisible.
-                (org-fold-region (match-beginning 2) (match-end 2) t 'org-link)
-                ;; The visible part of the text is folded using
-                ;; 'org-link-description, which is forcing text to be
-                ;; visible.
-                (org-fold-region (match-end 3) (match-end 4) t 'org-link-description))
-	      (throw :exit t))))))))
+			   (string-match-p "|" (match-string 4))))))
+            (with-silent-modifications
+	      (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
+			  (m (if org-hide-emphasis-markers 4 2)))
+	        (font-lock-prepend-text-property
+	         (match-beginning m) (match-end m) 'face face)
+                (org-fold-region (match-beginning 2) (match-end 3) nil 'org-link)
+                (org-fold-region (match-end 4) (match-end 2) nil 'org-link)
+	        (when verbatim?
+		  (org-remove-flyspell-overlays-in
+		   (match-beginning 0) (match-end 0))
+		  (remove-text-properties (match-beginning 2) (match-end 2)
+					  '(display t invisible t intangible t))
+                  (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link)
+                  ;; Everything in verbatim must be visible
+                  (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link-description))
+	        (add-text-properties (match-beginning 2) (match-end 2)
+				     '(font-lock-multiline t org-emphasis t))
+	        (when (and org-hide-emphasis-markers
+			   (not (org-at-comment-p)))
+                  (org-fold-region (match-beginning 2) (match-end 3) t 'org-link)
+                  (org-fold-region (match-end 4) (match-end 2) t 'org-link))
+	        (throw :exit t)))))))))
 
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
