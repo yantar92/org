@@ -1021,9 +1021,10 @@ information."
         (when (eq 'org-link (org-fold-get-folding-spec))
           (let ((org-hide-emphasis-markers)
                 (region (org-find-text-property-region (point) 'org-emphasis)))
-            (org-with-point-at (car region)
-              (beginning-of-line)
-              (font-lock-fontify-region (car region) (cdr region)))))
+            (when region
+              (org-with-point-at (car region)
+                (beginning-of-line)
+                (font-lock-fontify-region (car region) (cdr region))))))
 	(org-fold-region (car region) (cdr region) nil)))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
