@@ -87,6 +87,7 @@ like javac -verbose."
 					 (0+ space) ?\; line-end)
   "Regexp for the package statement.")
 (defconst org-babel-java--imports-re (rx line-start (0+ space) "import"
+                                         (opt (1+ space) "static")
 					 (1+ space) (group (1+ (in alnum ?_ ?.))) ; capture the fully qualified class name
 					 (0+ space) ?\; line-end)
   "Regexp for import statements.")
@@ -163,7 +164,14 @@ replaced in this string.")
 
 (defun org-babel-execute:java (body params)
   "Execute a java source block with BODY code and PARAMS params."
-  (let* (;; if true, run from babel temp directory
+  (let* (;; allow header overrides
+         (org-babel-java-compiler
+          (or (cdr (assq :javac params))
+              org-babel-java-compiler))
+         (org-babel-java-command
+          (or (cdr (assq :java params))
+              org-babel-java-command))
+         ;; if true, run from babel temp directory
          (run-from-temp (not (alist-get :dir params)))
          ;; class and package
          (fullclassname (or (cdr (assq :classname params))
