@@ -41,7 +41,7 @@ emacs -Q -L ./lisp -l org
 
 ** Using [[https://github.com/hlissner/doom-emacs/][Doom Emacs]]
 
-Credit: https://old.reddit.com/r/orgmode/comments/k6f5fx/ann_experimental_orgmode_branch_improving/genltoj/
+Adopted from [[https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/org/packages.el][lang/org/packages.el]]. Before doom commit [[https://github.com/hlissner/doom-emacs/commit/cfb8a866dc6181889b0c056abf4fdd3f34fb144b][c8bfbda]] use =:build= instead of =:pre-build=
 #+begin_src emacs-lisp
 ;; ~/.doom.d/packages.el
 (package! org-mode
@@ -49,14 +49,12 @@ Credit: https://old.reddit.com/r/orgmode/comments/k6f5fx/ann_experimental_orgmod
            :repo "yantar92/org"
            :branch "feature/org-fold"
            :files ("*.el" "lisp/*.el" "contrib/lisp/*.el")
-           :build (with-temp-file (expand-file-name "org-version.el" (straight--repos-dir "org"))
-                    (insert "(fset 'org-release (lambda () \"9.5\"))\n"
-                            "(fset 'org-git-version #'ignore)\n"
-                            "(provide 'org-version)\n")))
+           :pre-build (with-temp-file (expand-file-name "org-version.el" (straight--repos-dir "org"))
+                        (insert "(fset 'org-release (lambda () \"9.5\"))\n"
+                                "(fset 'org-git-version #'ignore)\n"
+                                "(provide 'org-version)\n")))
   :shadow 'org)
 #+end_src
-
-Thanks to [[https://old.reddit.com/user/AloisJanicek][AloisJanicek]] for the code snippet.
 
 ** Using [[https://github.com/raxod502/straight.el/][Straight.el]]
 
