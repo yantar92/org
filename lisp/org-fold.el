@@ -730,15 +730,16 @@ When ENTRY is non-nil, show the entire entry."
   (save-excursion
     (org-back-to-heading-or-point-min t)
     (when (org-at-heading-p) (forward-line))
-    (org-fold-region
-     (line-end-position 0)
-     (save-excursion
-       (if (re-search-forward
- 	    (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
-           (line-end-position 0)
- 	 (point-max)))
-     t
-     'headline)))
+    (unless (eobp) ; Current headline is empty and ends at the end of buffer.
+      (org-fold-region
+       (line-end-position 0)
+       (save-excursion
+         (if (re-search-forward
+ 	      (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
+             (line-end-position 0)
+ 	   (point-max)))
+       t
+       'headline))))
 
 (defun org-fold-subtree (flag)
   (save-excursion
