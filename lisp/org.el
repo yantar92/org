@@ -19304,9 +19304,13 @@ instead of back to heading."
      (end-of-line)
      (null (re-search-backward org-outline-regexp-bol nil t)))))
 
-(defun org-at-heading-p (&optional _)
-  "Non-nil when on a headline."
-  (outline-on-heading-p t))
+(defun org-at-heading-p (&optional invisible-not-ok)
+  "Return t if point is on a (possibly invisible) heading line.
+If INVISIBLE-NOT-OK is non-nil, an invisible heading line is not ok."
+  (save-excursion
+    (beginning-of-line)
+    (and (bolp) (or (not invisible-not-ok) (not (org-fold-folded-p)))
+	 (looking-at org-heading-regexp))))
 
 (defun org-in-commented-heading-p (&optional no-inheritance)
   "Non-nil if point is under a commented heading.
