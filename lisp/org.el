@@ -14675,7 +14675,7 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
 		(when org-agenda-skip-archived-trees
 		  (goto-char (point-min))
 		  (while (re-search-forward rea nil t)
-		    (when (org-at-heading-p t)
+		    (when (org-at-heading-p)
 		      (add-text-properties (point-at-bol) (org-end-of-subtree t) pa))))
 		(goto-char (point-min))
 		(setq re (format "^\\*+ .*\\<%s\\>" org-comment-string))
@@ -17003,7 +17003,7 @@ number of stars to add."
 	;; Case 1. Started at an heading: de-star headings.
 	((org-at-heading-p)
 	 (while (< (point) end)
-	   (when (org-at-heading-p t)
+	   (when (org-at-heading-p)
 	     (looking-at org-outline-regexp) (replace-match "")
 	     (setq toggled t))
 	   (forward-line)))
@@ -17602,7 +17602,7 @@ and :keyword."
 	 (p (point)) clist o)
     ;; First the large context
     (cond
-     ((org-at-heading-p t)
+     ((org-at-heading-p)
       (push (list :headline (point-at-bol) (point-at-eol)) clist)
       (when (progn
 	      (beginning-of-line 1)
