@@ -1321,9 +1321,7 @@ key."
 		(cond
 		 (current-prefix-arg (prefix-numeric-value current-prefix-arg))
 		 ((save-excursion (beginning-of-line)
-				  (looking-at (if (eq major-mode 'org-mode)
-                                                  org-heading-regexp
-                                                outline-regexp)))
+				  (looking-at outline-regexp))
 		  (funcall outline-level))
 		 (t 1))))
   (if (eq major-mode 'org-mode)
