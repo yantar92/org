@@ -788,8 +788,7 @@ of the current heading, or to 1 if the current line is not a heading."
       (org-map-region
        (lambda ()
 	 (when (<= (funcall outline-level) levels)
-	   (org-fold-show-entry)
-           (org-fold-hide-entry)))
+           (org-fold-heading nil)))
        beg end)
       ;; Finally unhide any trailing newline.
       (goto-char (point-max))
