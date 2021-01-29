@@ -1581,7 +1581,7 @@ line and position cursor in that line."
 	      (insert ":" drawer ":\n:END:\n")
 	      (org-indent-region beg (point))
 	      (org-fold-region
-	       (line-end-position -1) (1- (point)) t 'headline)
+	       (line-end-position -1) (1- (point)) t 'drawer)
 	      (forward-line -1))))
 	 ;; When a clock drawer needs to be created because of the
 	 ;; number of clock items or simply if it is missing, collect
