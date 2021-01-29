@@ -942,14 +942,37 @@ delimiting S."
 	     ((= cursor end) 0)
 	     (t (string-width (substring s cursor end)))))))
 
+;; TODO: cleanup
+;; (defun org-string-width (string)
+;;   "Return width of STRING when displayed in the current buffer.
+;; Unlike `string-width', this function takes into consideration
+;; `invisible' and `display' text properties.  It supports the
+;; latter in a limited way, mostly for combinations used in Org.
+;; Results may be off sometimes if it cannot handle a given
+;; `display' value."
+;;   ;; First, we need to convert the folding properties to
+;;   ;; 'invisible. `char-property-alias-alist' does not work when
+;;   ;; examining strings.
+;;   (org--string-from-props string 'display 0 (length string)))
+
 (defun org-string-width (string)
   "Return width of STRING when displayed in the current buffer.
 Unlike `string-width', this function takes into consideration
-`invisible' and `display' text properties.  It supports the
-latter in a limited way, mostly for combinations used in Org.
-Results may be off sometimes if it cannot handle a given
-`display' value."
-  (org--string-from-props string 'display 0 (length string)))
+`invisible' and `display' text properties."
+  (let ((current-invisibility-spec buffer-invisibility-spec)
+        (current-char-property-alias-alist char-property-alias-alist))
+    (with-temp-buffer
+      (setq-local buffer-invisibility-spec current-invisibility-spec)
+      (setq-local char-property-alias-alist current-char-property-alias-alist)
+      (with-silent-modifications
+        (setf (buffer-string) string))
+      (org-string-width-in-buffer (point-min) (point-max)))))
+
+(defun org-string-width-in-buffer (beg end)
+  "Calculate displayed width of the text between BEG and END in current buffer."
+  (let ((column-beg (save-excursion (goto-char beg) (current-column)))
+        (column-end (save-excursion (goto-char end) (current-column))))
+    (- column-end column-beg)))
 
 (defun org-not-nil (v)
   "If V not nil, and also not the string \"nil\", then return V.
