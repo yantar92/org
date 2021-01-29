@@ -292,6 +292,14 @@ to search in hidden text with any of the listed 'invisible property value.")
     (`property-drawer 'org-fold-drawer)
     (_ nil)))
 
+(defun org-fold-get-folding-spec-from-folding-prop (folding-prop)
+  "Return folding spec symbol used for folding property with name FOLDING-PROP."
+  (catch :exit
+    (dolist (spec org-fold--spec-priority-list)
+      (when (string-match-p (symbol-name spec)
+			    (symbol-name folding-prop))
+        (throw :exit spec)))))
+
 (defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
   "Saved values of folding properties for (buffer . spec) conses.")
 
@@ -349,11 +357,7 @@ unless RETURN-ONLY is non-nil."
 			;; We know that folding properties have
 			;; folding spec in their name. Extract that
 			;; spec.
-			(spec (catch :exit
-				(dolist (spec org-fold--spec-priority-list)
-                                  (when (string-match-p (symbol-name spec)
-							(symbol-name old-prop))
-                                    (throw :exit spec)))))
+			(spec (org-fold-get-folding-spec-from-folding-prop old-prop))
                         ;; Generate new buffer-unique folding property
 			(new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
                    ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
