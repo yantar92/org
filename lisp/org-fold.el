@@ -1470,7 +1470,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
     (unless (string-empty-p return-string)
-      (dolist (plist (mapcar (lambda (interval) (caddr interval)) (object-intervals return-string)))
+      (dolist (plist (mapcar #'caddr (object-intervals return-string)))
 	;; Only lists contain text properties.
 	(when (listp plist)
 	  ;; Collect all the relevant text properties.
