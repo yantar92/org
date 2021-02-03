@@ -1475,13 +1475,14 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 	       ;; Yes, it is a hack.
                ;; The below gives us string representation as a list.
                ;; Note that we need to remove unreadable values, like markers (#<...>).
-               (let ((data (read (replace-regexp-in-string "^#" ""
-							   (replace-regexp-in-string "#<[^>]+>" "dummy"
-										     ;; Get text representation of the string object.
-                                                                                     ;; Make sure to print everything (see `prin1' docstring).
-                                                                                     ;; `prin1' is used to print "%S" format.
-										     (let (print-level print-length)
-										       (format "%S" return-string)))))))
+               (let ((data (read (replace-regexp-in-string "^#(" "("
+                                                           (replace-regexp-in-string " #(" " ("
+							                             (replace-regexp-in-string "#<[^>]+>" "dummy"
+										                               ;; Get text representation of the string object.
+                                                                                                               ;; Make sure to print everything (see `prin1' docstring).
+                                                                                                               ;; `prin1' is used to print "%S" format.
+										                               (let (print-level print-length)
+										                                 (format "%S" return-string))))))))
 		 (if (listp data) data (list data))))
 	;; Only lists contain text properties.
 	(when (listp plist)
