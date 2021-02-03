@@ -1470,20 +1470,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
     (unless (string-empty-p return-string)
-      (dolist (plist
-	       ;; FIXME: Is there any better way to do it?
-	       ;; Yes, it is a hack.
-               ;; The below gives us string representation as a list.
-               ;; Note that we need to remove unreadable values, like markers (#<...>).
-               (let ((data (read (replace-regexp-in-string "^#(" "("
-                                                           (replace-regexp-in-string " #(" " ("
-							                             (replace-regexp-in-string "#<[^>]+>" "dummy"
-										                               ;; Get text representation of the string object.
-                                                                                                               ;; Make sure to print everything (see `prin1' docstring).
-                                                                                                               ;; `prin1' is used to print "%S" format.
-										                               (let (print-level print-length)
-										                                 (format "%S" return-string))))))))
-		 (if (listp data) data (list data))))
+      (dolist (plist (mapcar (lambda (interval) (caddr interval)) (object-intervals return-string)))
 	;; Only lists contain text properties.
 	(when (listp plist)
 	  ;; Collect all the relevant text properties.
