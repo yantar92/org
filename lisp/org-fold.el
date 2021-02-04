@@ -1032,7 +1032,8 @@ information."
             (when region
               (org-with-point-at (car region)
                 (beginning-of-line)
-                (font-lock-fontify-region (car region) (cdr region))))))))
+                (let (font-lock-extend-region-functions)
+                  (font-lock-fontify-region (1- (car region)) (cdr region)))))))))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
