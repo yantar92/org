@@ -1020,16 +1020,19 @@ information."
     (org-fold-show-entry)
     ;; If point is hidden make sure to expose it.
     (when (org-fold-folded-p)
-      (let ((region (org-fold-get-region-at-point)))
+      (let ((region (org-fold-get-region-at-point))
+            (spec (org-fold-get-folding-spec)))
+        (org-fold-region (car region) (cdr region) nil)
         ;; Reveal emphasis markers.
-        (when (eq 'org-link (org-fold-get-folding-spec))
-          (let ((org-hide-emphasis-markers)
-                (region (org-find-text-property-region (point) 'org-emphasis)))
+        (when (member spec '(org-link org-link-description))
+          (let (org-hide-emphasis-markers
+                org-link-descriptive
+                (region (or (org-find-text-property-region (point) 'org-emphasis)
+                            region)))
             (when region
               (org-with-point-at (car region)
                 (beginning-of-line)
-                (font-lock-fontify-region (car region) (cdr region))))))
-	(org-fold-region (car region) (cdr region) nil)))
+                (font-lock-fontify-region (car region) (cdr region))))))))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
