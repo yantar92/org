@@ -5030,21 +5030,25 @@ This includes angle, plain, and bracket links."
     (while (re-search-forward org-link-any-re limit t)
       (let* ((start (match-beginning 0))
 	     (end (match-end 0))
-	     (visible-start (or (match-beginning 3) (match-beginning 2)))
-	     (visible-end (or (match-end 3) (match-end 2)))
+	     (visible-start (if org-link-descriptive
+                                (or (match-beginning 3) (match-beginning 2))
+                              start))
+	     (visible-end (if org-link-descriptive
+                              (or (match-end 3) (match-end 2))
+                            end))
 	     (style (cond ((eq ?< (char-after start)) 'angle)
 			  ((eq ?\[ (char-after (1+ start))) 'bracket)
 			  (t 'plain))))
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-					(match-string 0)))
+				      (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			     (let ((face (get-text-property
-					  (max (1- start) (point-min)) 'face)))
-			       (if (consp face) (memq 'org-tag face)
-				 (eq 'org-tag face))))))
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))
@@ -5100,7 +5104,8 @@ This includes angle, plain, and bracket links."
                 ;; We are folding the whole emphasised text with SPEC
                 ;; first.  It makes everything invisible (or whatever
                 ;; the user wants).
-                (org-fold-region start end t spec)
+                (when org-link-descriptive
+                  (org-fold-region start end t spec))
                 ;; The visible part of the text is folded using
                 ;; 'org-link-description, which is forcing this part of
                 ;; the text to be visible.
