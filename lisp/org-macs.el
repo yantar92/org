@@ -1,6 +1,6 @@
 ;;; org-macs.el --- Top-level Definitions for Org -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2004-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2004-2021 Free Software Foundation, Inc.
 
 ;; Author: Carsten Dominik <carsten at orgmode dot org>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -942,14 +942,37 @@ delimiting S."
 	     ((= cursor end) 0)
 	     (t (string-width (substring s cursor end)))))))
 
+;; TODO: cleanup
+;; (defun org-string-width (string)
+;;   "Return width of STRING when displayed in the current buffer.
+;; Unlike `string-width', this function takes into consideration
+;; `invisible' and `display' text properties.  It supports the
+;; latter in a limited way, mostly for combinations used in Org.
+;; Results may be off sometimes if it cannot handle a given
+;; `display' value."
+;;   ;; First, we need to convert the folding properties to
+;;   ;; 'invisible. `char-property-alias-alist' does not work when
+;;   ;; examining strings.
+;;   (org--string-from-props string 'display 0 (length string)))
+
 (defun org-string-width (string)
   "Return width of STRING when displayed in the current buffer.
 Unlike `string-width', this function takes into consideration
-`invisible' and `display' text properties.  It supports the
-latter in a limited way, mostly for combinations used in Org.
-Results may be off sometimes if it cannot handle a given
-`display' value."
-  (org--string-from-props string 'display 0 (length string)))
+`invisible' and `display' text properties."
+  (let ((current-invisibility-spec buffer-invisibility-spec)
+        (current-char-property-alias-alist char-property-alias-alist))
+    (with-temp-buffer
+      (setq-local buffer-invisibility-spec current-invisibility-spec)
+      (setq-local char-property-alias-alist current-char-property-alias-alist)
+      (with-silent-modifications
+        (setf (buffer-string) string))
+      (org-string-width-in-buffer (point-min) (point-max)))))
+
+(defun org-string-width-in-buffer (beg end)
+  "Calculate displayed width of the text between BEG and END in current buffer."
+  (let ((column-beg (save-excursion (goto-char beg) (current-column)))
+        (column-end (save-excursion (goto-char end) (current-column))))
+    (- column-end column-beg)))
 
 (defun org-not-nil (v)
   "If V not nil, and also not the string \"nil\", then return V.
@@ -1265,10 +1288,11 @@ Return 0. if S is not recognized as a valid value."
        ((string= s "<tomorrow>") (+ 86400.0 today))
        ((string= s "<yesterday>") (- today 86400.0))
        ((string-match "\\`<\\([-+][0-9]+\\)\\([hdwmy]\\)>\\'" s)
-	(+ today
+	(+ (if (string= (match-string 2 s) "h") (float-time) today)
 	   (* (string-to-number (match-string 1 s))
 	      (cdr (assoc (match-string 2 s)
-			  '(("d" . 86400.0)   ("w" . 604800.0)
+			  '(("h" . 3600.0)
+			    ("d" . 86400.0)   ("w" . 604800.0)
 			    ("m" . 2678400.0) ("y" . 31557600.0)))))))
        ((string-match org-ts-regexp0 s) (org-2ft s))
        (t 0.)))))

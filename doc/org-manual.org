@@ -4860,9 +4860,10 @@ In this interface, you can also use the following special keys:
 
   #+kindex: TAB
   Enter a tag in the minibuffer, even if the tag is not in the
-  predefined list.  You can complete on all tags present in the
-  buffer.  You can also add several tags: just separate them with
-  a comma.
+  predefined list.  You can complete on all tags present in the buffer
+  and globally pre-defined tags from ~org-tag-alist~ and
+  ~org-tag-persistent-alist~.  You can also add several tags: just
+  separate them with a comma.
 
 - {{{kbd(SPC)}}} ::
 
@@ -6052,15 +6053,17 @@ various inputs are interpreted, the items filled in by Org mode are in
 | =2012-w04-5=   | \rArr{} Same as above                           |
 
 Furthermore you can specify a relative date by giving, as the /first/
-thing in the input: a plus/minus sign, a number and a letter---=d=,
-=w=, =m= or =y=---to indicate change in days, weeks, months, or
-years.  With a single plus or minus, the date is always relative to
-today.  With a double plus or minus, it is relative to the default
-date.  If instead of a single letter, you use the abbreviation of day
-name, the date is the Nth such day, e.g.:
+thing in the input: a plus/minus sign, a number and a letter---=h=,
+=d=, =w=, =m= or =y=---to indicate a change in hours, days, weeks,
+months, or years.  With =h= the date is relative to the current time,
+with the other letters and a single plus or minus, the date is
+relative to today at 00:00.  With a double plus or minus, it is
+relative to the default date.  If instead of a single letter, you use
+the abbreviation of day name, the date is the Nth such day, e.g.:
 
 | =+0=    | \rArr{} today                       |
 | =.=     | \rArr{} today                       |
+| =+2h=   | \rArr{} two hours from now          |
 | =+4d=   | \rArr{} four days from today        |
 | =+4=    | \rArr{} same as +4d                 |
 | =+2w=   | \rArr{} two weeks from today        |
@@ -21317,7 +21320,7 @@ that are mentioned in the manual.  For a more complete list, use
 
 This manual is for Org version {{{version}}}.
 
-Copyright \copy 2004--2020 Free Software Foundation, Inc.
+Copyright \copy 2004--2021 Free Software Foundation, Inc.
 
 #+begin_quote
 Permission is granted to copy, distribute and/or modify this document

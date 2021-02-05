@@ -1,6 +1,6 @@
 ;;; org-clock.el --- The time clocking code for Org mode -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2004-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2004-2021 Free Software Foundation, Inc.
 
 ;; Author: Carsten Dominik <carsten at orgmode dot org>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -1581,7 +1581,7 @@ line and position cursor in that line."
 	      (insert ":" drawer ":\n:END:\n")
 	      (org-indent-region beg (point))
 	      (org-fold-region
-	       (line-end-position -1) (1- (point)) t 'headline)
+	       (line-end-position -1) (1- (point)) t 'drawer)
 	      (forward-line -1))))
 	 ;; When a clock drawer needs to be created because of the
 	 ;; number of clock items or simply if it is missing, collect

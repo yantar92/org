@@ -1511,7 +1511,7 @@ Turn on or update column view in the agenda." t nil)
 (autoload 'org-check-version "org-compat" "\
 Try very hard to provide sensible version strings." nil t)
 
-(register-definition-prefixes "org-compat" '("org-"))
+(register-definition-prefixes "org-compat" '("org-" "outline-"))
 
 ;;;***
 

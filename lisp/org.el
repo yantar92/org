@@ -1,7 +1,7 @@
 ;;; org.el --- Outline-based notes management and organizer -*- lexical-binding: t; -*-
 
 ;; Carstens outline-mode for keeping track of everything.
-;; Copyright (C) 2004-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2004-2021 Free Software Foundation, Inc.
 ;;
 ;; Author: Carsten Dominik <carsten at orgmode dot org>
 ;; Maintainer: Bastien Guerry <bzg@gnu.org>
@@ -4948,30 +4948,29 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 					(match-string 2)))
 		   ;; Do not span over cells in table rows.
 		   (not (and (save-match-data (org-match-line "[ \t]*|"))
-			     (string-match-p "|" (match-string 4))))))
-	    (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
-			(m (if org-hide-emphasis-markers 4 2)))
-	      (font-lock-prepend-text-property
-	       (match-beginning m) (match-end m) 'face face)
-	      (when verbatim?
-		(org-remove-flyspell-overlays-in
-		 (match-beginning 0) (match-end 0))
-		(remove-text-properties (match-beginning 2) (match-end 2)
-					'(display t invisible t intangible t))
-                (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link)
-                (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link-description))
-	      (add-text-properties (match-beginning 2) (match-end 2)
-				   '(font-lock-multiline t org-emphasis t))
-	      (when (and org-hide-emphasis-markers
-			 (not (org-at-comment-p)))
-                ;; We are folding the whole emphasised text with
-                ;; 'org-link first.  It makes everything invisible.
-                (org-fold-region (match-beginning 2) (match-end 2) t 'org-link)
-                ;; The visible part of the text is folded using
-                ;; 'org-link-description, which is forcing text to be
-                ;; visible.
-                (org-fold-region (match-end 3) (match-end 4) t 'org-link-description))
-	      (throw :exit t))))))))
+			   (string-match-p "|" (match-string 4))))))
+            (with-silent-modifications
+	      (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
+			  (m (if org-hide-emphasis-markers 4 2)))
+	        (font-lock-prepend-text-property
+	         (match-beginning m) (match-end m) 'face face)
+                (org-fold-region (match-beginning 2) (match-end 3) nil 'org-link)
+                (org-fold-region (match-end 4) (match-end 2) nil 'org-link)
+	        (when verbatim?
+		  (org-remove-flyspell-overlays-in
+		   (match-beginning 0) (match-end 0))
+		  (remove-text-properties (match-beginning 2) (match-end 2)
+					  '(display t invisible t intangible t))
+                  (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link)
+                  ;; Everything in verbatim must be visible
+                  (org-fold-region (match-beginning 2) (match-end 2) nil 'org-link-description))
+	        (add-text-properties (match-beginning 2) (match-end 2)
+				     '(font-lock-multiline t org-emphasis t))
+	        (when (and org-hide-emphasis-markers
+			   (not (org-at-comment-p)))
+                  (org-fold-region (match-beginning 2) (match-end 3) t 'org-link)
+                  (org-fold-region (match-end 4) (match-end 2) t 'org-link))
+	        (throw :exit t)))))))))
 
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
@@ -5031,21 +5030,25 @@ This includes angle, plain, and bracket links."
     (while (re-search-forward org-link-any-re limit t)
       (let* ((start (match-beginning 0))
 	     (end (match-end 0))
-	     (visible-start (or (match-beginning 3) (match-beginning 2)))
-	     (visible-end (or (match-end 3) (match-end 2)))
+	     (visible-start (if org-link-descriptive
+                                (or (match-beginning 3) (match-beginning 2))
+                              start))
+	     (visible-end (if org-link-descriptive
+                              (or (match-end 3) (match-end 2))
+                            end))
 	     (style (cond ((eq ?< (char-after start)) 'angle)
 			  ((eq ?\[ (char-after (1+ start))) 'bracket)
 			  (t 'plain))))
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-					(match-string 0)))
+				      (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			     (let ((face (get-text-property
-					  (max (1- start) (point-min)) 'face)))
-			       (if (consp face) (memq 'org-tag face)
-				 (eq 'org-tag face))))))
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))
@@ -5101,7 +5104,8 @@ This includes angle, plain, and bracket links."
                 ;; We are folding the whole emphasised text with SPEC
                 ;; first.  It makes everything invisible (or whatever
                 ;; the user wants).
-                (org-fold-region start end t spec)
+                (when org-link-descriptive
+                  (org-fold-region start end t spec))
                 ;; The visible part of the text is folded using
                 ;; 'org-link-description, which is forcing this part of
                 ;; the text to be visible.
@@ -11267,7 +11271,7 @@ Returns the new tags string, or nil to not change the current settings."
 				  fulltable))))
 	 (buf (current-buffer))
 	 (expert (eq org-fast-tag-selection-single-key 'expert))
-	 (buffer-tags nil)
+	 (tab-tags nil)
 	 (fwidth (+ maxlen 3 1 3))
 	 (ncol (/ (- (window-width) 4) fwidth))
 	 (i-face 'org-done)
@@ -11402,16 +11406,21 @@ Returns the new tags string, or nil to not change the current settings."
 		    (setq current nil)
 		    (when exit-after-next (setq exit-after-next 'now)))
 		   ((= c ?\t)
-		    (condition-case nil
-			(setq tg (completing-read
-				  "Tag: "
-				  (or buffer-tags
-				      (with-current-buffer buf
-					(setq buffer-tags
-					      (org-get-buffer-tags))))))
-		      (quit (setq tg "")))
+                    (condition-case nil
+                        (unless tab-tags
+                          (setq tab-tags
+                                (delq nil
+                                      (mapcar (lambda (x)
+                                                (let ((item (car-safe x)))
+                                                  (and (stringp item)
+                                                       (list item))))
+                                              (org--tag-add-to-alist
+                                               (with-current-buffer buf
+                                                 (org-get-buffer-tags))
+                                               table))))))
+                    (setq tg (completing-read "Tag: " tab-tags))
 		    (when (string-match "\\S-" tg)
-		      (cl-pushnew (list tg) buffer-tags :test #'equal)
+		      (cl-pushnew (list tg) tab-tags :test #'equal)
 		      (if (member tg current)
 			  (setq current (delete tg current))
 			(push tg current)))
@@ -14671,7 +14680,7 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
 		(when org-agenda-skip-archived-trees
 		  (goto-char (point-min))
 		  (while (re-search-forward rea nil t)
-		    (when (org-at-heading-p t)
+		    (when (org-at-heading-p)
 		      (add-text-properties (point-at-bol) (org-end-of-subtree t) pa))))
 		(goto-char (point-min))
 		(setq re (format "^\\*+ .*\\<%s\\>" org-comment-string))
@@ -16999,7 +17008,7 @@ number of stars to add."
 	;; Case 1. Started at an heading: de-star headings.
 	((org-at-heading-p)
 	 (while (< (point) end)
-	   (when (org-at-heading-p t)
+	   (when (org-at-heading-p)
 	     (looking-at org-outline-regexp) (replace-match "")
 	     (setq toggled t))
 	   (forward-line)))
@@ -17598,7 +17607,7 @@ and :keyword."
 	 (p (point)) clist o)
     ;; First the large context
     (cond
-     ((org-at-heading-p t)
+     ((org-at-heading-p)
       (push (list :headline (point-at-bol) (point-at-eol)) clist)
       (when (progn
 	      (beginning-of-line 1)
@@ -19300,9 +19309,13 @@ instead of back to heading."
      (end-of-line)
      (null (re-search-backward org-outline-regexp-bol nil t)))))
 
-(defun org-at-heading-p (&optional _)
-  "Non-nil when on a headline."
-  (outline-on-heading-p t))
+(defun org-at-heading-p (&optional invisible-not-ok)
+  "Return t if point is on a (possibly invisible) heading line.
+If INVISIBLE-NOT-OK is non-nil, an invisible heading line is not ok."
+  (save-excursion
+    (beginning-of-line)
+    (and (bolp) (or (not invisible-not-ok) (not (org-fold-folded-p)))
+	 (looking-at outline-regexp))))
 
 (defun org-in-commented-heading-p (&optional no-inheritance)
   "Non-nil if point is under a commented heading.

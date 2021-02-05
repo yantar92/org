@@ -1,6 +1,6 @@
 ;;; ob-sql.el --- Babel Functions for SQL            -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2009-2021 Free Software Foundation, Inc.
 
 ;; Author: Eric Schulte
 ;; Keywords: literate programming, reproducible research
@@ -245,11 +245,14 @@ This function is called by `org-babel-execute-src-block'."
 				   (org-babel-process-file-name in-file)
 				   (org-babel-process-file-name out-file)))
 		    ((postgresql postgres) (format
-					    "%spsql --set=\"ON_ERROR_STOP=1\" %s -A -P \
+					    "%s%s --set=\"ON_ERROR_STOP=1\" %s -A -P \
 footer=off -F \"\t\"  %s -f %s -o %s %s"
 					    (if dbpassword
 						(format "PGPASSWORD=%s " dbpassword)
 					      "")
+                                            (or (bound-and-true-p
+                                                 sql-postgres-program)
+                                                "psql")
 					    (if colnames-p "" "-t")
 					    (org-babel-sql-dbstring-postgresql
 					     dbhost dbport dbuser database)

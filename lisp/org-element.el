@@ -1,6 +1,6 @@
 ;;; org-element.el --- Parser for Org Syntax         -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2012-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2012-2021 Free Software Foundation, Inc.
 
 ;; Author: Nicolas Goaziou <n.goaziou at gmail dot com>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -3971,7 +3971,7 @@ element it has to parse."
 		       (cond
 			;; Must end with a full rule.
 			((not (re-search-forward non-table.el-line limit 'move))
-			 (beginning-of-line)
+			 (if (bolp) (forward-line -1) (beginning-of-line))
 			 (looking-at rule-regexp))
 			;; Ignore pseudo-tables with a single
 			;; rule.

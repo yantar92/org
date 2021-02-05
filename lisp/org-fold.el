@@ -292,6 +292,14 @@ to search in hidden text with any of the listed 'invisible property value.")
     (`property-drawer 'org-fold-drawer)
     (_ nil)))
 
+(defun org-fold-get-folding-spec-from-folding-prop (folding-prop)
+  "Return folding spec symbol used for folding property with name FOLDING-PROP."
+  (catch :exit
+    (dolist (spec org-fold--spec-priority-list)
+      (when (string-match-p (symbol-name spec)
+			    (symbol-name folding-prop))
+        (throw :exit spec)))))
+
 (defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
   "Saved values of folding properties for (buffer . spec) conses.")
 
@@ -349,11 +357,7 @@ unless RETURN-ONLY is non-nil."
 			;; We know that folding properties have
 			;; folding spec in their name. Extract that
 			;; spec.
-			(spec (catch :exit
-				(dolist (spec org-fold--spec-priority-list)
-                                  (when (string-match-p (symbol-name spec)
-							(symbol-name old-prop))
-                                    (throw :exit spec)))))
+			(spec (org-fold-get-folding-spec-from-folding-prop old-prop))
                         ;; Generate new buffer-unique folding property
 			(new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
                    ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
@@ -730,15 +734,16 @@ When ENTRY is non-nil, show the entire entry."
   (save-excursion
     (org-back-to-heading-or-point-min t)
     (when (org-at-heading-p) (forward-line))
-    (org-fold-region
-     (line-end-position 0)
-     (save-excursion
-       (if (re-search-forward
- 	    (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
-           (line-end-position 0)
- 	 (point-max)))
-     t
-     'headline)))
+    (unless (eobp) ; Current headline is empty and ends at the end of buffer.
+      (org-fold-region
+       (line-end-position 0)
+       (save-excursion
+         (if (re-search-forward
+ 	      (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
+             (line-end-position 0)
+ 	   (point-max)))
+       t
+       'headline))))
 
 (defun org-fold-subtree (flag)
   (save-excursion
@@ -787,8 +792,7 @@ of the current heading, or to 1 if the current line is not a heading."
       (org-map-region
        (lambda ()
 	 (when (<= (funcall outline-level) levels)
-	   (org-fold-show-entry)
-           (org-fold-hide-entry)))
+           (org-fold-heading nil)))
        beg end)
       ;; Finally unhide any trailing newline.
       (goto-char (point-max))
@@ -1016,8 +1020,20 @@ information."
     (org-fold-show-entry)
     ;; If point is hidden make sure to expose it.
     (when (org-fold-folded-p)
-      (let ((region (org-fold-get-region-at-point)))
-	(org-fold-region (car region) (cdr region) nil)))
+      (let ((region (org-fold-get-region-at-point))
+            (spec (org-fold-get-folding-spec)))
+        (org-fold-region (car region) (cdr region) nil)
+        ;; Reveal emphasis markers.
+        (when (member spec '(org-link org-link-description))
+          (let (org-hide-emphasis-markers
+                org-link-descriptive
+                (region (or (org-find-text-property-region (point) 'org-emphasis)
+                            region)))
+            (when region
+              (org-with-point-at (car region)
+                (beginning-of-line)
+                (let (font-lock-extend-region-functions)
+                  (font-lock-fontify-region (1- (car region)) (cdr region)))))))))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
@@ -1458,19 +1474,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
     (unless (string-empty-p return-string)
-      (dolist (plist
-	       ;; FIXME: Is there any better way to do it?
-	       ;; Yes, it is a hack.
-               ;; The below gives us string representation as a list.
-               ;; Note that we need to remove unreadable values, like markers (#<...>).
-               (let ((data (read (replace-regexp-in-string "^#" ""
-							   (replace-regexp-in-string "#<[^>]+>" "dummy"
-										     ;; Get text representation of the string object.
-                                                                                     ;; Make sure to print everything (see `prin1' docstring).
-                                                                                     ;; `prin1' is used to print "%S" format.
-										     (let (print-level print-length)
-										       (format "%S" return-string)))))))
-		 (if (listp data) data (list data))))
+      (dolist (plist (mapcar #'caddr (object-intervals return-string)))
 	;; Only lists contain text properties.
 	(when (listp plist)
 	  ;; Collect all the relevant text properties.

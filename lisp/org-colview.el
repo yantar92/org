@@ -1,6 +1,6 @@
 ;;; org-colview.el --- Column View in Org            -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2004-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2004-2021 Free Software Foundation, Inc.
 
 ;; Author: Carsten Dominik <carsten at orgmode dot org>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -697,7 +697,7 @@ FUN is a function called with no argument."
   (let ((hide-body (and (/= (line-end-position) (point-max))
 			(save-excursion
 			  (move-beginning-of-line 2)
-			  (org-at-heading-p t)))))
+			  (org-at-heading-p)))))
     (unwind-protect (funcall fun)
       (when hide-body (org-fold-hide-entry)))))
 
@@ -1025,7 +1025,7 @@ the current buffer."
 	      ;; No COLUMNS keyword in the buffer.  Insert one at the
 	      ;; beginning, right before the first heading, if any.
 	      (goto-char (point-min))
-	      (unless (org-at-heading-p t) (outline-next-heading))
+	      (unless (org-at-heading-p) (outline-next-heading))
 	      (let ((inhibit-read-only t))
 		(insert-before-markers "#+COLUMNS: " fmt "\n"))))
 	  (setq-local org-columns-default-format fmt))))))

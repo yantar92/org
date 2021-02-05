@@ -1,6 +1,6 @@
 ;;; org-compat.el --- Compatibility Code for Older Emacsen -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2004-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2004-2021 Free Software Foundation, Inc.
 
 ;; Author: Carsten Dominik <carsten at orgmode dot org>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -175,9 +175,9 @@ This is a floating point number if the size is too large for an integer."
 Case is significant."
     (string< s1 s2)))
 
-;; The time- functions below translate nil to `current-time` and
-;; accept an integer as of Emacs 25.  `decode-time` and
-;; `format-time-string` accept nil on Emacs 24 but don't accept an
+;; The time- functions below translate nil to `current-time' and
+;; accept an integer as of Emacs 25.  `decode-time' and
+;; `format-time-string' accept nil on Emacs 24 but don't accept an
 ;; integer until Emacs 25.
 (if (< emacs-major-version 25)
     (let ((convert
@@ -797,6 +797,8 @@ context.  See the individual commands for more information."
  "use `org-planning-line-re', followed by `org-ts-regexp-both' instead."
  "Org 9.4")
 
+(define-obsolete-function-alias 'org-copy 'org-refile-copy "Org 9.4")
+
 ;;;; Obsolete link types
 
 (eval-after-load 'ol
@@ -1167,14 +1169,7 @@ ELEMENT is the element at point."
        (org-fold-show-context 'bookmark-jump)))
 
 ;; Make `bookmark-jump' shows the jump location if it was hidden.
-(eval-after-load 'bookmark
-  '(if (boundp 'bookmark-after-jump-hook)
-       ;; We can use the hook
-       (add-hook 'bookmark-after-jump-hook 'org-bookmark-jump-unhide)
-     ;; Hook not available, use advice
-     (defadvice bookmark-jump (after org-make-visible activate)
-       "Make the position visible."
-       (org-bookmark-jump-unhide))))
+(add-hook 'bookmark-after-jump-hook 'org-bookmark-jump-unhide)
 
 ;;;; Calendar
 
@@ -1270,6 +1265,75 @@ key."
 (defvar session-globals-exclude)
 (eval-after-load 'session
   '(add-to-list 'session-globals-exclude 'org-mark-ring))
+
+;;;; outline-mode
+
+;; Folding in outline-mode is not compatible with org-mode folding
+;; anymore. Working around to avoid breakage of external packages
+;; assuming the compatibility.
+(define-advice outline-flag-region (:around (oldfun from to flag) fix-for-org-fold)
+  "Run `org-fold-region' when in org-mode."
+  (if (eq major-mode 'org-mode)
+      (org-fold-region from to flag 'headline)
+    (funcall oldfun from to flag)))
+
+(define-advice outline-next-visible-heading (:around (oldfun arg) fix-for-org-fold)
+  "Run `org-next-visible-heading' when in org-mode."
+  (interactive "p")
+  (if (eq major-mode 'org-mode)
+      (org-next-visible-heading arg)
+    (funcall oldfun arg)))
+
+(define-advice outline-back-to-heading (:around (oldfun &optional invisible-ok) fix-for-org-fold)
+  "Run `org-back-to-heading' when in org-mode."
+  (if (eq major-mode 'org-mode)
+      (progn
+        (beginning-of-line)
+        (or (org-at-heading-p (not invisible-ok))
+            (let (found)
+	      (save-excursion
+	        (while (not found)
+	          (or (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
+				          nil t)
+                      (signal 'outline-before-first-heading nil))
+	          (setq found (and (or invisible-ok (not (org-fold-folded-p)))
+			           (point)))))
+	      (goto-char found)
+	      found)))
+    (funcall oldfun invisible-ok)))
+
+(define-advice outline-on-heading-p (:around (oldfun &optional invisible-ok) fix-for-org-fold)
+  "Run `org-at-heading-p' when in org-mode."
+  (if (eq major-mode 'org-mode)
+      (org-at-heading-p (not invisible-ok))
+    (funcall oldfun invisible-ok)))
+
+(define-advice outline-hide-sublevels (:around (oldfun levels) fix-for-org-fold)
+  "Run `org-fold-hide-sublevels' when in org-mode."
+  (interactive (list
+		(cond
+		 (current-prefix-arg (prefix-numeric-value current-prefix-arg))
+		 ((save-excursion (beginning-of-line)
+				  (looking-at outline-regexp))
+		  (funcall outline-level))
+		 (t 1))))
+  (if (eq major-mode 'org-mode)
+      (org-fold-hide-sublevels levels)
+    (funcall oldfun levels)))
+
+(define-advice outline-toggle-children (:around (oldfun) fix-for-org-fold)
+  "Run `org-fold-hide-sublevels' when in org-mode."
+  (interactive)
+  (if (eq major-mode 'org-mode)
+      (save-excursion
+        (org-back-to-heading)
+        (if (not (org-fold-folded-p (line-end-position)))
+            (org-fold-hide-subtree)
+          (org-fold-show-children)
+          (org-fold-show-entry)))
+    (funcall oldfun)))
+
+;; TODO: outline-headers-as-kill
 
 (provide 'org-compat)
 

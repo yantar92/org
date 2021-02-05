@@ -1,6 +1,6 @@
 ;;; org-refile.el --- Refile Org Subtrees             -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2010-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2010-2021 Free Software Foundation, Inc.
 
 ;; Author: Carsten Dominik <carsten at orgmode dot org>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -372,8 +372,6 @@ the *old* location.")
 
 (defvar org-refile-keep nil
   "Non-nil means `org-refile' will copy instead of refile.")
-
-(define-obsolete-function-alias 'org-copy 'org-refile-copy)
 
 ;;;###autoload
 (defun org-refile-copy ()

@@ -282,7 +282,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	       (save-excursion
 		 (let ((level (funcall outline-level)))
 		   (outline-next-heading)
-		   (and (org-at-heading-p t)
+		   (and (org-at-heading-p)
 			(> (funcall outline-level) level))))
 	       (and (eq org-cycle-include-plain-lists 'integrate)
 		    (save-excursion
