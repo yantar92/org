@@ -1812,6 +1812,13 @@ Show the raw feed buffer of a feed.
 
 ;;;***
 
+;;;### (autoloads nil "org-fold-core" "org-fold-core.el" (0 0 0 0))
+;;; Generated autoloads from org-fold-core.el
+
+(register-definition-prefixes "org-fold-core" '("org-fold-"))
+
+;;;***
+
 ;;;### (autoloads nil "org-fold" "org-fold.el" (0 0 0 0))
 ;;; Generated autoloads from org-fold.el
 
