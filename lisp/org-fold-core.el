@@ -190,26 +190,6 @@ The following properties are known:
                       Instead, visibility settings in `buffer-invisibility-spec'
                       will be used as is.")
 
-(defvar-local org-fold--spec-priority-list '(org-fold-outline
-					     org-fold-drawer
-					     org-fold-block)
-  "Priority of folding specs.
-If a region has multiple folding specs at the same time, only the
-first property from this list will be considered.")
-
-(defvar-local org-fold--spec-with-ellipsis '(org-fold-outline
-					     org-fold-drawer
-					     org-fold-block)
-  "A list of folding specs, which should be indicated by `org-ellipsis'.")
-
-(defvar-local org-fold--isearch-specs '(org-fold-block
-					org-fold-drawer
-					org-fold-outline)
-  "List of text invisibility specs to be searched by isearch.
-By default ([2020-05-09 Sat]), isearch does not search in hidden text,
-which was made invisible using text properties.  Isearch will be forced
-to search in hidden text with any of the listed 'invisible property value.")
-
 ;;; Utility functions
 
 (defsubst org-fold-folding-spec-list (&optional buffer)
@@ -220,30 +200,6 @@ to search in hidden text with any of the listed 'invisible property value.")
 (defun org-fold-folding-spec-p (spec)
   "Check if SPEC is a registered folding spec."
   (and spec (memq spec (org-fold-folding-spec-list))))
-
-(defun org-fold-set-folding-spec-property (spec property value &optional init)
-  "Set PROPERTY of a folding SPEC to VALUE.
-Possible properties and values can be found in `org-fold--specs' docstring.
-When optional argument INIT is non-nil, initialise the PROPERTY."
-  (pcase property
-    (:ellipsis
-     (unless (and (not init)
-                  (equal value (org-fold-get-folding-spec-property spec :ellipsis)))
-       (remove-from-invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis)))
-       (unless (org-fold-get-folding-spec-property spec :visible)
-         (add-to-invisibility-spec (cons spec value)))))
-    (:visible
-     (when (or init
-               (xor value (org-fold-get-folding-spec-property spec :visible)))
-       (if value
-	   (remove-from-invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis)))
-         (add-to-invisibility-spec (cons spec value)))))
-    (:isearch-open nil)
-    (:isearch-ignore nil)
-    (:front-sticky nil)
-    (:rear-sticky nil)
-    (_ nil))
-  (setf (alist-get property org-fold--specs) value))
 
 (defun org-fold-get-folding-spec-property (spec property)
   "Get PROPERTY of a folding SPEC.
@@ -335,7 +291,33 @@ unless RETURN-ONLY is non-nil."
 
 ;;;; Modifying folding specs
 
-(defun org-fold-add-folding-spec (spec &optional buffer append properties)
+
+(defun org-fold-set-folding-spec-property (spec property value)
+  "Set PROPERTY of a folding SPEC to VALUE.
+Possible properties and values can be found in `org-fold--specs' docstring."
+  (pcase property
+    (:ellipsis
+     (unless (equal value (org-fold-get-folding-spec-property spec :ellipsis))
+       (remove-from-invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis)))
+       (unless (org-fold-get-folding-spec-property spec :visible)
+         (add-to-invisibility-spec (cons spec value)))))
+    (:visible
+     (unless (equal value (org-fold-get-folding-spec-property spec :visible))
+       (if value
+	   (remove-from-invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis)))
+         (add-to-invisibility-spec (cons spec value)))))
+    ;; TODO
+    (:isearch-open nil)
+    ;; TODO
+    (:isearch-ignore nil)
+    ;; TODO
+    (:front-sticky nil)
+    ;; TODO
+    (:rear-sticky nil)
+    (_ nil))
+  (setf (alist-get property org-fold--specs) value))
+
+(defun org-fold-add-folding-spec (spec &optional properties buffer append)
   "Add a new folding SPEC in BUFFER.
 
 SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in or nil to
@@ -350,16 +332,13 @@ arguments.
 The folding spec properties will be set to PROPERTIES (see
 `org-fold--specs' for details)."
   (with-current-buffer (or buffer (current-buffer))
-    (let ((full-spec (cons spec properties)))
-      (while properties
-	)
+    
+    (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
+                                    '(:visible :ellipsis :isearch-ignore :isearch-open :front-sticky :rear-sticky)))
+           (full-spec (cons spec full-properties)))
       (add-to-list 'org-fold--specs full-spec append)
-      ()
-      (let ((invisibility-spec (cons spec (org-fold-get-folding-spec-property spec :ellipsis))))
-	(unless (or (org-fold-get-folding-spec-property spec :visible)
-		    (member invisibility-spec buffer-invisibility-spec))
-	  (add-to-invisibility-spec invisibility-spec))))))
-'
+      (mapc (lambda (prop-cons) (org-fold-set-folding-spec-property spec (car prop-cons) (cdr prop-cons))) full-properties))))
+
 (defun org-fold-remove-folding-spec (spec &optional buffer)
   "Remove a folding SPEC in BUFFER.
 
@@ -368,20 +347,14 @@ BUFFER can be a buffer to remove SPEC in, nil to remove SPEC in current buffer,
 or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers."
   (org-fold--check-spec spec)
   (when (eq buffer 'all)
+    (setq-default org-fold--specs (delete (alist-get spec org-fold--specs) org-fold--specs))
     (mapc (lambda (buf)
 	    (org-fold-remove-folding-spec spec buf))
-	  (org-buffer-list))
-    (setq-default org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-    (setq-default org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
-    (setq-default org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
+	  (org-buffer-list)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
-      (remove-from-invisibility-spec (cons spec t))
-      (remove-from-invisibility-spec spec)
-      (remove-from-invisibility-spec (list spec))
-      (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-      (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
-      (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))))
+      (org-fold-set-folding-spec-property spec :visible t)
+      (setq org-fold--specs (delete (alist-get spec org-fold--specs) org-fold--specs)))))
 
 (defun org-fold-initialize ()
   "Setup org-fold in current buffer."
