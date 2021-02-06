@@ -201,11 +201,36 @@ The following properties are known:
   "Check if SPEC is a registered folding spec."
   (and spec (memq spec (org-fold-folding-spec-list))))
 
+(defun org-fold--check-spec (spec)
+  "Throw an error if SPEC is not present in `org-fold--spec-priority-list'."
+  (unless (and spec (org-fold-folding-spec-p spec))
+    (error "%s is not a valid folding spec" spec)))
+
 (defun org-fold-get-folding-spec-property (spec property)
   "Get PROPERTY of a folding SPEC.
 Possible properties can be found in `org-fold--specs' docstring."
   (org-fold--check-spec spec)
-  (alist-get property (alist-get spec org-fold--specs)))
+  (cdr (alist-get property (cdr (alist-get spec org-fold--specs)))))
+
+(defsubst org-fold-get-folding-property-symbol (spec)
+  "Get folding property for SPEC in current buffer."
+  (intern (format "org-fold--spec-%s-%S"
+		  (symbol-name spec)
+		  ;; (sxhash buf) appears to be not constant over time.
+		  ;; Using buffer-name is safe, since the only place where
+		  ;; buffer-local text property actually matters is an indirect
+		  ;; buffer, where the name cannot be same anyway.
+		  (sxhash (buffer-name buf)))))
+
+(defsubst org-fold-get-folding-spec-from-folding-prop (folding-prop)
+  "Return folding spec symbol used for folding property with name FOLDING-PROP."
+  (catch :exit
+    (dolist (spec (org-fold-folding-spec-list))
+      ;; We know that folding properties have
+      ;; folding spec in their name.
+      (when (string-match-p (symbol-name spec)
+			    (symbol-name folding-prop))
+        (throw :exit spec)))))
 
 (defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
   "Saved values of folding properties for (buffer . spec) conses.")
@@ -237,13 +262,7 @@ unless RETURN-ONLY is non-nil."
     ;; Create unique property symbol for SPEC in BUFFER
     (let ((local-prop (or (gethash (cons buf spec) org-fold--property-symbol-cache)
 			  (puthash (cons buf spec)
-				   (intern (format "org-fold--spec-%s-%S"
-						   (symbol-name spec)
-						   ;; (sxhash buf) appears to be not constant over time.
-						   ;; Using buffer-name is safe, since the only place where
-						   ;; buffer-local text property actually matters is an indirect
-						   ;; buffer, where the name cannot be same anyway.
-						   (sxhash (buffer-name buf))))
+                                   (org-fold-get-folding-property-symbol spec)
                                    org-fold--property-symbol-cache))))
       (prog1
           local-prop
@@ -261,14 +280,7 @@ unless RETURN-ONLY is non-nil."
 	      (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
 		(org-with-wide-buffer
 		 (let* ((pos (point-min))
-			;; We know that folding properties have
-			;; folding spec in their name. Extract that
-			;; spec.
-			(spec (catch :exit
-				(dolist (spec (org-fold-folding-spec-list))
-                                  (when (string-match-p (symbol-name spec)
-							(symbol-name old-prop))
-                                    (throw :exit spec)))))
+			(spec (org-fold-get-folding-spec-from-folding-prop old-prop))
                         ;; Generate new buffer-unique folding property
 			(new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
                    ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
@@ -290,7 +302,6 @@ unless RETURN-ONLY is non-nil."
 ;;; API
 
 ;;;; Modifying folding specs
-
 
 (defun org-fold-set-folding-spec-property (spec property value)
   "Set PROPERTY of a folding SPEC to VALUE.
@@ -318,7 +329,7 @@ Possible properties and values can be found in `org-fold--specs' docstring."
   (setf (alist-get property org-fold--specs) value))
 
 (defun org-fold-add-folding-spec (spec &optional properties buffer append)
-  "Add a new folding SPEC in BUFFER.
+  "Add a new folding SPEC with PROPERTIES in BUFFER.
 
 SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in or nil to
 set SPEC in current buffer.
@@ -332,7 +343,6 @@ arguments.
 The folding spec properties will be set to PROPERTIES (see
 `org-fold--specs' for details)."
   (with-current-buffer (or buffer (current-buffer))
-    
     (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
                                     '(:visible :ellipsis :isearch-ignore :isearch-open :front-sticky :rear-sticky)))
            (full-spec (cons spec full-properties)))
@@ -356,16 +366,13 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
       (org-fold-set-folding-spec-property spec :visible t)
       (setq org-fold--specs (delete (alist-get spec org-fold--specs) org-fold--specs)))))
 
-(defun org-fold-initialize ()
-  "Setup org-fold in current buffer."
-  (dolist (spec org-fold--spec-priority-list)
-    (org-fold-add-folding-spec spec nil (not (memq spec org-fold--spec-with-ellipsis)) (not (memq spec org-fold--isearch-specs))))
+(defun org-fold-initialize (&optional specs)
+  "Setup org-fold in current buffer using SPECS as value of `org-fold--specs'."
+  (dolist (spec (or specs org-fold--specs))
+    (org-fold-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold--fix-folded-region nil 'local)
   ;; Setup killing text
   (setq-local filter-buffer-substring-function #'org-fold--buffer-substring-filter)
-  ;; Make isearch reveal context
-  (setq-local outline-isearch-open-invisible-function
-	      (lambda (&rest _) (org-fold-show-context 'isearch)))
   (require 'isearch)
   (if (boundp 'isearch-opened-regions)
       ;; Use new implementation of isearch allowing to search inside text
@@ -383,7 +390,7 @@ If SPEC-OR-ELEMENT is a foldable element (see
 `org-fold-get-folding-spec-for-element'), only check folding spec for
 the given element.  Note that multiple elements may have same folding
 specs."
-  (org-fold-get-folding-spec (or (org-fold-get-folding-spec spec-or-element) spec-or-element) pos))
+  (org-fold-get-folding-spec spec-or-element pos))
 
 (defun org-fold-get-folding-spec (&optional spec-or-element pom)
   "Get folding state at `point' or POM.
@@ -581,13 +588,6 @@ If SPEC-OR-ELEMENT is omitted and FLAG is nil, unfold everything in the region."
 				       (list (org-fold--property-symbol-get-create spec) nil)))
 	   (remove-text-properties from to
 				   (list (org-fold--property-symbol-get-create spec) nil))))))))
-
-;;; Internal functions
-
-(defun org-fold--check-spec (spec)
-  "Throw an error if SPEC is not present in `org-fold--spec-priority-list'."
-  (unless (and spec (memq spec org-fold--spec-priority-list))
-    (error "%s is not a valid folding spec" spec)))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
