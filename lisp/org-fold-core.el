@@ -203,7 +203,7 @@ The following properties are known:
 
 (defun org-fold--check-spec (spec)
   "Throw an error if SPEC is not present in `org-fold--spec-priority-list'."
-  (unless (and spec (org-fold-folding-spec-p spec))
+  (unless (org-fold-folding-spec-p spec)
     (error "%s is not a valid folding spec" spec)))
 
 (defun org-fold-get-folding-spec-property (spec property)
@@ -212,15 +212,15 @@ Possible properties can be found in `org-fold--specs' docstring."
   (org-fold--check-spec spec)
   (cdr (alist-get property (cdr (alist-get spec org-fold--specs)))))
 
-(defsubst org-fold-get-folding-property-symbol (spec)
-  "Get folding property for SPEC in current buffer."
+(defsubst org-fold-get-folding-property-symbol (spec &optional buffer)
+  "Get folding property for SPEC in current buffer or BUFFER."
   (intern (format "org-fold--spec-%s-%S"
 		  (symbol-name spec)
 		  ;; (sxhash buf) appears to be not constant over time.
 		  ;; Using buffer-name is safe, since the only place where
 		  ;; buffer-local text property actually matters is an indirect
 		  ;; buffer, where the name cannot be same anyway.
-		  (sxhash (buffer-name buf)))))
+		  (sxhash (buffer-name (or buffer (current-buffer)))))))
 
 (defsubst org-fold-get-folding-spec-from-folding-prop (folding-prop)
   "Return folding spec symbol used for folding property with name FOLDING-PROP."
@@ -262,7 +262,7 @@ unless RETURN-ONLY is non-nil."
     ;; Create unique property symbol for SPEC in BUFFER
     (let ((local-prop (or (gethash (cons buf spec) org-fold--property-symbol-cache)
 			  (puthash (cons buf spec)
-                                   (org-fold-get-folding-property-symbol spec)
+                                   (org-fold-get-folding-property-symbol spec buf)
                                    org-fold--property-symbol-cache))))
       (prog1
           local-prop
