@@ -369,7 +369,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
     (setq-default org-fold-core--specs (delete (alist-get spec org-fold-core--specs) org-fold-core--specs))
     (mapc (lambda (buf)
 	    (org-fold-core-remove-folding-spec spec buf))
-	  (org-buffer-list)))
+	  (buffer-list)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (org-fold-core-set-folding-spec-property spec :visible t)
