@@ -351,6 +351,7 @@ arguments.
 `
 The folding spec properties will be set to PROPERTIES (see
 `org-fold-core--specs' for details)."
+  (when (eq spec 'all) (error "Cannot use reserved folding spec symbol 'all"))
   (with-current-buffer (or buffer (current-buffer))
     (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
                                     '(:visible :ellipsis :isearch-ignore :isearch-open :front-sticky :rear-sticky)))
