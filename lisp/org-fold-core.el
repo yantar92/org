@@ -161,12 +161,12 @@ smart            Make point visible, and do insertion/deletion if it is
 ;;;; Buffer-local folding specs
 
 (defvar-local org-fold-core--specs '((org-fold-visible
-			 (visible . t)
-                         (alias . (visible)))
+			 (:visible . t)
+                         (:alias . (visible)))
                         (org-fold-hidden
-			 (ellipsis . "...")
-                         (isearch-open . t)
-                         (alias . (hidden))))
+			 (:ellipsis . "...")
+                         (:isearch-open . t)
+                         (:alias . (hidden))))
   "Folding specs defined in current buffer.
 
 Each spec is a list (SPEC-SYMBOL SPEC-PROPERTIES).
@@ -204,7 +204,7 @@ The following properties are known:
   "Return the folding spec symbol for SPEC-OR-ALIAS."
   (and spec-or-alias
        (or (memq spec-or-alias (org-fold-core-folding-spec-list))
-           (seq-some (lambda (spec) (and (memq spec-or-alias (org-fold-core-get-folding-spec-property spec :alias)) spec)) (org-fold-core-folding-spec-list)))))
+           (seq-some (lambda (spec) (and (memq spec-or-alias (alist-get :alias (alist-get spec org-fold-core--specs))) spec)) (org-fold-core-folding-spec-list)))))
 
 (defun org-fold-core-folding-spec-p (spec-or-alias)
   "Check if SPEC-OR-ALIAS is a registered folding spec."
@@ -219,7 +219,7 @@ The following properties are known:
   "Get PROPERTY of a folding SPEC-OR-ALIAS.
 Possible properties can be found in `org-fold-core--specs' docstring."
   (org-fold-core--check-spec spec-or-alias)
-  (cdr (alist-get property (cdr (alist-get (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs)))))
+  (alist-get property (alist-get (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs)))
 
 (defsubst org-fold-core-get-folding-property-symbol (spec &optional buffer)
   "Get folding property for SPEC in current buffer or BUFFER."
@@ -416,8 +416,7 @@ If SPEC-OR-ELEMENT is a foldable org element (see
 `org-fold-core-get-folding-spec-for-element'), act as if the element's
 folding spec was used as an argument.  Note that multiple elements may
 have same folding specs."
-  (let ((spec (or (org-fold-core-get-folding-spec-for-element spec-or-element)
-		  spec-or-element)))
+  (let ((spec (org-fold-core-get-folding-spec-from-alias spec-or-element)))
     (when (and spec (not (eq spec 'all))) (org-fold-core--check-spec spec))
     (org-with-point-at (or pom (point))
       (if (and spec (not (eq spec 'all)))
