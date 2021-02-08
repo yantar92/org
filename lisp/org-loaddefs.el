@@ -1815,7 +1815,7 @@ Show the raw feed buffer of a feed.
 ;;;### (autoloads nil "org-fold-core" "org-fold-core.el" (0 0 0 0))
 ;;; Generated autoloads from org-fold-core.el
 
-(register-definition-prefixes "org-fold-core" '("org-fold-"))
+(register-definition-prefixes "org-fold-core" '("org-fold-core-"))
 
 ;;;***
 
@@ -1974,7 +1974,10 @@ Query the id database for the file in which this ID is located.
 \(fn ID)" nil nil)
 
 (autoload 'org-id-store-link "org-id" "\
-Store a link to the current entry, using its ID." t nil)
+Store a link to the current entry, using its ID.
+
+If before first heading store first title-keyword as description
+or filename if no title." t nil)
 
 (register-definition-prefixes "org-id" '("org-id-"))
 

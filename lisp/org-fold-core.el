@@ -161,10 +161,12 @@ smart            Make point visible, and do insertion/deletion if it is
 ;;;; Buffer-local folding specs
 
 (defvar-local org-fold-core--specs '((org-fold-visible
-			 (visible . t))
+			 (visible . t)
+                         (alias . (visible)))
                         (org-fold-hidden
 			 (ellipsis . "...")
-                         (isearch-open . t)))
+                         (isearch-open . t)
+                         (alias . (hidden))))
   "Folding specs defined in current buffer.
 
 Each spec is a list (SPEC-SYMBOL SPEC-PROPERTIES).
@@ -188,7 +190,8 @@ The following properties are known:
                       is folded.
 - :visible          :: non-nil means that folding spec visibility is not managed.
                       Instead, visibility settings in `buffer-invisibility-spec'
-                      will be used as is.")
+                      will be used as is.
+- :alias            :: a list of aliases for the SPEC-SYMBOL.")
 
 ;;; Utility functions
 
@@ -197,20 +200,26 @@ The following properties are known:
   (with-current-buffer (or buffer (current-buffer))
     (mapcar #'car org-fold-core--specs)))
 
-(defun org-fold-core-folding-spec-p (spec)
-  "Check if SPEC is a registered folding spec."
-  (and spec (memq spec (org-fold-core-folding-spec-list))))
+(defun org-fold-core-get-folding-spec-from-alias (spec-or-alias)
+  "Return the folding spec symbol for SPEC-OR-ALIAS."
+  (and spec-or-alias
+       (or (memq spec-or-alias (org-fold-core-folding-spec-list))
+           (seq-some (lambda (spec) (and (memq spec-or-alias (org-fold-core-get-folding-spec-property spec :alias)) spec)) (org-fold-core-folding-spec-list)))))
 
-(defun org-fold-core--check-spec (spec)
-  "Throw an error if SPEC is not present in `org-fold-core--spec-priority-list'."
-  (unless (org-fold-core-folding-spec-p spec)
-    (error "%s is not a valid folding spec" spec)))
+(defun org-fold-core-folding-spec-p (spec-or-alias)
+  "Check if SPEC-OR-ALIAS is a registered folding spec."
+  (org-fold-core-get-folding-spec-from-alias spec-or-alias))
 
-(defun org-fold-core-get-folding-spec-property (spec property)
-  "Get PROPERTY of a folding SPEC.
+(defun org-fold-core--check-spec (spec-or-alias)
+  "Throw an error if SPEC-OR-ALIAS is not present in `org-fold-core--spec-priority-list'."
+  (unless (org-fold-core-folding-spec-p spec-or-alias)
+    (error "%s is not a valid folding spec" spec-or-alias)))
+
+(defun org-fold-core-get-folding-spec-property (spec-or-alias property)
+  "Get PROPERTY of a folding SPEC-OR-ALIAS.
 Possible properties can be found in `org-fold-core--specs' docstring."
-  (org-fold-core--check-spec spec)
-  (cdr (alist-get property (cdr (alist-get spec org-fold-core--specs)))))
+  (org-fold-core--check-spec spec-or-alias)
+  (cdr (alist-get property (cdr (alist-get (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs)))))
 
 (defsubst org-fold-core-get-folding-property-symbol (spec &optional buffer)
   "Get folding property for SPEC in current buffer or BUFFER."
