@@ -326,6 +326,7 @@ Possible properties and values can be found in `org-fold-core--specs' docstring.
        (if value
 	   (remove-from-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis)))
          (add-to-invisibility-spec (cons spec value)))))
+    (:alias nil)
     ;; TODO
     (:isearch-open nil)
     ;; TODO
