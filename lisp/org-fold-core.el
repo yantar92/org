@@ -393,39 +393,40 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 
 ;;;; Searching and examining folded text
 
-(defun org-fold-core-folded-p (&optional pos spec-or-element)
+(defun org-fold-core-folded-p (&optional pos spec-or-alias)
   "Non-nil if the character after POS is folded.
 If POS is nil, use `point' instead.
-If SPEC-OR-ELEMENT is a folding spec, only check the given folding spec.
-If SPEC-OR-ELEMENT is a foldable element (see
+If SPEC-OR-ALIAS is a folding spec, only check the given folding spec.
+If SPEC-OR-ALIAS is a foldable element (see
 `org-fold-core-get-folding-spec-for-element'), only check folding spec for
 the given element.  Note that multiple elements may have same folding
 specs."
-  (org-fold-core-get-folding-spec spec-or-element pos))
+  (org-fold-core-get-folding-spec spec-or-alias pos))
 
-(defun org-fold-core-get-folding-spec (&optional spec-or-element pom)
+(defun org-fold-core-get-folding-spec (&optional spec-or-alias pom)
   "Get folding state at `point' or POM.
 Return nil if there is no folding at point or POM.
-If SPEC-OR-ELEMENT is nil, return a folding spec with highest priority
+If SPEC-OR-ALIAS is nil, return a folding spec with highest priority
 among present at `point' or POM.
-If SPEC-OR-ELEMENT is 'all, return the list of all present folding
+If SPEC-OR-ALIAS is 'all, return the list of all present folding
 specs.
-If SPEC-OR-ELEMENT is a valid folding spec, return the corresponding
+If SPEC-OR-ALIAS is a valid folding spec, return the corresponding
 folding spec (if the text is folded using that spec).
-If SPEC-OR-ELEMENT is a foldable org element (see
+If SPEC-OR-ALIAS is a foldable org element (see
 `org-fold-core-get-folding-spec-for-element'), act as if the element's
 folding spec was used as an argument.  Note that multiple elements may
 have same folding specs."
-  (let ((spec (org-fold-core-get-folding-spec-from-alias spec-or-element)))
+  (let ((spec (if (eq spec-or-alias 'all)
+                  'all
+                (org-fold-core-get-folding-spec-from-alias spec-or-alias))))
     (when (and spec (not (eq spec 'all))) (org-fold-core--check-spec spec))
     (org-with-point-at (or pom (point))
       (if (and spec (not (eq spec 'all)))
 	  (get-char-property (point) (org-fold-core--property-symbol-get-create spec nil t))
 	(let ((result))
-	  (dolist (spec org-fold-core--spec-priority-list)
+	  (dolist (spec (org-fold-core-folding-spec-list))
 	    (let ((val (get-char-property (point) (org-fold-core--property-symbol-get-create spec nil t))))
-	      (when val
-		(push val result))))
+	      (when val (push val result))))
           (if (eq spec 'all)
               result
             (car (last result))))))))
@@ -440,23 +441,23 @@ have same folding specs."
     (unless (listp all-specs) (setq all-specs (list all-specs)))
     (delete-dups all-specs)))
 
-(defun org-fold-core-get-region-at-point (&optional spec pom)
-  "Return region folded using SPEC at POM.
+(defun org-fold-core-get-region-at-point (&optional spec-or-alias pom)
+  "Return region folded using SPEC-OR-ALIAS at POM.
 If SPEC is nil, return the largest possible folded region.
 The return value is a cons of beginning and the end of the region.
 Return nil when no fold is present at point of POM."
-  (when spec (org-fold-core--check-spec spec))
-  (org-with-point-at (or pom (point))
-    (if spec
-	(org-find-text-property-region (point) (org-fold-core--property-symbol-get-create spec nil t))
-      (let ((region (cons (point) (point))))
-	(dolist (spec (org-fold-core-get-folding-spec 'all))
-          (let ((local-region (org-fold-core-get-region-at-point spec)))
-            (when (< (car local-region) (car region))
-              (setcar region (car local-region)))
-            (when (> (cdr local-region) (cdr region))
-              (setcdr region (cdr local-region)))))
-	(unless (eq (car region) (cdr region)) region)))))
+  (let ((spec (org-fold-core-get-folding-spec-from-alias spec-or-alias)))
+    (org-with-point-at (or pom (point))
+      (if spec
+	  (org-find-text-property-region (point) (org-fold-core--property-symbol-get-create spec nil t))
+        (let ((region (cons (point) (point))))
+	  (dolist (spec (org-fold-core-get-folding-spec 'all))
+            (let ((local-region (org-fold-core-get-region-at-point spec)))
+              (when (< (car local-region) (car region))
+                (setcar region (car local-region)))
+              (when (> (cdr local-region) (cdr region))
+                (setcdr region (cdr local-region)))))
+	  (unless (eq (car region) (cdr region)) region))))))
 
 ;; FIXME: Optimize performance
 (defun org-fold-core-next-visibility-change (&optional pos limit ignore-hidden-p previous-p)
@@ -491,9 +492,9 @@ If PREVIOUS-P is non-nil, search backwards."
   "Call `org-fold-core-next-visibility-change' searching backwards."
   (org-fold-core-next-visibility-change pos limit ignore-hidden-p 'previous))
 
-(defun org-fold-core-next-folding-state-change (&optional spec-or-element pos limit previous-p)
+(defun org-fold-core-next-folding-state-change (&optional spec-or-alias pos limit previous-p)
   "Return next point where folding state changes relative to POS up to LIMIT.
-If SPEC-OR-ELEMENT is nil, return next point where _any_ single folding
+If SPEC-OR-ALIAS is nil, return next point where _any_ single folding
 type changes.
 For example, (org-fold-core-next-folding-state-change nil) with point
 somewhere in the below structure will return the nearest <...> point.
@@ -511,29 +512,26 @@ Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor
 ** Yet another headline
 <end of outline fold>
 
-If SPEC-OR-ELEMENT is a folding spec symbol, only consider that folded spec.
-If SPEC-OR-ELEMENT is a foldable element, consider that element's
-folding spec (see `org-fold-core-get-folding-spec-for-element').  Note that
-multiple elements may have the same folding spec.
+If SPEC-OR-ALIAS is a folding spec symbol, only consider that folded spec.
 
-If SPEC-OR-ELEMENT is a list, only consider changes of folding states
+If SPEC-OR-ALIAS is a list, only consider changes of folding states
 from the list.
 
 Search backwards when PREVIOUS-P is non-nil."
-  (when (and spec-or-element (symbolp spec-or-element))
-    (setq spec-or-element (list spec-or-element)))
-  (when spec-or-element
-    (setq spec-or-element
-	  (mapcar (lambda (spec-or-element)
-		    (or (org-fold-core-get-folding-spec-for-element spec-or-element)
-			spec-or-element))
-                  spec-or-element))
-    (mapc #'org-fold-core--check-spec spec-or-element))
-  (unless spec-or-element
-    (setq spec-or-element org-fold-core--spec-priority-list))
+  (when (and spec-or-alias (symbolp spec-or-alias))
+    (setq spec-or-alias (list spec-or-alias)))
+  (when spec-or-alias
+    (setq spec-or-alias
+	  (mapcar (lambda (spec-or-alias)
+		    (or (org-fold-core-get-folding-spec-for-element spec-or-alias)
+			spec-or-alias))
+                  spec-or-alias))
+    (mapc #'org-fold-core--check-spec spec-or-alias))
+  (unless spec-or-alias
+    (setq spec-or-alias (org-fold-core-folding-spec-list)))
   (let* ((pos (or pos (point)))
 	 (props (mapcar (lambda (el) (org-fold-core--property-symbol-get-create el nil t))
-			spec-or-element))
+			spec-or-alias))
          (cmp (if previous-p
 		  #'max
 		#'min))
@@ -542,26 +540,26 @@ Search backwards when PREVIOUS-P is non-nil."
 			(lambda (prop) (next-single-char-property-change pos prop nil (or limit (point-max)))))))
     (apply cmp (mapcar next-change props))))
 
-(defun org-fold-core-previous-folding-state-change (&optional spec-or-element pos limit)
+(defun org-fold-core-previous-folding-state-change (&optional spec-or-alias pos limit)
   "Call `org-fold-core-next-folding-state-change' searching backwards."
-  (org-fold-core-next-folding-state-change spec-or-element pos limit 'previous))
+  (org-fold-core-next-folding-state-change spec-or-alias pos limit 'previous))
 
-(defun org-fold-core-search-forward (spec &optional limit)
-  "Search next region folded via folding SPEC up to LIMIT.
+(defun org-fold-core-search-forward (spec-or-alias &optional limit)
+  "Search next region folded via folding SPEC-OR-ALIAS up to LIMIT.
 Move point right after the end of the region, to LIMIT, or
 `point-max'.  The `match-data' will contain the region."
-  (org-fold-core--check-spec spec)
-  (let ((prop-symbol (org-fold-core--property-symbol-get-create spec nil t)))
-    (goto-char (or (next-single-char-property-change (point) prop-symbol nil limit) limit (point-max)))
-    (when (and (< (point) (or limit (point-max)))
-	       (not (org-fold-core-get-folding-spec spec)))
-      (goto-char (next-single-char-property-change (point) prop-symbol nil limit)))
-    (when (org-fold-core-get-folding-spec spec)
-      (let ((region (org-fold-core-get-region-at-point spec)))
-	(when (< (cdr region) (or limit (point-max)))
-	  (goto-char (1+ (cdr region)))
-          (set-match-data (list (set-marker (make-marker) (car region) (current-buffer))
-				(set-marker (make-marker) (cdr region) (current-buffer)))))))))
+  (let ((spec (org-fold-core-get-folding-spec-from-alias spec-or-alias)))
+    (let ((prop-symbol (org-fold-core--property-symbol-get-create spec nil t)))
+      (goto-char (or (next-single-char-property-change (point) prop-symbol nil limit) limit (point-max)))
+      (when (and (< (point) (or limit (point-max)))
+	         (not (org-fold-core-get-folding-spec spec)))
+        (goto-char (next-single-char-property-change (point) prop-symbol nil limit)))
+      (when (org-fold-core-get-folding-spec spec)
+        (let ((region (org-fold-core-get-region-at-point spec)))
+	  (when (< (cdr region) (or limit (point-max)))
+	    (goto-char (1+ (cdr region)))
+            (set-match-data (list (set-marker (make-marker) (car region) (current-buffer))
+				  (set-marker (make-marker) (cdr region) (current-buffer))))))))))
 
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
 
@@ -571,12 +569,11 @@ Move point right after the end of the region, to LIMIT, or
 ;; folding state is stored in text property (folding property)
 ;; returned by `org-fold-core--property-symbol-get-create'.  The value of the
 ;; folding property is folding spec symbol.
-(defun org-fold-core-region (from to flag &optional spec-or-element)
+(defun org-fold-core-region (from to flag &optional spec-or-alias)
   "Hide or show lines from FROM to TO, according to FLAG.
-SPEC-OR-ELEMENT is the folding spec or foldable element, as a symbol.
-If SPEC-OR-ELEMENT is omitted and FLAG is nil, unfold everything in the region."
-  (let ((spec (or (org-fold-core-get-folding-spec-for-element spec-or-element)
-		  spec-or-element)))
+SPEC-OR-ALIAS is the folding spec or foldable element, as a symbol.
+If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
+  (let ((spec (org-fold-core-get-folding-spec-from-alias spec-or-alias)))
     (when spec (org-fold-core--check-spec spec))
     (with-silent-modifications
       (org-with-wide-buffer
@@ -593,7 +590,7 @@ If SPEC-OR-ELEMENT is omitted and FLAG is nil, unfold everything in the region."
 				'isearch-open-invisible-temporary
 				#'org-fold-core--isearch-show-temporary))
 	 (if (not spec)
-             (dolist (spec org-fold-core--spec-priority-list)
+             (dolist (spec (org-fold-core-folding-spec-list))
                (remove-text-properties from to
 				       (list (org-fold-core--property-symbol-get-create spec) nil)))
 	   (remove-text-properties from to
@@ -755,7 +752,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
       (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
       ;; Re-hide text inserted in the middle of a folded region.
       (unless (equal from to) ; Ignore deletions.
-	(dolist (spec org-fold-core--spec-priority-list)
+	(dolist (spec (org-fold-core-folding-spec-list))
 	  (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
 		(spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
 	    (when (and spec-from spec-to (eq spec-to spec-from))
