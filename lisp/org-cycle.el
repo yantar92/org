@@ -435,8 +435,12 @@ With a numeric prefix, show all headlines up to that level."
 (defun org-overview ()
   "Switch to overview mode, showing only top-level headlines."
   (interactive)
-  (org-fold-show-all '(headings drawers))
   (save-excursion
+    (goto-char (point-min))
+    ;; Hide top-level drawer.
+    (save-restriction
+      (narrow-to-region (point-min) (or (re-search-forward org-outline-regexp-bol nil t) (point-max)))
+      (org-fold-hide-drawer-all))
     (goto-char (point-min))
     (when (re-search-forward org-outline-regexp-bol nil t)
       (let* ((last (line-end-position))
@@ -455,6 +459,11 @@ With numerical argument N, show content up to level N."
   (interactive "p")
   (org-fold-show-all '(headings drawers))
   (save-excursion
+    (goto-char (point-min))
+    ;; Hide top-level drawer.
+    (save-restriction
+      (narrow-to-region (point-min) (or (re-search-forward org-outline-regexp-bol nil t) (point-max)))
+      (org-fold-hide-drawer-all))
     (goto-char (point-max))
     (let ((regexp (if (and (wholenump arg) (> arg 0))
                       (format "^\\*\\{1,%d\\} " arg)
