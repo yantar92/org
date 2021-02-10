@@ -133,28 +133,10 @@
 
 ;;; Customization
 
-(defcustom org-fold-core-catch-invisible-edits nil
-  "Check if in invisible region before inserting or deleting a character.
-Valid values are:
-
-nil              Do not check, so just do invisible edits.
-error            Throw an error and do nothing.
-show             Make point visible, and do the requested edit.
-show-and-error   Make point visible, then throw an error and abort the edit.
-smart            Make point visible, and do insertion/deletion if it is
-                 adjacent to visible text and the change feels predictable.
-                 Never delete a previously invisible character or add in the
-                 middle or right after an invisible region.  Basically, this
-                 allows insertion and backward-delete right before ellipses.
-                 FIXME: maybe in this case we should not even show?"
-  :group 'org-edit-structure
-  :version "24.1"
-  :type '(choice
-	  (const :tag "Do not check" nil)
-	  (const :tag "Throw error when trying to edit" error)
-	  (const :tag "Unhide, but do not do the edit" show-and-error)
-	  (const :tag "Show invisible part and do the edit" show)
-	  (const :tag "Be smart and do the right thing" smart)))
+(defvar-local org-fold-core-isearch-open-function #'org-fold-core--isearch-reveal
+  "Function used to reveal hidden text found by isearch.
+The function is called with a single argument - point where text is to
+be revealed.")
 
 ;;; Core functionality
 
@@ -188,9 +170,11 @@ The following properties are known:
                       is automatically folded.
 - :rear-sticky      :: non-nil means that text appended to the folded text
                       is folded.
-- :visible          :: non-nil means that folding spec visibility is not managed.
-                      Instead, visibility settings in `buffer-invisibility-spec'
-                      will be used as is.
+- :visible          :: non-nil means that folding spec visibility is not
+                       managed.  Instead, visibility settings in
+                       `buffer-invisibility-spec' will be used as is.
+                       Note that changing this property from nil to t may
+                       clear the setting in `buffer-invisibility-spec'.
 - :alias            :: a list of aliases for the SPEC-SYMBOL.")
 
 ;;; Utility functions
@@ -608,6 +592,11 @@ is set to 't.")
 (defvar-local org-fold-core--isearch-local-regions (make-hash-table :test 'equal)
   "Hash table storing temporarily shown folds from isearch matches.")
 
+(defun org-fold-core--isearch-reveal (pos)
+  "Reveal hidden text at POS for isearch."
+  (let ((region (org-fold-core-get-region-at-point pos)))
+    (org-fold-core-region (car region) (cdr region) nil)))
+
 (defun org-fold-core--isearch-setup (type)
   "Initialize isearch in org buffer.
 TYPE can be either `text-properties' or `overlays'."
@@ -623,11 +612,12 @@ TYPE can be either `text-properties' or `overlays'."
     (_ (error "%s: Unknown type of setup for `org-fold-core--isearch-setup'" type))))
 
 (defun org-fold-core--isearch-filter-predicate-text-properties (beg end)
-  "Make sure that text hidden by any means other than `org-fold-core--isearch-specs' is not searchable.
+  "Make sure that folded text is searchable when user whant so.
 This function is intended to be used as `isearch-filter-predicate'."
   (and
    ;; Check folding specs that cannot be searched
-   (seq-every-p (lambda (spec) (member spec org-fold-core--isearch-specs)) (org-fold-core-get-folding-specs-in-region beg end))
+   (seq-every-p (lambda (spec) (not (org-fold-core-get-folding-spec-property spec :isearch-ignore)))
+                (org-fold-core-get-folding-specs-in-region beg end))
    ;; Check 'invisible properties that are not folding specs
    (or (eq search-invisible t) ; User wants to search, allow it
        (let ((pos beg)
@@ -635,7 +625,7 @@ This function is intended to be used as `isearch-filter-predicate'."
 	 (while (and (< pos end)
 		     (not unknown-invisible-property))
 	   (when (and (get-text-property pos 'invisible)
-		      (not (member (get-text-property pos 'invisible) org-fold-core--isearch-specs)))
+                      (not (org-fold-core-folding-spec-p (get-text-property pos 'invisible))))
 	     (setq unknown-invisible-property t))
 	   (setq pos (next-single-char-property-change pos 'invisible)))
 	 (not unknown-invisible-property)))
@@ -657,7 +647,7 @@ This function is intended to be used as `isearch-filter-predicate'."
   "Reveal text in REGION found by isearch."
   (org-with-point-at (car region)
     (while (< (point) (cdr region))
-      (org-fold-core-show-set-visibility 'isearch)
+      (funcall org-fold-core-isearch-open-function (car region))
       (goto-char (org-fold-core-next-visibility-change (point) (cdr region) 'ignore-hidden)))))
 
 (defun org-fold-core--isearch-show-temporary (region hide-p)
@@ -666,26 +656,29 @@ Hide text instead if HIDE-P is non-nil."
   (if (not hide-p)
       (let ((pos (car region)))
 	(while (< pos (cdr region))
-	  (dolist (spec (org-fold-core-get-folding-spec 'all pos))
-	    (push (cons spec (org-fold-core-get-region-at-point spec pos)) (gethash region org-fold-core--isearch-local-regions)))
-          (org-fold-core--isearch-show region)
-	  (setq pos (org-fold-core-next-folding-state-change nil pos (cdr region)))))
+          (let ((spec-no-open (seq-find (lambda (spec) (not (org-fold-core-get-folding-spec-property spec :isearch-open))) (org-fold-core-get-folding-spec 'all pos))))
+            (if spec-no-open
+                ;; Skip regions folded with folding specs that cannot be opened.
+                (setq pos (org-fold-core-next-folding-state-change spec-no-open pos (cdr region)))
+	      (dolist (spec (org-fold-core-get-folding-spec 'all pos))
+	        (push (cons spec (org-fold-core-get-region-at-point spec pos)) (gethash region org-fold-core--isearch-local-regions)))
+              (org-fold-core--isearch-show region)
+	      (setq pos (org-fold-core-next-folding-state-change nil pos (cdr region)))))))
     (mapc (lambda (val) (org-fold-core-region (cadr val) (cddr val) t (car val))) (gethash region org-fold-core--isearch-local-regions))
     (remhash region org-fold-core--isearch-local-regions)))
 
 (defun org-fold-core--create-isearch-overlays (beg end)
   "Replace text property invisibility spec by overlays between BEG and END.
-All the regions with invisibility text property spec from
-`org-fold-core--isearch-specs' will be changed to use overlays instead
-of text properties.  The created overlays will be stored in
+All the searcheable folded regions will be changed to use overlays
+instead of text properties.  The created overlays will be stored in
 `org-fold-core--isearch-overlays'."
   (let ((pos beg))
     (while (< pos end)
       ;; We need loop below to make sure that we clean all invisible
       ;; properties, which may be nested.
-      (while (memq (get-text-property pos 'invisible) org-fold-core--isearch-specs)
+      (while (memq (get-text-property pos 'invisible) (org-fold-core-folding-spec-list))
 	(let* ((spec (get-text-property pos 'invisible))
-               (region (org-find-text-property-region pos (org-fold-core--property-symbol-get-create spec nil t))))
+               (region (org-fold-core-get-region-at-point spec pos)))
 	  ;; Changing text properties is considered buffer modification.
 	  ;; We do not want it here.
 	  (with-silent-modifications
@@ -697,15 +690,14 @@ of text properties.  The created overlays will be stored in
 	      (overlay-put o 'invisible spec)
 	      ;; `delete-overlay' here means that spec information will be lost
 	      ;; for the region. The region will remain visible.
-	      (overlay-put o 'isearch-open-invisible #'delete-overlay)
+              (when (org-fold-core-get-folding-spec-property spec :isearch-open)
+	        (overlay-put o 'isearch-open-invisible #'delete-overlay))
 	      (push o org-fold-core--isearch-overlays)))))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
 (defun org-fold-core--isearch-filter-predicate-overlays (beg end)
   "Return non-nil if text between BEG and END is deemed visible by isearch.
-This function is intended to be used as `isearch-filter-predicate'.
-Unlike `isearch-filter-visible', make text with `invisible' text property
-value listed in `org-fold-core--isearch-specs'."
+This function is intended to be used as `isearch-filter-predicate'."
   (org-fold-core--create-isearch-overlays beg end) ;; trick isearch by creating overlays in place of invisible text
   (isearch-filter-visible beg end))
 
@@ -725,7 +717,7 @@ value listed in `org-fold-core--isearch-specs'."
   (delete-overlay ov))
 
 (defun org-fold-core--clear-isearch-overlays ()
-  "Convert overlays from `org--isearch-overlays' back into using text properties."
+  "Convert overlays from `org-fold-core--isearch-overlays' back into using text properties."
   (when org-fold-core--isearch-overlays
     (mapc #'org-fold-core--clear-isearch-overlay org-fold-core--isearch-overlays)
     (setq org-fold-core--isearch-overlays nil)))
@@ -989,11 +981,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
     (unless (string-empty-p return-string)
-      (dolist (plist
-	       ;; Yes, it is a hack.
-               ;; The below gives us string representation as a list.
-               (let ((data (read (replace-regexp-in-string "#" "" (format "%S" return-string)))))
-		 (if (listp data) data (list data))))
+      (dolist (plist (mapcar #'caddr (object-intervals return-string)))
 	;; Only lists contain text properties.
 	(when (listp plist)
 	  ;; Collect all the relevant text properties.
