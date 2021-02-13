@@ -523,7 +523,7 @@ This function is the default value of the hook `org-cycle-hook'."
 	  (while (re-search-forward re nil t)
 	    (when (and (not (org-invisible-p))
 		       (org-invisible-p (line-end-position)))
-	      (org-fold-hide-entry))))
+	      (org-fold-heading nil))))
 	(org-cycle-hide-drawers 'all)
 	(org-cycle-show-empty-lines 'overview)))))
 
