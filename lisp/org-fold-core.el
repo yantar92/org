@@ -879,60 +879,6 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
 	     (setq pos
 		   (org-fold-core-next-folding-state-change spec to)))))))))
 
-;; Catching user edits inside invisible text
-(defun org-fold-core-check-before-invisible-edit (kind)
-  "Check is editing if kind KIND would be dangerous with invisible text around.
-The detailed reaction depends on the user option `org-fold-core-catch-invisible-edits'."
-  ;; First, try to get out of here as quickly as possible, to reduce overhead
-  (when (and org-fold-core-catch-invisible-edits
-	     (or (not (boundp 'visible-mode)) (not visible-mode))
-	     (or (org-invisible-p)
-		 (org-invisible-p (max (point-min) (1- (point))))))
-    ;; OK, we need to take a closer look.  Only consider invisibility
-    ;; caused by folding.
-    (let* ((invisible-at-point (org-fold-core-folded-p))
-	   ;; Assume that point cannot land in the middle of an
-	   ;; overlay, or between two overlays.
-	   (invisible-before-point
-	    (and (not invisible-at-point)
-		 (not (bobp))
-		 (org-fold-core-folded-p (1- (point)))))
-	   (border-and-ok-direction
-	    (or
-	     ;; Check if we are acting predictably before invisible
-	     ;; text.
-	     (and invisible-at-point
-		  (memq kind '(insert delete-backward)))
-	     ;; Check if we are acting predictably after invisible text
-	     ;; This works not well, and I have turned it off.  It seems
-	     ;; better to always show and stop after invisible text.
-	     (and (not invisible-at-point) invisible-before-point
-		  (memq kind '(insert delete)))
-	     )))
-      (when (or invisible-at-point invisible-before-point)
-	(when (eq org-fold-core-catch-invisible-edits 'error)
-	  (user-error "Editing in invisible areas is prohibited, make them visible first"))
-	(if (and org-custom-properties-hidden-p
-		 (y-or-n-p "Display invisible properties in this buffer? "))
-	    (org-toggle-custom-properties-visibility)
-	  ;; Make the area visible
-          (save-excursion
-	    (org-fold-core-show-set-visibility 'local))
-          (when invisible-before-point
-            (org-with-point-at (1- (point)) (org-fold-core-show-set-visibility 'local)))
-	  (cond
-	   ((eq org-fold-core-catch-invisible-edits 'show)
-	    ;; That's it, we do the edit after showing
-	    (message
-	     "Unfolding invisible region around point before editing")
-	    (sit-for 1))
-	   ((and (eq org-fold-core-catch-invisible-edits 'smart)
-		 border-and-ok-direction)
-	    (message "Unfolding invisible region around point before editing"))
-	   (t
-	    ;; Don't do the edit, make the user repeat it in full visibility
-	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
-
 ;;; Hanlding killing/yanking of folded text
 
 ;; By default, all the text properties of the killed text are
