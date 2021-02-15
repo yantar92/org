@@ -2080,9 +2080,25 @@ For example, this value makes those two functions available:
 
 With selected entries in an agenda buffer, `B R' will call
 the custom function `set-category' on the selected entries.
-Note that functions in this alist don't need to be quoted."
-  :type '(alist :key-type character :value-type (group function))
-  :version "24.1"
+Note that functions in this alist don't need to be quoted.
+
+You can also specify a function which collects arguments to be
+used for each call to your bulk custom function.  The argument
+collecting function will be run once and should return a list of
+arguments to pass to the bulk function.  For example:
+
+  \\='((?R set-category get-category))
+
+Now, `B R' will call the custom `get-category' which would prompt
+the user once for a category.  That category is then passed as an
+argument to `set-category' for each entry it's called against."
+  :type
+  '(alist :key-type character
+	  :value-type
+          (group (function :tag "Bulk Custom Function")
+		 (choice (function :tag "Bulk Custom Argument Function")
+		         (const :tag "No Bulk Custom Argument Function" nil))))
+  :package-version '(Org . "9.5")
   :group 'org-agenda)
 
 (defmacro org-agenda-with-point-at-orig-entry (string &rest body)
@@ -2090,6 +2106,7 @@ Note that functions in this alist don't need to be quoted."
 If STRING is non-nil, the text property will be fetched from position 0
 in that string.  If STRING is nil, it will be fetched from the beginning
 of the current line."
+  (declare (debug t))
   (org-with-gensyms (marker)
     `(let ((,marker (get-text-property (if ,string 0 (point-at-bol))
 				       'org-hd-marker ,string)))
@@ -2097,7 +2114,6 @@ of the current line."
 	 (save-excursion
 	   (goto-char ,marker)
 	   ,@body)))))
-(def-edebug-spec org-agenda-with-point-at-orig-entry (form body))
 
 (defun org-add-agenda-custom-command (entry)
   "Replace or add a command in `org-agenda-custom-commands'.
@@ -7558,7 +7574,8 @@ With a prefix argument, do so in all agenda buffers."
   "Filter lines in the agenda buffer that have a specific category.
 The category is that of the current line.
 With a `\\[universal-argument]' prefix argument, exclude the lines of that category.
-When there is already a category filter in place, this command removes the filter."
+When there is already a category filter in place, this command removes the
+filter."
   (interactive "P")
   (if (and org-agenda-filtered-by-category
 	   org-agenda-category-filter)
@@ -7734,9 +7751,9 @@ the variable `org-agenda-auto-exclude-function'."
 	   (negate (equal strip-or-accumulate '(4)))
 	   (cf (mapconcat #'identity org-agenda-category-filter ""))
 	   (tf (mapconcat #'identity org-agenda-tag-filter ""))
-	   (rpl-fn (lambda (c) (replace-regexp-in-string "^\+" "" (or (car c) ""))))
-	   (ef (replace-regexp-in-string "^\+" "" (or (car org-agenda-effort-filter) "")))
-	   (rf (replace-regexp-in-string "^\+" "" (or (car org-agenda-regexp-filter) "")))
+	   (rpl-fn (lambda (c) (replace-regexp-in-string "^\\+" "" (or (car c) ""))))
+	   (ef (replace-regexp-in-string "^\\+" "" (or (car org-agenda-effort-filter) "")))
+	   (rf (replace-regexp-in-string "^\\+" "" (or (car org-agenda-regexp-filter) "")))
 	   (ff (concat cf tf ef (when (not (equal rf "")) (concat "/" rf "/"))))
 	   (f-string (completing-read
 		      (concat
@@ -10486,10 +10503,15 @@ The prefix arg is passed through to the command if possible."
 		(completing-read "Function: " obarray #'fboundp t nil nil))))
 
 	(action
-	 (pcase (assoc action org-agenda-bulk-custom-functions)
-	   (`(,_ ,f) (setq cmd f) (setq redo-at-end t))
-	   (_ (user-error "Invalid bulk action: %c" action)))))
-
+         (setq cmd
+               (pcase (assoc action org-agenda-bulk-custom-functions)
+                 (`(,_ ,fn)
+                  fn)
+                 (`(,_ ,fn ,arg-fn)
+                  (apply #'apply-partially fn (funcall arg-fn)))
+                 (_
+                  (user-error "Invalid bulk action: %c" action))))
+         (setq redo-at-end t)))
       ;; Sort the markers, to make sure that parents are handled
       ;; before children.
       (setq entries (sort entries
