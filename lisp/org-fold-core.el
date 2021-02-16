@@ -175,7 +175,15 @@ The following properties are known:
                        `buffer-invisibility-spec' will be used as is.
                        Note that changing this property from nil to t may
                        clear the setting in `buffer-invisibility-spec'.
-- :alias            :: a list of aliases for the SPEC-SYMBOL.")
+- :alias            :: a list of aliases for the SPEC-SYMBOL.
+- :fragile          :: Must be a function accepting a single argument.
+                       Non-nil means that changes in region may cause
+                       the region to be revealed.  The region is
+                       revealed after changes if the function returns
+                       non-nil.
+                       The function called after changes are made with
+                       the argument: cons (beg . end) representing the
+                       folded region.")
 
 ;;; Utility functions
 
@@ -735,8 +743,8 @@ This function does nothing if text the only modification was changing
 text properties (for the sake of reducing overheads).
 
 If a text was inserted into invisible region, hide the inserted text.
-If the beginning/end line of a folded drawer/block was changed, unfold it.
-If a valid end line was inserted in the middle of the folded drawer/block, unfold it."
+If a text was insert in front/back of the region, hide it according to
+:font-sticky/:rear-sticky folding spec property."
   ;; If no insertions or deletions in buffer, skip all the checks.
   (unless (eq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
     (save-match-data
