@@ -32,6 +32,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'org-agenda)
 (require 'ox-ascii)
 (declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
 
@@ -281,7 +282,6 @@ re-read the iCalendar file.")
 		     (inlinetask . ignore)
 		     (planning . ignore)
 		     (section . ignore)
-		     (inner-template . (lambda (c i) c))
 		     (template . org-icalendar-template))
   :options-alist
   '((:exclude-tags
@@ -370,7 +370,6 @@ A headline is blocked when either
 		   (1- (length org-icalendar-date-time-format)))
 	      ?Z))
 
-(defvar org-agenda-default-appointment-duration) ; From org-agenda.el.
 (defun org-icalendar-convert-timestamp (timestamp keyword &optional end tz)
   "Convert TIMESTAMP to iCalendar format.
 
