@@ -185,6 +185,16 @@ The following properties are known:
                        the argument: cons (beg . end) representing the
                        folded region.")
 
+(defvar-local org-fold-core-extend-changed-region-functions nil
+  "Special hook run just before handling changes in buffer.
+
+This is used to account changes outside folded regions that still
+affect the folded region visibility.  For example, removing all stars
+at the beginning of a folded org-mode heading should trigger the
+folded text to be revealed.
+Each function is called with two arguments: beginning and the end of
+the changed region.")
+
 ;;; Utility functions
 
 (defsubst org-fold-core-folding-spec-list (&optional buffer)
@@ -370,7 +380,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
       (setq org-fold-core--specs (delete (alist-get spec org-fold-core--specs) org-fold-core--specs)))))
 
 (defun org-fold-core-initialize (&optional specs)
-  "Setup org-fold in current buffer using SPECS as value of `org-fold-core--specs'."
+  "Setup folding in current buffer using SPECS as value of `org-fold-core--specs'."
   (dolist (spec (or specs org-fold-core--specs))
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
@@ -768,6 +778,10 @@ property, unfold the region if the :fragile function returns non-nil."
             (when (and spec-to (org-fold-core-get-folding-spec-property spec-to :front-sticky))
               (org-fold-core-region from to t spec-to)))))
       ;; Process all the folded text between `from' and `to'.
+      (dolist (func org-fold-core-extend-changed-region-functions)
+        (let ((new-region (funcall func from to)))
+          (setq from (car new-region))
+          (setq to (cdr new-region))))
       (org-with-wide-buffer
        ;; Expand the considered region to include partially present fold.
        (let ((region-from (org-fold-core-get-region-at-point nil (max (point-min) (1- from))))

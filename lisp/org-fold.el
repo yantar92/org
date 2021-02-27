@@ -132,6 +132,7 @@
 ;;; Code:
 
 (require 'org-macs)
+(require 'org-fold-core)
 
 (defvar org-inlinetask-min-level)
 
@@ -250,443 +251,47 @@ smart            Make point visible, and do insertion/deletion if it is
 
 ;;; Core functionality
 
-;;;; Buffer-local folding specs
-
-(defvar-local org-fold--spec-priority-list '(org-fold-outline
-				     org-fold-drawer
-                                     org-fold-block)
-  "Priority of folding specs.
-If a region has multiple folding specs at the same time, only the
-first property from this list will be considered.")
-
-(defvar-local org-fold--spec-with-ellipsis '(org-fold-outline
-				     org-fold-drawer
-                                     org-fold-block)
-  "A list of folding specs, which should be indicated by `org-ellipsis'.")
-
-(defvar-local org-fold--isearch-specs '(org-fold-block
-				org-fold-drawer
-				org-fold-outline)
-  "List of text invisibility specs to be searched by isearch.
-By default ([2020-05-09 Sat]), isearch does not search in hidden text,
-which was made invisible using text properties.  Isearch will be forced
-to search in hidden text with any of the listed 'invisible property value.")
-
-(defsubst org-fold-get-folding-spec-for-element (type)
-  "Return name of folding spec for element TYPE."
-  (pcase type
-    (`headline 'org-fold-outline)
-    (`inlinetask 'org-fold-outline)
-    (`plain-list 'org-fold-outline)
-    (`block 'org-fold-block)
-    (`center-block 'org-fold-block)
-    (`comment-block 'org-fold-block)
-    (`dynamic-block 'org-fold-block)
-    (`example-block 'org-fold-block)
-    (`export-block 'org-fold-block)
-    (`quote-block 'org-fold-block)
-    (`special-block 'org-fold-block)
-    (`src-block 'org-fold-block)
-    (`verse-block 'org-fold-block)
-    (`drawer 'org-fold-drawer)
-    (`property-drawer 'org-fold-drawer)
-    (_ nil)))
-
-(defun org-fold-get-folding-spec-from-folding-prop (folding-prop)
-  "Return folding spec symbol used for folding property with name FOLDING-PROP."
-  (catch :exit
-    (dolist (spec org-fold--spec-priority-list)
-      (when (string-match-p (symbol-name spec)
-			    (symbol-name folding-prop))
-        (throw :exit spec)))))
-
-(defvar org-fold--property-symbol-cache (make-hash-table :test 'equal)
-  "Saved values of folding properties for (buffer . spec) conses.")
-
-;; This is the core function used to fold text in org buffers.  We use
-;; text properties to hide folded text, however 'invisible property is
-;; not directly used. Instead, we define unique text property (folding
-;; property) for every possible folding spec and add the resulting
-;; text properties into `char-property-alias-alist', so that
-;; 'invisible text property is automatically defined if any of the
-;; folding properties is non-nil.
-;; This approach lets us maintain multiple folds for the same text
-;; region - poor man's overlays (but much faster).
-;; Additionally, folding properties are ensured to be unique for
-;; different buffers (especially for indirect buffers). This is done
-;; to allow different folding states in indirect org buffers.
-;; If one changes folding state in a fresh indirect buffer, all the
-;; folding properties carried from the base buffer are updated to
-;; become unique in the new indirect buffer.
-(defun org-fold--property-symbol-get-create (spec &optional buffer return-only)
-  "Return a unique symbol suitable as folding text property.
-Return value is unique for folding SPEC in BUFFER.
-If the buffer already have buffer-local setup in `char-property-alias-alist'
-and the setup appears to be created for different buffer,
-copy the old invisibility state into new buffer-local text properties,
-unless RETURN-ONLY is non-nil."
-  (org-fold--check-spec spec)
-  (let* ((buf (or buffer (current-buffer))))
-    ;; Create unique property symbol for SPEC in BUFFER
-    (let ((local-prop (or (gethash (cons buf spec) org-fold--property-symbol-cache)
-			  (puthash (cons buf spec)
-				   (intern (format "org-fold--spec-%s-%S"
-						   (symbol-name spec)
-						   ;; (sxhash buf) appears to be not constant over time.
-						   ;; Using buffer-name is safe, since the only place where
-						   ;; buffer-local text property actually matters is an indirect
-						   ;; buffer, where the name cannot be same anyway.
-						   (sxhash (buffer-name buf))))
-                                   org-fold--property-symbol-cache))))
-      (prog1
-          local-prop
-        (unless return-only
-	  (with-current-buffer buf
-            ;; Update folding properties carried over from other
-            ;; buffer (implying that current buffer is indirect
-            ;; buffer). Normally, `char-property-alias-alist' in new
-            ;; indirect buffer is a copy of the same variable from
-            ;; the base buffer. Then, `char-property-alias-alist'
-            ;; would contain folding properties, which are not
-            ;; matching the generated `local-prop'.
-	    (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
-	      ;; Copy all the old folding properties to preserve the folding state
-	      (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
-		(org-with-wide-buffer
-		 (let* ((pos (point-min))
-			;; We know that folding properties have
-			;; folding spec in their name. Extract that
-			;; spec.
-			(spec (org-fold-get-folding-spec-from-folding-prop old-prop))
-                        ;; Generate new buffer-unique folding property
-			(new-prop (org-fold--property-symbol-get-create spec nil 'return-only)))
-                   ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
-		   (while (< pos (point-max))
-		     (let ((val (get-text-property pos old-prop)))
-		       (when val
-			 (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
-		     (setq pos (next-single-char-property-change pos old-prop)))
-                   ;; Make sure that folding property is non-stiky
-                   (setq-local text-property-default-nonsticky (delq (cons old-prop t) text-property-default-nonsticky)))))
-              ;; Make sure that folding property is non-stiky
-              (mapcar (lambda (spec)
-                        (setq-local text-property-default-nonsticky (append (list (cons (org-fold--property-symbol-get-create spec nil 'return-only) t))
-                                                                            text-property-default-nonsticky)))
-                      org-fold--spec-priority-list)
-              ;; Update `char-property-alias-alist' with folding
-              ;; properties unique for the current buffer.
-	      (setq-local char-property-alias-alist
-			  (cons (cons 'invisible
-				      (mapcar (lambda (spec)
-						(org-fold--property-symbol-get-create spec nil 'return-only))
-					      org-fold--spec-priority-list))
-				(remove (assq 'invisible char-property-alias-alist)
-					char-property-alias-alist))))))))))
-
 ;;; API
 
 ;;;; Modifying folding specs
 
-(defun org-fold-folding-spec-p (spec)
-  "Check if SPEC is a registered folding spec."
-  (and spec (memq spec org-fold--spec-priority-list)))
-
-(defun org-fold-add-folding-spec (spec &optional buffer no-ellipsis-p no-isearch-open-p append visible)
-  "Add a new folding SPEC in BUFFER.
-
-If VISIBLE is non-nil, visibility of text folded using SPEC will be
-controlled by `buffer-invisibility-spec'.  The folded text will have
-'invisible property set to SPEC (with lowest possible priority).
-
-SPEC must be a symbol.  BUFFER can be a buffer to set SPEC in, nil to
-set SPEC in current buffer, or 'all to set SPEC in all open `org-mode'
-buffers and all future org buffers.  Non-nil optional argument
-NO-ELLIPSIS-P means that folded text will not be indicated by
-`org-ellipsis'.  Non-nil optional argument NO-ISEARCH-OPEN-P means
-that folded text cannot be searched by isearch.  By default, the added
-SPEC will have highest priority among the previously defined specs.
-When optional APPEND argument is non-nil, SPEC will have the lowest
-priority instead.  If SPEC was already defined earlier, it will be
-redefined according to provided optional arguments."
-  (when (eq spec 'all) (user-error "Folding spec name 'all is not allowed"))
-  (when (eq buffer 'all)
-    (mapc (lambda (buf)
-	    (org-fold-add-folding-spec spec buf no-ellipsis-p no-isearch-open-p append visible))
-	  (org-buffer-list))
-    (setq-default org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-    (add-to-list 'org-fold--spec-priority-list spec append)
-    (setq-default org-fold--spec-priority-list org-fold--spec-priority-list)
-    (when no-ellipsis-p (setq-default org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
-    (unless no-ellipsis-p
-      (add-to-list 'org-fold--spec-with-ellipsis spec)
-      (setq-default org-fold--spec-with-ellipsis org-fold--spec-with-ellipsis))
-    (when no-isearch-open-p (setq-default org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
-    (unless no-isearch-open-p
-      (add-to-list 'org-fold--isearch-specs spec)
-      (setq-default org-fold--isearch-specs org-fold--isearch-specs)))
-  (let ((buffer (or buffer (current-buffer))))
-    (with-current-buffer buffer
-      (remove-from-invisibility-spec (cons spec t))
-      (remove-from-invisibility-spec spec)
-      (remove-from-invisibility-spec (list spec))
-      (unless (or visible
-		  (member (cons spec (not no-ellipsis-p)) buffer-invisibility-spec))
-	(add-to-invisibility-spec (cons spec (not no-ellipsis-p))))
-      (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-      (add-to-list 'org-fold--spec-priority-list spec append)
-      (when no-ellipsis-p (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis)))
-      (unless no-ellipsis-p (add-to-list 'org-fold--spec-with-ellipsis spec))
-      (when no-isearch-open-p (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
-      (unless no-isearch-open-p (add-to-list 'org-fold--isearch-specs spec)))))
-
-(defun org-fold-remove-folding-spec (spec &optional buffer)
-  "Remove a folding SPEC in BUFFER.
-
-SPEC must be a symbol.
-BUFFER can be a buffer to remove SPEC in, nil to remove SPEC in current buffer,
-or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers."
-  (org-fold--check-spec spec)
-  (when (eq buffer 'all)
-    (mapc (lambda (buf)
-	    (org-fold-remove-folding-spec spec buf))
-	  (org-buffer-list))
-    (setq-default org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-    (setq-default org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
-    (setq-default org-fold--isearch-specs (delq spec org-fold--isearch-specs)))
-  (let ((buffer (or buffer (current-buffer))))
-    (with-current-buffer buffer
-      (remove-from-invisibility-spec (cons spec t))
-      (remove-from-invisibility-spec spec)
-      (remove-from-invisibility-spec (list spec))
-      (setq org-fold--spec-priority-list (delq spec org-fold--spec-priority-list))
-      (setq org-fold--spec-with-ellipsis (delq spec org-fold--spec-with-ellipsis))
-      (setq org-fold--isearch-specs (delq spec org-fold--isearch-specs)))))
+(defalias org-fold-folding-spec-p #'org-fold-core-folding-spec-p)
+(defalias org-fold-add-folding-spec #'org-fold-core-add-folding-spec)
+(defalias org-fold-remove-folding-spec #'org-fold-core-remove-folding-spec)
 
 (defun org-fold-initialize ()
-  "Setup org-fold in current buffer."
-  (dolist (spec org-fold--spec-priority-list)
-    (org-fold-add-folding-spec spec nil (not (memq spec org-fold--spec-with-ellipsis)) (not (memq spec org-fold--isearch-specs))))
-  (add-hook 'after-change-functions 'org-fold--fix-folded-region nil 'local)
-  ;; Setup killing text
-  (setq-local filter-buffer-substring-function #'org-fold--buffer-substring-filter)
-  ;; Make isearch reveal context
-  (setq-local outline-isearch-open-invisible-function
-	      (lambda (&rest _) (org-fold-show-context 'isearch)))
-  (require 'isearch)
-  (if (boundp 'isearch-opened-regions)
-      ;; Use new implementation of isearch allowing to search inside text
-      ;; hidden via text properties.
-      (org-fold--isearch-setup 'text-properties)
-    (org-fold--isearch-setup 'overlays)))
+  "Setup folding in current Org buffer."
+  (let ((specs '((org-fold-outline
+                  (:alias . (headline inlinetask plain-list)))
+                 (org-fold-block
+                  (:alias . ( block center-block comment-block
+                              dynamic-block example-block export-block
+                              quote-block special-block src-block
+                              verse-block)))
+                 (org-fold-drawer
+                  (:alias . (drawer property-drawer))))))
+    (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
+    (setq-local outline-isearch-open-invisible-function #'org-fold--isearch-reveal)
+    (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
+    (org-fold-core-initialize specs)))
 
 ;;;; Searching and examining folded text
 
-(defun org-fold-folded-p (&optional pos spec-or-element)
-  "Non-nil if the character after POS is folded.
-If POS is nil, use `point' instead.
-If SPEC-OR-ELEMENT is a folding spec, only check the given folding spec.
-If SPEC-OR-ELEMENT is a foldable element (see
-`org-fold-get-folding-spec-for-element'), only check folding spec for
-the given element.  Note that multiple elements may have same folding
-specs."
-  (org-fold-get-folding-spec (or (org-fold-get-folding-spec-for-element spec-or-element) spec-or-element) pos))
-
-(defun org-fold-get-folding-spec (&optional spec-or-element pom)
-  "Get folding state at `point' or POM.
-Return nil if there is no folding at point or POM.
-If SPEC-OR-ELEMENT is nil, return a folding spec with highest priority
-among present at `point' or POM.
-If SPEC-OR-ELEMENT is 'all, return the list of all present folding
-specs.
-If SPEC-OR-ELEMENT is a valid folding spec, return the corresponding
-folding spec (if the text is folded using that spec).
-If SPEC-OR-ELEMENT is a foldable org element (see
-`org-fold-get-folding-spec-for-element'), act as if the element's
-folding spec was used as an argument.  Note that multiple elements may
-have same folding specs."
-  (let ((spec (or (org-fold-get-folding-spec-for-element spec-or-element)
-		  spec-or-element)))
-    (when (and spec (not (eq spec 'all))) (org-fold--check-spec spec))
-    (org-with-point-at (or pom (point))
-      (if (and spec (not (eq spec 'all)))
-	  (get-char-property (point) (org-fold--property-symbol-get-create spec nil t))
-	(let ((result))
-	  (dolist (spec org-fold--spec-priority-list)
-	    (let ((val (get-char-property (point) (org-fold--property-symbol-get-create spec nil t))))
-	      (when val
-		(push val result))))
-          (if (eq spec 'all)
-              result
-            (car (last result))))))))
-
-(defun org-fold-get-folding-specs-in-region (beg end)
-  "Get all folding specs in region from BEG to END."
-  (let ((pos beg)
-	all-specs)
-    (while (< pos end)
-      (setq all-specs (append all-specs (org-fold-get-folding-spec nil pos)))
-      (setq pos (org-fold-next-folding-state-change nil pos end)))
-    (unless (listp all-specs) (setq all-specs (list all-specs)))
-    (delete-dups all-specs)))
-
-(defun org-fold-get-region-at-point (&optional spec pom)
-  "Return region folded using SPEC at POM.
-If SPEC is nil, return the largest possible folded region.
-The return value is a cons of beginning and the end of the region.
-Return nil when no fold is present at point of POM."
-  (when spec (org-fold--check-spec spec))
-  (org-with-point-at (or pom (point))
-    (if spec
-	(org-find-text-property-region (point) (org-fold--property-symbol-get-create spec nil t))
-      (let ((region (cons (point) (point))))
-	(dolist (spec (org-fold-get-folding-spec 'all))
-          (let ((local-region (org-fold-get-region-at-point spec)))
-            (when (< (car local-region) (car region))
-              (setcar region (car local-region)))
-            (when (> (cdr local-region) (cdr region))
-              (setcdr region (cdr local-region)))))
-	(unless (eq (car region) (cdr region)) region)))))
-
-;; FIXME: Optimize performance
-(defun org-fold-next-visibility-change (&optional pos limit ignore-hidden-p previous-p)
-  "Return next point from POS up to LIMIT where text becomes visible/invisible.
-By default, text hidden by any means (i.e. not only by folding, but
-also via fontification) will be considered.
-If IGNORE-HIDDEN-P is non-nil, consider only folded text.
-If PREVIOUS-P is non-nil, search backwards."
-  (let* ((pos (or pos (point)))
-	 (invisible-p (if ignore-hidden-p
-			  #'org-fold-folded-p
-			#'invisible-p))
-         (invisible-initially? (funcall invisible-p pos))
-	 (limit (or limit (if previous-p
-			      (point-min)
-			    (point-max))))
-         (cmp (if previous-p #'> #'<))
-	 (next-change (if previous-p
-			  (if ignore-hidden-p
-                              (lambda (p) (org-fold-previous-folding-state-change (org-fold-get-folding-spec nil p) p limit))
-			    (lambda (p) (max limit (1- (previous-single-char-property-change p 'invisible nil limit)))))
-                        (if ignore-hidden-p
-                            (lambda (p) (org-fold-next-folding-state-change (org-fold-get-folding-spec nil p) p limit))
-			  (lambda (p) (next-single-char-property-change p 'invisible nil limit)))))
-	 (next pos))
-    (while (and (funcall cmp next limit)
-		(not (xor invisible-initially? (funcall invisible-p next))))
-      (setq next (funcall next-change next)))
-    next))
-
-(defun org-fold-previous-visibility-change (&optional pos limit ignore-hidden-p)
-  "Call `org-fold-next-visibility-change' searching backwards."
-  (org-fold-next-visibility-change pos limit ignore-hidden-p 'previous))
-
-(defun org-fold-next-folding-state-change (&optional spec-or-element pos limit previous-p)
-  "Return next point where folding state changes relative to POS up to LIMIT.
-If SPEC-OR-ELEMENT is nil, return next point where _any_ single folding
-type changes.
-For example, (org-fold-next-folding-state-change nil) with point
-somewhere in the below structure will return the nearest <...> point.
-
-* Headline <begin outline fold>
-:PROPERTIES:<begin drawer fold>
-:ID: test
-:END:<end drawer fold>
-
-Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor ligula erat quis odio.
-
-** Another headline
-:DRAWER:<begin drawer fold>
-:END:<end drawer fold>
-** Yet another headline
-<end of outline fold>
-
-If SPEC-OR-ELEMENT is a folding spec symbol, only consider that folded spec.
-If SPEC-OR-ELEMENT is a foldable element, consider that element's
-folding spec (see `org-fold-get-folding-spec-for-element').  Note that
-multiple elements may have the same folding spec.
-
-If SPEC-OR-ELEMENT is a list, only consider changes of folding states
-from the list.
-
-Search backwards when PREVIOUS-P is non-nil."
-  (when (and spec-or-element (symbolp spec-or-element))
-    (setq spec-or-element (list spec-or-element)))
-  (when spec-or-element
-    (setq spec-or-element
-	  (mapcar (lambda (spec-or-element)
-		    (or (org-fold-get-folding-spec-for-element spec-or-element)
-			spec-or-element))
-                  spec-or-element))
-    (mapc #'org-fold--check-spec spec-or-element))
-  (unless spec-or-element
-    (setq spec-or-element org-fold--spec-priority-list))
-  (let* ((pos (or pos (point)))
-	 (props (mapcar (lambda (el) (org-fold--property-symbol-get-create el nil t))
-			spec-or-element))
-         (cmp (if previous-p
-		  #'max
-		#'min))
-         (next-change (if previous-p
-			  (lambda (prop) (max (or limit (point-min)) (previous-single-char-property-change pos prop nil (or limit (point-min)))))
-			(lambda (prop) (next-single-char-property-change pos prop nil (or limit (point-max)))))))
-    (apply cmp (mapcar next-change props))))
-
-(defun org-fold-previous-folding-state-change (&optional spec-or-element pos limit)
-  "Call `org-fold-next-folding-state-change' searching backwards."
-  (org-fold-next-folding-state-change spec-or-element pos limit 'previous))
-
-(defun org-fold-search-forward (spec &optional limit)
-  "Search next region folded via folding SPEC up to LIMIT.
-Move point right after the end of the region, to LIMIT, or
-`point-max'.  The `match-data' will contain the region."
-  (org-fold--check-spec spec)
-  (let ((prop-symbol (org-fold--property-symbol-get-create spec nil t)))
-    (goto-char (or (next-single-char-property-change (point) prop-symbol nil limit) limit (point-max)))
-    (when (and (< (point) (or limit (point-max)))
-	       (not (org-fold-get-folding-spec spec)))
-      (goto-char (next-single-char-property-change (point) prop-symbol nil limit)))
-    (when (org-fold-get-folding-spec spec)
-      (let ((region (org-fold-get-region-at-point spec)))
-	(when (< (cdr region) (or limit (point-max)))
-	  (goto-char (1+ (cdr region)))
-          (set-match-data (list (set-marker (make-marker) (car region) (current-buffer))
-				(set-marker (make-marker) (cdr region) (current-buffer)))))))))
+(defalias org-fold-folded-p #'org-fold-core-folded-p)
+(defalias org-fold-get-folding-spec #'org-fold-core-get-folding-spec)
+(defalias org-fold-get-folding-specs-in-region #'org-fold-core-get-folding-specs-in-region)
+(defalias org-fold-get-region-at-point #'org-fold-core-get-region-at-point)
+(defalias org-fold-next-visibility-change #'org-fold-core-next-visibility-change)
+(defalias org-fold-previous-visibility-change #'org-fold-core-previous-visibility-change)
+(defalias org-fold-next-folding-state-change #'org-fold-core-next-folding-state-change)
+(defalias org-fold-previous-folding-state-change #'org-fold-core-previous-folding-state-change)
+(defalias org-fold-search-forward #'org-fold-core-search-forward)
 
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
 
 ;;;;; Region visibility
 
-;; This is the core function performing actual folding/unfolding.  The
-;; folding state is stored in text property (folding property)
-;; returned by `org-fold--property-symbol-get-create'.  The value of the
-;; folding property is folding spec symbol.
-(defun org-fold-region (from to flag &optional spec-or-element)
-  "Hide or show lines from FROM to TO, according to FLAG.
-SPEC-OR-ELEMENT is the folding spec or foldable element, as a symbol.
-If SPEC-OR-ELEMENT is omitted and FLAG is nil, unfold everything in the region."
-  (let ((spec (or (org-fold-get-folding-spec-for-element spec-or-element)
-		  spec-or-element)))
-    (when spec (org-fold--check-spec spec))
-    (with-silent-modifications
-      (org-with-wide-buffer
-       (if flag
-	   (if (not spec)
-               (error "Calling `org-fold-region' with missing SPEC")
-	     (put-text-property from to
-				(org-fold--property-symbol-get-create spec)
-				spec)
-	     (put-text-property from to
-				'isearch-open-invisible
-				#'org-fold--isearch-show)
-	     (put-text-property from to
-				'isearch-open-invisible-temporary
-				#'org-fold--isearch-show-temporary))
-	 (if (not spec)
-             (dolist (spec org-fold--spec-priority-list)
-               (remove-text-properties from to
-				       (list (org-fold--property-symbol-get-create spec) nil)))
-	   (remove-text-properties from to
-				   (list (org-fold--property-symbol-get-create spec) nil))))))))
+(defalias org-fold-region #'org-fold-core-region)
 
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
@@ -1074,151 +679,27 @@ go to the parent and show the entire tree."
 	     (run-hook-with-args 'org-cycle-hook 'subtree))))
 	(t (org-fold-show-set-visibility 'lineage))))
 
-;;; Internal functions
-
-(defun org-fold--check-spec (spec)
-  "Throw an error if SPEC is not present in `org-fold--spec-priority-list'."
-  (unless (and spec (memq spec org-fold--spec-priority-list))
-    (error "%s is not a valid folding spec" spec)))
-
 ;;; Make isearch search in some text hidden via text propertoes
 
-(defvar org-fold--isearch-overlays nil
-  "List of overlays temporarily created during isearch.
-This is used to allow searching in regions hidden via text properties.
-As for [2020-05-09 Sat], Isearch only has special handling of hidden overlays.
-Any text hidden via text properties is not revealed even if `search-invisible'
-is set to 't.")
-
-(defvar-local org-fold--isearch-local-regions (make-hash-table :test 'equal)
-  "Hash table storing temporarily shown folds from isearch matches.")
-
-(defun org-fold--isearch-setup (type)
-  "Initialize isearch in org buffer.
-TYPE can be either `text-properties' or `overlays'."
-  (pcase type
-    (`text-properties
-     (setq-local search-invisible 'open-all)
-     (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-state nil 'local)
-     (add-hook 'isearch-mode-hook #'org-fold--clear-isearch-state nil 'local)
-     (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate-text-properties))
-    (`overlays
-     (setq-local isearch-filter-predicate #'org-fold--isearch-filter-predicate-overlays)
-     (add-hook 'isearch-mode-end-hook #'org-fold--clear-isearch-overlays nil 'local))
-    (_ (error "%s: Unknown type of setup for `org-fold--isearch-setup'" type))))
-
-(defun org-fold--isearch-filter-predicate-text-properties (beg end)
-  "Make sure that text hidden by any means other than `org-fold--isearch-specs' is not searchable.
-This function is intended to be used as `isearch-filter-predicate'."
-  (and
-   ;; Check folding specs that cannot be searched
-   (seq-every-p (lambda (spec) (member spec org-fold--isearch-specs)) (org-fold-get-folding-specs-in-region beg end))
-   ;; Check 'invisible properties that are not folding specs
-   (or (eq search-invisible t) ; User wants to search, allow it
-       (let ((pos beg)
-	     unknown-invisible-property)
-	 (while (and (< pos end)
-		     (not unknown-invisible-property))
-	   (when (and (get-text-property pos 'invisible)
-		      (not (member (get-text-property pos 'invisible) org-fold--isearch-specs)))
-	     (setq unknown-invisible-property t))
-	   (setq pos (next-single-char-property-change pos 'invisible)))
-	 (not unknown-invisible-property)))
-   (or (and (eq search-invisible t)
-	    ;; FIXME: this opens regions permanenly for now.
-            ;; I also tried to force search-invisible 'open-all around
-            ;; `isearch-range-invisible', but that somehow causes
-            ;; infinite loop in `isearch-lazy-highlight'.
-            (prog1 t
-	      ;; We still need to reveal the folded location
-	      (org-fold--isearch-show-temporary (cons beg end) nil)))
-       (not (isearch-range-invisible beg end)))))
-
-(defun org-fold--clear-isearch-state ()
-  "Clear `org-fold--isearch-local-regions'."
-  (clrhash org-fold--isearch-local-regions))
-
-(defun org-fold--isearch-show (region)
-  "Reveal text in REGION found by isearch."
-  (org-with-point-at (car region)
-    (while (< (point) (cdr region))
-      (org-fold-show-set-visibility 'isearch)
-      (goto-char (org-fold-next-visibility-change (point) (cdr region) 'ignore-hidden)))))
-
-(defun org-fold--isearch-show-temporary (region hide-p)
-  "Temporarily reveal text in REGION.
-Hide text instead if HIDE-P is non-nil."
-  (if (not hide-p)
-      (let ((pos (car region)))
-	(while (< pos (cdr region))
-	  (dolist (spec (org-fold-get-folding-spec 'all pos))
-	    (push (cons spec (org-fold-get-region-at-point spec pos)) (gethash region org-fold--isearch-local-regions)))
-          (org-fold--isearch-show region)
-	  (setq pos (org-fold-next-folding-state-change nil pos (cdr region)))))
-    (mapc (lambda (val) (org-fold-region (cadr val) (cddr val) t (car val))) (gethash region org-fold--isearch-local-regions))
-    (remhash region org-fold--isearch-local-regions)))
-
-(defun org-fold--create-isearch-overlays (beg end)
-  "Replace text property invisibility spec by overlays between BEG and END.
-All the regions with invisibility text property spec from
-`org-fold--isearch-specs' will be changed to use overlays instead
-of text properties.  The created overlays will be stored in
-`org-fold--isearch-overlays'."
-  (let ((pos beg))
-    (while (< pos end)
-      ;; We need loop below to make sure that we clean all invisible
-      ;; properties, which may be nested.
-      (while (memq (get-text-property pos 'invisible) org-fold--isearch-specs)
-	(let* ((spec (get-text-property pos 'invisible))
-               (region (org-find-text-property-region pos (org-fold--property-symbol-get-create spec nil t))))
-	  ;; Changing text properties is considered buffer modification.
-	  ;; We do not want it here.
-	  (with-silent-modifications
-            (org-fold-region (car region) (cdr region) nil spec)
-	    ;; The overlay is modelled after `outline-flag-region'
-	    ;; [2020-05-09 Sat] overlay for 'outline blocks.
-	    (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
-	      (overlay-put o 'evaporate t)
-	      (overlay-put o 'invisible spec)
-	      ;; `delete-overlay' here means that spec information will be lost
-	      ;; for the region. The region will remain visible.
-	      (overlay-put o 'isearch-open-invisible #'delete-overlay)
-	      (push o org-fold--isearch-overlays)))))
-      (setq pos (next-single-property-change pos 'invisible nil end)))))
-
-(defun org-fold--isearch-filter-predicate-overlays (beg end)
-  "Return non-nil if text between BEG and END is deemed visible by isearch.
-This function is intended to be used as `isearch-filter-predicate'.
-Unlike `isearch-filter-visible', make text with `invisible' text property
-value listed in `org-fold--isearch-specs'."
-  (org-fold--create-isearch-overlays beg end) ;; trick isearch by creating overlays in place of invisible text
-  (isearch-filter-visible beg end))
-
-(defun org-fold--clear-isearch-overlay (ov)
-  "Convert OV region back into using text properties."
-  (let ((spec (overlay-get ov 'invisible)))
-    ;; Ignore deleted overlays.
-    (when (and spec
-	       (overlay-buffer ov))
-      ;; Changing text properties is considered buffer modification.
-      ;; We do not want it here.
-      (with-silent-modifications
-	(when (<= (overlay-end ov) (point-max))
-	  (org-fold-region (overlay-start ov) (overlay-end ov) t spec)))))
-  (when (member ov isearch-opened-overlays)
-    (setq isearch-opened-overlays (delete ov isearch-opened-overlays)))
-  (delete-overlay ov))
-
-(defun org-fold--clear-isearch-overlays ()
-  "Convert overlays from `org--isearch-overlays' back into using text properties."
-  (when org-fold--isearch-overlays
-    (mapc #'org-fold--clear-isearch-overlay org-fold--isearch-overlays)
-    (setq org-fold--isearch-overlays nil)))
+(defun org-fold--isearch-reveal (&rest _)
+  "Reveal text at POS found by isearch."
+  (org-fold-show-set-visibility 'isearch))
 
 ;;; Handling changes in folded elements
 
-(defvar-local org-fold--last-buffer-chars-modified-tick nil
-  "Variable storing the last return value of `buffer-chars-modified-tick'.")
+(defun org-fold--extend-changed-region (from to)
+  "Consider folded regions in the next/previous line when fixing
+region visibility.
+This function is intended to be used as a member of
+`org-fold-core-extend-changed-region-functions'."
+  ;; If the edit is done in the first line of a folded drawer/block,
+  ;; the folded text is only starting from the next line and needs to
+  ;; be checked.
+  (setq to (save-excursion (goto-char to) (line-beginning-position 2)))
+  ;; If the ":END:" line of the drawer is deleted, the folded text is
+  ;; only ending at the previous line and needs to be checked.
+  (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
+  (cons from to))
 
 (defun org-fold--fix-folded-region (from to _)
   "Process modifications in folded elements within FROM . TO region.
@@ -1425,73 +906,6 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	   (t
 	    ;; Don't do the edit, make the user repeat it in full visibility
 	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
-
-;;; Hanlding killing/yanking of folded text
-
-;; By default, all the text properties of the killed text are
-;; preserved, including the folding text properties.  This can be
-;; awkward when we copy a text from an indirect buffer to another
-;; indirect buffer (or the base buffer).  The copied text might be
-;; visible in the source buffer, but might disappear if we yank it in
-;; another buffer.  This happens in the following situation:
-;; ---- base buffer ----
-;; * Headline<begin fold>
-;; Some text hidden in the base buffer, but revealed in the indirect
-;; buffer.<end fold>
-;; * Another headline
-;;
-;; ---- end of base buffer ----
-;; ---- indirect buffer ----
-;; * Headline
-;; Some text hidden in the base buffer, but revealed in the indirect
-;; buffer.
-;; * Another headline
-;;
-;; ---- end of indirect buffer ----
-;; If we copy the text under "Headline" from the indirect buffer and
-;; insert it under "Another headline" in the base buffer, the inserted
-;; text will be hidden since it's folding text properties are copyed.
-;; Basically, the copied text would have two sets of folding text
-;; properties: (1) Properties for base buffer telling that the text is
-;; hidden; (2) Properties for the indirect buffer telling that the
-;; text is visible.  The first set of the text properties in inactive
-;; in the indirect buffer, but will become active once we yank the
-;; text back into the base buffer.
-;;
-;; To avoid the above situation, we simply clear all the properties,
-;; unrealated to current buffer when a text is copied.
-;; FIXME: Ideally, we may want to carry the folding state of copied
-;; text between buffer (probably via user customisation).
-(defun org-fold--buffer-substring-filter (beg end &optional delete)
-  "Clear folding state in killed text.
-This function is intended to be used as `filter-buffer-substring-function'.
-The arguments and return value are as specified for `filter-buffer-substring'."
-  (let ((return-string (buffer-substring--filter beg end delete))
-	;; The list will be used as an argument to `remove-text-properties'.
-	props-list)
-    ;; There is no easy way to examine all the text properties of a
-    ;; string, so we utilise the fact that printed string
-    ;; representation lists all its properties.
-    ;; Loop over the elements of string representation.
-    (unless (string-empty-p return-string)
-      (dolist (plist (mapcar #'caddr (object-intervals return-string)))
-	;; Only lists contain text properties.
-	(when (listp plist)
-	  ;; Collect all the relevant text properties.
-	  (while plist
-            (let* ((prop (car plist))
-		   (prop-name (symbol-name prop)))
-              ;; We do not care about values.
-              (setq plist (cddr plist))
-              (when (string-match-p "org-fold--spec" prop-name)
-		;; Leave folding specs from current buffer.  See comments
-		;; in `org-fold--property-symbol-get-create' to understand why it
-		;; works.
-		(unless (member prop (alist-get 'invisible char-property-alias-alist))
-		  (push t props-list)
-		  (push prop props-list)))))))
-      (remove-text-properties 0 (length return-string) props-list return-string))
-    return-string))
 
 (provide 'org-fold)
 
