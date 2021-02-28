@@ -205,7 +205,7 @@ the changed region.")
 (defun org-fold-core-get-folding-spec-from-alias (spec-or-alias)
   "Return the folding spec symbol for SPEC-OR-ALIAS."
   (and spec-or-alias
-       (or (memq spec-or-alias (org-fold-core-folding-spec-list))
+       (or (and (memq spec-or-alias (org-fold-core-folding-spec-list)) spec-or-alias)
            (seq-some (lambda (spec) (and (memq spec-or-alias (alist-get :alias (alist-get spec org-fold-core--specs))) spec)) (org-fold-core-folding-spec-list)))))
 
 (defun org-fold-core-folding-spec-p (spec-or-alias)
