@@ -399,8 +399,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
   "Non-nil if the character after POS is folded.
 If POS is nil, use `point' instead.
 If SPEC-OR-ALIAS is a folding spec, only check the given folding spec.
-If SPEC-OR-ALIAS is a foldable element (see
-`org-fold-core-get-folding-spec-for-element'), only check folding spec for
+If SPEC-OR-ALIAS is a foldable element, only check folding spec for
 the given element.  Note that multiple elements may have same folding
 specs."
   (org-fold-core-get-folding-spec spec-or-alias pos))
@@ -414,8 +413,7 @@ If SPEC-OR-ALIAS is 'all, return the list of all present folding
 specs.
 If SPEC-OR-ALIAS is a valid folding spec, return the corresponding
 folding spec (if the text is folded using that spec).
-If SPEC-OR-ALIAS is a foldable org element (see
-`org-fold-core-get-folding-spec-for-element'), act as if the element's
+If SPEC-OR-ALIAS is a foldable org element, act as if the element's
 folding spec was used as an argument.  Note that multiple elements may
 have same folding specs."
   (let ((spec (if (eq spec-or-alias 'all)
@@ -525,7 +523,7 @@ Search backwards when PREVIOUS-P is non-nil."
   (when spec-or-alias
     (setq spec-or-alias
 	  (mapcar (lambda (spec-or-alias)
-		    (or (org-fold-core-get-folding-spec-for-element spec-or-alias)
+		    (or (org-fold-core-get-folding-spec-from-alias spec-or-alias)
 			spec-or-alias))
                   spec-or-alias))
     (mapc #'org-fold-core--check-spec spec-or-alias))
