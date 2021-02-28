@@ -4692,12 +4692,21 @@ The following commands are available:
 \\{org-mode-map}"
   (org-load-modules-maybe)
   (org-install-agenda-files-menu)
-  (org-fold-initialize)
+  (org-fold-initialize (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis))
   ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
-  (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible)
+  (org-fold-add-folding-spec 'org-link-description
+                          '((:ellipsis . nil)
+                            (:visible . t)
+                            (:isearch-open . nil))
+                          nil
+                          'append)
   (when org-link-descriptive
     ;; This is applied on the whole link.
-    (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
+    (org-fold-add-folding-spec 'org-link
+                            '((:ellipsis . nil)
+                              (:isearch-open . nil))
+                            nil
+                            'append))
   (setq-local outline-regexp org-outline-regexp)
   (setq-local outline-level 'org-outline-level)
   (setq bidi-paragraph-direction 'left-to-right)
@@ -5085,21 +5094,43 @@ This includes angle, plain, and bracket links."
               (unless (or (derived-mode-p 'org-mode)
 			  (and (org-fold-folding-spec-p 'org-link-description)
                                (org-fold-folding-spec-p 'org-link)))
-		(org-fold-initialize)
-                (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible)
+                (org-fold-initialize (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis))
+                ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
+                (org-fold-add-folding-spec 'org-link-description
+                                        '((:ellipsis . nil)
+                                          (:visible . t)
+                                          (:isearch-open . nil))
+                                        nil
+                                        'append)
                 (when org-link-descriptive
-		  ;; This is applied on the whole link.
-		  (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append)))
+                  ;; This is applied on the whole link.
+                  (org-fold-add-folding-spec 'org-link
+                                          '((:ellipsis . nil)
+                                            (:isearch-open . nil))
+                                          nil
+                                          'append)))
 	      ;; Handle invisible parts in bracket links.
 	      (let ((spec (or (org-link-get-parameter type :display)
 			      'org-link)))
                 (unless (org-fold-folding-spec-p spec)
-                  (org-fold-add-folding-spec spec nil nil nil 'append 'visible))
+                  (org-fold-add-folding-spec spec
+                                          '((:visible . t))
+                                          nil
+                                          'append))
                 (unless (org-fold-folding-spec-p 'org-link-description)
-		  (org-fold-add-folding-spec 'org-link-description nil t 'no-isearch-open 'append 'visible))
+                  (org-fold-add-folding-spec 'org-link-description
+                                          '((:ellipsis . nil)
+                                            (:visible . t)
+                                            (:isearch-open . nil))
+                                          nil
+                                          'append))
                 (unless (or (org-fold-folding-spec-p 'org-link)
 			    (not org-link-descriptive))
-		  (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
+                  (org-fold-add-folding-spec 'org-link
+                                          '((:ellipsis . nil)
+                                            (:isearch-open . nil))
+                                          nil
+                                          'append))
                 (org-fold-region start end nil 'org-link)
                 (org-fold-region start end nil 'org-link-description)
                 ;; We are folding the whole emphasised text with SPEC
@@ -5668,7 +5699,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
   "Non-nil when custom properties are hidden.")
 
 (defcustom org-custom-properties-hide-emptied-drawers nil
-  "Non-nil means that drawers containing only `org-custom-properties' will be hidden together with the properties."
+  "When non-nil, drawers with only `org-custom-properties' are completely hidden."
   :group 'org
   :type '(choice
 	  (const :tag "Don't hide emptied drawers" nil)
@@ -19776,13 +19807,10 @@ See `org-forward-paragraph'."
     (cond
      ((eobp) nil)
      ;; When inside a folded part, move out of it.
-     ((pcase (org-fold-get-folding-spec)
-	((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
-             (pred (eq (org-fold-get-folding-spec-for-element 'block))))
-	 (goto-char (cdr (org-fold-get-region-at-point)))
-	 (forward-line)
-	 t)
-	(_ nil)))
+     ((when  (seq-some #'org-fold-get-folding-spec '(headline block))
+        (goto-char (cdr (org-fold-get-region-at-point)))
+        (forward-line)
+        t))
      (t
       (let* ((element (org--paragraph-at-point))
 	     (type (org-element-type element))
@@ -19794,17 +19822,13 @@ See `org-forward-paragraph'."
 	  (forward-char)
 	  (org--forward-paragraph-once))
 	 ;; If the element is folded, skip it altogether.
-	 ((pcase (org-with-point-at post-affiliated
-		   (org-fold-get-folding-spec nil (line-end-position)))
-	    ((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
-		 (pred (eq (org-fold-get-folding-spec-for-element 'block))))
-	     (goto-char (cdr (org-fold-get-region-at-point
-			      nil
-			      (org-with-point-at post-affiliated
-				(line-end-position)))))
-	     (forward-line)
-	     t)
-	    (_ nil)))
+         ((when  (seq-some #'org-fold-get-folding-spec '(headline block))
+            (goto-char (cdr (org-fold-get-region-at-point
+			     nil
+			     (org-with-point-at post-affiliated
+			       (line-end-position)))))
+	    (forward-line)
+	    t))
 	 ;; At a greater element, move inside.
 	 ((and contents-begin
 	       (> contents-begin (point))
@@ -19856,13 +19880,11 @@ See `org-backward-paragraph'."
 	   (save-excursion (skip-chars-backward " \t\n") (bobp)))
       (goto-char (point-min)))
      ;; When inside a folded part, move out of it.
-     ((pcase (org-fold-get-folding-spec nil (1- (point)))
-	((or (pred (eq (org-fold-get-folding-spec-for-element 'headline)))
-             (pred (eq (org-fold-get-folding-spec-for-element 'block))))
-	 (goto-char (1- (car (org-fold-get-region-at-point nil (1- (point))))))
-	 (org--backward-paragraph-once)
-	 t)
-	(_ nil)))
+     ((when  (seq-some (lambda (spec) (org-fold-get-folding-spec spec (1- (point))))
+                       '(headline block))
+        (goto-char (1- (car (org-fold-get-region-at-point nil (1- (point))))))
+	(org--backward-paragraph-once)
+	t))
      (t
       (let* ((element (org--paragraph-at-point))
 	     (type (org-element-type element))

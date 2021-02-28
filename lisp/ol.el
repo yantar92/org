@@ -1433,7 +1433,11 @@ If the link is in hidden text, expose it."
   "Toggle the literal or descriptive display of links in current buffer."
   (interactive)
   (if org-link-descriptive (org-fold-remove-folding-spec 'org-link)
-    (org-fold-add-folding-spec 'org-link nil 'hide-completely 'no-isearch-open 'append))
+    (org-fold-add-folding-spec 'org-link
+                               '((:ellipsis . nil)
+                                 (:isearch-open . nil))
+                               nil
+                               'append))
   (org-restart-font-lock)
   (setq org-link-descriptive (not org-link-descriptive)))
 
