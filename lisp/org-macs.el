@@ -116,45 +116,10 @@
   (declare (debug (body)))
   `(let ((inhibit-read-only t)) ,@body))
 
-(defmacro org-save-outline-visibility (use-markers &rest body)
-  "Save and restore outline visibility around BODY.
-If USE-MARKERS is non-nil, use markers for the positions.  This
-means that the buffer may change while running BODY, but it also
-means that the buffer should stay alive during the operation,
-because otherwise all these markers will point to nowhere."
-  (declare (debug (form body)) (indent 1))
-  (org-with-gensyms (data invisible-specs markers?)
-    `(let* ((,invisible-specs '(,(org-fold-get-folding-spec-for-element 'block)
-				,(org-fold-get-folding-spec-for-element 'headline)))
-	    (,markers? ,use-markers)
-	    (,data
-             (org-with-wide-buffer
-              (let ((pos (point-min))
-		    data-val)
-		(while (< pos (point-max))
-                  (dolist (spec (org-fold-get-folding-spec 'all pos))
-                    (when (memq type ,invisible-specs)
-                      (let ((region (org-fold-get-region-at-point spec pos)))
-			(if ,markers?
-			    (push (list (copy-marker (car region))
-					(copy-marker (cdr region) t)
-                                        spec)
-                                  data-val)
-                          (push (list (car region) (cdr region) spec)
-				data-val)))))
-                  (setq pos (org-fold-next-folding-state-change nil pos)))))))
-       (unwind-protect (progn ,@body)
-	 (org-with-wide-buffer
-	  (dolist (spec ,invisible-specs)
-	    (org-fold-region (point-min) (point-max) nil spec))
-	  (pcase-dolist (`(,beg ,end ,spec) (delq nil ,data))
-	    (org-fold-region beg end t spec)
-	    (when ,markers?
-	      (set-marker beg nil)
-	      (set-marker end nil))))))))
+(defalias 'org-save-outline-visibility #'org-fold-save-outline-visibility)
 
 (defmacro org-with-wide-buffer (&rest body)
-  "Execute body while temporarily widening the buffer."
+  "Execute BODY while temporarily widening the buffer."
   (declare (debug (body)))
   `(save-excursion
      (save-restriction

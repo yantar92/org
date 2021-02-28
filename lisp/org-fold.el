@@ -289,6 +289,44 @@ smart            Make point visible, and do insertion/deletion if it is
 (defalias 'org-fold-previous-folding-state-change #'org-fold-core-previous-folding-state-change)
 (defalias 'org-fold-search-forward #'org-fold-core-search-forward)
 
+;;;;; Macros
+
+(defmacro org-fold-save-outline-visibility (use-markers &rest body)
+  "Save and restore outline visibility around BODY.
+If USE-MARKERS is non-nil, use markers for the positions.  This
+means that the buffer may change while running BODY, but it also
+means that the buffer should stay alive during the operation,
+because otherwise all these markers will point to nowhere."
+  (declare (debug (form body)) (indent 1))
+  (org-with-gensyms (data specs markers?)
+    `(let* ((,specs ',(org-fold-core-folding-spec-list))
+	    (,markers? ,use-markers)
+	    (,data
+             (org-with-wide-buffer
+              (let ((pos (point-min))
+		    data-val)
+		(while (< pos (point-max))
+                  (dolist (spec (org-fold-get-folding-spec 'all pos))
+                    (when (memq type ,specs)
+                      (let ((region (org-fold-get-region-at-point spec pos)))
+			(if ,markers?
+			    (push (list (copy-marker (car region))
+					(copy-marker (cdr region) t)
+                                        spec)
+                                  data-val)
+                          (push (list (car region) (cdr region) spec)
+				data-val)))))
+                  (setq pos (org-fold-next-folding-state-change nil pos)))))))
+       (unwind-protect (progn ,@body)
+	 (org-with-wide-buffer
+	  (dolist (spec ,specs)
+	    (org-fold-region (point-min) (point-max) nil spec))
+	  (pcase-dolist (`(,beg ,end ,spec) (delq nil ,data))
+	    (org-fold-region beg end t spec)
+	    (when ,markers?
+	      (set-marker beg nil)
+	      (set-marker end nil))))))))
+
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
 
 ;;;;; Region visibility
