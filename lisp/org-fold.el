@@ -255,9 +255,9 @@ smart            Make point visible, and do insertion/deletion if it is
 
 ;;;; Modifying folding specs
 
-(defalias org-fold-folding-spec-p #'org-fold-core-folding-spec-p)
-(defalias org-fold-add-folding-spec #'org-fold-core-add-folding-spec)
-(defalias org-fold-remove-folding-spec #'org-fold-core-remove-folding-spec)
+(defalias 'org-fold-folding-spec-p #'org-fold-core-folding-spec-p)
+(defalias 'org-fold-add-folding-spec #'org-fold-core-add-folding-spec)
+(defalias 'org-fold-remove-folding-spec #'org-fold-core-remove-folding-spec)
 
 (defun org-fold-initialize ()
   "Setup folding in current Org buffer."
@@ -279,21 +279,21 @@ smart            Make point visible, and do insertion/deletion if it is
 
 ;;;; Searching and examining folded text
 
-(defalias org-fold-folded-p #'org-fold-core-folded-p)
-(defalias org-fold-get-folding-spec #'org-fold-core-get-folding-spec)
-(defalias org-fold-get-folding-specs-in-region #'org-fold-core-get-folding-specs-in-region)
-(defalias org-fold-get-region-at-point #'org-fold-core-get-region-at-point)
-(defalias org-fold-next-visibility-change #'org-fold-core-next-visibility-change)
-(defalias org-fold-previous-visibility-change #'org-fold-core-previous-visibility-change)
-(defalias org-fold-next-folding-state-change #'org-fold-core-next-folding-state-change)
-(defalias org-fold-previous-folding-state-change #'org-fold-core-previous-folding-state-change)
-(defalias org-fold-search-forward #'org-fold-core-search-forward)
+(defalias 'org-fold-folded-p #'org-fold-core-folded-p)
+(defalias 'org-fold-get-folding-spec #'org-fold-core-get-folding-spec)
+(defalias 'org-fold-get-folding-specs-in-region #'org-fold-core-get-folding-specs-in-region)
+(defalias 'org-fold-get-region-at-point #'org-fold-core-get-region-at-point)
+(defalias 'org-fold-next-visibility-change #'org-fold-core-next-visibility-change)
+(defalias 'org-fold-previous-visibility-change #'org-fold-core-previous-visibility-change)
+(defalias 'org-fold-next-folding-state-change #'org-fold-core-next-folding-state-change)
+(defalias 'org-fold-previous-folding-state-change #'org-fold-core-previous-folding-state-change)
+(defalias 'org-fold-search-forward #'org-fold-core-search-forward)
 
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
 
 ;;;;; Region visibility
 
-(defalias org-fold-region #'org-fold-core-region)
+(defalias 'org-fold-region #'org-fold-core-region)
 
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
