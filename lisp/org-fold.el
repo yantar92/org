@@ -261,19 +261,21 @@ smart            Make point visible, and do insertion/deletion if it is
 
 (defun org-fold-initialize ()
   "Setup folding in current Org buffer."
-  (let ((specs '((org-fold-outline
-                  (:alias . (headline inlinetask plain-list)))
-                 (org-fold-block
-                  (:alias . ( block center-block comment-block
-                              dynamic-block example-block export-block
-                              quote-block special-block src-block
-                              verse-block)))
-                 (org-fold-drawer
-                  (:alias . (drawer property-drawer))))))
-    (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
-    (setq-local outline-isearch-open-invisible-function #'org-fold--isearch-reveal)
-    (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
-    (org-fold-core-initialize specs)))
+  (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
+  (setq-local outline-isearch-open-invisible-function #'org-fold--isearch-reveal)
+  (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
+  (org-fold-core-initialize '((org-fold-outline
+                       (:fragile . #'org-fold--reveal-outline-maybe)
+                       (:alias . (headline inlinetask plain-list)))
+                      (org-fold-block
+                       (:fragile . #'org-fold--reveal-drawer-or-block-maybe)
+                       (:alias . ( block center-block comment-block
+                                   dynamic-block example-block export-block
+                                   quote-block special-block src-block
+                                   verse-block)))
+                      (org-fold-drawer
+                       (:fragile . #'org-fold--reveal-drawer-or-block-maybe)
+                       (:alias . (drawer property-drawer))))))
 
 ;;;; Searching and examining folded text
 
@@ -701,6 +703,93 @@ This function is intended to be used as a member of
   (setq from (save-excursion (goto-char from) (line-beginning-position 0)))
   (cons from to))
 
+(defun org-fold--reveal-outline-maybe (region spec)
+  "Reveal folded outline (according to SPEC) in REGION when needed.
+
+This function is intended to be used as :fragile prperty of
+`org-fold-outline' spec."
+  (save-match-data
+    (save-excursion
+      (goto-char (car region))
+      ;; The line before beginning of the fold should be either a
+      ;; headline or a list item.
+      (backward-char)
+      (beginning-of-line)
+      (unless (let ((case-fold-search t))
+	        (looking-at (rx (or (regex (org-item-re))
+			            (regex org-outline-regexp-bol))))) ; the match-data will be used later
+	t))))
+
+(defun org-fold--reveal-drawer-or-block-maybe (region spec)
+  "Reveal folded drawer/block (according to SPEC) in REGION when needed.
+
+This function is intended to be used as :fragile prperty of
+`org-fold-drawer' or `org-fold-block' spec."
+  (let ((begin-re (cond
+		   ((eq spec (org-fold-core-get-folding-spec-from-alias 'drawer))
+		    org-drawer-regexp)
+		   ;; Group one below contains the type of the block.
+		   ((eq spec (org-fold-core-get-folding-spec-from-alias 'block))
+		    (rx bol (zero-or-more (any " " "\t"))
+			"#+begin"
+			(or ":"
+			    (seq "_"
+				 (group (one-or-more (not (syntax whitespace))))))))))
+        ;; To be determined later. May depend on `begin-re' match (i.e. for blocks).
+        end-re)
+    (save-match-data ; we should not clobber match-data in after-change-functions
+      (let ((fold-begin (car region))
+	    (fold-end (cdr region)))
+	(let (unfold?)
+	  (catch :exit
+	    ;; The line before folded text should be beginning of
+	    ;; the drawer/block.
+	    (save-excursion
+	      (goto-char fold-begin)
+	      ;; The line before beginning of the fold should be the
+	      ;; first line of the drawer/block.
+	      (backward-char)
+	      (beginning-of-line)
+	      (unless (let ((case-fold-search t))
+			(looking-at begin-re)) ; the match-data will be used later
+		(throw :exit (setq unfold? t))))
+            ;; Set `end-re' for the current drawer/block.
+            (setq end-re
+		  (cond
+		   ((eq spec (org-fold-core-get-folding-spec-from-alias 'drawer))
+                    org-property-end-re)
+		   ((eq spec (org-fold-core-get-folding-spec-from-alias 'block))
+		    (let ((block-type (match-string 1))) ; the last match is from `begin-re'
+		      (concat (rx bol (zero-or-more (any " " "\t")) "#+end")
+			      (if block-type
+				  (concat "_"
+					  (regexp-quote block-type)
+					  (rx (zero-or-more (any " " "\t")) eol))
+				(rx (opt ":") (zero-or-more (any " " "\t")) eol)))))))
+	    ;; The last line of the folded text should match `end-re'.
+	    (save-excursion
+	      (goto-char fold-end)
+	      (beginning-of-line)
+	      (unless (let ((case-fold-search t))
+			(looking-at end-re))
+		(throw :exit (setq unfold? t))))
+	    ;; There should be no `end-re' or
+	    ;; `org-outline-regexp-bol' anywhere in the
+	    ;; drawer/block body.
+	    (save-excursion
+	      (goto-char fold-begin)
+	      (when (save-excursion
+		      (let ((case-fold-search t))
+			(re-search-forward (rx (or (regex end-re)
+						   (regex org-outline-regexp-bol)))
+					   (max (point)
+						(1- (save-excursion
+						      (goto-char fold-end)
+						      (line-beginning-position))))
+					   t)))
+		(throw :exit (setq unfold? t)))))
+          unfold?)))))
+
 (defun org-fold--fix-folded-region (from to _)
   "Process modifications in folded elements within FROM . TO region.
 This function intended to be used as one of `after-change-functions'.
@@ -738,7 +827,7 @@ If a valid end line was inserted in the middle of the folded drawer/block, unfol
                (and (org-fold-folded-p (max (point-min) (1- from)) 'headline)
 		    (not (org-fold-folded-p to))))
 	  (org-fold-region from to t (or
-			      ;; Only headline spec for appended text.
+	                      ;; Only headline spec for appended text.
 			      (org-fold-get-folding-spec 'headline (max (point-min) (1- from)))
 			      (org-fold-get-folding-spec nil to)))))
       ;; Reveal the whole region if inserted in the middle of

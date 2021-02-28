@@ -143,7 +143,7 @@ be revealed.")
 ;;;; Buffer-local folding specs
 
 (defvar-local org-fold-core--specs '((org-fold-visible
-			 (:visible . t)
+		         (:visible . t)
                          (:alias . (visible)))
                         (org-fold-hidden
 			 (:ellipsis . "...")
@@ -176,14 +176,14 @@ The following properties are known:
                        Note that changing this property from nil to t may
                        clear the setting in `buffer-invisibility-spec'.
 - :alias            :: a list of aliases for the SPEC-SYMBOL.
-- :fragile          :: Must be a function accepting a single argument.
+- :fragile          :: Must be a function accepting a two arguments.
                        Non-nil means that changes in region may cause
                        the region to be revealed.  The region is
                        revealed after changes if the function returns
                        non-nil.
                        The function called after changes are made with
-                       the argument: cons (beg . end) representing the
-                       folded region.")
+                       two arguments: cons (beg . end) representing the
+                       folded region and spec.")
 
 (defvar-local org-fold-core-extend-changed-region-functions nil
   "Special hook run just before handling changes in buffer.
@@ -802,7 +802,8 @@ property, unfold the region if the :fragile function returns non-nil."
 		 (when (and fold-begin fold-end)
 		   (let ((unfold? (and (org-fold-core-get-folding-spec-property spec :fragile)
                                        (funcall (org-fold-core-get-folding-spec-property spec :fragile)
-                                                (cons fold-begin fold-end)))))
+                                                (cons fold-begin fold-end)
+                                                spec))))
 		     (when unfold? (org-fold-core-region fold-begin fold-end nil spec)))
 		   (goto-char fold-end))))
 	     ;; Move to next fold.
