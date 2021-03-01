@@ -266,18 +266,21 @@ smart            Make point visible, and do insertion/deletion if it is
   (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
   (org-fold-core-initialize `((org-fold-outline
                        (:ellipsis . ,ellipsis)
-                       (:fragile . #'org-fold--reveal-outline-maybe)
+                       (:fragile . ,#'org-fold--reveal-outline-maybe)
+                       (:front-sticky . t)
                        (:alias . (headline inlinetask plain-list)))
                       (org-fold-block
                        (:ellipsis . ,ellipsis)
-                       (:fragile . #'org-fold--reveal-drawer-or-block-maybe)
+                       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
+                       (:front-sticky . t)
                        (:alias . ( block center-block comment-block
                                    dynamic-block example-block export-block
                                    quote-block special-block src-block
                                    verse-block)))
                       (org-fold-drawer
                        (:ellipsis . ,ellipsis)
-                       (:fragile . #'org-fold--reveal-drawer-or-block-maybe)
+                       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
+                       (:front-sticky . t)
                        (:alias . (drawer property-drawer))))))
 
 ;;;; Searching and examining folded text

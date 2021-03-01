@@ -308,23 +308,29 @@ unless RETURN-ONLY is non-nil."
 						(org-fold-core--property-symbol-get-create spec nil 'return-only))
 					      (org-fold-core-folding-spec-list)))
 				(remove (assq 'invisible char-property-alias-alist)
-					char-property-alias-alist))))))))))
+					char-property-alias-alist)))
+              (setq-local text-property-default-nonsticky
+                          (delete-dups (append text-property-default-nonsticky
+                                               (mapcar (lambda (spec)
+                                                         (cons (org-fold-core--property-symbol-get-create spec nil 'return-only) t))
+                                                       (org-fold-core-folding-spec-list))))))))))))
 
 ;;; API
 
 ;;;; Modifying folding specs
 
-(defun org-fold-core-set-folding-spec-property (spec property value)
+(defun org-fold-core-set-folding-spec-property (spec property value &optional force)
   "Set PROPERTY of a folding SPEC to VALUE.
-Possible properties and values can be found in `org-fold-core--specs' docstring."
+Possible properties and values can be found in `org-fold-core--specs' docstring.
+Do not check previous value when FORCE is non-nil."
   (pcase property
     (:ellipsis
-     (unless (equal value (org-fold-core-get-folding-spec-property spec :ellipsis))
+     (unless (and (not force) (equal value (org-fold-core-get-folding-spec-property spec :ellipsis)))
        (remove-from-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis)))
        (unless (org-fold-core-get-folding-spec-property spec :visible)
          (add-to-invisibility-spec (cons spec value)))))
     (:visible
-     (unless (equal value (org-fold-core-get-folding-spec-property spec :visible))
+     (unless (and (not force) (equal value (org-fold-core-get-folding-spec-property spec :visible)))
        (if value
 	   (remove-from-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis)))
          (add-to-invisibility-spec (cons spec value)))))
@@ -338,7 +344,7 @@ Possible properties and values can be found in `org-fold-core--specs' docstring.
     ;; TODO
     (:rear-sticky nil)
     (_ nil))
-  (setf (alist-get property org-fold-core--specs) value))
+  (setf (alist-get property (alist-get spec org-fold-core--specs)) value))
 
 (defun org-fold-core-add-folding-spec (spec &optional properties buffer append)
   "Add a new folding SPEC with PROPERTIES in BUFFER.
@@ -362,7 +368,7 @@ The folding spec properties will be set to PROPERTIES (see
                                        :fragile :alias)))
            (full-spec (cons spec full-properties)))
       (add-to-list 'org-fold-core--specs full-spec append)
-      (mapc (lambda (prop-cons) (org-fold-core-set-folding-spec-property spec (car prop-cons) (cdr prop-cons))) full-properties))))
+      (mapc (lambda (prop-cons) (org-fold-core-set-folding-spec-property spec (car prop-cons) (cdr prop-cons) 'force)) full-properties))))
 
 (defun org-fold-core-remove-folding-spec (spec &optional buffer)
   "Remove a folding SPEC in BUFFER.
@@ -383,6 +389,8 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 
 (defun org-fold-core-initialize (&optional specs)
   "Setup folding in current buffer using SPECS as value of `org-fold-core--specs'."
+  (unless specs (setq specs org-fold-core--specs))
+  (setq org-fold-core--specs nil)
   (dolist (spec (or specs org-fold-core--specs))
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
@@ -787,7 +795,7 @@ property, unfold the region if the :fragile function returns non-nil."
        (let ((region-from (org-fold-core-get-region-at-point nil (max (point-min) (1- from))))
              (region-to (org-fold-core-get-region-at-point nil (min to (1- (point-max))))))
          (when region-from (setq from (car region-from)))
-         (when region-to (setq to (cdr region-from))))
+         (when region-to (setq to (cdr region-to))))
        (dolist (spec (org-fold-core-folding-spec-list))
 	 (let ((pos from))
 	   ;; Move to the first hidden region.

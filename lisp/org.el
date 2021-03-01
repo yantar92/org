@@ -4692,7 +4692,8 @@ The following commands are available:
 \\{org-mode-map}"
   (org-load-modules-maybe)
   (org-install-agenda-files-menu)
-  (org-fold-initialize (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis))
+  (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
+                        "..."))
   ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
   (org-fold-add-folding-spec 'org-link-description
                           '((:ellipsis . nil)
@@ -5052,13 +5053,13 @@ This includes angle, plain, and bracket links."
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-				      (match-string 0)))
+				        (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			   (let ((face (get-text-property
-					(max (1- start) (point-min)) 'face)))
-			     (if (consp face) (memq 'org-tag face)
-			       (eq 'org-tag face))))))
+			     (let ((face (get-text-property
+					  (max (1- start) (point-min)) 'face)))
+			       (if (consp face) (memq 'org-tag face)
+			         (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))
@@ -5094,7 +5095,8 @@ This includes angle, plain, and bracket links."
               (unless (or (derived-mode-p 'org-mode)
 			  (and (org-fold-folding-spec-p 'org-link-description)
                                (org-fold-folding-spec-p 'org-link)))
-                (org-fold-initialize (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis))
+                (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
+                                      "..."))
                 ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
                 (org-fold-add-folding-spec 'org-link-description
                                         '((:ellipsis . nil)
@@ -5709,7 +5711,11 @@ needs to be inserted at a specific position in the font-lock sequence.")
   "Display or hide properties in `org-custom-properties'."
   (interactive)
   (require 'org-macs)
-  (org-fold-add-folding-spec 'org-hide-custom-property nil 'no-ellipsis)
+  (org-fold-add-folding-spec 'org-hide-custom-property
+                          '((:ellipsis . nil)
+                            (:isearch-open . t))
+                          nil
+                          'append)
   (if org-custom-properties-hidden-p
       (let (match)
 	(setq org-custom-properties-hidden-p nil)
@@ -5718,8 +5724,8 @@ needs to be inserted at a specific position in the font-lock sequence.")
          (with-silent-modifications
            (while (setq match (org-fold-search-forward 'org-hide-custom-property))
              (org-fold-region (prop-match-beginning match)
-			      (prop-match-end match)
-			      nil 'org-hide-custom-property)))))
+			   (prop-match-end match)
+			   nil 'org-hide-custom-property)))))
     (when org-custom-properties
       (setq org-custom-properties-hidden-p t)
       (org-with-wide-buffer
