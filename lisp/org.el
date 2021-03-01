@@ -19813,7 +19813,7 @@ See `org-forward-paragraph'."
     (cond
      ((eobp) nil)
      ;; When inside a folded part, move out of it.
-     ((when  (seq-some #'org-fold-get-folding-spec '(headline block))
+     ((when (org-invisible-p nil t)
         (goto-char (cdr (org-fold-get-region-at-point)))
         (forward-line)
         t))
@@ -19828,7 +19828,7 @@ See `org-forward-paragraph'."
 	  (forward-char)
 	  (org--forward-paragraph-once))
 	 ;; If the element is folded, skip it altogether.
-         ((when  (seq-some #'org-fold-get-folding-spec '(headline block))
+         ((when (org-with-point-at post-affiliated (org-invisible-p (line-end-position) t))
             (goto-char (cdr (org-fold-get-region-at-point
 			     nil
 			     (org-with-point-at post-affiliated
@@ -19886,8 +19886,7 @@ See `org-backward-paragraph'."
 	   (save-excursion (skip-chars-backward " \t\n") (bobp)))
       (goto-char (point-min)))
      ;; When inside a folded part, move out of it.
-     ((when  (seq-some (lambda (spec) (org-fold-get-folding-spec spec (1- (point))))
-                       '(headline block))
+     ((when (org-invisible-p (1- (point)) t)
         (goto-char (1- (car (org-fold-get-region-at-point nil (1- (point))))))
 	(org--backward-paragraph-once)
 	t))
@@ -19933,8 +19932,7 @@ See `org-backward-paragraph'."
 	       (org-with-point-at begin (not (bolp))))
 	  (funcall reach (progn (goto-char begin) (line-beginning-position))))
 	 ;; If the element is folded, skip it altogether.
-	 ((org-with-point-at post-affiliated
-	    (org-invisible-p (line-end-position) t))
+	 ((org-with-point-at post-affiliated (org-invisible-p (line-end-position) t))
 	  (funcall reach begin))
 	 ;; At the end of a greater element, move inside.
 	 ((and contents-end

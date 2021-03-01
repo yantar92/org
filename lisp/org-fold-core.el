@@ -750,6 +750,16 @@ This function is intended to be used as `isearch-filter-predicate'."
 
 ;;; Handling changes in folded elements
 
+(defvar org-fold-core--ignore-modifications nil
+  "When non-nil, skip processing modifications in `org-fold-core--fix-folded-region'.")
+
+(defmacro org-fold-core-ignore-modifications (&rest body)
+  "Run BODY ignoring buffer modifications in `org-fold-core--fix-folded-region'."
+  (declare (debug (form body)) (indent 1))
+  `(let ((org-fold-core--ignore-modifications t))
+     (unwind-protect (progn ,@body)
+       (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick)))))
+
 (defvar-local org-fold-core--last-buffer-chars-modified-tick nil
   "Variable storing the last return value of `buffer-chars-modified-tick'.")
 
@@ -767,7 +777,8 @@ If a text was insert in front/back of the region, hide it according to
 If the folded region is folded with a spec with non-nil :fragile
 property, unfold the region if the :fragile function returns non-nil."
   ;; If no insertions or deletions in buffer, skip all the checks.
-  (unless (eq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
+  (unless (or (eq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
+              org-fold-core--ignore-modifications)
     (save-match-data
       ;; Store the new buffer modification state.
       (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))

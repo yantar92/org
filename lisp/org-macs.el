@@ -921,9 +921,19 @@ Unlike `string-width', this function takes into consideration
     (with-temp-buffer
       (setq-local buffer-invisibility-spec current-invisibility-spec)
       (setq-local char-property-alias-alist current-char-property-alias-alist)
-      (with-silent-modifications
-        (setf (buffer-string) string))
-      (org-string-width-in-buffer (point-min) (point-max)))))
+      (let (pixel-width symbol-width)
+        (with-silent-modifications
+          (setf (buffer-string) string)
+          (setq pixel-width   (if (get-buffer-window (current-buffer))
+                                  (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
+                                (set-window-buffer nil (current-buffer))
+                                (car (window-text-pixel-size nil (line-beginning-position) (point-max)))))
+          (setf (buffer-string) "a")
+          (setq symbol-width   (if (get-buffer-window (current-buffer))
+                                   (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
+                                 (set-window-buffer nil (current-buffer))
+                                 (car (window-text-pixel-size nil (line-beginning-position) (point-max))))))
+        (/ pixel-width symbol-width)))))
 
 (defun org-string-width-in-buffer (beg end)
   "Calculate displayed width of the text between BEG and END in current buffer."
