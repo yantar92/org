@@ -548,54 +548,54 @@ b. Item 2<point>"
   (should
    (equal "- item 2\n- item 1"
 	  (org-test-with-temp-text "- item 1\n- item 2"
-	    (org-move-item-down)
-	    (buffer-string))))
+	                           (org-move-item-down)
+	                           (buffer-string))))
   ;; Keep same column in item.
   (should
    (org-test-with-temp-text "- it<point>em 1\n- item 2"
-     (org-move-item-down)
-     (looking-at "em 1")))
+                            (org-move-item-down)
+                            (looking-at "em 1")))
   ;; Move sub-items.
   (org-test-with-temp-text "- item 1\n  - sub-item 1\n- item 2"
-    (org-move-item-down)
-    (should (equal (buffer-string)
-		   "- item 2\n- item 1\n  - sub-item 1")))
+                           (org-move-item-down)
+                           (should (equal (buffer-string)
+		                          "- item 2\n- item 1\n  - sub-item 1")))
   ;; Preserve blank lines.
   (should
    (equal
     "- item 2\n\n- item 1"
     (org-test-with-temp-text "- item 1\n\n- item 2"
-      (org-move-item-down)
-      (buffer-string))))
+                             (org-move-item-down)
+                             (buffer-string))))
   ;; Error when trying to move the last item...
   (should-error
    (org-test-with-temp-text "- item 1\n- item 2"
-     (forward-line)
-     (org-move-item-down)))
+                            (forward-line)
+                            (org-move-item-down)))
   ;; ... unless `org-list-use-circular-motion' is non-nil.  In this
   ;; case, move to the first item.
   (should
    (equal  "- item 3\n- item 1\n- item 2\n"
 	   (org-test-with-temp-text "- item 1\n- item 2\n<point>- item 3"
-	     (let ((org-list-use-circular-motion t)) (org-move-item-down))
-	     (buffer-string))))
+	                            (let ((org-list-use-circular-motion t)) (org-move-item-down))
+	                            (buffer-string))))
   ;; Preserve item visibility.
   (should
    (equal
-    (make-list 2 (org-fold-get-folding-spec-for-element 'headline))
+    (make-list 2 'org-fold-outline)
     (org-test-with-temp-text
-	"* Headline\n<point>- item 1\n  body 1\n- item 2\n  body 2"
-      (let ((org-cycle-include-plain-lists t))
-	(org-cycle)
-	(search-forward "- item 2")
-	(org-cycle))
-      (search-backward "- item 1")
-      (org-move-item-down)
-      (forward-line)
-      (list (org-fold-get-folding-spec)
-	    (progn
-	      (search-backward " body 2")
-	      (org-fold-get-folding-spec))))))
+     "* Headline\n<point>- item 1\n  body 1\n- item 2\n  body 2"
+     (let ((org-cycle-include-plain-lists t))
+       (org-cycle)
+       (search-forward "- item 2")
+       (org-cycle))
+     (search-backward "- item 1")
+     (org-move-item-down)
+     (forward-line)
+     (list (org-fold-get-folding-spec)
+	   (progn
+	     (search-backward " body 2")
+	     (org-fold-get-folding-spec))))))
   ;; Preserve children visibility.
   (org-test-with-temp-text "* Headline
 - item 1
@@ -604,17 +604,17 @@ b. Item 2<point>"
 - item 2
   - sub-item 2
     sub-body 2"
-    (let ((org-cycle-include-plain-lists t))
-      (search-forward "- sub-item 1")
-      (org-cycle)
-      (search-forward "- sub-item 2")
-      (org-cycle))
-    (search-backward "- item 1")
-    (org-move-item-down)
-    (search-forward "sub-body 1")
-    (should (org-invisible-p2))
-    (search-backward "sub-body 2")
-    (should (org-invisible-p2))))
+                           (let ((org-cycle-include-plain-lists t))
+                             (search-forward "- sub-item 1")
+                             (org-cycle)
+                             (search-forward "- sub-item 2")
+                             (org-cycle))
+                           (search-backward "- item 1")
+                           (org-move-item-down)
+                           (search-forward "sub-body 1")
+                           (should (org-invisible-p2))
+                           (search-backward "sub-body 2")
+                           (should (org-invisible-p2))))
 
 (ert-deftest test-org-list/move-item-down-contents-visibility ()
   "Preserve contents visibility."
@@ -627,7 +627,7 @@ b. Item 2<point>"
   #+BEGIN_CENTER
   Text2
   #+END_CENTER"
-    (org-hide-block-all)
+    (org-fold-hide-block-all)
     (let ((invisible-property-1
 	   (progn
 	     (search-forward "Text1")
@@ -748,157 +748,157 @@ b. Item 2<point>"
   ;; Non-nil `org-blank-before-new-entry': insert a blank line.
   (should
    (org-test-with-temp-text "- a"
-     (let ((org-blank-before-new-entry '((plain-list-item . t))))
-       (end-of-line)
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . t))))
+                              (end-of-line)
+                              (org-insert-item)
+                              (forward-line -1)
+                              (looking-at "$"))))
   ;; Nil `org-blank-before-new-entry': do not insert a blank line.
   (should-not
    (org-test-with-temp-text "- a"
-     (let ((org-blank-before-new-entry '((plain-list-item . nil))))
-       (end-of-line)
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . nil))))
+                              (end-of-line)
+                              (org-insert-item)
+                              (forward-line -1)
+                              (looking-at "$"))))
   ;; `org-blank-before-new-entry' set to auto: if there's no blank
   ;; line already in the sole item, do not insert one.
   (should-not
    (org-test-with-temp-text "- a"
-     (let ((org-blank-before-new-entry '((plain-list-item . auto))))
-       (end-of-line)
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . auto))))
+                              (end-of-line)
+                              (org-insert-item)
+                              (forward-line -1)
+                              (looking-at "$"))))
   ;; `org-blank-before-new-entry' set to `auto': if there's a blank
   ;; line in the sole item, insert another one.
   (should
    (org-test-with-temp-text "- a\n\n  b<point>"
-     (let ((org-blank-before-new-entry '((plain-list-item . auto))))
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . auto))))
+                              (org-insert-item)
+                              (forward-line -1)
+                              (looking-at "$"))))
   ;; `org-blank-before-new-entry' set to `auto': if the user specified
   ;; a blank line, preserve it.
   (should
    (org-test-with-temp-text "- a\n\n<point>"
-     (let ((org-blank-before-new-entry '((plain-list-item . auto))))
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . auto))))
+                              (org-insert-item)
+                              (forward-line -1)
+                              (looking-at "$"))))
   ;; `org-blank-before-new-entry' set to `auto': if some items in list
   ;; are already separated by blank lines, insert one.
   (should
    (org-test-with-temp-text "- a\n\n- b<point>"
-     (let ((org-blank-before-new-entry '((plain-list-item . auto))))
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . auto))))
+                              (org-insert-item)
+                              (forward-line -1)
+                              (looking-at "$"))))
   (should
    (org-test-with-temp-text "- a\n\n- b"
-     (let ((org-blank-before-new-entry '((plain-list-item . auto))))
-       (org-insert-item)
-       (forward-line)
-       (looking-at "$"))))
+                            (let ((org-blank-before-new-entry '((plain-list-item . auto))))
+                              (org-insert-item)
+                              (forward-line)
+                              (looking-at "$"))))
   (should
    (org-test-with-temp-text
-       "- a\n  #+BEGIN_EXAMPLE\n\n  x\n  #+END_EXAMPLE<point>"
-     (let ((org-blank-before-new-entry '((plain-list-item . auto))))
-       (org-insert-item)
-       (forward-line -1)
-       (looking-at "$"))))
+    "- a\n  #+BEGIN_EXAMPLE\n\n  x\n  #+END_EXAMPLE<point>"
+    (let ((org-blank-before-new-entry '((plain-list-item . auto))))
+      (org-insert-item)
+      (forward-line -1)
+      (looking-at "$"))))
   ;; When called before or on the bullet, insert new item before
   ;; current one.
   (should
    (equal "- \n- item"
 	  (org-test-with-temp-text "- item"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   (should
    (equal "- \n- item"
 	  (org-test-with-temp-text "- <point>item"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   ;; When called at the very end of the list, insert new item as
   ;; a sibling of the very last one.
   (should
    (equal "- A\n\n  - B\n\n  - "
 	  (org-test-with-temp-text "- A\n\n - B\n\n<point>"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   (should
    (equal "- A\n\n  - B\n\n  - "
 	  (org-test-with-temp-text "- A\n\n  - B\n\n  <point>"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   ;; When called on tag in a descriptive list, insert new item before
   ;; current one too.
   (should
    (equal "-  :: \n- tag :: item"
 	  (org-test-with-temp-text "- tag <point>:: item"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   (should
    (equal "-  :: \n- tag :: item"
 	  (org-test-with-temp-text "- ta<point>g :: item"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   ;; Further, it splits the line or add a blank new item after it,
   ;; according to `org-M-RET-may-split-line'.
   (should
    (equal "- it\n- em"
 	  (org-test-with-temp-text "- it<point>em"
-	    (let ((org-M-RET-may-split-line  '((default . t))))
-	      (org-insert-item))
-	    (buffer-string))))
+	                           (let ((org-M-RET-may-split-line  '((default . t))))
+	                             (org-insert-item))
+	                           (buffer-string))))
   (should
    (equal "- item\n- "
 	  (org-test-with-temp-text "- it<point>em"
-	    (let ((org-M-RET-may-split-line  '((default . nil))))
-	      (org-insert-item))
-	    (buffer-string))))
+	                           (let ((org-M-RET-may-split-line  '((default . nil))))
+	                             (org-insert-item))
+	                           (buffer-string))))
   ;; Re-order automatically.
   (should
    (equal "1. A\n\n2. \n\n3. \n\n4. B"
 	  (org-test-with-temp-text "1. A<point>\n\n2. \n\n3. B"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   (should
    (equal "1. a\n2. \n   b\n3. c"
 	  (org-test-with-temp-text "1. a<point>\n   b\n2. c"
-	    (org-insert-item)
-	    (buffer-string))))
+	                           (org-insert-item)
+	                           (buffer-string))))
   ;; Preserve list visibility when inserting an item.
   (should
    (equal
-    `(,(org-fold-get-folding-spec-for-element 'headline) ,(org-fold-get-folding-spec-for-element 'headline))
+    `(org-fold-outline org-fold-outline)
     (org-test-with-temp-text "- A\n  - B\n- C\n  - D"
-      (let ((org-cycle-include-plain-lists t))
-	(org-cycle)
-	(forward-line 2)
-	(org-cycle)
-	(org-insert-item)
-	(list (org-fold-get-folding-spec nil (line-beginning-position 0))
-	      (org-fold-get-folding-spec nil (line-end-position 2)))))))
+                             (let ((org-cycle-include-plain-lists t))
+	                       (org-cycle)
+	                       (forward-line 2)
+	                       (org-cycle)
+	                       (org-insert-item)
+	                       (list (org-fold-get-folding-spec nil (line-beginning-position 0))
+	                             (org-fold-get-folding-spec nil (line-end-position 2)))))))
   ;; Test insertion in area after a sub-list.  In particular, if point
   ;; is right at the end of the previous sub-list, still insert
   ;; a sub-item in that list.
   (should
    (= 2
       (org-test-with-temp-text "- item\n  - sub-list\n<point>  resume item"
-	(org-insert-item)
-	(current-indentation))))
+	                       (org-insert-item)
+	                       (current-indentation))))
   (should
    (= 0
       (org-test-with-temp-text "- item\n  - sub-list\n  resume item<point>"
-	(org-insert-item)
-	(current-indentation))))
+	                       (org-insert-item)
+	                       (current-indentation))))
   ;; Test splitting with blanks around.
   (should
    (equal "- A\n  B\n- C\n  - D\n- [ ] E"
-    (org-test-with-temp-text "- A\n  B <point> C\n  - D\n- [ ] E"
-      (org-insert-item)
-      (buffer-string)))))
+          (org-test-with-temp-text "- A\n  B <point> C\n  - D\n- [ ] E"
+                                   (org-insert-item)
+                                   (buffer-string)))))
 
 (ert-deftest test-org-list/repair ()
   "Test `org-list-repair' specifications."
