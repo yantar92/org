@@ -620,8 +620,8 @@ With prefix argument OPTIONAL also prompt for optional fields."
 
 (defun org-bibtex-create (&optional arg nonew)
   "Create a new entry at the given level.
-With a prefix arg, query for optional fields as well.
-If nonew is t, add data to the headline of the entry at point."
+With a prefix ARG, query for optional fields as well.
+If NONEW is t, add data to the headline of the entry at point."
   (interactive "P")
   (let* ((type (completing-read
 		"Type: " (mapcar (lambda (type)
@@ -646,7 +646,7 @@ If nonew is t, add data to the headline of the entry at point."
 
 (defun org-bibtex-create-in-current-entry (&optional arg)
   "Add bibliographical data to the current entry.
-With a prefix arg, query for optional fields."
+With a prefix ARG, query for optional fields."
   (interactive "P")
   (org-bibtex-create arg t))
 
