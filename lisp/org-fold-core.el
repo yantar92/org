@@ -751,7 +751,7 @@ This function is intended to be used as `isearch-filter-predicate'."
 ;;; Handling changes in folded elements
 
 (defvar org-fold-core--ignore-modifications nil
-  "When non-nil, skip processing modifications in `org-fold-core--fix-folded-region'.")
+  "Non-nil: skip processing modifications in `org-fold-core--fix-folded-region'.")
 
 (defmacro org-fold-core-ignore-modifications (&rest body)
   "Run BODY ignoring buffer modifications in `org-fold-core--fix-folded-region'."

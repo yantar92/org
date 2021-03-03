@@ -6073,10 +6073,9 @@ end of ELEM-A."
 	 (setq body-B (replace-regexp-in-string "\\`[ \t]*" "" body-B))
 	 (indent-to-column ind-B))
        (insert body-A)
-       (let ((offset (- beg-B beg-A)))
 	 (goto-char beg-A)
 	 (delete-region beg-A end-A)
-	 (insert body-B))
+	 (insert body-B)
        (goto-char (org-element-property :end elem-B))))))
 
 
