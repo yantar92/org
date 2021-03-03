@@ -267,13 +267,11 @@ smart            Make point visible, and do insertion/deletion if it is
   (org-fold-core-initialize `((org-fold-outline
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-outline-maybe)
-                       (:front-sticky . t)
                        (:isearch-open . t)
                        (:alias . (headline inlinetask plain-list)))
                       (org-fold-block
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
-                       (:front-sticky . t)
                        (:isearch-open . t)
                        (:alias . ( block center-block comment-block
                                    dynamic-block example-block export-block
@@ -282,7 +280,6 @@ smart            Make point visible, and do insertion/deletion if it is
                       (org-fold-drawer
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
-                       (:front-sticky . t)
                        (:isearch-open . t)
                        (:alias . (drawer property-drawer))))))
 
