@@ -389,6 +389,8 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 
 (defun org-fold-core-initialize (&optional specs)
   "Setup folding in current buffer using SPECS as value of `org-fold-core--specs'."
+  ;; Preserve the priorities.
+  (when specs (setq specs (nreverse specs)))
   (unless specs (setq specs org-fold-core--specs))
   (setq org-fold-core--specs nil)
   (dolist (spec (or specs org-fold-core--specs))

@@ -5091,6 +5091,7 @@ This includes angle, plain, and bracket links."
                                           nil
                                           'append)
                   (org-fold-core-set-folding-spec-property spec :visible t))
+                (org-link-descriptive-ensure)
                 (org-fold-region start end nil 'org-link)
                 (org-fold-region start end nil 'org-link-description)
                 ;; We are folding the whole emphasised text with SPEC

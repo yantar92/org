@@ -283,8 +283,8 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
                        (:isearch-open . t)
                        (:alias . (drawer property-drawer)))
-                      ,org-link--link-folding-spec
-                      ,org-link--description-folding-spec)))
+                      ,org-link--description-folding-spec
+                      ,org-link--link-folding-spec)))
 
 ;;;; Searching and examining folded text
 
