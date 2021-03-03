@@ -262,7 +262,6 @@ smart            Make point visible, and do insertion/deletion if it is
 (defun org-fold-initialize (ellipsis)
   "Setup folding in current Org buffer."
   (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
-  (setq-local outline-isearch-open-invisible-function #'org-fold--isearch-reveal)
   (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
   (org-fold-core-initialize `((org-fold-outline
                        (:ellipsis . ,ellipsis)

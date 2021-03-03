@@ -723,7 +723,8 @@ instead of text properties.  The created overlays will be stored in
 	      ;; for the region. The region will remain visible.
               (if (org-fold-core-get-folding-spec-property spec :isearch-open)
 	          (overlay-put o 'isearch-open-invisible #'delete-overlay)
-                (overlay-put o 'isearch-open-invisible #'ignore))
+                (overlay-put o 'isearch-open-invisible #'ignore)
+                (overlay-put o 'isearch-open-invisible-temporary #'ignore))
 	      (push o org-fold-core--isearch-overlays)))))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 
@@ -742,7 +743,7 @@ This function is intended to be used as `isearch-filter-predicate'."
       ;; Changing text properties is considered buffer modification.
       ;; We do not want it here.
       (with-silent-modifications
-	(when (< (overlay-end ov) (point-max))
+	(when (<= (overlay-end ov) (point-max))
 	  (org-fold-core-region (overlay-start ov) (overlay-end ov) t spec)))))
   (when (member ov isearch-opened-overlays)
     (setq isearch-opened-overlays (delete ov isearch-opened-overlays)))
