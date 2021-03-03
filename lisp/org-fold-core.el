@@ -333,7 +333,7 @@ Do not check previous value when FORCE is non-nil."
      (unless (and (not force) (equal value (org-fold-core-get-folding-spec-property spec :visible)))
        (if value
 	   (remove-from-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis)))
-         (add-to-invisibility-spec (cons spec value)))))
+         (add-to-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis))))))
     (:alias nil)
     ;; TODO
     (:isearch-open nil)

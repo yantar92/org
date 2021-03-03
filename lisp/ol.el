@@ -510,6 +510,17 @@ links more efficient."
 (defconst org-radio-target-regexp (format "<%s>" org-target-regexp)
   "Regular expression matching a radio target.")
 
+(defvar-local org-link--link-folding-spec '(org-link
+                                            (:ellipsis . nil)
+                                            (:isearch-open . nil))
+  "Folding spec used to hide invisible parts of links.")
+
+(defvar-local org-link--description-folding-spec '(org-link-description
+                                                   (:ellipsis . nil)
+                                                   (:visible . t)
+                                                   (:isearch-open . nil))
+  "Folding spec used to reveal link description.")
+
 (defvar-local org-target-link-regexp nil
   "Regular expression matching radio targets in plain text.")
 
@@ -1432,13 +1443,9 @@ If the link is in hidden text, expose it."
 (defun org-toggle-link-display ()
   "Toggle the literal or descriptive display of links in current buffer."
   (interactive)
-  (if org-link-descriptive (org-fold-remove-folding-spec 'org-link)
-    (org-fold-add-folding-spec 'org-link
-                               '((:ellipsis . nil)
-                                 (:isearch-open . nil))
-                               nil
-                               'append))
-  (org-restart-font-lock)
+  (if org-link-descriptive
+      (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible t)
+    (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible nil))
   (setq org-link-descriptive (not org-link-descriptive)))
 
 ;;;###autoload

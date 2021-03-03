@@ -4694,20 +4694,9 @@ The following commands are available:
   (org-install-agenda-files-menu)
   (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
                         "..."))
-  ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
-  (org-fold-add-folding-spec 'org-link-description
-                          '((:ellipsis . nil)
-                            (:visible . t)
-                            (:isearch-open . nil))
-                          nil
-                          'append)
-  (when org-link-descriptive
-    ;; This is applied on the whole link.
-    (org-fold-add-folding-spec 'org-link
-                            '((:ellipsis . nil)
-                              (:isearch-open . nil))
-                            nil
-                            'append))
+  (if org-link-descriptive
+      (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible nil)
+    (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible t))
   (setq-local outline-regexp org-outline-regexp)
   (setq-local outline-level 'org-outline-level)
   (setq bidi-paragraph-direction 'left-to-right)
@@ -5041,25 +5030,21 @@ This includes angle, plain, and bracket links."
     (while (re-search-forward org-link-any-re limit t)
       (let* ((start (match-beginning 0))
 	     (end (match-end 0))
-	     (visible-start (if org-link-descriptive
-                                (or (match-beginning 3) (match-beginning 2))
-                              start))
-	     (visible-end (if org-link-descriptive
-                              (or (match-end 3) (match-end 2))
-                            end))
+	     (visible-start (or (match-beginning 3) (match-beginning 2)))
+	     (visible-end (or (match-end 3) (match-end 2)))
 	     (style (cond ((eq ?< (char-after start)) 'angle)
 			  ((eq ?\[ (char-after (1+ start))) 'bracket)
 			  (t 'plain))))
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-				        (match-string 0)))
+				      (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			     (let ((face (get-text-property
-					  (max (1- start) (point-min)) 'face)))
-			       (if (consp face) (memq 'org-tag face)
-			         (eq 'org-tag face))))))
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))
@@ -5096,56 +5081,28 @@ This includes angle, plain, and bracket links."
 			  (and (org-fold-folding-spec-p 'org-link-description)
                                (org-fold-folding-spec-p 'org-link)))
                 (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
-                                      "..."))
-                ;; This is applied onto the visible part of the link and has higher priority in comparison with 'org-link.
-                (org-fold-add-folding-spec 'org-link-description
-                                        '((:ellipsis . nil)
-                                          (:visible . t)
-                                          (:isearch-open . nil))
-                                        nil
-                                        'append)
-                (when org-link-descriptive
-                  ;; This is applied on the whole link.
-                  (org-fold-add-folding-spec 'org-link
-                                          '((:ellipsis . nil)
-                                            (:isearch-open . nil))
-                                          nil
-                                          'append)))
+                                      "...")))
 	      ;; Handle invisible parts in bracket links.
 	      (let ((spec (or (org-link-get-parameter type :display)
 			      'org-link)))
                 (unless (org-fold-folding-spec-p spec)
                   (org-fold-add-folding-spec spec
-                                          '((:visible . t))
+                                          (cdr org-link--link-folding-spec)
                                           nil
-                                          'append))
-                (unless (org-fold-folding-spec-p 'org-link-description)
-                  (org-fold-add-folding-spec 'org-link-description
-                                          '((:ellipsis . nil)
-                                            (:visible . t)
-                                            (:isearch-open . nil))
-                                          nil
-                                          'append))
-                (unless (or (org-fold-folding-spec-p 'org-link)
-			    (not org-link-descriptive))
-                  (org-fold-add-folding-spec 'org-link
-                                          '((:ellipsis . nil)
-                                            (:isearch-open . nil))
-                                          nil
-                                          'append))
+                                          'append)
+                  (org-fold-core-set-folding-spec-property spec :visible t))
                 (org-fold-region start end nil 'org-link)
                 (org-fold-region start end nil 'org-link-description)
                 ;; We are folding the whole emphasised text with SPEC
                 ;; first.  It makes everything invisible (or whatever
                 ;; the user wants).
-                (when org-link-descriptive
-                  (org-fold-region start end t spec))
+                (org-fold-region start end t spec)
                 ;; The visible part of the text is folded using
                 ;; 'org-link-description, which is forcing this part of
                 ;; the text to be visible.
                 (org-fold-region visible-start visible-end t 'org-link-description)
 		(add-text-properties start end properties)
-                (add-face-text-property visible-start visible-end face-property)
+                (add-face-text-property start end face-property)
 		(org-rear-nonsticky-at visible-start)
 		(org-rear-nonsticky-at visible-end)))
 	    (let ((f (org-link-get-parameter type :activate-func)))

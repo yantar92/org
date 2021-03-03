@@ -135,6 +135,8 @@
 (require 'org-fold-core)
 
 (defvar org-inlinetask-min-level)
+(defvar org-link--link-folding-spec)
+(defvar org-link--description-folding-spec)
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 (declare-function org-element-type "org-element" (element))
@@ -280,7 +282,9 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
                        (:isearch-open . t)
-                       (:alias . (drawer property-drawer))))))
+                       (:alias . (drawer property-drawer)))
+                      ,org-link--link-folding-spec
+                      ,org-link--description-folding-spec)))
 
 ;;;; Searching and examining folded text
 
