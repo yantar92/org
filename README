@@ -1,6 +1,7 @@
 -*- mode: org; fill-column:70 -*-
 
 * Table of contents :TOC:
+- [[#updates][Updates]]
 - [[#org-modeorg-fold-branch][Org-mode::org-fold branch]]
 - [[#testing-the-branch][Testing the branch]]
 - [[#installation][Installation]]
@@ -10,6 +11,21 @@
   - [[#manual-installation-on-windows-for-people-who-are-not-familiar-with-git][Manual installation on Windows (for people, who are not familiar with git)]]
 - [[#contents-of-this-distribution][Contents of this distribution]]
 - [[#license][License]]
+
+* Updates
+
+- [2021-03-03 Wed] New default branch: =feature/org-fold-universal-core=
+
+  This is a major rework of the =org-fold= internals. I aimed to make things more modular and easier to maintain. Now, the core org-independent functionality is separated into =org-fold-core= library.
+  
+- Progress towards merging to master
+  - [X] =org-fold-core=
+  - [ ] Write detailed documentation about internals (in the =.el= file headers)
+  - [ ] Implement user-level customisation between old and new folding implementations
+  - [ ] Cherry-pick unrelated patches and push to master
+  - [ ] Discuss and finalise folding API in the mailing list
+  - [ ] Discuss and finalise the full patch
+  - [ ] Merge =isearch.el= patches to Emacs master
 
 * Org-mode::org-fold branch
 
