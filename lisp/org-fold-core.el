@@ -714,10 +714,16 @@ instead of text properties.  The created overlays will be stored in
 	    (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
 	      (overlay-put o 'evaporate t)
 	      (overlay-put o 'invisible spec)
+              ;; Make sure that overlays are applied in the same order
+              ;; with the folding specs.
+              ;; Note: `memq` returns cdr with car equal to the first
+              ;; found matching element.
+              (overlay-put o 'priority (length (memq spec (org-fold-core-folding-spec-list))))
 	      ;; `delete-overlay' here means that spec information will be lost
 	      ;; for the region. The region will remain visible.
-              (when (org-fold-core-get-folding-spec-property spec :isearch-open)
-	        (overlay-put o 'isearch-open-invisible #'delete-overlay))
+              (if (org-fold-core-get-folding-spec-property spec :isearch-open)
+	          (overlay-put o 'isearch-open-invisible #'delete-overlay)
+                (overlay-put o 'isearch-open-invisible #'ignore))
 	      (push o org-fold-core--isearch-overlays)))))
       (setq pos (next-single-property-change pos 'invisible nil end)))))
 

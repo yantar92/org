@@ -268,11 +268,13 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-outline-maybe)
                        (:front-sticky . t)
+                       (:isearch-open . t)
                        (:alias . (headline inlinetask plain-list)))
                       (org-fold-block
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
                        (:front-sticky . t)
+                       (:isearch-open . t)
                        (:alias . ( block center-block comment-block
                                    dynamic-block example-block export-block
                                    quote-block special-block src-block
@@ -281,6 +283,7 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
                        (:front-sticky . t)
+                       (:isearch-open . t)
                        (:alias . (drawer property-drawer))))))
 
 ;;;; Searching and examining folded text
