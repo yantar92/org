@@ -22,7 +22,6 @@ This branch is hiding text using [[https://www.gnu.org/software/emacs/manual/htm
 This repository is aiming to simplify testing of the branch. Feel free to open issues if you find bugs.
 
  *Important*: I cannot accept all the pull requests to avoid copyright issues. Only people finished FSF copyright assignment can contribute to this branch. See [[https://orgmode.org/contribute.html][Org mode contribution instructions]] for details.
-
 * Testing the branch
 
 An example file demonstrating difference in performance can be found in https://lists.gnu.org/archive/html/bug-gnu-emacs/2019-04/txte6kQp35VOm.txt
@@ -47,7 +46,7 @@ Adopted from [[https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/
 (package! org-mode
   :recipe (:host github
            :repo "yantar92/org"
-           :branch "feature/org-fold"
+           :branch "feature/org-fold-universal-core"
            :files ("*.el" "lisp/*.el" "contrib/lisp/*.el")
            :pre-build (with-temp-file (expand-file-name "org-version.el" (straight--repos-dir "org"))
                         (insert "(fset 'org-release (lambda () \"9.5\"))\n"
@@ -60,7 +59,7 @@ Adopted from [[https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/
 
 #+begin_src emacs-lisp
 ;; Should be placed inside init.el before anything loading org-mode 
-(straight-use-package '(org :host github :repo "yantar92/org" :branch "feature/org-fold"
+(straight-use-package '(org :host github :repo "yantar92/org" :branch "feature/org-fold-universal-core"
 			    :files (:defaults "contrib/lisp/*.el")))
 #+end_src
 
