@@ -510,17 +510,6 @@ links more efficient."
 (defconst org-radio-target-regexp (format "<%s>" org-target-regexp)
   "Regular expression matching a radio target.")
 
-(defvar-local org-link--link-folding-spec '(org-link
-                                            (:ellipsis . nil)
-                                            (:isearch-open . nil))
-  "Folding spec used to hide invisible parts of links.")
-
-(defvar-local org-link--description-folding-spec '(org-link-description
-                                                   (:ellipsis . nil)
-                                                   (:visible . t)
-                                                   (:isearch-open . nil))
-  "Folding spec used to reveal link description.")
-
 (defvar-local org-target-link-regexp nil
   "Regular expression matching radio targets in plain text.")
 
@@ -625,6 +614,20 @@ exact and fuzzy text search.")
 
 (defvar org-link--search-failed nil
   "Non-nil when last link search failed.")
+
+
+(defvar-local org-link--link-folding-spec '(org-link
+                                            (:ellipsis . nil)
+                                            (:isearch-open . nil)
+                                            (:fragile . org-link--reveal-maybe))
+  "Folding spec used to hide invisible parts of links.")
+
+(defvar-local org-link--description-folding-spec '(org-link-description
+                                                   (:ellipsis . nil)
+                                                   (:visible . t)
+                                                   (:isearch-open . nil)
+                                                   (:fragile . org-link--reveal-maybe))
+  "Folding spec used to reveal link description.")
 
 
 ;;; Internal Functions
@@ -782,6 +785,13 @@ syntax around the string."
 		    (setq string (substring string (match-end 0))))
 		   (t nil))))
     string))
+
+(defun org-link--reveal-maybe (region spec)
+  "Reveal folded link in REGION when needed.
+This function is intended to be used as :fragile property of a folding
+spec."
+  (org-with-point-at (car region)
+    (not (org-at-regexp-p org-any-link-re))))
 
 
 ;;; Public API
