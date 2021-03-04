@@ -269,11 +269,13 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-outline-maybe)
                        (:isearch-open . t)
+                       (:front-sticky . t)
                        (:alias . (headline inlinetask plain-list)))
                       (org-fold-block
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
                        (:isearch-open . t)
+                       (:front-sticky . t)
                        (:alias . ( block center-block comment-block
                                    dynamic-block example-block export-block
                                    quote-block special-block src-block
@@ -282,6 +284,7 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
                        (:isearch-open . t)
+                       (:front-sticky . t)
                        (:alias . (drawer property-drawer)))
                       ,org-link--description-folding-spec
                       ,org-link--link-folding-spec)))
