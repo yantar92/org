@@ -137,10 +137,16 @@
 (defvar org-inlinetask-min-level)
 (defvar org-link--link-folding-spec)
 (defvar org-link--description-folding-spec)
+(defvar org-odd-levels-only)
+(defvar org-drawer-regexp)
+(defvar org-property-end-re)
+(defvar org-link-descriptive)
+(defvar org-outline-regexp-bol)
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 (declare-function org-element-type "org-element" (element))
 (declare-function org-element-property "org-element" (property element))
+(declare-function org-toggle-custom-properties-visibility "org" ())
 
 ;;; Customization
 
