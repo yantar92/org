@@ -1274,7 +1274,7 @@ key."
 (define-advice outline-flag-region (:around (oldfun from to flag) fix-for-org-fold)
   "Run `org-fold-region' when in org-mode."
   (if (eq major-mode 'org-mode)
-      (org-fold-region from to flag 'headline)
+      (org-fold-region (max from (point-min)) (min to (point-max)) flag 'headline)
     (funcall oldfun from to flag)))
 
 (define-advice outline-next-visible-heading (:around (oldfun arg) fix-for-org-fold)
