@@ -5091,17 +5091,17 @@ This includes angle, plain, and bracket links."
                                           nil
                                           'append)
                   (org-fold-core-set-folding-spec-property spec :visible t))
-                (org-link-descriptive-ensure)
-                (org-fold-region start end nil 'org-link)
-                (org-fold-region start end nil 'org-link-description)
-                ;; We are folding the whole emphasised text with SPEC
-                ;; first.  It makes everything invisible (or whatever
-                ;; the user wants).
-                (org-fold-region start end t spec)
-                ;; The visible part of the text is folded using
-                ;; 'org-link-description, which is forcing this part of
-                ;; the text to be visible.
-                (org-fold-region visible-start visible-end t 'org-link-description)
+                (when org-link-descriptive
+                  (org-fold-region start end nil 'org-link)
+                  (org-fold-region start end nil 'org-link-description)
+                  ;; We are folding the whole emphasised text with SPEC
+                  ;; first.  It makes everything invisible (or whatever
+                  ;; the user wants).
+                  (org-fold-region start end t spec)
+                  ;; The visible part of the text is folded using
+                  ;; 'org-link-description, which is forcing this part of
+                  ;; the text to be visible.
+                  (org-fold-region visible-start visible-end t 'org-link-description))
 		(add-text-properties start end properties)
                 (add-face-text-property start end face-property)
 		(org-rear-nonsticky-at visible-start)
