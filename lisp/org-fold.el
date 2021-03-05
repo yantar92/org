@@ -142,6 +142,7 @@
 (defvar org-property-end-re)
 (defvar org-link-descriptive)
 (defvar org-outline-regexp-bol)
+(defvar org-custom-properties-hidden-p)
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 (declare-function org-element-type "org-element" (element))
