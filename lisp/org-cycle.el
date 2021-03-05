@@ -337,7 +337,13 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	(goto-char eos)
         (org-with-limited-levels
 	 (outline-next-heading))
-	(when (org-invisible-p) (org-fold-heading nil)))
+	(when (and
+               ;; Subtree does not end at the end of visible section of the
+               ;; buffer.
+               (< (point) (point-max))
+               (org-invisible-p))
+          ;; Reveal the following heading line.
+          (org-fold-heading nil)))
       (setq org-cycle-subtree-status 'children)
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-cycle-hook 'children)))

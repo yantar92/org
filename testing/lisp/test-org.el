@@ -8189,6 +8189,21 @@ Contents
    (org-kill-note-or-show-branches)
    (should (org-invisible-p (- (point-max) 2)))))
 
+(ert-deftest test-org/org-cycle-narrowed-subtree ()
+  "Test cycling in narrowed buffer."
+  (org-test-with-temp-text
+   "* Heading 1<point>
+** Child 1.1
+** Child 1.2
+some text
+*** Sub-child 1.2.1
+* Heading 2"
+   (org-overview)
+   (org-narrow-to-subtree)
+   (org-cycle)
+   (re-search-forward "Sub-child")
+   (should (org-invisible-p))))
+
 
 ;;; Yank and Kill
 
