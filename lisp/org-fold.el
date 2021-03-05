@@ -600,9 +600,12 @@ Return a non-nil value when toggling is successful."
 	  t)))
      (no-error nil)
      (t
-      (user-error (if (eq category 'drawer)
-		      "Not at a drawer"
-		    "Not at a block"))))))
+      (user-error (format "%s@%s: %s"
+                          (buffer-file-name (buffer-base-buffer))
+                          (point)
+                          (if (eq category 'drawer)
+		              "Not at a drawer"
+		            "Not at a block")))))))
 
 (defun org-fold-hide-block-toggle (&optional force no-error element)
   "Toggle the visibility of the current block.
