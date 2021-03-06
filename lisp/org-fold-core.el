@@ -808,14 +808,24 @@ property, unfold the region if the :fragile function returns non-nil."
       ;; region.
       (unless (equal from to) ; Ignore deletions.
 	(dolist (spec (org-fold-core-folding-spec-list))
+          ;; Reveal fully invisible text.  This is needed, for
+          ;; example, when there was a deletion in a folded heading,
+          ;; the heading was unfolded, end `undo' was called.  The
+          ;; `undo' would insert the folded text.
+          (when (org-fold-core-region-folded-p from to spec) (org-fold-core-region from to nil spec))
+          ;; Look around and fold the new text if the nearby folds are
+          ;; sticky.
 	  (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
 		(spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
+            ;; Hide text inserted in the middle of a fold.
 	    (when (and spec-from spec-to (eq spec-to spec-from)
                        (or (org-fold-core-get-folding-spec-property spec :front-sticky)
                            (org-fold-core-get-folding-spec-property spec :rear-sticky)))
 	      (org-fold-core-region from to t (or spec-from spec-to)))
+            ;; Hide text inserted at the end of a fold.
             (when (and spec-from (org-fold-core-get-folding-spec-property spec-from :rear-sticky))
               (org-fold-core-region from to t spec-from))
+            ;; Hide text inserted in front of a fold.
             (when (and spec-to (org-fold-core-get-folding-spec-property spec-to :front-sticky))
               (org-fold-core-region from to t spec-to)))))
       ;; Process all the folded text between `from' and `to'.
