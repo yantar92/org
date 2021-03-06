@@ -277,7 +277,7 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:fragile . ,#'org-fold--reveal-outline-maybe)
                        (:isearch-open . t)
                        (:front-sticky . t)
-                       (:alias . (headline inlinetask plain-list)))
+                       (:alias . (headline heading outline inlinetask plain-list)))
                       (org-fold-block
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
