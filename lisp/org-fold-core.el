@@ -290,33 +290,39 @@ unless RETURN-ONLY is non-nil."
             ;; would contain folding properties, which are not
             ;; matching the generated `local-prop'.
 	    (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
-	      ;; Copy all the old folding properties to preserve the folding state
-	      (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
-		(org-with-wide-buffer
-		 (let* ((pos (point-min))
-			(spec (org-fold-core-get-folding-spec-from-folding-prop old-prop))
-                        ;; Generate new buffer-unique folding property
-			(new-prop (org-fold-core--property-symbol-get-create spec nil 'return-only)))
-                   ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
-		   (while (< pos (point-max))
-		     (let ((val (get-text-property pos old-prop)))
-		       (when val
-			 (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
-		     (setq pos (next-single-char-property-change pos old-prop))))))
-              ;; Update `char-property-alias-alist' with folding
-              ;; properties unique for the current buffer.
-	      (setq-local char-property-alias-alist
-			  (cons (cons 'invisible
-				      (mapcar (lambda (spec)
-						(org-fold-core--property-symbol-get-create spec nil 'return-only))
-					      (org-fold-core-folding-spec-list)))
-				(remove (assq 'invisible char-property-alias-alist)
-					char-property-alias-alist)))
-              (setq-local text-property-default-nonsticky
-                          (delete-dups (append text-property-default-nonsticky
-                                               (mapcar (lambda (spec)
-                                                         (cons (org-fold-core--property-symbol-get-create spec nil 'return-only) t))
-                                                       (org-fold-core-folding-spec-list))))))))))))
+              ;; Copy all the old folding properties to preserve the folding state
+              (with-silent-modifications
+                (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
+                  (org-with-wide-buffer
+                   (let* ((pos (point-min))
+	                  (spec (org-fold-core-get-folding-spec-from-folding-prop old-prop))
+                          ;; Generate new buffer-unique folding property
+	                  (new-prop (org-fold-core--property-symbol-get-create spec nil 'return-only)))
+                     ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
+                     (while (< pos (point-max))
+	               (let ((val (get-text-property pos old-prop)))
+	                 (when val
+	                   (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
+	               (setq pos (next-single-char-property-change pos old-prop))))))
+                ;; Update `char-property-alias-alist' with folding
+                ;; properties unique for the current buffer.
+                (setq-local char-property-alias-alist
+	                    (cons (cons 'invisible
+			                (mapcar (lambda (spec)
+				                  (org-fold-core--property-symbol-get-create spec nil 'return-only))
+				                (org-fold-core-folding-spec-list)))
+		                  (remove (assq 'invisible char-property-alias-alist)
+			                  char-property-alias-alist)))
+                (setq-local text-property-default-nonsticky
+                            (delete-dups (append text-property-default-nonsticky
+                                                 (mapcar (lambda (spec)
+                                                           (cons (org-fold-core--property-symbol-get-create spec nil 'return-only) t))
+                                                         (org-fold-core-folding-spec-list)))))))))))))
+
+(defun org-fold-core-decouple-indirect-buffer-folds ()
+  "Copy and decouple folding state in a newly created indirect buffer."
+  (when (buffer-base-buffer)
+    (org-fold-core--property-symbol-get-create (car (org-fold-core-folding-spec-list)))))
 
 ;;; API
 
@@ -399,6 +405,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
   (dolist (spec (or specs org-fold-core--specs))
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
+  (add-hook 'clone-indirect-buffer-hook #'org-fold-core-decouple-indirect-buffer-folds)
   ;; Setup killing text
   (setq-local filter-buffer-substring-function #'org-fold-core--buffer-substring-filter)
   (require 'isearch)
