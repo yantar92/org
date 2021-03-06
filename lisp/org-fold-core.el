@@ -865,12 +865,13 @@ property, unfold the region if the :fragile function returns non-nil."
 				        pos))
 		       (fold-end (org-fold-core-next-folding-state-change spec pos to)))
 	           (when (and fold-begin fold-end)
-		     (when (funcall (org-fold-core-get-folding-spec-property spec :fragile)
-                                    (cons fold-begin fold-end)
-                                    spec)
+		     (when (save-excursion
+                             (funcall (org-fold-core-get-folding-spec-property spec :fragile)
+                                      (cons fold-begin fold-end)
+                                      spec))
                        (org-fold-core-region fold-begin fold-end nil spec)))))
 	       ;; Move to next fold.
-	       (setq pos (org-fold-core-next-folding-state-change spec to))))))))))
+	       (setq pos (org-fold-core-next-folding-state-change spec pos to))))))))))
 
 ;;; Hanlding killing/yanking of folded text
 
