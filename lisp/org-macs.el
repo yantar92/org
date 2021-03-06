@@ -914,9 +914,12 @@ delimiting S."
 
 (defun org-string-width (string)
   "Return width of STRING when displayed in the current buffer.
-Unlike `string-width', this function takes into consideration
-`invisible' and `display' text properties."
-  (let ((current-invisibility-spec buffer-invisibility-spec)
+Outline, block, and drawer folds will be ignored."
+  (let (;; We need to remove the folds to make sure that folded table alignment is not messed up.
+        (current-invisibility-spec (seq-remove (lambda (el) (or (memq el '(org-fold-drawer org-fold-block org-fold-outline))
+                                                           (and (listp el)
+                                                                (memq (car el) '(org-fold-drawer org-fold-block org-fold-outline)))))
+                                               buffer-invisibility-spec))
         (current-char-property-alias-alist char-property-alias-alist))
     (with-temp-buffer
       (setq-local buffer-invisibility-spec current-invisibility-spec)
