@@ -223,9 +223,12 @@ Possible properties can be found in `org-fold-core--specs' docstring."
   (org-fold-core--check-spec spec-or-alias)
   (alist-get property (alist-get (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs)))
 
+(defconst org-fold-core--spec-property-prefix "org-fold--spec-"
+  "Prefix used to create property symbol.")
+
 (defsubst org-fold-core-get-folding-property-symbol (spec &optional buffer)
   "Get folding property for SPEC in current buffer or BUFFER."
-  (intern (format "org-fold--spec-%s-%S"
+  (intern (format (concat org-fold-core--spec-property-prefix "%s-%S")
 		  (symbol-name spec)
 		  ;; (sxhash buf) appears to be not constant over time.
 		  ;; Using buffer-name is safe, since the only place where
@@ -415,6 +418,16 @@ If SPEC-OR-ALIAS is a foldable element, only check folding spec for
 the given element.  Note that multiple elements may have same folding
 specs."
   (org-fold-core-get-folding-spec spec-or-alias pos))
+
+(defun org-fold-core-region-folded-p (beg end &optional spec-or-alias)
+  "Non-nil if the region between BEG and END is folded.
+If SPEC-OR-ALIAS is a folding spec, only check the given folding spec."
+  (org-with-point-at beg
+    (catch :visible
+      (while (< (point) end)
+        (unless (org-fold-core-get-folding-spec spec-or-alias) (throw :visible nil))
+        (goto-char (org-fold-core-next-folding-state-change spec-or-alias nil end)))
+      t)))
 
 (defun org-fold-core-get-folding-spec (&optional spec-or-alias pom)
   "Get folding state at `point' or POM.
@@ -891,23 +904,25 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
     (unless (string-empty-p return-string)
+      ;; Collect all the text properties the string is completely
+      ;; hidden with.
+      (dolist (spec (org-fold-core-folding-spec-list))
+        (when (org-fold-core-region-folded-p beg end spec)
+          (push (org-fold-core--property-symbol-get-create spec nil t) props-list)))
       (dolist (plist (mapcar #'caddr (object-intervals return-string)))
 	;; Only lists contain text properties.
 	(when (listp plist)
-	  ;; Collect all the relevant text properties.
+          ;; Collect all the relevant text properties.
 	  (while plist
             (let* ((prop (car plist))
 		   (prop-name (symbol-name prop)))
               ;; We do not care about values.
               (setq plist (cddr plist))
-              (when (string-match-p "org-fold-core--spec" prop-name)
-		;; Leave folding specs from current buffer, unless
-		;; completely hidden region is copied.  See comments
-		;; in `org-fold-core--property-symbol-get-create' to understand why
-		;; it works.
-		(unless (or (member prop (alist-get 'invisible char-property-alias-alist))
-                            (and (org-fold-core-folded-p beg) (org-fold-core-folded-p end)))
-		  (push t props-list)
+              (when (string-match-p org-fold-core--spec-property-prefix prop-name)
+		;; Leave folding specs from current buffer.  See
+		;; comments in `org-fold-core--property-symbol-get-create' to
+		;; understand why it works.
+		(unless (member prop (alist-get 'invisible char-property-alias-alist))
 		  (push prop props-list)))))))
       (remove-text-properties 0 (length return-string) props-list return-string))
     return-string))
