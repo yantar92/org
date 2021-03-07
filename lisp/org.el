@@ -6438,17 +6438,18 @@ odd number.  Returns values greater than 0."
 
 (defun org-demote ()
   "Demote the current heading lower down the tree."
-  (org-with-wide-buffer
-   (org-back-to-heading t)
-   (let* ((after-change-functions (remq 'flyspell-after-change-function
-					after-change-functions))
-	  (level (save-match-data (funcall outline-level)))
-	  (down-head (concat (make-string (org-get-valid-level level 1) ?*) " "))
-	  (diff (abs (- level (length down-head) -1))))
-     (replace-match down-head nil t)
-     (when org-auto-align-tags (org-align-tags))
-     (when org-adapt-indentation (org-fixup-indentation diff))
-     (run-hooks 'org-after-demote-entry-hook))))
+  (org-fold-core-ignore-modifications
+      (org-with-wide-buffer
+       (org-back-to-heading t)
+       (let* ((after-change-functions (remq 'flyspell-after-change-function
+					    after-change-functions))
+	      (level (save-match-data (funcall outline-level)))
+	      (down-head (concat (make-string (org-get-valid-level level 1) ?*) " "))
+	      (diff (abs (- level (length down-head) -1))))
+         (replace-match down-head nil t)
+         (when org-auto-align-tags (org-align-tags))
+         (when org-adapt-indentation (org-fixup-indentation diff))
+         (run-hooks 'org-after-demote-entry-hook)))))
 
 (defun org-cycle-level ()
   "Cycle the level of an empty headline through possible states.
