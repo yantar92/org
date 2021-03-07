@@ -273,32 +273,28 @@ smart            Make point visible, and do insertion/deletion if it is
   (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
   (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
   (org-fold-core-initialize `((org-fold-outline
-                               (:ellipsis . ,ellipsis)
-                               (:fragile . ,#'org-fold--reveal-outline-maybe)
-                               (:isearch-open . t)
-                               (:front-sticky . t)
-                               (:alias . (headline heading outline inlinetask plain-list)))
-                              (org-fold-block
-                               (:ellipsis . ,ellipsis)
-                               (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
-                               (:isearch-open . t)
-                               (:front-sticky . t)
-                               (:alias . ( block center-block comment-block
-                                           dynamic-block example-block export-block
-                                           quote-block special-block src-block
-                                           verse-block)))
-                              (org-fold-drawer
-                               (:ellipsis . ,ellipsis)
-                               (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
-                               (:isearch-open . t)
-                               (:front-sticky . t)
-                               (:alias . (drawer property-drawer)))
-                              ,org-link--description-folding-spec
-                              ,org-link--link-folding-spec
-                              (org-fold-emphasis
-                               (:ellipsis . nil)
-                               (:fragile . nil)
-                               (:isearch-open . t)))))
+                       (:ellipsis . ,ellipsis)
+                       (:fragile . ,#'org-fold--reveal-outline-maybe)
+                       (:isearch-open . t)
+                       (:front-sticky . t)
+                       (:alias . (headline heading outline inlinetask plain-list)))
+                      (org-fold-block
+                       (:ellipsis . ,ellipsis)
+                       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
+                       (:isearch-open . t)
+                       (:front-sticky . t)
+                       (:alias . ( block center-block comment-block
+                                   dynamic-block example-block export-block
+                                   quote-block special-block src-block
+                                   verse-block)))
+                      (org-fold-drawer
+                       (:ellipsis . ,ellipsis)
+                       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
+                       (:isearch-open . t)
+                       (:front-sticky . t)
+                       (:alias . (drawer property-drawer)))
+                      ,org-link--description-folding-spec
+                      ,org-link--link-folding-spec)))
 
 ;;;; Searching and examining folded text
 

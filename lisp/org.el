@@ -4954,20 +4954,19 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 			  (m (if org-hide-emphasis-markers 4 2)))
 	        (font-lock-prepend-text-property
 	         (match-beginning m) (match-end m) 'face face)
-                (org-fold-region (match-beginning 2) (match-end 3) nil 'org-fold-emphasis)
-                (org-fold-region (match-end 4) (match-end 2) nil 'org-fold-emphasis)
+                (remove-text-properties (match-beginning 2) (match-end 3) '(invisible t))
+                (remove-text-properties (match-end 4) (match-end 2) '(invisible t))
 	        (when verbatim?
 		  (org-remove-flyspell-overlays-in
 		   (match-beginning 0) (match-end 0))
 		  (remove-text-properties (match-beginning 2) (match-end 2)
-					  '(display t invisible t intangible t))
-                  (org-fold-region (match-beginning 2) (match-end 2) nil 'org-fold-emphasis))
+					  '(display t invisible t intangible t)))
 	        (add-text-properties (match-beginning 2) (match-end 2)
 				     '(font-lock-multiline t org-emphasis t))
 	        (when (and org-hide-emphasis-markers
 			   (not (org-at-comment-p)))
-                  (org-fold-region (match-beginning 2) (match-end 3) t 'org-fold-emphasis)
-                  (org-fold-region (match-end 4) (match-end 2) t 'org-fold-emphasis))
+                  (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
+                  (put-text-property (match-end 4) (match-end 2) 'invisible t))
 	        (throw :exit t)))))))))
 
 (defun org-emphasize (&optional char)
