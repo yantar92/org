@@ -478,7 +478,16 @@ Show the heading too, if it is currently invisible."
  	 (point-max)))
      nil
      'headline)
-    (org-cycle-hide-drawers 'children)))
+    (save-excursion
+      (when (re-search-forward org-drawer-regexp
+                               (save-excursion
+                                 (if (re-search-forward
+ 	                              (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
+ 	                             (match-beginning 1)
+ 	                           (point-max)))
+                               t)
+        (unless (org-fold-folded-p nil 'drawer)
+          (org-fold-hide-drawer-toggle t))))))
 
 ;; FIXME: defalias instead?
 (defun org-fold-show-hidden-entry ()
