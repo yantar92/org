@@ -509,16 +509,15 @@ Prefix arg LEVEL is how many levels below the current level
 should be shown.  Default is enough to cause the following
 heading to appear."
   (interactive "p")
-   (unless (org-before-first-heading-p)
-     (save-excursion
-       (org-with-limited-levels (org-back-to-heading t))
-       (let* ((current-level (funcall outline-level))
+  (unless (org-before-first-heading-p)
+    (save-excursion
+      (org-with-limited-levels (org-back-to-heading t))
+      (let* ((current-level (funcall outline-level))
  	     (max-level (org-get-valid-level
  			 current-level
  			 (if level (prefix-numeric-value level) 1)))
  	     (end (save-excursion (org-end-of-subtree t t)))
  	     (regexp-fmt "^\\*\\{%d,%s\\}\\(?: \\|$\\)")
- 	     (past-first-child nil)
  	     ;; Make sure to skip inlinetasks.
  	     (re (format regexp-fmt
  			 current-level
@@ -533,12 +532,12 @@ heading to appear."
  	;; Display children.  First child may be deeper than expected
  	;; MAX-LEVEL.  Since we want to display it anyway, adjust
  	;; MAX-LEVEL accordingly.
+        (when (re-search-forward re end t)
+          (setq re (format regexp-fmt
+ 			   current-level
+ 			   (max (funcall outline-level) max-level)))
+          (org-fold-heading nil))
  	(while (re-search-forward re end t)
- 	  (unless past-first-child
- 	    (setq re (format regexp-fmt
- 			     current-level
- 			     (max (funcall outline-level) max-level)))
- 	    (setq past-first-child t))
  	  (org-fold-heading nil))))))
 
 (defun org-fold-show-subtree ()
