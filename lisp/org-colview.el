@@ -159,8 +159,8 @@ See `org-columns-summary-types' for details.")
 (defun org-columns-content ()
   "Switch to contents view while in columns view."
   (interactive)
-  (org-overview)
-  (org-content))
+  (org-cycle-overview)
+  (org-cycle-content))
 
 (org-defkey org-columns-map "c" 'org-columns-content)
 (org-defkey org-columns-map "o" 'org-overview)

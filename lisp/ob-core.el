@@ -28,6 +28,7 @@
 (require 'org-macs)
 (require 'org-fold)
 (require 'org-compat)
+(require 'org-cycle)
 
 (defconst org-babel-exeext
   (if (memq system-type '(windows-nt cygwin))
@@ -926,7 +927,7 @@ arguments and pop open the results in a preview buffer."
     (insert (concat header " " (or arg "")))
     (cons header arg)))
 
-(add-hook 'org-tab-first-hook 'org-babel-header-arg-expand)
+(add-hook 'org-cycle-tab-first-hook 'org-babel-header-arg-expand)
 
 ;;;###autoload
 (defun org-babel-load-in-session (&optional _arg info)
@@ -1450,7 +1451,7 @@ portions of results lines."
 	(push ov org-babel-hide-result-overlays)))))
 
 ;; org-tab-after-check-for-cycling-hook
-(add-hook 'org-tab-first-hook #'org-babel-hide-result-toggle-maybe)
+(add-hook 'org-cycle-tab-first-hook #'org-babel-hide-result-toggle-maybe)
 ;; Remove overlays when changing major mode
 (add-hook 'org-mode-hook
 	  (lambda () (add-hook 'change-major-mode-hook

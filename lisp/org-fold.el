@@ -143,6 +143,7 @@
 (defvar org-link-descriptive)
 (defvar org-outline-regexp-bol)
 (defvar org-custom-properties-hidden-p)
+(defvar org-archive-tag)
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 (declare-function org-element-type "org-element" (element))
@@ -326,15 +327,14 @@ because otherwise all these markers will point to nowhere."
 		    data-val)
 		(while (< pos (point-max))
                   (dolist (spec (org-fold-get-folding-spec 'all pos))
-                    (when (memq type ,specs)
-                      (let ((region (org-fold-get-region-at-point spec pos)))
-			(if ,markers?
-			    (push (list (copy-marker (car region))
-					(copy-marker (cdr region) t)
-                                        spec)
-                                  data-val)
-                          (push (list (car region) (cdr region) spec)
-				data-val)))))
+                    (let ((region (org-fold-get-region-at-point spec pos)))
+		      (if ,markers?
+			  (push (list (copy-marker (car region))
+				      (copy-marker (cdr region) t)
+                                      spec)
+                                data-val)
+                        (push (list (car region) (cdr region) spec)
+			      data-val))))
                   (setq pos (org-fold-next-folding-state-change nil pos)))))))
        (unwind-protect (progn ,@body)
 	 (org-with-wide-buffer
@@ -668,6 +668,19 @@ Return a non-nil value when toggling is successful."
 	  ;; another time when matching its ending line with
 	  ;; `org-drawer-regexp'.
 	  (goto-char (org-element-property :end drawer)))))))
+
+(defun org-fold-hide-archived-subtrees (beg end)
+  "Re-hide all archived subtrees after a visibility state change."
+  (org-with-wide-buffer
+   (let ((case-fold-search nil)
+	 (re (concat org-outline-regexp-bol ".*:" org-archive-tag ":")))
+     (goto-char beg)
+     ;; Include headline point is currently on.
+     (beginning-of-line)
+     (while (and (< (point) end) (re-search-forward re end t))
+       (when (member org-archive-tag (org-get-tags nil t))
+	 (org-fold-subtree t)
+	 (org-end-of-subtree t))))))
 
 ;;;;; Reveal point location
 

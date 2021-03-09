@@ -223,7 +223,7 @@ position or nil."
 				     "  Just type for auto-isearch."
 				   "  n/p/f/b/u to navigate, q to quit.")))))
 	 (org-fit-window-to-buffer (get-buffer-window "*Org Help*"))
-	 (org-overview)
+	 (org-cycle-overview)
 	 (setq buffer-read-only t)
 	 (if (and (boundp 'org-goto-start-pos)
 		  (integer-or-marker-p org-goto-start-pos))

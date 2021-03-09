@@ -95,7 +95,14 @@
 (require 'ol)
 (require 'org-table)
 (require 'org-fold)
+
 (require 'org-cycle)
+(defvaralias 'org-hide-block-startup 'org-cycle-hide-block-startup)
+(defvaralias 'org-pre-cycle-hook 'org-cycle-pre-hook)
+(defvaralias 'org-tab-first-hook 'org-cycle-tab-first-hook)
+(defalias 'org-global-cycle #'org-cycle-global)
+(defalias 'org-overview #'org-cycle-overview)
+(defalias 'org-content #'org-cycle-content)
 
 ;; `org-outline-regexp' ought to be a defconst but is let-bound in
 ;; some places -- e.g. see the macro `org-with-limited-levels'.
@@ -1355,130 +1362,6 @@ is not set."
   :group 'org-structure
   :type 'plist)
 
-(defgroup org-cycle nil
-  "Options concerning visibility cycling in Org mode."
-  :tag "Org Cycle"
-  :group 'org-structure)
-
-(defcustom org-cycle-skip-children-state-if-no-children t
-  "Non-nil means skip CHILDREN state in entries that don't have any."
-  :group 'org-cycle
-  :type 'boolean)
-
-(defcustom org-cycle-max-level nil
-  "Maximum level which should still be subject to visibility cycling.
-Levels higher than this will, for cycling, be treated as text, not a headline.
-When `org-odd-levels-only' is set, a value of N in this variable actually
-means 2N-1 stars as the limiting headline.
-When nil, cycle all levels.
-Note that the limiting level of cycling is also influenced by
-`org-inlinetask-min-level'.  When `org-cycle-max-level' is not set but
-`org-inlinetask-min-level' is, cycling will be limited to levels one less
-than its value."
-  :group 'org-cycle
-  :type '(choice
-	  (const :tag "No limit" nil)
-	  (integer :tag "Maximum level")))
-
-(defcustom org-hide-block-startup nil
-  "Non-nil means entering Org mode will fold all blocks.
-This can also be set in on a per-file basis with
-
-#+STARTUP: hideblocks
-#+STARTUP: showblocks"
-  :group 'org-startup
-  :group 'org-cycle
-  :type 'boolean)
-
-(defcustom org-cycle-global-at-bob nil
-  "Cycle globally if cursor is at beginning of buffer and not at a headline.
-
-This makes it possible to do global cycling without having to use `S-TAB'
-or `\\[universal-argument] TAB'.  For this special case to work, the first \
-line of the buffer
-must not be a headline -- it may be empty or some other text.
-
-When used in this way, `org-cycle-hook' is disabled temporarily to make
-sure the cursor stays at the beginning of the buffer.
-
-When this option is nil, don't do anything special at the beginning of
-the buffer."
-  :group 'org-cycle
-  :type 'boolean)
-
-(defcustom org-cycle-level-after-item/entry-creation t
-  "Non-nil means cycle entry level or item indentation in new empty entries.
-
-When the cursor is at the end of an empty headline, i.e., with only stars
-and maybe a TODO keyword, TAB will then switch the entry to become a child,
-and then all possible ancestor states, before returning to the original state.
-This makes data entry extremely fast:  M-RET to create a new headline,
-on TAB to make it a child, two or more tabs to make it a (grand-)uncle.
-
-When the cursor is at the end of an empty plain list item, one TAB will
-make it a subitem, two or more tabs will back up to make this an item
-higher up in the item hierarchy."
-  :group 'org-cycle
-  :type 'boolean)
-
-(defcustom org-cycle-emulate-tab t
-  "Where should `org-cycle' emulate TAB.
-nil         Never
-white       Only in completely white lines
-whitestart  Only at the beginning of lines, before the first non-white char
-t           Everywhere except in headlines
-exc-hl-bol  Everywhere except at the start of a headline
-If TAB is used in a place where it does not emulate TAB, the current subtree
-visibility is cycled."
-  :group 'org-cycle
-  :type '(choice (const :tag "Never" nil)
-		 (const :tag "Only in completely white lines" white)
-		 (const :tag "Before first char in a line" whitestart)
-		 (const :tag "Everywhere except in headlines" t)
-		 (const :tag "Everywhere except at bol in headlines" exc-hl-bol)))
-
-(defcustom org-cycle-separator-lines 2
-  "Number of empty lines needed to keep an empty line between collapsed trees.
-If you leave an empty line between the end of a subtree and the following
-headline, this empty line is hidden when the subtree is folded.
-Org mode will leave (exactly) one empty line visible if the number of
-empty lines is equal or larger to the number given in this variable.
-So the default 2 means at least 2 empty lines after the end of a subtree
-are needed to produce free space between a collapsed subtree and the
-following headline.
-
-If the number is negative, and the number of empty lines is at least -N,
-all empty lines are shown.
-
-Special case: when 0, never leave empty lines in collapsed view."
-  :group 'org-cycle
-  :type 'integer)
-(put 'org-cycle-separator-lines 'safe-local-variable 'integerp)
-
-(defcustom org-pre-cycle-hook nil
-  "Hook that is run before visibility cycling is happening.
-The function(s) in this hook must accept a single argument which indicates
-the new state that will be set right after running this hook.  The
-argument is a symbol.  Before a global state change, it can have the values
-`overview', `content', or `all'.  Before a local state change, it can have
-the values `folded', `children', or `subtree'."
-  :group 'org-cycle
-  :type 'hook)
-
-(defcustom org-cycle-hook '(org-cycle-hide-archived-subtrees
-			    org-cycle-hide-drawers
-			    org-cycle-show-empty-lines
-			    org-optimize-window-after-visibility-change)
-  "Hook that is run after `org-cycle' has changed the buffer visibility.
-The function(s) in this hook must accept a single argument which indicates
-the new state that was set by the most recent `org-cycle' command.  The
-argument is a symbol.  After a global state change, it can have the values
-`overview', `contents', or `all'.  After a local state change, it can have
-the values `folded', `children', or `subtree'."
-  :group 'org-cycle
-  :package-version '(Org . "9.4")
-  :type 'hook)
-
 (defgroup org-edit-structure nil
   "Options concerning structure editing in Org mode."
   :tag "Org Edit Structure"
@@ -1647,7 +1530,6 @@ default   the value to be used for all contexts not explicitly
 			   (const table)
 			   (const default))
 		   (boolean)))))
-
 
 (defcustom org-insert-heading-respect-content nil
   "Non-nil means insert new headings after the current subtree.
@@ -3839,15 +3721,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
   :group 'org-properties
   :type 'boolean)
 
-(defcustom org-cycle-open-archived-trees nil
-  "Non-nil means `org-cycle' will open archived trees.
-An archived tree is a tree marked with the tag ARCHIVE.
-When nil, archived trees will stay folded.  You can still open them with
-normal outline commands like `show-all', but not with the cycling commands."
-  :group 'org-archive
-  :group 'org-cycle
-  :type 'boolean)
-
 (defcustom org-sparse-tree-open-archived-trees nil
   "Non-nil means sparse tree construction shows matches in archived trees.
 When nil, matches in these trees are highlighted, but the trees are kept in
@@ -3876,43 +3749,6 @@ Otherwise, these types are allowed:
   :version "26.1"
   :package-version '(Org . "8.3")
   :group 'org-sparse-trees)
-
-(defun org-fold-hide-archived-subtrees (beg end)
-  "Re-hide all archived subtrees after a visibility state change."
-  (org-with-wide-buffer
-   (let ((case-fold-search nil)
-	 (re (concat org-outline-regexp-bol ".*:" org-archive-tag ":")))
-     (goto-char beg)
-     ;; Include headline point is currently on.
-     (beginning-of-line)
-     (while (and (< (point) end) (re-search-forward re end t))
-       (when (member org-archive-tag (org-get-tags nil t))
-	 (org-fold-subtree t)
-	 (org-end-of-subtree t))))))
-
-(defun org-cycle-hide-archived-subtrees (state)
-  "Re-hide all archived subtrees after a visibility state change.
-STATE should be one of the symbols listed in the docstring of
-`org-cycle-hook'."
-  (when (and (not org-cycle-open-archived-trees)
-             (not (memq state '(overview folded))))
-    (save-excursion
-      (let* ((globalp (memq state '(contents all)))
-             (beg (if globalp (point-min) (point)))
-             (end (if globalp (point-max) (org-end-of-subtree t))))
-	(org-fold-hide-archived-subtrees beg end)
-	(goto-char beg)
-	(when (looking-at-p (concat ".*:" org-archive-tag ":"))
-	  (message "%s" (substitute-command-keys
-			 "Subtree is archived and stays closed.  Use \
-`\\[org-force-cycle-archived]' to cycle it anyway.")))))))
-
-(defun org-force-cycle-archived ()
-  "Cycle subtree even if it is archived."
-  (interactive)
-  (setq this-command 'org-cycle)
-  (let ((org-cycle-open-archived-trees t))
-    (call-interactively 'org-cycle)))
 
 (defalias 'org-advertized-archive-subtree 'org-archive-subtree)
 
@@ -5885,9 +5721,10 @@ and subscripts."
   (dolist (o (overlays-at pos))
     (and (eq 'outline (overlay-get o 'invisible))
 	 (not (string-match-p "\\S-" (buffer-substring (overlay-start o)
-						     (overlay-end o))))
+						    (overlay-end o))))
 	 (delete-overlay o))))
 
+;; FIXME: This function is unused.
 (defun org-show-empty-lines-in-parent ()
   "Move to the parent and re-show empty lines before visible headlines."
   (save-excursion
@@ -6435,18 +6272,17 @@ odd number.  Returns values greater than 0."
 
 (defun org-demote ()
   "Demote the current heading lower down the tree."
-  (org-fold-core-ignore-modifications
-      (org-with-wide-buffer
-       (org-back-to-heading t)
-       (let* ((after-change-functions (remq 'flyspell-after-change-function
-					    after-change-functions))
-	      (level (save-match-data (funcall outline-level)))
-	      (down-head (concat (make-string (org-get-valid-level level 1) ?*) " "))
-	      (diff (abs (- level (length down-head) -1))))
-         (replace-match down-head nil t)
-         (when org-auto-align-tags (org-align-tags))
-         (when org-adapt-indentation (org-fixup-indentation diff))
-         (run-hooks 'org-after-demote-entry-hook)))))
+  (org-with-wide-buffer
+   (org-back-to-heading t)
+   (let* ((after-change-functions (remq 'flyspell-after-change-function
+					after-change-functions))
+	  (level (save-match-data (funcall outline-level)))
+	  (down-head (concat (make-string (org-get-valid-level level 1) ?*) " "))
+	  (diff (abs (- level (length down-head) -1))))
+     (replace-match down-head nil t)
+     (when org-auto-align-tags (org-align-tags))
+     (when org-adapt-indentation (org-fixup-indentation diff))
+     (run-hooks 'org-after-demote-entry-hook))))
 
 (defun org-cycle-level ()
   "Cycle the level of an empty headline through possible states.
@@ -6675,6 +6511,36 @@ case."
   "Move the current subtree up past ARG headlines of the same level."
   (interactive "p")
   (org-move-subtree-down (- (prefix-numeric-value arg))))
+
+(defun org-clean-visibility-after-subtree-move ()
+  "Fix visibility issues after moving a subtree."
+  ;; First, find a reasonable region to look at:
+  ;; Start two siblings above, end three below
+  (let* ((beg (save-excursion
+		(and (org-get-last-sibling)
+		     (org-get-last-sibling))
+		(point)))
+	 (end (save-excursion
+		(and (org-get-next-sibling)
+		     (org-get-next-sibling)
+		     (org-get-next-sibling))
+		(if (org-at-heading-p)
+		    (point-at-eol)
+		  (point))))
+	 (level (looking-at "\\*+"))
+	 (re (when level (concat "^" (regexp-quote (match-string 0)) " "))))
+    (save-excursion
+      (save-restriction
+	(narrow-to-region beg end)
+	(when re
+	  ;; Properly fold already folded siblings
+	  (goto-char (point-min))
+	  (while (re-search-forward re nil t)
+	    (when (and (not (org-invisible-p))
+		       (org-invisible-p (line-end-position)))
+	      (org-fold-heading nil))))
+	(org-cycle-hide-drawers 'all)
+	(org-cycle-show-empty-lines 'overview)))))
 
 (defun org-move-subtree-down (&optional arg)
   "Move the current subtree down past ARG headlines of the same level."
@@ -10222,7 +10088,7 @@ The function must neither move point nor alter narrowing."
       (when (or (not keep-previous)	    ; do not want to keep
 		(not org-occur-highlights)) ; no previous matches
 	;; hide everything
-	(org-overview))
+	(org-cycle-overview))
       (let ((case-fold-search (if (eq org-occur-case-fold-search 'smart)
 				  (isearch-no-upper-case-p regexp t)
 				org-occur-case-fold-search)))
@@ -10517,7 +10383,7 @@ headlines matching this string."
     (save-excursion
       (goto-char (point-min))
       (when (eq action 'sparse-tree)
-	(org-overview)
+	(org-cycle-overview)
 	(org-remove-occur-highlights))
       (while (let (case-fold-search)
 	       (re-search-forward re nil t))
@@ -15821,16 +15687,6 @@ must check if the context is appropriate for it to act.  If yes,
 it should do its thing and then return a non-nil value.  If the
 context is wrong, just do nothing and return nil.")
 
-(defvar org-tab-first-hook nil
-  "Hook for functions to attach themselves to TAB.
-See `org-ctrl-c-ctrl-c-hook' for more information.
-This hook runs as the first action when TAB is pressed, even before
-`org-cycle' messes around with the `outline-regexp' to cater for
-inline tasks and plain list item folding.
-If any function in this hook returns t, any other actions that
-would have been caused by TAB (such as table field motion or visibility
-cycling) will not occur.")
-
 (defvar org-tab-after-check-for-table-hook nil
   "Hook for functions to attach themselves to TAB.
 See `org-ctrl-c-ctrl-c-hook' for more information.
@@ -15934,11 +15790,11 @@ When ARG is a numeric prefix, show contents of this level."
    ((integerp arg)
     (let ((arg2 (if org-odd-levels-only (1- (* 2 arg)) arg)))
       (message "Content view to level: %d" arg)
-      (org-content (prefix-numeric-value arg2))
+      (org-cycle-content (prefix-numeric-value arg2))
       (org-cycle-show-empty-lines t)
       (setq org-cycle-global-status 'overview)
       (run-hook-with-args 'org-cycle-hook 'overview)))
-   (t (call-interactively 'org-global-cycle))))
+   (t (call-interactively 'org-cycle-global))))
 
 (defun org-shiftmetaleft ()
   "Promote subtree or delete table column.
@@ -20225,7 +20081,7 @@ Started from `gnus-info-find-node'."
 
 ;;; Finish up
 
-(add-hook 'org-mode-hook     ;remove overlays when changing major mode
+(add-hook 'org-mode-hook     ;remove folds when changing major mode
 	  (lambda () (add-hook 'change-major-mode-hook
 			  'org-fold-show-all 'append 'local)))
 

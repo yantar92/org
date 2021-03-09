@@ -67,7 +67,7 @@
 (declare-function org-mode "org" ())
 (declare-function org-occur "org" (regexp &optional keep-previous callback))
 (declare-function org-open-file "org" (path &optional in-emacs line search))
-(declare-function org-overview "org" ())
+(declare-function org-cycle-overview "org-cycle" ())
 (declare-function org-restart-font-lock "org" ())
 (declare-function org-run-like-in-org-mode "org" (cmd))
 (declare-function org-show-context "org" (&optional key))
@@ -725,7 +725,7 @@ followed by another \"%[A-F0-9]{2}\" group."
 		(make-indirect-buffer (current-buffer)
 				      indirect-buffer-name
 				      'clone))))
-      (with-current-buffer indirect-buffer (org-overview))
+      (with-current-buffer indirect-buffer (org-cycle-overview))
       indirect-buffer))))
 
 (defun org-link--search-radio-target (target)
@@ -786,12 +786,12 @@ syntax around the string."
 		   (t nil))))
     string))
 
-(defun org-link--reveal-maybe (region spec)
+(defun org-link--reveal-maybe (region _)
   "Reveal folded link in REGION when needed.
 This function is intended to be used as :fragile property of a folding
 spec."
   (org-with-point-at (car region)
-    (not (org-at-regexp-p org-any-link-re))))
+    (not (org-in-regexp org-link-any-re))))
 
 
 ;;; Public API
