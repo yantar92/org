@@ -248,6 +248,11 @@ Possible properties can be found in `org-fold-core--specs' docstring."
 
 (defvar org-fold-core--property-symbol-cache (make-hash-table :test 'equal)
   "Saved values of folding properties for (buffer . spec) conses.")
+(defvar-local org-fold-core--indirect-buffers nil
+  "List of indirect buffers created from current buffer.
+This variable is needed to work around Emacs bug#46982, while Emacs
+does not provide a way `after-change-functions' in any other buffer
+than the buffer where the change was actually made.")
 
 ;; This is the core function used to fold text in org buffers.  We use
 ;; text properties to hide folded text, however 'invisible property is
@@ -290,6 +295,11 @@ unless RETURN-ONLY is non-nil."
             ;; would contain folding properties, which are not
             ;; matching the generated `local-prop'.
 	    (unless (member local-prop (cdr (assq 'invisible char-property-alias-alist)))
+              ;; Add current buffer to the list of indirect buffers in the base buffer.
+              (when (buffer-base-buffer)
+                (with-current-buffer (buffer-base-buffer)
+                  (setq-local org-fold-core--indirect-buffers
+                              (seq-filter #'buffer-live-p (delete-dups (append org-fold-core--indirect-buffers (list buf)))))))
               ;; Copy all the old folding properties to preserve the folding state
               (with-silent-modifications
                 (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
@@ -808,74 +818,80 @@ property, unfold the region if the :fragile function returns non-nil."
   ;; If no insertions or deletions in buffer, skip all the checks.
   (unless (or (eq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
               org-fold-core--ignore-modifications)
-    (save-match-data
-      ;; Store the new buffer modification state.
-      (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
-      ;; Re-hide text inserted in the middle/font/back of a folded
-      ;; region.
-      (unless (equal from to) ; Ignore deletions.
-	(dolist (spec (org-fold-core-folding-spec-list))
-          ;; Reveal fully invisible text.  This is needed, for
-          ;; example, when there was a deletion in a folded heading,
-          ;; the heading was unfolded, end `undo' was called.  The
-          ;; `undo' would insert the folded text.
-          (when (and (org-fold-core-region-folded-p from to spec)
-                     (org-region-invisible-p from to))
-            (org-fold-core-region from to nil spec))
-          ;; Look around and fold the new text if the nearby folds are
-          ;; sticky.
-	  (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
-		(spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
-            ;; Hide text inserted in the middle of a fold.
-	    (when (and spec-from spec-to (eq spec-to spec-from)
-                       (or (org-fold-core-get-folding-spec-property spec :front-sticky)
-                           (org-fold-core-get-folding-spec-property spec :rear-sticky)))
-	      (org-fold-core-region from to t (or spec-from spec-to)))
-            ;; Hide text inserted at the end of a fold.
-            (when (and spec-from (org-fold-core-get-folding-spec-property spec-from :rear-sticky))
-              (org-fold-core-region from to t spec-from))
-            ;; Hide text inserted in front of a fold.
-            (when (and spec-to (org-fold-core-get-folding-spec-property spec-to :front-sticky))
-              (org-fold-core-region from to t spec-to)))))
-      ;; Process all the folded text between `from' and `to'.
-      (dolist (func org-fold-core-extend-changed-region-functions)
-        (let ((new-region (funcall func from to)))
-          (setq from (car new-region))
-          (setq to (cdr new-region))))
-      (dolist (spec (org-fold-core-folding-spec-list))
-        ;; No action is needed when :fragile is nil for the spec.
-        (when (org-fold-core-get-folding-spec-property spec :fragile)
-          (org-with-wide-buffer
-           ;; Expand the considered region to include partially present fold.
-           ;; Note: It is important to do this inside loop ovre all
-           ;; specs.  Otherwise, the region may be expanded to huge
-           ;; outline fold, potentially involving majority of the
-           ;; buffer.  That would cause the below code to loop over
-           ;; almost all the folds in buffer, which would be too slow.
-           (let ((local-from from)
-                 (local-to to)
-                 (region-from (org-fold-core-get-region-at-point spec (max (point-min) (1- from))))
-                 (region-to (org-fold-core-get-region-at-point spec (min to (1- (point-max))))))
-             (when region-from (setq local-from (car region-from)))
-             (when region-to (setq local-to (cdr region-to)))
-             (let ((pos local-from))
-	       ;; Move to the first hidden region.
-	       (unless (org-fold-core-get-folding-spec spec pos)
-	         (setq pos (org-fold-core-next-folding-state-change spec pos local-to)))
-	       ;; Cycle over all the folds.
-	       (while (< pos local-to)
-	         (save-match-data ; we should not clobber match-data in after-change-functions
-	           (let ((fold-begin (and (org-fold-core-get-folding-spec spec pos)
-				          pos))
-		         (fold-end (org-fold-core-next-folding-state-change spec pos local-to)))
-	             (when (and fold-begin fold-end)
-		       (when (save-excursion
-                               (funcall (org-fold-core-get-folding-spec-property spec :fragile)
-                                        (cons fold-begin fold-end)
-                                        spec))
-                         (org-fold-core-region fold-begin fold-end nil spec)))))
-	         ;; Move to next fold.
-	         (setq pos (org-fold-core-next-folding-state-change spec pos local-to)))))))))))
+    ;; Handle changes in all the indirect buffers and in the base
+    ;; buffer.  Work around Emacs bug#46982.
+    (let ((buffers (cons (or (buffer-base-buffer) (current-buffer))
+                         (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers))))
+      (dolist (buf buffers)
+        (with-current-buffer buf
+          (save-match-data
+            ;; Store the new buffer modification state.
+            (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
+            ;; Re-hide text inserted in the middle/font/back of a folded
+            ;; region.
+            (unless (equal from to) ; Ignore deletions.
+	      (dolist (spec (org-fold-core-folding-spec-list))
+                ;; Reveal fully invisible text.  This is needed, for
+                ;; example, when there was a deletion in a folded heading,
+                ;; the heading was unfolded, end `undo' was called.  The
+                ;; `undo' would insert the folded text.
+                (when (and (org-fold-core-region-folded-p from to spec)
+                           (org-region-invisible-p from to))
+                  (org-fold-core-region from to nil spec))
+                ;; Look around and fold the new text if the nearby folds are
+                ;; sticky.
+	        (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
+		      (spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
+                  ;; Hide text inserted in the middle of a fold.
+	          (when (and spec-from spec-to (eq spec-to spec-from)
+                             (or (org-fold-core-get-folding-spec-property spec :front-sticky)
+                                 (org-fold-core-get-folding-spec-property spec :rear-sticky)))
+	            (org-fold-core-region from to t (or spec-from spec-to)))
+                  ;; Hide text inserted at the end of a fold.
+                  (when (and spec-from (org-fold-core-get-folding-spec-property spec-from :rear-sticky))
+                    (org-fold-core-region from to t spec-from))
+                  ;; Hide text inserted in front of a fold.
+                  (when (and spec-to (org-fold-core-get-folding-spec-property spec-to :front-sticky))
+                    (org-fold-core-region from to t spec-to)))))
+            ;; Process all the folded text between `from' and `to'.
+            (dolist (func org-fold-core-extend-changed-region-functions)
+              (let ((new-region (funcall func from to)))
+                (setq from (car new-region))
+                (setq to (cdr new-region))))
+            (dolist (spec (org-fold-core-folding-spec-list))
+              ;; No action is needed when :fragile is nil for the spec.
+              (when (org-fold-core-get-folding-spec-property spec :fragile)
+                (org-with-wide-buffer
+                 ;; Expand the considered region to include partially present fold.
+                 ;; Note: It is important to do this inside loop ovre all
+                 ;; specs.  Otherwise, the region may be expanded to huge
+                 ;; outline fold, potentially involving majority of the
+                 ;; buffer.  That would cause the below code to loop over
+                 ;; almost all the folds in buffer, which would be too slow.
+                 (let ((local-from from)
+                       (local-to to)
+                       (region-from (org-fold-core-get-region-at-point spec (max (point-min) (1- from))))
+                       (region-to (org-fold-core-get-region-at-point spec (min to (1- (point-max))))))
+                   (when region-from (setq local-from (car region-from)))
+                   (when region-to (setq local-to (cdr region-to)))
+                   (let ((pos local-from))
+	             ;; Move to the first hidden region.
+	             (unless (org-fold-core-get-folding-spec spec pos)
+	               (setq pos (org-fold-core-next-folding-state-change spec pos local-to)))
+	             ;; Cycle over all the folds.
+	             (while (< pos local-to)
+	               (save-match-data ; we should not clobber match-data in after-change-functions
+	                 (let ((fold-begin (and (org-fold-core-get-folding-spec spec pos)
+				                pos))
+		               (fold-end (org-fold-core-next-folding-state-change spec pos local-to)))
+	                   (when (and fold-begin fold-end)
+		             (when (save-excursion
+                                     (funcall (org-fold-core-get-folding-spec-property spec :fragile)
+                                              (cons fold-begin fold-end)
+                                              spec))
+                               (org-fold-core-region fold-begin fold-end nil spec)))))
+	               ;; Move to next fold.
+	               (setq pos (org-fold-core-next-folding-state-change spec pos local-to))))))))))))))
 
 ;;; Hanlding killing/yanking of folded text
 
