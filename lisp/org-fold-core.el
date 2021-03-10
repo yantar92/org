@@ -889,7 +889,8 @@ property, unfold the region if the :fragile function returns non-nil."
                                      (funcall (org-fold-core-get-folding-spec-property spec :fragile)
                                               (cons fold-begin fold-end)
                                               spec))
-                               (org-fold-core-region fold-begin fold-end nil spec)))))
+                               ;; Reveal completely, not just from the SPEC.
+                               (org-fold-core-region fold-begin fold-end nil)))))
 	               ;; Move to next fold.
 	               (setq pos (org-fold-core-next-folding-state-change spec pos local-to))))))))))))))
 
