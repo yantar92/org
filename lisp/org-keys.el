@@ -93,7 +93,7 @@
 (declare-function org-fill-paragraph "org" (&optional justify region))
 (declare-function org-find-file-at-mouse "org" (ev))
 (declare-function org-footnote-action "org" (&optional special))
-(declare-function org-force-cycle-archived "org" ())
+(declare-function org-cycle-force-archived "org" ())
 (declare-function org-force-self-insert "org" (n))
 (declare-function org-forward-element "org" ())
 (declare-function org-forward-heading-same-level "org" (arg &optional invisible-ok))
@@ -445,7 +445,7 @@ COMMANDS is a list of alternating OLDDEF NEWDEF command names."
 ;;;; TAB key with modifiers
 (org-defkey org-mode-map (kbd "C-i") #'org-cycle)
 (org-defkey org-mode-map (kbd "<tab>") #'org-cycle)
-(org-defkey org-mode-map (kbd "C-c C-<tab>") #'org-force-cycle-archived)
+(org-defkey org-mode-map (kbd "C-c C-<tab>") #'org-cycle-force-archived)
 ;; Override text-mode binding to expose `complete-symbol' for
 ;; pcomplete functionality.
 (org-defkey org-mode-map (kbd "M-<tab>") nil)
