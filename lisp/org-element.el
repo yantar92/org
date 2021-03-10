@@ -68,6 +68,7 @@
 (require 'org-list)
 (require 'org-macs)
 (require 'org-table)
+(require 'org-fold-core)
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
