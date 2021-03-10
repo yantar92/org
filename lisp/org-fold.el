@@ -884,24 +884,17 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
     ;; OK, we need to take a closer look.  Only consider invisibility
     ;; caused by folding.
     (let* ((invisible-at-point (org-fold-folded-p))
-	   ;; Assume that point cannot land in the middle of an
-	   ;; overlay, or between two overlays.
 	   (invisible-before-point
-	    (and (not invisible-at-point)
-		 (not (bobp))
-		 (org-fold-folded-p (1- (point)))))
+	    (and (not (bobp))
+	         (org-fold-folded-p (1- (point)))))
 	   (border-and-ok-direction
 	    (or
 	     ;; Check if we are acting predictably before invisible
 	     ;; text.
-	     (and invisible-at-point
+	     (and invisible-at-point (not invisible-before-point)
 		  (memq kind '(insert delete-backward)))
-	     ;; Check if we are acting predictably after invisible text
-	     ;; This works not well, and I have turned it off.  It seems
-	     ;; better to always show and stop after invisible text.
 	     (and (not invisible-at-point) invisible-before-point
-		  (memq kind '(insert delete)))
-	     )))
+		  (memq kind '(insert delete))))))
       (when (or invisible-at-point invisible-before-point)
 	(when (eq org-fold-catch-invisible-edits 'error)
 	  (user-error "Editing in invisible areas is prohibited, make them visible first"))
