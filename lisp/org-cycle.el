@@ -722,7 +722,7 @@ STATE should be one of the symbols listed in the docstring of
 	(when (looking-at-p (concat ".*:" org-archive-tag ":"))
 	  (message "%s" (substitute-command-keys
 			 "Subtree is archived and stays closed.  Use \
-`\\[org-force-cycle-archived]' to cycle it anyway.")))))))
+`\\[org-cycle-force-archived]' to cycle it anyway.")))))))
 
 (provide 'org-cycle)
 
