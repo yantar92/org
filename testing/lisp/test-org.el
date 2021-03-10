@@ -8204,6 +8204,81 @@ some text
    (re-search-forward "Sub-child")
    (should (org-invisible-p))))
 
+(ert-deftest test-org/org-fold-reveal-broken-structure ()
+  "Test unfolding broken elements."
+  (org-test-with-temp-text
+      "<point>* Heading 1
+Text here"
+    (org-overview)
+    (re-search-forward "Text")
+    (should (org-invisible-p))
+    (goto-char 1)
+    (delete-char 1)
+    (re-search-forward "Text")
+    (should-not (org-invisible-p)))
+  (org-test-with-temp-text
+      "* Heading 1
+<point>:PROPERTIES:
+:ID: something
+:END:
+Text here"
+    (org-cycle)
+    (re-search-forward "ID")
+    (should (org-invisible-p))
+    (re-search-backward ":PROPERTIES:")
+    (delete-char 1)
+    (re-search-forward "ID")
+    (should-not (org-invisible-p)))
+  (org-test-with-temp-text
+      "* Heading 1
+<point>:PROPERTIES:
+:ID: something
+:END:
+Text here"
+    (org-cycle)
+    (re-search-forward "ID")
+    (should (org-invisible-p))
+    (re-search-forward ":END:")
+    (delete-char -1)
+    (re-search-backward "ID")
+    (should-not (org-invisible-p)))
+  (org-test-with-temp-text
+      "* Heading 1
+<point>#+begin_src emacs-lisp
+(+ 1 2)
+#+end_src
+Text here"
+    (org-cycle)
+    (re-search-forward "end")
+    (should (org-invisible-p))
+    (delete-char -1)
+    (re-search-backward "2")
+    (should-not (org-invisible-p))))
+
+(ert-deftest test-org/re-hide-edits-inside-fold ()
+  "Test edits inside folded regions."
+  (org-test-with-temp-text
+      "<point>* Heading 1
+Text here"
+    (org-overview)
+    (org-set-property "TEST" "1")
+    (re-search-forward "TEST")
+    (should (org-invisible-p)))
+  (org-test-with-temp-text
+      "* Heading 1<point>
+Text here"
+    (org-overview)
+    (insert " and extra heading text")
+    (re-search-backward "heading")
+    (should-not (org-invisible-p)))
+  (org-test-with-temp-text
+      "* Heading 1
+Text<point> here"
+    (org-overview)
+    (insert " and extra text")
+    (re-search-backward "extra")
+    (should (org-invisible-p))))
+
 
 ;;; Yank and Kill
 
