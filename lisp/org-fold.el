@@ -326,7 +326,7 @@ because otherwise all these markers will point to nowhere."
 		    data-val)
 		(while (< pos (point-max))
                   (dolist (spec (org-fold-get-folding-spec 'all pos))
-                    (when (memq type ,specs)
+                    (when (memq spec ,specs)
                       (let ((region (org-fold-get-region-at-point spec pos)))
 			(if ,markers?
 			    (push (list (copy-marker (car region))
