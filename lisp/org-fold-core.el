@@ -819,7 +819,9 @@ property, unfold the region if the :fragile function returns non-nil."
           ;; example, when there was a deletion in a folded heading,
           ;; the heading was unfolded, end `undo' was called.  The
           ;; `undo' would insert the folded text.
-          (when (org-fold-core-region-folded-p from to spec) (org-fold-core-region from to nil spec))
+          (when (and (org-fold-core-region-folded-p from to spec)
+                     (org-region-invisible-p from to))
+            (org-fold-core-region from to nil spec))
           ;; Look around and fold the new text if the nearby folds are
           ;; sticky.
 	  (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
@@ -926,7 +928,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
       ;; Collect all the text properties the string is completely
       ;; hidden with.
       (dolist (spec (org-fold-core-folding-spec-list))
-        (when (org-fold-core-region-folded-p beg end spec)
+        (when (and (org-fold-core-region-folded-p beg end spec)
+                   (org-region-invisible-p beg end))
           (push (org-fold-core--property-symbol-get-create spec nil t) props-list)))
       (dolist (plist (mapcar #'caddr (object-intervals return-string)))
 	;; Only lists contain text properties.

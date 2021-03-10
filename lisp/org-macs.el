@@ -1158,6 +1158,11 @@ move it back by one char before doing this check."
       (backward-char 1))
     (org-invisible-p)))
 
+(defun org-region-invisible-p (beg end)
+  "Check if region if completely hidden."
+  (and (org-invisible-p beg)
+       (org-invisible-p (org-fold-next-visibility-change beg end))))
+
 (defun org-find-visible ()
   "Return closest visible buffer position, or `point-max'"
   (if (org-invisible-p)
