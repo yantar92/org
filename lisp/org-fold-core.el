@@ -820,8 +820,9 @@ property, unfold the region if the :fragile function returns non-nil."
               org-fold-core--ignore-modifications)
     ;; Handle changes in all the indirect buffers and in the base
     ;; buffer.  Work around Emacs bug#46982.
-    (let ((buffers (cons (or (buffer-base-buffer) (current-buffer))
-                         (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers))))
+    (let ((buffers (seq-filter #'buffer-live-p
+                               (cons (or (buffer-base-buffer) (current-buffer))
+                                     (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))))
       (dolist (buf buffers)
         (with-current-buffer buf
           (save-match-data
