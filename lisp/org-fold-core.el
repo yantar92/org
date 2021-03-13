@@ -740,24 +740,20 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
 				#'org-fold-core--isearch-show-temporary)
              ;; If the SPEC has highest priority, assign it directly
              ;; to 'invisible property as well.  This is done to speed
-             ;; up Emacs redisplay on huge (Mbs) folded regions.
+             ;; up Emacs redisplay on huge (Mbs) folded regions where
+             ;; we don't even want Emacs to spend time cycling over
+             ;; `char-property-alias-alist'.
              (when (eq spec (caar org-fold-core--specs)) (put-text-property from to 'invisible spec)))
 	 (if (not spec)
-             (dolist (spec (org-fold-core-folding-spec-list))
-               (when (eq spec (caar org-fold-core--specs))
-                 (let ((pos from))
-                   (while (< pos to)
-                     (when (eq spec (get-text-property pos 'invisible))
-                       (remove-text-properties pos (next-single-char-property-change pos 'invisible) '(invisible t)))
-                     (setq pos (next-single-char-property-change pos 'invisible)))))
-               (remove-text-properties from to
-				       (list (org-fold-core--property-symbol-get-create spec) nil)))
+             (mapc (lambda (spec) (org-fold-core-region from to nil spec)) (org-fold-core-folding-spec-list))
            (when (eq spec (caar org-fold-core--specs))
              (let ((pos from))
                (while (< pos to)
-                 (when (eq spec (get-text-property pos 'invisible))
-                   (remove-text-properties pos (next-single-char-property-change pos 'invisible) '(invisible t)))
-                 (setq pos (next-single-char-property-change pos 'invisible)))))
+                 (if (eq spec (get-text-property pos 'invisible))
+                     (let ((next (org-fold-core-next-folding-state-change spec pos to)))
+                       (remove-text-properties pos next '(invisible t))
+                       (setq pos next))
+                   (setq pos (next-single-char-property-change pos 'invisible nil to))))))
 	   (remove-text-properties from to
 				   (list (org-fold-core--property-symbol-get-create spec) nil))))))))
 
