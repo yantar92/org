@@ -273,6 +273,12 @@ smart            Make point visible, and do insertion/deletion if it is
   "Setup folding in current Org buffer."
   (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
   (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
+  ;; FIXME: Converting org-link + org-description to overlays when
+  ;; search matches hidden "[[" part of the link, reverses priority of
+  ;; link and description and hides the whole link.  Working around
+  ;; this until there will be no need to convert text properties to
+  ;; overlays for isearch.
+  (setq-local org-fold-core--isearch-special-specs '(org-link))
   (org-fold-core-initialize `((org-fold-outline
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-outline-maybe)

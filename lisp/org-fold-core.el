@@ -848,6 +848,10 @@ Hide text instead if HIDE-P is non-nil."
     (mapc (lambda (val) (org-fold-core-region (cadr val) (cddr val) t (car val))) (gethash region org-fold-core--isearch-local-regions))
     (remhash region org-fold-core--isearch-local-regions)))
 
+(defvar-local org-fold-core--isearch-special-specs nil
+  "List of specs that can break visibility state when converted to overlays.
+This is a hack, but I do not see a better way around until isearch
+gets support of text properties.")
 (defun org-fold-core--create-isearch-overlays (beg end)
   "Replace text property invisibility spec by overlays between BEG and END.
 All the searcheable folded regions will be changed to use overlays
@@ -860,10 +864,12 @@ instead of text properties.  The created overlays will be stored in
       (while (org-fold-core-get-folding-spec nil pos)
 	(let* ((spec (org-fold-core-get-folding-spec nil pos))
                (region (org-fold-core-get-region-at-point spec pos)))
+          (when (memq spec org-fold-core--isearch-special-specs)
+            (setq pos (min pos (car region)))
+            (setq end (max end (cdr region))))
 	  ;; Changing text properties is considered buffer modification.
 	  ;; We do not want it here.
 	  (with-silent-modifications
-            (setq region (cons (max beg (car region)) (min end (cdr region))))
             (org-fold-core-region (car region) (cdr region) nil spec)
 	    ;; The overlay is modelled after `outline-flag-region'
 	    ;; [2020-05-09 Sat] overlay for 'outline blocks.
