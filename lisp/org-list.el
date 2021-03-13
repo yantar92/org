@@ -79,6 +79,7 @@
 (require 'cl-lib)
 (require 'org-macs)
 (require 'org-compat)
+(require 'org-fold-core)
 
 (defvar org-M-RET-may-split-line)
 (defvar org-adapt-indentation)
