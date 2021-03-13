@@ -104,6 +104,7 @@
 (defalias 'org-global-cycle #'org-cycle-global)
 (defalias 'org-overview #'org-cycle-overview)
 (defalias 'org-content #'org-cycle-content)
+(defalias 'org-reveal #'org-fold-reveal)
 (defalias 'org-force-cycle-archived #'org-cycle-force-archived)
 
 ;; `org-outline-regexp' ought to be a defconst but is let-bound in

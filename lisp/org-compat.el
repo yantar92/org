@@ -225,7 +225,6 @@ Case is significant."
 (define-obsolete-function-alias 'org-select-frame-set-input-focus 'select-frame-set-input-focus "Org 9.0")
 (define-obsolete-function-alias 'org-file-remote-p 'file-remote-p "Org 9.2")
 
-(define-obsolete-function-alias 'org-reveal 'org-fold-reveal "Org 9.4")
 (define-obsolete-function-alias 'org-show-context 'org-fold-show-context "Org 9.4")
 (define-obsolete-function-alias 'org-show-entry 'org-fold-show-entry "Org 9.4")
 (define-obsolete-function-alias 'org-show-children 'org-fold-show-children "Org 9.4")
@@ -385,6 +384,20 @@ Counting starts at 1."
 
 (define-obsolete-function-alias 'org-flag-heading
   'org-fold-heading "Org 9.4")
+
+(define-obsolete-function-alias 'org-set-startup-visibility
+  'org-cycle-set-startup-visibility "Org 9.4")
+
+(define-obsolete-function-alias 'org-set-visibility-according-to-property
+  'org-cycle-set-visibility-according-to-property "Org 9.4")
+
+(define-obsolete-variable-alias 'org-scroll-position-to-restore
+  'org-cycle-scroll-position-to-restore "Org 9.4")
+(define-obsolete-function-alias 'org-optimize-window-after-visibility-change
+  'org-cycle-optimize-window-after-visibility-change "Org 9.4")
+
+(define-obsolete-function-alias 'org-force-cycle-archived
+  'org-cycle-force-archived "Org 9.4")
 
 (define-obsolete-variable-alias 'org-attach-directory
   'org-attach-id-dir "Org 9.3")
