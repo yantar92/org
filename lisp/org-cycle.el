@@ -210,9 +210,9 @@ STATE should be one of the symbols listed in the docstring of
       (save-excursion
 	(goto-char beg)
 	(while (re-search-forward org-drawer-regexp end t)
-	  (if (org-fold-get-folding-spec)
+	  (if (org-fold-get-folding-spec 'drawer)
 	      ;; Do not fold already folded drawers.
-              (goto-char (org-fold-core-next-visibility-change nil end t))
+              (goto-char (org-fold-core-next-folding-state-change 'drawer nil end))
 	    (let ((drawer (org-element-at-point)))
 	      (when (memq (org-element-type drawer) '(drawer property-drawer))
 		(org-fold-hide-drawer-toggle t nil drawer)
