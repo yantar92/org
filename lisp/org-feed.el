@@ -412,7 +412,7 @@ it can be a list structured like an entry in `org-feed-alist'."
 
 	  ;; Normalize the visibility of the inbox tree
 	  (goto-char inbox-pos)
-	  (org-fold-subtree t) []
+	  (org-fold-subtree t)
 	  (org-fold-show-children)
 
 	  ;; Hooks and messages
