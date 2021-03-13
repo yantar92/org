@@ -857,12 +857,13 @@ instead of text properties.  The created overlays will be stored in
     (while (< pos end)
       ;; We need loop below to make sure that we clean all invisible
       ;; properties, which may be nested.
-      (while (memq (get-text-property pos 'invisible) (org-fold-core-folding-spec-list))
-	(let* ((spec (get-text-property pos 'invisible))
+      (while (org-fold-core-get-folding-spec nil pos)
+	(let* ((spec (org-fold-core-get-folding-spec nil pos))
                (region (org-fold-core-get-region-at-point spec pos)))
 	  ;; Changing text properties is considered buffer modification.
 	  ;; We do not want it here.
 	  (with-silent-modifications
+            (setq region (cons (max beg (car region)) (min end (cdr region))))
             (org-fold-core-region (car region) (cdr region) nil spec)
 	    ;; The overlay is modelled after `outline-flag-region'
 	    ;; [2020-05-09 Sat] overlay for 'outline blocks.
@@ -881,7 +882,7 @@ instead of text properties.  The created overlays will be stored in
                 (overlay-put o 'isearch-open-invisible #'ignore)
                 (overlay-put o 'isearch-open-invisible-temporary #'ignore))
 	      (push o org-fold-core--isearch-overlays)))))
-      (setq pos (next-single-property-change pos 'invisible nil end)))))
+      (setq pos (org-fold-core-next-folding-state-change nil pos end)))))
 
 (defun org-fold-core--isearch-filter-predicate-overlays (beg end)
   "Return non-nil if text between BEG and END is deemed visible by isearch.
