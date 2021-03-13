@@ -4865,8 +4865,10 @@ This includes angle, plain, and bracket links."
   (catch :exit
     (while (re-search-forward org-link-any-re limit t)
       (if (org-invisible-p nil t)
-          ;; No need to fontify links inside folded regions.
-          (goto-char (org-fold-core-next-visibility-change nil limit))
+          (let ((end (org-fold-core-next-visibility-change nil limit)))
+            (remove-text-properties (point) end '(fontified t))
+            ;; No need to fontify links inside folded regions.
+            (goto-char end))
         (let* ((start (match-beginning 0))
 	       (end (match-end 0))
 	       (visible-start (or (match-beginning 3) (match-beginning 2)))
