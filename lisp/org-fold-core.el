@@ -737,11 +737,27 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
 				#'org-fold-core--isearch-show)
 	     (put-text-property from to
 				'isearch-open-invisible-temporary
-				#'org-fold-core--isearch-show-temporary))
+				#'org-fold-core--isearch-show-temporary)
+             ;; If the SPEC has highest priority, assign it directly
+             ;; to 'invisible property as well.  This is done to speed
+             ;; up Emacs redisplay on huge (Mbs) folded regions.
+             (when (eq spec (caar org-fold-core--specs)) (put-text-property from to 'invisible spec)))
 	 (if (not spec)
              (dolist (spec (org-fold-core-folding-spec-list))
+               (when (eq spec (caar org-fold-core--specs))
+                 (let ((pos from))
+                   (while (< pos to)
+                     (when (eq spec (get-text-property pos 'invisible))
+                       (remove-text-properties pos (next-single-char-property-change pos 'invisible) '(invisible t)))
+                     (setq pos (next-single-char-property-change pos 'invisible)))))
                (remove-text-properties from to
 				       (list (org-fold-core--property-symbol-get-create spec) nil)))
+           (when (eq spec (caar org-fold-core--specs))
+             (let ((pos from))
+               (while (< pos to)
+                 (when (eq spec (get-text-property pos 'invisible))
+                   (remove-text-properties pos (next-single-char-property-change pos 'invisible) '(invisible t)))
+                 (setq pos (next-single-char-property-change pos 'invisible)))))
 	   (remove-text-properties from to
 				   (list (org-fold-core--property-symbol-get-create spec) nil))))))))
 
