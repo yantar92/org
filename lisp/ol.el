@@ -829,26 +829,44 @@ This should be called after the variable `org-link-parameters' has changed."
 	  (format "<%s:\\([^>\n]*\\(?:\n[ \t]*[^> \t\n][^>\n]*\\)*\\)>"
 		  types-re)
 	  org-link-plain-re
-	  (concat
-	   "\\<" types-re ":"
-	   "\\([^][ \t\n()<>]+\\(?:([[:word:]0-9_]+)\\|\\([^[:punct:] \t\n]\\|/\\)\\)\\)")
-	  ;;	 "\\([^]\t\n\r<>() ]+[^]\t\n\r<>,.;() ]\\)")
-	  org-link-bracket-re
-	  (rx (seq "[["
-		   ;; URI part: match group 1.
-		   (group
-		    (one-or-more
+	  (let ((non-space-bracket "[^][ \t\n()<>]+"))
+            ;; Heiristics for an URL link.  Source:
+            ;; https://daringfireball.net/2010/07/improved_regex_for_matching_urls
+            (rx-to-string
+             `(seq (regexp "\\<")
+                   (regexp ,types-re)
+                   ":"
+                   (group
+                    (1+ (or (regex ,non-space-bracket)
+                            (seq "("
+                                 (* (or (regex ,non-space-bracket)
+                                        (seq "("
+                                             (regex ,non-space-bracket)
+                                             ")")))
+                                 ")")))
+                    (or (seq "("
+                             (* (or (regex ,non-space-bracket)
+                                    (seq "("
+                                         (regex ,non-space-bracket)
+                                         ")")))
+                             ")")
+                        (regexp "\\([^[:punct:] \t\n]\\|/\\)"))))))
+          org-link-bracket-re
+          (rx (seq "[["
+	           ;; URI part: match group 1.
+	           (group
+	            (one-or-more
                      (or (not (any "[]\\"))
-			 (and "\\" (zero-or-more "\\\\") (any "[]"))
-			 (and (one-or-more "\\") (not (any "[]"))))))
-		   "]"
-		   ;; Description (optional): match group 2.
-		   (opt "[" (group (+? anything)) "]")
-		   "]"))
-	  org-link-any-re
-	  (concat "\\(" org-link-bracket-re "\\)\\|\\("
-		  org-link-angle-re "\\)\\|\\("
-		  org-link-plain-re "\\)"))))
+		         (and "\\" (zero-or-more "\\\\") (any "[]"))
+		         (and (one-or-more "\\") (not (any "[]"))))))
+	           "]"
+	           ;; Description (optional): match group 2.
+	           (opt "[" (group (+? anything)) "]")
+	           "]"))
+          org-link-any-re
+          (concat "\\(" org-link-bracket-re "\\)\\|\\("
+	          org-link-angle-re "\\)\\|\\("
+	          org-link-plain-re "\\)"))))
 
 (defun org-link-complete-file (&optional arg)
   "Create a file link using completion."
