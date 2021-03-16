@@ -4759,54 +4759,59 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 
 (defun org-do-emphasis-faces (limit)
   "Run through the buffer and emphasize strings."
-  (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
-			  (car org-emphasis-regexp-components))))
-    (catch :exit
-      (while (re-search-forward quick-re limit t)
-	(let* ((marker (match-string 2))
-	       (verbatim? (member marker '("~" "="))))
-	  (when (save-excursion
-		  (goto-char (match-beginning 0))
-		  (and
-		   ;; Do not match table hlines.
-		   (not (and (equal marker "+")
+  (if (org-invisible-p nil t)
+      (let ((end (org-fold-core-next-visibility-change nil limit)))
+        (remove-text-properties (point) end '(fontified t))
+        ;; No need to fontify links inside folded regions.
+        (goto-char end))
+    (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
+			    (car org-emphasis-regexp-components))))
+      (catch :exit
+        (while (re-search-forward quick-re limit t)
+	  (let* ((marker (match-string 2))
+	         (verbatim? (member marker '("~" "="))))
+	    (when (save-excursion
+		    (goto-char (match-beginning 0))
+		    (and
+		     ;; Do not match table hlines.
+		     (not (and (equal marker "+")
 			     (org-match-line
 			      "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
-		   ;; Do not match headline stars.  Do not consider
-		   ;; stars of a headline as closing marker for bold
-		   ;; markup either.
-		   (not (and (equal marker "*")
+		     ;; Do not match headline stars.  Do not consider
+		     ;; stars of a headline as closing marker for bold
+		     ;; markup either.
+		     (not (and (equal marker "*")
 			     (save-excursion
 			       (forward-char)
 			       (skip-chars-backward "*")
 			       (looking-at-p org-outline-regexp-bol))))
-		   ;; Match full emphasis markup regexp.
-		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
-		   ;; Do not span over paragraph boundaries.
-		   (not (string-match-p org-element-paragraph-separate
-					(match-string 2)))
-		   ;; Do not span over cells in table rows.
-		   (not (and (save-match-data (org-match-line "[ \t]*|"))
-			   (string-match-p "|" (match-string 4))))))
-            (with-silent-modifications
-	      (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
-			  (m (if org-hide-emphasis-markers 4 2)))
-	        (font-lock-prepend-text-property
-	         (match-beginning m) (match-end m) 'face face)
-                (remove-text-properties (match-beginning 2) (match-end 3) '(invisible t))
-                (remove-text-properties (match-end 4) (match-end 2) '(invisible t))
-	        (when verbatim?
-		  (org-remove-flyspell-overlays-in
-		   (match-beginning 0) (match-end 0))
-		  (remove-text-properties (match-beginning 2) (match-end 2)
-					  '(display t invisible t intangible t)))
-	        (add-text-properties (match-beginning 2) (match-end 2)
-				     '(font-lock-multiline t org-emphasis t))
-	        (when (and org-hide-emphasis-markers
-			   (not (org-at-comment-p)))
-                  (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
-                  (put-text-property (match-end 4) (match-end 2) 'invisible t))
-	        (throw :exit t)))))))))
+		     ;; Match full emphasis markup regexp.
+		     (looking-at (if verbatim? org-verbatim-re org-emph-re))
+		     ;; Do not span over paragraph boundaries.
+		     (not (string-match-p org-element-paragraph-separate
+				        (match-string 2)))
+		     ;; Do not span over cells in table rows.
+		     (not (and (save-match-data (org-match-line "[ \t]*|"))
+			     (string-match-p "|" (match-string 4))))))
+              (with-silent-modifications
+	        (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
+			    (m (if org-hide-emphasis-markers 4 2)))
+	          (font-lock-prepend-text-property
+	           (match-beginning m) (match-end m) 'face face)
+                  (remove-text-properties (match-beginning 2) (match-end 3) '(invisible t))
+                  (remove-text-properties (match-end 4) (match-end 2) '(invisible t))
+	          (when verbatim?
+		    (org-remove-flyspell-overlays-in
+		     (match-beginning 0) (match-end 0))
+		    (remove-text-properties (match-beginning 2) (match-end 2)
+					    '(display t invisible t intangible t)))
+	          (add-text-properties (match-beginning 2) (match-end 2)
+				       '(font-lock-multiline t org-emphasis t))
+	          (when (and org-hide-emphasis-markers
+			     (not (org-at-comment-p)))
+                    (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
+                    (put-text-property (match-end 4) (match-end 2) 'invisible t))
+	          (throw :exit t))))))))))
 
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
@@ -4954,11 +4959,16 @@ This includes angle, plain, and bracket links."
     nil))
 
 (defun org-activate-code (limit)
-  (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
-    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
-    (remove-text-properties (match-beginning 0) (match-end 0)
-			    '(display t invisible t intangible t))
-    t))
+  (if (org-invisible-p nil t)
+      (let ((end (org-fold-core-next-visibility-change nil limit)))
+        (remove-text-properties (point) end '(fontified t))
+        ;; No need to fontify links inside folded regions.
+        (goto-char end))
+    (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
+      (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+      (remove-text-properties (match-beginning 0) (match-end 0)
+			      '(display t invisible t intangible t))
+      t)))
 
 (defcustom org-src-fontify-natively t
   "When non-nil, fontify code in code blocks.
