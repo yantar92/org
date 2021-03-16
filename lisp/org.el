@@ -4759,11 +4759,6 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 
 (defun org-do-emphasis-faces (limit)
   "Run through the buffer and emphasize strings."
-  (if (org-invisible-p nil t)
-      (let ((end (org-fold-core-next-visibility-change nil limit)))
-        (remove-text-properties (point) end '(fontified t))
-        ;; No need to fontify links inside folded regions.
-        (goto-char end))
     (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
 			    (car org-emphasis-regexp-components))))
       (catch :exit
@@ -4811,7 +4806,7 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 			     (not (org-at-comment-p)))
                     (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
                     (put-text-property (match-end 4) (match-end 2) 'invisible t))
-	          (throw :exit t))))))))))
+	          (throw :exit t)))))))))
 
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
@@ -4869,11 +4864,6 @@ prompted for."
 This includes angle, plain, and bracket links."
   (catch :exit
     (while (re-search-forward org-link-any-re limit t)
-      (if (org-invisible-p nil t)
-          (let ((end (org-fold-core-next-visibility-change nil limit)))
-            (remove-text-properties (point) end '(fontified t))
-            ;; No need to fontify links inside folded regions.
-            (goto-char end))
         (let* ((start (match-beginning 0))
 	       (end (match-end 0))
 	       (visible-start (or (match-beginning 3) (match-beginning 2)))
@@ -4955,20 +4945,15 @@ This includes angle, plain, and bracket links."
 	      (let ((f (org-link-get-parameter type :activate-func)))
 	        (when (functionp f)
 		  (funcall f start end path (eq style 'bracket))))
-	      (throw :exit t))))))		;signal success
+	      (throw :exit t)))))		;signal success
     nil))
 
 (defun org-activate-code (limit)
-  (if (org-invisible-p nil t)
-      (let ((end (org-fold-core-next-visibility-change nil limit)))
-        (remove-text-properties (point) end '(fontified t))
-        ;; No need to fontify links inside folded regions.
-        (goto-char end))
     (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
       (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
       (remove-text-properties (match-beginning 0) (match-end 0)
 			      '(display t invisible t intangible t))
-      t)))
+      t))
 
 (defcustom org-src-fontify-natively t
   "When non-nil, fontify code in code blocks.
