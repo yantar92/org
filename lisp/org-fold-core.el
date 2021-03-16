@@ -518,6 +518,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 (defun org-fold-core-initialize (&optional specs)
   "Setup folding in current buffer using SPECS as value of `org-fold-core--specs'."
   ;; Preserve the priorities.
+  (hack-local-variables)
   (when specs (setq specs (nreverse specs)))
   (unless specs (setq specs org-fold-core--specs))
   (setq org-fold-core--specs nil)
@@ -714,6 +715,13 @@ Move point right after the end of the region, to LIMIT, or
 
 ;;;;; Region visibility
 
+(defvar-local org-fold-core--optimise-for-huge-buffers nil
+  "Non-nil turns on extra speedup on huge buffers with Mbs of text being
+folded.  This comes at the cost that folded text will not become
+visible upon copying and many org API functions will return invisible
+text.")
+(put 'org-fold-core--optimise-for-huge-buffers 'safe-local-variable 'booleanp)
+
 ;; This is the core function performing actual folding/unfolding.  The
 ;; folding state is stored in text property (folding property)
 ;; returned by `org-fold-core--property-symbol-get-create'.  The value of the
@@ -738,22 +746,24 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
 	     (put-text-property from to
 				'isearch-open-invisible-temporary
 				#'org-fold-core--isearch-show-temporary)
-             ;; If the SPEC has highest priority, assign it directly
-             ;; to 'invisible property as well.  This is done to speed
-             ;; up Emacs redisplay on huge (Mbs) folded regions where
-             ;; we don't even want Emacs to spend time cycling over
-             ;; `char-property-alias-alist'.
-             (when (eq spec (caar org-fold-core--specs)) (put-text-property from to 'invisible spec)))
+             (when org-fold-core--optimise-for-huge-buffers
+               ;; If the SPEC has highest priority, assign it directly
+               ;; to 'invisible property as well.  This is done to speed
+               ;; up Emacs redisplay on huge (Mbs) folded regions where
+               ;; we don't even want Emacs to spend time cycling over
+               ;; `char-property-alias-alist'.
+               (when (eq spec (caar org-fold-core--specs)) (put-text-property from to 'invisible spec))))
 	 (if (not spec)
              (mapc (lambda (spec) (org-fold-core-region from to nil spec)) (org-fold-core-folding-spec-list))
-           (when (eq spec (caar org-fold-core--specs))
-             (let ((pos from))
-               (while (< pos to)
-                 (if (eq spec (get-text-property pos 'invisible))
-                     (let ((next (org-fold-core-next-folding-state-change spec pos to)))
-                       (remove-text-properties pos next '(invisible t))
-                       (setq pos next))
-                   (setq pos (next-single-char-property-change pos 'invisible nil to))))))
+           (when org-fold-core--optimise-for-huge-buffers
+             (when (eq spec (caar org-fold-core--specs))
+               (let ((pos from))
+                 (while (< pos to)
+                   (if (eq spec (get-text-property pos 'invisible))
+                       (let ((next (org-fold-core-next-folding-state-change spec pos to)))
+                         (remove-text-properties pos next '(invisible t))
+                         (setq pos next))
+                     (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
 	   (remove-text-properties from to
 				   (list (org-fold-core--property-symbol-get-create spec) nil))))))))
 
