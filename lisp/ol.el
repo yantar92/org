@@ -520,7 +520,10 @@ links more efficient."
   "Matches link with angular brackets, spaces are allowed.")
 
 (defvar org-link-plain-re nil
-  "Matches plain link, without spaces.")
+  "Matches plain link, without spaces.
+Group 1 must contain the link type (i.e. https).
+Group 2 must contain the link path (i.e. //example.com).
+Used by `org-element-link-parser'.")
 
 (defvar org-link-bracket-re nil
   "Matches a link in double brackets.")
@@ -829,28 +832,28 @@ This should be called after the variable `org-link-parameters' has changed."
 	  (format "<%s:\\([^>\n]*\\(?:\n[ \t]*[^> \t\n][^>\n]*\\)*\\)>"
 		  types-re)
 	  org-link-plain-re
-	  (let ((non-space-bracket "[^][ \t\n()<>]+"))
-            ;; Heiristics for an URL link.  Source:
-            ;; https://daringfireball.net/2010/07/improved_regex_for_matching_urls
-            (rx-to-string
-             `(seq (regexp "\\<")
-                   (regexp ,types-re)
-                   ":"
+          (let* ((non-space-bracket "[^][ \t\n()<>]")
+	         (parenthesis
+		  `(seq "("
+		        (0+ (or (regex ,non-space-bracket)
+			        (seq "("
+				     (0+ (regex ,non-space-bracket))
+				     ")")))
+		        ")")))
+	    ;; Heuristics for an URL link inspired by
+	    ;; https://daringfireball.net/2010/07/improved_regex_for_matching_urls
+	    (rx-to-string
+	     `(seq word-start
+                   ;; Link type: match group 1.
+		   (regexp ,types-re)
+		   ":"
+                   ;; Link path: match group 2.
                    (group
-                    (1+ (or (regex ,non-space-bracket)
-                            (seq "("
-                                 (* (or (regex ,non-space-bracket)
-                                        (seq "("
-                                             (regex ,non-space-bracket)
-                                             ")")))
-                                 ")")))
-                    (or (seq "("
-                             (* (or (regex ,non-space-bracket)
-                                    (seq "("
-                                         (regex ,non-space-bracket)
-                                         ")")))
-                             ")")
-                        (regexp "\\([^[:punct:] \t\n]\\|/\\)"))))))
+		    (1+ (or (regex ,non-space-bracket)
+			    ,parenthesis))
+		    (or (regexp "[^[:punct:] \t\n]")
+		        ?/
+		        ,parenthesis)))))
           org-link-bracket-re
           (rx (seq "[["
 	           ;; URI part: match group 1.

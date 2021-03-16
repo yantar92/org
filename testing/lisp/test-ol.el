@@ -515,5 +515,103 @@ See https://github.com/yantar92/org/issues/4."
 	      (org-previous-link))
 	    (buffer-substring (point) (line-end-position))))))
 
+
+;;; Link regexps
+
+(ert-deftest test-ol/plain-link-re ()
+  "Test `org-link-plain-re'."
+  (should
+   (equal
+    '("https" "//example.com/qwe()")
+    (org-test-with-temp-text
+        "(Some text in parenthesis followed by link with brackets <point>https://example.com/qwe())"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("https" "//doi.org/10.1016/0160-791x(79)90023-x")
+    (org-test-with-temp-text
+        "<point>https://doi.org/10.1016/0160-791x(79)90023-x"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "aa")
+    (org-test-with-temp-text
+        "The <point>file:aa link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "a(b)c")
+    (org-test-with-temp-text
+        "The <point>file:a(b)c link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "a()")
+    (org-test-with-temp-text
+        "The <point>file:a() link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "aa((a))")
+    (org-test-with-temp-text
+        "The <point>file:aa((a)) link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "aa(())")
+    (org-test-with-temp-text
+        "The <point>file:aa(()) link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "/a")
+    (org-test-with-temp-text
+        "The <point>file:/a link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "/a/")
+    (org-test-with-temp-text
+        "The <point>file:/a/ link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("http" "//")
+    (org-test-with-temp-text
+        "The <point>http:// link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "ab")
+    (org-test-with-temp-text
+        "The (some <point>file:ab) link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "aa")
+    (org-test-with-temp-text
+        "The <point>file:aa) link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  (should
+   (equal
+    '("file" "aa")
+    (org-test-with-temp-text
+        "The <point>file:aa( link"
+      (list (org-element-property :type (org-element-link-parser))
+            (org-element-property :path (org-element-link-parser))))))
+  )
+
 (provide 'test-ol)
 ;;; test-ol.el ends here
