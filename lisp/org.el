@@ -18496,7 +18496,9 @@ region only contains such lines."
 
 (defun org-block-map (function &optional start end)
   "Call FUNCTION at the head of all source blocks in the current buffer.
-Optional arguments START and END can be used to limit the range."
+Optional arguments START and END can be used to limit the range.
+Match-data during evaluation will contain the current region matching
+`org-block-regexp'."
   (let ((start (or start (point-min)))
         (end (or end (point-max))))
     (save-excursion
