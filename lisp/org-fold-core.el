@@ -526,6 +526,9 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
   (add-hook 'clone-indirect-buffer-hook #'org-fold-core-decouple-indirect-buffer-folds nil 'local)
+  ;; Optimise buffer fontification to not fontify folded text.
+  (when (eq font-lock-fontify-region-function #'font-lock-default-fontify-region)
+    (setq-local font-lock-fontify-region-function 'org-fold-core-fontify-region))
   ;; Setup killing text
   (setq-local filter-buffer-substring-function #'org-fold-core--buffer-substring-filter)
   (require 'isearch)
@@ -1115,6 +1118,29 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 		  (push prop props-list)))))))
       (remove-text-properties 0 (length return-string) props-list return-string))
     return-string))
+
+;;; Do not fontify folded text until needed.
+
+(defun org-fold-core-fontify-region (beg end loudly)
+  "Run `font-lock-default-fontify-region' unless we are trying to fontify invisible text."
+  (let ((pos beg) next)
+    (while (< pos end)
+      (setq next (org-fold-core-next-visibility-change pos end t))
+      (unless (org-invisible-p pos)
+        (font-lock-default-fontify-region pos next loudly))
+      (setq pos next))))
+
+(defun org-fold-core-update-optimisation (beg end)
+  "Update huge buffer optimisation betwenn BEG and END.
+See `org-fold-core--optimise-for-huge-buffers'."
+  (when org-fold-core--optimise-for-huge-buffers
+    (let ((pos beg))
+      (while (< pos end)
+        (when (and (org-fold-core-folded-p pos (caar org-fold-core--specs))
+                   (not (eq (caar org-fold-core--specs) (get-text-property pos 'invisible))))
+          (put-text-property pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos)
+                             'invisible (caar org-fold-core--specs)))
+        (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
 
 (provide 'org-fold-core)
 
