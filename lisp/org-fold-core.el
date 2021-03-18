@@ -767,6 +767,7 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                          (remove-text-properties pos next '(invisible t))
                          (setq pos next))
                      (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
+           (font-lock-flush from to)
 	   (remove-text-properties from to
 				   (list (org-fold-core--property-symbol-get-create spec) nil))))))))
 
