@@ -14,6 +14,10 @@
 
 * Updates
 
+- [2021-03-18 Thu] Major improvement in Org mode startup time.
+
+  I managed to track down the bottlenecks during startup in large files. The most time-consuming are font-locking and hiding drawers/blocks (when there are many of such). Font-lock is now postponed until the text to be fontified is unfolded (why does font-lock even fontify hidden text??). org-cycle code is optimised for faster drawer/block folding.
+
 - [2021-03-03 Wed] New default branch: =feature/org-fold-universal-core=
 
   This is a major rework of the =org-fold= internals. I aimed to make things more modular and easier to maintain. Now, the core org-independent functionality is separated into =org-fold-core= library.
