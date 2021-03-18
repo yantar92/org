@@ -894,7 +894,7 @@ first press `<' once to indicate that the agenda should be temporarily
 Pressing `<' twice means to restrict to the current subtree or region
 \(if active).
 
-\(fn &optional ARG ORG-KEYS RESTRICTION)" t nil)
+\(fn &optional ARG KEYS RESTRICTION)" t nil)
 
 (autoload 'org-batch-agenda "org-agenda" "\
 Run an agenda command in batch mode and send the result to STDOUT.
@@ -1599,14 +1599,14 @@ same as `S-TAB') also when called without prefix argument.
 
 \(fn &optional ARG)" t nil)
 
-(autoload 'org-global-cycle "org-cycle" "\
+(autoload 'org-cycle-global "org-cycle" "\
 Cycle the global visibility.  For details see `org-cycle'.
 With `\\[universal-argument]' prefix ARG, switch to startup visibility.
 With a numeric prefix, show all headlines up to that level.
 
 \(fn &optional ARG)" t nil)
 
-(register-definition-prefixes "org-cycle" '("org-"))
+(register-definition-prefixes "org-cycle" '("org-cycle-"))
 
 ;;;***
 
