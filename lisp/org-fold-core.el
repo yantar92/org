@@ -1101,21 +1101,29 @@ The arguments and return value are as specified for `filter-buffer-substring'."
         (when (and (org-fold-core-region-folded-p beg end spec)
                    (org-region-invisible-p beg end))
           (push (org-fold-core--property-symbol-get-create spec nil t) props-list)))
-      (dolist (plist (mapcar #'caddr (object-intervals return-string)))
-	;; Only lists contain text properties.
-	(when (listp plist)
-          ;; Collect all the relevant text properties.
-	  (while plist
-            (let* ((prop (car plist))
-		   (prop-name (symbol-name prop)))
-              ;; We do not care about values.
-              (setq plist (cddr plist))
-              (when (string-match-p org-fold-core--spec-property-prefix prop-name)
-		;; Leave folding specs from current buffer.  See
-		;; comments in `org-fold-core--property-symbol-get-create' to
-		;; understand why it works.
-		(unless (member prop (alist-get 'invisible char-property-alias-alist))
-		  (push prop props-list)))))))
+      (dolist (plist (object-intervals return-string))
+        (let* ((start (car plist))
+               (fin (cadr plist))
+               (plist (caddr plist)))
+	  ;; Only lists contain text properties.
+	  (when (listp plist)
+            ;; Collect all the relevant text properties.
+	    (while plist
+              (let* ((prop (car plist))
+		     (prop-name (symbol-name prop)))
+                ;; Reveal hard-hidden text.  See
+                ;; `org-fold-core--optimise-for-huge-buffers'.
+                (when (and (eq prop 'invisible)
+                           (member (cadr plist) (org-fold-core-folding-spec-list)))
+                  (remove-text-properties start fin '(invisible t) return-string))
+                ;; We do not care about values now.
+                (setq plist (cddr plist))
+                (when (string-match-p org-fold-core--spec-property-prefix prop-name)
+		  ;; Leave folding specs from current buffer.  See
+		  ;; comments in `org-fold-core--property-symbol-get-create' to
+		  ;; understand why it works.
+		  (unless (member prop (alist-get 'invisible char-property-alias-alist))
+		    (push prop props-list))))))))
       (remove-text-properties 0 (length return-string) props-list return-string))
     return-string))
 
