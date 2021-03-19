@@ -1145,7 +1145,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
       (setq pos next))))
 
 (defun org-fold-core-update-optimisation (beg end)
-  "Update huge buffer optimisation betwenn BEG and END.
+  "Update huge buffer optimisation between BEG and END.
 See `org-fold-core--optimise-for-huge-buffers'."
   (when org-fold-core--optimise-for-huge-buffers
     (let ((pos beg))
