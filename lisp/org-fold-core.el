@@ -289,6 +289,7 @@ The following properties are known:
                        Note that changing this property from nil to t may
                        clear the setting in `buffer-invisibility-spec'.
 - :alias            :: a list of aliases for the SPEC-SYMBOL.
+- :font-lock-skip   :: Suppress font-locking in folded text.
 - :fragile          :: Must be a function accepting a two arguments.
                        Non-nil means that changes in region may cause
                        the region to be revealed.  The region is
@@ -772,7 +773,8 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                      (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
 	   (remove-text-properties from to
 				   (list (org-fold-core--property-symbol-get-create spec) nil))
-           (unless org-fold-core--fontifying
+           (unless (or org-fold-core--fontifying
+                       (not (org-fold-core-get-folding-spec-property spec :font-lock-skip)))
              (let ((org-fold-core--fontifying t))
                (font-lock-fontify-region from to)))))))))
 
@@ -1140,7 +1142,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
   (let ((pos beg) next)
     (while (< pos end)
       (setq next (org-fold-core-next-visibility-change pos end t))
-      (unless (org-invisible-p pos)
+      (unless (and (org-invisible-p pos)
+                   (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all pos)))
         (font-lock-default-fontify-region pos next loudly))
       (setq pos next))))
 
