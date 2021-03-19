@@ -718,6 +718,9 @@ Move point right after the end of the region, to LIMIT, or
 
 ;;;;; Region visibility
 
+(defvar org-fold-core--fontifying nil
+  "Flag used to restrict `org-fold-core-region' -> `font-lock-fontify-region' -> `org-fold-core-region' recursion.")
+
 (defvar-local org-fold-core--optimise-for-huge-buffers nil
   "Non-nil turns on extra speedup on huge buffers with Mbs of text being
 folded.  This comes at the cost that folded text will not become
@@ -767,9 +770,11 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                          (remove-text-properties pos next '(invisible t))
                          (setq pos next))
                      (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
-           (font-lock-flush from to)
 	   (remove-text-properties from to
-				   (list (org-fold-core--property-symbol-get-create spec) nil))))))))
+				   (list (org-fold-core--property-symbol-get-create spec) nil))
+           (unless org-fold-core--fontifying
+             (let ((org-fold-core--fontifying t))
+               (font-lock-fontify-region from to)))))))))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
