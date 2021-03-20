@@ -952,8 +952,7 @@ This function is intended to be used as `isearch-filter-predicate'."
   "Run BODY skipping :fragility checks in `org-fold-core--fix-folded-region'."
   (declare (debug (form body)) (indent 1))
   `(let ((org-fold-core--ignore-fragility-checks t))
-     (unwind-protect (progn ,@body)
-       (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick)))))
+     (progn ,@body)))
 
 (defvar-local org-fold-core--last-buffer-chars-modified-tick nil
   "Variable storing the last return value of `buffer-chars-modified-tick'.")
