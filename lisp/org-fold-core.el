@@ -1161,6 +1161,18 @@ See `org-fold-core--optimise-for-huge-buffers'."
                              'invisible (caar org-fold-core--specs)))
         (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
 
+(defun org-fold-core-remove-optimisation (beg end)
+  "Remove huge buffer optimisation between BEG and END.
+See `org-fold-core--optimise-for-huge-buffers'."
+  (when org-fold-core--optimise-for-huge-buffers
+    (let ((pos beg))
+      (while (< pos end)
+        (when (and (org-fold-core-folded-p pos (caar org-fold-core--specs))
+                   (eq (caar org-fold-core--specs) (get-text-property pos 'invisible)))
+          (remove-text-properties pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos)
+                                  '(invisible t)))
+        (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
+
 (provide 'org-fold-core)
 
 ;;; org-fold-core.el ends here

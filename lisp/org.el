@@ -6019,6 +6019,9 @@ Return nil before first heading."
       (org-back-to-heading t)
       (let ((case-fold-search nil))
 	(looking-at org-complex-heading-regexp)
+        ;; When using `org-fold-core--optimise-for-huge-buffers',
+        ;; returned text will be invisible.  Clear it up.
+        (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0))
 	(let ((todo (and (not no-todo) (match-string 2)))
 	      (priority (and (not no-priority) (match-string 3)))
 	      (headline (pcase (match-string 4)
@@ -6030,6 +6033,8 @@ Return nil before first heading."
 			    "" h))
 			  (h h)))
 	      (tags (and (not no-tags) (match-string 5))))
+          ;; Restore cleared optimisation.
+          (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))
 	  (mapconcat #'identity
 		     (delq nil (list todo priority headline tags))
 		     " "))))))
@@ -6046,18 +6051,21 @@ This is a list with the following elements:
   (save-excursion
     (org-back-to-heading t)
     (when (let (case-fold-search) (looking-at org-complex-heading-regexp))
-      (list (length (match-string 1))
-	    (org-reduced-level (length (match-string 1)))
-	    (match-string-no-properties 2)
-	    (and (match-end 3) (aref (match-string 3) 2))
-	    (match-string-no-properties 4)
-	    (match-string-no-properties 5)))))
+      (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0))
+      (prog1
+          (list (length (match-string 1))
+	        (org-reduced-level (length (match-string 1)))
+	        (match-string-no-properties 2)
+	        (and (match-end 3) (aref (match-string 3) 2))
+	        (match-string-no-properties 4)
+	        (match-string-no-properties 5))
+        (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))))))
 
 (defun org-get-entry ()
   "Get the entry text, after heading, entire subtree."
   (save-excursion
     (org-back-to-heading t)
-    (buffer-substring (point-at-bol 2) (org-end-of-subtree t))))
+    (filter-buffer-substring (point-at-bol 2) (org-end-of-subtree t))))
 
 (defun org-edit-headline (&optional heading)
   "Edit the current headline.
