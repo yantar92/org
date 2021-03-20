@@ -999,7 +999,10 @@ property, unfold the region if the :fragile function returns non-nil."
 	        (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
 		      (spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
                   ;; Hide text inserted in the middle of a fold.
-	          (when (and spec-from spec-to (eq spec-to spec-from)
+	          (when (and (or spec-from (eq from (point-min)))
+                             (or spec-to (eq to (point-max)))
+                             (or spec-from spec-to)
+                             (eq spec-to spec-from)
                              (or (org-fold-core-get-folding-spec-property spec :front-sticky)
                                  (org-fold-core-get-folding-spec-property spec :rear-sticky)))
 	            (org-fold-core-region from to t (or spec-from spec-to)))
