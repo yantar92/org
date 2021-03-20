@@ -343,12 +343,12 @@ Possible properties can be found in `org-fold-core--specs' docstring."
 (defsubst org-fold-core-get-folding-property-symbol (spec &optional buffer)
   "Get folding property for SPEC in current buffer or BUFFER."
   (intern (format (concat org-fold-core--spec-property-prefix "%s-%S")
-		  (symbol-name spec)
-		  ;; (sxhash buf) appears to be not constant over time.
-		  ;; Using buffer-name is safe, since the only place where
-		  ;; buffer-local text property actually matters is an indirect
-		  ;; buffer, where the name cannot be same anyway.
-		  (sxhash (buffer-name (or buffer (current-buffer)))))))
+                  (symbol-name spec)
+                  ;; (sxhash buf) appears to be not constant over time.
+                  ;; Using buffer-name is safe, since the only place where
+                  ;; buffer-local text property actually matters is an indirect
+                  ;; buffer, where the name cannot be same anyway.
+                  (sxhash (buffer-name (or buffer (current-buffer)))))))
 
 (defsubst org-fold-core-get-folding-spec-from-folding-prop (folding-prop)
   "Return folding spec symbol used for folding property with name FOLDING-PROP."
@@ -357,7 +357,7 @@ Possible properties can be found in `org-fold-core--specs' docstring."
       ;; We know that folding properties have
       ;; folding spec in their name.
       (when (string-match-p (symbol-name spec)
-			    (symbol-name folding-prop))
+                            (symbol-name folding-prop))
         (throw :exit spec)))))
 
 (defvar org-fold-core--property-symbol-cache (make-hash-table :test 'equal)
@@ -1036,24 +1036,24 @@ property, unfold the region if the :fragile function returns non-nil."
                (when region-from (setq local-from (car region-from)))
                (when region-to (setq local-to (cdr region-to)))
                (let ((pos local-from))
-	         ;; Move to the first hidden region.
-	         (unless (org-fold-core-get-folding-spec spec pos)
-	           (setq pos (org-fold-core-next-folding-state-change spec pos local-to)))
-	         ;; Cycle over all the folds.
-	         (while (< pos local-to)
-	           (save-match-data ; we should not clobber match-data in after-change-functions
-	             (let ((fold-begin (and (org-fold-core-get-folding-spec spec pos)
-				            pos))
-		           (fold-end (org-fold-core-next-folding-state-change spec pos local-to)))
-	               (when (and fold-begin fold-end)
-		         (when (save-excursion
+                 ;; Move to the first hidden region.
+                 (unless (org-fold-core-get-folding-spec spec pos)
+                   (setq pos (org-fold-core-next-folding-state-change spec pos local-to)))
+                 ;; Cycle over all the folds.
+                 (while (< pos local-to)
+                   (save-match-data ; we should not clobber match-data in after-change-functions
+                     (let ((fold-begin (and (org-fold-core-get-folding-spec spec pos)
+                                            pos))
+                           (fold-end (org-fold-core-next-folding-state-change spec pos local-to)))
+                       (when (and fold-begin fold-end)
+                         (when (save-excursion
                                  (funcall (org-fold-core-get-folding-spec-property spec :fragile)
                                           (cons fold-begin fold-end)
                                           spec))
                            ;; Reveal completely, not just from the SPEC.
                            (org-fold-core-region fold-begin fold-end nil)))))
-	           ;; Move to next fold.
-	           (setq pos (org-fold-core-next-folding-state-change spec pos local-to))))))))))))
+                   ;; Move to next fold.
+                   (setq pos (org-fold-core-next-folding-state-change spec pos local-to))))))))))))
 
 ;;; Hanlding killing/yanking of folded text
 
@@ -1113,12 +1113,12 @@ The arguments and return value are as specified for `filter-buffer-substring'."
         (let* ((start (car plist))
                (fin (cadr plist))
                (plist (caddr plist)))
-	  ;; Only lists contain text properties.
-	  (when (listp plist)
+          ;; Only lists contain text properties.
+          (when (listp plist)
             ;; Collect all the relevant text properties.
-	    (while plist
+            (while plist
               (let* ((prop (car plist))
-		     (prop-name (symbol-name prop)))
+                     (prop-name (symbol-name prop)))
                 ;; Reveal hard-hidden text.  See
                 ;; `org-fold-core--optimise-for-huge-buffers'.
                 (when (and (eq prop 'invisible)
@@ -1127,11 +1127,11 @@ The arguments and return value are as specified for `filter-buffer-substring'."
                 ;; We do not care about values now.
                 (setq plist (cddr plist))
                 (when (string-match-p org-fold-core--spec-property-prefix prop-name)
-		  ;; Leave folding specs from current buffer.  See
-		  ;; comments in `org-fold-core--property-symbol-get-create' to
-		  ;; understand why it works.
-		  (unless (member prop (alist-get 'invisible char-property-alias-alist))
-		    (push prop props-list))))))))
+                  ;; Leave folding specs from current buffer.  See
+                  ;; comments in `org-fold-core--property-symbol-get-create' to
+                  ;; understand why it works.
+                  (unless (member prop (alist-get 'invisible char-property-alias-alist))
+                    (push prop props-list))))))))
       (remove-text-properties 0 (length return-string) props-list return-string))
     return-string))
 
