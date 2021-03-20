@@ -724,9 +724,9 @@ Move point right after the end of the region, to LIMIT, or
 
 (defvar-local org-fold-core--optimise-for-huge-buffers nil
   "Non-nil turns on extra speedup on huge buffers with Mbs of text being
-folded.  This comes at the cost that folded text will not become
-visible upon copying and many org API functions will return invisible
-text.")
+folded.  This setting is risky and may cause org-related text to
+become invisible where it should not.  It is recommended to enable it
+on per-buffer basis as file-local variable.")
 (put 'org-fold-core--optimise-for-huge-buffers 'safe-local-variable 'booleanp)
 
 ;; This is the core function performing actual folding/unfolding.  The
