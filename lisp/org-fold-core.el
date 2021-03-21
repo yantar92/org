@@ -524,7 +524,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
   (when specs (setq specs (nreverse specs)))
   (unless specs (setq specs org-fold-core--specs))
   (setq org-fold-core--specs nil)
-  (dolist (spec (or specs org-fold-core--specs))
+  (dolist (spec specs)
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
   (add-hook 'clone-indirect-buffer-hook #'org-fold-core-decouple-indirect-buffer-folds nil 'local)
