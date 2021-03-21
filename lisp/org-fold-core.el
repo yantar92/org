@@ -34,6 +34,7 @@
 ;; - Interactive searching in folded text (via isearch)
 ;; - Handling edits in folded text
 ;; - Killing/yanking (copying/pasting) of the folded text
+;; - Fontification of the folded text
 
 ;; To setup folding in an arbitrary buffer, one must call
 ;; `org-fold-core-initialize', optionally providing the list of folding specs to be
@@ -61,7 +62,7 @@
 ;; The 'org-fold-visible spec has highest priority allowing parts of
 ;; text folded with 'org-fold-hidden to be shown unconditionally.
 
-;; Consider the following org-mode link:
+;; Consider the following Org mode link:
 ;; [[file:/path/to/file/file.ext][description]]
 ;; Only the word "description" is normally visible in this link.
 ;; 
@@ -76,29 +77,30 @@
 ;; 'org-fold-hidden, it suppresses the 'org-fold-hidden effect and
 ;; thus reveals the description part of the link.
 
-;; Similar to 'org-fold-visible, display any arbitrary folding spec
-;; can be configured using folding properties.  In particular,
-;; `:visible' folding proprety controls whether the folded text is
-;; visible or not.  If the `:visible' folding property is nil, folded
-;; text is hidden or displayed as a constant string (ellipsis)
-;; according to the value of `:ellipsis' folding property.  See
+;; Similar to 'org-fold-visible, display of any arbitrary folding spec
+;; can be configured using folding spec properties.  In particular,
+;; `:visible' folding spec proprety controls whether the folded text
+;; is visible or not.  If the `:visible' folding spec property is nil,
+;; folded text is hidden or displayed as a constant string (ellipsis)
+;; according to the value of `:ellipsis' folding spec property.  See
 ;; docstring of `org-fold-core--specs' for the description of all the available
 ;; folding spec properties.
 
-;; Folding properties of any valid folding spec can be changed any
-;; time using `org-fold-core-set-folding-spec-property'.
+;; Folding spec properties of any valid folding spec can be changed
+;; any time using `org-fold-core-set-folding-spec-property'.
 
 ;; If necessary, one can add or remove folding specs using
 ;; `org-fold-core-add-folding-spec' and `org-fold-core-remove-folding-spec'.
 
 ;; If a buffer initialised with `org-fold-core-initialize' is cloned into indirect
 ;; buffers, it's folding state is copied to that indirect buffer.
-;; Later changed in the folding state will become independent.
+;; The folding states are independent.
 
 ;; When working with indirect buffers that are handled by this
 ;; library, one has to keep in mind that folding state is preserved on
 ;; copy when using non-interactive functions.  Moreover, the folding
-;; state in all the indirect buffers will be copied together.
+;; states of all the indirect buffers will be copied together.
+;;
 ;; Example of the implications:
 ;; Consider a base buffer and indirect buffer with the following state:
 ;; ----- base buffer --------
@@ -111,16 +113,18 @@
 ;; * Heading
 ;; Some text folded in the base buffer, but unfolded in the indirect buffer
 ;; * Other heading
+;; Heading unfolded in both the buffers.
 ;; ----------------------------
 ;; If some Elisp code copies the whole "Heading" from the indirect
-;; buffer with `buffer-substring' and inserts it into the base buffer,
-;; the inserted heading will be folded since the internal setting for
-;; the folding state is shared between the base and indirect buffers.
-;; It's just that the indirect buffer ignores the base buffer folding
-;; settings.  However, as soon as the text is copied back to the base
-;; buffer, the folding state will become respected again.
+;; buffer with `buffer-substring' or match data and inserts it into
+;; the base buffer, the inserted heading will be folded since the
+;; internal setting for the folding state is shared between the base
+;; and indirect buffers.  It's just that the indirect buffer ignores
+;; the base buffer folding settings.  However, as soon as the text is
+;; copied back to the base buffer, the folding state will become
+;; respected again.
 
-;; If the described situation is undersired, Elisp code can use
+;; If the described situation is undesired, Elisp code can use
 ;; `filter-buffer-substring' instead of `buffer-substring'.  All the
 ;; folding states that do not belong to the currently active buffer
 ;; will be cleared in the copied text then.  See
@@ -140,15 +144,15 @@
 ;; See functions defined under ";;;; Searching and examining folded
 ;; text" below for details.
 
-;; All the folding specs can be spacified by symbol representing their
+;; All the folding specs can be specified by symbol representing their
 ;; name.  However, this is not always convenient, especially if the
 ;; same spec can be used for fold different syntaxical structures.
 ;; Any folding spec can be additionally referenced by a symbol listed
-;; in the spec's `:alias' property.  For example, Org mode's
-;; `org-fold-outline' folding spec can be referened as any symbol from
-;; the following list:
-;; '(headline heading outline inlinetask plain-list)
-;; The list is the value of the spec's `:alias' property.
+;; in the spec's `:alias' folding spec property.  For example, Org
+;; mode's `org-fold-outline' folding spec can be referened as any
+;; symbol from the following list: '(headline heading outline
+;; inlinetask plain-list) The list is the value of the spec's `:alias'
+;; property.
 
 ;; Most of the functions defined below that require a folding spec
 ;; symbol as their argument, can also accept any symbol from the
@@ -167,7 +171,7 @@
 ;; possible to control to unfold it temporarily during interactive
 ;; isearch session.
 
-;; The isearch behaviour is controlled per-folding-spec basis by
+;; The isearch behaviour is controlled on per-folding-spec basis by
 ;; setting `isearch-open' and `isearch-ignore' folding spec
 ;; properties.  The the docstring of `org-fold-core--specs' for more details.
 
@@ -203,15 +207,31 @@
 ;; -----------------------------------
 
 ;; The described automatic unfolding is controlled by `:fragile'
-;; folding property.  It's value can be a function checking if changes
-;; inside (or around) the fold should drigger the unfold.  By default,
-;; only changes that directly involve folded regions will trigger the
-;; check.  In addition, `org-fold-core-extend-changed-region-functions' can be set
-;; to extent the checks to all folded regions intersecting with the
-;; region returned by the functions listed in the variable.
+;; folding spec property.  It's value can be a function checking if
+;; changes inside (or around) the fold should drigger the unfold.  By
+;; default, only changes that directly involve folded regions will
+;; trigger the check.  In addition, `org-fold-core-extend-changed-region-functions'
+;; can be set to extend the checks to all folded regions intersecting
+;; with the region returned by the functions listed in the variable.
 
 ;; The fragility checks can be bypassed if the code doing
 ;; modifications is wrapped into `org-fold-core-ignore-fragility-checks' macro.
+
+;;; Fontification of the folded text
+
+;; When working with huge buffers, `font-lock' may take a lot of time
+;; to fontify all the buffer text during startup.  This library
+;; provides a way to delay fontification of initially folded text to
+;; the time when the text is unfolded.  The fontification is
+;; controlled on per-folding-spec basis according to `:font-lock-skip'
+;; fonlding spec property.
+
+;; This library replaces `font-lock-fontify-region-function' to implement the
+;; delayed fontification.  However, it only does so when
+;; `font-lock-fontify-region-function' is not modified at the initialisation
+;; time.  If one needs to use both delayed fontification and custom
+;; `font-lock-fontify-region-function', it is recommended to consult the
+;; source code of `org-fold-core-fontify-region'.
 
 ;;; Performance considerations
 
@@ -219,10 +239,11 @@
 ;; properties are much faster than overlays, that could be used for
 ;; the same purpose.  Overlays are implemented with O(n) complexity in
 ;; Emacs (2021-03-11).  It means that any attempt to move through
-;; hidden text in a file with many invisible overlays will require time scaling with the
-;; number of folded regions (the problem Overlays note of the manual
-;; warns about).  For curious, historical reasons why overlays are not
-;; efficient can be found in https://www.jwz.org/doc/lemacs.html.
+;; hidden text in a file with many invisible overlays will require
+;; time scaling with the number of folded regions (the problem
+;; Overlays note of the manual warns about).  For curious, historical
+;; reasons why overlays are not efficient can be found in
+;; https://www.jwz.org/doc/lemacs.html.
 
 ;; Despite using text properties, the performance is still limited by
 ;; Emacs display engine.  For example, >7Mb of text hidden within
@@ -232,11 +253,30 @@
 ;; recommended to minimise the number of folding specs used in the
 ;; same buffer at a time.
 
+;; Alternatively, the library provides `org-fold-core--optimise-for-huge-buffers'
+;; to provide additional speedup.  This can be used as file-local
+;; variable in huge buffers.  This optimisation may break external
+;; packages though.  When using this optimisation, folded regions
+;; copied to other buffers (including buffers that do not use this
+;; library) will remain invisible.  org-fold-core provides functions
+;; to work around this issue: `org-fold-core-remove-optimisation' and
+;; `org-fold-core-update-optimisation', but it is unlikely that a random external
+;; package will use them.
+
 ;; Another possible bottleneck is the fragility check after changed
 ;; related to the folded text.  The functions used in `:fragile'
 ;; folding properties must be optimised.  Also,
 ;; `org-fold-core-ignore-fragility-checks' or even `org-fold-core-ignore-modifications' may be
 ;; used when appropriate in the performance-critical code.
+
+;; Performance of isearch is currently limited by Emacs isearch
+;; implementation.  For now, Emacs isearch only supports searching
+;; through text hidden using overlays.  This library handles isearch
+;; by converting folds with matching text to overlays, which may
+;; affect performance in case of large number of mathes.  In the
+;; future, Emacs will hopefully accept the relevant patch allowing
+;; isearch to work with text hidden via text properties, but the
+;; performance hit has to be accepted meanwhile.
 
 ;;; Code:
 
@@ -250,6 +290,14 @@
   "Function used to reveal hidden text found by isearch.
 The function is called with a single argument - point where text is to
 be revealed.")
+
+(defvar-local org-fold-core--optimise-for-huge-buffers nil
+  "Non-nil turns on extra speedup on huge buffers (Mbs of folded text).
+
+This setting is risky and may cause folded text to become invisible
+where it should not.  It is recommended to enable it on per-buffer
+basis as file-local variable.")
+(put 'org-fold-core--optimise-for-huge-buffers 'safe-local-variable 'booleanp)
 
 ;;; Core functionality
 
@@ -290,34 +338,34 @@ The following properties are known:
                        clear the setting in `buffer-invisibility-spec'.
 - :alias            :: a list of aliases for the SPEC-SYMBOL.
 - :font-lock-skip   :: Suppress font-locking in folded text.
-- :fragile          :: Must be a function accepting a two arguments.
+- :fragile          :: Must be a function accepting two arguments.
                        Non-nil means that changes in region may cause
                        the region to be revealed.  The region is
                        revealed after changes if the function returns
                        non-nil.
                        The function called after changes are made with
                        two arguments: cons (beg . end) representing the
-                       folded region and spec.")
+                       folded region and spec symbol.")
 
 (defvar-local org-fold-core-extend-changed-region-functions nil
   "Special hook run just before handling changes in buffer.
 
 This is used to account changes outside folded regions that still
 affect the folded region visibility.  For example, removing all stars
-at the beginning of a folded org-mode heading should trigger the
-folded text to be revealed.
-Each function is called with two arguments: beginning and the end of
-the changed region.")
+at the beginning of a folded Org mode heading should trigger the
+folded text to be revealed.  Each function is called with two
+arguments: beginning and the end of the changed region.")
 
 ;;; Utility functions
 
 (defsubst org-fold-core-folding-spec-list (&optional buffer)
-  "Return list of all the folding specs in BUFFER."
+  "Return list of all the folding spec symbols in BUFFER."
   (with-current-buffer (or buffer (current-buffer))
     (mapcar #'car org-fold-core--specs)))
 
 (defun org-fold-core-get-folding-spec-from-alias (spec-or-alias)
-  "Return the folding spec symbol for SPEC-OR-ALIAS."
+  "Return the folding spec symbol for SPEC-OR-ALIAS.
+Return nil when there is no matching folding spec."
   (and spec-or-alias
        (or (and (memq spec-or-alias (org-fold-core-folding-spec-list)) spec-or-alias)
            (seq-some (lambda (spec) (and (memq spec-or-alias (alist-get :alias (alist-get spec org-fold-core--specs))) spec)) (org-fold-core-folding-spec-list)))))
@@ -341,7 +389,7 @@ Possible properties can be found in `org-fold-core--specs' docstring."
   "Prefix used to create property symbol.")
 
 (defsubst org-fold-core-get-folding-property-symbol (spec &optional buffer)
-  "Get folding property for SPEC in current buffer or BUFFER."
+  "Get folding text property using to store SPEC in current buffer or BUFFER."
   (intern (format (concat org-fold-core--spec-property-prefix "%s-%S")
                   (symbol-name spec)
                   ;; (sxhash buf) appears to be not constant over time.
@@ -368,21 +416,19 @@ This variable is needed to work around Emacs bug#46982, while Emacs
 does not provide a way `after-change-functions' in any other buffer
 than the buffer where the change was actually made.")
 
-;; This is the core function used to fold text in org buffers.  We use
+;; This is the core function used to fold text in buffers.  We use
 ;; text properties to hide folded text, however 'invisible property is
-;; not directly used. Instead, we define unique text property (folding
+;; not directly used (unless risky `org-fold-core--optimise-for-huge-buffers' is
+;; enabled). Instead, we define unique text property (folding
 ;; property) for every possible folding spec and add the resulting
 ;; text properties into `char-property-alias-alist', so that
 ;; 'invisible text property is automatically defined if any of the
-;; folding properties is non-nil.
-;; This approach lets us maintain multiple folds for the same text
-;; region - poor man's overlays (but much faster).
-;; Additionally, folding properties are ensured to be unique for
-;; different buffers (especially for indirect buffers). This is done
-;; to allow different folding states in indirect org buffers.
-;; If one changes folding state in a fresh indirect buffer, all the
-;; folding properties carried from the base buffer are updated to
-;; become unique in the new indirect buffer.
+;; folding properties is non-nil.  This approach lets us maintain
+;; multiple folds for the same text region - poor man's overlays (but
+;; much faster).  Additionally, folding properties are ensured to be
+;; unique for different buffers (especially for indirect
+;; buffers). This is done to allow different folding states in
+;; indirect buffers.
 (defun org-fold-core--property-symbol-get-create (spec &optional buffer return-only)
   "Return a unique symbol suitable as folding text property.
 Return value is unique for folding SPEC in BUFFER.
@@ -438,6 +484,10 @@ unless RETURN-ONLY is non-nil."
 				                (org-fold-core-folding-spec-list)))
 		                  (remove (assq 'invisible char-property-alias-alist)
 			                  char-property-alias-alist)))
+                ;; Do not let Emacs manage folding spec stickyness.
+                ;; The default Emacs behavior make stickyness work
+                ;; only for interfactive edits, which is when we do
+                ;; not want folding state to be sticky anyway.
                 (setq-local text-property-default-nonsticky
                             (delete-dups (append text-property-default-nonsticky
                                                  (mapcar (lambda (spec)
@@ -445,7 +495,8 @@ unless RETURN-ONLY is non-nil."
                                                          (org-fold-core-folding-spec-list)))))))))))))
 
 (defun org-fold-core-decouple-indirect-buffer-folds ()
-  "Copy and decouple folding state in a newly created indirect buffer."
+  "Copy and decouple folding state in a newly created indirect buffer.
+This function is mostly indented to be used in `clone-indirect-buffer-hook'."
   (when (buffer-base-buffer)
     (org-fold-core--property-symbol-get-create (car (org-fold-core-folding-spec-list)))))
 
@@ -545,10 +596,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 (defun org-fold-core-folded-p (&optional pos spec-or-alias)
   "Non-nil if the character after POS is folded.
 If POS is nil, use `point' instead.
-If SPEC-OR-ALIAS is a folding spec, only check the given folding spec.
-If SPEC-OR-ALIAS is a foldable element, only check folding spec for
-the given element.  Note that multiple elements may have same folding
-specs."
+If SPEC-OR-ALIAS is a folding spec, only check the given folding spec."
   (org-fold-core-get-folding-spec spec-or-alias pos))
 
 (defun org-fold-core-region-folded-p (beg end &optional spec-or-alias)
@@ -568,11 +616,8 @@ If SPEC-OR-ALIAS is nil, return a folding spec with highest priority
 among present at `point' or POM.
 If SPEC-OR-ALIAS is 'all, return the list of all present folding
 specs.
-If SPEC-OR-ALIAS is a valid folding spec, return the corresponding
-folding spec (if the text is folded using that spec).
-If SPEC-OR-ALIAS is a foldable org element, act as if the element's
-folding spec was used as an argument.  Note that multiple elements may
-have same folding specs."
+If SPEC-OR-ALIAS is a valid folding spec or a spec alias, return the
+corresponding folding spec (if the text is folded using that spec)."
   (let ((spec (if (eq spec-or-alias 'all)
                   'all
                 (org-fold-core-get-folding-spec-from-alias spec-or-alias))))
@@ -653,7 +698,7 @@ If PREVIOUS-P is non-nil, search backwards."
 (defun org-fold-core-next-folding-state-change (&optional spec-or-alias pos limit previous-p)
   "Return next point where folding state changes relative to POS up to LIMIT.
 If SPEC-OR-ALIAS is nil, return next point where _any_ single folding
-type changes.
+spec changes.
 For example, (org-fold-core-next-folding-state-change nil) with point
 somewhere in the below structure will return the nearest <...> point.
 
@@ -670,9 +715,9 @@ Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor
 ** Yet another headline
 <end of outline fold>
 
-If SPEC-OR-ALIAS is a folding spec symbol, only consider that folded spec.
+If SPEC-OR-ALIAS is a folding spec symbol, only consider that folding spec.
 
-If SPEC-OR-ALIAS is a list, only consider changes of folding states
+If SPEC-OR-ALIAS is a list, only consider changes of folding specs
 from the list.
 
 Search backwards when PREVIOUS-P is non-nil."
@@ -708,13 +753,6 @@ Search backwards when PREVIOUS-P is non-nil."
 (defvar org-fold-core--fontifying nil
   "Flag used to restrict `org-fold-core-region' -> `font-lock-fontify-region' -> `org-fold-core-region' recursion.")
 
-(defvar-local org-fold-core--optimise-for-huge-buffers nil
-  "Non-nil turns on extra speedup on huge buffers with Mbs of text being
-folded.  This setting is risky and may cause org-related text to
-become invisible where it should not.  It is recommended to enable it
-on per-buffer basis as file-local variable.")
-(put 'org-fold-core--optimise-for-huge-buffers 'safe-local-variable 'booleanp)
-
 ;; This is the core function performing actual folding/unfolding.  The
 ;; folding state is stored in text property (folding property)
 ;; returned by `org-fold-core--property-symbol-get-create'.  The value of the
@@ -730,15 +768,9 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
        (if flag
 	   (if (not spec)
                (error "Calling `org-fold-core-region' with missing SPEC")
-	     (put-text-property from to
-				(org-fold-core--property-symbol-get-create spec)
-				spec)
-	     (put-text-property from to
-				'isearch-open-invisible
-				#'org-fold-core--isearch-show)
-	     (put-text-property from to
-				'isearch-open-invisible-temporary
-				#'org-fold-core--isearch-show-temporary)
+	     (put-text-property from to (org-fold-core--property-symbol-get-create spec) spec)
+	     (put-text-property from to 'isearch-open-invisible #'org-fold-core--isearch-show)
+	     (put-text-property from to 'isearch-open-invisible-temporary #'org-fold-core--isearch-show-temporary)
              (when org-fold-core--optimise-for-huge-buffers
                ;; If the SPEC has highest priority, assign it directly
                ;; to 'invisible property as well.  This is done to speed
@@ -757,12 +789,11 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                          (remove-text-properties pos next '(invisible t))
                          (setq pos next))
                      (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
-	   (remove-text-properties from to
-				   (list (org-fold-core--property-symbol-get-create spec) nil))
+	   (remove-text-properties from to (list (org-fold-core--property-symbol-get-create spec) nil))
+           ;; Fontify unfolded text.
            (unless (or org-fold-core--fontifying
                        (not (org-fold-core-get-folding-spec-property spec :font-lock-skip)))
-             (let ((org-fold-core--fontifying t))
-               (font-lock-fontify-region from to)))))))))
+             (let ((org-fold-core--fontifying t)) (font-lock-fontify-region from to)))))))))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
@@ -802,8 +833,8 @@ This function is intended to be used as `isearch-filter-predicate'."
    ;; Check folding specs that cannot be searched
    (seq-every-p (lambda (spec) (not (org-fold-core-get-folding-spec-property spec :isearch-ignore)))
                 (org-fold-core-get-folding-specs-in-region beg end))
-   ;; Check 'invisible properties that are not folding specs
-   (or (eq search-invisible t) ; User wants to search, allow it
+   ;; Check 'invisible properties that are not folding specs.
+   (or (eq search-invisible t) ; User wants to search anyway, allow it.
        (let ((pos beg)
 	     unknown-invisible-property)
 	 (while (and (< pos end)
@@ -951,8 +982,8 @@ This function does nothing if text the only modification was changing
 text properties (for the sake of reducing overheads).
 
 If a text was inserted into invisible region, hide the inserted text.
-If a text was insert in front/back of the region, hide it according to
-:font-sticky/:rear-sticky folding spec property.
+If a text was inserted in front/back of the region, hide it according
+to :font-sticky/:rear-sticky folding spec property.
 
 If the folded region is folded with a spec with non-nil :fragile
 property, unfold the region if the :fragile function returns non-nil."
@@ -1012,7 +1043,7 @@ property, unfold the region if the :fragile function returns non-nil."
           (when (org-fold-core-get-folding-spec-property spec :fragile)
             (org-with-wide-buffer
              ;; Expand the considered region to include partially present fold.
-             ;; Note: It is important to do this inside loop ovre all
+             ;; Note: It is important to do this inside loop over all
              ;; specs.  Otherwise, the region may be expanded to huge
              ;; outline fold, potentially involving majority of the
              ;; buffer.  That would cause the below code to loop over
