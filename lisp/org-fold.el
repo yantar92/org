@@ -316,7 +316,6 @@ smart            Make point visible, and do insertion/deletion if it is
 (defalias 'org-fold-previous-visibility-change #'org-fold-core-previous-visibility-change)
 (defalias 'org-fold-next-folding-state-change #'org-fold-core-next-folding-state-change)
 (defalias 'org-fold-previous-folding-state-change #'org-fold-core-previous-folding-state-change)
-(defalias 'org-fold-search-forward #'org-fold-core-search-forward)
 
 ;;;;; Macros
 

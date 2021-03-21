@@ -698,23 +698,6 @@ Search backwards when PREVIOUS-P is non-nil."
   "Call `org-fold-core-next-folding-state-change' searching backwards."
   (org-fold-core-next-folding-state-change spec-or-alias pos limit 'previous))
 
-(defun org-fold-core-search-forward (spec-or-alias &optional limit)
-  "Search next region folded via folding SPEC-OR-ALIAS up to LIMIT.
-Move point right after the end of the region, to LIMIT, or
-`point-max'.  The `match-data' will contain the region."
-  (let ((spec (org-fold-core-get-folding-spec-from-alias spec-or-alias)))
-    (let ((prop-symbol (org-fold-core--property-symbol-get-create spec nil t)))
-      (goto-char (or (next-single-char-property-change (point) prop-symbol nil limit) limit (point-max)))
-      (when (and (< (point) (or limit (point-max)))
-	         (not (org-fold-core-get-folding-spec spec)))
-        (goto-char (next-single-char-property-change (point) prop-symbol nil limit)))
-      (when (org-fold-core-get-folding-spec spec)
-        (let ((region (org-fold-core-get-region-at-point spec)))
-	  (when (< (cdr region) (or limit (point-max)))
-	    (goto-char (1+ (cdr region)))
-            (set-match-data (list (set-marker (make-marker) (car region) (current-buffer))
-				  (set-marker (make-marker) (cdr region) (current-buffer))))))))))
-
 ;;;; Changing visibility
 
 ;;;;; Region visibility
