@@ -793,7 +793,7 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
            ;; Fontify unfolded text.
            (unless (or org-fold-core--fontifying
                        (not (org-fold-core-get-folding-spec-property spec :font-lock-skip)))
-             (let ((org-fold-core--fontifying t)) (font-lock-fontify-region from to)))))))))
+             (let ((org-fold-core--fontifying t)) (save-match-data (font-lock-fontify-region from to))))))))))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
