@@ -933,7 +933,11 @@ This function is intended to be used as `isearch-filter-predicate'."
 
 (defun org-fold-core--clear-isearch-overlay (ov)
   "Convert OV region back into using text properties."
-  (let ((spec (overlay-get ov 'org-invisible)))
+  (let ((spec (if isearch-mode-end-hook-quit
+                  ;; Restore all folds.
+                  (overlay-get ov 'org-invisible)
+                ;; Leave opened folds open.
+                (overlay-get ov 'invisible))))
     ;; Ignore deleted overlays.
     (when (and spec
 	       (overlay-buffer ov))
