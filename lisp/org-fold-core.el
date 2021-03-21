@@ -1162,12 +1162,13 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 
 ;;; Do not fontify folded text until needed.
 
-(defun org-fold-core-fontify-region (beg end loudly)
+(defun org-fold-core-fontify-region (beg end loudly &optional force)
   "Run `font-lock-default-fontify-region' unless we are trying to fontify invisible text."
   (let ((pos beg) next)
     (while (< pos end)
       (setq next (org-fold-core-next-visibility-change pos end))
-      (unless (and (org-invisible-p pos)
+      (unless (and (not force)
+                   (org-invisible-p pos)
                    (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all pos)))
         (font-lock-default-fontify-region pos next loudly)
         (put-text-property pos next 'org-fold-core-fontified t))

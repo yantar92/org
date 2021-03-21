@@ -6022,7 +6022,9 @@ Return nil before first heading."
         ;; When using `org-fold-core--optimise-for-huge-buffers',
         ;; returned text will be invisible.  Clear it up.
         (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0))
-	(let ((todo (and (not no-todo) (match-string 2)))
+        (org-fold-core-fontify-region (match-beginning 0) (match-end 0) nil 'force)
+        (looking-at org-complex-heading-regexp)
+        (let ((todo (and (not no-todo) (match-string 2)))
 	      (priority (and (not no-priority) (match-string 3)))
 	      (headline (pcase (match-string 4)
 			  (`nil "")
