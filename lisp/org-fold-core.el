@@ -1157,7 +1157,7 @@ See `org-fold-core--optimise-for-huge-buffers'."
       (while (< pos end)
         (when (and (org-fold-core-folded-p pos (caar org-fold-core--specs))
                    (not (eq (caar org-fold-core--specs) (get-text-property pos 'invisible))))
-          (put-text-property pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos)
+          (put-text-property pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end)
                              'invisible (caar org-fold-core--specs)))
         (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
 
@@ -1169,7 +1169,7 @@ See `org-fold-core--optimise-for-huge-buffers'."
       (while (< pos end)
         (when (and (org-fold-core-folded-p pos (caar org-fold-core--specs))
                    (eq (caar org-fold-core--specs) (get-text-property pos 'invisible)))
-          (remove-text-properties pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos)
+          (remove-text-properties pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end)
                                   '(invisible t)))
         (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
 
