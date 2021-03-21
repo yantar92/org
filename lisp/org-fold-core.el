@@ -495,7 +495,7 @@ The folding spec properties will be set to PROPERTIES (see
     (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
                                     '( :visible :ellipsis :isearch-ignore
                                        :isearch-open :front-sticky :rear-sticky
-                                       :fragile :alias)))
+                                       :fragile :alias :font-lock-skip)))
            (full-spec (cons spec full-properties)))
       (add-to-list 'org-fold-core--specs full-spec append)
       (mapc (lambda (prop-cons) (org-fold-core-set-folding-spec-property spec (car prop-cons) (cdr prop-cons) 'force)) full-properties))))
