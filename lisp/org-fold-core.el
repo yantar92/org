@@ -910,6 +910,7 @@ instead of text properties.  The created overlays will be stored in
 	    (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
 	      (overlay-put o 'evaporate t)
 	      (overlay-put o 'invisible spec)
+              (overlay-put o 'org-invisible spec)
               ;; Make sure that overlays are applied in the same order
               ;; with the folding specs.
               ;; Note: `memq` returns cdr with car equal to the first
@@ -932,7 +933,7 @@ This function is intended to be used as `isearch-filter-predicate'."
 
 (defun org-fold-core--clear-isearch-overlay (ov)
   "Convert OV region back into using text properties."
-  (let ((spec (overlay-get ov 'invisible)))
+  (let ((spec (overlay-get ov 'org-invisible)))
     ;; Ignore deleted overlays.
     (when (and spec
 	       (overlay-buffer ov))
