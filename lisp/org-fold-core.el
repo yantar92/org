@@ -793,7 +793,7 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
            ;; Fontify unfolded text.
            (unless (or org-fold-core--fontifying
                        (not (org-fold-core-get-folding-spec-property spec :font-lock-skip))
-                       (text-property-not-all from to 'font-lock-fontified t))
+                       (not (text-property-not-all from to 'org-fold-core-fontified t)))
              (let ((org-fold-core--fontifying t)) (save-match-data (font-lock-fontify-region from to))))))))))
 
 ;;; Make isearch search in some text hidden via text propertoes
@@ -1166,10 +1166,11 @@ The arguments and return value are as specified for `filter-buffer-substring'."
   "Run `font-lock-default-fontify-region' unless we are trying to fontify invisible text."
   (let ((pos beg) next)
     (while (< pos end)
-      (setq next (org-fold-core-next-visibility-change pos end t))
+      (setq next (org-fold-core-next-visibility-change pos end))
       (unless (and (org-invisible-p pos)
                    (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all pos)))
-        (font-lock-default-fontify-region pos next loudly))
+        (font-lock-default-fontify-region pos next loudly)
+        (put-text-property pos next 'org-fold-core-fontified t))
       (setq pos next))))
 
 (defun org-fold-core-update-optimisation (beg end)
@@ -1190,10 +1191,10 @@ See `org-fold-core--optimise-for-huge-buffers'."
   (when org-fold-core--optimise-for-huge-buffers
     (let ((pos beg))
       (while (< pos end)
-        (when (and (org-fold-core-folded-p pos (caar org-fold-core--specs))
-                   (eq (caar org-fold-core--specs) (get-text-property pos 'invisible)))
-          (remove-text-properties pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end)
-                                  '(invisible t)))
+        (if (and (org-fold-core-folded-p pos (caar org-fold-core--specs))
+                 (eq (caar org-fold-core--specs) (get-text-property pos 'invisible)))
+            (remove-text-properties pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end)
+                                    '(invisible t)))
         (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
 
 (provide 'org-fold-core)
