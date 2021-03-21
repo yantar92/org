@@ -577,16 +577,18 @@ have same folding specs."
                   'all
                 (org-fold-core-get-folding-spec-from-alias spec-or-alias))))
     (when (and spec (not (eq spec 'all))) (org-fold-core--check-spec spec))
-    (org-with-point-at (or pom (point))
-      (if (and spec (not (eq spec 'all)))
-	  (get-char-property (point) (org-fold-core--property-symbol-get-create spec nil t))
-	(let ((result))
+    (org-with-point-at pom
+      (cond
+       ((eq spec 'all)
+        (let ((result))
 	  (dolist (spec (org-fold-core-folding-spec-list))
 	    (let ((val (get-char-property (point) (org-fold-core--property-symbol-get-create spec nil t))))
 	      (when val (push val result))))
-          (if (eq spec 'all)
-              result
-            (car (last result))))))))
+          (reverse result)))
+       ((null spec)
+        (let ((result (get-char-property (point) 'invisible)))
+          (when (org-fold-core-folding-spec-p result) result)))
+       (t (get-char-property (point) (org-fold-core--property-symbol-get-create spec nil t)))))))
 
 (defun org-fold-core-get-folding-specs-in-region (beg end)
   "Get all folding specs in region from BEG to END."
