@@ -631,7 +631,7 @@ corresponding folding spec (if the text is folded using that spec)."
 	      (when val (push val result))))
           (reverse result)))
        ((null spec)
-        (let ((result (get-char-property (point) 'invisible)))
+        (let ((result (get-text-property (point) 'invisible)))
           (when (org-fold-core-folding-spec-p result) result)))
        (t (get-char-property (point) (org-fold-core--property-symbol-get-create spec nil t)))))))
 
