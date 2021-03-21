@@ -210,9 +210,9 @@ STATE should be one of the symbols listed in the docstring of
       (save-excursion
 	(goto-char beg)
 	(while (re-search-forward org-drawer-regexp end t)
-	  (if (org-fold-get-folding-spec 'drawer)
+	  (if (org-fold-get-folding-spec (unless global? 'drawer))
 	      ;; Do not fold already folded drawers.
-              (goto-char (org-fold-core-next-folding-state-change 'drawer nil end))
+              (goto-char (org-fold-core-next-folding-state-change (unless global? 'drawer) nil end))
 	    (let ((drawer (save-excursion (goto-char (match-beginning 0))
                                           (org-element-drawer-parser (save-excursion (or (outline-next-heading) (point-max)))
                                                                      (list (point))))))
