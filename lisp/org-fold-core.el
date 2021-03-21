@@ -424,10 +424,11 @@ unless RETURN-ONLY is non-nil."
 	                  (new-prop (org-fold-core--property-symbol-get-create spec nil 'return-only)))
                      ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
                      (while (< pos (point-max))
-	               (let ((val (get-text-property pos old-prop)))
+	               (let ((val (get-text-property pos old-prop))
+                             (next (next-single-char-property-change pos old-prop)))
 	                 (when val
-	                   (put-text-property pos (next-single-char-property-change pos old-prop) new-prop val)))
-	               (setq pos (next-single-char-property-change pos old-prop))))))
+	                   (put-text-property pos next new-prop val))
+                         (setq pos next))))))
                 ;; Update `char-property-alias-alist' with folding
                 ;; properties unique for the current buffer.
                 (setq-local char-property-alias-alist
