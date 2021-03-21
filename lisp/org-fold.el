@@ -644,12 +644,7 @@ Return a non-nil value when toggling is successful."
 (defun org-fold-hide-block-all ()
   "Fold all blocks in the current buffer."
   (interactive)
-  (org-block-map (lambda () (save-restriction
-                         ;; Speed up `org-fold-hide-block-toggle' by
-                         ;; restricting region that need to be parsed
-                         ;; to find the block.
-                         (narrow-to-region (match-beginning 0) (match-end 0))
-                         (org-fold-hide-block-toggle 'force)))))
+  (org-block-map (apply-partially #'org-fold-hide-block-toggle 'hide)))
 
 (defun org-fold-hide-drawer-all ()
   "Fold all visible drawers in the current buffer or narrow."
