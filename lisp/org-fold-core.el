@@ -1127,7 +1127,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; string, so we utilise the fact that printed string
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
-    (unless (string-empty-p return-string)
+    (unless (or (string-empty-p return-string)
+                (<= end beg))
       ;; Collect all the text properties the string is completely
       ;; hidden with.
       (dolist (spec (org-fold-core-folding-spec-list))
