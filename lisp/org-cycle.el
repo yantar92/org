@@ -34,6 +34,7 @@
 
 (declare-function org-element-type "org-element" (element))
 (declare-function org-element-property "org-element" (property element))
+(declare-function org-element-drawer-parser "org-element" (limit affiliated))
 (declare-function org-element-lineage "org-element" (datum &optional types with-self))
 (declare-function org-inlinetask-at-task-p "org-inlinetask" ())
 (declare-function org-inlinetask-toggle-visibility "org-inlinetask" ())

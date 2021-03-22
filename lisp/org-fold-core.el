@@ -751,7 +751,7 @@ Search backwards when PREVIOUS-P is non-nil."
 ;;;;; Region visibility
 
 (defvar org-fold-core--fontifying nil
-  "Flag used to restrict `org-fold-core-region' -> `font-lock-fontify-region' -> `org-fold-core-region' recursion.")
+  "Flag used to avoid font-lock recursion.")
 
 ;; This is the core function performing actual folding/unfolding.  The
 ;; folding state is stored in text property (folding property)
