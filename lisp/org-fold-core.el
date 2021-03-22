@@ -1165,7 +1165,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 
 (defun org-fold-core-fontify-region (beg end loudly &optional force)
   "Run `font-lock-default-fontify-region' unless we are trying to fontify invisible text."
-  (let ((pos beg) next)
+  (let ((pos beg) next
+        (org-fold-core--fontifying t))
     (while (< pos end)
       (setq next (org-fold-core-next-visibility-change pos end))
       (unless (and (not force)
