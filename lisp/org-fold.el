@@ -793,7 +793,7 @@ This function is intended to be used as :fragile property of
       (backward-char)
       (beginning-of-line)
       ;; Make sure that headline is not partially hidden
-      (unless (org-fold-folded-p nil 'headline) (org-fold-region (point) (line-end-position) nil 'headline))
+      (unless (org-fold-folded-p nil 'headline) (org-fold-region (max (point-min) (1- (point))) (line-end-position) nil 'headline))
       ;; Check the validity of headline
       (unless (let ((case-fold-search t))
 	        (looking-at (rx (or (regex (org-item-re))
