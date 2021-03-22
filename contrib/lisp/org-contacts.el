@@ -19,7 +19,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;; Commentary:
@@ -976,7 +976,7 @@ address."
 (defun org-contacts-vcard-escape (str)
   "Escape ; , and \n in STR for the VCard format."
   ;; Thanks to this library for the regexp:
-  ;; http://www.emacswiki.org/cgi-bin/wiki/bbdb-vcard-export.el
+  ;; https://www.emacswiki.org/cgi-bin/wiki/bbdb-vcard-export.el
   (when str
     (replace-regexp-in-string
      "\n" "\\\\n"

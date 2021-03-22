@@ -19,14 +19,14 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
 ;; Org-Babel support for evaluating eukleides script.
 ;;
 ;; Inspired by Ian Yang's org-export-blocks-format-eukleides
-;; http://www.emacswiki.org/emacs/org-export-blocks-format-eukleides.el
+;; https://www.emacswiki.org/emacs/org-export-blocks-format-eukleides.el
 
 ;;; Requirements:
 
