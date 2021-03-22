@@ -707,7 +707,6 @@ information."
     (when (org-fold-folded-p)
       (let ((region (org-fold-get-region-at-point))
             (spec (org-fold-get-folding-spec)))
-        (org-fold-region (car region) (cdr region) nil)
         ;; Reveal emphasis markers.
         (when (member spec '(org-link org-link-description))
           (let (org-hide-emphasis-markers
@@ -718,7 +717,8 @@ information."
               (org-with-point-at (car region)
                 (beginning-of-line)
                 (let (font-lock-extend-region-functions)
-                  (font-lock-fontify-region (1- (car region)) (cdr region)))))))))
+                  (font-lock-fontify-region (1- (car region)) (cdr region)))))))
+        (org-fold-region (car region) (cdr region) nil)))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
