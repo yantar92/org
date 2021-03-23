@@ -807,7 +807,8 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                      (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
 	   (remove-text-properties from to (list (org-fold-core--property-symbol-get-create spec) nil))
            ;; Fontify unfolded text.
-           (unless (or org-fold-core--fontifying
+           (unless (or (not font-lock-mode)
+                       org-fold-core--fontifying
                        (not (org-fold-core-get-folding-spec-property spec :font-lock-skip))
                        (not (text-property-not-all from to 'org-fold-core-fontified t)))
              (let ((org-fold-core--fontifying t)) (save-match-data (font-lock-fontify-region from to))))))))))
