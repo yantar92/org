@@ -436,7 +436,6 @@ If the buffer already have buffer-local setup in `char-property-alias-alist'
 and the setup appears to be created for different buffer,
 copy the old invisibility state into new buffer-local text properties,
 unless RETURN-ONLY is non-nil."
-  (org-fold-core--check-spec spec)
   (let* ((buf (or buffer (current-buffer))))
     ;; Create unique property symbol for SPEC in BUFFER
     (let ((local-prop (or (gethash (cons buf spec) org-fold-core--property-symbol-cache)
