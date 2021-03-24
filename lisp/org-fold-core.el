@@ -1184,15 +1184,19 @@ The arguments and return value are as specified for `filter-buffer-substring'."
   (let ((pos beg) next
         (org-fold-core--fontifying t))
     (while (< pos end)
-      (setq next (org-fold-core-next-visibility-change pos end))
-      (unless (and (not force)
-                   (org-invisible-p pos)
-                   (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all pos)))
-        (while (and (not (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all next)))
-                    (< next end))
-          (setq next (org-fold-core-next-folding-state-change nil next end)))
-        (font-lock-default-fontify-region pos next loudly)
-        (put-text-property pos next 'org-fold-core-fontified t))
+      (setq next (org-fold-core-next-folding-state-change
+                  (if force nil
+                    (seq-filter (lambda (spec)
+                                  (and (not (org-fold-core-get-folding-spec-property spec :visible))
+                                       (org-fold-core-get-folding-spec-property spec :font-lock-skip)))
+                                (org-fold-core-folding-spec-list)))
+                  pos
+                  end))
+      (while (and (not (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all next)))
+                  (< next end))
+        (setq next (org-fold-core-next-folding-state-change nil next end)))
+      (font-lock-default-fontify-region pos next loudly)
+      (put-text-property pos next 'org-fold-core-fontified t)
       (setq pos next))))
 
 (defun org-fold-core-update-optimisation (beg end)
