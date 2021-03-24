@@ -1350,19 +1350,20 @@ will remain visible."
         (overlay-put ov2 'invisible 'org-babel-hide-hash)
         (overlay-put ov1 'babel-hash hash)))))
 
-(defun org-babel-hide-all-hashes ()
+(defun org-babel-hide-all-hashes (&optional limit)
   "Hide the hash in the current buffer.
 Only the initial `org-babel-hash-show' characters of each hash
 will remain visible.  This function should be called as part of
 the `org-mode-hook'."
+  (setq limit (or limit (point-max)))
   (save-excursion
     (let ((case-fold-search t))
       (while (and (not org-babel-hash-show-time)
-		  (re-search-forward org-babel-result-regexp nil t))
+		  (re-search-forward org-babel-result-regexp limit t))
 	(goto-char (match-beginning 0))
 	(org-babel-hide-hash)
 	(goto-char (match-end 0))))))
-(add-hook 'org-mode-hook #'org-babel-hide-all-hashes)
+(add-hook 'org-font-lock-hook #'org-babel-hide-all-hashes)
 
 (defun org-babel-hash-at-point (&optional point)
   "Return the value of the hash at POINT.
