@@ -4229,7 +4229,7 @@ directory."
     (let ((case-fold-search t)
 	  (regexp (org-make-options-regexp keywords)))
       (while (and keywords (re-search-forward regexp nil t))
-        (let ((element (org-element-at-point)))
+        (let ((element (org-with-point-at (match-beginning 0) (org-element-keyword-parser (line-end-position) (list (match-beginning 0))))))
           (when (eq 'keyword (org-element-type element))
             (let ((value (org-element-property :value element)))
               (pcase (org-element-property :key element)

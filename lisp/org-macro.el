@@ -315,7 +315,7 @@ in the buffer."
 	  (result nil))
       (catch :exit
 	(while (re-search-forward regexp nil t)
-	  (let ((element (org-element-at-point)))
+	  (let ((element (org-with-point-at (match-beginning 0) (org-element-keyword-parser (line-end-position) (list (match-beginning 0))))))
 	    (when (eq 'keyword (org-element-type element))
 	      (let ((value (org-element-property :value element)))
 		(if (not collect) (throw :exit value)
