@@ -652,21 +652,22 @@ Return a non-nil value when toggling is successful."
     (goto-char (point-min))
     (while (re-search-forward org-drawer-regexp nil t)
       ;; Skip drawers in folded headings
-      (when (org-fold-folded-p) (goto-char (org-fold-next-visibility-change nil nil 'ignore-hidden)))
-      (let* ((drawer (org-element-at-point))
-	     (type (org-element-type drawer)))
-	(when (memq type '(drawer property-drawer))
-	  ;; We are sure regular drawers are unfolded because of
-	  ;; `org-show-all' call above.  However, property drawers may
-	  ;; be folded, or in a folded headline.  In that case, do not
-	  ;; re-hide it.
-	  (unless (and (eq type 'property-drawer)
-		       (org-fold-folded-p))
-	    (org-fold-hide-drawer-toggle t nil drawer))
-	  ;; Make sure to skip drawer entirely or we might flag it
-	  ;; another time when matching its ending line with
-	  ;; `org-drawer-regexp'.
-	  (goto-char (org-element-property :end drawer)))))))
+      (if (org-fold-folded-p)
+          (goto-char (org-fold-next-visibility-change nil nil 'ignore-hidden))
+        (let* ((drawer (org-with-point-at (match-beginning 0) (org-element--current-element (save-excursion (or (outline-next-heading) (point-max))))))
+	       (type (org-element-type drawer)))
+	  (when (memq type '(drawer property-drawer))
+	    ;; We are sure regular drawers are unfolded because of
+	    ;; `org-show-all' call above.  However, property drawers may
+	    ;; be folded, or in a folded headline.  In that case, do not
+	    ;; re-hide it.
+	    (unless (and (eq type 'property-drawer)
+		         (org-fold-folded-p))
+	      (org-fold-hide-drawer-toggle t nil drawer))
+	    ;; Make sure to skip drawer entirely or we might flag it
+	    ;; another time when matching its ending line with
+	    ;; `org-drawer-regexp'.
+	    (goto-char (org-element-property :end drawer))))))))
 
 (defun org-fold-hide-archived-subtrees (beg end)
   "Re-hide all archived subtrees after a visibility state change."
