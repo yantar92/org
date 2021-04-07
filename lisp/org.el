@@ -4533,6 +4533,7 @@ The following commands are available:
   (org-install-agenda-files-menu)
   (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
                         "..."))
+  (make-local-variable 'org-link-descriptive)
   (if org-link-descriptive
       (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible nil)
     (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible t))
