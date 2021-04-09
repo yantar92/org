@@ -34,7 +34,6 @@
 ;; - Interactive searching in folded text (via isearch)
 ;; - Handling edits in folded text
 ;; - Killing/yanking (copying/pasting) of the folded text
-;; - Fontification of the folded text
 
 ;; To setup folding in an arbitrary buffer, one must call
 ;; `org-fold-core-initialize', optionally providing the list of folding specs to be
@@ -217,22 +216,6 @@
 ;; The fragility checks can be bypassed if the code doing
 ;; modifications is wrapped into `org-fold-core-ignore-fragility-checks' macro.
 
-;;; Fontification of the folded text
-
-;; When working with huge buffers, `font-lock' may take a lot of time
-;; to fontify all the buffer text during startup.  This library
-;; provides a way to delay fontification of initially folded text to
-;; the time when the text is unfolded.  The fontification is
-;; controlled on per-folding-spec basis according to `:font-lock-skip'
-;; fonlding spec property.
-
-;; This library replaces `font-lock-fontify-region-function' to implement the
-;; delayed fontification.  However, it only does so when
-;; `font-lock-fontify-region-function' is not modified at the initialisation
-;; time.  If one needs to use both delayed fontification and custom
-;; `font-lock-fontify-region-function', it is recommended to consult the
-;; source code of `org-fold-core-fontify-region'.
-
 ;;; Performance considerations
 
 ;; This library is using text properties to hide text.  Text
@@ -337,7 +320,6 @@ The following properties are known:
                        Note that changing this property from nil to t may
                        clear the setting in `buffer-invisibility-spec'.
 - :alias            :: a list of aliases for the SPEC-SYMBOL.
-- :font-lock-skip   :: Suppress font-locking in folded text.
 - :fragile          :: Must be a function accepting two arguments.
                        Non-nil means that changes in region may cause
                        the region to be revealed.  The region is
@@ -545,7 +527,7 @@ The folding spec properties will be set to PROPERTIES (see
     (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
                                     '( :visible :ellipsis :isearch-ignore
                                        :isearch-open :front-sticky :rear-sticky
-                                       :fragile :alias :font-lock-skip)))
+                                       :fragile :alias)))
            (full-spec (cons spec full-properties)))
       (add-to-list 'org-fold-core--specs full-spec append)
       (mapc (lambda (prop-cons) (org-fold-core-set-folding-spec-property spec (car prop-cons) (cdr prop-cons) 'force)) full-properties))))
@@ -577,9 +559,6 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
   (add-hook 'clone-indirect-buffer-hook #'org-fold-core-decouple-indirect-buffer-folds nil 'local)
-  ;; Optimise buffer fontification to not fontify folded text.
-  (when (eq font-lock-fontify-region-function #'font-lock-default-fontify-region)
-    (setq-local font-lock-fontify-region-function 'org-fold-core-fontify-region))
   ;; Setup killing text
   (setq-local filter-buffer-substring-function #'org-fold-core--buffer-substring-filter)
   (require 'isearch)
@@ -765,9 +744,6 @@ Move point right after the end of the region, to LIMIT, or
 
 ;;;;; Region visibility
 
-(defvar org-fold-core--fontifying nil
-  "Flag used to avoid font-lock recursion.")
-
 ;; This is the core function performing actual folding/unfolding.  The
 ;; folding state is stored in text property (folding property)
 ;; returned by `org-fold-core--property-symbol-get-create'.  The value of the
@@ -805,12 +781,6 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                          (setq pos next))
                      (setq pos (next-single-char-property-change pos 'invisible nil to)))))))
 	   (remove-text-properties from to (list (org-fold-core--property-symbol-get-create spec) nil))
-           ;; Fontify unfolded text.
-           (unless (or (not font-lock-mode)
-                       org-fold-core--fontifying
-                       (not (org-fold-core-get-folding-spec-property spec :font-lock-skip))
-                       (not (text-property-not-all from to 'org-fold-core-fontified t)))
-             (let ((org-fold-core--fontifying t)) (save-match-data (font-lock-fontify-region from to))))))))))
 
 ;;; Make isearch search in some text hidden via text propertoes
 
@@ -1176,28 +1146,6 @@ The arguments and return value are as specified for `filter-buffer-substring'."
                     (push prop props-list))))))))
       (remove-text-properties 0 (length return-string) props-list return-string))
     return-string))
-
-;;; Do not fontify folded text until needed.
-
-(defun org-fold-core-fontify-region (beg end loudly &optional force)
-  "Run `font-lock-default-fontify-region' unless we are trying to fontify invisible text."
-  (let ((pos beg) next
-        (org-fold-core--fontifying t))
-    (while (< pos end)
-      (setq next (org-fold-core-next-folding-state-change
-                  (if force nil
-                    (seq-filter (lambda (spec)
-                                  (and (not (org-fold-core-get-folding-spec-property spec :visible))
-                                       (org-fold-core-get-folding-spec-property spec :font-lock-skip)))
-                                (org-fold-core-folding-spec-list)))
-                  pos
-                  end))
-      (while (and (not (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all next)))
-                  (< next end))
-        (setq next (org-fold-core-next-folding-state-change nil next end)))
-      (font-lock-default-fontify-region pos next loudly)
-      (put-text-property pos next 'org-fold-core-fontified t)
-      (setq pos next))))
 
 (defun org-fold-core-update-optimisation (beg end)
   "Update huge buffer optimisation between BEG and END.
