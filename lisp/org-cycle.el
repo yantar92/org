@@ -477,7 +477,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 			org-cycle-skip-children-state-if-no-children))))
       ;; Entire subtree is hidden in one line: children view
       (unless (org-before-first-heading-p)
-	(run-hook-with-args 'ororg-cycle-pre-hookchildren))
+	(run-hook-with-args 'org-cycle-pre-hook 'children))
       (if (org-at-item-p)
 	  (org-list-set-item-visibility (point-at-bol) struct 'children)
 	(org-fold-show-entry)
