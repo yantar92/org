@@ -14,6 +14,12 @@
 
 * Updates
 
+- [2021-04-12 Mon] Original folding mechanism using overlays is now supported a user customisation; Submitted =org-fold-core= to the mailing list.
+
+  According to earlier discussion in the mailing list, this branch will be available as non-default user-option at first. Then, wider auditory can test the new folding mechanism without introducing unexpected breakages in majority of users. I finally back-ported the original folding mechanism. The folding style can be customised using =org-fold-core-style= variable.
+
+  Also, I submitted the =org-fold-core= library for review. It seems that most of the org maintainers have been busy recently, so I am still waiting for the feedback.
+
 - [2021-03-18 Thu] Major improvement in Org mode startup time.
 
   I managed to track down the bottlenecks during startup in large files. The most time-consuming are font-locking and hiding drawers/blocks (when there are many of such). Font-lock is now postponed until the text to be fontified is unfolded (why does font-lock even fontify hidden text??). org-cycle code is optimised for faster drawer/block folding.
@@ -25,9 +31,9 @@
 - Progress towards merging to master
   - [X] =org-fold-core=
   - [ ] Write detailed documentation about internals (in the =.el= file headers)
-  - [ ] Implement user-level customisation between old and new folding implementations
+  - [X] Implement user-level customisation between old and new folding implementations
   - [ ] Cherry-pick unrelated patches and push to master
-  - [ ] Discuss and finalise folding API in the mailing list
+  - [WAITING] Discuss and finalise folding API in the mailing list
   - [ ] Discuss and finalise the full patch
   - [ ] Merge =isearch.el= patches to Emacs master
 
