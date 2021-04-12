@@ -4350,51 +4350,53 @@ Outside."
    (equal
     "#+key2: val2\n#+key1: val1\n#+key3: val3"
     (org-test-with-temp-text "#+key1: val1\n<point>#+key2: val2\n#+key3: val3"
-      (org-drag-element-backward)
-      (buffer-string))))
+                             (org-drag-element-backward)
+                             (buffer-string))))
   (should
    (equal
     "#+BEGIN_CENTER\n#+B: 2\n#+A: 1\n#+END_CENTER"
     (org-test-with-temp-text
-	"#+BEGIN_CENTER\n#+A: 1\n<point>#+B: 2\n#+END_CENTER"
-      (org-drag-element-backward)
-      (buffer-string))))
+     "#+BEGIN_CENTER\n#+A: 1\n<point>#+B: 2\n#+END_CENTER"
+     (org-drag-element-backward)
+     (buffer-string))))
   ;; Preserve blank lines.
   (should
    (equal "Paragraph 2\n\n\nPara1\n\nPara3"
 	  (org-test-with-temp-text "Para1\n\n\n<point>Paragraph 2\n\nPara3"
-	    (org-drag-element-backward)
-	    (buffer-string))))
+	                           (org-drag-element-backward)
+	                           (buffer-string))))
   ;; Preserve column.
   (should
    (org-test-with-temp-text "#+key1: v\n#+key<point>2: v\n#+key3: v"
-     (org-drag-element-backward)
-     (looking-at-p "2")))
+                            (org-drag-element-backward)
+                            (looking-at-p "2")))
   ;; Error when trying to move first element of buffer.
   (should-error
    (org-test-with-temp-text "Paragraph 1.\n\nParagraph 2."
-     (org-drag-element-backward))
+                            (org-drag-element-backward))
    :type 'user-error)
   ;; Error when trying to swap nested elements.
   (should-error
    (org-test-with-temp-text "#+BEGIN_CENTER\n<point>Test.\n#+END_CENTER"
-     (org-drag-element-backward))
+                            (org-drag-element-backward))
    :type 'user-error)
   ;; Error when trying to swap an headline element and a non-headline
   ;; element.
   (should-error
    (org-test-with-temp-text "Test.\n<point>* Head 1"
-     (org-drag-element-backward))
+                            (org-drag-element-backward))
    :type 'error)
   ;; Error when called before first element.
   (should-error
    (org-test-with-temp-text "\n<point>"
-     (org-drag-element-backward))
+                            (org-drag-element-backward))
    :type 'user-error)
   ;; Preserve visibility of elements and their contents.
   (should
    (equal '((63 . 82) (26 . 48))
-	  (org-test-with-temp-text "
+          (let ((org-fold-core-style 'text-properties))
+	    (org-test-with-temp-text
+             "
 #+BEGIN_CENTER
 Text.
 #+END_CENTER
@@ -4402,55 +4404,75 @@ Text.
   #+BEGIN_QUOTE
   Text.
   #+END_QUOTE"
-	    (while (search-forward "BEGIN_" nil t) (org-cycle))
-	    (search-backward "- item 1")
-	    (org-drag-element-backward)
-            (let (regions)
-              (goto-char (point-min))
-              (while (< (point) (point-max))
-		(let ((region (org-fold-get-region-at-point)))
-                  (if (not region)
-                      (goto-char (org-fold-next-folding-state-change))
-                    (goto-char (cdr region))
-                    (push region regions))))
-              regions))))
+	     (while (search-forward "BEGIN_" nil t) (org-cycle))
+	     (search-backward "- item 1")
+	     (org-drag-element-backward)
+             (let (regions)
+               (goto-char (point-min))
+               (while (< (point) (point-max))
+	         (let ((region (org-fold-get-region-at-point)))
+                   (if (not region)
+                       (goto-char (org-fold-next-folding-state-change))
+                     (goto-char (cdr region))
+                     (push region regions))))
+               regions)))))
+  (should
+   (equal '((63 . 82) (26 . 48))
+          (let ((org-fold-core-style 'overlays))
+	    (org-test-with-temp-text
+             "
+#+BEGIN_CENTER
+Text.
+#+END_CENTER
+- item 1
+  #+BEGIN_QUOTE
+  Text.
+  #+END_QUOTE"
+             (while (search-forward "BEGIN_" nil t) (org-cycle))
+	     (search-backward "- item 1")
+	     (org-drag-element-backward)
+	     (mapcar (lambda (ov) (cons (overlay-start ov) (overlay-end ov)))
+		     (overlays-in (point-min) (point-max)))))))
   ;; Pathological case: handle call with point in blank lines right
   ;; after a headline.
   (should
    (equal "* H2\n\n* H1\nText\n"
 	  (org-test-with-temp-text "* H1\nText\n* H2\n\n<point>"
-	    (org-drag-element-backward)
-	    (buffer-string)))))
+	                           (org-drag-element-backward)
+	                           (buffer-string)))))
 
 (ert-deftest test-org/drag-element-forward ()
   "Test `org-drag-element-forward' specifications."
   ;; 1. Error when trying to move first element of buffer.
   (org-test-with-temp-text "Paragraph 1.\n\nParagraph 2."
-    (goto-line 3)
-    (should-error (org-drag-element-forward)))
+                           (goto-line 3)
+                           (should-error (org-drag-element-forward)))
   ;; 2. Error when trying to swap nested elements.
   (org-test-with-temp-text "#+BEGIN_CENTER\nTest.\n#+END_CENTER"
-    (forward-line)
-    (should-error (org-drag-element-forward)))
+                           (forward-line)
+                           (should-error (org-drag-element-forward)))
   ;; 3. Error when trying to swap a non-headline element and an
   ;;    headline.
   (org-test-with-temp-text "Test.\n* Head 1"
-    (should-error (org-drag-element-forward)))
+                           (should-error (org-drag-element-forward)))
   ;; 4. Error when called before first element.
   (should-error
    (org-test-with-temp-text "\n"
-     (forward-line)
-     (org-drag-element-backward))
+                            (forward-line)
+                            (org-drag-element-backward))
    :type 'user-error)
   ;; 5. Otherwise, swap elements, preserving column and blank lines
   ;;    between elements.
-  (org-test-with-temp-text "Paragraph 1\n\n\nPara2\n\nPara3"
-    (search-forward "graph")
-    (org-drag-element-forward)
-    (should (equal (buffer-string) "Para2\n\n\nParagraph 1\n\nPara3"))
-    (should (looking-at " 1")))
+  (org-test-with-temp-text
+   "Paragraph 1\n\n\nPara2\n\nPara3"
+   (search-forward "graph")
+   (org-drag-element-forward)
+   (should (equal (buffer-string) "Para2\n\n\nParagraph 1\n\nPara3"))
+   (should (looking-at " 1")))
   ;; 5. Preserve visibility of elements and their contents.
-  (org-test-with-temp-text "
+  (let ((org-fold-core-style 'text-properties))
+    (org-test-with-temp-text
+     "
 #+BEGIN_CENTER
 Text.
 #+END_CENTER
@@ -4458,64 +4480,82 @@ Text.
   #+BEGIN_QUOTE
   Text.
   #+END_QUOTE"
-    (while (search-forward "BEGIN_" nil t) (org-cycle))
-    (search-backward "#+BEGIN_CENTER")
-    (org-drag-element-forward)
-    (should
-     (equal
-      '((63 . 82) (26 . 48))
-      (let (regions)
-        (goto-char (point-min))
-        (while (< (point) (point-max))
-	  (let ((region (org-fold-get-region-at-point)))
-            (if (not region)
-                (goto-char (org-fold-next-folding-state-change))
-              (goto-char (cdr region))
-              (push region regions))))
-        regions)))))
+     (while (search-forward "BEGIN_" nil t) (org-cycle))
+     (search-backward "#+BEGIN_CENTER")
+     (org-drag-element-forward)
+     (should
+      (equal
+       '((63 . 82) (26 . 48))
+       (let (regions)
+         (goto-char (point-min))
+         (while (< (point) (point-max))
+	   (let ((region (org-fold-get-region-at-point)))
+             (if (not region)
+                 (goto-char (org-fold-next-folding-state-change))
+               (goto-char (cdr region))
+               (push region regions))))
+         regions)))))
+  (let ((org-fold-core-style 'overlays))
+    (org-test-with-temp-text
+     "
+#+BEGIN_CENTER
+Text.
+#+END_CENTER
+- item 1
+  #+BEGIN_QUOTE
+  Text.
+  #+END_QUOTE"
+     (while (search-forward "BEGIN_" nil t) (org-cycle))
+     (search-backward "#+BEGIN_CENTER")
+     (org-drag-element-forward)
+     (should
+      (equal
+       '((63 . 82) (26 . 48))
+       (mapcar (lambda (ov) (cons (overlay-start ov) (overlay-end ov)))
+	       (overlays-in (point-min) (point-max))))))))
 
 (ert-deftest test-org/next-block ()
   "Test `org-next-block' specifications."
   ;; Regular test.
   (should
    (org-test-with-temp-text "Paragraph\n#+BEGIN_CENTER\ncontents\n#+END_CENTER"
-     (org-next-block 1)
-     (looking-at "#\\+BEGIN_CENTER")))
+                            (org-next-block 1)
+                            (looking-at "#\\+BEGIN_CENTER")))
   ;; Ignore case.
   (should
    (org-test-with-temp-text "Paragraph\n#+begin_center\ncontents\n#+end_center"
-     (let ((case-fold-search nil))
-       (org-next-block 1)
-       (looking-at "#\\+begin_center"))))
+                            (let ((case-fold-search nil))
+                              (org-next-block 1)
+                              (looking-at "#\\+begin_center"))))
   ;; Ignore current line.
   (should
    (org-test-with-temp-text
-       "#+BEGIN_QUOTE\n#+END_QUOTE\n#+BEGIN_CENTER\n#+END_CENTER"
-     (org-next-block 1)
-     (looking-at "#\\+BEGIN_CENTER")))
+    "#+BEGIN_QUOTE\n#+END_QUOTE\n#+BEGIN_CENTER\n#+END_CENTER"
+    (org-next-block 1)
+    (looking-at "#\\+BEGIN_CENTER")))
   ;; Throw an error when no block is found.
   (should-error
    (org-test-with-temp-text "Paragraph"
-     (org-next-block 1)))
+                            (org-next-block 1)))
   ;; With an argument, skip many blocks at once.
   (should
    (org-test-with-temp-text
-       "Start\n#+BEGIN_CENTER\nA\n#+END_CENTER\n#+BEGIN_QUOTE\nB\n#+END_QUOTE"
-     (org-next-block 2)
-     (looking-at "#\\+BEGIN_QUOTE")))
+    "Start\n#+BEGIN_CENTER\nA\n#+END_CENTER\n#+BEGIN_QUOTE\nB\n#+END_QUOTE"
+    (org-next-block 2)
+    (looking-at "#\\+BEGIN_QUOTE")))
   ;; With optional argument BLOCK-REGEXP, filter matched blocks.
   (should
    (org-test-with-temp-text
-       "Start\n#+BEGIN_CENTER\nA\n#+END_CENTER\n#+BEGIN_QUOTE\nB\n#+END_QUOTE"
-     (org-next-block 1 nil "^[ \t]*#\\+BEGIN_QUOTE")
-     (looking-at "#\\+BEGIN_QUOTE")))
+    "Start\n#+BEGIN_CENTER\nA\n#+END_CENTER\n#+BEGIN_QUOTE\nB\n#+END_QUOTE"
+    (org-next-block 1 nil "^[ \t]*#\\+BEGIN_QUOTE")
+    (looking-at "#\\+BEGIN_QUOTE")))
   ;; Optional argument is also case-insensitive.
   (should
    (org-test-with-temp-text
-       "Start\n#+BEGIN_CENTER\nA\n#+END_CENTER\n#+begin_quote\nB\n#+end_quote"
-     (let ((case-fold-search nil))
-       (org-next-block 1 nil "^[ \t]*#\\+BEGIN_QUOTE")
-       (looking-at "#\\+begin_quote")))))
+    "Start\n#+BEGIN_CENTER\nA\n#+END_CENTER\n#+begin_quote\nB\n#+end_quote"
+    (let ((case-fold-search nil))
+      (org-next-block 1 nil "^[ \t]*#\\+BEGIN_QUOTE")
+      (looking-at "#\\+begin_quote")))))
 
 (ert-deftest test-org/insert-structure-template ()
   "Test `org-insert-structure-template'."

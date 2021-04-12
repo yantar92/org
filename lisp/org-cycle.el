@@ -201,28 +201,24 @@ cycling) will not occur.")
   "Re-hide all drawers after a visibility state change.
 STATE should be one of the symbols listed in the docstring of
 `org-cycle-hook'."
-  (when (and (derived-mode-p 'org-mode)
-	     (not (memq state '(overview folded contents))))
-    (let* ((global? (eq state 'all))
-	   (beg (if global? (point-min) (line-beginning-position)))
-	   (end (cond (global? (point-max))
-		      ((eq state 'children) (org-entry-end-position))
-		      (t (save-excursion (org-end-of-subtree t t))))))
-      (save-excursion
-	(goto-char beg)
-	(while (re-search-forward org-drawer-regexp end t)
-	  (if (org-fold-get-folding-spec (unless global? 'drawer))
-	      ;; Do not fold already folded drawers.
-              (goto-char (org-fold-core-next-folding-state-change (unless global? 'drawer) nil end))
-	    (let ((drawer (save-excursion (goto-char (match-beginning 0))
-                                          (org-element-drawer-parser (save-excursion (or (outline-next-heading) (point-max)))
-                                                                     (list (point))))))
-	      (when (memq (org-element-type drawer) '(drawer property-drawer))
-		(org-fold-hide-drawer-toggle t nil drawer)
-		;; Make sure to skip drawer entirely or we might flag
-		;; it another time when matching its ending line with
-		;; `org-drawer-regexp'.
-		(goto-char (org-element-property :end drawer))))))))))
+  (when (derived-mode-p 'org-mode)
+    (cond ((not (memq state '(overview folded contents)))
+           (let* ((global? (eq state 'all))
+                  (beg (if global? (point-min) (line-beginning-position)))
+                  (end (cond (global? (point-max))
+                             ((eq state 'children) (org-entry-end-position))
+                             (t (save-excursion (org-end-of-subtree t t))))))
+             (org-fold--hide-drawers beg end)))
+          ((memq state '(overview contents))
+           ;; Hide drawers before first heading.
+           (let ((beg (point-min))
+                 (end (save-excursion
+                        (goto-char (point-min))
+                        (if (org-before-first-heading-p)
+                            (org-entry-end-position)
+                          (point-min)))))
+             (when (< beg end)
+               (org-fold--hide-drawers beg end)))))))
 
 ;;;###autoload
 (defun org-cycle (&optional arg)
@@ -421,7 +417,109 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (setq org-cycle-global-status 'overview)
       (run-hook-with-args 'org-cycle-hook 'overview)))))
 
-(defun org-cycle-internal-local ()
+(defun org-cycle-internal-local--overlays ()
+  "Do the local cycling action."
+  (let ((goal-column 0) eoh eol eos has-children children-skipped struct)
+    ;; First, determine end of headline (EOH), end of subtree or item
+    ;; (EOS), and if item or heading has children (HAS-CHILDREN).
+    (save-excursion
+      (if (org-at-item-p)
+	  (progn
+	    (beginning-of-line)
+	    (setq struct (org-list-struct))
+	    (setq eoh (point-at-eol))
+	    (setq eos (org-list-get-item-end-before-blank (point) struct))
+	    (setq has-children (org-list-has-child-p (point) struct)))
+	(org-back-to-heading)
+	(setq eoh (save-excursion (outline-end-of-heading) (point)))
+	(setq eos (save-excursion
+		    (org-end-of-subtree t t)
+		    (unless (eobp) (forward-char -1))
+		    (point)))
+	(setq has-children
+	      (or
+	       (save-excursion
+		 (let ((level (funcall outline-level)))
+		   (outline-next-heading)
+		   (and (org-at-heading-p t)
+			(> (funcall outline-level) level))))
+	       (and (eq org-cycle-include-plain-lists 'integrate)
+		    (save-excursion
+		      (org-list-search-forward (org-item-beginning-re) eos t))))))
+      ;; Determine end invisible part of buffer (EOL)
+      (beginning-of-line 2)
+      (while (and (not (eobp))		;this is like `next-line'
+		  (get-char-property (1- (point)) 'invisible))
+	(goto-char (next-single-char-property-change (point) 'invisible))
+	(and (eolp) (beginning-of-line 2)))
+      (setq eol (point)))
+    ;; Find out what to do next and set `this-command'
+    (cond
+     ((= eos eoh)
+      ;; Nothing is hidden behind this heading
+      (unless (org-before-first-heading-p)
+	(run-hook-with-args 'org-pre-cycle-hook 'empty))
+      (org-unlogged-message "EMPTY ENTRY")
+      (setq org-cycle-subtree-status nil)
+      (save-excursion
+	(goto-char eos)
+	(outline-next-heading)
+	(when (org-invisible-p) (org-fold-heading nil))))
+     ((and (or (>= eol eos)
+	       (not (string-match "\\S-" (buffer-substring eol eos))))
+	   (or has-children
+	       (not (setq children-skipped
+			org-cycle-skip-children-state-if-no-children))))
+      ;; Entire subtree is hidden in one line: children view
+      (unless (org-before-first-heading-p)
+	(run-hook-with-args 'org-pre-cycle-hook 'children))
+      (if (org-at-item-p)
+	  (org-list-set-item-visibility (point-at-bol) struct 'children)
+	(org-fold-show-entry)
+	(org-with-limited-levels (org-fold-show-children))
+	(org-fold-show-set-visibility 'canonical)
+	;; Fold every list in subtree to top-level items.
+	(when (eq org-cycle-include-plain-lists 'integrate)
+	  (save-excursion
+	    (org-back-to-heading)
+	    (while (org-list-search-forward (org-item-beginning-re) eos t)
+	      (beginning-of-line 1)
+	      (let* ((struct (org-list-struct))
+		     (prevs (org-list-prevs-alist struct))
+		     (end (org-list-get-bottom-point struct)))
+		(dolist (e (org-list-get-all-items (point) struct prevs))
+		  (org-list-set-item-visibility e struct 'folded))
+		(goto-char (if (< end eos) end eos)))))))
+      (org-unlogged-message "CHILDREN")
+      (save-excursion
+	(goto-char eos)
+	(outline-next-heading)
+	(when (org-invisible-p) (org-fold-heading nil)))
+      (setq org-cycle-subtree-status 'children)
+      (unless (org-before-first-heading-p)
+	(run-hook-with-args 'org-cycle-hook 'children)))
+     ((or children-skipped
+	  (and (eq last-command this-command)
+	       (eq org-cycle-subtree-status 'children)))
+      ;; We just showed the children, or no children are there,
+      ;; now show everything.
+      (unless (org-before-first-heading-p)
+	(run-hook-with-args 'org-pre-cycle-hook 'subtree))
+      (org-fold-region eoh eos nil 'outline)
+      (org-unlogged-message
+       (if children-skipped "SUBTREE (NO CHILDREN)" "SUBTREE"))
+      (setq org-cycle-subtree-status 'subtree)
+      (unless (org-before-first-heading-p)
+	(run-hook-with-args 'org-cycle-hook 'subtree)))
+     (t
+      ;; Default action: hide the subtree.
+      (run-hook-with-args 'org-pre-cycle-hook 'folded)
+      (org-fold-region eoh eos t 'outline)
+      (org-unlogged-message "FOLDED")
+      (setq org-cycle-subtree-status 'folded)
+      (unless (org-before-first-heading-p)
+	(run-hook-with-args 'org-cycle-hook 'folded))))))
+(defun org-cycle-internal-local--text-properties ()
   "Do the local cycling action."
   (let ((goal-column 0) eoh eol eos has-children children-skipped struct)
     ;; First, determine end of headline (EOH), end of subtree or item
@@ -531,6 +629,11 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (setq org-cycle-subtree-status 'folded)
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-cycle-hook 'folded))))))
+(defun org-cycle-internal-local ()
+  "Do the local cycling action."
+  (if (eq org-fold-core-style 'text-properties)
+      (org-cycle-internal-local--text-properties)
+    (org-cycle-internal-local--overlays)))
 
 ;;;###autoload
 (defun org-cycle-global (&optional arg)
@@ -601,7 +704,23 @@ With a numeric prefix, show all headlines up to that level."
 		(_ nil)))
 	    (org-end-of-subtree)))))))
 
-(defun org-cycle-overview ()
+(defun org-cycle-overview--overlays ()
+  "Switch to overview mode, showing only top-level headlines."
+  (interactive)
+  (org-fold-show-all '(headings drawers))
+  (save-excursion
+    (goto-char (point-min))
+    (when (re-search-forward org-outline-regexp-bol nil t)
+      (let* ((last (line-end-position))
+             (level (- (match-end 0) (match-beginning 0) 1))
+             (regexp (format "^\\*\\{1,%d\\} " level)))
+        (while (re-search-forward regexp nil :move)
+          (org-fold-region last (line-end-position 0) t 'outline)
+          (setq last (line-end-position))
+          (setq level (- (match-end 0) (match-beginning 0) 1))
+          (setq regexp (format "^\\*\\{1,%d\\} " level)))
+        (org-fold-region last (point) t 'outline)))))
+(defun org-cycle-overview--text-properties ()
   "Switch to overview mode, showing only top-level headlines."
   (interactive)
   (save-excursion
@@ -621,8 +740,14 @@ With a numeric prefix, show all headlines up to that level."
           (setq level (- (match-end 0) (match-beginning 0) 1))
           (setq regexp (format "^\\*\\{1,%d\\} " level)))
         (org-fold-region last (point) t 'headline)))))
+(defun org-cycle-overview ()
+  "Switch to overview mode, showing only top-level headlines."
+  (interactive)
+  (if (eq org-fold-core-style 'text-properties)
+      (org-cycle-overview--text-properties)
+    (org-cycle-overview--overlays)))
 
-(defun org-cycle-content (&optional arg)
+(defun org-cycle-content--text-properties (&optional arg)
   "Show all headlines in the buffer, like a table of contents.
 With numerical argument N, show content up to level N."
   (interactive "p")
@@ -641,6 +766,27 @@ With numerical argument N, show content up to level N."
       (while (re-search-backward regexp nil t)
         (org-fold-region (line-end-position) last t 'headline)
         (setq last (line-end-position 0))))))
+(defun org-cycle-content--overlays (&optional arg)
+  "Show all headlines in the buffer, like a table of contents.
+With numerical argument N, show content up to level N."
+  (interactive "p")
+  (org-fold-show-all '(headings drawers))
+  (save-excursion
+    (goto-char (point-max))
+    (let ((regexp (if (and (wholenump arg) (> arg 0))
+                      (format "^\\*\\{1,%d\\} " arg)
+                    "^\\*+ "))
+          (last (point)))
+      (while (re-search-backward regexp nil t)
+        (org-fold-region (line-end-position) last t 'outline)
+        (setq last (line-end-position 0))))))
+(defun org-cycle-content (&optional arg)
+  "Show all headlines in the buffer, like a table of contents.
+With numerical argument N, show content up to level N."
+  (interactive "p")
+  (if (eq org-fold-core-style 'text-properties)
+      (org-cycle-content--text-properties arg)
+    (org-cycle-content--overlays arg)))
 
 (defvar org-cycle-scroll-position-to-restore nil
   "Temporarily store scroll position to restore.")
@@ -666,7 +812,7 @@ This function is the default value of the hook `org-cycle-hook'."
 	  (setq org-cycle-scroll-position-to-restore (window-start)))
         (or (org-subtree-end-visible-p) (recenter 1)))))))
 
-(defun org-cycle-show-empty-lines (state)
+(defun org-cycle-show-empty-lines--text-properties (state)
   "Show empty lines above all visible headlines.
 The region to be covered depends on STATE when called through
 `org-cycle-hook'.  Lisp program can use t for STATE to get the
@@ -709,6 +855,58 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
     (when (and (looking-at "[ \t\n]+")
 	       (= (match-end 0) (point-max)))
       (org-fold-region (point) (match-end 0) nil 'headline))))
+(defun org-cycle-show-empty-lines--overlays (state)
+  "Show empty lines above all visible headlines.
+The region to be covered depends on STATE when called through
+`org-cycle-hook'.  Lisp program can use t for STATE to get the
+entire buffer covered.  Note that an empty line is only shown if there
+are at least `org-cycle-separator-lines' empty lines before the headline."
+  (when (/= org-cycle-separator-lines 0)
+    (save-excursion
+      (let* ((n (abs org-cycle-separator-lines))
+             (re (cond
+                  ((= n 1) "\\(\n[ \t]*\n\\*+\\) ")
+                  ((= n 2) "^[ \t]*\\(\n[ \t]*\n\\*+\\) ")
+                  (t (let ((ns (number-to-string (- n 2))))
+                       (concat "^\\(?:[ \t]*\n\\)\\{" ns "," ns "\\}"
+                               "[ \t]*\\(\n[ \t]*\n\\*+\\) ")))))
+             beg end)
+        (cond
+         ((memq state '(overview contents t))
+          (setq beg (point-min) end (point-max)))
+         ((memq state '(children folded))
+          (setq beg (point)
+                end (progn (org-end-of-subtree t t)
+                           (line-beginning-position 2)))))
+        (when beg
+          (goto-char beg)
+          (while (re-search-forward re end t)
+            (unless (get-char-property (match-end 1) 'invisible)
+              (let ((e (match-end 1))
+                    (b (if (>= org-cycle-separator-lines 0)
+                           (match-beginning 1)
+                         (save-excursion
+                           (goto-char (match-beginning 0))
+                           (skip-chars-backward " \t\n")
+                           (line-end-position)))))
+                (org-fold-region b e nil 'outline))))))))
+  ;; Never hide empty lines at the end of the file.
+  (save-excursion
+    (goto-char (point-max))
+    (outline-previous-heading)
+    (outline-end-of-heading)
+    (when (and (looking-at "[ \t\n]+")
+               (= (match-end 0) (point-max)))
+      (org-fold-region (point) (match-end 0) nil 'outline))))
+(defun org-cycle-show-empty-lines (state)
+  "Show empty lines above all visible headlines.
+The region to be covered depends on STATE when called through
+`org-cycle-hook'.  Lisp program can use t for STATE to get the
+entire buffer covered.  Note that an empty line is only shown if there
+are at least `org-cycle-separator-lines' empty lines before the headline."
+  (if (eq org-fold-core-style 'text-properties)
+      (org-cycle-show-empty-lines--text-properties state)
+    (org-cycle-show-empty-lines--overlays state)))
 
 (defun org-cycle-hide-archived-subtrees (state)
   "Re-hide all archived subtrees after a visibility state change.

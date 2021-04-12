@@ -1078,7 +1078,7 @@ It determines the number of whitespaces to append by looking at
 	  (replace-match spaces nil nil bullet 1)
 	bullet))))
 
-(defun org-list-swap-items (beg-A beg-B struct)
+(defun org-list-swap-items--text-properties (beg-A beg-B struct)
   "Swap item starting at BEG-A with item starting at BEG-B in STRUCT.
 
 Blank lines at the end of items are left in place.  Item
@@ -1091,51 +1091,150 @@ to the same sub-list.
 This function modifies STRUCT."
   (save-excursion
     (org-fold-core-ignore-modifications
-     (let* ((end-A-no-blank (org-list-get-item-end-before-blank beg-A struct))
-	    (end-B-no-blank (org-list-get-item-end-before-blank beg-B struct))
-	    (end-A (org-list-get-item-end beg-A struct))
-	    (end-B (org-list-get-item-end beg-B struct))
-	    (size-A (- end-A-no-blank beg-A))
-	    (size-B (- end-B-no-blank beg-B))
-	    (body-A (buffer-substring beg-A end-A-no-blank))
-	    (body-B (buffer-substring beg-B end-B-no-blank))
-	    (between-A-no-blank-and-B (buffer-substring end-A-no-blank beg-B))
-	    (sub-A (cons beg-A (org-list-get-subtree beg-A struct)))
-	    (sub-B (cons beg-B (org-list-get-subtree beg-B struct))))
-       ;; 1. Move effectively items in buffer.
-       (goto-char beg-A)
-       (delete-region beg-A end-B-no-blank)
-       (insert (concat body-B between-A-no-blank-and-B body-A))
-       ;; 2. Now modify struct.  No need to re-read the list, the
-       ;;    transformation is just a shift of positions.  Some special
-       ;;    attention is required for items ending at END-A and END-B
-       ;;    as empty spaces are not moved there.  In others words,
-       ;;    item BEG-A will end with whitespaces that were at the end
-       ;;    of BEG-B and the same applies to BEG-B.
-       (dolist (e struct)
-	 (let ((pos (car e)))
-	   (cond
-	    ((< pos beg-A))
-	    ((memq pos sub-A)
-	     (let ((end-e (nth 6 e)))
-	       (setcar e (+ pos (- end-B-no-blank end-A-no-blank)))
-	       (setcar (nthcdr 6 e)
-		       (+ end-e (- end-B-no-blank end-A-no-blank)))
-	       (when (= end-e end-A) (setcar (nthcdr 6 e) end-B))))
-	    ((memq pos sub-B)
-	     (let ((end-e (nth 6 e)))
-	       (setcar e (- (+ pos beg-A) beg-B))
-	       (setcar (nthcdr 6 e) (+ end-e (- beg-A beg-B)))
-	       (when (= end-e end-B)
-		 (setcar (nthcdr 6 e)
-			 (+ beg-A size-B (- end-A end-A-no-blank))))))
-	    ((< pos beg-B)
-	     (let ((end-e (nth 6 e)))
-	       (setcar e (+ pos (- size-B size-A)))
-	       (setcar (nthcdr 6 e) (+ end-e (- size-B size-A))))))))
-       (setq struct (sort struct #'car-less-than-car))
-       ;; Return structure.
-       struct))))
+        (let* ((end-A-no-blank (org-list-get-item-end-before-blank beg-A struct))
+	       (end-B-no-blank (org-list-get-item-end-before-blank beg-B struct))
+	       (end-A (org-list-get-item-end beg-A struct))
+	       (end-B (org-list-get-item-end beg-B struct))
+	       (size-A (- end-A-no-blank beg-A))
+	       (size-B (- end-B-no-blank beg-B))
+	       (body-A (buffer-substring beg-A end-A-no-blank))
+	       (body-B (buffer-substring beg-B end-B-no-blank))
+	       (between-A-no-blank-and-B (buffer-substring end-A-no-blank beg-B))
+	       (sub-A (cons beg-A (org-list-get-subtree beg-A struct)))
+	       (sub-B (cons beg-B (org-list-get-subtree beg-B struct))))
+          ;; 1. Move effectively items in buffer.
+          (goto-char beg-A)
+          (delete-region beg-A end-B-no-blank)
+          (insert (concat body-B between-A-no-blank-and-B body-A))
+          ;; 2. Now modify struct.  No need to re-read the list, the
+          ;;    transformation is just a shift of positions.  Some special
+          ;;    attention is required for items ending at END-A and END-B
+          ;;    as empty spaces are not moved there.  In others words,
+          ;;    item BEG-A will end with whitespaces that were at the end
+          ;;    of BEG-B and the same applies to BEG-B.
+          (dolist (e struct)
+	    (let ((pos (car e)))
+	      (cond
+	       ((< pos beg-A))
+	       ((memq pos sub-A)
+	        (let ((end-e (nth 6 e)))
+	          (setcar e (+ pos (- end-B-no-blank end-A-no-blank)))
+	          (setcar (nthcdr 6 e)
+		          (+ end-e (- end-B-no-blank end-A-no-blank)))
+	          (when (= end-e end-A) (setcar (nthcdr 6 e) end-B))))
+	       ((memq pos sub-B)
+	        (let ((end-e (nth 6 e)))
+	          (setcar e (- (+ pos beg-A) beg-B))
+	          (setcar (nthcdr 6 e) (+ end-e (- beg-A beg-B)))
+	          (when (= end-e end-B)
+		    (setcar (nthcdr 6 e)
+			    (+ beg-A size-B (- end-A end-A-no-blank))))))
+	       ((< pos beg-B)
+	        (let ((end-e (nth 6 e)))
+	          (setcar e (+ pos (- size-B size-A)))
+	          (setcar (nthcdr 6 e) (+ end-e (- size-B size-A))))))))
+          (setq struct (sort struct #'car-less-than-car))
+          ;; Return structure.
+          struct))))
+(defun org-list-swap-items--overlays (beg-A beg-B struct)
+  "Swap item starting at BEG-A with item starting at BEG-B in STRUCT.
+
+Blank lines at the end of items are left in place.  Item
+visibility is preserved.  Return the new structure after the
+changes.
+
+Assume BEG-A is lesser than BEG-B and that BEG-A and BEG-B belong
+to the same sub-list.
+
+This function modifies STRUCT."
+  (save-excursion
+    (let* ((end-A-no-blank (org-list-get-item-end-before-blank beg-A struct))
+	   (end-B-no-blank (org-list-get-item-end-before-blank beg-B struct))
+	   (end-A (org-list-get-item-end beg-A struct))
+	   (end-B (org-list-get-item-end beg-B struct))
+	   (size-A (- end-A-no-blank beg-A))
+	   (size-B (- end-B-no-blank beg-B))
+	   (body-A (buffer-substring beg-A end-A-no-blank))
+	   (body-B (buffer-substring beg-B end-B-no-blank))
+	   (between-A-no-blank-and-B (buffer-substring end-A-no-blank beg-B))
+	   (sub-A (cons beg-A (org-list-get-subtree beg-A struct)))
+	   (sub-B (cons beg-B (org-list-get-subtree beg-B struct)))
+	   ;; Store overlays responsible for visibility status.  We
+	   ;; also need to store their boundaries as they will be
+	   ;; removed from buffer.
+	   (overlays
+	    (cons
+	     (delq nil
+		   (mapcar (lambda (o)
+			     (and (>= (overlay-start o) beg-A)
+				  (<= (overlay-end o) end-A)
+				  (list o (overlay-start o) (overlay-end o))))
+			   (overlays-in beg-A end-A)))
+	     (delq nil
+		   (mapcar (lambda (o)
+			     (and (>= (overlay-start o) beg-B)
+				  (<= (overlay-end o) end-B)
+				  (list o (overlay-start o) (overlay-end o))))
+			   (overlays-in beg-B end-B))))))
+      ;; 1. Move effectively items in buffer.
+      (goto-char beg-A)
+      (delete-region beg-A end-B-no-blank)
+      (insert (concat body-B between-A-no-blank-and-B body-A))
+      ;; 2. Now modify struct.  No need to re-read the list, the
+      ;;    transformation is just a shift of positions.  Some special
+      ;;    attention is required for items ending at END-A and END-B
+      ;;    as empty spaces are not moved there.  In others words,
+      ;;    item BEG-A will end with whitespaces that were at the end
+      ;;    of BEG-B and the same applies to BEG-B.
+      (dolist (e struct)
+	(let ((pos (car e)))
+	  (cond
+	   ((< pos beg-A))
+	   ((memq pos sub-A)
+	    (let ((end-e (nth 6 e)))
+	      (setcar e (+ pos (- end-B-no-blank end-A-no-blank)))
+	      (setcar (nthcdr 6 e)
+		      (+ end-e (- end-B-no-blank end-A-no-blank)))
+	      (when (= end-e end-A) (setcar (nthcdr 6 e) end-B))))
+	   ((memq pos sub-B)
+	    (let ((end-e (nth 6 e)))
+	      (setcar e (- (+ pos beg-A) beg-B))
+	      (setcar (nthcdr 6 e) (+ end-e (- beg-A beg-B)))
+	      (when (= end-e end-B)
+		(setcar (nthcdr 6 e)
+			(+ beg-A size-B (- end-A end-A-no-blank))))))
+	   ((< pos beg-B)
+	    (let ((end-e (nth 6 e)))
+	      (setcar e (+ pos (- size-B size-A)))
+	      (setcar (nthcdr 6 e) (+ end-e (- size-B size-A))))))))
+      (setq struct (sort struct #'car-less-than-car))
+      ;; Restore visibility status, by moving overlays to their new
+      ;; position.
+      (dolist (ov (car overlays))
+	(move-overlay
+	 (car ov)
+	 (+ (nth 1 ov) (- (+ beg-B (- size-B size-A)) beg-A))
+	 (+ (nth 2 ov) (- (+ beg-B (- size-B size-A)) beg-A))))
+      (dolist (ov (cdr overlays))
+	(move-overlay (car ov)
+		      (+ (nth 1 ov) (- beg-A beg-B))
+		      (+ (nth 2 ov) (- beg-A beg-B))))
+      ;; Return structure.
+      struct)))
+(defun org-list-swap-items (beg-A beg-B struct)
+  "Swap item starting at BEG-A with item starting at BEG-B in STRUCT.
+
+Blank lines at the end of items are left in place.  Item
+visibility is preserved.  Return the new structure after the
+changes.
+
+Assume BEG-A is lesser than BEG-B and that BEG-A and BEG-B belong
+to the same sub-list.
+
+This function modifies STRUCT."
+  (if (eq org-fold-core-style 'text-properties)
+      (org-list-swap-items--text-properties beg-A beg-B struct)
+    (org-list-swap-items--overlays beg-A beg-B struct)))
 
 (defun org-list-separating-blank-lines-number (pos struct prevs)
   "Return number of blank lines that should separate items in list.
@@ -2004,7 +2103,7 @@ Possible values are: `folded', `children' or `subtree'.  See
     (let ((item-end (org-list-get-item-end-before-blank item struct)))
       ;; Hide from eol
       (org-fold-region (save-excursion (goto-char item) (line-end-position))
-		       item-end t 'headline)))
+		       item-end t 'outline)))
    ((eq view 'children)
     ;; First show everything.
     (org-list-set-item-visibility item struct 'subtree)
@@ -2016,7 +2115,7 @@ Possible values are: `folded', `children' or `subtree'.  See
    ((eq view 'subtree)
     ;; Show everything
     (let ((item-end (org-list-get-item-end item struct)))
-      (org-fold-region item item-end nil 'headline)))))
+      (org-fold-region item item-end nil 'outline)))))
 
 (defun org-list-item-body-column (item)
   "Return column at which body of ITEM should start."

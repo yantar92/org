@@ -4531,9 +4531,13 @@ The following commands are available:
 \\{org-mode-map}"
   (org-load-modules-maybe)
   (org-install-agenda-files-menu)
+  (when (and org-link-descriptive
+             (eq org-fold-core-style 'overlays))
+    (add-to-invisibility-spec '(org-link)))
   (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
                         "..."))
   (make-local-variable 'org-link-descriptive)
+  (when (eq org-fold-core-style 'overlays) (add-to-invisibility-spec '(org-hide-block . t)))
   (if org-link-descriptive
       (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible nil)
     (org-fold-core-set-folding-spec-property (car org-link--link-folding-spec) :visible t))
@@ -4758,58 +4762,112 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 
 (defvar org-emph-face nil)
 
+(defun org-do-emphasis-faces--overlays (limit)
+  "Run through the buffer and emphasize strings."
+  (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
+			  (car org-emphasis-regexp-components))))
+    (catch :exit
+      (while (re-search-forward quick-re limit t)
+	(let* ((marker (match-string 2))
+	       (verbatim? (member marker '("~" "="))))
+	  (when (save-excursion
+		  (goto-char (match-beginning 0))
+		  (and
+		   ;; Do not match table hlines.
+		   (not (and (equal marker "+")
+			   (org-match-line
+			    "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
+		   ;; Do not match headline stars.  Do not consider
+		   ;; stars of a headline as closing marker for bold
+		   ;; markup either.
+		   (not (and (equal marker "*")
+			   (save-excursion
+			     (forward-char)
+			     (skip-chars-backward "*")
+			     (looking-at-p org-outline-regexp-bol))))
+		   ;; Match full emphasis markup regexp.
+		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
+		   ;; Do not span over paragraph boundaries.
+		   (not (string-match-p org-element-paragraph-separate
+					(match-string 2)))
+		   ;; Do not span over cells in table rows.
+		   (not (and (save-match-data (org-match-line "[ \t]*|"))
+			     (string-match-p "|" (match-string 4))))))
+	    (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
+			(m (if org-hide-emphasis-markers 4 2)))
+	      (font-lock-prepend-text-property
+	       (match-beginning m) (match-end m) 'face face)
+	      (when verbatim?
+		(org-remove-flyspell-overlays-in
+		 (match-beginning 0) (match-end 0))
+		(remove-text-properties (match-beginning 2) (match-end 2)
+					'(display t invisible t intangible t)))
+	      (add-text-properties (match-beginning 2) (match-end 2)
+				   '(font-lock-multiline t org-emphasis t))
+	      (when (and org-hide-emphasis-markers
+			 (not (org-at-comment-p)))
+		(add-text-properties (match-end 4) (match-beginning 5)
+				     '(invisible org-link))
+		(add-text-properties (match-beginning 3) (match-end 3)
+				     '(invisible org-link)))
+	      (throw :exit t))))))))
+(defun org-do-emphasis-faces--text-properties (limit)
+  "Run through the buffer and emphasize strings."
+  (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
+			  (car org-emphasis-regexp-components))))
+    (catch :exit
+      (while (re-search-forward quick-re limit t)
+	(let* ((marker (match-string 2))
+	       (verbatim? (member marker '("~" "="))))
+	  (when (save-excursion
+		  (goto-char (match-beginning 0))
+		  (and
+		   ;; Do not match table hlines.
+		   (not (and (equal marker "+")
+			   (org-match-line
+			    "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
+		   ;; Do not match headline stars.  Do not consider
+		   ;; stars of a headline as closing marker for bold
+		   ;; markup either.
+		   (not (and (equal marker "*")
+			   (save-excursion
+			     (forward-char)
+			     (skip-chars-backward "*")
+			     (looking-at-p org-outline-regexp-bol))))
+		   ;; Match full emphasis markup regexp.
+		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
+		   ;; Do not span over paragraph boundaries.
+		   (not (string-match-p org-element-paragraph-separate
+				      (match-string 2)))
+		   ;; Do not span over cells in table rows.
+		   (not (and (save-match-data (org-match-line "[ \t]*|"))
+			   (string-match-p "|" (match-string 4))))))
+            (with-silent-modifications
+	      (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
+			  (m (if org-hide-emphasis-markers 4 2)))
+	        (font-lock-prepend-text-property
+	         (match-beginning m) (match-end m) 'face face)
+                (remove-text-properties (match-beginning 2) (match-end 3) '(invisible t))
+                (remove-text-properties (match-end 4) (match-end 2) '(invisible t))
+	        (when verbatim?
+		  (org-remove-flyspell-overlays-in
+		   (match-beginning 0) (match-end 0))
+		  (remove-text-properties (match-beginning 2) (match-end 2)
+					  '(display t invisible t intangible t)))
+	        (add-text-properties (match-beginning 2) (match-end 2)
+				     '(font-lock-multiline t org-emphasis t))
+	        (when (and org-hide-emphasis-markers
+			   (not (org-at-comment-p)))
+                  (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
+                  (put-text-property (match-end 4) (match-end 2) 'invisible t))
+	        (throw :exit t)))))))))
 (defun org-do-emphasis-faces (limit)
   "Run through the buffer and emphasize strings."
-    (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
-			    (car org-emphasis-regexp-components))))
-      (catch :exit
-        (while (re-search-forward quick-re limit t)
-	  (let* ((marker (match-string 2))
-	         (verbatim? (member marker '("~" "="))))
-	    (when (save-excursion
-		    (goto-char (match-beginning 0))
-		    (and
-		     ;; Do not match table hlines.
-		     (not (and (equal marker "+")
-			     (org-match-line
-			      "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
-		     ;; Do not match headline stars.  Do not consider
-		     ;; stars of a headline as closing marker for bold
-		     ;; markup either.
-		     (not (and (equal marker "*")
-			     (save-excursion
-			       (forward-char)
-			       (skip-chars-backward "*")
-			       (looking-at-p org-outline-regexp-bol))))
-		     ;; Match full emphasis markup regexp.
-		     (looking-at (if verbatim? org-verbatim-re org-emph-re))
-		     ;; Do not span over paragraph boundaries.
-		     (not (string-match-p org-element-paragraph-separate
-				        (match-string 2)))
-		     ;; Do not span over cells in table rows.
-		     (not (and (save-match-data (org-match-line "[ \t]*|"))
-			     (string-match-p "|" (match-string 4))))))
-              (with-silent-modifications
-	        (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
-			    (m (if org-hide-emphasis-markers 4 2)))
-	          (font-lock-prepend-text-property
-	           (match-beginning m) (match-end m) 'face face)
-                  (remove-text-properties (match-beginning 2) (match-end 3) '(invisible t))
-                  (remove-text-properties (match-end 4) (match-end 2) '(invisible t))
-	          (when verbatim?
-		    (org-remove-flyspell-overlays-in
-		     (match-beginning 0) (match-end 0))
-		    (remove-text-properties (match-beginning 2) (match-end 2)
-					    '(display t invisible t intangible t)))
-	          (add-text-properties (match-beginning 2) (match-end 2)
-				       '(font-lock-multiline t org-emphasis t))
-	          (when (and org-hide-emphasis-markers
-			     (not (org-at-comment-p)))
-                    (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
-                    (put-text-property (match-end 4) (match-end 2) 'invisible t))
-	          (throw :exit t)))))))))
+  (if (eq org-fold-core-style 'text-properties)
+      (org-do-emphasis-faces--text-properties limit)
+    (org-do-emphasis-faces--overlays limit)))
 
-(defun org-emphasize (&optional char)
+(defun org-emphasize--overlays (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
 If there is an active region, change that region to a new emphasis.
 If there is no region, just insert the marker characters and position
@@ -4853,6 +4911,63 @@ prompted for."
       (insert " ") (backward-char 1))
     (insert string)
     (and move (backward-char 1))))
+(defun org-emphasize--text-properties (&optional char)
+  "Insert or change an emphasis, i.e. a font like bold or italic.
+If there is an active region, change that region to a new emphasis.
+If there is no region, just insert the marker characters and position
+the cursor between them.
+CHAR should be the marker character.  If it is a space, it means to
+remove the emphasis of the selected region.
+If CHAR is not given (for example in an interactive call) it will be
+prompted for."
+  (interactive)
+  (let ((erc org-emphasis-regexp-components)
+	(string "") beg end move s)
+    (if (org-region-active-p)
+	(setq beg (region-beginning)
+	      end (region-end)
+	      string (buffer-substring beg end))
+      (setq move t))
+
+    (unless char
+      (message "Emphasis marker or tag: [%s]"
+	       (mapconcat #'car org-emphasis-alist ""))
+      (setq char (read-char-exclusive)))
+    (if (equal char ?\s)
+	(setq s ""
+	      move nil)
+      (unless (assoc (char-to-string char) org-emphasis-alist)
+	(user-error "No such emphasis marker: \"%c\"" char))
+      (setq s (char-to-string char)))
+    (while (and (> (length string) 1)
+		(equal (substring string 0 1) (substring string -1))
+		(assoc (substring string 0 1) org-emphasis-alist))
+      (setq string (substring string 1 -1)))
+    (setq string (concat s string s))
+    (when beg (delete-region beg end))
+    (unless (or (bolp)
+		(string-match (concat "[" (nth 0 erc) "\n]")
+			      (char-to-string (char-before (point)))))
+      (insert " "))
+    (unless (or (eobp)
+		(string-match (concat "[" (nth 1 erc) "\n]")
+			      (char-to-string (char-after (point)))))
+      (insert " ") (backward-char 1))
+    (insert string)
+    (and move (backward-char 1))))
+(defun org-emphasize (&optional char)
+  "Insert or change an emphasis, i.e. a font like bold or italic.
+If there is an active region, change that region to a new emphasis.
+If there is no region, just insert the marker characters and position
+the cursor between them.
+CHAR should be the marker character.  If it is a space, it means to
+remove the emphasis of the selected region.
+If CHAR is not given (for example in an interactive call) it will be
+prompted for."
+  (interactive)
+  (if (eq org-fold-core-style 'text-properties)
+      (org-emphasize--text-properties char)
+    (org-emphasize--overlays char)))
 
 (defconst org-nonsticky-props
   '(mouse-face highlight keymap invisible intangible help-echo org-linked-text htmlize-link))
@@ -4860,7 +4975,78 @@ prompted for."
 (defsubst org-rear-nonsticky-at (pos)
   (add-text-properties (1- pos) pos (list 'rear-nonsticky org-nonsticky-props)))
 
-(defun org-activate-links (limit)
+(defun org-activate-links--overlays (limit)
+  "Add link properties to links.
+This includes angle, plain, and bracket links."
+  (catch :exit
+    (while (re-search-forward org-link-any-re limit t)
+      (let* ((start (match-beginning 0))
+	     (end (match-end 0))
+	     (visible-start (or (match-beginning 3) (match-beginning 2)))
+	     (visible-end (or (match-end 3) (match-end 2)))
+	     (style (cond ((eq ?< (char-after start)) 'angle)
+			  ((eq ?\[ (char-after (1+ start))) 'bracket)
+			  (t 'plain))))
+	(when (and (memq style org-highlight-links)
+		   ;; Do not span over paragraph boundaries.
+		   (not (string-match-p org-element-paragraph-separate
+				      (match-string 0)))
+		   ;; Do not confuse plain links with tags.
+		   (not (and (eq style 'plain)
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
+	  (let* ((link-object (save-excursion
+				(goto-char start)
+				(save-match-data (org-element-link-parser))))
+		 (link (org-element-property :raw-link link-object))
+		 (type (org-element-property :type link-object))
+		 (path (org-element-property :path link-object))
+                 (face-property (pcase (org-link-get-parameter type :face)
+				  ((and (pred functionp) face) (funcall face path))
+				  ((and (pred facep) face) face)
+				  ((and (pred consp) face) face) ;anonymous
+				  (_ 'org-link)))
+		 (properties		;for link's visible part
+		  (list 'mouse-face (or (org-link-get-parameter type :mouse-face)
+					'highlight)
+			'keymap (or (org-link-get-parameter type :keymap)
+				    org-mouse-map)
+			'help-echo (pcase (org-link-get-parameter type :help-echo)
+				     ((and (pred stringp) echo) echo)
+				     ((and (pred functionp) echo) echo)
+				     (_ (concat "LINK: " link)))
+			'htmlize-link (pcase (org-link-get-parameter type
+								     :htmlize-link)
+					((and (pred functionp) f) (funcall f))
+					(_ `(:uri ,link)))
+			'font-lock-multiline t)))
+	    (org-remove-flyspell-overlays-in start end)
+	    (org-rear-nonsticky-at end)
+	    (if (not (eq 'bracket style))
+		(progn
+                  (add-face-text-property start end face-property)
+		  (add-text-properties start end properties))
+	      ;; Handle invisible parts in bracket links.
+	      (remove-text-properties start end '(invisible nil))
+	      (let ((hidden
+		     (append `(invisible
+			       ,(or (org-link-get-parameter type :display)
+				    'org-link))
+			     properties)))
+		(add-text-properties start visible-start hidden)
+                (add-face-text-property visible-start visible-end face-property)
+		(add-text-properties visible-start visible-end properties)
+		(add-text-properties visible-end end hidden)
+		(org-rear-nonsticky-at visible-start)
+		(org-rear-nonsticky-at visible-end)))
+	    (let ((f (org-link-get-parameter type :activate-func)))
+	      (when (functionp f)
+		(funcall f start end path (eq style 'bracket))))
+	    (throw :exit t)))))		;signal success
+    nil))
+(defun org-activate-links--text-properties (limit)
   "Add link properties to links.
 This includes angle, plain, and bracket links."
   (catch :exit
@@ -4947,13 +5133,19 @@ This includes angle, plain, and bracket links."
 		(funcall f start end path (eq style 'bracket))))
 	    (throw :exit t)))))		;signal success
     nil))
+(defun org-activate-links (limit)
+  "Add link properties to links.
+This includes angle, plain, and bracket links."
+  (if (eq org-fold-core-style 'text-properties)
+      (org-activate-links--text-properties limit)
+    (org-activate-links--overlays limit)))
 
 (defun org-activate-code (limit)
-    (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
-      (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
-      (remove-text-properties (match-beginning 0) (match-end 0)
-			      '(display t invisible t intangible t))
-      t))
+  (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
+    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+    (remove-text-properties (match-beginning 0) (match-end 0)
+			    '(display t invisible t intangible t))
+    t))
 
 (defcustom org-src-fontify-natively t
   "When non-nil, fontify code in code blocks.
@@ -5954,10 +6146,15 @@ unconditionally."
       ;; When INVISIBLE-OK is non-nil, ensure newly created headline
       ;; is visible.
       (unless invisible-ok
-	(cond
-	 ((org-fold-folded-p (line-beginning-position) 'headline)
-	  (org-fold-region (line-end-position 0) (line-end-position) nil 'headline))
-	 (t nil))))
+        (if (eq org-fold-core-style 'text-properties)
+	    (cond
+	     ((org-fold-folded-p (line-beginning-position) 'headline)
+	      (org-fold-region (line-end-position 0) (line-end-position) nil 'headline))
+	     (t nil))
+          (pcase (get-char-property-and-overlay (point) 'invisible)
+	    (`(outline . ,o)
+	     (move-overlay o (overlay-start o) (line-end-position 0)))
+	    (_ nil)))))
      ;; At a headline...
      ((org-at-heading-p)
       (cond ((bolp)
@@ -6596,8 +6793,9 @@ case."
      (setq txt (buffer-substring beg end))
      (org-save-markers-in-region beg end)
      (delete-region beg end)
-     (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil 'headline))
-     (unless (bobp) (org-fold-region (1- (point)) (point) nil 'headline))
+     (when (eq org-fold-core-style 'overlays) (org-remove-empty-overlays-at beg))
+     (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil 'outline))
+     (unless (bobp) (org-fold-region (1- (point)) (point) nil 'outline))
      (and (not (bolp)) (looking-at "\n") (forward-char 1))
      (let ((bbb (point)))
        (insert-before-markers txt)
@@ -9835,8 +10033,7 @@ narrowing."
 	     (let ((beg (point)))
 	       (insert ":" drawer ":\n:END:\n")
 	       (org-indent-region beg (point))
-	       (org-fold-region
-		(line-end-position -1) (1- (point)) t 'drawer))
+	       (org-fold-region (line-end-position -1) (1- (point)) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline)))
 	     (end-of-line -1)))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
@@ -11056,7 +11253,7 @@ This function assumes point is on a headline."
 	 ;; boundary, it can be inadvertently sucked into
 	 ;; invisibility.
 	 (unless (org-invisible-p (line-beginning-position))
-	   (org-fold-region (point) (line-end-position) nil 'headline))))
+	   (org-fold-region (point) (line-end-position) nil 'outline))))
      ;; Align tags, if any.
      (when tags (org-align-tags))
      (when tags-change? (run-hooks 'org-after-tags-change-hook)))))
@@ -12297,7 +12494,7 @@ drawer is immediately hidden."
 	   (inhibit-read-only t))
        (unless (bobp) (insert "\n"))
        (insert ":PROPERTIES:\n:END:")
-       (org-fold-region (line-end-position 0) (point) t 'drawer)
+       (org-fold-region (line-end-position 0) (point) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline))
        (when (or (eobp) (= begin (point-min))) (insert "\n"))
        (org-indent-region begin (point))))))
 
@@ -16268,11 +16465,18 @@ this numeric value."
   (interactive "r")
   (let ((result ""))
     (while (/= beg end)
-      (while (org-invisible-p beg)
-	(setq beg (org-fold-next-visibility-change beg end)))
-      (let ((next (org-fold-next-visibility-change beg end)))
-	(setq result (concat result (buffer-substring beg next)))
-	(setq beg next)))
+      (if (eq org-fold-core-style 'text-properties)
+          (progn
+            (while (org-invisible-p beg)
+	      (setq beg (org-fold-next-visibility-change beg end)))
+            (let ((next (org-fold-next-visibility-change beg end)))
+	      (setq result (concat result (buffer-substring beg next)))
+	      (setq beg next)))
+        (when (get-char-property beg 'invisible)
+	  (setq beg (next-single-char-property-change beg 'invisible nil end)))
+        (let ((next (next-single-char-property-change beg 'invisible nil end)))
+	  (setq result (concat result (buffer-substring beg next)))
+	  (setq beg next))))
     (setq deactivate-mark t)
     (kill-new result)
     (message "Visible strings have been copied to the kill ring.")))
@@ -19500,7 +19704,33 @@ Stop at the first and last subheadings of a superior heading."
   (interactive "p")
   (org-forward-heading-same-level (if arg (- arg) -1) invisible-ok))
 
-(defun org-next-visible-heading (arg)
+(defun org-next-visible-heading--overlays (arg)
+  "Move to the next visible heading line.
+With ARG, repeats or can move backward if negative."
+  (interactive "p")
+  (let ((regexp (concat "^" (org-get-limited-outline-regexp))))
+    (if (< arg 0)
+	(beginning-of-line)
+      (end-of-line))
+    (while (and (< arg 0) (re-search-backward regexp nil :move))
+      (unless (bobp)
+	(while (pcase (get-char-property-and-overlay (point) 'invisible)
+		 (`(outline . ,o)
+		  (goto-char (overlay-start o))
+		  (re-search-backward regexp nil :move))
+		 (_ nil))))
+      (cl-incf arg))
+    (while (and (> arg 0) (re-search-forward regexp nil t))
+      (while (pcase (get-char-property-and-overlay (point) 'invisible)
+	       (`(outline . ,o)
+		(goto-char (overlay-end o))
+		(re-search-forward regexp nil :move))
+	       (_
+		(end-of-line)
+		nil)))			;leave the loop
+      (cl-decf arg))
+    (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
+(defun org-next-visible-heading--text-properties (arg)
   "Move to the next visible heading line.
 With ARG, repeats or can move backward if negative."
   (interactive "p")
@@ -19522,6 +19752,13 @@ With ARG, repeats or can move backward if negative."
 	(end-of-line))
       (cl-decf arg))
     (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
+(defun org-next-visible-heading (arg)
+  "Move to the next visible heading line.
+With ARG, repeats or can move backward if negative."
+  (interactive "p")
+  (if (eq org-fold-core-style 'text-properties)
+      (org-next-visible-heading--text-properties arg)
+    (org-next-visible-heading--overlays arg)))
 
 (defun org-previous-visible-heading (arg)
   "Move to the previous visible heading.
@@ -19654,7 +19891,79 @@ Function may return a real element, or a pseudo-element with type
 	(list :begin b :end e :parent p :post-blank 0 :post-affiliated b)))
       (_ e))))
 
-(defun org--forward-paragraph-once ()
+(defun org--forward-paragraph-once--overlays ()
+  "Move forward to end of paragraph or equivalent, once.
+See `org-forward-paragraph'."
+  (interactive)
+  (save-restriction
+    (widen)
+    (skip-chars-forward " \t\n")
+    (cond
+     ((eobp) nil)
+     ;; When inside a folded part, move out of it.
+     ((pcase (get-char-property-and-overlay (point) 'invisible)
+	(`(,(or `outline `org-hide-block) . ,o)
+	 (goto-char (overlay-end o))
+	 (forward-line)
+	 t)
+	(_ nil)))
+     (t
+      (let* ((element (org--paragraph-at-point))
+	     (type (org-element-type element))
+	     (contents-begin (org-element-property :contents-begin element))
+	     (end (org-element-property :end element))
+	     (post-affiliated (org-element-property :post-affiliated element)))
+	(cond
+	 ((eq type 'plain-list)
+	  (forward-char)
+	  (org--forward-paragraph-once))
+	 ;; If the element is folded, skip it altogether.
+	 ((pcase (org-with-point-at post-affiliated
+		   (get-char-property-and-overlay (line-end-position)
+						  'invisible))
+	    (`(,(or `outline `org-hide-block) . ,o)
+	     (goto-char (overlay-end o))
+	     (forward-line)
+	     t)
+	    (_ nil)))
+	 ;; At a greater element, move inside.
+	 ((and contents-begin
+	       (> contents-begin (point))
+	       (not (eq type 'paragraph)))
+	  (goto-char contents-begin)
+	  ;; Items and footnote definitions contents may not start at
+	  ;; the beginning of the line.  In this case, skip until the
+	  ;; next paragraph.
+	  (cond
+	   ((not (bolp)) (org--forward-paragraph-once))
+	   ((org-previous-line-empty-p) (forward-line -1))
+	   (t nil)))
+	 ;; Move between empty lines in some blocks.
+	 ((memq type '(comment-block example-block export-block src-block
+				     verse-block))
+	  (let ((contents-start
+		 (org-with-point-at post-affiliated
+		   (line-beginning-position 2))))
+	    (if (< (point) contents-start)
+		(goto-char contents-start)
+	      (let ((contents-end
+		     (org-with-point-at end
+		       (skip-chars-backward " \t\n")
+		       (line-beginning-position))))
+		(cond
+		 ((>= (point) contents-end)
+		  (goto-char end)
+		  (skip-chars-backward " \t\n")
+		  (forward-line))
+		 ((re-search-forward "^[ \t]*\n" contents-end :move)
+		  (forward-line -1))
+		 (t nil))))))
+	 (t
+	  ;; Move to element's end.
+	  (goto-char end)
+	  (skip-chars-backward " \t\n")
+	  (forward-line))))))))
+(defun org--forward-paragraph-once--text-properties ()
   "Move forward to end of paragraph or equivalent, once.
 See `org-forward-paragraph'."
   (interactive)
@@ -19723,8 +20032,111 @@ See `org-forward-paragraph'."
 	  (goto-char end)
 	  (skip-chars-backward " \t\n")
 	  (forward-line))))))))
+(defun org--forward-paragraph-once ()
+  "Move forward to end of paragraph or equivalent, once.
+See `org-forward-paragraph'."
+  (interactive)
+  (if (eq org-fold-core-style 'text-properties)
+      (org--forward-paragraph-once--text-properties)
+    (org--forward-paragraph-once--overlays)))
 
-(defun org--backward-paragraph-once ()
+(defun org--backward-paragraph-once--overlays ()
+  "Move backward to start of paragraph or equivalent, once.
+See `org-backward-paragraph'."
+  (interactive)
+  (save-restriction
+    (widen)
+    (cond
+     ((bobp) nil)
+     ;; Blank lines at the beginning of the buffer.
+     ((and (org-match-line "^[ \t]*$")
+	   (save-excursion (skip-chars-backward " \t\n") (bobp)))
+      (goto-char (point-min)))
+     ;; When inside a folded part, move out of it.
+     ((pcase (get-char-property-and-overlay (1- (point)) 'invisible)
+	(`(,(or `outline `org-hide-block) . ,o)
+	 (goto-char (1- (overlay-start o)))
+	 (org--backward-paragraph-once)
+	 t)
+	(_ nil)))
+     (t
+      (let* ((element (org--paragraph-at-point))
+	     (type (org-element-type element))
+	     (begin (org-element-property :begin element))
+	     (post-affiliated (org-element-property :post-affiliated element))
+	     (contents-end (org-element-property :contents-end element))
+	     (end (org-element-property :end element))
+	     (parent (org-element-property :parent element))
+	     (reach
+	      ;; Move to the visible empty line above position P, or
+	      ;; to position P.  Return t.
+	      (lambda (p)
+		(goto-char p)
+		(when (and (org-previous-line-empty-p)
+			   (let ((end (line-end-position 0)))
+			     (or (= end (point-min))
+				 (not (org-invisible-p (1- end))))))
+		  (forward-line -1))
+		t)))
+	(cond
+	 ;; Already at the beginning of an element.
+	 ((= begin (point))
+	  (cond
+	   ;; There is a blank line above.  Move there.
+	   ((and (org-previous-line-empty-p)
+		 (not (org-invisible-p (1- (line-end-position 0)))))
+	    (forward-line -1))
+	   ;; At the beginning of the first element within a greater
+	   ;; element.  Move to the beginning of the greater element.
+	   ((and parent (= begin (org-element-property :contents-begin parent)))
+	    (funcall reach (org-element-property :begin parent)))
+	   ;; Since we have to move anyway, find the beginning
+	   ;; position of the element above.
+	   (t
+	    (forward-char -1)
+	    (org--backward-paragraph-once))))
+	 ;; Skip paragraphs at the very beginning of footnote
+	 ;; definitions or items.
+	 ((and (eq type 'paragraph)
+	       (org-with-point-at begin (not (bolp))))
+	  (funcall reach (progn (goto-char begin) (line-beginning-position))))
+	 ;; If the element is folded, skip it altogether.
+	 ((org-with-point-at post-affiliated
+	    (org-invisible-p (line-end-position) t))
+	  (funcall reach begin))
+	 ;; At the end of a greater element, move inside.
+	 ((and contents-end
+	       (<= contents-end (point))
+	       (not (eq type 'paragraph)))
+	  (cond
+	   ((memq type '(footnote-definition plain-list))
+	    (skip-chars-backward " \t\n")
+	    (org--backward-paragraph-once))
+	   ((= contents-end (point))
+	    (forward-char -1)
+	    (org--backward-paragraph-once))
+	   (t
+	    (goto-char contents-end))))
+	 ;; Move between empty lines in some blocks.
+	 ((and (memq type '(comment-block example-block export-block src-block
+					  verse-block))
+	       (let ((contents-start
+		      (org-with-point-at post-affiliated
+			(line-beginning-position 2))))
+		 (when (> (point) contents-start)
+		   (let ((contents-end
+			  (org-with-point-at end
+			    (skip-chars-backward " \t\n")
+			    (line-beginning-position))))
+		     (if (> (point) contents-end)
+			 (progn (goto-char contents-end) t)
+		       (skip-chars-backward " \t\n" begin)
+		       (re-search-backward "^[ \t]*\n" contents-start :move)
+		       t))))))
+	 ;; Move to element's start.
+	 (t
+	  (funcall reach begin))))))))
+(defun org--backward-paragraph-once--text-properties ()
   "Move backward to start of paragraph or equivalent, once.
 See `org-backward-paragraph'."
   (interactive)
@@ -19817,6 +20229,13 @@ See `org-backward-paragraph'."
 	 ;; Move to element's start.
 	 (t
 	  (funcall reach begin))))))))
+(defun org--backward-paragraph-once ()
+  "Move backward to start of paragraph or equivalent, once.
+See `org-backward-paragraph'."
+  (interactive)
+  (if (eq org-fold-core-style 'text-properties)
+      (org--backward-paragraph-once--text-properties)
+    (org--backward-paragraph-once--overlays)))
 
 (defun org-forward-element ()
   "Move forward by one element.
