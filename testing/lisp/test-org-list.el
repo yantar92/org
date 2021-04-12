@@ -546,20 +546,23 @@ b. Item 2<point>"
   "Test `org-move-item-down' specifications."
   ;; Standard test.
   (should
-   (equal "- item 2\n- item 1"
-	  (org-test-with-temp-text "- item 1\n- item 2"
-	                           (org-move-item-down)
-	                           (buffer-string))))
+   (equal
+    "- item 2\n- item 1"
+    (org-test-with-temp-text "- item 1\n- item 2"
+	                     (org-move-item-down)
+	                     (buffer-string))))
   ;; Keep same column in item.
   (should
-   (org-test-with-temp-text "- it<point>em 1\n- item 2"
-                            (org-move-item-down)
-                            (looking-at "em 1")))
+   (org-test-with-temp-text
+    "- it<point>em 1\n- item 2"
+    (org-move-item-down)
+    (looking-at "em 1")))
   ;; Move sub-items.
-  (org-test-with-temp-text "- item 1\n  - sub-item 1\n- item 2"
-                           (org-move-item-down)
-                           (should (equal (buffer-string)
-		                          "- item 2\n- item 1\n  - sub-item 1")))
+  (org-test-with-temp-text
+   "- item 1\n  - sub-item 1\n- item 2"
+   (org-move-item-down)
+   (should (equal (buffer-string)
+		  "- item 2\n- item 1\n  - sub-item 1")))
   ;; Preserve blank lines.
   (should
    (equal
@@ -569,16 +572,18 @@ b. Item 2<point>"
                              (buffer-string))))
   ;; Error when trying to move the last item...
   (should-error
-   (org-test-with-temp-text "- item 1\n- item 2"
-                            (forward-line)
-                            (org-move-item-down)))
+   (org-test-with-temp-text
+    "- item 1\n- item 2"
+    (forward-line)
+    (org-move-item-down)))
   ;; ... unless `org-list-use-circular-motion' is non-nil.  In this
   ;; case, move to the first item.
   (should
-   (equal  "- item 3\n- item 1\n- item 2\n"
-	   (org-test-with-temp-text "- item 1\n- item 2\n<point>- item 3"
-	                            (let ((org-list-use-circular-motion t)) (org-move-item-down))
-	                            (buffer-string))))
+   (equal
+    "- item 3\n- item 1\n- item 2\n"
+    (org-test-with-temp-text "- item 1\n- item 2\n<point>- item 3"
+	                     (let ((org-list-use-circular-motion t)) (org-move-item-down))
+	                     (buffer-string))))
   ;; Preserve item visibility.
   (should
    (equal

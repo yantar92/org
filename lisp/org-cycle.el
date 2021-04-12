@@ -441,7 +441,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	       (save-excursion
 		 (let ((level (funcall outline-level)))
 		   (outline-next-heading)
-		   (and (org-at-heading-p t)
+		   (and (org-at-heading-p)
 			(> (funcall outline-level) level))))
 	       (and (eq org-cycle-include-plain-lists 'integrate)
 		    (save-excursion
@@ -463,7 +463,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (setq org-cycle-subtree-status nil)
       (save-excursion
 	(goto-char eos)
-	(outline-next-heading)
+        (org-with-limited-levels
+	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil))))
      ((and (or (>= eol eos)
 	       (not (string-match "\\S-" (buffer-substring eol eos))))
@@ -472,7 +473,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 			org-cycle-skip-children-state-if-no-children))))
       ;; Entire subtree is hidden in one line: children view
       (unless (org-before-first-heading-p)
-	(run-hook-with-args 'org-pre-cycle-hook 'children))
+        (org-with-limited-levels
+	 (run-hook-with-args 'org-pre-cycle-hook 'children)))
       (if (org-at-item-p)
 	  (org-list-set-item-visibility (point-at-bol) struct 'children)
 	(org-fold-show-entry)
@@ -493,7 +495,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (org-unlogged-message "CHILDREN")
       (save-excursion
 	(goto-char eos)
-	(outline-next-heading)
+        (org-with-limited-levels
+	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil)))
       (setq org-cycle-subtree-status 'children)
       (unless (org-before-first-heading-p)
@@ -560,7 +563,8 @@ Use `\\[org-edit-special]' to edit table.el tables"))
      ((= eos eoh)
       ;; Nothing is hidden behind this heading
       (unless (org-before-first-heading-p)
-	(run-hook-with-args 'org-cycle-pre-hook 'empty))
+        (org-with-limited-levels
+	 (run-hook-with-args 'org-cycle-pre-hook 'empty)))
       (org-unlogged-message "EMPTY ENTRY")
       (setq org-cycle-subtree-status nil)
       (save-excursion

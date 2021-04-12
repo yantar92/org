@@ -1180,7 +1180,7 @@ fontification."
   (let ((value (get-char-property (or pos (point)) 'invisible)))
     (cond ((not value) nil)
 	  (folding-only (memq value '(org-hide-block outline)))
-	  (t value))))
+	  (t (and (invisible-p (or pos (point))) value)))))
 (defun org-invisible-p (&optional pos folding-only)
   "Non-nil if the character after POS is invisible.
 If POS is nil, use `point' instead.  When optional argument
