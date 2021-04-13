@@ -1165,7 +1165,11 @@ properties drawers."
 	 (last-level lmax)
 	 (property (car spec))
 	 (printf (nth 4 spec))
-	 (operator (nth 3 spec))
+         ;; Special properties cannot be collected nor summarized, as
+         ;; they have their own way to be computed.  Therefore, ignore
+         ;; any operator attached to them.
+	 (operator (and (not (member property org-special-properties))
+                        (nth 3 spec)))
 	 (collect (and operator (org-columns--collect operator)))
 	 (summarize (and operator (org-columns--summarize operator))))
     (org-with-wide-buffer
