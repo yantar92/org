@@ -27,6 +27,19 @@
 ;; This file contains code handling temporary invisibility (folding
 ;; and unfolding) of text in org buffers.
 
+;; The folding is implemented using generic org-fold-core library.  This file
+;; contains org-specific implementation of the folding.  Also, various
+;; useful functions from org-fold-core are aliased under shorted `org-fold'
+;; prefix.
+
+;; The following features are implemented:
+;; - Folding/unfolding various Org mode elements and regions of Org buffers:
+;;   + Region before first heading;
+;;   + Org headings, their text, children (subtree), siblings, parents, etc;
+;;   + Org blocks and drawers
+;; - Revealing Org structure around invisible point location
+;; - Revealing folded Org elements broken by user edits
+
 ;;; Code:
 
 (require 'org-macs)
@@ -951,7 +964,6 @@ be shown."
    (cond ((symbolp org-fold-show-context-detail) org-fold-show-context-detail)
 	 ((cdr (assq key org-fold-show-context-detail)))
 	 (t (cdr (assq 'default org-fold-show-context-detail))))))
-
 
 (defun org-fold-show-set-visibility--overlays (detail)
   "Set visibility around point according to DETAIL.
