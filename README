@@ -30,7 +30,7 @@
   
 - Progress towards merging to master
   - [X] =org-fold-core=
-  - [ ] Write detailed documentation about internals (in the =.el= file headers)
+  - [X] Write detailed documentation about internals (in the =.el= file headers)
   - [X] Implement user-level customisation between old and new folding implementations
   - [ ] Cherry-pick unrelated patches and push to master
   - [WAITING] Discuss and finalise folding API in the mailing list
