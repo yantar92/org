@@ -950,9 +950,8 @@ instead of text properties.  The created overlays will be stored in
     (while (< pos end)
       ;; We need loop below to make sure that we clean all invisible
       ;; properties, which may be nested.
-      (while (org-fold-core-get-folding-spec nil pos)
-	(let* ((spec (org-fold-core-get-folding-spec nil pos))
-               (region (org-fold-core-get-region-at-point spec pos)))
+      (dolist (spec (org-fold-core-get-folding-spec 'all pos))
+	(let* ((region (org-fold-core-get-region-at-point spec pos)))
           (when (memq spec org-fold-core--isearch-special-specs)
             (setq pos (min pos (car region)))
             (setq end (max end (cdr region))))
