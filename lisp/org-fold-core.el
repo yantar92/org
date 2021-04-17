@@ -1082,12 +1082,15 @@ property, unfold the region if the :fragile function returns non-nil."
                                (eq spec-to spec-from)
                                (or (org-fold-core-get-folding-spec-property spec :front-sticky)
                                    (org-fold-core-get-folding-spec-property spec :rear-sticky)))
-	              (org-fold-core-region from to t (or spec-from spec-to)))
+                      (unless (and (eq from (point-min)) (eq to (point-max))) ; Buffer content replaced.
+	                (org-fold-core-region from to t (or spec-from spec-to))))
                     ;; Hide text inserted at the end of a fold.
                     (when (and spec-from (org-fold-core-get-folding-spec-property spec-from :rear-sticky))
                       (org-fold-core-region from to t spec-from))
                     ;; Hide text inserted in front of a fold.
-                    (when (and spec-to (org-fold-core-get-folding-spec-property spec-to :front-sticky))
+                    (when (and spec-to
+                               (not (eq to (point-max))) ; Text inserted at the end of buffer is not prepended anywhere.
+                               (org-fold-core-get-folding-spec-property spec-to :front-sticky))
                       (org-fold-core-region from to t spec-to)))))))))
       ;; Process all the folded text between `from' and `to'.  Do it
       ;; only in current buffer to avoid verifying semantic structure
