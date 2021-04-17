@@ -163,7 +163,7 @@ the values `folded', `children', or `subtree'."
   :type 'hook)
 
 (defcustom org-cycle-hook '(org-cycle-hide-archived-subtrees
-		   org-cycle-hide-drawers
+		   ;; org-cycle-hide-drawers
 		   org-cycle-show-empty-lines
 		   org-cycle-optimize-window-after-visibility-change)
   "Hook that is run after `org-cycle' has changed the buffer visibility.
@@ -755,7 +755,7 @@ With a numeric prefix, show all headlines up to that level."
   "Show all headlines in the buffer, like a table of contents.
 With numerical argument N, show content up to level N."
   (interactive "p")
-  (org-fold-show-all '(headings drawers))
+  (org-fold-show-all '(headings))
   (save-excursion
     (goto-char (point-min))
     ;; Hide top-level drawer.
