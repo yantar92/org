@@ -1,7 +1,6 @@
 #+title: The Org Manual
 #+subtitle:  Release {{{version}}}
 #+author:    The Org Mode Developers
-#+date:      {{{modification-time}}}
 #+language:  en
 
 
@@ -13696,7 +13695,7 @@ placement.
 #+cindex: image, centering in LaTeX export
 The LaTeX export back-end centers all images by default.  Setting
 =:center= to =nil= disables centering.  To disable centering globally,
-set ~org-latex-images-centered~ to =t=.
+set ~org-latex-images-centered~ to =nil=.
 
 Set the =:comment-include= attribute to non-~nil~ value for the LaTeX
 export back-end to comment out the =\includegraphics= macro.
