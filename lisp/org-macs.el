@@ -942,6 +942,9 @@ delimiting S."
 (defun org-string-width (string)
   "Return width of STRING when displayed in the current buffer.
 Outline, block, and drawer folds will be ignored."
+  ;; Wrap/line prefix will make `window-text-pizel-size' return too
+  ;; large value including the prefix.
+  (remove-text-properties 0 (length string) '(wrap-prefix t line-prefix t) string)
   (let (;; We need to remove the folds to make sure that folded table alignment is not messed up.
         (current-invisibility-spec (or (and (not (listp buffer-invisibility-spec))
                                             buffer-invisibility-spec)
