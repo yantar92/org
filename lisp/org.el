@@ -10032,7 +10032,26 @@ narrowing."
 	   (when create
 	     (unless (bolp) (insert "\n"))
 	     (let ((beg (point)))
-	       (insert ":" drawer ":\n:END:\n")
+               ;; This is expected to break outline structure
+               ;; temporarily when inserting drawer right at the end
+               ;; of empty heading, so we should disable fragility
+               ;; checks:
+               ;; Before:
+               ;; ----
+               ;; * Heading 1
+               ;; * Heading 2
+               ;; ----
+               ;; Middle:
+               ;; * Heading 1
+               ;; :* Heading 2 <-- borken structure to be fixed rightaway
+               ;; ----
+               ;; After:
+               ;; * Heading 1
+               ;; :LOGBOOK:
+               ;; :END:
+               ;; * Heading 2
+               (org-fold-core-ignore-fragility-checks
+	           (insert ":" drawer ":\n:END:\n"))
 	       (org-indent-region beg (point))
 	       (org-fold-region (line-end-position -1) (1- (point)) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline)))
 	     (end-of-line -1)))))
