@@ -333,6 +333,8 @@ listed earlier is used.
 The following properties are known:
 - :ellipsis         :: must be nil or string to show when text is folded
                       using this spec.
+- :global           :: non-nil means that folding state will be preserved
+                      when copying folded text between buffers.
 - :isearch-ignore   :: non-nil means that folded text is not searchable
                       using isearch.
 - :isearch-open     :: non-nil means that isearch can reveal text hidden
@@ -455,7 +457,9 @@ unless RETURN-ONLY is non-nil."
       ;; Create unique property symbol for SPEC in BUFFER
       (let ((local-prop (or (gethash (cons buf spec) org-fold-core--property-symbol-cache)
 			    (puthash (cons buf spec)
-                                     (org-fold-core-get-folding-property-symbol spec buf)
+                                     (org-fold-core-get-folding-property-symbol
+                                      spec buf
+                                      (org-fold-core-get-folding-spec-property spec :global))
                                      org-fold-core--property-symbol-cache))))
         (prog1
             local-prop
@@ -560,11 +564,14 @@ The folding spec properties will be set to PROPERTIES (see
   (with-current-buffer (or buffer (current-buffer))
     (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
                                     '( :visible :ellipsis :isearch-ignore
-                                       :isearch-open :front-sticky :rear-sticky
-                                       :fragile :alias :font-lock-skip)))
+                                       :global :isearch-open :front-sticky
+                                       :rear-sticky :fragile :alias
+                                       :font-lock-skip)))
            (full-spec (cons spec full-properties)))
       (add-to-list 'org-fold-core--specs full-spec append)
-      (mapc (lambda (prop-cons) (org-fold-core-set-folding-spec-property spec (car prop-cons) (cdr prop-cons) 'force)) full-properties))))
+      (mapc (lambda (prop-cons) (org-fold-core-set-folding-spec-property spec (car prop-cons) (cdr prop-cons) 'force)) full-properties)
+      ;; Update buffer inivisibility specs.
+      (org-fold-core--property-symbol-get-create spec))))
 
 (defun org-fold-core-remove-folding-spec (spec &optional buffer)
   "Remove a folding SPEC in BUFFER.
