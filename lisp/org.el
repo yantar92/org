@@ -5557,9 +5557,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 
 (defun org-set-font-lock-defaults ()
   "Set font lock defaults for the current buffer."
-  (let* ((em org-fontify-emphasized-text)
-	 (lk org-highlight-links)
-	 (org-font-lock-extra-keywords
+  (let ((org-font-lock-extra-keywords
 	  (list
 	   ;; Call the hook
 	   '(org-font-lock-hook)
@@ -5586,10 +5584,10 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	   '(org-fontify-drawers)
 	   ;; Link related fontification.
 	   '(org-activate-links)
-	   (when (memq 'tag lk) '(org-activate-tags (1 'org-tag prepend)))
-	   (when (memq 'radio lk) '(org-activate-target-links (1 'org-link t)))
-	   (when (memq 'date lk) '(org-activate-dates (0 'org-date t)))
-	   (when (memq 'footnote lk) '(org-activate-footnote-links))
+	   (when (memq 'tag org-highlight-links) '(org-activate-tags (1 'org-tag prepend)))
+	   (when (memq 'radio org-highlight-links) '(org-activate-target-links (1 'org-link t)))
+	   (when (memq 'date org-highlight-links) '(org-activate-dates (0 'org-date t)))
+	   (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
            ;; Targets.
            (list org-radio-target-regexp '(0 'org-target t))
 	   (list org-target-regexp '(0 'org-target t))
@@ -5633,7 +5631,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	   (list (concat "\\<" org-closed-string) '(0 'org-special-keyword t))
 	   (list (concat "\\<" org-clock-string) '(0 'org-special-keyword t))
 	   ;; Emphasis
-	   (when em '(org-do-emphasis-faces))
+	   (when org-fontify-emphasized-text '(org-do-emphasis-faces))
 	   ;; Checkboxes
 	   '("^[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)[ \t]+\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\(\\[[- X]\\]\\)"
 	     1 'org-checkbox prepend)
@@ -6602,7 +6600,9 @@ Assume point is at a heading or an inlinetask beginning."
 	   (col (+ (current-indentation) diff)))
        (when (wholenump col)
 	 (while (< (point) end-marker)
-	   (indent-line-to col)
+           (if (natnump diff)
+	       (insert (make-string diff 32))
+             (delete-char (abs diff)))
 	   (forward-line)))))
    (catch 'no-shift
      (when (or (zerop diff) (not (eq org-adapt-indentation t)))
@@ -17984,7 +17984,16 @@ ELEMENT."
 	  (current-indentation))))
       ((and
 	(eq org-adapt-indentation 'headline-data)
-	(memq type '(planning clock node-property property-drawer drawer)))
+        (or (memq type '(planning clock node-property property-drawer drawer))
+            ;; FIXME: when storing a note in a LOGBOOK drawer,
+            ;; `org-store-log-note' needs to insert a new line before
+            ;; the newly inserted note, thus the `type' at point will
+            ;; return `paragraph' instead of the expected `drawer', so
+            ;; we need to manually detect the drawer.
+            (and (looking-at-p "^$")
+                 (save-excursion
+                   (backward-char)
+                   (looking-back org-drawer-regexp (point-at-bol))))))
        (org--get-expected-indentation
 	(org-element-property :parent element) t))
       ((memq type '(headline inlinetask nil))
