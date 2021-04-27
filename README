@@ -14,9 +14,9 @@
 
 * Updates
 
-- [2021-04-12 Mon] Original folding mechanism using overlays is now supported a user customisation; Submitted =org-fold-core= to the mailing list.
+- [2021-04-12 Mon] Original folding mechanism using overlays is now supported as a user customisation; Submitted =org-fold-core= to the mailing list.
 
-  According to earlier discussion in the mailing list, this branch will be available as non-default user-option at first. Then, wider auditory can test the new folding mechanism without introducing unexpected breakages in majority of users. I finally back-ported the original folding mechanism. The folding style can be customised using =org-fold-core-style= variable.
+  According to earlier discussion in the mailing list, this branch will be available as non-default user option at first. Then, wider auditory can test the new folding mechanism without introducing unexpected breakages for majority of users. I finally back-ported the original folding mechanism. The folding style can be customised using =org-fold-core-style= variable.
 
   Also, I submitted the =org-fold-core= library for review. It seems that most of the org maintainers have been busy recently, so I am still waiting for the feedback.
 
