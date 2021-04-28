@@ -103,6 +103,8 @@ Allowed visibility spans are
   ancestors      show current headline and its direct ancestors; if
                  point is not on headline, also show entry
 
+  ancestors-full show current subtree and its direct ancestors
+
   lineage        show current headline, its direct ancestors and all
                  their children; if point is not on headline, also show
                  entry and first child
@@ -144,6 +146,7 @@ more context."
 			   (const minimal)
 			   (const local)
 			   (const ancestors)
+                           (const ancestors-full)
 			   (const lineage)
 			   (const tree)
 			   (const canonical))))))
@@ -967,9 +970,9 @@ be shown."
 
 (defun org-fold-show-set-visibility--overlays (detail)
   "Set visibility around point according to DETAIL.
-DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
-`tree', `canonical' or t.  See `org-show-context-detail' for more
-information."
+DETAIL is either nil, `minimal', `local', `ancestors',
+`ancestors-full', `lineage', `tree', `canonical' or t.  See
+`org-show-context-detail' for more information."
   ;; Show current heading and possibly its entry, following headline
   ;; or all children.
   (if (and (org-at-heading-p) (not (eq detail 'local)))
@@ -984,14 +987,16 @@ information."
       (org-with-limited-levels
        (cl-case detail
          ((tree canonical t) (org-fold-show-children))
-         ((nil minimal ancestors))
+         ((nil minimal ancestors ancestors-full))
          (t (save-excursion
               (outline-next-heading)
               (org-fold-heading nil)))))))
+  ;; Show whole subtree.
+  (when (eq detail 'ancestors-full) (org-fold-show-subtree))
   ;; Show all siblings.
   (when (eq detail 'lineage) (org-fold-show-siblings))
   ;; Show ancestors, possibly with their children.
-  (when (memq detail '(ancestors lineage tree canonical t))
+  (when (memq detail '(ancestors ancestors-full lineage tree canonical t))
     (save-excursion
       (while (org-up-heading-safe)
         (org-fold-heading nil)
@@ -999,9 +1004,9 @@ information."
         (when (memq detail '(tree canonical t)) (org-fold-show-children))))))
 (defun org-fold-show-set-visibility--text-properties (detail)
   "Set visibility around point according to DETAIL.
-DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
-`tree', `canonical' or t.  See `org-fold-show-context-detail' for more
-information."
+DETAIL is either nil, `minimal', `local', `ancestors',
+`ancestors-full', `lineage', `tree', `canonical' or t.  See
+`org-show-context-detail' for more information."
   ;; Show current heading and possibly its entry, following headline
   ;; or all children.
   (if (and (org-at-heading-p) (not (eq detail 'local)))
@@ -1027,14 +1032,16 @@ information."
       (org-with-limited-levels
        (cl-case detail
 	 ((tree canonical t) (org-fold-show-children))
-	 ((nil minimal ancestors))
+	 ((nil minimal ancestors ancestors-full))
 	 (t (save-excursion
 	      (outline-next-heading)
 	      (org-fold-heading nil)))))))
+  ;; Show whole subtree.
+  (when (eq detail 'ancestors-full) (org-fold-show-subtree))
   ;; Show all siblings.
   (when (eq detail 'lineage) (org-fold-show-siblings))
   ;; Show ancestors, possibly with their children.
-  (when (memq detail '(ancestors lineage tree canonical t))
+  (when (memq detail '(ancestors ancestors-full lineage tree canonical t))
     (save-excursion
       (while (org-up-heading-safe)
 	(org-fold-heading nil)

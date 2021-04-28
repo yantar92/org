@@ -7250,14 +7250,7 @@ Paragraph<point>"
    (equal "{A+}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "{A+}")))))
-  ;; Uppercase MATCH works with a non-nil DOWNCASED and SINGLE-AS-LIST.
-  (should
-   (equal (list "a" "b" "c")
-	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
-	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil))
-	      (sort (org-tags-expand "A" t t) #'string-lessp))))))
+	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "{A+}"))))))
 
 
 ;;; TODO keywords
@@ -8036,6 +8029,10 @@ CLOCK: [2012-03-29 Thu 10:00]--[2012-03-29 Thu 16:40] =>  6:40"
     (should (equal '(0 7 8 9) (funcall list-visible-lines 'local nil)))
     (should (equal '(0 3 7) (funcall list-visible-lines 'ancestors t)))
     (should (equal '(0 3 7 8) (funcall list-visible-lines 'ancestors nil)))
+    (should (equal '(0 3 7 8 9 10 11)
+                   (funcall list-visible-lines 'ancestors-full t)))
+    (should (equal '(0 3 7 8 9 10 11)
+                   (funcall list-visible-lines 'ancestors-full nil)))
     (should (equal '(0 3 5 7 12) (funcall list-visible-lines 'lineage t)))
     (should (equal '(0 3 5 7 8 9 12) (funcall list-visible-lines 'lineage nil)))
     (should (equal '(0 1 3 5 7 12 13) (funcall list-visible-lines 'tree t)))
