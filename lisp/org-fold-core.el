@@ -381,7 +381,10 @@ arguments: beginning and the end of the changed region.")
 Return nil when there is no matching folding spec."
   (and spec-or-alias
        (or (and (memq spec-or-alias (org-fold-core-folding-spec-list)) spec-or-alias)
-           (seq-some (lambda (spec) (and (memq spec-or-alias (alist-get :alias (alist-get spec org-fold-core--specs))) spec)) (org-fold-core-folding-spec-list)))))
+           (catch :found
+             (dolist (spec (org-fold-core-folding-spec-list))
+               (when  (memq spec-or-alias (cdr (assq :alias (assq spec org-fold-core--specs))))
+                 (throw :found spec)))))))
 
 (defun org-fold-core-folding-spec-p (spec-or-alias)
   "Check if SPEC-OR-ALIAS is a registered folding spec."
@@ -396,7 +399,7 @@ Return nil when there is no matching folding spec."
   "Get PROPERTY of a folding SPEC-OR-ALIAS.
 Possible properties can be found in `org-fold-core--specs' docstring."
   (org-fold-core--check-spec spec-or-alias)
-  (alist-get property (alist-get (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs)))
+  (cdr (assq property (assq (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs))))
 
 (defconst org-fold-core--spec-property-prefix "org-fold--spec-"
   "Prefix used to create property symbol.")
@@ -477,7 +480,9 @@ unless RETURN-ONLY is non-nil."
                 (when (buffer-base-buffer)
                   (with-current-buffer (buffer-base-buffer)
                     (setq-local org-fold-core--indirect-buffers
-                                (seq-filter #'buffer-live-p (delete-dups (append org-fold-core--indirect-buffers (list buf)))))))
+                                (let (org-fold-core--indirect-buffers)
+                                  (dolist (buf (delete-dups (append org-fold-core--indirect-buffers (list buf))))
+                                    (when (buffer-live-p buf) (push buf org-fold-core--indirect-buffers)))))))
                 ;; Copy all the old folding properties to preserve the folding state
                 (with-silent-modifications
                   (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
@@ -544,7 +549,7 @@ Do not check previous value when FORCE is non-nil."
     (:front-sticky nil)
     (:rear-sticky nil)
     (_ nil))
-  (setf (alist-get property (alist-get spec org-fold-core--specs)) value))
+  (setf (cdr (assq property (assq spec org-fold-core--specs))) value))
 
 (defun org-fold-core-add-folding-spec (spec &optional properties buffer append)
   "Add a new folding SPEC with PROPERTIES in BUFFER.
@@ -562,7 +567,7 @@ The folding spec properties will be set to PROPERTIES (see
 `org-fold-core--specs' for details)."
   (when (eq spec 'all) (error "Cannot use reserved folding spec symbol 'all"))
   (with-current-buffer (or buffer (current-buffer))
-    (let* ((full-properties (mapcar (lambda (prop) (cons prop (alist-get prop properties)))
+    (let* ((full-properties (mapcar (lambda (prop) (cons prop (cdr (assq prop properties))))
                                     '( :visible :ellipsis :isearch-ignore
                                        :global :isearch-open :front-sticky
                                        :rear-sticky :fragile :alias
@@ -581,14 +586,14 @@ BUFFER can be a buffer to remove SPEC in, nil to remove SPEC in current buffer,
 or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers."
   (org-fold-core--check-spec spec)
   (when (eq buffer 'all)
-    (setq-default org-fold-core--specs (delete (alist-get spec org-fold-core--specs) org-fold-core--specs))
+    (setq-default org-fold-core--specs (delete (cdr (assq spec org-fold-core--specs)) org-fold-core--specs))
     (mapc (lambda (buf)
 	    (org-fold-core-remove-folding-spec spec buf))
 	  (buffer-list)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
       (org-fold-core-set-folding-spec-property spec :visible t)
-      (setq org-fold-core--specs (delete (alist-get spec org-fold-core--specs) org-fold-core--specs)))))
+      (setq org-fold-core--specs (delete (cdr (assq spec org-fold-core--specs)) org-fold-core--specs)))))
 
 (defun org-fold-core-initialize (&optional specs)
   "Setup folding in current buffer using SPECS as value of `org-fold-core--specs'."
@@ -688,6 +693,13 @@ Return nil when no fold is present at point of POM."
                 (setcdr region (cdr local-region)))))
 	  (unless (eq (car region) (cdr region)) region))))))
 
+(defsubst org-fold-core--xor (cond1 cond2)
+  "Return the boolean exclusive-or of COND1 and COND2.
+If only one of the arguments is non-nil, return it; otherwise
+return nil."
+  (cond ((not cond1) cond2)
+        ((not cond2) cond1)))
+
 (defun org-fold-core-next-visibility-change (&optional pos limit ignore-hidden-p previous-p)
   "Return next point from POS up to LIMIT where text becomes visible/invisible.
 By default, text hidden by any means (i.e. not only by folding, but
@@ -712,7 +724,7 @@ If PREVIOUS-P is non-nil, search backwards."
 			  (lambda (p) (next-single-char-property-change p 'invisible nil limit)))))
 	 (next pos))
     (while (and (funcall cmp next limit)
-		(not (xor invisible-initially? (funcall invisible-p next))))
+		(not (org-fold-core--xor invisible-initially? (funcall invisible-p next))))
       (setq next (funcall next-change next)))
     next))
 
@@ -893,8 +905,8 @@ TYPE can be either `text-properties' or `overlays'."
 This function is intended to be used as `isearch-filter-predicate'."
   (and
    ;; Check folding specs that cannot be searched
-   (seq-every-p (lambda (spec) (not (org-fold-core-get-folding-spec-property spec :isearch-ignore)))
-                (org-fold-core-get-folding-specs-in-region beg end))
+   (not (memq nil (mapcar (lambda (spec) (not (org-fold-core-get-folding-spec-property spec :isearch-ignore)))
+                      (org-fold-core-get-folding-specs-in-region beg end))))
    ;; Check 'invisible properties that are not folding specs.
    (or (eq search-invisible t) ; User wants to search anyway, allow it.
        (let ((pos beg)
@@ -933,7 +945,11 @@ Hide text instead if HIDE-P is non-nil."
   (if (not hide-p)
       (let ((pos (car region)))
 	(while (< pos (cdr region))
-          (let ((spec-no-open (seq-find (lambda (spec) (not (org-fold-core-get-folding-spec-property spec :isearch-open))) (org-fold-core-get-folding-spec 'all pos))))
+          (let ((spec-no-open
+                 (catch :found
+                   (dolist (spec (org-fold-core-get-folding-spec 'all pos))
+                     (unless (org-fold-core-get-folding-spec-property spec :isearch-open)
+                       (throw :found spec))))))
             (if spec-no-open
                 ;; Skip regions folded with folding specs that cannot be opened.
                 (setq pos (org-fold-core-next-folding-state-change spec-no-open pos (cdr region)))
@@ -1062,9 +1078,10 @@ property, unfold the region if the :fragile function returns non-nil."
       ;; Handle changes in all the indirect buffers and in the base
       ;; buffer.  Work around Emacs bug#46982.
       (when (eq org-fold-core-style 'text-properties)
-        (let ((buffers (seq-filter #'buffer-live-p
-                                   (cons (or (buffer-base-buffer) (current-buffer))
-                                         (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))))
+        (let (buffers)
+          (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
+                             (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
+            (when (buffer-live-p buf) (push buf buffers)))
           (dolist (buf buffers)
             (with-current-buffer buf
               ;; Re-hide text inserted in the middle/font/back of a folded
@@ -1191,7 +1208,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     ;; string, so we utilise the fact that printed string
     ;; representation lists all its properties.
     ;; Loop over the elements of string representation.
-    (unless (or (string-empty-p return-string)
+    (unless (or (string= "" return-string)
                 (<= end beg)
                 (eq org-fold-core-style 'overlays))
       ;; Collect all the text properties the string is completely
@@ -1203,7 +1220,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
       (dolist (plist (object-intervals return-string))
         (let* ((start (car plist))
                (fin (cadr plist))
-               (plist (caddr plist)))
+               (plist (car (cddr plist))))
           ;; Only lists contain text properties.
           (when (listp plist)
             ;; Collect all the relevant text properties.
@@ -1221,7 +1238,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
                   ;; Leave folding specs from current buffer.  See
                   ;; comments in `org-fold-core--property-symbol-get-create' to
                   ;; understand why it works.
-                  (unless (member prop (alist-get 'invisible char-property-alias-alist))
+                  (unless (member prop (cdr (assq 'invisible char-property-alias-alist)))
                     (push prop props-list))))))))
       (remove-text-properties 0 (length return-string) props-list return-string))
     return-string))
@@ -1235,13 +1252,18 @@ The arguments and return value are as specified for `filter-buffer-substring'."
     (while (< pos end)
       (setq next (org-fold-core-next-folding-state-change
                   (if force nil
-                    (seq-filter (lambda (spec)
-                                  (and (not (org-fold-core-get-folding-spec-property spec :visible))
-                                       (org-fold-core-get-folding-spec-property spec :font-lock-skip)))
-                                (org-fold-core-folding-spec-list)))
+                    (let (result)
+                      (dolist (spec (org-fold-core-folding-spec-list))
+                        (when (and (not (org-fold-core-get-folding-spec-property spec :visible))
+                                   (org-fold-core-get-folding-spec-property spec :font-lock-skip))
+                          (push spec result)))
+                      result))
                   pos
                   end))
-      (while (and (not (seq-find (lambda (spec) (org-fold-core-get-folding-spec-property spec :font-lock-skip)) (org-fold-core-get-folding-spec 'all next)))
+      (while (and (not (catch :found
+                       (dolist (spec (org-fold-core-get-folding-spec 'all next))
+                         (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
+                           (throw :found spec)))))
                   (< next end))
         (setq next (org-fold-core-next-folding-state-change nil next end)))
       (font-lock-default-fontify-region pos next loudly)

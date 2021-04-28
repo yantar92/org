@@ -948,10 +948,13 @@ Outline, block, and drawer folds will be ignored."
   (let (;; We need to remove the folds to make sure that folded table alignment is not messed up.
         (current-invisibility-spec (or (and (not (listp buffer-invisibility-spec))
                                             buffer-invisibility-spec)
-                                       (seq-remove (lambda (el) (or (memq el '(org-fold-drawer org-fold-block org-fold-outline))
-                                                               (and (listp el)
-                                                                    (memq (car el) '(org-fold-drawer org-fold-block org-fold-outline)))))
-                                                   buffer-invisibility-spec)))
+                                       (let (result)
+                                         (dolist (el buffer-invisibility-spec)
+                                           (unless (or (memq el '(org-fold-drawer org-fold-block org-fold-outline))
+                                                       (and (listp el)
+                                                            (memq (car el) '(org-fold-drawer org-fold-block org-fold-outline))))
+                                             (push el result)))
+                                         result)))
         (current-char-property-alias-alist char-property-alias-alist))
     (with-temp-buffer
       (setq-local buffer-invisibility-spec current-invisibility-spec)

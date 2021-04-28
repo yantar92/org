@@ -1291,44 +1291,45 @@ key."
 ;; Folding in outline-mode is not compatible with org-mode folding
 ;; anymore. Working around to avoid breakage of external packages
 ;; assuming the compatibility.
-(define-advice outline-flag-region (:around (oldfun from to flag) fix-for-org-fold)
+(defadvice outline-flag-region (around outline-flag-region@fix-for-org-fold (from to flag) activate)
   "Run `org-fold-region' when in org-mode."
   (if (eq major-mode 'org-mode)
-      (org-fold-region (max from (point-min)) (min to (point-max)) flag 'headline)
-    (funcall oldfun from to flag)))
+      (setq ad-return-value (org-fold-region (max from (point-min)) (min to (point-max)) flag 'headline))
+    ad-do-it))
 
-(define-advice outline-next-visible-heading (:around (oldfun arg) fix-for-org-fold)
+(defadvice outline-next-visible-heading (around outline-next-visible-heading@fix-for-org-fold (arg) activate)
   "Run `org-next-visible-heading' when in org-mode."
   (interactive "p")
   (if (eq major-mode 'org-mode)
-      (org-next-visible-heading arg)
-    (funcall oldfun arg)))
+      (setq ad-return-value (org-next-visible-heading arg))
+    ad-do-it))
 
-(define-advice outline-back-to-heading (:around (oldfun &optional invisible-ok) fix-for-org-fold)
+(defadvice outline-back-to-heading (around outline-back-to-heading@fix-for-org-fold (&optional invisible-ok) activate)
   "Run `org-back-to-heading' when in org-mode."
   (if (eq major-mode 'org-mode)
-      (progn
-        (beginning-of-line)
-        (or (org-at-heading-p (not invisible-ok))
-            (let (found)
-	      (save-excursion
-	        (while (not found)
-	          (or (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
-				          nil t)
-                      (signal 'outline-before-first-heading nil))
-	          (setq found (and (or invisible-ok (not (org-fold-folded-p)))
-			           (point)))))
-	      (goto-char found)
-	      found)))
-    (funcall oldfun invisible-ok)))
+      (setq ad-return-value
+            (progn
+              (beginning-of-line)
+              (or (org-at-heading-p (not invisible-ok))
+                  (let (found)
+	            (save-excursion
+	              (while (not found)
+	                (or (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
+				                nil t)
+                            (signal 'outline-before-first-heading nil))
+	                (setq found (and (or invisible-ok (not (org-fold-folded-p)))
+			                 (point)))))
+	            (goto-char found)
+	            found))))
+    ad-do-it))
 
-(define-advice outline-on-heading-p (:around (oldfun &optional invisible-ok) fix-for-org-fold)
+(defadvice outline-on-heading-p (around outline-on-heading-p@fix-for-org-fold (&optional invisible-ok) activate)
   "Run `org-at-heading-p' when in org-mode."
   (if (eq major-mode 'org-mode)
-      (org-at-heading-p (not invisible-ok))
-    (funcall oldfun invisible-ok)))
+      (setq ad-return-value (org-at-heading-p (not invisible-ok)))
+    ad-do-it))
 
-(define-advice outline-hide-sublevels (:around (oldfun levels) fix-for-org-fold)
+(defadvice outline-hide-sublevels (around outline-hide-sublevels@fix-for-org-fold (levels) activate)
   "Run `org-fold-hide-sublevels' when in org-mode."
   (interactive (list
 		(cond
@@ -1338,20 +1339,21 @@ key."
 		  (funcall outline-level))
 		 (t 1))))
   (if (eq major-mode 'org-mode)
-      (org-fold-hide-sublevels levels)
-    (funcall oldfun levels)))
+      (setq ad-return-value (org-fold-hide-sublevels levels))
+    ad-do-it))
 
-(define-advice outline-toggle-children (:around (oldfun) fix-for-org-fold)
+(defadvice outline-toggle-children (around outline-toggle-children@fix-for-org-fold () activate)
   "Run `org-fold-hide-sublevels' when in org-mode."
   (interactive)
   (if (eq major-mode 'org-mode)
-      (save-excursion
-        (org-back-to-heading)
-        (if (not (org-fold-folded-p (line-end-position)))
-            (org-fold-hide-subtree)
-          (org-fold-show-children)
-          (org-fold-show-entry)))
-    (funcall oldfun)))
+      (setq ad-return-value
+            (save-excursion
+              (org-back-to-heading)
+              (if (not (org-fold-folded-p (line-end-position)))
+                  (org-fold-hide-subtree)
+                (org-fold-show-children)
+                (org-fold-show-entry))))
+    ad-do-it))
 
 ;; TODO: outline-headers-as-kill
 

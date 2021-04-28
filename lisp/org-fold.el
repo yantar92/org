@@ -1116,8 +1116,8 @@ This function is intended to be used as :fragile property of
       (unless (org-fold-folded-p nil 'headline) (org-fold-region (max (point-min) (1- (point))) (line-end-position) nil 'headline))
       ;; Check the validity of headline
       (unless (let ((case-fold-search t))
-	        (looking-at (rx (or (regex (org-item-re))
-			            (regex org-outline-regexp-bol))))) ; the match-data will be used later
+	        (looking-at (rx-to-string `(or (regex ,(org-item-re))
+			                       (regex ,org-outline-regexp-bol))))) ; the match-data will be used later
 	t))))
 
 (defun org-fold--reveal-drawer-or-block-maybe (region spec)
@@ -1180,8 +1180,8 @@ This function is intended to be used as :fragile property of
 	      (goto-char fold-begin)
 	      (when (save-excursion
 		      (let ((case-fold-search t))
-			(re-search-forward (rx (or (regex end-re)
-						   (regex org-outline-regexp-bol)))
+			(re-search-forward (rx-to-string `(or (regex ,end-re)
+						              (regex ,org-outline-regexp-bol)))
 					   (max (point)
 						(1- (save-excursion
 						      (goto-char fold-end)
