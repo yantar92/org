@@ -1206,7 +1206,7 @@ Return t when the line exists, nil if it does not exist."
     (if (looking-at "|[^|\n]+")
 	(let* ((pos (match-beginning 0))
 	       (match (match-string 0))
-	       (len (org-string-width-in-buffer (match-beginning 0) (match-end 0))))
+	       (len (org-string-width match)))
 	  (replace-match (concat "|" (make-string (1- len) ?\ )))
 	  (goto-char (+ 2 pos))
 	  (substring match 1)))))
@@ -3950,7 +3950,7 @@ already hidden."
 	   start end (make-string (1+ width) ?-) "")))
    ((equal contents "")			;no contents to hide
     (list
-     (let ((w (org-string-width-in-buffer start end))
+     (let ((w (org-string-width (buffer-substring start end)))
 	   ;; We really want WIDTH + 2 whitespace, to include blanks
 	   ;; around fields.
 	   (full (+ 2 width)))
@@ -3968,7 +3968,8 @@ already hidden."
     ;; also always displays `org-table-shrunk-column-indicator'.
     (let* ((lead (org-with-point-at start (skip-chars-forward " ")))
 	   (trail (org-with-point-at end (abs (skip-chars-backward " "))))
-	   (contents-width (org-string-width-in-buffer (+ start lead) (- end trail))))
+	   (contents-width (org-string-width
+			    (buffer-substring (+ start lead) (- end trail)))))
       (cond
        ;; Contents are too large to fit in WIDTH character.  Limit, if
        ;; possible, blanks at the beginning of the field to a single
@@ -3993,7 +3994,7 @@ already hidden."
 		      (let ((mean (+ (ash lower -1)
 				     (ash upper -1)
 				     (logand lower upper 1))))
-			(pcase (org-string-width-in-buffer begin mean)
+			(pcase (org-string-width (buffer-substring begin mean))
 			  ((pred (= width)) (throw :exit mean))
 			  ((pred (< width)) (setq upper mean))
 			  (_ (setq lower mean)))))
