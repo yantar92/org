@@ -464,7 +464,7 @@ This function detects an URL, title and optional text, separated
 by `/'.  The location for a browser's bookmark looks like this:
 
   javascript:location.href = \\='org-protocol://capture?url=\\='+ \\
-        encodeURIComponent(location.href) + \\='&title=\\=' \\
+        encodeURIComponent(location.href) + \\='&title=\\=' + \\
         encodeURIComponent(document.title) + \\='&body=\\=' + \\
         encodeURIComponent(window.getSelection())
 
@@ -631,7 +631,7 @@ CLIENT is ignored."
                        (greedy (plist-get (cdr prolist) :greedy))
                        (split (split-string fname proto))
                        (result (if greedy restoffiles (cadr split)))
-		       (new-style (string-match "/*?" (match-string 1 fname))))
+		       (new-style (not (= ?: (aref (match-string 1 fname) 0)))))
                   (when (plist-get (cdr prolist) :kill-client)
 		    (message "Greedy org-protocol handler.  Killing client.")
 		    (server-edit))

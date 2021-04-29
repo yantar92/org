@@ -232,10 +232,9 @@ property on the headline itself.")
     ("\\.\\.\\." . "&#x2026;"))		; hellip
   "Regular expressions for special string conversion.")
 
-(defconst org-html-scripts
+(defcustom org-html-scripts
   "<script type=\"text/javascript\">
 // @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
-<!--/*--><![CDATA[/*><!--*/
      function CodeHighlightOn(elem, id)
      {
        var target = document.getElementById(id);
@@ -254,14 +253,16 @@ property on the headline itself.")
        if(elem.cacheClassTarget)
          target.className = elem.cacheClassTarget;
      }
-    /*]]>*///-->
 // @license-end
 </script>"
-  "Basic JavaScript that is needed by HTML files produced by Org mode.")
+  "Basic JavaScript that is needed by HTML files produced by Org mode."
+  :group 'org-export-html
+  :package-version '(Org . "9.5")
+  :type 'string)
 
-(defconst org-html-style-default
+(defcustom org-html-style-default
   "<style type=\"text/css\">
- <!--/*--><![CDATA[/*><!--*/
+  #content { max-width: 60em; margin: auto; }
   .title  { text-align: center;
              margin-bottom: .2em; }
   .subtitle { text-align: center;
@@ -282,8 +283,9 @@ property on the headline itself.")
   #postamble p, #preamble p { font-size: 90%; margin: .2em; }
   p.verse { margin-left: 3%; }
   pre {
-    border: 1px solid #ccc;
-    box-shadow: 3px 3px 3px #eee;
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
     padding: 8pt;
     font-family: monospace;
     overflow: auto;
@@ -292,21 +294,21 @@ property on the headline itself.")
   pre.src {
     position: relative;
     overflow: auto;
-    padding-top: 1.2em;
   }
   pre.src:before {
     display: none;
     position: absolute;
-    background-color: white;
-    top: -10px;
-    right: 10px;
+    top: -8px;
+    right: 12px;
     padding: 3px;
-    border: 1px solid black;
+    color: #555;
+    background-color: #f2f2f299;
   }
   pre.src:hover:before { display: inline; margin-top: 14px;}
   /* Languages per Org manual */
   pre.src-asymptote:before { content: 'Asymptote'; }
   pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
   pre.src-C:before { content: 'C'; }
   /* pre.src-C++ doesn't work in CSS */
   pre.src-clojure:before { content: 'Clojure'; }
@@ -442,12 +444,14 @@ property on the headline itself.")
   .org-info-js_search-highlight
     { background-color: #ffff00; color: #000000; font-weight: bold; }
   .org-svg { width: 90%; }
-  /*]]>*/-->
 </style>"
   "The default style specification for exported HTML files.
 You can use `org-html-head' and `org-html-head-extra' to add to
 this style.  If you don't want to include this default style,
-customize `org-html-head-include-default-style'.")
+customize `org-html-head-include-default-style'."
+  :group 'org-export-html
+  :package-version '(Org . "9.5")
+  :type 'string)
 
 
 ;;; User Configuration Variables
@@ -518,10 +522,8 @@ means to use the maximum value consistent with other options."
 
 <script type=\"text/javascript\">
 // @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
-<!--/*--><![CDATA[/*><!--*/
 %MANAGER_OPTIONS
 org_html_manager.setup();  // activate after the parameters are set
-/*]]>*///-->
 // @license-end
 </script>"
   "The template for the export style additions when org-info.js is used.
@@ -1474,13 +1476,11 @@ done, timestamp, timestamp-kwd, tag, target.
 For example, a valid value would be:
 
    <style type=\"text/css\">
-    /*<![CDATA[*/
       p { font-weight: normal; color: gray; }
       h1 { color: black; }
       .title { text-align: center; }
       .todo, .timestamp-kwd { color: red; }
       .done { color: green; }
-    /*]]>*/
    </style>
 
 If you want to refer to an external style, use something like

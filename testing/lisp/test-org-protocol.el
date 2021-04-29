@@ -40,7 +40,7 @@
 		      "url=https%3A%2F%2Forgmode.org%2Forg.html%23capture-protocol&"
 		      "title=The%20Org%20Manual&"
 		      "body=9.4.2%20capture%20protocol"))
-	 (data (org-protocol-parse-parameters url)))
+	 (data (org-protocol-parse-parameters url t)))
     (should (string= (plist-get data :template) "p"))
     (should (string= (plist-get data :url) "https://orgmode.org/org.html#capture-protocol"))
     (should (string= (plist-get data :title) "The Org Manual"))
@@ -77,6 +77,16 @@
   (let ((uri "/some/directory/org-protocol://store-link?url=URL3&title=TITLE3"))
     (should (null (org-protocol-check-filename-for-protocol uri (list uri) nil)))
     (should (equal (car org-stored-links) '("URL3" "TITLE3")))))
+
+(ert-deftest test-org-protocol/org-protocol-store-link-file ()
+  "store-link: `org-protocol-sanitize-uri' could distort URL."
+  :expected-result :failed
+  (let ((uri "/org-protocol:/store-link:/file%3A%2F%2F%2Fetc%2Fmailcap/Triple%20Slash"))
+    (should (null (org-protocol-check-filename-for-protocol uri (list uri) nil)))
+    (should (equal (car org-stored-links) '("file:///etc/mailcap" "Triple Slash"))))
+  (let ((uri "/org-protocol:/store-link?url=file%3A%2F%2F%2Fetc%2Fmailcap&title=Triple%20Slash"))
+    (should (null (org-protocol-check-filename-for-protocol uri (list uri) nil)))
+    (should (equal (car org-stored-links) '("file:///etc/mailcap" "Triple Slash")))))
 
 (ert-deftest test-org-protocol/org-protocol-capture ()
   "Test `org-protocol-capture' specifications."
@@ -133,6 +143,20 @@
 	 (org-capture-kill)))
      test-urls)
     (delete-file temp-file-name)))
+
+(ert-deftest test-org-protocol/org-protocol-capture-file ()
+  "capture: `org-protocol-sanitize-uri' could distort URL."
+  :expected-result :failed
+  (let* ((org-protocol-default-template-key "t")
+	 (temp-file-name (make-temp-file "org-protocol-test"))
+	 (org-capture-templates
+	  `(("t" "Test" plain (file ,temp-file-name) "%a\n%i\n" :kill-buffer t))))
+    (let ((uri "/org-protocol:/capture:/t/file%3A%2F%2F%2Fetc%2Fmailcap/Triple%20Slash/Body"))
+      (should (null (org-protocol-check-filename-for-protocol uri (list uri) nil)))
+      (should (string= (buffer-string) "[[file:///etc/mailcap][Triple Slash]]\nBody")))
+    (let ((uri "/org-protocol:/capture?template=t&url=file%3A%2F%2F%2Fetc%2Fmailcap&title=Triple%20Slash&body=Body"))
+      (should (null (org-protocol-check-filename-for-protocol uri (list uri) nil)))
+      (should (string= (buffer-string) "[[file:///etc/mailcap][Triple Slash]]\nBody")))))
 
 (ert-deftest test-org-protocol/org-protocol-open-source ()
   "Test org-protocol://open-source links."
