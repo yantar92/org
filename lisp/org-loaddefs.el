@@ -422,7 +422,7 @@ Mark current source block." t nil)
 ;;;### (autoloads nil "ob-lilypond" "ob-lilypond.el" (0 0 0 0))
 ;;; Generated autoloads from ob-lilypond.el
 
-(register-definition-prefixes "ob-lilypond" '("lilypond-mode" "org-babel-"))
+(register-definition-prefixes "ob-lilypond" '("lilypond-mode" "ob-lilypond-header-args" "org-babel-"))
 
 ;;;***
 
@@ -689,6 +689,13 @@ variable to be globally bound." nil nil)
 
 ;;;***
 
+;;;### (autoloads nil "ol-doi" "ol-doi.el" (0 0 0 0))
+;;; Generated autoloads from ol-doi.el
+
+(register-definition-prefixes "ol-doi" '("org-link-doi-"))
+
+;;;***
+
 ;;;### (autoloads nil "ol-eshell" "ol-eshell.el" (0 0 0 0))
 ;;; Generated autoloads from ol-eshell.el
 
@@ -762,8 +769,8 @@ is non-nil, move backward.
 Move backward to the previous link.
 If the link is in hidden text, expose it." t nil)
 
-(autoload 'org-toggle-link-display "ol" "\
-Toggle the literal or descriptive display of links in current buffer." t nil)
+(autoload 'org-toggle-link-display--overlays "ol" "\
+Toggle the literal or descriptive display of links." t nil)
 
 (autoload 'org-store-link "ol" "\
 Store a link to the current location.
@@ -1511,7 +1518,7 @@ Turn on or update column view in the agenda." t nil)
 (autoload 'org-check-version "org-compat" "\
 Try very hard to provide sensible version strings." nil t)
 
-(register-definition-prefixes "org-compat" '("org-" "outline-"))
+(register-definition-prefixes "org-compat" '("org-"))
 
 ;;;***
 
@@ -2766,7 +2773,7 @@ Unconditionally turn on `orgtbl-mode'." nil nil)
 (autoload 'orgtbl-mode "org-table" "\
 The Org mode table editor as a minor mode for use in other modes.
 
-If called interactively, toggle `Orgtbl mode'.  If the prefix argument
+If called interactively, toggle `OrgTbl mode'.  If the prefix argument
 is positive, enable the mode, and if it is zero or negative, disable
 the mode.
 
