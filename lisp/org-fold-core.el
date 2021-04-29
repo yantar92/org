@@ -1163,6 +1163,24 @@ property, unfold the region if the :fragile function returns non-nil."
 
 ;;; Hanlding killing/yanking of folded text
 
+;; Backward compatibility with Emacs 24.
+(defun org-fold-core--seq-partition (list n)
+  "Return list of elements of LIST grouped into sub-sequences of length N.
+The last list may contain less than N elements.  If N is a
+negative integer or 0, nil is returned."
+  (if (fboundp 'seq-partition)
+      (seq-partition list n)
+    (unless (< n 1)
+      (let ((result '()))
+        (while list
+          (let (part)
+            (dotimes (_ n)
+              (when list (push (car list) part)))
+            (push part result))
+          (dotimes (_ n)
+            (setq list (cdr list))))
+        (nreverse result)))))
+
 ;; By default, all the text properties of the killed text are
 ;; preserved, including the folding text properties.  This can be
 ;; awkward when we copy a text from an indirect buffer to another
@@ -1217,7 +1235,28 @@ The arguments and return value are as specified for `filter-buffer-substring'."
         (when (and (org-fold-core-region-folded-p beg end spec)
                    (org-region-invisible-p beg end))
           (push (org-fold-core--property-symbol-get-create spec nil t) props-list)))
-      (dolist (plist (object-intervals return-string))
+      (dolist (plist
+               (if (fboundp 'object-intervals)
+                   (object-intervals return-string)
+                 ;; Backward compatibility with Emacs <28.
+                 ;; FIXME: Is there any better way to do it?
+                 ;; Yes, it is a hack.
+                 ;; The below gives us string representation as a list.
+                 ;; Note that we need to remove unreadable values, like markers (#<...>).
+                 (org-fold-core--seq-partition
+                  (cdr (let ((data (read (replace-regexp-in-string
+                                          "^#(" "("
+                                          (replace-regexp-in-string
+                                           " #(" " ("
+                                           (replace-regexp-in-string
+                                            "#<[^>]+>" "dummy"
+                                            ;; Get text representation of the string object.
+                                            ;; Make sure to print everything (see `prin1' docstring).
+                                            ;; `prin1' is used to print "%S" format.
+                                            (let (print-level print-length)
+                                              (format "%S" return-string))))))))
+                         (if (listp data) data (list data))))
+                  3)))
         (let* ((start (car plist))
                (fin (cadr plist))
                (plist (car (cddr plist))))
