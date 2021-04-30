@@ -1305,7 +1305,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
                            (throw :found spec)))))
                   (< next end))
         (setq next (org-fold-core-next-folding-state-change nil next end)))
-      (font-lock-default-fontify-region pos next loudly)
+      (save-excursion (font-lock-default-fontify-region pos next loudly))
       (put-text-property pos next 'org-fold-core-fontified t)
       (setq pos next))))
 
