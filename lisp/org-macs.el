@@ -962,6 +962,7 @@ Outline, block, and drawer folds will be ignored."
       (let (pixel-width symbol-width)
         (with-silent-modifications
           (setf (buffer-string) string)
+          (remove-text-properties (point-min) (point-max) '(face t))
           (setq pixel-width   (if (get-buffer-window (current-buffer))
                                   (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
                                 (set-window-buffer nil (current-buffer))
