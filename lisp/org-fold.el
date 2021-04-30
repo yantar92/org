@@ -392,7 +392,7 @@ When optional argument TYPES is a list of symbols among `blocks',
       (org-fold-show-all--text-properties types)
     (org-fold-show-all--overlays types)))
 
-(defun org-fold-flag-above-first-heading--overlays (&optional arg)
+(defun org-fold-flag-above-first-heading (&optional arg)
   "Hide from bob up to the first heading.
 Move point to the beginning of first heading or end of buffer."
   (goto-char (point-min))
@@ -400,37 +400,10 @@ Move point to the beginning of first heading or end of buffer."
     (outline-next-heading))
   (unless (bobp)
     (org-fold-region 1 (1- (point)) (not arg) 'outline)))
-(defun org-fold-flag-above-first-heading--text-properties (&optional arg)
-  "Hide from bob up to the first heading.
-Move point to the beginning of first heading or end of buffer."
-  (goto-char (point-min))
-  (unless (org-at-heading-p)
-    (outline-next-heading))
-  (unless (bobp)
-    (org-fold-region 1 (1- (point)) (not arg) 'headline)))
-(defun org-fold-flag-above-first-heading (&optional arg)
-  "Hide from bob up to the first heading.
-Move point to the beginning of first heading or end of buffer."
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-flag-above-first-heading--text-properties arg)
-    (org-fold-flag-above-first-heading--overlays arg)))
 
 ;;;;; Heading visibility
 
-(defun org-fold-heading--overlays (flag &optional entry)
-  "Flag the current heading.  FLAG non-nil means make invisible.
-When ENTRY is non-nil, show the entire entry."
-  (save-excursion
-    (org-back-to-heading t)
-    ;; Check if we should show the entire entry
-    (if (not entry)
-        (org-fold-region
-         (line-end-position 0) (line-end-position) flag 'outline)
-      (org-fold-show-entry)
-      (save-excursion
-        (and (outline-next-heading)
-             (org-fold-heading nil))))))
-(defun org-fold-heading--text-properties (flag &optional entry)
+(defun org-fold-heading (flag &optional entry)
   "Fold/unfold the current heading.  FLAG non-nil means make invisible.
 When ENTRY is non-nil, show the entire entry."
   (save-excursion
@@ -438,35 +411,14 @@ When ENTRY is non-nil, show the entire entry."
     ;; Check if we should show the entire entry
     (if (not entry)
 	(org-fold-region
-	 (line-end-position 0) (line-end-position) flag 'headline)
+	 (line-end-position 0) (line-end-position) flag 'outline)
       (org-fold-show-entry)
       (save-excursion
 	;; FIXME: potentially catches inlinetasks
 	(and (outline-next-heading)
 	     (org-fold-heading nil))))))
-(defun org-fold-heading (flag &optional entry)
-  "Flag the current heading.  FLAG non-nil means make invisible.
-When ENTRY is non-nil, show the entire entry."
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-heading--text-properties flag entry)
-    (org-fold-heading--overlays flag entry)))
 
-(defun org-fold-hide-entry--overlays ()
-  "Hide the body directly following its heading."
-  (interactive)
-  (save-excursion
-    (org-back-to-heading-or-point-min t)
-    (when (org-at-heading-p) (forward-line))
-    (org-fold-region
-     (line-end-position 0)
-     (save-excursion
-       (if (re-search-forward
-            (concat "[\r\n]" org-outline-regexp) nil t)
-           (line-end-position 0)
-         (point-max)))
-     t
-     'outline)))
-(defun org-fold-hide-entry--text-properties ()
+(defun org-fold-hide-entry ()
   "Hide the body directly following this heading."
   (interactive)
   (save-excursion
@@ -481,33 +433,15 @@ When ENTRY is non-nil, show the entire entry."
              (line-end-position 0)
  	   (point-max)))
        t
-       'headline))))
-(defun org-fold-hide-entry ()
-  "Hide the body directly following this heading."
-  (interactive)
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-hide-entry--text-properties)
-    (org-fold-hide-entry--overlays)))
+       'outline))))
 
-
-(defun org-fold-subtree--overlays (flag)
-  (save-excursion
-    (org-back-to-heading t)
-    (org-fold-region (line-end-position)
-             (progn (org-end-of-subtree t) (point))
-             flag
-             'outline)))
-(defun org-fold-subtree--text-properties (flag)
+(defun org-fold-subtree (flag)
   (save-excursion
     (org-back-to-heading t)
     (org-fold-region (line-end-position)
 	     (progn (org-end-of-subtree t) (point))
 	     flag
-	     'headline)))
-(defun org-fold-subtree (flag)
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-subtree--text-properties flag)
-    (org-fold-subtree--overlays flag)))
+	     'outline)))
 
 ;; Replaces `outline-hide-subtree'.
 (defun org-fold-hide-subtree ()
@@ -557,7 +491,7 @@ of the current heading, or to 1 if the current line is not a heading."
       (if (and (bolp) (not (bobp)) (outline-invisible-p (1- (point))))
           (org-fold-region (max (point-min) (1- (point))) (point) nil)))))
 
-(defun org-fold-show-entry--text-properties ()
+(defun org-fold-show-entry ()
   "Show the body directly following its heading.
 Show the heading too, if it is currently invisible."
   (interactive)
@@ -571,92 +505,21 @@ Show the heading too, if it is currently invisible."
  	   (match-beginning 1)
  	 (point-max)))
      nil
-     'headline)
-    (org-cycle-hide-drawers 'children)))
-(defun org-fold-show-entry--overlays ()
-  "Show the body directly following its heading.
-Show the heading too, if it is currently invisible."
-  (interactive)
-  (save-excursion
-    (org-back-to-heading-or-point-min t)
-    (org-fold-region
-     (line-end-position 0)
-     (save-excursion
-       (if (re-search-forward
-            (concat "[\r\n]\\(" org-outline-regexp "\\)") nil t)
-           (match-beginning 1)
-         (point-max)))
-     nil
      'outline)
     (org-cycle-hide-drawers 'children)))
-(defun org-fold-show-entry ()
-  "Show the body directly following its heading.
-Show the heading too, if it is currently invisible."
-  (interactive)
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-show-entry--text-properties)
-    (org-fold-show-entry--overlays)))
 
 (defalias 'org-fold-show-hidden-entry #'org-fold-show-entry
   "Show an entry where even the heading is hidden.")
 
-(defun org-fold-show-siblings--text-properties ()
-  "Show all siblings of the current headline."
-  (save-excursion
-    (while (org-goto-sibling) (org-fold-heading nil)))
-  (save-excursion
-    (while (org-goto-sibling 'previous)
-      (org-fold-heading nil))))
-(defun org-fold-show-siblings--overlays ()
-  "Show all siblings of the current headline."
-  (save-excursion
-    (while (org-goto-sibling) (org-fold-heading nil)))
-  (save-excursion
-    (while (org-goto-sibling 'previous)
-      (org-fold-heading nil))))
 (defun org-fold-show-siblings ()
   "Show all siblings of the current headline."
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-show-siblings--text-properties)
-    (org-fold-show-siblings--overlays)))
+  (save-excursion
+    (while (org-goto-sibling) (org-fold-heading nil)))
+  (save-excursion
+    (while (org-goto-sibling 'previous)
+      (org-fold-heading nil))))
 
-(defun org-fold-show-children--text-properties (&optional level)
-  "Show all direct subheadings of this heading.
-Prefix arg LEVEL is how many levels below the current level
-should be shown.  Default is enough to cause the following
-heading to appear."
-  (interactive "p")
-  (unless (org-before-first-heading-p)
-    (save-excursion
-      (org-with-limited-levels (org-back-to-heading t))
-      (let* ((current-level (funcall outline-level))
- 	     (max-level (org-get-valid-level
- 			 current-level
- 			 (if level (prefix-numeric-value level) 1)))
- 	     (end (save-excursion (org-end-of-subtree t t)))
- 	     (regexp-fmt "^\\*\\{%d,%s\\}\\(?: \\|$\\)")
- 	     ;; Make sure to skip inlinetasks.
- 	     (re (format regexp-fmt
- 			 current-level
- 			 (cond
- 			  ((not (featurep 'org-inlinetask)) "")
- 			  (org-odd-levels-only (- (* 2 org-inlinetask-min-level)
- 						  3))
- 			  (t (1- org-inlinetask-min-level))))))
- 	;; Display parent heading.
- 	(org-fold-heading nil)
- 	(forward-line)
- 	;; Display children.  First child may be deeper than expected
- 	;; MAX-LEVEL.  Since we want to display it anyway, adjust
- 	;; MAX-LEVEL accordingly.
-        (when (re-search-forward re end t)
-          (setq re (format regexp-fmt
- 			   current-level
- 			   (max (funcall outline-level) max-level)))
-          (org-fold-heading nil))
- 	(while (re-search-forward re end t)
- 	  (org-fold-heading nil))))))
-(defun org-fold-show-children--overlays (&optional level)
+(defun org-fold-show-children (&optional level)
   "Show all direct subheadings of this heading.
 Prefix arg LEVEL is how many levels below the current level
 should be shown.  Default is enough to cause the following
@@ -693,32 +556,12 @@ heading to appear."
                              (max (funcall outline-level) max-level)))
             (setq past-first-child t))
           (org-fold-heading nil))))))
-(defun org-fold-show-children (&optional level)
-  "Show all direct subheadings of this heading.
-Prefix arg LEVEL is how many levels below the current level
-should be shown.  Default is enough to cause the following
-heading to appear."
-  (interactive "p")
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-show-children--text-properties level)
-    (org-fold-show-children--overlays level)))
 
-(defun org-fold-show-subtree--text-properties ()
-  "Show everything after this heading at deeper levels."
-  (interactive)
-  (org-fold-region
-   (point) (save-excursion (org-end-of-subtree t t)) nil 'headline))
-(defun org-fold-show-subtree--overlays ()
+(defun org-fold-show-subtree ()
   "Show everything after this heading at deeper levels."
   (interactive)
   (org-fold-region
    (point) (save-excursion (org-end-of-subtree t t)) nil 'outline))
-(defun org-fold-show-subtree ()
-  "Show everything after this heading at deeper levels."
-  (interactive)
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold-show-subtree--text-properties)
-    (org-fold-show-subtree--overlays)))
 
 (defun org-fold-show-branches ()
   "Show all subheadings of this heading, but not their bodies."
@@ -751,7 +594,7 @@ heading to appear."
 
 ;;;;; Blocks and drawers visibility
 
-(defun org-fold--hide-wrapper-toggle--overlays (element category force no-error)
+(defun org-fold--hide-wrapper-toggle (element category force no-error)
   "Toggle visibility for ELEMENT.
 
 ELEMENT is a block or drawer type parsed element.  CATEGORY is
@@ -781,11 +624,16 @@ Return a non-nil value when toggling is successful."
         ;; at the block closing line.
         (unless (let ((eol (line-end-position)))
                   (and (> eol start) (/= eol end)))
-          (let* ((spec (if (eq category 'block) 'org-hide-block 'outline))
+          (let* ((spec (if (eq org-fold-core-style 'text-properties)
+                           category
+                         (if (eq category 'block) 'org-hide-block 'outline)))
                  (flag
                   (cond ((eq force 'off) nil)
                         (force t)
-                        ((eq spec (get-char-property start 'invisible)) nil)
+                        ((if (eq org-fold-core-style 'text-properties)
+                             (org-fold-folded-p start)
+                           (eq spec (get-char-property start 'invisible)))
+                         nil)
                         (t t))))
             (org-fold-region start end flag spec))
           ;; When the block is hidden away, make sure point is left in
@@ -796,72 +644,12 @@ Return a non-nil value when toggling is successful."
           t)))
      (no-error nil)
      (t
-      (user-error (if (eq category 'drawer)
-                      "Not at a drawer"
-                    "Not at a block"))))))
-(defun org-fold--hide-wrapper-toggle--text-properties (element category force no-error)
-  "Toggle visibility for ELEMENT.
-
-ELEMENT is a block or drawer type parsed element.  CATEGORY is
-either `block' or `drawer'.  When FORCE is `off', show the block
-or drawer.  If it is non-nil, hide it unconditionally.  Throw an
-error when not at a block or drawer, unless NO-ERROR is non-nil.
-
-Return a non-nil value when toggling is successful."
-  (let ((type (org-element-type element)))
-    (cond
-     ((memq type
-	    (pcase category
-	      (`drawer '(drawer property-drawer))
-	      (`block '(center-block
-			comment-block dynamic-block example-block export-block
-			quote-block special-block src-block verse-block))
-	      (_ (error "Unknown category: %S" category))))
-      (let* ((post (org-element-property :post-affiliated element))
-	     (start (save-excursion
-		      (goto-char post)
-		      (line-end-position)))
-	     (end (save-excursion
-		    (goto-char (org-element-property :end element))
-		    (skip-chars-backward " \t\n")
-		    (line-end-position))))
-	;; Do nothing when not before or at the block opening line or
-	;; at the block closing line.
-	(unless (let ((eol (line-end-position)))
-		  (and (> eol start) (/= eol end)))
-	  (let* ((spec category)
-		 (flag
-		  (cond ((eq force 'off) nil)
-			(force t)
-			((org-fold-folded-p start) nil)
-			(t t))))
-	    (org-fold-region start end flag spec))
-	  ;; When the block is hidden away, make sure point is left in
-	  ;; a visible part of the buffer.
-	  (when (invisible-p (max (1- (point)) (point-min)))
-	    (goto-char post))
-	  ;; Signal success.
-	  t)))
-     (no-error nil)
-     (t
       (user-error (format "%s@%s: %s"
                           (buffer-file-name (buffer-base-buffer))
                           (point)
                           (if (eq category 'drawer)
-		              "Not at a drawer"
-		            "Not at a block")))))))
-(defun org-fold--hide-wrapper-toggle (element category force no-error)
-  "Toggle visibility for ELEMENT.
-
-ELEMENT is a block or drawer type parsed element.  CATEGORY is
-either `block' or `drawer'.  When FORCE is `off', show the block
-or drawer.  If it is non-nil, hide it unconditionally.  Throw an
-error when not at a block or drawer, unless NO-ERROR is non-nil.
-
-Return a non-nil value when toggling is successful."
-  (if (eq org-fold-core-style 'text-properties)
-      (org-fold--hide-wrapper-toggle--text-properties element category force no-error)
-    (org-fold--hide-wrapper-toggle--overlays element category force no-error)))
+	                      "Not at a drawer"
+	                    "Not at a block")))))))
 
 (defun org-fold-hide-block-toggle (&optional force no-error element)
   "Toggle the visibility of the current block.
@@ -930,13 +718,13 @@ Return a non-nil value when toggling is successful."
       (if (org-fold-folded-p)
           (goto-char (org-fold-next-visibility-change nil nil 'ignore-hidden))
         (let* ((drawer (org-with-point-at (match-beginning 0) (org-element--current-element (save-excursion (or (outline-next-heading) (point-max))))))
-	       (type (org-element-type drawer)))
-	  (when (memq type '(drawer property-drawer))
-	    (org-fold-hide-drawer-toggle t nil drawer)
-	    ;; Make sure to skip drawer entirely or we might flag it
-	    ;; another time when matching its ending line with
-	    ;; `org-drawer-regexp'.
-	    (goto-char (org-element-property :end drawer))))))))
+               (type (org-element-type drawer)))
+          (when (memq type '(drawer property-drawer))
+            (org-fold-hide-drawer-toggle t nil drawer)
+            ;; Make sure to skip drawer entirely or we might flag it
+            ;; another time when matching its ending line with
+            ;; `org-drawer-regexp'.
+            (goto-char (org-element-property :end drawer))))))))
 (defun org-fold--hide-drawers (begin end)
   "Hide all drawers between BEGIN and END."
   (if (eq org-fold-core-style 'text-properties)

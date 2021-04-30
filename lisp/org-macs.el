@@ -1167,7 +1167,7 @@ the value in cadr."
       (get-text-property (or (next-single-property-change 0 prop s) 0)
 			 prop s)))
 
-;; FIXME: move to org-fold
+;; FIXME: move to org-fold?
 (defun org-invisible-p--text-properties (&optional pos folding-only)
   "Non-nil if the character after POS is invisible.
 If POS is nil, use `point' instead.  When optional argument
