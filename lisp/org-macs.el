@@ -944,7 +944,7 @@ delimiting S."
 Outline, block, and drawer folds will be ignored."
   ;; Wrap/line prefix will make `window-text-pizel-size' return too
   ;; large value including the prefix.
-  (remove-text-properties 0 (length string) '(wrap-prefix t line-prefix t) string)
+  (remove-text-properties 0 (length string) '(wrap-prefix t line-prefix t face t) string)
   (let (;; We need to remove the folds to make sure that folded table alignment is not messed up.
         (current-invisibility-spec (or (and (not (listp buffer-invisibility-spec))
                                             buffer-invisibility-spec)
