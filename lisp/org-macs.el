@@ -944,6 +944,9 @@ delimiting S."
 Outline, block, and drawer folds will be ignored."
   ;; Wrap/line prefix will make `window-text-pizel-size' return too
   ;; large value including the prefix.
+  ;; Face should be removed to make sure that all the string symbols
+  ;; are using default face with constant width.  Constant char width
+  ;; is critical to get right string width from pixel width.
   (remove-text-properties 0 (length string) '(wrap-prefix t line-prefix t face t) string)
   (let (;; We need to remove the folds to make sure that folded table alignment is not messed up.
         (current-invisibility-spec (or (and (not (listp buffer-invisibility-spec))
