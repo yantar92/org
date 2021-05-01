@@ -188,11 +188,6 @@ Column View
 * Using column view::            How to create and use column view.
 * Capturing column view::        A dynamic block for column view.
 
-Defining columns
-
-* Scope of column definitions::  Where defined, where valid?
-* Column attributes::            Appearance and content of a column.
-
 Dates and Times
 
 * Timestamps::                   Assigning a time to a tree entry.
@@ -239,12 +234,6 @@ Capture
 * Setting up capture::           Where notes will be stored.
 * Using capture::                Commands to invoke and terminate capture.
 * Capture templates::            Define the outline of different note types.
-
-Capture templates
-
-* Template elements::            What is needed for a complete template entry.
-* Template expansion::           Filling in information about time and context.
-* Templates in contexts::        Only show a template in a specific context.
 
 Attachments
 
@@ -379,11 +368,6 @@ OpenDocument Text Export
 * Labels and captions in ODT export:: Rendering objects.
 * Literal examples in ODT export:: For source code and example blocks.
 * Advanced topics in ODT export:: For power users.
-
-Math formatting in ODT export
-
-* @LaTeX{} math snippets::       Embedding in @LaTeX{} format.
-* MathML and OpenDocument formula files:: Embedding in native format.
 
 Texinfo Export
 
@@ -592,16 +576,8 @@ probably do not need to install it.  Most users will simply activate
 Org and begin exploring its many features.
 
 If, for one reason or another, you want to install Org on top of this
-pre-packaged version, there are three ways to do it:
-
-@itemize
-@item
-by using the Emacs package system;
-@item
-by downloading Org as an archive; or
-@item
-by using Org's git repository.
-@end itemize
+pre-packaged version, you can use the Emacs package system or clone
+Org's git repository.
 
 We @strong{strongly recommend} sticking to a single installation method.
 
@@ -618,30 +594,6 @@ visited, i.e., where no Org built-in function have been loaded.
 Otherwise autoload Org functions will mess up the installation.
 
 @end quotation
-
-If you want to use Org's package repository, check out the @uref{https://orgmode.org/elpa.html, Org ELPA
-page}.
-
-@anchor{Downloading Org as an archive}
-@subheading Downloading Org as an archive
-
-You can download Org latest release from @uref{https://orgmode.org/, Org's website}.  In this case,
-make sure you set the load path correctly in your Emacs init file:
-
-@lisp
-(add-to-list 'load-path "~/path/to/orgdir/lisp")
-@end lisp
-
-The downloaded archive contains contributed libraries that are not
-included in Emacs.  If you want to use them, add the @samp{contrib/}
-directory to your load path:
-
-@lisp
-(add-to-list 'load-path "~/path/to/orgdir/contrib/lisp" t)
-@end lisp
-
-Optionally, you can compile the files and/or install them in your
-system.  Run @samp{make help} to list compilation and installation options.
 
 @anchor{Using Org's git repository}
 @subheading Using Org's git repository
@@ -872,7 +824,7 @@ user-defined.
 
 @item @samp{boss}
 @itemx @samp{ARCHIVE}
-Tags are case-sensitive.  User-defined tags are written in
+Tags are case-sensitive.  User-defined tags are usually written in
 lowercase; built-in tags with special meaning are written as they
 should appear in the document, usually with all capitals.
 
@@ -3332,7 +3284,7 @@ either graphically or in ASCII art.
 
 @cindex @samp{PLOT}, keyword
 Org Plot can produce 2D and 3D graphs of information stored in Org
-tables using @uref{http://www.gnuplot.info/, Gnuplot} and @uref{http://cars9.uchicago.edu/~ravel/software/gnuplot-mode.html, Gnuplot mode}.  To see this in action, ensure
+tables using @uref{https://www.gnuplot.info/, Gnuplot} and @uref{http://cars9.uchicago.edu/~ravel/software/gnuplot-mode.html, Gnuplot mode}.  To see this in action, ensure
 that you have both Gnuplot and Gnuplot mode installed on your system,
 then call @kbd{C-c " g} or @kbd{M-x org-plot/gnuplot} on the
 following table.
@@ -3856,7 +3808,7 @@ A link should be enclosed in double brackets and may contain
 descriptive text to be displayed instead of the URL (see @ref{Link Format}), for example:
 
 @example
-[[http://www.gnu.org/software/emacs/][GNU Emacs]]
+[[https://www.gnu.org/software/emacs/][GNU Emacs]]
 @end example
 
 
@@ -3908,8 +3860,9 @@ custom ID@.  In addition or alternatively, depending on the value of
 @samp{(require 'org-id)} in your Emacs init file.}.  So using this command in Org
 buffers potentially creates two links: a human-readable link from
 the custom ID, and one that is globally unique and works even if the
-entry is moved from file to file.  Later, when inserting the link,
-you need to decide which one to use.
+entry is moved from file to file.  The @samp{ID} property can be either a
+UUID (default) or a timestamp, depending on @code{org-id-method}.  Later,
+when inserting the link, you need to decide which one to use.
 
 @item @emph{Email/News clients: VM, Rmail, Wanderlust, MH-E, Gnus}
 @vindex org-link-email-description-format
@@ -6054,11 +6007,6 @@ from a number of files.
 
 Setting up a column view first requires defining the columns.  This is
 done by defining a column format line.
-
-@menu
-* Scope of column definitions::  Where defined, where valid?
-* Column attributes::            Appearance and content of a column.
-@end menu
 
 @node Scope of column definitions
 @subsubsection Scope of column definitions
@@ -8312,12 +8260,6 @@ key binding like this:
   (lambda () (interactive) (org-capture nil "x")))
 @end lisp
 
-@menu
-* Template elements::            What is needed for a complete template entry.
-* Template expansion::           Filling in information about time and context.
-* Templates in contexts::        Only show a template in a specific context.
-@end menu
-
 @node Template elements
 @subsubsection Template elements
 
@@ -8511,6 +8453,10 @@ kill the buffer again after capture is completed.
 
 @item @code{:no-save}
 Do not save the target file after finishing the capture.
+
+@item ~:refile-targets
+Temporarily set @code{org-refile-targets} to the
+value of this property.
 @end table
 @end table
 
@@ -9010,7 +8956,7 @@ variable has detailed information.  With the following
 @lisp
 (setq org-feed-alist
       '(("Slashdot"
-         "http://rss.slashdot.org/Slashdot/slashdot"
+         "https://rss.slashdot.org/Slashdot/slashdot"
          "~/txt/org/feeds.org" "Slashdot Entries")))
 @end lisp
 
@@ -11602,7 +11548,7 @@ pretty output for a number of export back-ends.
 Org mode can contain @LaTeX{} math fragments, and it supports ways to
 process these for several export back-ends.  When exporting to @LaTeX{},
 the code is left as it is.  When exporting to HTML, Org can use either
-@uref{http://www.mathjax.org, MathJax} (see @ref{Math formatting in HTML export}) or transcode the math
+@uref{https://www.mathjax.org, MathJax} (see @ref{Math formatting in HTML export}) or transcode the math
 into images (see @ref{Previewing @LaTeX{} fragments}).
 
 @LaTeX{} fragments do not need any special marking at all.  The following
@@ -12267,7 +12213,7 @@ To make sub-tree export the default, customize the variable
 
 Toggle visible-only export.  This is useful for exporting only
 certain parts of an Org document by adjusting the visibility of
-particular headings.
+particular headings.  See also @ref{Sparse Trees}.
 @end table
 
 @node Export Settings
@@ -13360,8 +13306,7 @@ compatible with XHTML 1.0 strict standard.
 @findex org-html-export-to-html
 
 Export as HTML file with a @samp{.html} extension.  For @samp{myfile.org}, Org
-exports to @samp{myfile.html}, overwriting without warning.  @{@{@{kbd@{C-c
-C-e h o)@}@}@} exports to HTML and opens it in a web browser.
+exports to @samp{myfile.html}, overwriting without warning.  @kbd{C-c C-e h o} exports to HTML and opens it in a web browser.
 
 @item @kbd{C-c C-e h H} (@code{org-html-export-as-html})
 @kindex C-c C-e h H
@@ -13751,9 +13696,9 @@ as-is.
 
 @vindex org-html-mathjax-options~
 @LaTeX{} math snippets (see @ref{@LaTeX{} fragments}) can be displayed in two
-different ways on HTML pages.  The default is to use the @uref{http://www.mathjax.org, MathJax},
+different ways on HTML pages.  The default is to use the @uref{https://www.mathjax.org, MathJax},
 which should work out of the box with Org@footnote{By default Org loads MathJax from @uref{https://cdnjs.com, cdnjs.com} as recommended by
-@uref{http://www.mathjax.org, MathJax}.}@footnote{Please note that exported formulas are part of an HTML
+@uref{https://www.mathjax.org, MathJax}.}@footnote{Please note that exported formulas are part of an HTML
 document, and that signs such as @samp{<}, @samp{>}, or @samp{&} have special
 meanings.  See @uref{http://docs.mathjax.org/en/latest/tex.html#tex-and-latex-in-html-documents, MathJax @TeX{} and @LaTeX{} support}.}.  Some MathJax
 display options can be configured via @code{org-html-mathjax-options}, or
@@ -14497,7 +14442,7 @@ placement.
 @cindex image, centering in LaTeX export
 The @LaTeX{} export back-end centers all images by default.  Setting
 @samp{:center} to @samp{nil} disables centering.  To disable centering globally,
-set @code{org-latex-images-centered} to @samp{t}.
+set @code{org-latex-images-centered} to @samp{nil}.
 
 Set the @samp{:comment-include} attribute to non-@code{nil} value for the @LaTeX{}
 export back-end to comment out the @samp{\includegraphics} macro.
@@ -15091,11 +15036,6 @@ To create an image that is anchored to a page:
 @subsection Math formatting in ODT export
 
 The ODT exporter has special support for handling math.
-
-@menu
-* @LaTeX{} math snippets::       Embedding in @LaTeX{} format.
-* MathML and OpenDocument formula files:: Embedding in native format.
-@end menu
 
 @node @LaTeX{} math snippets
 @subsubsection @LaTeX{} math snippets
@@ -16696,12 +16636,12 @@ Publishing means that a file is copied to the destination directory
 and possibly transformed in the process.  The default transformation
 is to export Org files as HTML files, and this is done by the function
 @code{org-html-publish-to-html} which calls the HTML exporter (see @ref{HTML Export}).  But you can also publish your content as PDF files using
-@code{org-publish-org-to-pdf}, or as ASCII, Texinfo, etc., using the
+@code{org-latex-publish-to-pdf}, or as ASCII, Texinfo, etc., using the
 corresponding functions.
 
 If you want to publish the Org file as an @samp{.org} file but with
 @emph{archived}, @emph{commented}, and @emph{tag-excluded} trees removed, use
-@code{org-publish-org-to-org}.  This produces @samp{file.org} and put it in the
+@code{org-org-publish-to-org}.  This produces @samp{file.org} and puts it in the
 publishing directory.  If you want a htmlized version of this file,
 set the parameter @code{:htmlized-source} to @code{t}.  It produces
 @samp{file.org.html} in the publishing directory@footnote{If the publishing directory is the same as the source
@@ -17338,10 +17278,10 @@ directory on the local machine.
          :publishing-function org-html-publish-to-html
          :publishing-directory "~/public_html"
          :section-numbers nil
-         :table-of-contents nil
-         :style "<link rel=\"stylesheet\"
-                href=\"../other/mystyle.css\"
-                type=\"text/css\"/>")))
+         :with-toc nil
+         :html-head "<link rel=\"stylesheet\"
+                    href=\"../other/mystyle.css\"
+                    type=\"text/css\"/>")))
 @end lisp
 
 @node Complex example
@@ -18623,7 +18563,7 @@ side-effects only, as in the following example:
 
 @example
 #+begin_src shell :results file link :file "download.tar.gz"
-wget -c "http://example.com/download.tar.gz"
+wget -c "https://example.com/download.tar.gz"
 #+end_src
 @end example
 
@@ -20783,7 +20723,7 @@ ensure an Emacs server is running.  More precisely, when the
 application calls
 
 @example
-emacsclient org-protocol://PROTOCOL?key1=val1&key2=val2
+emacsclient "org-protocol://PROTOCOL?key1=val1&key2=val2"
 @end example
 
 
@@ -20814,7 +20754,7 @@ be inserted using @kbd{M-x org-insert-link} or yanking.  More
 precisely, the command
 
 @example
-emacsclient org-protocol://store-link?url=URL&title=TITLE
+emacsclient "org-protocol://store-link?url=URL&title=TITLE"
 @end example
 
 
@@ -20848,7 +20788,7 @@ Activating the ``capture'' handler pops up a @samp{Capture} buffer in Emacs,
 using acapture template.
 
 @example
-emacsclient org-protocol://capture?template=X?url=URL?title=TITLE?body=BODY
+emacsclient "org-protocol://capture?template=X&url=URL&title=TITLE&body=BODY"
 @end example
 
 
@@ -20916,13 +20856,13 @@ click the bookmark and start editing.
 @cindex rewritten URL in open-source protocol
 @cindex protocol, open-source rewritten URL
 However, such mapping may not always yield the desired results.
-Suppose you maintain an online store located at @samp{http://example.com/}.
+Suppose you maintain an online store located at @samp{https://example.com/}.
 The local sources reside in @samp{/home/user/example/}.  It is common
 practice to serve all products in such a store through one file and
 rewrite URLs that do not match an existing file on the server.  That
-way, a request to @samp{http://example.com/print/posters.html} might be
+way, a request to @samp{https://example.com/print/posters.html} might be
 rewritten on the server to something like
-@samp{http://example.com/shop/products.php/posters.html.php}.  The
+@samp{https://example.com/shop/products.php/posters.html.php}.  The
 @code{open-source} handler probably cannot find a file named
 @samp{/home/user/example/print/posters.html.php} and fails.
 
@@ -20937,7 +20877,7 @@ adding @code{:rewrites} rules like this:
 @lisp
 (setq org-protocol-project-alist
       '(("example.com"
-         :base-url "http://example.com/"
+         :base-url "https://example.com/"
          :working-directory "/home/user/example/"
          :online-suffix ".php"
          :working-suffix ".php"
@@ -22611,7 +22551,7 @@ Marco Wahl wrote @samp{ol-eww.el}.
 
 @display
 Copyright @copyright{} 2000, 2001, 2002, 2007, 2008 Free Software Foundation, Inc.
-@uref{http://fsf.org/}
+@uref{https://fsf.org/}
 
 Everyone is permitted to copy and distribute verbatim copies
 of this license document, but changing it is not allowed.
@@ -23036,7 +22976,7 @@ The Free Software Foundation may publish new, revised versions of
 the GNU Free Documentation License from time to time.  Such new
 versions will be similar in spirit to the present version, but may
 differ in detail to address new problems or concerns.  See
-@uref{http://www.gnu.org/copyleft/}.
+@uref{https://www.gnu.org/copyleft/}.
 
 Each version of the License is given a distinguishing version
 number.  If the Document specifies that a particular numbered

@@ -2302,8 +2302,7 @@ compatible with XHTML 1.0 strict standard.
 @table @asis
 @item @kbd{C-c C-e h h}
 Export as HTML file with a @samp{.html} extension.  For @samp{myfile.org}, Org
-exports to @samp{myfile.html}, overwriting without warning.  @{@{@{kbd@{C-c
-C-e h o)@}@}@} exports to HTML and opens it in a web browser.
+exports to @samp{myfile.html}, overwriting without warning.  @kbd{C-c C-e h o} exports to HTML and opens it in a web browser.
 @end table
 
 The HTML export back-end transforms @samp{<} and @samp{>} to @samp{&lt;} and @samp{&gt;}.
@@ -2418,12 +2417,13 @@ example:
 (setq org-publish-project-alist
       '(("org"
          :base-directory "~/org/"
+         :publishing-function org-html-publish-to-html
          :publishing-directory "~/public_html"
          :section-numbers nil
-         :table-of-contents nil
-         :style "<link rel=\"stylesheet\"
-                href=\"../other/mystyle.css\"
-                type=\"text/css\"/>")))
+         :with-toc nil
+         :html-head "<link rel=\"stylesheet\"
+                    href=\"../other/mystyle.css\"
+                    type=\"text/css\"/>")))
 @end lisp
 
 @table @asis
