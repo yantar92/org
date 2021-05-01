@@ -7121,8 +7121,7 @@ The optional argument TYPE tells the agenda type."
 (defun org-agenda-highlight-todo (x)
   (let ((org-done-keywords org-done-keywords-for-agenda)
 	(case-fold-search nil)
-	re
-        composition-property)
+	re)
     (if (eq x 'line)
 	(save-excursion
 	  (beginning-of-line 1)
@@ -7131,12 +7130,9 @@ The optional argument TYPE tells the agenda type."
 	  (when (looking-at (concat "[ \t]*\\.*\\(" re "\\) +"))
 	    (add-text-properties (match-beginning 0) (match-end 1)
 				 (list 'face (org-get-todo-face 1)))
-            (setq composition-property (plist-get (text-properties-at (match-beginning 1)) 'composition))
-	    (let ((s (org-buffer-substring-fontified (match-beginning 1) (match-end 1))))
-	      (delete-region (match-beginning 1) (1- (match-end 0)))
-	      (goto-char (match-beginning 1))
-	      (insert (format org-agenda-todo-keyword-format s))
-              (add-text-properties (match-beginning 1) (match-end 1) (list 'composition composition-property)))))
+	    (let ((s (buffer-substring (match-beginning 1) (match-end 1))))
+              (with-silent-modifications
+	        (setf (buffer-substring  (match-beginning 1) (1- (match-end 0))) (format org-agenda-todo-keyword-format s))))))
       (let ((pl (text-property-any 0 (length x) 'org-heading t x)))
 	(setq re (get-text-property 0 'org-todo-regexp x))
 	(when (and re
