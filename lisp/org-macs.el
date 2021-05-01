@@ -1126,6 +1126,12 @@ so values can contain further %-escapes if they are define later in TABLE."
 				   org-emphasis t)
   "Properties to remove when a string without properties is wanted.")
 
+(defun org-buffer-substring-fontified (beg end)
+  "Return fontified region between BEG and END."
+  (when (bound-and-true-p jit-lock-mode)
+    (jit-lock-fontify-now beg end))
+  (buffer-substring beg end))
+
 (defsubst org-no-properties (s &optional restricted)
   "Remove all text properties from string S.
 When RESTRICTED is non-nil, only remove the properties listed
