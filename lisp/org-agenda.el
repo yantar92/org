@@ -6865,7 +6865,7 @@ The modified list may contain inherited tags, and tags matched by
         (save-match-data
           (let ((org-inhibit-startup t)) (org-mode))
           (insert "* X" tag-string)
-          (font-lock-fontify-buffer))
+          (font-lock-ensure))
         (setf (substring txt (match-beginning 0) (match-end 0)) (buffer-substring 4 (point-max))))))
   txt)
 
@@ -9543,7 +9543,7 @@ When optional argument LINE is non-nil, align tags only on the
 current line."
   (let ((inhibit-read-only t)
 	(end (and line (line-end-position)))
-	l c)
+	l lp c)
     (save-excursion
       (goto-char (if line (line-beginning-position) (point-min)))
       (while (re-search-forward org-tag-group-re end t)
