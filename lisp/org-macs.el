@@ -939,9 +939,9 @@ delimiting S."
 ;;   ;; examining strings.
 ;;   (org--string-from-props string 'display 0 (length string)))
 
-(defun org-string-width (string)
+(defun org-string-width (string &optional pixels)
   "Return width of STRING when displayed in the current buffer.
-Outline, block, and drawer folds will be ignored."
+Return width in pixels when PIXELS is non-nil."
   ;; Wrap/line prefix will make `window-text-pizel-size' return too
   ;; large value including the prefix.
   ;; Face should be removed to make sure that all the string symbols
@@ -969,18 +969,15 @@ Outline, block, and drawer folds will be ignored."
                                   (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
                                 (set-window-buffer nil (current-buffer))
                                 (car (window-text-pixel-size nil (line-beginning-position) (point-max)))))
-          (setf (buffer-string) "a")
-          (setq symbol-width   (if (get-buffer-window (current-buffer))
-                                   (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
-                                 (set-window-buffer nil (current-buffer))
-                                 (car (window-text-pixel-size nil (line-beginning-position) (point-max))))))
-        (/ pixel-width symbol-width)))))
-
-(defun org-string-width-in-buffer (beg end)
-  "Calculate displayed width of the text between BEG and END in current buffer."
-  (let ((column-beg (save-excursion (goto-char beg) (current-column)))
-        (column-end (save-excursion (goto-char end) (current-column))))
-    (- column-end column-beg)))
+          (unless pixels
+            (setf (buffer-string) "a")
+            (setq symbol-width   (if (get-buffer-window (current-buffer))
+                                     (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
+                                   (set-window-buffer nil (current-buffer))
+                                   (car (window-text-pixel-size nil (line-beginning-position) (point-max)))))))
+        (if pixels
+            pixel-width
+          (/ pixel-width symbol-width))))))
 
 (defun org-not-nil (v)
   "If V not nil, and also not the string \"nil\", then return V.
