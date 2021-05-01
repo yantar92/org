@@ -5584,6 +5584,11 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	   ;; Description list items
 	   '("^[ \t]*[-+*][ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
 	     1 'org-list-dt prepend)
+           ;; Inline export snippets
+           '("\\(@@\\)\\([a-z-]+:\\).*?\\(@@\\)"
+             (1 'font-lock-comment-face t)
+             (2 'org-tag t)
+             (3 'font-lock-comment-face t))
 	   ;; ARCHIVEd headings
 	   (list (concat
 		  org-outline-regexp-bol
@@ -7923,20 +7928,15 @@ If the file does not exist, throw an error."
       (save-window-excursion
 	(message "Running %s...done" cmd)
         ;; Handlers such as "gio open" and kde-open5 start viewer in background
-        ;; and exit immediately.  Avoid `start-process' since it assumes
-        ;; :connection-type 'pty and kills children processes with SIGHUP
-        ;; when temporary terminal session is finished.
-        (make-process
-         :name "org-open-file" :connection-type 'pipe :noquery t
-         :buffer nil ; use "*Messages*" for debugging
-         :sentinel (lambda (proc event)
-                     (when (and (memq (process-status proc) '(exit signal))
-                                (/= (process-exit-status proc) 0))
-                       (message
-                        "Command %s: %s."
-                        (mapconcat #'identity (process-command proc) " ")
-                        (substring event 0 -1))))
-         :command (list shell-file-name shell-command-switch cmd))
+        ;; and exit immediately.  Use pipe connnection type instead of pty to
+        ;; avoid killing children processes with SIGHUP when temporary terminal
+        ;; session is finished.
+        ;;
+        ;; TODO: Once minimum Emacs version is 25.1 or above, consider using
+        ;; the `make-process' invocation from 5db61eb0f929 to get more helpful
+        ;; error messages.
+        (let ((process-connection-type nil))
+	  (start-process-shell-command cmd nil cmd))
 	(and (boundp 'org-wait) (numberp org-wait) (sit-for org-wait))))
      ((or (stringp cmd)
 	  (eq cmd 'emacs))
@@ -15677,8 +15677,7 @@ buffer boundaries with possible narrowing."
 			      (overlay-put
 			       ov 'modification-hooks
 			       (list 'org-display-inline-remove-overlay))
-			      (when (<= 26 emacs-major-version)
-				(cl-assert (boundp 'image-map))
+			      (when (boundp 'image-map)
 				(overlay-put ov 'keymap image-map))
 			      (push ov org-inline-image-overlays))))))))))))))))
 
@@ -16759,17 +16758,19 @@ This command does many different things, depending on context:
 	(`statistics-cookie
 	 (call-interactively #'org-update-statistics-cookies))
 	((or `table `table-cell `table-row)
-	 ;; At a table, recalculate every field and align it.  Also
-	 ;; send the table if necessary.  If the table has
-	 ;; a `table.el' type, just give up.  At a table row or cell,
-	 ;; maybe recalculate line but always align table.
+	 ;; At a table, generate a plot if on the #+plot line,
+         ;; recalculate every field and align it otherwise.  Also
+	 ;; send the table if necessary.
          (cond
-          ((and (< (point) (org-element-property :post-affiliated context))
-                (org-match-line "[ \t]*#\\+plot:"))
+          ((and (org-match-line "[ \t]*#\\+plot:")
+                (< (point) (org-element-property :post-affiliated context)))
            (org-plot/gnuplot))
+          ;; If the table has a `table.el' type, just give up.
           ((eq (org-element-property :type context) 'table.el)
            (message "%s" (substitute-command-keys "\\<org-mode-map>\
 Use `\\[org-edit-special]' to edit table.el tables")))
+          ;; At a table row or cell, maybe recalculate line but always
+	  ;; align table.
           ((or (eq type 'table)
                ;; Check if point is at a TBLFM line.
                (and (eq type 'table-row)
