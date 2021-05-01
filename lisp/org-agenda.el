@@ -7130,7 +7130,7 @@ The optional argument TYPE tells the agenda type."
 	  (when (looking-at (concat "[ \t]*\\.*\\(" re "\\) +"))
 	    (add-text-properties (match-beginning 0) (match-end 1)
 				 (list 'face (org-get-todo-face 1)))
-	    (let ((s (buffer-substring (match-beginning 1) (match-end 1))))
+            (let ((s (buffer-substring (match-beginning 1) (match-end 1))))
               (with-silent-modifications
 	        (setf (buffer-substring  (match-beginning 1) (1- (match-end 0))) (format org-agenda-todo-keyword-format s))))))
       (let ((pl (text-property-any 0 (length x) 'org-heading t x)))
@@ -9546,11 +9546,11 @@ current line."
 	(add-text-properties
 	 (match-beginning 1) (match-end 1)
 	 (list 'face (delq nil (let ((prop (get-text-property
-					  (match-beginning 1) 'face)))
-			       (or (listp prop) (setq prop (list prop)))
-			       (if (memq 'org-tag prop)
-				   prop
-				 (cons 'org-tag prop))))))
+					    (match-beginning 1) 'face)))
+			         (or (listp prop) (setq prop (list prop)))
+			         (if (memq 'org-tag prop)
+				     prop
+				   (cons 'org-tag prop))))))
 	(setq l (org-string-width (match-string 1))
               lp (org-string-width (match-string 1) 'pixel)
 	      c (unless (eq org-agenda-tags-column 'auto)
@@ -9561,8 +9561,7 @@ current line."
 	(delete-region (save-excursion (skip-chars-backward " \t") (point))
 		       (point))
 	(insert (org-add-props
-                    "  "
-		    ;; (make-string (max 1 (- c (current-column))) ?\s)
+                    " "
 		    (copy-sequence (text-properties-at (point)))
 		  'face nil
                   'display
