@@ -9565,7 +9565,7 @@ current line."
 	(delete-region (save-excursion (skip-chars-backward " \t") (point))
 		       (point))
 	(insert (org-add-props
-                    " "
+                    "  "
 		    ;; (make-string (max 1 (- c (current-column))) ?\s)
 		    (copy-sequence (text-properties-at (point)))
 		  'face nil
