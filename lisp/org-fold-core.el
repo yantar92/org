@@ -610,7 +610,6 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
     (setq-local font-lock-fontify-region-function 'org-fold-core-fontify-region))
   ;; Setup killing text
   (setq-local filter-buffer-substring-function #'org-fold-core--buffer-substring-filter)
-  (require 'isearch)
   (if (and (boundp 'isearch-opened-regions)
            (eq org-fold-core-style 'text-properties))
       ;; Use new implementation of isearch allowing to search inside text
