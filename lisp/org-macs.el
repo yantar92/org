@@ -1109,7 +1109,10 @@ If POS is nil, use `point' instead.  When optional argument
 FOLDING-ONLY is non-nil, only consider invisible parts due to
 folding of a headline, a block or a drawer, i.e., not because of
 fontification."
-  (let ((value (invisible-p (or pos (point)))))
+  (setq pos (or pos (point)))
+  (let ((value (invisible-p (if (eq pos (point-max))
+				(1- pos)
+			      pos))))
     (cond ((not value) nil)
 	  (folding-only (org-fold-folded-p (or pos (point))))
 	  (t value))))
