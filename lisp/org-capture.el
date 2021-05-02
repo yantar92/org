@@ -1169,7 +1169,10 @@ may have been stored before."
       (goto-char (point-min))
       (unless (org-at-heading-p) (outline-next-heading)))
      ;; Otherwise, insert as a top-level entry at the end of the file.
-     (t (goto-char (point-max))))
+     (t (goto-char (point-max))
+        ;; Avoid folding headline inserted after previous folded
+        ;; top-level heading.
+        (org-fold-core-ignore-modifications (insert "\n"))))
     (let ((origin (point)))
       (unless (bolp) (insert "\n"))
       (org-capture-empty-lines-before)
