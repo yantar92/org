@@ -650,9 +650,6 @@ corresponding folding spec (if the text is folded using that spec)."
                 (org-fold-core-get-folding-spec-from-alias spec-or-alias))))
     (when (and spec (not (eq spec 'all))) (org-fold-core--check-spec spec))
     (org-with-point-at pom
-      ;; Text properties are meaningless at the end of buffer.
-      (when (eq (point) (point-max))
-        (backward-char))
       (cond
        ((eq spec 'all)
         (let ((result))
