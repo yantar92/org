@@ -5719,7 +5719,10 @@ needs to be inserted at a specific position in the font-lock sequence.")
     (let ((org-odd-levels-only odd-levels))
       (org-mode)
       (org-font-lock-ensure)
-      (buffer-string))))
+      (if org-link-descriptive
+          (org-link-display-format
+           (buffer-string))
+        (buffer-string)))))
 
 (defun org-get-level-face (n)
   "Get the right face for match N in font-lock matching of headlines."
