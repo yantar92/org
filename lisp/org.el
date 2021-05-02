@@ -5582,7 +5582,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	     '("\\[\\([0-9]*%\\)\\]\\|\\[\\([0-9]*\\)/\\([0-9]*\\)\\]"
 	       (0 (org-get-checkbox-statistics-face) prepend)))
 	   ;; Description list items
-	   '("^[ \t]*[-+*][ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
+           '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
 	     1 'org-list-dt prepend)
            ;; Inline export snippets
            '("\\(@@\\)\\([a-z-]+:\\).*?\\(@@\\)"
