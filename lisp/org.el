@@ -9973,31 +9973,18 @@ narrowing."
 		 (throw 'exit nil))))
 	   ;; No drawer found.  Create one, if permitted.
 	   (when create
+             ;; Avoid situation when we insert drawer right before
+             ;; first "*".  Otherwise, if the previous heading is
+             ;; folded, we are inserting after visible newline at
+             ;; the end of the fold, thus breaking the fold
+             ;; continuity.
+             (when (org-at-heading-p) (backward-char))
 	     (unless (bolp) (insert "\n"))
 	     (let ((beg (point)))
-               ;; This is expected to break outline structure
-               ;; temporarily when inserting drawer right at the end
-               ;; of empty heading, so we should disable fragility
-               ;; checks:
-               ;; Before:
-               ;; ----
-               ;; * Heading 1
-               ;; * Heading 2
-               ;; ----
-               ;; Middle:
-               ;; * Heading 1
-               ;; :* Heading 2 <-- borken structure to be fixed rightaway
-               ;; ----
-               ;; After:
-               ;; * Heading 1
-               ;; :LOGBOOK:
-               ;; :END:
-               ;; * Heading 2
-               (org-fold-core-ignore-fragility-checks
-	           (insert ":" drawer ":\n:END:\n"))
+	       (insert ":" drawer ":\n:END:\n")
 	       (org-indent-region beg (point))
-	       (org-fold-region (line-end-position -1) (1- (point)) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline)))
-	     (end-of-line -1)))))
+	       (org-fold-region (line-end-position -1) (1- (point)) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline))))
+	   (end-of-line -1))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
        (skip-chars-forward " \t\n")
