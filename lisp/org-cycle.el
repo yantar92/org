@@ -484,7 +484,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	  (org-list-set-item-visibility (point-at-bol) struct 'children)
 	(org-fold-show-entry)
 	(org-with-limited-levels (org-fold-show-children))
-	(org-fold-show-set-visibility 'canonical)
+	(org-fold-show-set-visibility 'tree)
 	;; Fold every list in subtree to top-level items.
 	(when (eq org-cycle-include-plain-lists 'integrate)
 	  (save-excursion

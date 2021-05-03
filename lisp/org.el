@@ -4650,6 +4650,18 @@ The following commands are available:
      (when org-startup-numerated (require 'org-num) (org-num-mode 1))
      (when org-startup-indented (require 'org-indent) (org-indent-mode 1))))
 
+  ;; Add a custom keymap for `visual-line-mode' so that activating
+  ;; this minor mode does not override Org's keybindings.
+  ;; FIXME: Probably `visual-line-mode' should take care of this.
+  (let ((oldmap (cdr (assoc 'visual-line-mode minor-mode-map-alist)))
+        (newmap (make-sparse-keymap)))
+    (set-keymap-parent newmap oldmap)
+    (define-key newmap [remap move-beginning-of-line] nil)
+    (define-key newmap [remap move-end-of-line] nil)
+    (define-key newmap [remap kill-line] nil)
+    (make-local-variable 'minor-mode-overriding-map-alist)
+    (push `(visual-line-mode . ,newmap) minor-mode-overriding-map-alist))
+
   ;; Activate `org-table-header-line-mode'
   (when org-table-header-line-p
     (org-table-header-line-mode 1))
@@ -4762,7 +4774,7 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 
 (defvar org-emph-face nil)
 
-(defun org-do-emphasis-faces--overlays (limit)
+(defun org-do-emphasis-faces (limit)
   "Run through the buffer and emphasize strings."
   (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
 			  (car org-emphasis-regexp-components))))
@@ -4793,62 +4805,11 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 		   ;; Do not span over cells in table rows.
 		   (not (and (save-match-data (org-match-line "[ \t]*|"))
 			     (string-match-p "|" (match-string 4))))))
-	    (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
-			(m (if org-hide-emphasis-markers 4 2)))
-	      (font-lock-prepend-text-property
-	       (match-beginning m) (match-end m) 'face face)
-	      (when verbatim?
-		(org-remove-flyspell-overlays-in
-		 (match-beginning 0) (match-end 0))
-		(remove-text-properties (match-beginning 2) (match-end 2)
-					'(display t invisible t intangible t)))
-	      (add-text-properties (match-beginning 2) (match-end 2)
-				   '(font-lock-multiline t org-emphasis t))
-	      (when (and org-hide-emphasis-markers
-			 (not (org-at-comment-p)))
-		(add-text-properties (match-end 4) (match-beginning 5)
-				     '(invisible org-link))
-		(add-text-properties (match-beginning 3) (match-end 3)
-				     '(invisible org-link)))
-	      (throw :exit t))))))))
-(defun org-do-emphasis-faces--text-properties (limit)
-  "Run through the buffer and emphasize strings."
-  (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"
-			  (car org-emphasis-regexp-components))))
-    (catch :exit
-      (while (re-search-forward quick-re limit t)
-	(let* ((marker (match-string 2))
-	       (verbatim? (member marker '("~" "="))))
-	  (when (save-excursion
-		  (goto-char (match-beginning 0))
-		  (and
-		   ;; Do not match table hlines.
-		   (not (and (equal marker "+")
-			   (org-match-line
-			    "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
-		   ;; Do not match headline stars.  Do not consider
-		   ;; stars of a headline as closing marker for bold
-		   ;; markup either.
-		   (not (and (equal marker "*")
-			   (save-excursion
-			     (forward-char)
-			     (skip-chars-backward "*")
-			     (looking-at-p org-outline-regexp-bol))))
-		   ;; Match full emphasis markup regexp.
-		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
-		   ;; Do not span over paragraph boundaries.
-		   (not (string-match-p org-element-paragraph-separate
-				      (match-string 2)))
-		   ;; Do not span over cells in table rows.
-		   (not (and (save-match-data (org-match-line "[ \t]*|"))
-			   (string-match-p "|" (match-string 4))))))
             (with-silent-modifications
 	      (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
 			  (m (if org-hide-emphasis-markers 4 2)))
 	        (font-lock-prepend-text-property
 	         (match-beginning m) (match-end m) 'face face)
-                (remove-text-properties (match-beginning 2) (match-end 3) '(invisible t))
-                (remove-text-properties (match-end 4) (match-end 2) '(invisible t))
 	        (when verbatim?
 		  (org-remove-flyspell-overlays-in
 		   (match-beginning 0) (match-end 0))
@@ -4858,14 +4819,11 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 				     '(font-lock-multiline t org-emphasis t))
 	        (when (and org-hide-emphasis-markers
 			   (not (org-at-comment-p)))
-                  (put-text-property (match-beginning 2) (match-end 3) 'invisible t)
-                  (put-text-property (match-end 4) (match-end 2) 'invisible t))
+		  (add-text-properties (match-end 4) (match-beginning 5)
+				       '(invisible t))
+		  (add-text-properties (match-beginning 3) (match-end 3)
+				       '(invisible t)))
 	        (throw :exit t)))))))))
-(defun org-do-emphasis-faces (limit)
-  "Run through the buffer and emphasize strings."
-  (if (eq org-fold-core-style 'text-properties)
-      (org-do-emphasis-faces--text-properties limit)
-    (org-do-emphasis-faces--overlays limit)))
 
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
@@ -6089,6 +6047,7 @@ unconditionally."
 	 (when (equal arg '(16)) (org-up-heading-safe))
 	 (org-end-of-subtree)))
       (unless (bolp) (insert "\n"))
+      (unless level (backward-char))
       (unless (and blank? (org-previous-line-empty-p))
 	(org-N-empty-lines-before-current (if blank? 1 0)))
       (insert stars " ")
@@ -13259,6 +13218,19 @@ user."
 	       (setq ans (replace-match (format "%02d:%02d" hour minute)
 					t t ans))))
 
+    ;; Help matching HHhMM times, similarly as for am/pm times.
+    (cl-loop for i from 1 to 2 do	; twice, for end time as well
+	     (when (and (not (string-match "\\(\\`\\|[^+]\\)[012]?[0-9]:[0-9][0-9]\\([ \t\n]\\|$\\)" ans))
+			(string-match "\\(?:\\(?1:[012]?[0-9]\\)?h\\(?2:[0-5][0-9]\\)\\)\\|\\(?:\\(?1:[012]?[0-9]\\)h\\(?2:[0-5][0-9]\\)?\\)\\>" ans))
+	       (setq hour (if (match-end 1)
+				(string-to-number (match-string 1 ans))
+			      0)
+		     minute (if (match-end 2)
+				(string-to-number (match-string 2 ans))
+			      0))
+	       (setq ans (replace-match (format "%02d:%02d" hour minute)
+					t t ans))))
+
     ;; Check if a time range is given as a duration
     (when (string-match "\\([012]?[0-9]\\):\\([0-6][0-9]\\)\\+\\([012]?[0-9]\\)\\(:\\([0-5][0-9]\\)\\)?" ans)
       (setq hour (string-to-number (match-string 1 ans))
@@ -20058,7 +20030,11 @@ See `org-backward-paragraph'."
 	  (cond
 	   ;; There is a blank line above.  Move there.
 	   ((and (org-previous-line-empty-p)
-		 (not (org-invisible-p (1- (line-end-position 0)))))
+                 (let ((lep (line-end-position 0)))
+                   ;; When the first headline start at point 2, don't choke while
+                   ;; checking with `org-invisible-p'.
+                   (or (= lep 1)
+		       (not (org-invisible-p (1- (line-end-position 0)))))))
 	    (forward-line -1))
 	   ;; At the beginning of the first element within a greater
 	   ;; element.  Move to the beginning of the greater element.
