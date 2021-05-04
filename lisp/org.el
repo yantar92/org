@@ -7073,7 +7073,7 @@ Return nil before first heading."
     (save-excursion
       (org-back-to-heading t)
       (let ((case-fold-search nil))
-	(looking-at org-complex-heading-regexp)
+	(org-looking-at-fontified org-complex-heading-regexp)
 	(let ((todo (and (not no-todo) (match-string 2)))
 	      (priority (and (not no-priority) (match-string 3)))
 	      (headline (pcase (match-string 4)
@@ -12372,13 +12372,17 @@ TAGS is a list of strings."
   (if (null tags) ""
     (format ":%s:" (mapconcat #'identity tags ":"))))
 
-(defun org--get-local-tags ()
+(defun org--get-local-tags (&optional fontified)
   "Return list of tags for the current headline.
-Assume point is at the beginning of the headline."
-  (and (looking-at org-tag-line-re)
-       (split-string (match-string-no-properties 2) ":" t)))
+Assume point is at the beginning of the headline.
 
-(defun org-get-tags (&optional pos local)
+The tags are fontified when FONTIFY is non-nil."
+  (and (if fontified
+           (org-looking-at-fontified org-tag-line-re)
+         (looking-at org-tag-line-re))
+       (split-string (match-string 2) ":" t)))
+
+(defun org-get-tags (&optional pos local fontify)
   "Get the list of tags specified in the current headline.
 
 When argument POS is non-nil, retrieve tags for headline at POS.
@@ -12393,7 +12397,9 @@ only the most local tag is returned.
 However, when optional argument LOCAL is non-nil, only return
 tags specified at the headline.
 
-Inherited tags have the `inherited' text property."
+Inherited tags have the `inherited' text property.
+
+The tags are fontified when FONTIFY is non-nil."
   (if (and org-trust-scanner-tags
            (or (not pos) (eq pos (point)))
            (not local))
@@ -12401,11 +12407,11 @@ Inherited tags have the `inherited' text property."
     (org-with-point-at (or pos (point))
       (unless (org-before-first-heading-p)
         (org-back-to-heading t)
-        (let ((ltags (org--get-local-tags)) itags)
+        (let ((ltags (org--get-local-tags fontify)) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
             (while (org-up-heading-safe)
               (setq itags (nconc (mapcar #'org-add-prop-inherited
-					 (org--get-local-tags))
+					 (org--get-local-tags fontify))
 				 itags)))
             (setq itags (append org-file-tags itags))
             (nreverse
