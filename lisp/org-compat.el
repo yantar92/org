@@ -1357,6 +1357,10 @@ key."
 
 ;; TODO: outline-headers-as-kill
 
+;;;; Speed commands
+
+(make-obsolete-variable 'org-speed-commands-user
+                        "configure `org-speed-commands' instead." "9.5")
 (provide 'org-compat)
 
 ;; Local variables:

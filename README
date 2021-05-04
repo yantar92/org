@@ -1,5 +1,8 @@
 -*- mode: org; fill-column:70 -*-
 
+This is a distribution of Org, a plain text notes and project planning
+tool for Emacs.
+
 * Table of contents :TOC:
 - [[#updates][Updates]]
 - [[#org-modeorg-fold-branch][Org-mode::org-fold branch]]
@@ -164,8 +167,9 @@ For more detailed explanations on Org’s build system, please check the Org Bui
 
 - COPYING :: The GNU General Public License.
 
-- Makefile :: The makefile to compile and install Org.  For installation
-  instructions, see the manual or [[https://orgmode.org/worg/dev/org-build-system.html][the more detailed procedure on Worg]].
+- Makefile :: The makefile to compile and install Org.  For
+  installation instructions, see the manual or [[https://orgmode.org/worg/dev/org-build-system.html][the more detailed
+  procedure on Worg]].
   
 - mk/ :: Files needed for building Org.
 
@@ -174,17 +178,27 @@ For more detailed explanations on Org’s build system, please check the Org Bui
 - doc/ :: The documentation files.  org.texi is the source of the
   documentation, org.html and org.pdf are formatted versions of it.
 
-- contrib/ :: A directory with third-party additions for Org.  Some
-  really cool stuff is in there.
-
 - etc/ :: Files needed for the ODT exporter.
 
 - testing/ :: Testing suite for Org.
 
 - request-assign-future.txt :: The form that contributors have to sign
   and get processed with the FSF before contributed changes can be
-  integrated into the Org core.  All files in this distribution except
-  the contrib/ directory have copyright assigned to the FSF.
+  integrated into the Org core.  All files in this distribution have
+  copyright assigned to the FSF.
+
+* Join the GNU Project
+
+Org is part of GNU Emacs.
+
+GNU Emacs is part of the GNU Operating System, developed by the GNU
+Project.  To learn more about Free (libre) Software, you can read this
+page: https://gnu.org/philosophy/free-sw.html
+
+If you are the author of an awesome program and want to join us in
+writing Free (libre) Software, please consider making it an official
+GNU program and become a GNU Maintainer.  You can find instructions 
+on how to do this here: http://www.gnu.org/help/evaluation
 
 * License
 

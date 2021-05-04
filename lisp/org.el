@@ -16925,12 +16925,13 @@ object (e.g., within a comment).  In these case, you need to use
 	(org--newline indent arg interactive))))))
 
 (defun org-return-and-maybe-indent ()
-  "Goto next table row, or insert a newline.
+  "Goto next table row, or insert a newline, maybe indented.
 Call `org-table-next-row' or `org-return', depending on context.
 See the individual commands for more information.
 
-When inserting a newline, indent the new line if
-`electric-indent-mode' is disabled."
+When inserting a newline, if `org-adapt-indentation' is `t':
+indent the line if `electric-indent-mode' is disabled, don't
+indent it if it is enabled."
   (interactive)
   (org-return (not electric-indent-mode)))
 
@@ -17898,17 +17899,6 @@ ELEMENT."
 	 (t
 	  (goto-char start)
 	  (current-indentation))))
-      ((and
-	(eq org-adapt-indentation 'headline-data)
-        (or (memq type '(planning clock node-property property-drawer drawer))
-            ;; When storing a note in a LOGBOOK drawer,
-            ;; `org-store-log-note' needs to insert a new line before
-            ;; the newly inserted note, thus the `type' at point will
-            ;; return `paragraph' instead of the expected `drawer', so
-            ;; we need to manually detect the drawer.
-            (eq (org-element-type (car (org-element-lineage element))) 'drawer)))
-       (org--get-expected-indentation
-	(org-element-property :parent element) t))
       ((memq type '(headline inlinetask nil))
        (if (org-match-line "[ \t]*$")
 	   (org--get-expected-indentation element t)
@@ -17948,7 +17938,7 @@ ELEMENT."
 			    (org--get-expected-indentation
 			     (org-element-property :parent previous) t))))))))))
       ;; Otherwise, move to the first non-blank line above.
-      ((not (eq org-adapt-indentation 'headline-data))
+      (t
        (beginning-of-line)
        (let ((pos (point)))
 	 (skip-chars-backward " \r\t\n")
@@ -18025,7 +18015,7 @@ Indentation is done according to the following rules:
        Else, indent like parent's first line.
 
     3. Otherwise, indent relatively to current level, if
-       `org-adapt-indentation' is non-nil, or to left margin.
+       `org-adapt-indentation' is `t', or to left margin.
 
   - On a blank line at the end of an element, indent according to
     the type of the element.  More precisely
@@ -18050,7 +18040,15 @@ list structure.  Instead, use \\<org-mode-map>`\\[org-shiftmetaleft]' or \
 
 Also align node properties according to `org-property-format'."
   (interactive)
-  (unless (org-at-heading-p)
+  (unless (or (org-at-heading-p)
+              (and (eq org-adapt-indentation 'headline-data)
+                   (not (org-at-clock-log-p))
+                   (save-excursion
+                     (beginning-of-line 1)
+                     (skip-chars-backward "\n")
+                     (or (org-at-heading-p)
+                         (looking-back ":END:.*")
+                         (org-at-planning-p)))))
     (let* ((element (save-excursion (beginning-of-line) (org-element-at-point)))
 	   (type (org-element-type element)))
       (cond ((and (memq type '(plain-list item))
