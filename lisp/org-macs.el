@@ -877,34 +877,52 @@ Return width in pixels when PIXELS is non-nil."
   ;; Face should be removed to make sure that all the string symbols
   ;; are using default face with constant width.  Constant char width
   ;; is critical to get right string width from pixel width.
-  (remove-text-properties 0 (length string) '(wrap-prefix t line-prefix t face t) string)
-  (let (;; We need to remove the folds to make sure that folded table alignment is not messed up.
-        (current-invisibility-spec (or (and (not (listp buffer-invisibility-spec))
-                                            buffer-invisibility-spec)
-                                       (let (result)
-                                         (dolist (el buffer-invisibility-spec)
-                                           (unless (or (memq el '(org-fold-drawer org-fold-block org-fold-outline))
-                                                       (and (listp el)
-                                                            (memq (car el) '(org-fold-drawer org-fold-block org-fold-outline))))
-                                             (push el result)))
-                                         result)))
+  (remove-text-properties 0 (length string)
+                          '(wrap-prefix t line-prefix t face t)
+                          string)
+  (let (;; We need to remove the folds to make sure that folded table
+        ;; alignment is not messed up.
+        (current-invisibility-spec
+         (or (and (not (listp buffer-invisibility-spec))
+                  buffer-invisibility-spec)
+             (let (result)
+               (dolist (el buffer-invisibility-spec)
+                 (unless (or (memq el
+                                   '(org-fold-drawer
+                                     org-fold-block
+                                     org-fold-outline))
+                             (and (listp el)
+                                  (memq (car el)
+                                        '(org-fold-drawer
+                                          org-fold-block
+                                          org-fold-outline))))
+                   (push el result)))
+               result)))
         (current-char-property-alias-alist char-property-alias-alist))
     (with-temp-buffer
-      (setq-local buffer-invisibility-spec current-invisibility-spec)
-      (setq-local char-property-alias-alist current-char-property-alias-alist)
+      (setq-local buffer-invisibility-spec
+                  current-invisibility-spec)
+      (setq-local char-property-alias-alist
+                  current-char-property-alias-alist)
       (let (pixel-width symbol-width)
         (with-silent-modifications
           (setf (buffer-string) string)
-          (setq pixel-width   (if (get-buffer-window (current-buffer))
-                                  (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
-                                (set-window-buffer nil (current-buffer))
-                                (car (window-text-pixel-size nil (line-beginning-position) (point-max)))))
+          (setq pixel-width
+                (if (get-buffer-window (current-buffer))
+                    (car (window-text-pixel-size
+                          nil (line-beginning-position) (point-max)))
+                  (set-window-buffer nil (current-buffer))
+                  (car (window-text-pixel-size
+                        nil (line-beginning-position) (point-max)))))
           (unless pixels
             (setf (buffer-string) "a")
-            (setq symbol-width   (if (get-buffer-window (current-buffer))
-                                     (car (window-text-pixel-size nil (line-beginning-position) (point-max)))
-                                   (set-window-buffer nil (current-buffer))
-                                   (car (window-text-pixel-size nil (line-beginning-position) (point-max)))))))
+            (setq symbol-width
+                  (if (get-buffer-window (current-buffer))
+                      (car (window-text-pixel-size
+                            nil (line-beginning-position) (point-max)))
+                    (set-window-buffer nil (current-buffer))
+                    (car (window-text-pixel-size
+                          nil (line-beginning-position) (point-max)))))))
         (if pixels
             pixel-width
           (/ pixel-width symbol-width))))))
@@ -1059,8 +1077,16 @@ so values can contain further %-escapes if they are define later in TABLE."
 (defun org-buffer-substring-fontified (beg end)
   "Return fontified region between BEG and END."
   (when (bound-and-true-p jit-lock-mode)
-    (jit-lock-fontify-now beg end))
+    (save-match-data (jit-lock-fontify-now beg end)))
   (buffer-substring beg end))
+
+(defun org-looking-at-fontified (re)
+  "Call `looking-at' and make sure that the match is fontified."
+  (prog1 (looking-at re)
+    (when (bound-and-true-p jit-lock-mode)
+      (save-match-data
+        (jit-lock-fontify-now (match-beginning 0)
+                              (match-end 0))))))
 
 (defsubst org-no-properties (s &optional restricted)
   "Remove all text properties from string S.
