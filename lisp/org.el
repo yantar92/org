@@ -10472,7 +10472,7 @@ as N.")
 
 (defvar org--matcher-tags-todo-only nil)
 
-(defun org-scan-tags (action matcher todo-only &optional start-level)
+(defun org-scan-tags (action matcher todo-only &optional start-level fontify)
   "Scan headline tags with inheritance and produce output ACTION.
 
 ACTION can be `sparse-tree' to produce a sparse tree in the current buffer,
@@ -10490,7 +10490,9 @@ When TODO-ONLY is non-nil, only lines with a TODO keyword are
 included in the output.
 
 START-LEVEL can be a string with asterisks, reducing the scope to
-headlines matching this string."
+headlines matching this string.
+
+When FONTIFY is non-nil, make sure that matches are fontified."
   (require 'org-agenda)
   (let* ((re (concat "^"
 		     (if start-level
@@ -10531,8 +10533,12 @@ headlines matching this string."
 	  ;; Ignore closing parts of inline tasks.
 	  (when (and (fboundp 'org-inlinetask-end-p) (org-inlinetask-end-p))
 	    (throw :skip t))
+          (when (and fontify (bound-and-true-p jit-lock-mode))
+            (save-match-data
+              (jit-lock-fontify-now
+               (match-beginning 0) (match-end 0))))
 	  (setq todo (and (match-end 1) (match-string-no-properties 1)))
-	  (setq tags (and (match-end 4) (org-trim (match-string-no-properties 4))))
+	  (setq tags (and (match-end 4) (org-trim (match-string 4))))
 	  (goto-char (setq lspos (match-beginning 0)))
 	  (setq level (org-reduced-level (org-outline-level))
 		category (org-get-category))

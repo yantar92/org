@@ -4446,9 +4446,12 @@ items if they have an hour specification like [h]h:mm."
 	    (put-text-property s (1- (point)) 'org-today t))
 	  (setq rtnall
 		(org-agenda-add-time-grid-maybe rtnall ndays todayp))
-	  (when rtnall (insert ;; all entries
-			(org-agenda-finalize-entries rtnall 'agenda)
-			"\n"))
+          (with-silent-modifications
+            ;; Composition property in entries may be self-destructed
+            ;; on change.  Suppress the self-destruction.
+	    (when rtnall (insert ;; all entries
+			  (org-agenda-finalize-entries rtnall 'agenda)
+			  "\n")))
 	  (put-text-property s (1- (point)) 'day d)
 	  (put-text-property s (1- (point)) 'org-day-cnt day-cnt)))
       (when (and org-agenda-clockreport-mode clocktable-start)
@@ -4818,8 +4821,11 @@ Press `\\[org-agenda-manipulate-query-add]', \
 				 (list 'face 'org-agenda-structure)))
 	  (buffer-string)))
       (org-agenda-mark-header-line (point-min))
-      (when rtnall
-	(insert (org-agenda-finalize-entries rtnall 'search) "\n"))
+      (with-silent-modifications
+        ;; Composition property in entries may be self-destructed
+        ;; on change.  Suppress the self-destruction.
+        (when rtnall
+	  (insert (org-agenda-finalize-entries rtnall 'search) "\n")))
       (goto-char (point-min))
       (or org-agenda-multi (org-agenda-fit-window-to-buffer))
       (add-text-properties (point-min) (point-max)
@@ -4927,8 +4933,11 @@ to search again: (0)[ALL]"))
 	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure))
 	  (buffer-string)))
       (org-agenda-mark-header-line (point-min))
-      (when rtnall
-	(insert (org-agenda-finalize-entries rtnall 'todo) "\n"))
+      (with-silent-modifications
+        ;; Composition property in entries may be self-destructed
+        ;; on change.  Suppress the self-destruction.
+        (when rtnall
+	  (insert (org-agenda-finalize-entries rtnall 'todo) "\n")))
       (goto-char (point-min))
       (or org-agenda-multi (org-agenda-fit-window-to-buffer))
       (add-text-properties (point-min) (point-max)
@@ -5004,7 +5013,9 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
 		    (widen))
 		  (setq rtn (org-scan-tags 'agenda
 					   matcher
-					   org--matcher-tags-todo-only))
+					   org--matcher-tags-todo-only
+                                           nil
+                                           'fontify))
 		  (setq rtnall (append rtnall rtn))))))))
       (org-agenda--insert-overriding-header
         (with-temp-buffer
@@ -5026,8 +5037,11 @@ to search again\n")))
 			       (list 'face 'org-agenda-structure))
 	  (buffer-string)))
       (org-agenda-mark-header-line (point-min))
-      (when rtnall
-	(insert (org-agenda-finalize-entries rtnall 'tags) "\n"))
+      (with-silent-modifications
+        ;; Composition property in entries may be self-destructed
+        ;; on change.  Suppress the self-destruction.
+        (when rtnall
+	  (insert (org-agenda-finalize-entries rtnall 'tags) "\n")))
       (goto-char (point-min))
       (or org-agenda-multi (org-agenda-fit-window-to-buffer))
       (add-text-properties
