@@ -11477,10 +11477,14 @@ TAGS is a list of strings."
 Assume point is at the beginning of the headline.
 
 The tags are fontified when FONTIFY is non-nil."
-  (and (if fontified
-           (org-looking-at-fontified org-tag-line-re)
-         (looking-at org-tag-line-re))
-       (split-string (match-string 2) ":" t)))
+  (let ((cached (and (org-element--cache-active-p)
+                     (org-element--cache-find (point)))))
+    (if (eq 'headline (org-element-type cached))
+        (org-element-property :tags cached)
+      (and (if fontified
+               (org-looking-at-fontified org-tag-line-re)
+             (looking-at org-tag-line-re))
+           (split-string (match-string 2) ":" t)))))
 
 (defun org-get-tags (&optional pos local fontify)
   "Get the list of tags specified in the current headline.
@@ -11509,10 +11513,17 @@ The tags are fontified when FONTIFY is non-nil."
         (org-back-to-heading t)
         (let ((ltags (org--get-local-tags fontify)) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
-            (while (org-up-heading-safe)
-              (setq itags (nconc (mapcar #'org-add-prop-inherited
-					 (org--get-local-tags fontify))
-				 itags)))
+            (let ((cached (and (org-element--cache-active-p)
+                               (org-element--cache-find (point)))))
+              (if cached
+                  (while (setq cached (org-element-property :parent cached))
+                    (setq itags (nconc (mapcar #'org-add-prop-inherited
+                                               (org-element-property :tags cached))
+                                       itags)))
+                (while (org-up-heading-safe)
+                  (setq itags (nconc (mapcar #'org-add-prop-inherited
+					     (org--get-local-tags fontify))
+				     itags)))))
             (setq itags (append org-file-tags itags))
             (nreverse
 	     (delete-dups
@@ -20285,7 +20296,9 @@ Move to the previous element at the same level, when possible."
       (unless (org-up-heading-safe) (user-error "No surrounding element"))
     (let* ((elem (org-element-at-point))
 	   (parent (org-element-property :parent elem)))
-      (if parent (goto-char (org-element-property :begin parent))
+      (if (and parent
+               (not (eq (org-element-type parent) 'section)))
+          (goto-char (org-element-property :begin parent))
 	(if (org-with-limited-levels (org-before-first-heading-p))
 	    (user-error "No surrounding element")
 	  (org-with-limited-levels (org-back-to-heading)))))))

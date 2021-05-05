@@ -454,10 +454,27 @@ It can also return the following special value:
    ((not (consp element)) (and (stringp element) 'plain-text))
    ((symbolp (car element)) (car element))))
 
-(defsubst org-element-property (property element)
+(defsubst org-element-put-property (element property value)
+  "In ELEMENT set PROPERTY to VALUE.
+Return modified element."
+  (if (stringp element) (org-add-props element nil property value)
+    (setcar (cdr element) (plist-put (nth 1 element) property value))
+    element))
+
+(defun org-element-property (property element)
   "Extract the value from the PROPERTY of an ELEMENT."
   (if (stringp element) (get-text-property 0 property element)
-    (plist-get (nth 1 element) property)))
+    (if (and (eq 'headline (org-element-type element))
+             (eq property :parent)
+             (org-element-property :begin element))
+        (or (plist-get (nth 1 element) property)
+            (org-with-point-at (org-element-property :begin element)
+              (when (org-up-heading-safe)
+                (org-element-put-property
+                 element :parent
+                 (org-element-headline-parser (org-element-property :begin element)))
+                (plist-get (nth 1 element) property))))
+      (plist-get (nth 1 element) property))))
 
 (defsubst org-element-contents (element)
   "Extract contents from an ELEMENT."
@@ -471,13 +488,6 @@ ELEMENT can be an element, an object or a symbol representing an
 element or object type."
   (cdr (assq (if (symbolp element) element (org-element-type element))
 	     org-element-object-restrictions)))
-
-(defsubst org-element-put-property (element property value)
-  "In ELEMENT set PROPERTY to VALUE.
-Return modified element."
-  (if (stringp element) (org-add-props element nil property value)
-    (setcar (cdr element) (plist-put (nth 1 element) property value))
-    element))
 
 (defsubst org-element-set-contents (element &rest contents)
   "Set ELEMENT's contents to CONTENTS.
@@ -962,7 +972,7 @@ Return value is a plist."
 		  (t (setq plist (plist-put plist :closed time))))))
 	plist))))
 
-(defun org-element-headline-parser (limit &optional raw-secondary-p)
+(defun org-element-headline-parser (_ &optional raw-secondary-p)
   "Parse a headline.
 
 Return a list whose CAR is `headline' and CDR is a plist
@@ -976,8 +986,6 @@ keywords.
 The plist also contains any property set in the property drawer,
 with its name in upper cases and colons added at the
 beginning (e.g., `:CUSTOM_ID').
-
-LIMIT is a buffer position bounding the search.
 
 When RAW-SECONDARY-P is non-nil, headline's title will not be
 parsed as a secondary string, but as a plain string instead.
@@ -1015,7 +1023,7 @@ Assume point is at beginning of the headline."
 				    (string= org-footnote-section raw-value)))
 	   (standard-props (org-element--get-node-properties))
 	   (time-props (org-element--get-time-properties))
-	   (end (min (save-excursion (org-end-of-subtree t t)) limit))
+	   (end (save-excursion (org-end-of-subtree t t)) )
 	   (contents-begin (save-excursion
 			     (forward-line)
 			     (skip-chars-forward " \r\t\n" end)
@@ -5479,10 +5487,12 @@ the process stopped before finding the expected result."
          (if (org-with-limited-levels (outline-previous-heading))
              (progn
 	       (setq mode 'planning)
-	       (forward-line))
+	       ;; (forward-line)
+               )
 	   (setq mode 'top-comment))
-         (skip-chars-forward " \r\t\n")
-         (beginning-of-line))
+         ;; (skip-chars-forward " \r\t\n")
+         ;; (beginning-of-line)
+         )
         ;; Cache returned exact match: return it.
         ((= pos begin)
 	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
@@ -5492,9 +5502,9 @@ the process stopped before finding the expected result."
         ((and (> (point) begin)
               (re-search-backward
 	       (org-with-limited-levels org-outline-regexp-bol) begin t))
-         (forward-line)
-         (skip-chars-forward " \r\t\n")
-         (beginning-of-line)
+         ;; (forward-line)
+         ;; (skip-chars-forward " \r\t\n")
+         ;; (beginning-of-line)
 	 (setq mode 'planning))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
@@ -5568,7 +5578,12 @@ the process stopped before finding the expected result."
 	      ;; Arbitrarily, we choose to return the innermost of
 	      ;; such elements.
 	      ((let ((cbeg (org-element-property :contents-begin element))
-		     (cend (org-element-property :contents-end element)))
+		     (cend (pcase (org-element-type element)
+                             ;; `org-element-headline-parser' skips empty lines
+                             ;; at the end.  Yet we may need them
+                             ;; here.
+                             ((or `headline `section) (org-element-property :end element))
+                             (_ (org-element-property :contents-end element)))))
 		 (when (or syncp
 			   (and cbeg cend
 				(or (< cbeg pos)
@@ -5861,9 +5876,9 @@ element ending there."
       ((bobp) nil)
       ;; Within blank lines right after a headline, return that
       ;; headline.
-      ((org-with-limited-levels (org-at-heading-p))
-       (beginning-of-line)
-       (org-element-headline-parser (point-max) t))
+      ;; ((org-with-limited-levels (org-at-heading-p))
+      ;;  (beginning-of-line)
+      ;;  (org-element-headline-parser (point-max) t))
       ;; Otherwise parse until we find element containing ORIGIN.
       (t
        (when (org-element--cache-active-p)
