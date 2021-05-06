@@ -268,11 +268,11 @@ matching a regular expression."
 		    lspecs)
 		   (when make-dir
 		     (make-directory fnd 'parents))
-                   ;; erase previous file and set permissions on empty
-                   ;; file before writing
-                   (write-region "" nil file-name nil 0)
-		   (mapc (lambda (mode) (set-file-modes file-name mode)) modes)
+                   ;; erase previous file
+                   (when (file-exists-p file-name)
+                     (delete-file file-name))
 		   (write-region nil nil file-name)
+		   (mapc (lambda (mode) (set-file-modes file-name mode)) modes)
                    (push file-name path-collector))))))
 	 (if (equal arg '(4))
 	     (org-babel-tangle-single-block 1 t)
@@ -377,6 +377,7 @@ be used to limit the collected code blocks by target file."
 	    ;; Add the spec for this block to blocks under its tangled
 	    ;; file name.
 	    (let* ((block (org-babel-tangle-single-block counter))
+                   (src-tfile (cdr (assq :tangle (nth 4 block))))
 		   (base-name (cond
 			       ((string= "yes" src-tfile)
                                 ;; buffer name

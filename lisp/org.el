@@ -716,7 +716,7 @@ For export specific modules, see also `org-export-backends'."
 	(const :tag "   crypt:             Encryption of subtrees" org-crypt)
 	(const :tag "   ctags:             Access to Emacs tags with links" org-ctags)
 	(const :tag "   docview:           Links to Docview buffers" ol-docview)
-        (const :tag "   doi:               Links to DOI references" ol-docview)
+        (const :tag "   doi:               Links to DOI references" ol-doi)
 	(const :tag "   eww:               Store link to URL of Eww" ol-eww)
 	(const :tag "   gnus:              Links to GNUS folders/messages" ol-gnus)
 	(const :tag "   habit:             Track your consistency with habits" org-habit)
@@ -1386,14 +1386,13 @@ lines to the buffer:
   :group 'org-appearance
   :type 'boolean)
 
-(defcustom org-adapt-indentation t
+(defcustom org-adapt-indentation nil
   "Non-nil means adapt indentation to outline node level.
 
-When this variable is set to t, Org assumes that you write
-outlines by indenting text in each node to align with the
-headline (after the stars).
+When set to t, Org assumes that you write outlines by indenting
+text in each node to align with the headline, after the stars.
 
-When this variable is set to `headline-data', only adapt the
+When this variable is set to `headline-data', Org only adapts the
 indentation of the data lines right below the headline, such as
 planning/clock lines and property/logbook drawers.
 
