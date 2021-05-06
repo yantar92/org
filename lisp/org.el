@@ -19466,10 +19466,10 @@ make a significant difference in outlines with very many siblings."
     (let (level-cache)
       (if (and (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
                (setq level-cache (gethash (point) org--up-heading-cache)))
-          (when (<= (point-min) level-cache (point-max))
+          (when (<= (point-min) (car level-cache) (point-max))
             ;; Parent is inside accessible part of the buffer.
-            (progn (goto-char level-cache)
-                   (funcall outline-level)))
+            (progn (goto-char (car level-cache))
+                   (cdr level-cache)))
         ;; Buffer modified.  Invalidate cache.
         (unless (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
           (setq-local org--up-heading-cache-tick
@@ -19481,7 +19481,7 @@ make a significant difference in outlines with very many siblings."
 	                    (re-search-backward
                              (format "^\\*\\{1,%d\\} " level-up) nil t)
 	                    (funcall outline-level))))
-          (when result (puthash pos (point) org--up-heading-cache))
+          (when result (puthash pos (cons (point) result) org--up-heading-cache))
           result)))))
 
 (defun org-up-heading-or-point-min ()
