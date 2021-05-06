@@ -19450,7 +19450,7 @@ This function considers both visible and invisible heading lines.
 With argument, move up ARG levels."
   (outline-up-heading arg t))
 
-(defvar-local org--up-heading-cache (make-hash-table)
+(defvar-local org--up-heading-cache nil
   "Buffer-local `org-up-heading-safe' cache.")
 (defvar-local org--up-heading-cache-tick nil
   "Buffer `buffer-chars-modified-tick' in `org--up-heading-cache'.")
@@ -19464,6 +19464,8 @@ because it relies on stars being the outline starters.  This can really
 make a significant difference in outlines with very many siblings."
   (when (ignore-errors (org-back-to-heading t))
     (let (level-cache)
+      (unless org--up-heading-cache
+        (setq org--up-heading-cache (make-hash-table)))
       (if (and (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
                (setq level-cache (gethash (point) org--up-heading-cache)))
           (when (<= (point-min) (car level-cache) (point-max))
