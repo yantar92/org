@@ -20440,6 +20440,10 @@ This function considers both visible and invisible heading lines.
 With argument, move up ARG levels."
   (outline-up-heading arg t))
 
+(defvar-local org--up-heading-cache (make-hash-table)
+  "Buffer-local `org-up-heading-safe' cache.")
+(defvar-local org--up-heading-cache-tick nil
+  "Buffer `buffer-chars-modified-tick' in `org--up-heading-cache'.")
 (defun org-up-heading-safe ()
   "Move to the heading line of which the present line is a subheading.
 This version will not throw an error.  It will return the level of the
@@ -20449,10 +20453,26 @@ Also, this function will be a lot faster than `outline-up-heading',
 because it relies on stars being the outline starters.  This can really
 make a significant difference in outlines with very many siblings."
   (when (ignore-errors (org-back-to-heading t))
-    (let ((level-up (1- (funcall outline-level))))
-      (and (> level-up 0)
-	   (re-search-backward (format "^\\*\\{1,%d\\} " level-up) nil t)
-	   (funcall outline-level)))))
+    (let (level-cache)
+      (if (and (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
+               (setq level-cache (gethash (point) org--up-heading-cache)))
+          (when (<= (point-min) level-cache (point-max))
+            ;; Parent is inside accessible part of the buffer.
+            (progn (goto-char level-cache)
+                   (funcall outline-level)))
+        ;; Buffer modified.  Invalidate cache.
+        (unless (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
+          (setq-local org--up-heading-cache-tick
+                      (buffer-chars-modified-tick))
+          (clrhash org--up-heading-cache))
+        (let* ((level-up (1- (funcall outline-level)))
+               (pos (point))
+               (result (and (> level-up 0)
+	                    (re-search-backward
+                             (format "^\\*\\{1,%d\\} " level-up) nil t)
+	                    (funcall outline-level))))
+          (when result (puthash pos (point) org--up-heading-cache))
+          result)))))
 
 (defun org-up-heading-or-point-min ()
   "Move to the heading line of which the present is a subheading, or point-min.
