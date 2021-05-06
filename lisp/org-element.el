@@ -5338,7 +5338,15 @@ request."
 					(> (org-element-property :end data)
 					   end))
 			       (setq last-container data))
-			     (org-element--cache-remove data))
+                             (unless (org-element--cache-remove data)
+                               ;; FIXME: This should not happen unless
+                               ;; the tree is wrongly balanced.  Yet,
+                               ;; it happens sometimes.  Presumably,
+                               ;; something to do with stability of
+                               ;; the cache keys.
+                               ;; Invalidate cache here to avoid
+                               ;; infinite loop.
+                               (org-element-cache-reset)))
 		    (aset request 0 data-key)
 		    (aset request 1 pos)
 		    (aset request 5 1)
