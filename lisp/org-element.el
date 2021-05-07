@@ -5717,7 +5717,7 @@ changes."
 	(while up
 	  (if (let ((type (org-element-type up)))
 		(and (or (memq type '(center-block dynamic-block quote-block
-						   special-block))
+						   special-block headline section))
 			 ;; Drawers named "PROPERTIES" are probably
 			 ;; a properties drawer being edited.  Force
 			 ;; parsing to check if editing is over.
