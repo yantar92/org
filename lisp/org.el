@@ -19592,7 +19592,7 @@ If there is no such heading, return nil."
                       (eq (point)
                           (org-element-property :post-affiliated cached))
                       (goto-char (org-element-property
-                                  :contents-end cached)))))
+                                  :end cached)))))
     (let ((first t)
 	  (level (funcall outline-level)))
       (cond ((= level 0)
