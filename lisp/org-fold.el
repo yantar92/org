@@ -717,8 +717,18 @@ Return a non-nil value when toggling is successful."
                 (re-search-forward org-drawer-regexp end t))
       ;; Skip drawers in folded headings
       (if (org-fold-folded-p)
-          (goto-char (org-fold-next-visibility-change nil nil 'ignore-hidden))
-        (let* ((drawer (org-with-point-at (match-beginning 0) (org-element--current-element (save-excursion (or (outline-next-heading) (point-max))))))
+          (goto-char (org-fold-next-visibility-change))
+        (let* ((drawer
+                (or (and (org-element--cache-active-p)
+                         (let ((cached (org-element--cache-find
+                                        (match-beginning 0))))
+                           (and (eq 'drawer (org-element-type cached))
+                                (eq (match-beginning 0)
+                                    (org-element-property
+                                     :post-affiliated cached))
+                                cached)))
+                    (org-with-point-at (match-beginning 0)
+                      (org-element--current-element (save-excursion (or (outline-next-heading) (point-max)))))))
                (type (org-element-type drawer)))
           (when (memq type '(drawer property-drawer))
             (org-fold-hide-drawer-toggle t nil drawer)

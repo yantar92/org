@@ -19585,31 +19585,39 @@ If there is no such heading, return nil."
   ;; with many children and grandchildren etc, this can be much faster
   ;; than the outline version.
   (org-back-to-heading-or-point-min invisible-ok)
-  (let ((first t)
-	(level (funcall outline-level)))
-    (cond ((= level 0)
-	   (goto-char (point-max)))
-	  ((and (derived-mode-p 'org-mode) (< level 1000))
-	   ;; A true heading (not a plain list item), in Org
-	   ;; This means we can easily find the end by looking
-	   ;; only for the right number of stars.  Using a regexp to do
-	   ;; this is so much faster than using a Lisp loop.
-	   (let ((re (concat "^\\*\\{1," (number-to-string level) "\\} ")))
-	     (forward-char 1)
-	     (and (re-search-forward re nil 'move) (beginning-of-line 1))))
-	  (t
-	   ;; something else, do it the slow way
-	   (while (and (not (eobp))
-		       (or first (> (funcall outline-level) level)))
-	     (setq first nil)
-	     (outline-next-heading))))
-    (unless to-heading
+  (unless (and (org-element--cache-active-p)
+               (let ((cached (org-element--cache-find (point))))
+                 (and cached
+                      (eq 'headline (org-element-type cached))
+                      (eq (point)
+                          (org-element-property :post-affiliated cached))
+                      (goto-char (org-element-property
+                                  :contents-end cached)))))
+    (let ((first t)
+	  (level (funcall outline-level)))
+      (cond ((= level 0)
+	     (goto-char (point-max)))
+	    ((and (derived-mode-p 'org-mode) (< level 1000))
+	     ;; A true heading (not a plain list item), in Org
+	     ;; This means we can easily find the end by looking
+	     ;; only for the right number of stars.  Using a regexp to do
+	     ;; this is so much faster than using a Lisp loop.
+	     (let ((re (concat "^\\*\\{1," (number-to-string level) "\\} ")))
+	       (forward-char 1)
+	       (and (re-search-forward re nil 'move) (beginning-of-line 1))))
+	    (t
+	     ;; something else, do it the slow way
+	     (while (and (not (eobp))
+		         (or first (> (funcall outline-level) level)))
+	       (setq first nil)
+	       (outline-next-heading))))))
+  (unless to-heading
+    (when (memq (preceding-char) '(?\n ?\^M))
+      ;; Go to end of line before heading
+      (forward-char -1)
       (when (memq (preceding-char) '(?\n ?\^M))
-	;; Go to end of line before heading
-	(forward-char -1)
-	(when (memq (preceding-char) '(?\n ?\^M))
-	  ;; leave blank line before heading
-	  (forward-char -1)))))
+	;; leave blank line before heading
+	(forward-char -1))))
   (point))
 
 (defun org-end-of-meta-data (&optional full)
