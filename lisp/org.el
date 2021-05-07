@@ -11491,7 +11491,9 @@ The tags are fontified when FONTIFY is non-nil."
                      (org-element--cache-find (point)))))
     (if (and (eq 'headline (org-element-type cached))
              (eq (point) (org-element-property :post-affiliated cached)))
-        (org-element-property :tags cached)
+        ;; If we do not wrap result into `copy-list', reference would
+        ;; be returned and cache element might be modified directly.
+        (copy-list (org-element-property :tags cached))
       (and (if fontified
                (org-looking-at-fontified org-tag-line-re)
              (looking-at org-tag-line-re))
