@@ -11489,7 +11489,8 @@ Assume point is at the beginning of the headline.
 The tags are fontified when FONTIFY is non-nil."
   (let ((cached (and (org-element--cache-active-p)
                      (org-element--cache-find (point)))))
-    (if (eq 'headline (org-element-type cached))
+    (if (and (eq 'headline (org-element-type cached))
+             (eq (point) (org-element-property :post-affiliated cached)))
         (org-element-property :tags cached)
       (and (if fontified
                (org-looking-at-fontified org-tag-line-re)
@@ -11525,7 +11526,9 @@ The tags are fontified when FONTIFY is non-nil."
           (if (or local (not org-use-tag-inheritance)) ltags
             (let ((cached (and (org-element--cache-active-p)
                                (org-element--cache-find (point)))))
-              (if cached
+              (if (and cached
+                       (eq 'headline (org-element-type cached))
+                       (eq (point) (org-element-property :post-affiliated cached)))
                   (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited
                                                (org-element-property :tags cached))
