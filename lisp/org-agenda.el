@@ -9446,9 +9446,10 @@ the same tree node, and the headline of the tree node in the Org file."
 	 (and (bolp) (forward-char 1))
          ;; We need to update the effort text property at changed TODO
          ;; keyword.
-         (org-refresh-property '((effort . identity)
-			         (effort-minutes . org-duration-to-minutes))
-			       (org-entry-get (point) "EFFORT"))
+         (when (org-entry-get (point) "EFFORT")
+           (org-refresh-property '((effort . identity)
+			           (effort-minutes . org-duration-to-minutes))
+			         (org-entry-get (point) "EFFORT")))
 	 (setq newhead (org-get-heading))
 	 (when (and org-agenda-headline-snapshot-before-repeat
 		    (not (equal org-agenda-headline-snapshot-before-repeat
