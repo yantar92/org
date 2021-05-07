@@ -1492,7 +1492,7 @@ If the link is in hidden text, expose it."
   (interactive)
   (setq org-link-descriptive (not org-link-descriptive))
   (org-link-descriptive-ensure))
-(defun org-toggle-link-display ()
+(defsubst org-toggle-link-display ()
   "Toggle the literal or descriptive display of links."
   (interactive)
   (if (eq org-fold-core-style 'text-properties)

@@ -6169,7 +6169,7 @@ end of ELEM-A."
 	  (delete-region beg-A end-A)
 	  (insert body-B)
           (goto-char (org-element-property :end elem-B))))))
-(defun org-element-swap-A-B (elem-A elem-B)
+(defsubst org-element-swap-A-B (elem-A elem-B)
   "Swap elements ELEM-A and ELEM-B.
 Assume ELEM-B is after ELEM-A in the buffer.  Leave point at the
 end of ELEM-A."

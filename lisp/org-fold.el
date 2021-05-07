@@ -332,7 +332,7 @@ SPEC is the invisibility spec, as a symbol."
       (overlay-put o
                    'isearch-open-invisible
                    (lambda (&rest _) (org-fold-show-context 'isearch))))))
-(defun org-fold-region (from to flag &optional spec)
+(defsubst org-fold-region (from to flag &optional spec)
   "Hide or show lines from FROM to TO, according to FLAG.
 SPEC is the invisibility spec, as a symbol."
   (if (eq org-fold-core-style 'text-properties)
@@ -383,7 +383,7 @@ When optional argument TYPE is a list of symbols among `blocks',
                  (goto-char (overlay-end o))
                  (delete-overlay o))
                 (_ nil))))))))))
-(defun org-fold-show-all (&optional types)
+(defsubst org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
 By default, the function expands headings, blocks and drawers.
 When optional argument TYPES is a list of symbols among `blocks',
@@ -587,7 +587,7 @@ heading to appear."
     (while (outline-get-next-sibling)
       (outline-show-branches)))
   (goto-char (point-min)))
-(defun org-fold-show-branches-buffer ()
+(defsubst org-fold-show-branches-buffer ()
   "Show all branches in the buffer."
   (if (eq org-fold-core-style 'text-properties)
       (org-fold-show-branches-buffer--text-properties)
@@ -726,7 +726,7 @@ Return a non-nil value when toggling is successful."
             ;; another time when matching its ending line with
             ;; `org-drawer-regexp'.
             (goto-char (org-element-property :end drawer))))))))
-(defun org-fold--hide-drawers (begin end)
+(defsubst org-fold--hide-drawers (begin end)
   "Hide all drawers between BEGIN and END."
   (if (eq org-fold-core-style 'text-properties)
       (org-fold--hide-drawers--text-properties begin end)
@@ -836,7 +836,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
 	(org-fold-heading nil)
 	(when (memq detail '(canonical t)) (org-fold-show-entry))
 	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
-(defun org-fold-show-set-visibility (detail)
+(defsubst org-fold-show-set-visibility (detail)
   "Set visibility around point according to DETAIL.
 DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
 `tree', `canonical' or t.  See `org-fold-show-context-detail' for more
@@ -1090,7 +1090,7 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	   (t
 	    ;; Don't do the edit, make the user repeat it in full visibility
 	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
-(defun org-fold-check-before-invisible-edit (kind)
+(defsubst org-fold-check-before-invisible-edit (kind)
   "Check is editing if kind KIND would be dangerous with invisible text around.
 The detailed reaction depends on the user option `org-fold-catch-invisible-edits'."
   ;; First, try to get out of here as quickly as possible, to reduce overhead

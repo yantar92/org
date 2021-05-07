@@ -1149,7 +1149,7 @@ fontification."
     (cond ((not value) nil)
 	  (folding-only (memq value '(org-hide-block outline)))
 	  (t (and (invisible-p (or pos (point))) value)))))
-(defun org-invisible-p (&optional pos folding-only)
+(defsubst org-invisible-p (&optional pos folding-only)
   "Non-nil if the character after POS is invisible.
 If POS is nil, use `point' instead.  When optional argument
 FOLDING-ONLY is non-nil, only consider invisible parts due to
@@ -1191,7 +1191,7 @@ move it back by one char before doing this check."
   (if (org-invisible-p)
       (org-fold-next-visibility-change (point))
     (point)))
-(defun org-find-visible ()
+(defsubst org-find-visible ()
   "Return closest visible buffer position, or `point-max'"
   (if (eq org-fold-core-style 'text-properties)
       (org-find-visible--text-properties)
@@ -1207,7 +1207,7 @@ move it back by one char before doing this check."
   (if (org-invisible-p)
       (point)
     (org-fold-next-visibility-change (point))))
-(defun org-find-invisible ()
+(defsubst org-find-invisible ()
   "Return closest invisible buffer position, or `point-max'"
   (if (eq org-fold-core-style 'text-properties)
       (org-find-invisible--text-properties)

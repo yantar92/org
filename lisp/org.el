@@ -5033,7 +5033,7 @@ This includes angle, plain, and bracket links."
 		(funcall f start end path (eq style 'bracket))))
 	    (throw :exit t)))))		;signal success
     nil))
-(defun org-activate-links (limit)
+(defsubst org-activate-links (limit)
   "Add link properties to links.
 This includes angle, plain, and bracket links."
   (if (eq org-fold-core-style 'text-properties)
@@ -19747,7 +19747,7 @@ With ARG, repeats or can move backward if negative."
 	(end-of-line))
       (cl-decf arg))
     (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
-(defun org-next-visible-heading (arg)
+(defsubst org-next-visible-heading (arg)
   "Move to the next visible heading line.
 With ARG, repeats or can move backward if negative."
   (interactive "p")
@@ -20027,7 +20027,7 @@ See `org-forward-paragraph'."
 	  (goto-char end)
 	  (skip-chars-backward " \t\n")
 	  (forward-line))))))))
-(defun org--forward-paragraph-once ()
+(defsubst org--forward-paragraph-once ()
   "Move forward to end of paragraph or equivalent, once.
 See `org-forward-paragraph'."
   (interactive)
@@ -20228,7 +20228,7 @@ See `org-backward-paragraph'."
 	 ;; Move to element's start.
 	 (t
 	  (funcall reach begin))))))))
-(defun org--backward-paragraph-once ()
+(defsubst org--backward-paragraph-once ()
   "Move backward to start of paragraph or equivalent, once.
 See `org-backward-paragraph'."
   (interactive)

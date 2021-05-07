@@ -329,7 +329,7 @@ If the task has an end part, also demote it."
      ((eq (get-char-property (1+ start) 'invisible) 'outline)
       (org-fold-region start end nil 'outline))
      (t (org-fold-region start end t 'outline)))))
-(defun org-inlinetask-toggle-visibility ()
+(defsubst org-inlinetask-toggle-visibility ()
   "Toggle visibility of inline task at point."
   (if (eq org-fold-core-style 'text-properties)
       (org-inlinetask-toggle-visibility--text-properties)

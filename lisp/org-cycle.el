@@ -639,7 +639,7 @@ With a numeric prefix, show all headlines up to that level."
           (setq level (- (match-end 0) (match-beginning 0) 1))
           (setq regexp (format "^\\*\\{1,%d\\} " level)))
         (org-fold-region last (point) t 'outline)))))
-(defun org-cycle-overview ()
+(defsubst org-cycle-overview ()
   "Switch to overview mode, showing only top-level headlines."
   (interactive)
   (if (eq org-fold-core-style 'text-properties)
@@ -679,7 +679,7 @@ With numerical argument N, show content up to level N."
       (while (re-search-backward regexp nil t)
         (org-fold-region (line-end-position) last t 'outline)
         (setq last (line-end-position 0))))))
-(defun org-cycle-content (&optional arg)
+(defsubst org-cycle-content (&optional arg)
   "Show all headlines in the buffer, like a table of contents.
 With numerical argument N, show content up to level N."
   (interactive "p")

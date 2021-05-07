@@ -1,4 +1,4 @@
-;;; org-fold-core.el --- Folding buffer text -*- lexical-binding: t; -*-
+;;; org-fold-core.el --- Folding buffer text -*- lexical-binding: t; comp-speed: 3; -*-
 ;;
 ;; Copyright (C) 2020-2020 Free Software Foundation, Inc.
 ;;
@@ -386,16 +386,16 @@ Return nil when there is no matching folding spec."
                (when  (memq spec-or-alias (cdr (assq :alias (assq spec org-fold-core--specs))))
                  (throw :found spec)))))))
 
-(defun org-fold-core-folding-spec-p (spec-or-alias)
+(defsubst org-fold-core-folding-spec-p (spec-or-alias)
   "Check if SPEC-OR-ALIAS is a registered folding spec."
   (org-fold-core-get-folding-spec-from-alias spec-or-alias))
 
-(defun org-fold-core--check-spec (spec-or-alias)
+(defsubst org-fold-core--check-spec (spec-or-alias)
   "Throw an error if SPEC-OR-ALIAS is not present in `org-fold-core--spec-priority-list'."
   (unless (org-fold-core-folding-spec-p spec-or-alias)
     (error "%s is not a valid folding spec" spec-or-alias)))
 
-(defun org-fold-core-get-folding-spec-property (spec-or-alias property)
+(defsubst org-fold-core-get-folding-spec-property (spec-or-alias property)
   "Get PROPERTY of a folding SPEC-OR-ALIAS.
 Possible properties can be found in `org-fold-core--specs' docstring."
   (org-fold-core--check-spec spec-or-alias)
@@ -619,7 +619,7 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 
 ;;;; Searching and examining folded text
 
-(defun org-fold-core-folded-p (&optional pos spec-or-alias)
+(defsubst org-fold-core-folded-p (&optional pos spec-or-alias)
   "Non-nil if the character after POS is folded.
 If POS is nil, use `point' instead.
 If SPEC-OR-ALIAS is a folding spec, only check the given folding spec."

@@ -1221,7 +1221,7 @@ This function modifies STRUCT."
 		      (+ (nth 2 ov) (- beg-A beg-B))))
       ;; Return structure.
       struct)))
-(defun org-list-swap-items (beg-A beg-B struct)
+(defsubst org-list-swap-items (beg-A beg-B struct)
   "Swap item starting at BEG-A with item starting at BEG-B in STRUCT.
 
 Blank lines at the end of items are left in place.  Item
