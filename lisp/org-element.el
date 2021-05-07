@@ -5901,7 +5901,11 @@ element ending there."
        (when (org-element--cache-active-p)
 	 (if (not org-element--cache) (org-element-cache-reset)
 	   (org-element--cache-sync (current-buffer) origin)))
-       (org-element--parse-to origin))))))
+       (let ((element (org-element--parse-to origin)))
+         (if (not (eq (org-element-type element) 'section))
+             element
+           (goto-char (1+ origin))
+           (org-element-at-point))))))))
 
 ;;;###autoload
 (defun org-element-context (&optional element)
