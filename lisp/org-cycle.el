@@ -761,16 +761,17 @@ STATE should be one of the symbols listed in the docstring of
 `org-cycle-hook'."
   (when (and (not org-cycle-open-archived-trees)
              (not (memq state '(overview folded))))
-    (save-excursion
-      (let* ((globalp (memq state '(contents all)))
-             (beg (if globalp (point-min) (point)))
-             (end (if globalp (point-max) (org-end-of-subtree t))))
-	(org-fold-hide-archived-subtrees beg end)
-	(goto-char beg)
-	(when (looking-at-p (concat ".*:" org-archive-tag ":"))
-	  (message "%s" (substitute-command-keys
-			 "Subtree is archived and stays closed.  Use \
-`\\[org-cycle-force-archived]' to cycle it anyway.")))))))
+    (let ((globalp (memq state '(contents all))))
+      (org-fold-hide-archived-subtrees
+       (if globalp (point-min) (point))
+       (if globalp (point-max) (save-excursion
+                                 (org-end-of-subtree t))))
+      (when (and (not globalp)
+                 (member org-archive-tag
+                         (org-get-tags nil 'local)))
+	(message "%s" (substitute-command-keys
+		       "Subtree is archived and stays closed.  Use \
+`\\[org-cycle-force-archived]' to cycle it anyway."))))))
 
 (provide 'org-cycle)
 
