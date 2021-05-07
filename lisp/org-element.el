@@ -4985,7 +4985,12 @@ table is cleared once the synchronization is complete."
 	     ;; table).
 	     (key (if (memq (org-element-type element) '(item table-row))
 		      (1+ begin)
-		    begin)))
+                    ;; Decrease beginning position of sections by one,
+                    ;; so that the first element of the section get
+                    ;; different key from the parent section.
+                    (if (memq (org-element-type element) '(section))
+                        (1- begin)
+		      begin))))
 	(if org-element--cache-sync-requests
 	    (puthash element key org-element--cache-sync-keys)
 	  key))))
@@ -5346,6 +5351,7 @@ request."
                                ;; the cache keys.
                                ;; Invalidate cache here to avoid
                                ;; infinite loop.
+                               (message "org-element-cache encountered wrongly inserted element: %s" data)
                                (org-element-cache-reset)))
 		    (aset request 0 data-key)
 		    (aset request 1 pos)
