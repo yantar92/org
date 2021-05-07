@@ -900,6 +900,7 @@ Return width in pixels when PIXELS is non-nil."
                result)))
         (current-char-property-alias-alist char-property-alias-alist))
     (with-temp-buffer
+      (setq-local display-line-numbers nil)
       (setq-local buffer-invisibility-spec
                   current-invisibility-spec)
       (setq-local char-property-alias-alist
