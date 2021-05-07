@@ -4892,12 +4892,15 @@ indentation removed from its contents."
 ;; even when the tree is only partially synchronized.
 
 
-(defvar org-element-use-cache nil
+(defvar org-element-use-cache t
   "Non-nil when Org parser should cache its results.
 
 WARNING: for the time being, using cache sometimes triggers
 freezes.  Therefore, it is disabled by default.  Activate it if
-you want to help debugging the issue.")
+you want to help debugging the issue.
+
+UPDATE: At least part of the freezes should not happen anymore.
+Hopefully, this is finally fixed, but need more testing.")
 
 (defvar org-element-cache-sync-idle-time 0.6
   "Length, in seconds, of idle time before syncing cache.")
