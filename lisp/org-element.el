@@ -5575,23 +5575,12 @@ the process stopped before finding the expected result."
 	      ;; can start after it, but more than one may end there.
 	      ;; Arbitrarily, we choose to return the innermost of
 	      ;; such elements.
-	      ((let ((cbeg (pcase (org-element-type element)
-                             ;; `org-element-headline-parser' skips empty lines
-                             ;; at the beginning.  Yet we may need them
-                             ;; here.
-                             ((or `headline `section)
-                              (+ (or (org-element-property :contents-begin element)
-                                     ;; Empty heading.
-                                     (org-element-property :end element))
-                                 (or (org-element-property :pre-blank element)
-                                     0)))
-                             (_ (org-element-property :contents-begin element))))
-		     (cend (pcase (org-element-type element)
-                             ;; `org-element-headline-parser' skips empty lines
-                             ;; at the end.  Yet we may need them
-                             ;; here.
-                             ((or `headline `section) (org-element-property :end element))
-                             (_ (org-element-property :contents-end element)))))
+	      ((let ((cbeg (and (org-element-property :contents-begin element)
+                                (- (org-element-property :contents-begin element)
+                                   (or (org-element-property :pre-blank element) 0))))
+		     (cend (and (org-element-property :contents-end element)
+                                (+ (org-element-property :contents-end element)
+                                   (or (org-element-property :post-blank element) 0)))))
 		 (when (or syncp
 			   (and cbeg cend
 				(or (< cbeg pos)
