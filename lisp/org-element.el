@@ -5686,7 +5686,7 @@ that range.  See `after-change-functions' for more information."
 	   ;; Effectively extend modified area.
 	   (org-with-limited-levels
 	    (setq top (progn (goto-char top)
-			     (when (outline-previous-heading) (forward-line))
+			     (outline-previous-heading)
 			     (point)))
 	    (setq bottom (progn (goto-char bottom)
 				(if (outline-next-heading) (1- (point))
