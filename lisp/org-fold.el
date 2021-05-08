@@ -63,6 +63,9 @@
 (declare-function org-element-type "org-element" (element))
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element--current-element "org-element" (limit &optional granularity mode structure))
+(declare-function org-element--cache-active-p "org-element" ())
+(declare-function org-element--cache-find "org-element" (pos &optional side))
+(declare-function org-element--cache-find "org-element" (pos &optional side))
 (declare-function org-toggle-custom-properties-visibility "org" ())
 
 ;;; Customization
