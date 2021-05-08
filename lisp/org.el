@@ -5478,6 +5478,8 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	   '("^[ \t]*| *\\([#*]\\) *|" (1 'org-formula t))
 	   '("^[ \t]*|\\( *\\([$!_^/]\\) *|.*\\)|" (1 'org-formula t))
 	   '("| *\\(<[lrc]?[0-9]*>\\)" (1 'org-formula t))
+           ;; Table alignment
+           '(org-table--fontify-fields)
 	   ;; Properties
 	   (list org-property-re
 		 '(1 'org-special-keyword t)

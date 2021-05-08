@@ -566,7 +566,7 @@ This works for both table types.")
   "Match a reference that needs translation, for reference display.")
 
 (defconst org-table-separator-space
-  (propertize " " 'display '(space :relative-width 1))
+  (propertize " " 'org-table-display '(space :relative-width 1))
   "Space used around fields when aligning the table.
 This space serves as a segment separator for the purposes of the
 bidirectional reordering.")
@@ -3834,6 +3834,16 @@ FACE, when non-nil, for the highlight."
 
 ;;; Columns Shrinking
 
+(defun org-table--fontify-fields (limit)
+  "Apply 'org-table-display properties."
+  (let ((pos (point))
+        next)
+    (while (< pos limit)
+      (setq next (next-single-property-change pos 'org-table-display nil limit))
+      (when (get-text-property pos 'org-table-display)
+        (put-text-property pos next 'display (get-text-property pos 'org-table-display)))
+      (setq pos next))))
+
 (defun org-table--shrunk-field ()
   "Non-nil if current field is narrowed.
 When non-nil, return the overlay narrowing the field."
@@ -4313,12 +4323,33 @@ extension of the given file name, and finally on the variable
   "Format FIELD according to column WIDTH and alignment ALIGN.
 FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 \"l\" or\"r\"."
-  (let* ((spaces (- width (org-string-width field)))
+  (let* ((spaces (- width (org-string-width field 'pixels)))
+         (symbol-width (org-string-width " " 'pixels))
+         (right-spaces (/ spaces symbol-width))
+         (right-pixels (- spaces (* symbol-width right-spaces)))
+         (centered-spaces (/ (/ spaces 2) symbol-width))
+         (centered-pixels (- (/ spaces 2) (* symbol-width centered-spaces)))
 	 (prefix (pcase align
 		   ("l" "")
-		   ("r" (make-string spaces ?\s))
-		   ("c" (make-string (/ spaces 2) ?\s))))
-	 (suffix (make-string (- spaces (length prefix)) ?\s)))
+		   ("r" (concat (make-string right-spaces ?\s)
+                                ;; Align to non-fixed width.
+                                (propertize " "
+                                            'org-table-display
+                                            `(space . (:width (,right-pixels)))
+                                            )))
+		   ("c" (concat (make-string centered-spaces ?\s)
+                                ;; Align to non-fixed width.
+                                (propertize " "
+                                            'org-table-display
+                                            `(space . (:width (,centered-pixels)))
+                                            )))))
+         (suffix-spaces (/ (- spaces (org-string-width prefix)) symbol-width))
+         (suffix-pixels (- (- spaces (org-string-width prefix)) (* symbol-width suffix-spaces)))
+	 (suffix (concat (make-string suffix-spaces ?\s)
+                         ;; Align to non-fixed width.
+                         (propertize " "
+                                     'org-table-display
+                                     `(space . (:width (,suffix-pixels)))))))
     (concat org-table-separator-space
 	    prefix
 	    field
@@ -4342,7 +4373,8 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
              (rows (remq 'hline table))
 	     (widths nil)
 	     (alignments nil)
-	     (columns-number 1))
+	     (columns-number 1)
+             (symbol-width (org-string-width "-" 'pixels)))
 	(if (null rows)
 	    ;; Table contains only horizontal rules.  Compute the
 	    ;; number of columns anyway, and choose an arbitrary width
@@ -4352,17 +4384,17 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 		(while (search-forward "+" end t)
 		  (cl-incf columns-number)))
 	      (setq widths (make-list columns-number 1))
-	      (setq alignments (make-list columns-number "l")))
+	      (setq alignments (make-list (* columns-number symbol-width) "l")))
 	  ;; Compute alignment and width for each column.
 	  (setq columns-number (apply #'max (mapcar #'length rows)))
 	  (dotimes (i columns-number)
-	    (let ((max-width 1)
+	    (let ((max-width symbol-width)
 		  (fixed-align? nil)
 		  (numbers 0)
 		  (non-empty 0))
 	      (dolist (row rows)
 		(let ((cell (or (nth i row) "")))
-		  (setq max-width (max max-width (org-string-width cell)))
+		  (setq max-width (max max-width (org-string-width cell 'pixels)))
 		  (cond (fixed-align? nil)
 			((equal cell "") nil)
 			((string-match "\\`<\\([lrc]\\)[0-9]*>\\'" cell)
@@ -4386,7 +4418,13 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 	;; Build new table rows.  Only replace rows that actually
 	;; changed.
 	(let ((rule (and (memq 'hline table)
-			 (mapconcat (lambda (w) (make-string (+ 2 w) ?-))
+			 (mapconcat (lambda (w)
+                                      (concat (make-string (+ 2 (/ w symbol-width)) ?-)
+                                              ;; Align to non-fixed width.
+                                              (propertize " "
+                                                          'display
+                                                          `(:width (,(- w (* symbol-width (/ w symbol-width)))))
+                                                          )))
 				    widths
 				    "+")))
               (indent (progn (looking-at "[ \t]*|") (match-string 0))))
