@@ -4445,7 +4445,7 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 					             alignments)
 				          "|")))
 		           "|")))
-	      (if (equal new previous)
+	      (if (equal-including-properties new previous)
 		  (forward-line)
 		(insert new "\n")
 		(delete-region (point) (line-beginning-position 2))))))
