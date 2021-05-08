@@ -1,4 +1,4 @@
-;;; org-fold-core.el --- Folding buffer text -*- lexical-binding: t; comp-speed: 3; -*-
+;;; org-fold-core.el --- Folding buffer text -*- lexical-binding: t; native-comp-speed: 3; -*-
 ;;
 ;; Copyright (C) 2020-2020 Free Software Foundation, Inc.
 ;;
