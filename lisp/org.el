@@ -3,7 +3,7 @@
 ;; Carstens outline-mode for keeping track of everything.
 ;; Copyright (C) 2004-2021 Free Software Foundation, Inc.
 ;;
-;; Author: Carsten Dominik <carsten at orgmode dot org>
+;; Author: Carsten Dominik <carsten.dominik@gmail.com>
 ;; Maintainer: Bastien Guerry <bzg@gnu.org>
 ;; Keywords: outlines, hypermedia, calendar, wp
 ;; Homepage: https://orgmode.org
@@ -664,6 +664,8 @@ defined in org-duration.el.")
   "Hook that is run after org.el has been loaded."
   :group 'org
   :type 'hook)
+(make-obsolete-variable 'org-load-hook
+                        "use `with-eval-after-load' instead." "Org 9.5")
 
 (defcustom org-log-buffer-setup-hook nil
   "Hook that is run after an Org log buffer is created."

@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2011-2021 Free Software Foundation, Inc.
 
-;; Author: Carsten Dominik <carsten at orgmode dot org>
+;; Author: Carsten Dominik <carsten.dominik@gmail.com>
 ;;      Jambunathan K <kjambunathan at gmail dot com>
 ;; Maintainer: TEC <tecosaur@gmail.com>
 ;; Keywords: outlines, hypermedia, calendar, wp
@@ -250,6 +250,7 @@ property on the headline itself.")
        if(null != target) {
          elem.classList.remove(\"code-highlighted\");
          target.classList.remove(\"code-highlighted\");
+       }
      }
 // @license-end
 </script>"
