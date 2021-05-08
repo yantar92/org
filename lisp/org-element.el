@@ -464,17 +464,7 @@ Return modified element."
 (defun org-element-property (property element)
   "Extract the value from the PROPERTY of an ELEMENT."
   (if (stringp element) (get-text-property 0 property element)
-    (if (and (eq 'headline (org-element-type element))
-             (eq property :parent)
-             (org-element-property :begin element))
-        (or (plist-get (nth 1 element) property)
-            (org-with-point-at (org-element-property :begin element)
-              (when (org-up-heading-safe)
-                (org-element-put-property
-                 element :parent
-                 (org-element-headline-parser (org-element-property :begin element)))
-                (plist-get (nth 1 element) property))))
-      (plist-get (nth 1 element) property))))
+    (plist-get (nth 1 element) property)))
 
 (defsubst org-element-contents (element)
   "Extract contents from an ELEMENT."
@@ -972,7 +962,7 @@ Return value is a plist."
 		  (t (setq plist (plist-put plist :closed time))))))
 	plist))))
 
-(defun org-element-headline-parser (_ &optional raw-secondary-p)
+(defun org-element-headline-parser (&optional _ raw-secondary-p)
   "Parse a headline.
 
 Return a list whose CAR is `headline' and CDR is a plist
@@ -5346,16 +5336,7 @@ request."
 					(> (org-element-property :end data)
 					   end))
 			       (setq last-container data))
-                             (unless (org-element--cache-remove data)
-                               ;; FIXME: This should not happen unless
-                               ;; the tree is wrongly balanced.  Yet,
-                               ;; it happens sometimes.  Presumably,
-                               ;; something to do with stability of
-                               ;; the cache keys.
-                               ;; Invalidate cache here to avoid
-                               ;; infinite loop.
-                               (message "org-element-cache encountered wrongly inserted element: %s" data)
-                               (org-element-cache-reset)))
+                             (org-element--cache-remove data))
 		    (aset request 0 data-key)
 		    (aset request 1 pos)
 		    (aset request 5 1)
@@ -5499,17 +5480,18 @@ the process stopped before finding the expected result."
        (cond
         ;; Nothing in cache before point: start parsing from first
         ;; element following headline above, or first element in
-        ;; buffer.
+        ;; buffer.  Compute the `:parent' of the element recursively.
         ((not cached)
          (if (org-with-limited-levels (outline-previous-heading))
              (progn
-	       (setq mode 'planning)
-	       ;; (forward-line)
-               )
-	   (setq mode 'top-comment))
-         ;; (skip-chars-forward " \r\t\n")
-         ;; (beginning-of-line)
-         )
+               ;; Parse parent heading if any.
+               (save-excursion
+                 (when (org-up-heading-safe)
+                   ;; Set it as parent to current heading.
+                   (setq element (org-element--parse-to (point) nil nil)) ; Do not limit the parsing.
+                   ))
+	       (setq mode 'planning))
+	   (setq mode 'top-comment)))
         ;; Cache returned exact match: return it.
         ((= pos begin)
 	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
@@ -5518,11 +5500,10 @@ the process stopped before finding the expected result."
         ;; following the headline.
         ((and (> (point) begin)
               (re-search-backward
-	       (org-with-limited-levels org-outline-regexp-bol) begin t))
-         ;; (forward-line)
-         ;; (skip-chars-forward " \r\t\n")
-         ;; (beginning-of-line)
-	 (setq mode 'planning))
+	       (org-with-limited-levels org-outline-regexp-bol) begin t)
+              ;; `cached' should  the previous headline.
+              (not (and (eq (point) begin)
+                      (eq (org-element-type cached) 'headline)))))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
         ;; If there is such an element, we inspect it in order to know
@@ -5594,7 +5575,17 @@ the process stopped before finding the expected result."
 	      ;; can start after it, but more than one may end there.
 	      ;; Arbitrarily, we choose to return the innermost of
 	      ;; such elements.
-	      ((let ((cbeg (org-element-property :contents-begin element))
+	      ((let ((cbeg (pcase (org-element-type element)
+                             ;; `org-element-headline-parser' skips empty lines
+                             ;; at the beginning.  Yet we may need them
+                             ;; here.
+                             ((or `headline `section)
+                              (+ (or (org-element-property :contents-begin element)
+                                     ;; Empty heading.
+                                     (org-element-property :end element))
+                                 (or (org-element-property :pre-blank element)
+                                     0)))
+                             (_ (org-element-property :contents-begin element))))
 		     (cend (pcase (org-element-type element)
                              ;; `org-element-headline-parser' skips empty lines
                              ;; at the end.  Yet we may need them
