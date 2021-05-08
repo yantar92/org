@@ -18,11 +18,11 @@ tool for Emacs.
 * Updates
 - [2021-05-08 Sat] Extended org-element-cache to store headlines. The cache is enabled by default now.
 
-While waiting for the feedback from maintainers, I have been playing with org-element-cache to speed up folding and agendas. This is already coming beyond the scope of the initial ideas of org-fold, but the speedup appears to be significant enough to share with others.
+  While waiting for the feedback from maintainers, I have been playing with org-element-cache to speed up folding and agendas. This is already coming beyond the scope of the initial ideas of org-fold, but the speedup appears to be significant enough to share with others.
 
-Previously, org-element-cache was only limited to headline contents. I have added headings to the cache and modified some built-in functions to use the cached heading. In particular, global cycling on very large files is slightly faster now and retrieval of inherited tags is *a lot* faster. The fast tag retrieval halved the agenda generation times on my machine.
+  Previously, org-element-cache was only limited to headline contents. I have added headings to the cache and modified some built-in functions to use the cached heading. In particular, global cycling on very large files is slightly faster now and retrieval of inherited tags is *a lot* faster. The fast tag retrieval halved the agenda generation times on my machine.
 
-The org-element-cache is enabled by default in the branch. Also, I believe that I fixed the known bug with random Emacs hangs related to the cache.
+  The org-element-cache is enabled by default in the branch. Also, I believe that I fixed the known bug with random Emacs hangs related to the cache.
 
 - [2021-04-12 Mon] Original folding mechanism using overlays is now supported as a user customisation; Submitted =org-fold-core= to the mailing list.
 
