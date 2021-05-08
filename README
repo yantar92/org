@@ -108,7 +108,7 @@ You can clone Org’s repository and install Org like this:
 #+begin_src bash
 cd ~/src/
 git clone https://github.com/yantar92/org
-cd org-mode/
+cd org/
 make autoloads
 #+end_src
 
