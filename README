@@ -76,12 +76,12 @@ Adopted from [[https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/
   :recipe (:host github
            :repo "yantar92/org"
            :branch "feature/org-fold-universal-core"
-           :files ("*.el" "lisp/*.el" "contrib/lisp/*.el")
+           :files ("*.el" "lisp/*.el")
            :pre-build (with-temp-file (expand-file-name "org-version.el" (straight--repos-dir "org"))
                         (insert "(fset 'org-release (lambda () \"9.5\"))\n"
                                 "(fset 'org-git-version #'ignore)\n"
-                                "(provide 'org-version)\n")))
-  :shadow 'org)
+                                "(provide 'org-version)\n"))
+           :includes (org)))
 #+end_src
 
 ** Using [[https://github.com/raxod502/straight.el/][Straight.el]]
