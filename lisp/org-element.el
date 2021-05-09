@@ -5808,6 +5808,22 @@ change, as an integer."
 	    (cl-incf (aref (car org-element--cache-sync-requests) 3)
 		     offset)))))))
 
+(defun org-element--cache-headlines-in-buffer ()
+  "Queue caching all the headlines in buffer."
+  (org-with-wide-buffer
+   (goto-char (point-min))
+   (let (requests)
+     (while (re-search-forward org-outline-regexp-bol nil t)
+       (push (vector (match-beginning 0)
+                     (match-beginning 0)
+                     (line-end-position)
+                     0
+                     nil
+                     1)
+             requests))
+     (setq org-element--cache-sync-requests (append (reverse requests)
+                                         org-element--cache-sync-requests))
+     (org-element--cache-sync (current-buffer)))))
 
 ;;;; Public Functions
 
@@ -5827,6 +5843,7 @@ buffers."
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
 	(setq-local org-element--cache-sync-timer nil)
+        (org-element--cache-headlines-in-buffer)
 	(add-hook 'before-change-functions
 		  #'org-element--cache-before-change nil t)
 	(add-hook 'after-change-functions
