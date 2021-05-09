@@ -11494,7 +11494,11 @@ The tags are fontified when FONTIFY is non-nil."
   (let ((cached (and (org-element--cache-active-p)
                      (org-element--cache-find (point)))))
     (if (and (eq 'headline (org-element-type cached))
-             (eq (point) (org-element-property :post-affiliated cached)))
+             (eq (point) (org-element-property :post-affiliated cached))
+             (if fontified
+                 (and (org-element-property :tags cached)
+                      (get-text-property 0 'fontified (car (org-element-property :tags cached))))
+               t))
         ;; If we do not wrap result into `cl-copy-list', reference would
         ;; be returned and cache element might be modified directly.
         (cl-copy-list (org-element-property :tags cached))
@@ -11537,7 +11541,12 @@ The tags are fontified when FONTIFY is non-nil."
                        (eq (point) (org-element-property :post-affiliated cached)))
                   (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited
-                                               (org-element-property :tags cached))
+                                               (let ((local-tags (org-element-property :tags cached)))
+                                                 (if (or (not fontify)
+                                                         (get-text-property 0 'fontified (car local-tags)))
+                                                     local-tags
+                                                   (org-with-point-at (org-element-property :begin cached)
+                                                     (org--get-local-tags fontify)))))
                                        itags)))
                 (while (org-up-heading-safe)
                   (setq itags (nconc (mapcar #'org-add-prop-inherited
