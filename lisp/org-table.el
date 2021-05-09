@@ -4323,6 +4323,8 @@ extension of the given file name, and finally on the variable
   "Format FIELD according to column WIDTH and alignment ALIGN.
 FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 \"l\" or\"r\"."
+  ;; Avoid inheriting alignment property.
+  (push '(org-table-display . t) text-property-default-nonsticky)
   (let* ((spaces (- width (org-string-width field 'pixels)))
          (symbol-width (org-string-width " " 'pixels))
          (right-spaces (/ spaces symbol-width))
@@ -4333,23 +4335,26 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 		   ("l" "")
 		   ("r" (concat (make-string right-spaces ?\s)
                                 ;; Align to non-fixed width.
-                                (propertize " "
-                                            'org-table-display
-                                            `(space . (:width (,right-pixels)))
-                                            )))
+                                (if (zerop right-pixels) ""
+                                  (propertize " "
+                                              'org-table-display
+                                              `(space . (:width (,right-pixels)))
+                                              ))))
 		   ("c" (concat (make-string centered-spaces ?\s)
                                 ;; Align to non-fixed width.
-                                (propertize " "
-                                            'org-table-display
-                                            `(space . (:width (,centered-pixels)))
-                                            )))))
-         (suffix-spaces (/ (- spaces (org-string-width prefix)) symbol-width))
-         (suffix-pixels (- (- spaces (org-string-width prefix)) (* symbol-width suffix-spaces)))
+                                (if (zerop centered-pixels) ""
+                                  (propertize " "
+                                              'org-table-display
+                                              `(space . (:width (,centered-pixels)))
+                                              ))))))
+         (suffix-spaces (/ (- spaces (org-string-width prefix 'pixel)) symbol-width))
+         (suffix-pixels (- (- spaces (org-string-width prefix 'pixel)) (* symbol-width suffix-spaces)))
 	 (suffix (concat (make-string suffix-spaces ?\s)
                          ;; Align to non-fixed width.
-                         (propertize " "
-                                     'org-table-display
-                                     `(space . (:width (,suffix-pixels)))))))
+                         (if (zerop suffix-pixels) ""
+                           (propertize " "
+                                       'org-table-display
+                                       `(space . (:width (,suffix-pixels))))))))
     (concat org-table-separator-space
 	    prefix
 	    field
@@ -4418,15 +4423,19 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 	;; Build new table rows.  Only replace rows that actually
 	;; changed.
 	(let ((rule (and (memq 'hline table)
-			 (mapconcat (lambda (w)
-                                      (concat (make-string (+ 2 (/ w symbol-width)) ?-)
-                                              ;; Align to non-fixed width.
-                                              (propertize " "
-                                                          'display
-                                                          `(:width (,(- w (* symbol-width (/ w symbol-width)))))
-                                                          )))
-				    widths
-				    "+")))
+                         (mapconcat
+                          (lambda (w)
+                            (let* ((hline-dahes (+ 2 (/ w symbol-width)))
+                                   (hline-pixels (- w (* symbol-width (/ w symbol-width)))))
+                              (concat (make-string hline-dahes ?-)
+                                      ;; Align to non-fixed width.
+                                      (if (zerop hline-pixels) ""
+                                        (propertize " "
+                                                    'org-table-display
+                                                    `(:width (,hline-pixels))
+                                                    )))))
+			  widths
+			  "+")))
               (indent (progn (looking-at "[ \t]*|") (match-string 0))))
 	  (dolist (row table)
 	    (let ((previous (buffer-substring (point) (line-end-position)))
@@ -4445,10 +4454,19 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
 					             alignments)
 				          "|")))
 		           "|")))
-	      (if (equal-including-properties new previous)
-		  (forward-line)
-		(insert new "\n")
-		(delete-region (point) (line-beginning-position 2))))))
+	      (if (equal new previous)
+                  (if (equal-including-properties new previous)
+                      (forward-line)
+                    (let ((pos 0) next)
+                      (while (< pos (length new))
+                        (setq next (or (next-single-property-change pos 'org-table-display new)
+                                       (length new)))
+                        (when (get-text-property pos 'org-table-display new)
+                          (put-text-property (+ pos (point)) (+ next (point)) 'org-table-display (get-text-property pos 'org-table-display new)))
+                        (setq pos next)))
+                    (forward-line))
+	        (insert new "\n")
+	        (delete-region (point) (line-beginning-position 2))))))
 	(set-marker end nil)
 	(when org-table-overlay-coordinates (org-table-overlay-coordinates))
 	(setq org-table-may-need-update nil))))))
