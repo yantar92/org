@@ -5860,7 +5860,7 @@ buffers."
 
 
 ;;;###autoload
-(defun org-element-at-point ()
+(defun org-element-at-point (&optional cached)
   "Determine closest element around point.
 
 Return value is a list like (TYPE PROPS) where TYPE is the type
@@ -5878,7 +5878,11 @@ the first row of a table, returned element will be the table
 instead of the first row.
 
 When point is at the end of the buffer, return the innermost
-element ending there."
+element ending there.
+
+When CACHED is non-nil, only search the element starting exacrly at
+point in `org-element--cache' and return nil when current element is
+not in cache yet."
   (org-with-wide-buffer
    (let ((origin (point)))
      (end-of-line)
@@ -5896,7 +5900,12 @@ element ending there."
        (when (org-element--cache-active-p)
 	 (if (not org-element--cache) (org-element-cache-reset)
 	   (org-element--cache-sync (current-buffer) origin)))
-       (let ((element (org-element--parse-to origin)))
+       (let ((element (if cached
+                          (and (org-element--cache-active-p)
+                               (let ((cached (org-element--cache-find origin)))
+                                 (and (eq origin (org-element-property :begin cached))
+                                      cached)))
+                        (org-element--parse-to origin))))
          (if (not (eq (org-element-type element) 'section))
              element
            (goto-char (1+ origin))
