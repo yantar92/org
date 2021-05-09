@@ -869,6 +869,8 @@ end of string are ignored."
 		      results		;skip trailing separator
 		    (cons (substring string i) results)))))))
 
+(defvar org-string-width--cache (make-hash-table :test 'equal)
+  "Results cache for `org-string-width'.")
 (defun org-string-width (string &optional pixels)
   "Return width of STRING when displayed in the current buffer.
 Return width in pixels when PIXELS is non-nil."
@@ -899,34 +901,37 @@ Return width in pixels when PIXELS is non-nil."
                    (push el result)))
                result)))
         (current-char-property-alias-alist char-property-alias-alist))
-    (with-temp-buffer
-      (setq-local display-line-numbers nil)
-      (setq-local buffer-invisibility-spec
-                  current-invisibility-spec)
-      (setq-local char-property-alias-alist
-                  current-char-property-alias-alist)
-      (let (pixel-width symbol-width)
-        (with-silent-modifications
-          (setf (buffer-string) string)
-          (setq pixel-width
-                (if (get-buffer-window (current-buffer))
-                    (car (window-text-pixel-size
-                          nil (line-beginning-position) (point-max)))
-                  (set-window-buffer nil (current-buffer))
-                  (car (window-text-pixel-size
-                        nil (line-beginning-position) (point-max)))))
-          (unless pixels
-            (setf (buffer-string) "a")
-            (setq symbol-width
-                  (if (get-buffer-window (current-buffer))
+    (or (gethash (list string pixels current-invisibility-spec current-char-property-alias-alist) org-string-width--cache)
+        (with-temp-buffer
+          (setq-local display-line-numbers nil)
+          (setq-local buffer-invisibility-spec
+                      current-invisibility-spec)
+          (setq-local char-property-alias-alist
+                      current-char-property-alias-alist)
+          (let (pixel-width symbol-width)
+            (with-silent-modifications
+              (setf (buffer-string) string)
+              (setq pixel-width
+                    (if (get-buffer-window (current-buffer))
+                        (car (window-text-pixel-size
+                              nil (line-beginning-position) (point-max)))
+                      (set-window-buffer nil (current-buffer))
                       (car (window-text-pixel-size
-                            nil (line-beginning-position) (point-max)))
-                    (set-window-buffer nil (current-buffer))
-                    (car (window-text-pixel-size
-                          nil (line-beginning-position) (point-max)))))))
-        (if pixels
-            pixel-width
-          (/ pixel-width symbol-width))))))
+                            nil (line-beginning-position) (point-max)))))
+              (unless pixels
+                (setf (buffer-string) "a")
+                (setq symbol-width
+                      (if (get-buffer-window (current-buffer))
+                          (car (window-text-pixel-size
+                                nil (line-beginning-position) (point-max)))
+                        (set-window-buffer nil (current-buffer))
+                        (car (window-text-pixel-size
+                              nil (line-beginning-position) (point-max)))))))
+            (puthash (list string pixels current-invisibility-spec current-char-property-alias-alist)
+                     (if pixels
+                         pixel-width
+                       (/ pixel-width symbol-width))
+                     org-string-width--cache))))))
 
 (defun org-not-nil (v)
   "If V not nil, and also not the string \"nil\", then return V.
