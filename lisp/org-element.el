@@ -5488,22 +5488,37 @@ the process stopped before finding the expected result."
                (save-excursion
                  (when (org-up-heading-safe)
                    ;; Set it as parent to current heading.
-                   (setq element (org-element--parse-to (point) nil nil)) ; Do not limit the parsing.
-                   ))
+                   (setq element (org-element--parse-to (point) nil time-limit))))
 	       (setq mode 'planning))
 	   (setq mode 'top-comment)))
         ;; Cache returned exact match: return it.
         ((= pos begin)
 	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
-        ;; There's a headline between cached value and POS: cached
-        ;; value is invalid.  Start parsing from first element
-        ;; following the headline.
+        ;; At heading. Parse it.
+        ((org-at-heading-p)
+         (if (eq (line-beginning-position) (org-element-property :begin cached))
+             ;; `pos' is a point at the cached headline.  Return it.
+             (throw 'exit (if syncp (org-element-property :parent cached) cached))
+           (let ((parent (save-excursion
+                           (when (org-up-heading-safe)
+                             (org-element--parse-to (point) nil time-limit)))))
+             (beginning-of-line)
+             (setq element (org-element-headline-parser))
+             (org-element-put-property element :parent parent)
+             (org-element--cache-put element)
+             (throw 'exit (if syncp parent element)))))
+        ;; There's a headline between beginning of the contents of the
+        ;; cached value and POS: cached value is invalid.  Start
+        ;; parsing from first element following the headline.
         ((and (> (point) begin)
               (re-search-backward
-	       (org-with-limited-levels org-outline-regexp-bol) begin t)
-              ;; `cached' should  the previous headline.
+	       (org-with-limited-levels (org-get-limited-outline-regexp)) begin t)
+              ;; `cached' being current heading is fine.
               (not (and (eq (point) begin)
-                      (eq (org-element-type cached) 'headline)))))
+                      (eq (org-element-type cached) 'headline)
+                      ;; Move back the point moves by
+                      ;; `re-search-backward'.
+                      (goto-char pos)))))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
         ;; If there is such an element, we inspect it in order to know
