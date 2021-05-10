@@ -5244,25 +5244,26 @@ updated before current modification are actually submitted."
       (let ((inhibit-quit t) request next)
 	(when org-element--cache-sync-timer
 	  (cancel-timer org-element--cache-sync-timer))
-	(catch 'interrupt
-	  (while org-element--cache-sync-requests
-	    (setq request (car org-element--cache-sync-requests)
-		  next (nth 1 org-element--cache-sync-requests))
-	    (org-element--cache-process-request
-	     request
-	     (and next (aref next 0))
-	     threshold
-	     (and (not threshold)
-		  (org-time-add nil
-				org-element-cache-sync-duration))
-	     future-change)
-	    ;; Request processed.  Merge current and next offsets and
-	    ;; transfer ending position.
-	    (when next
-	      (cl-incf (aref next 3) (aref request 3))
-	      (aset next 2 (aref request 2)))
-	    (setq org-element--cache-sync-requests
-		  (cdr org-element--cache-sync-requests))))
+        (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
+	  (catch 'interrupt
+	    (while org-element--cache-sync-requests
+              (when (org-element--cache-interrupt-p time-limit)
+                (throw 'interrupt nil))
+	      (setq request (car org-element--cache-sync-requests)
+		    next (nth 1 org-element--cache-sync-requests))
+	      (org-element--cache-process-request
+	       request
+	       (and next (aref next 0))
+	       threshold
+	       (and (not threshold) time-limit)
+	       future-change)
+	      ;; Request processed.  Merge current and next offsets and
+	      ;; transfer ending position.
+	      (when next
+	        (cl-incf (aref next 3) (aref request 3))
+	        (aset next 2 (aref request 2)))
+	      (setq org-element--cache-sync-requests
+		    (cdr org-element--cache-sync-requests)))))
 	;; If more requests are awaiting, set idle timer accordingly.
 	;; Otherwise, reset keys.
 	(if org-element--cache-sync-requests
