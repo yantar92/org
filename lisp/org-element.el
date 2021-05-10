@@ -5828,7 +5828,7 @@ change, as an integer."
                      nil
                      1)
              requests))
-     (setq org-element--cache-sync-requests (append (reverse requests)
+     (setq org-element--cache-sync-requests (append (nreverse requests)
                                          org-element--cache-sync-requests))
      (org-element--cache-sync (current-buffer)))))
 
