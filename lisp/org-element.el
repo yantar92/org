@@ -5509,16 +5509,17 @@ the process stopped before finding the expected result."
              (throw 'exit (if syncp parent element)))))
         ;; There's a headline between beginning of the contents of the
         ;; cached value and POS: cached value is invalid.  Start
-        ;; parsing from first element following the headline.
+        ;; parsing from the headline.
         ((and (> (point) begin)
               (re-search-backward
 	       (org-with-limited-levels (org-get-limited-outline-regexp)) begin t)
-              ;; `cached' being current heading is fine.
+              ;; `cached' is the current heading.  Parse section.
               (not (and (eq (point) begin)
                       (eq (org-element-type cached) 'headline)
-                      ;; Move back the point moves by
-                      ;; `re-search-backward'.
-                      (goto-char pos)))))
+                      ;; Move the point to the first line below the
+                      ;; cached heading.
+                      (goto-char (line-beginning-position 2))
+                      (setq mode 'planning)))))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
         ;; If there is such an element, we inspect it in order to know
@@ -5592,10 +5593,14 @@ the process stopped before finding the expected result."
 	      ;; such elements.
 	      ((let ((cbeg (and (org-element-property :contents-begin element)
                                 (- (org-element-property :contents-begin element)
-                                   (or (org-element-property :pre-blank element) 0))))
+                                   (or (and (memq (org-element-type element) '(headline))
+                                            (org-element-property :pre-blank element))
+                                       0))))
 		     (cend (and (org-element-property :contents-end element)
                                 (+ (org-element-property :contents-end element)
-                                   (or (org-element-property :post-blank element) 0)))))
+                                   (or (and (memq (org-element-type element) '(headline))
+                                            (org-element-property :post-blank element))
+                                       0)))))
 		 (when (or syncp
 			   (and cbeg cend
 				(or (< cbeg pos)
