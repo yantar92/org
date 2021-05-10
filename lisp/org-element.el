@@ -5478,6 +5478,24 @@ the process stopped before finding the expected result."
             (begin (org-element-property :begin cached))
             element next mode)
        (cond
+        ;; Cache returned exact match: return it.
+        ((eq pos begin)
+	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
+        ;; At heading. Parse it.
+        ((org-at-heading-p)
+         (if (eq (line-beginning-position) (org-element-property :begin cached))
+             ;; `pos' is a point at the cached headline.  Return it.
+             (throw 'exit (if syncp (org-element-property :parent cached) cached))
+           (beginning-of-line)
+           (setq element (org-element-headline-parser))
+           (let* ((parent cached))
+             (while (and parent
+                         (<= (org-element-property :end parent)
+                            (point)))
+               (setq parent (org-element-property :parent parent)))
+             (org-element-put-property element :parent parent)
+             (org-element--cache-put element)
+             (throw 'exit (if syncp parent element)))))
         ;; Nothing in cache before point: start parsing from first
         ;; element following headline above, or first element in
         ;; buffer.  Compute the `:parent' of the element recursively.
@@ -5491,24 +5509,6 @@ the process stopped before finding the expected result."
                    (setq element (org-element--parse-to (point) nil time-limit))))
 	       (setq mode 'planning))
 	   (setq mode 'top-comment)))
-        ;; Cache returned exact match: return it.
-        ((= pos begin)
-	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
-        ;; At heading. Parse it.
-        ((org-at-heading-p)
-         (if (eq (line-beginning-position) (org-element-property :begin cached))
-             ;; `pos' is a point at the cached headline.  Return it.
-             (throw 'exit (if syncp (org-element-property :parent cached) cached))
-           (beginning-of-line)
-           (setq element (org-element-headline-parser))
-           (let* ((parent cached)
-                  (parent (while (and parent
-                                      (<= (org-element-property :end parent)
-                                         (point)))
-                            (setq parent (org-element-property :parent parent)))))
-             (org-element-put-property element :parent parent)
-             (org-element--cache-put element)
-             (throw 'exit (if syncp parent element)))))
         ;; There's a headline between beginning of the contents of the
         ;; cached value and POS: cached value is invalid.  Start
         ;; parsing from the headline.
