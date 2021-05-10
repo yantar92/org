@@ -5816,8 +5816,8 @@ change, as an integer."
 	    (cl-incf (aref (car org-element--cache-sync-requests) 3)
 		     offset)))))))
 
-(defun org-element--cache-headlines-in-buffer ()
-  "Queue caching all the headlines in buffer."
+(defun org-element--cache-buffer-stealthly ()
+  "Queue caching all the headlines in buffer on idle."
   (org-with-wide-buffer
    (goto-char (point-min))
    (let (requests)
@@ -5851,7 +5851,7 @@ buffers."
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
 	(setq-local org-element--cache-sync-timer nil)
-        (org-element--cache-headlines-in-buffer)
+        (org-element--cache-buffer-stealthly)
 	(add-hook 'before-change-functions
 		  #'org-element--cache-before-change nil t)
 	(add-hook 'after-change-functions
