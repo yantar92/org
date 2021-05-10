@@ -5483,7 +5483,7 @@ the process stopped before finding the expected result."
         ((eq pos begin)
 	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
         ;; At heading. Parse it.
-        ((org-with-limited-levels (org-at-heading-p))
+        ((save-excursion (org-with-limited-levels (looking-at-p org-outline-regexp-bol)))
          (if (eq (line-beginning-position) (org-element-property :begin cached))
              ;; `pos' is a point at the cached headline.  Return it.
              (throw 'exit (if syncp (org-element-property :parent cached) cached))
@@ -5519,7 +5519,7 @@ the process stopped before finding the expected result."
         ;; parsing from the headline.
         ((and (> (point) begin)
               (re-search-backward
-	       (org-with-limited-levels (org-get-limited-outline-regexp)) begin t)
+	       (org-with-limited-levels org-outline-regexp-bol) begin t)
               ;; `cached' is the current heading.  Parse section.
               (not (and (eq (point) begin)
                       (eq (org-element-type cached) 'headline)
