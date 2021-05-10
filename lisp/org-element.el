@@ -5176,7 +5176,13 @@ the cache."
 (defsubst org-element--cache-remove (element)
   "Remove ELEMENT from cache.
 Assume ELEMENT belongs to cache and that a cache is active."
-  (avl-tree-delete org-element--cache element))
+  (or (avl-tree-delete org-element--cache element)
+      ;; This should not happen, but if it is, would be better to know
+      ;; where it happens.
+      (message "org-element-cache: Failed to delete %S element in %s at %s"
+               (org-element-type element)
+               (current-buffer)
+               (org-element-property :begin element))))
 
 
 ;;;; Synchronization
