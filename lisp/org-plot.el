@@ -309,7 +309,8 @@ the argument, and must return a string to be used."
 		 (with (if (eq type 'grid) 'pm3d (plist-get params :with)))
 		 (ind (plist-get params :ind))
 		 (deps (if (plist-member params :deps) (plist-get params :deps)))
-		 (text-ind (plist-get params :textind))
+		 (text-ind (or (plist-get params :textind)
+                               (eq (plist-get params :with) 'histograms)))
 		 (col-labels (plist-get params :labels))
 		 res)
 	    (dotimes (col num-cols res)
@@ -649,7 +650,11 @@ line directly before or after the table."
         (setf params (org-plot/collect-options params))))
     ;; collect table and table information
     (let* ((data-file (make-temp-file "org-plot"))
-	   (table (let ((tbl (org-table-to-lisp)))
+           (table (let ((tbl (save-excursion
+                               ;; needed due to particularities of `org-table-begin'
+                               (when (= (current-column) 0)
+                                 (forward-char 1))
+                               (org-table-to-lisp))))
 		    (when (pcase (plist-get params :transpose)
 			    (`y   t)
 			    (`yes t)
