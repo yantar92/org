@@ -5483,17 +5483,15 @@ the process stopped before finding the expected result."
         ((eq pos begin)
 	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
         ;; At heading. Parse it.
-        ((org-at-heading-p)
+        ((org-with-limited-levels (org-at-heading-p))
          (if (eq (line-beginning-position) (org-element-property :begin cached))
              ;; `pos' is a point at the cached headline.  Return it.
              (throw 'exit (if syncp (org-element-property :parent cached) cached))
            (beginning-of-line)
-           (setq element (org-element-headline-parser))
-           (let* ((parent cached))
-             (while (and parent
-                         (<= (org-element-property :end parent)
-                            (point)))
-               (setq parent (org-element-property :parent parent)))
+           (setq element (org-element-headline-parser nil t))
+           (let* ((parent (save-excursion
+                            (when (org-up-heading-safe)
+                              (org-element--parse-to (point) nil time-limit)))))
              (org-element-put-property element :parent parent)
              (org-element--cache-put element)
              (throw 'exit (if syncp parent element)))))
@@ -5504,11 +5502,17 @@ the process stopped before finding the expected result."
          (if (org-with-limited-levels (outline-previous-heading))
              (progn
                ;; Parse parent heading if any.
-               (save-excursion
-                 (when (org-up-heading-safe)
-                   ;; Set it as parent to current heading.
-                   (setq element (org-element--parse-to (point) nil time-limit))))
+               (let ((parent (save-excursion
+                               (when (org-up-heading-safe)
+                                 ;; Set it as parent to current heading.
+                                 (org-element--parse-to (point) nil time-limit)))))
+                 (setq element (org-element-headline-parser nil t))
+                 (org-element-put-property element :parent parent)
+                 (org-element--cache-put element))
+               (forward-line)
 	       (setq mode 'planning))
+           (skip-chars-forward " \r\t\n")
+           (beginning-of-line)
 	   (setq mode 'top-comment)))
         ;; There's a headline between beginning of the contents of the
         ;; cached value and POS: cached value is invalid.  Start
@@ -5719,15 +5723,16 @@ changes."
 	    (robust-flag t))
 	(while up
 	  (if (let ((type (org-element-type up)))
-		(and (or (memq type '(center-block dynamic-block quote-block
-						   special-block headline section))
+		(and (or (memq type '( center-block dynamic-block
+                                       quote-block special-block
+                                       headline section))
 			 ;; Drawers named "PROPERTIES" are probably
 			 ;; a properties drawer being edited.  Force
 			 ;; parsing to check if editing is over.
 			 (and (eq type 'drawer)
 			      (not (string=
-				    (org-element-property :drawer-name up)
-				    "PROPERTIES"))))
+				  (org-element-property :drawer-name up)
+				  "PROPERTIES"))))
 		     (let ((cbeg (org-element-property :contents-begin up)))
 		       (and cbeg
 			    (<= cbeg beg)
