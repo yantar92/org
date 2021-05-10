@@ -661,7 +661,7 @@ get an unnecessary O(N²) space complexity, so you're usually better off using
 (defvar org-outline-regexp) ; defined in org.el
 (defvar org-odd-levels-only) ; defined in org.el
 (defvar org-inlinetask-min-level) ; defined in org-inlinetask.el
-(defun org-get-limited-outline-regexp ()
+(defsubst org-get-limited-outline-regexp ()
   "Return outline-regexp with limited number of levels.
 The number of levels is controlled by `org-inlinetask-min-level'."
   (cond ((not (derived-mode-p 'org-mode))
