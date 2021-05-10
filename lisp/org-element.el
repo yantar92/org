@@ -5593,12 +5593,12 @@ the process stopped before finding the expected result."
 	      ;; such elements.
 	      ((let ((cbeg (and (org-element-property :contents-begin element)
                                 (- (org-element-property :contents-begin element)
-                                   (or (and (memq (org-element-type element) '(headline))
+                                   (or (and (memq (org-element-type element) '(headline section))
                                             (org-element-property :pre-blank element))
                                        0))))
 		     (cend (and (org-element-property :contents-end element)
                                 (+ (org-element-property :contents-end element)
-                                   (or (and (memq (org-element-type element) '(headline))
+                                   (or (and (memq (org-element-type element) '(headline section))
                                             (org-element-property :post-blank element))
                                        0)))))
 		 (when (or syncp
