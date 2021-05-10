@@ -5757,12 +5757,16 @@ change, as an integer."
   (let ((next (car org-element--cache-sync-requests))
 	delete-to delete-from)
     (if (and next
+             ;; First existing sync request is in phase 0.
 	     (zerop (aref next 5))
+             ;; Current changes intersect with the first sync
+             ;; request.
 	     (> (setq delete-to (+ (aref next 2) (aref next 3))) end)
 	     (<= (setq delete-from (aref next 1)) end))
 	;; Current changes can be merged with first sync request: we
 	;; can save a partial cache synchronization.
 	(progn
+          ;; Update OFFSET of the existing request.
 	  (cl-incf (aref next 3) offset)
 	  ;; If last change happened within area to be removed, extend
 	  ;; boundaries of robust parents, if any.  Otherwise, find
