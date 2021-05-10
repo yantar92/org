@@ -5826,18 +5826,32 @@ change, as an integer."
 		     offset)))))))
 
 (defun org-element--cache-buffer-stealthly ()
-  "Queue caching all the headlines in buffer on idle."
+  "Queue caching all the headlines and elements in buffer on idle."
   (org-with-wide-buffer
    (goto-char (point-min))
    (let (requests)
      (while (re-search-forward org-outline-regexp-bol nil t)
+       ;; Cache the headline.
        (push (vector (match-beginning 0)
                      (match-beginning 0)
                      (line-end-position)
                      0
                      nil
                      1)
+             requests)
+       ;; Cache everything between previous headline up to the point
+       ;; right before the headline.
+       (push (vector (line-beginning-position 0)
+                     (line-beginning-position 0)
+                     (line-end-position 0)
+                     0
+                     nil
+                     1)
              requests))
+     ;; The requests are reversed guaranteeing that caching will be
+     ;; done incrementally from the beginning to the end of the
+     ;; buffer.  The later request will be able to reuse the cache
+     ;; built above the position.
      (setq org-element--cache-sync-requests (append (nreverse requests)
                                          org-element--cache-sync-requests))
      (org-element--cache-sync (current-buffer)))))
