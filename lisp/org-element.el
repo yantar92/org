@@ -5937,33 +5937,33 @@ element ending there.
 When CACHED is non-nil, only search the element starting exacrly at
 point in `org-element--cache' and return nil when current element is
 not in cache yet."
-  (org-with-wide-buffer
-   (let ((origin (point)))
-     (end-of-line)
-     (skip-chars-backward " \r\t\n")
-     (cond
-      ;; Within blank lines at the beginning of buffer, return nil.
-      ((bobp) nil)
-      ;; Within blank lines right after a headline, return that
-      ;; headline.
-      ;; ((org-with-limited-levels (org-at-heading-p))
-      ;;  (beginning-of-line)
-      ;;  (org-element-headline-parser (point-max) t))
-      ;; Otherwise parse until we find element containing ORIGIN.
-      (t
-       (when (org-element--cache-active-p)
-	 (if (not org-element--cache) (org-element-cache-reset)
-	   (org-element--cache-sync (current-buffer) origin)))
-       (let ((element (if cached
-                          (and (org-element--cache-active-p)
-                               (let ((cached (org-element--cache-find origin)))
-                                 (and (eq origin (org-element-property :begin cached))
-                                      cached)))
-                        (org-element--parse-to origin))))
-         (if (not (eq (org-element-type element) 'section))
-             element
-           (goto-char (1+ origin))
-           (org-element-at-point))))))))
+  (if cached
+      (and (org-element--cache-active-p)
+           (let ((cached (org-element--cache-find (point))))
+             (and (eq (point) (org-element-property :begin cached))
+                  cached)))
+    (org-with-wide-buffer
+     (let ((origin (point)))
+       (end-of-line)
+       (skip-chars-backward " \r\t\n")
+       (cond
+        ;; Within blank lines at the beginning of buffer, return nil.
+        ((bobp) nil)
+        ;; Within blank lines right after a headline, return that
+        ;; headline.
+        ;; ((org-with-limited-levels (org-at-heading-p))
+        ;;  (beginning-of-line)
+        ;;  (org-element-headline-parser (point-max) t))
+        ;; Otherwise parse until we find element containing ORIGIN.
+        (t
+         (when (org-element--cache-active-p)
+	   (if (not org-element--cache) (org-element-cache-reset)
+	     (org-element--cache-sync (current-buffer) origin)))
+         (let ((element (org-element--parse-to origin)))
+           (if (not (eq (org-element-type element) 'section))
+               element
+             (goto-char (1+ origin))
+             (org-element-at-point)))))))))
 
 ;;;###autoload
 (defun org-element-context (&optional element)
