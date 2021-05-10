@@ -5499,11 +5499,13 @@ the process stopped before finding the expected result."
          (if (eq (line-beginning-position) (org-element-property :begin cached))
              ;; `pos' is a point at the cached headline.  Return it.
              (throw 'exit (if syncp (org-element-property :parent cached) cached))
-           (let ((parent (save-excursion
-                           (when (org-up-heading-safe)
-                             (org-element--parse-to (point) nil time-limit)))))
-             (beginning-of-line)
-             (setq element (org-element-headline-parser))
+           (beginning-of-line)
+           (setq element (org-element-headline-parser))
+           (let* ((parent cached)
+                  (parent (while (and parent
+                                      (<= (org-element-property :end parent)
+                                         (point)))
+                            (setq parent (org-element-property :parent parent)))))
              (org-element-put-property element :parent parent)
              (org-element--cache-put element)
              (throw 'exit (if syncp parent element)))))
