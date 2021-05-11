@@ -5524,14 +5524,21 @@ the process stopped before finding the expected result."
         ;; ancestor not containing point.
         (t
          (let ((up cached)
-               (pos (if (= (point-max) pos) (1- pos) pos)))
+               (pos (if (= (point-max) pos) (1- pos) pos))
+               after-planning?)
            (goto-char (or (org-element-property :contents-begin cached) begin))
            (while (let ((end (org-element-property :end up)))
                     (and (<= end pos)
                          (goto-char end)
-                         (setq up (org-element-property :parent up)))))
+                         (setq after-planning? (or after-planning?
+                                                   (eq 'planning
+                                                       (org-element-type up)))
+                               up (org-element-property :parent up)))))
            (cond ((not up))
                  ((eobp) (setq element up))
+                 ((and after-planning?
+                       (eq 'section (org-element-type up)))
+                  (setq element up next (org-element-property :contents-begin up)))
                  (t (setq element up next (point)))))))
        ;; Parse successively each element until we reach POS.
        (let ((end (or (org-element-property :end element)
