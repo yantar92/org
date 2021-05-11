@@ -5674,7 +5674,7 @@ that range.  See `after-change-functions' for more information."
 	   (org-with-limited-levels
 	    (setq top (progn (goto-char top)
                              (when (outline-previous-heading) (forward-line))
-                             (min top (point))))
+                             (point)))
 	    (setq bottom (progn (goto-char bottom)
 				(if (outline-next-heading) (1- (point))
                                   (point))))))
