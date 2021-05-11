@@ -231,7 +231,7 @@ specially in `org-element--object-lex'.")
 (defconst org-element-greater-elements
   '(center-block drawer dynamic-block footnote-definition headline inlinetask
 		 item plain-list property-drawer quote-block section
-		 special-block table)
+		 special-block table org-data)
   "List of recursive element types aka Greater Elements.")
 
 (defconst org-element-all-objects
@@ -5452,6 +5452,7 @@ request."
 		      ((and parent
 			    (let ((p (org-element-property :parent data)))
 			      (or (not p)
+                                  (not (avl-tree-member-p org-element--cache p))
 				  (< (org-element-property :begin p)
 				     (org-element-property :begin parent)))))
 		       (org-element-put-property data :parent parent)
@@ -5490,51 +5491,22 @@ the process stopped before finding the expected result."
         ;; Cache returned exact match: return it.
         ((eq pos begin)
 	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
-        ;; At heading. Parse it.
-        ((save-excursion (org-with-limited-levels (looking-at-p org-outline-regexp-bol)))
-         (if (eq (line-beginning-position) (org-element-property :begin cached))
-             ;; `pos' is a point at the cached headline.  Return it.
-             (throw 'exit (if syncp (org-element-property :parent cached) cached))
-           (beginning-of-line)
-           (setq element (org-element-headline-parser nil t))
-           (let* ((parent (save-excursion
-                            (when (org-up-heading-safe)
-                              (org-element--parse-to (point) nil time-limit)))))
-             (org-element-put-property element :parent parent)
-             (org-element--cache-put element)
-             (throw 'exit (if syncp parent element)))))
         ;; Nothing in cache before point: start parsing from first
-        ;; element following headline above, or first element in
-        ;; buffer.  Compute the `:parent' of the element recursively.
+        ;; element in buffer.
         ((not cached)
-         (if (org-with-limited-levels (outline-previous-heading))
-             (progn
-               ;; Parse parent heading if any.
-               (let ((parent (save-excursion
-                               (when (org-up-heading-safe)
-                                 ;; Set it as parent to current heading.
-                                 (org-element--parse-to (point) nil time-limit)))))
-                 (setq element (org-element-headline-parser nil t))
-                 (org-element-put-property element :parent parent)
-                 (org-element--cache-put element))
-               (forward-line)
-	       (setq mode 'planning))
-           (skip-chars-forward " \r\t\n")
-           (beginning-of-line)
-	   (setq mode 'top-comment)))
-        ;; There's a headline between beginning of the contents of the
-        ;; cached value and POS: cached value is invalid.  Start
-        ;; parsing from the headline.
-        ((and (> (point) begin)
-              (re-search-backward
-	       (org-with-limited-levels org-outline-regexp-bol) begin t)
-              ;; `cached' is the current heading.  Parse section.
-              (not (and (eq (point) begin)
-                      (eq (org-element-type cached) 'headline)
-                      ;; Move the point to the first line below the
-                      ;; cached heading.
-                      (goto-char (line-beginning-position 2))
-                      (setq mode 'planning)))))
+         (goto-char (point-min))
+         (skip-chars-forward " \r\t\n")
+         (beginning-of-line)
+         (setq element (list 'org-data
+                             (list :begin (point-min)
+                                   :contents-begin (point)
+                                   :contents-end (save-excursion
+                                                   (goto-char (point-max))
+                                                   (skip-chars-backward " \r\t\n")
+                                                   (point))
+                                   :end (point-max))))
+         (org-element--cache-put element)
+	 (setq mode 'top-comment))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
         ;; If there is such an element, we inspect it in order to know
@@ -5593,12 +5565,6 @@ the process stopped before finding the expected result."
 	      ;; A non-greater element contains point: return it.
 	      ((not (memq type org-element-greater-elements))
 	       (throw 'exit element))
-              ;; The point is within greater element but outside it's
-              ;; contents.  Return the element.
-              ((and (< pos elem-end)
-                    (org-element-property :contents-end element)
-                    (>= pos (org-element-property :contents-end element)))
-               (throw 'exit element))
 	      ;; Otherwise, we have to decide if ELEMENT really
 	      ;; contains POS.  In that case we start parsing from
 	      ;; contents' beginning.
@@ -5612,23 +5578,14 @@ the process stopped before finding the expected result."
 	      ;; can start after it, but more than one may end there.
 	      ;; Arbitrarily, we choose to return the innermost of
 	      ;; such elements.
-	      ((let ((cbeg (and (org-element-property :contents-begin element)
-                                (- (org-element-property :contents-begin element)
-                                   (or (and (memq (org-element-type element) '(headline section))
-                                            (org-element-property :pre-blank element))
-                                       0))))
-		     (cend (and (org-element-property :contents-end element)
-                                (+ (org-element-property :contents-end element)
-                                   (or (and (memq (org-element-type element) '(headline section))
-                                            (org-element-property :post-blank element))
-                                       0)))))
-		 (when (or syncp
-			   (and cbeg cend
-				(or (< cbeg pos)
-				    (and (= cbeg pos)
-					 (not (memq type '(plain-list table)))))
-				(or (> cend pos)
-				    (and (= cend pos) (= (point-max) pos)))))
+	      ((let ((cbeg  (org-element-property :contents-begin element))
+		     (cend (org-element-property :contents-end element)))
+		 (when (and cbeg cend
+			    (or (< cbeg pos)
+			        (and (= cbeg pos)
+				     (not (memq type '(plain-list table)))))
+			    (or (> cend pos)
+			        (and (= cend pos) (= (point-max) pos))))
 		   (goto-char (or next cbeg))
 		   (setq next nil
 			 mode (org-element--next-mode mode type t)
@@ -5690,7 +5647,8 @@ that range.  See `after-change-functions' for more information."
      (beginning-of-line)
      (save-match-data
        (let ((top (point))
-	     (bottom (save-excursion (goto-char end) (line-end-position))))
+	     (bottom (save-excursion (goto-char end) (line-end-position)))
+             extended?)
 	 ;; Determine if modified area needs to be extended, according
 	 ;; to both previous and current state.  We make a special
 	 ;; case for headline editing: if a headline is modified but
@@ -5699,22 +5657,23 @@ that range.  See `after-change-functions' for more information."
 		 (`t t)
 		 (`headline
 		  (not (and (org-with-limited-levels (org-at-heading-p))
-			    (= (line-end-position) bottom))))
+			  (= (line-end-position) bottom))))
 		 (_
 		  (let ((case-fold-search t))
 		    (re-search-forward
 		     org-element--cache-sensitive-re bottom t))))
 	   ;; Effectively extend modified area.
+           (setq extended? t)
 	   (org-with-limited-levels
 	    (setq top (progn (goto-char top)
-			     (outline-previous-heading)
-			     (point)))
+                             (when (outline-previous-heading) (forward-line))
+                             (min top (point))))
 	    (setq bottom (progn (goto-char bottom)
 				(if (outline-next-heading) (1- (point))
-				  (point))))))
+                                  (point))))))
 	 ;; Store synchronization request.
 	 (let ((offset (- end beg pre)))
-	   (org-element--cache-submit-request top (- bottom offset) offset)))))
+	   (org-element--cache-submit-request top (- bottom (if extended? 0 offset)) offset)))))
     ;; Activate a timer to process the request during idle time.
     (org-element--cache-set-timer (current-buffer))))
 
@@ -5739,14 +5698,14 @@ changes."
 	  (if (let ((type (org-element-type up)))
 		(and (or (memq type '( center-block dynamic-block
                                        quote-block special-block
-                                       headline section))
+                                       headline section org-data))
 			 ;; Drawers named "PROPERTIES" are probably
 			 ;; a properties drawer being edited.  Force
 			 ;; parsing to check if editing is over.
 			 (and (eq type 'drawer)
 			      (not (string=
-				  (org-element-property :drawer-name up)
-				  "PROPERTIES"))))
+				    (org-element-property :drawer-name up)
+				    "PROPERTIES"))))
 		     (let ((cbeg (org-element-property :contents-begin up)))
 		       (and cbeg
 			    (<= cbeg beg)
@@ -5821,7 +5780,7 @@ change, as an integer."
 		     ;; element containing END.  All elements between
 		     ;; FIRST and this one are to be removed.
 		     ((let ((first-end (org-element-property :end first)))
-			(and (> first-end end)
+			(and (>= first-end end)
 			     (vector key beg first-end offset first 0))))
 		     (t
 		      (let* ((element (org-element--cache-find end))
@@ -5845,14 +5804,6 @@ change, as an integer."
    (goto-char (point-min))
    (let (requests)
      (while (re-search-forward org-outline-regexp-bol nil t)
-       ;; Cache the headline.
-       (push (vector (match-beginning 0)
-                     (match-beginning 0)
-                     (line-end-position)
-                     0
-                     nil
-                     1)
-             requests)
        ;; Cache everything between previous headline up to the point
        ;; right before the headline.
        (push (vector (line-beginning-position 0)
@@ -5861,13 +5812,17 @@ change, as an integer."
                      0
                      nil
                      1)
+             requests)
+       ;; Cache the headline.
+       (push (vector (match-beginning 0)
+                     (match-beginning 0)
+                     (line-end-position)
+                     0
+                     nil
+                     1)
              requests))
-     ;; The requests are reversed guaranteeing that caching will be
-     ;; done incrementally from the beginning to the end of the
-     ;; buffer.  The later request will be able to reuse the cache
-     ;; built above the position.
      (setq org-element--cache-sync-requests (append (nreverse requests)
-                                         org-element--cache-sync-requests))
+                                                    org-element--cache-sync-requests))
      (org-element--cache-sync (current-buffer)))))
 
 ;;;; Public Functions
@@ -6150,7 +6105,7 @@ end of ELEM-A."
     (when (and specialp
 	       (or (not (eq (org-element-type elem-B) 'paragraph))
 		   (/= (org-element-property :begin elem-B)
-		      (org-element-property :contents-begin elem-B))))
+		       (org-element-property :contents-begin elem-B))))
       (error "Cannot swap elements"))
     ;; In a special situation, ELEM-A will have no indentation.  We'll
     ;; give it ELEM-B's (which will in, in turn, have no indentation).
@@ -6218,7 +6173,7 @@ end of ELEM-A."
     (when (and specialp
 	       (or (not (eq (org-element-type elem-B) 'paragraph))
 		   (/= (org-element-property :begin elem-B)
-		      (org-element-property :contents-begin elem-B))))
+		       (org-element-property :contents-begin elem-B))))
       (error "Cannot swap elements"))
     ;; In a special situation, ELEM-A will have no indentation.  We'll
     ;; give it ELEM-B's (which will in, in turn, have no indentation).
