@@ -5618,12 +5618,15 @@ section, possibly making cache invalid.")
   "Non-nil when a sensitive line is about to be changed.
 It is a symbol among nil, t and `headline'.")
 
+(defvar org-element--cache-change-tic nil)
+
 (defun org-element--cache-before-change (beg end)
   "Request extension of area going to be modified if needed.
 BEG and END are the beginning and end of the range of changed
 text.  See `before-change-functions' for more information."
   (when (org-element--cache-active-p)
     (org-with-wide-buffer
+     (setq org-element--cache-change-tic (buffer-chars-modified-tick))
      (goto-char beg)
      (beginning-of-line)
      (let ((bottom (save-excursion (goto-char end) (line-end-position))))
@@ -5641,7 +5644,8 @@ text.  See `before-change-functions' for more information."
 BEG and END are the beginning and end of the range of changed
 text, and the length in bytes of the pre-change text replaced by
 that range.  See `after-change-functions' for more information."
-  (when (org-element--cache-active-p)
+  (when (and (org-element--cache-active-p)
+             (not (eq org-element--cache-change-tic (buffer-chars-modified-tick))))
     (org-with-wide-buffer
      (goto-char beg)
      (beginning-of-line)
