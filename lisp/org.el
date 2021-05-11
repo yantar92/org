@@ -20345,7 +20345,7 @@ Move to the previous element at the same level, when possible."
     (let* ((elem (org-element-at-point))
 	   (parent (org-element-property :parent elem)))
       (if (and parent
-               (not (eq (org-element-type parent) 'section)))
+               (not (memq (org-element-type parent) '(section org-data))))
           (goto-char (org-element-property :begin parent))
 	(if (org-with-limited-levels (org-before-first-heading-p))
 	    (user-error "No surrounding element")

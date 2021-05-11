@@ -4343,11 +4343,12 @@ element or object.  Meaningful values are `first-section',
 TYPE is the type of the current element or object.
 
 If PARENT? is non-nil, assume the next element or object will be
-located inside the current one.  "
+located inside the current one."
   (if parent?
       (pcase type
 	(`headline 'section)
 	((and (guard (eq mode 'first-section)) `section) 'top-comment)
+        ((and (guard (eq mode 'first-section)) `org-data) 'top-comment)
 	(`inlinetask 'planning)
 	(`plain-list 'item)
 	(`property-drawer 'node-property)
@@ -5500,13 +5501,10 @@ the process stopped before finding the expected result."
          (setq element (list 'org-data
                              (list :begin (point-min)
                                    :contents-begin (point)
-                                   :contents-end (save-excursion
-                                                   (goto-char (point-max))
-                                                   (skip-chars-backward " \r\t\n")
-                                                   (point))
+                                   :contents-end (point-max)
                                    :end (point-max))))
          (org-element--cache-put element)
-	 (setq mode 'top-comment))
+	 (setq mode 'first-section))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
         ;; If there is such an element, we inspect it in order to know
@@ -5590,7 +5588,7 @@ the process stopped before finding the expected result."
 		   (setq next nil
 			 mode (org-element--next-mode mode type t)
 			 parent element
-			 end cend))))
+			 end (org-element-property :end element)))))
 	      ;; Otherwise, return ELEMENT as it is the smallest
 	      ;; element containing POS.
 	      (t (throw 'exit element))))
