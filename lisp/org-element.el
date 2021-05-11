@@ -5593,6 +5593,12 @@ the process stopped before finding the expected result."
 	      ;; A non-greater element contains point: return it.
 	      ((not (memq type org-element-greater-elements))
 	       (throw 'exit element))
+              ;; The point is within greater element but outside it's
+              ;; contents.  Return the element.
+              ((and (< pos elem-end)
+                    (org-element-property :contents-end element)
+                    (>= pos (org-element-property :contents-end element)))
+               (throw 'exit element))
 	      ;; Otherwise, we have to decide if ELEMENT really
 	      ;; contains POS.  In that case we start parsing from
 	      ;; contents' beginning.
