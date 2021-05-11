@@ -5651,8 +5651,7 @@ that range.  See `after-change-functions' for more information."
      (beginning-of-line)
      (save-match-data
        (let ((top (point))
-	     (bottom (save-excursion (goto-char end) (line-end-position)))
-             extended?)
+	     (bottom (save-excursion (goto-char end) (line-end-position))))
 	 ;; Determine if modified area needs to be extended, according
 	 ;; to both previous and current state.  We make a special
 	 ;; case for headline editing: if a headline is modified but
@@ -5667,7 +5666,6 @@ that range.  See `after-change-functions' for more information."
 		    (re-search-forward
 		     org-element--cache-sensitive-re bottom t))))
 	   ;; Effectively extend modified area.
-           (setq extended? t)
 	   (org-with-limited-levels
 	    (setq top (progn (goto-char top)
                              (when (outline-previous-heading) (forward-line))
@@ -5677,7 +5675,7 @@ that range.  See `after-change-functions' for more information."
                                   (point))))))
 	 ;; Store synchronization request.
 	 (let ((offset (- end beg pre)))
-	   (org-element--cache-submit-request top (- bottom (if extended? 0 offset)) offset)))))
+	   (org-element--cache-submit-request top (- bottom offset) offset)))))
     ;; Activate a timer to process the request during idle time.
     (org-element--cache-set-timer (current-buffer))))
 
