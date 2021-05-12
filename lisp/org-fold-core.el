@@ -1055,6 +1055,17 @@ This function is intended to be used as `isearch-filter-predicate'."
 (defvar-local org-fold-core--last-buffer-chars-modified-tick nil
   "Variable storing the last return value of `buffer-chars-modified-tick'.")
 
+(defmacro org-fold-core-cycle-over-indirect-buffers (&rest body)
+  "Execute BODY in current buffer and all its indirect buffers."
+  (declare (debug (form body)) (indent 1))
+  `(let (buffers)
+     (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
+                        (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
+       (when (buffer-live-p buf) (push buf buffers)))
+     (dolist (buf buffers)
+       (with-current-buffer buf
+         ,@body))))
+
 (defun org-fold-core--fix-folded-region (from to _)
   "Process modifications in folded elements within FROM . TO region.
 This function intended to be used as one of `after-change-functions'.
@@ -1077,44 +1088,39 @@ property, unfold the region if the :fragile function returns non-nil."
       ;; Handle changes in all the indirect buffers and in the base
       ;; buffer.  Work around Emacs bug#46982.
       (when (eq org-fold-core-style 'text-properties)
-        (let (buffers)
-          (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
-                             (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
-            (when (buffer-live-p buf) (push buf buffers)))
-          (dolist (buf buffers)
-            (with-current-buffer buf
-              ;; Re-hide text inserted in the middle/font/back of a folded
-              ;; region.
-              (unless (equal from to) ; Ignore deletions.
-	        (dolist (spec (org-fold-core-folding-spec-list))
-                  ;; Reveal fully invisible text.  This is needed, for
-                  ;; example, when there was a deletion in a folded heading,
-                  ;; the heading was unfolded, end `undo' was called.  The
-                  ;; `undo' would insert the folded text.
-                  (when (and (org-fold-core-region-folded-p from to spec)
-                             (org-region-invisible-p from to))
-                    (org-fold-core-region from to nil spec))
-                  ;; Look around and fold the new text if the nearby folds are
-                  ;; sticky.
-	          (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
-		        (spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
-                    ;; Hide text inserted in the middle of a fold.
-	            (when (and (or spec-from (eq from (point-min)))
-                               (or spec-to (eq to (point-max)))
-                               (or spec-from spec-to)
-                               (eq spec-to spec-from)
-                               (or (org-fold-core-get-folding-spec-property spec :front-sticky)
-                                   (org-fold-core-get-folding-spec-property spec :rear-sticky)))
-                      (unless (and (eq from (point-min)) (eq to (point-max))) ; Buffer content replaced.
-	                (org-fold-core-region from to t (or spec-from spec-to))))
-                    ;; Hide text inserted at the end of a fold.
-                    (when (and spec-from (org-fold-core-get-folding-spec-property spec-from :rear-sticky))
-                      (org-fold-core-region from to t spec-from))
-                    ;; Hide text inserted in front of a fold.
-                    (when (and spec-to
-                               (not (eq to (point-max))) ; Text inserted at the end of buffer is not prepended anywhere.
-                               (org-fold-core-get-folding-spec-property spec-to :front-sticky))
-                      (org-fold-core-region from to t spec-to)))))))))
+        (org-fold-core-cycle-over-indirect-buffers
+            ;; Re-hide text inserted in the middle/font/back of a folded
+            ;; region.
+            (unless (equal from to) ; Ignore deletions.
+	      (dolist (spec (org-fold-core-folding-spec-list))
+                ;; Reveal fully invisible text.  This is needed, for
+                ;; example, when there was a deletion in a folded heading,
+                ;; the heading was unfolded, end `undo' was called.  The
+                ;; `undo' would insert the folded text.
+                (when (and (org-fold-core-region-folded-p from to spec)
+                           (org-region-invisible-p from to))
+                  (org-fold-core-region from to nil spec))
+                ;; Look around and fold the new text if the nearby folds are
+                ;; sticky.
+	        (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
+		      (spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
+                  ;; Hide text inserted in the middle of a fold.
+	          (when (and (or spec-from (eq from (point-min)))
+                             (or spec-to (eq to (point-max)))
+                             (or spec-from spec-to)
+                             (eq spec-to spec-from)
+                             (or (org-fold-core-get-folding-spec-property spec :front-sticky)
+                                 (org-fold-core-get-folding-spec-property spec :rear-sticky)))
+                    (unless (and (eq from (point-min)) (eq to (point-max))) ; Buffer content replaced.
+	              (org-fold-core-region from to t (or spec-from spec-to))))
+                  ;; Hide text inserted at the end of a fold.
+                  (when (and spec-from (org-fold-core-get-folding-spec-property spec-from :rear-sticky))
+                    (org-fold-core-region from to t spec-from))
+                  ;; Hide text inserted in front of a fold.
+                  (when (and spec-to
+                             (not (eq to (point-max))) ; Text inserted at the end of buffer is not prepended anywhere.
+                             (org-fold-core-get-folding-spec-property spec-to :front-sticky))
+                    (org-fold-core-region from to t spec-to)))))))
       ;; Process all the folded text between `from' and `to'.  Do it
       ;; only in current buffer to avoid verifying semantic structure
       ;; multiple times in indirect buffers that have exactly same
