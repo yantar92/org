@@ -768,15 +768,15 @@ Search backwards when PREVIOUS-P is non-nil."
     (mapc #'org-fold-core--check-spec spec-or-alias))
   (unless spec-or-alias
     (setq spec-or-alias (org-fold-core-folding-spec-list)))
-  (let* ((pos (or pos (point))))
-    (apply (if previous-p
-	       #'max
-	     #'min)
-           (mapcar (if previous-p
-		       (lambda (prop) (max (or limit (point-min)) (previous-single-char-property-change pos prop nil (or limit (point-min)))))
-		     (lambda (prop) (next-single-char-property-change pos prop nil (or limit (point-max)))))
-                   (mapcar (lambda (el) (org-fold-core--property-symbol-get-create el nil t))
-		           spec-or-alias)))))
+  (setq pos (or pos (point)))
+  (apply (if previous-p
+	     #'max
+	   #'min)
+         (mapcar (if previous-p
+		     (lambda (prop) (max (or limit (point-min)) (previous-single-char-property-change pos prop nil (or limit (point-min)))))
+		   (lambda (prop) (next-single-char-property-change pos prop nil (or limit (point-max)))))
+                 (mapcar (lambda (el) (org-fold-core--property-symbol-get-create el nil t))
+		         spec-or-alias))))
 
 (defun org-fold-core-previous-folding-state-change (&optional spec-or-alias pos limit)
   "Call `org-fold-core-next-folding-state-change' searching backwards."
