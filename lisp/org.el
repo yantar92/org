@@ -161,7 +161,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-columns-insert-dblock "org-colview" ())
 (declare-function org-duration-from-minutes "org-duration" (minutes &optional fmt canonical))
 (declare-function org-duration-to-minutes "org-duration" (duration &optional canonical))
-(declare-function org-element-at-point "org-element" (&optional cached))
+(declare-function org-element-at-point "org-element" ())
 (declare-function org-element-cache-refresh "org-element" (pos))
 (declare-function org-element-cache-reset "org-element" (&optional all))
 (declare-function org-element-contents "org-element" (element))
@@ -11491,7 +11491,7 @@ TAGS is a list of strings."
 Assume point is at the beginning of the headline.
 
 The tags are fontified when FONTIFY is non-nil."
-  (let* ((cached (org-element-at-point 'cached))
+  (let* ((cached (and (org-element--cache-active-p) (org-element-at-point)))
          (cached-tags (org-element-property :tags cached))
          (cached-tags-fontified?
           (or
@@ -11544,7 +11544,7 @@ The tags are fontified when FONTIFY is non-nil."
         (org-back-to-heading t)
         (let ((ltags (org--get-local-tags fontify)) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
-            (let ((cached (org-element-at-point 'cached)))
+            (let ((cached (and (org-element--cache-active-p) (org-element-at-point))))
               (if cached
                   (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited

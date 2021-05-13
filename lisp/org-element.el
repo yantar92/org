@@ -5480,23 +5480,23 @@ When optional argument SYNCP is non-nil, return the parent of the
 element containing POS instead.  In that case, it is also
 possible to provide TIME-LIMIT, which is a time value specifying
 when the parsing should stop.  The function throws `interrupt' if
-the process stopped before finding the expected result."
+the process stopped before finding the expected result.
+
+When cached-only is non-nil, do not try to parse and return nil if current
+element is not in cache yet."
   (catch 'exit
     (org-with-wide-buffer
      (goto-char pos)
      (let* ((cached (and (org-element--cache-active-p)
 			 (org-element--cache-find pos nil)))
-            (begin (org-element-property :begin cached))
             element next mode)
        (cond
-        ;; Cache returned exact match: return it.
-        ((eq pos begin)
-	 (throw 'exit (if syncp (org-element-property :parent cached) cached)))
         ;; Nothing in cache before point: start parsing from first
-        ;; element in buffer.
+        ;; element in buffer down to POS.  Set the ELEMENT to
+        ;; `org-data'.
         ((not cached)
          (goto-char (point-min))
-         (skip-chars-forward " \r\t\n")
+         (org-skip-whitespace)
          (beginning-of-line)
          (setq element (list 'org-data
                              (list :begin (point-min)
@@ -5509,9 +5509,9 @@ the process stopped before finding the expected result."
         ;;
         ;; If there is such an element, we inspect it in order to know
         ;; if we return it or if we need to parse its contents.
-        ;; Otherwise, we just start parsing from current location,
-        ;; which is right after the top-most element containing
-        ;; CACHED.
+        ;; Otherwise, we just start parsing from location, which is
+        ;; right after the top-most element containing CACHED but
+        ;; still before POS.
         ;;
         ;; As a special case, if POS is at the end of the buffer, we
         ;; want to return the innermost element ending there.
@@ -5524,22 +5524,18 @@ the process stopped before finding the expected result."
         ;; ancestor not containing point.
         (t
          (let ((up cached)
-               (pos (if (= (point-max) pos) (1- pos) pos))
-               after-planning?)
-           (goto-char (or (org-element-property :contents-begin cached) begin))
-           (while (let ((end (org-element-property :end up)))
-                    (and (<= end pos)
-                         (goto-char end)
-                         (setq after-planning? (or after-planning?
-                                                   (eq 'planning
-                                                       (org-element-type up)))
-                               up (org-element-property :parent up)))))
-           (cond ((not up))
-                 ((eobp) (setq element up))
-                 ((and after-planning?
-                       (eq 'section (org-element-type up)))
-                  (setq element up next (org-element-property :contents-begin up)))
-                 (t (setq element up next (point)))))))
+               (pos (if (= (point-max) pos) (1- pos) pos)))
+           (when (org-element-property :contents-begin cached)
+             (goto-char (org-element-property :contents-begin cached)))
+           ;; If not, find the first parent containing POS or move to
+           ;; the end of the last known outermost element.
+           (while (and up (<= (org-element-property :end up) pos))
+             (goto-char (org-element-property :end up))
+             (setq element up
+                   up (org-element-property :parent up)
+                   next (point)))
+           (when up (setq element up))
+           (setq mode (org-element--next-mode mode (org-element-type element) up)))))
        ;; Parse successively each element until we reach POS.
        (let ((end (or (org-element-property :end element)
 		      (save-excursion
@@ -5884,7 +5880,7 @@ buffers."
 
 
 ;;;###autoload
-(defun org-element-at-point (&optional cached)
+(defun org-element-at-point ()
   "Determine closest element around point.
 
 Return value is a list like (TYPE PROPS) where TYPE is the type
@@ -5902,38 +5898,29 @@ the first row of a table, returned element will be the table
 instead of the first row.
 
 When point is at the end of the buffer, return the innermost
-element ending there.
-
-When CACHED is non-nil, only search the element starting exacrly at
-point in `org-element--cache' and return nil when current element is
-not in cache yet."
-  (if cached
-      (and (org-element--cache-active-p)
-           (let ((cached (org-element--cache-find (point))))
-             (and (eq (point) (org-element-property :begin cached))
-                  cached)))
-    (org-with-wide-buffer
-     (let ((origin (point)))
-       (end-of-line)
-       (skip-chars-backward " \r\t\n")
-       (cond
-        ;; Within blank lines at the beginning of buffer, return nil.
-        ((bobp) nil)
-        ;; Within blank lines right after a headline, return that
-        ;; headline.
-        ;; ((org-with-limited-levels (org-at-heading-p))
-        ;;  (beginning-of-line)
-        ;;  (org-element-headline-parser (point-max) t))
-        ;; Otherwise parse until we find element containing ORIGIN.
-        (t
-         (when (org-element--cache-active-p)
-	   (if (not org-element--cache) (org-element-cache-reset)
-	     (org-element--cache-sync (current-buffer) origin)))
-         (let ((element (org-element--parse-to origin)))
-           (if (not (eq (org-element-type element) 'section))
-               element
-             (goto-char (1+ origin))
-             (org-element-at-point)))))))))
+element ending there."
+  (org-with-wide-buffer
+   (let ((origin (point)))
+     (end-of-line)
+     (skip-chars-backward " \r\t\n")
+     (cond
+      ;; Within blank lines at the beginning of buffer, return nil.
+      ((bobp) nil)
+      ;; Within blank lines right after a headline, return that
+      ;; headline.
+      ;; ((org-with-limited-levels (org-at-heading-p))
+      ;;  (beginning-of-line)
+      ;;  (org-element-headline-parser (point-max) t))
+      ;; Otherwise parse until we find element containing ORIGIN.
+      (t
+       (when (org-element--cache-active-p)
+	 (if (not org-element--cache) (org-element-cache-reset)
+	   (org-element--cache-sync (current-buffer) origin)))
+       (let ((element (org-element--parse-to origin)))
+         (if (not (eq (org-element-type element) 'section))
+             element
+           (goto-char (1+ origin))
+           (org-element-at-point))))))))
 
 ;;;###autoload
 (defun org-element-context (&optional element)
