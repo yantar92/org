@@ -5801,32 +5801,27 @@ change, as an integer."
 	    (cl-incf (aref (car org-element--cache-sync-requests) 3)
 		     offset)))))))
 
-(defun org-element--cache-buffer-stealthly ()
-  "Queue caching all the headlines and elements in buffer on idle."
-  (org-with-wide-buffer
-   (goto-char (point-min))
-   (let (requests)
-     (while (re-search-forward org-outline-regexp-bol nil t)
-       ;; Cache everything between previous headline up to the point
-       ;; right before the headline.
-       (push (vector (line-beginning-position 0)
-                     (line-beginning-position 0)
-                     (line-end-position 0)
-                     0
-                     nil
-                     1)
-             requests)
-       ;; Cache the headline.
-       (push (vector (match-beginning 0)
-                     (match-beginning 0)
-                     (line-end-position)
-                     0
-                     nil
-                     1)
-             requests))
-     (setq org-element--cache-sync-requests (append (nreverse requests)
-                                                    org-element--cache-sync-requests))
-     (org-element--cache-sync (current-buffer)))))
+(defun org-element--cache-buffer-stealthly (&optional beg end)
+  "Queue caching all the elements between BEG and END of in buffer on idle."
+  (when (org-element--cache-active-p)
+    (org-with-wide-buffer
+     (goto-char (or beg (point-min)))
+     (org-skip-whitespace)
+     (beginning-of-line)
+     (org-element--parse-to (point))
+     (catch 'interrupt
+       (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
+         (while (< (point) (or end (point-max)))
+           (when (org-element--cache-interrupt-p time-limit)
+	     (throw 'interrupt nil))
+           (let ((element (org-element-at-point)))
+             (if (= (point) (org-element-property :begin element))
+                 (if (memq (org-element-type element) '(plain-list table))
+                     (goto-char (or (1+ (org-element-property :contents-begin element))
+                                    (org-element-property :end element)))
+                   (goto-char (or (org-element-property :contents-begin element)
+                                  (org-element-property :end element))))
+               (goto-char (org-element-property :end element))))))))))
 
 ;;;; Public Functions
 
@@ -5847,7 +5842,7 @@ buffers."
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
 	(setq-local org-element--cache-sync-timer nil)
-        (org-element--cache-buffer-stealthly)
+        ;; (org-element--cache-buffer-stealthly)
 	(add-hook 'before-change-functions
 		  #'org-element--cache-before-change nil t)
 	(add-hook 'after-change-functions
