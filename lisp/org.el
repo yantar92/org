@@ -19519,7 +19519,6 @@ make a significant difference in outlines with very many siblings."
               (goto-char (org-element-property :begin parent))
               (org-element-property :level parent))
           (when (and current-heading
-                     (not (= (point) (org-element-property :begin current-heading)))
                      (<= (point-min) (org-element-property :begin current-heading)))
             (goto-char (org-element-property :begin current-heading))
             nil)))

@@ -5514,7 +5514,7 @@ element is not in cache yet."
          (goto-char (point-min))
          (org-skip-whitespace)
          (beginning-of-line)
-         (setq element `(org-data ( :begin ,(point)
+         (setq element `(org-data ( :begin ,(point-min)
                                     :contents-begin ,(point)
                                     :contents-end ,(point-max)
                                     :end ,(point-max)
@@ -5595,14 +5595,24 @@ element is not in cache yet."
 	      ;; can start after it, but more than one may end there.
 	      ;; Arbitrarily, we choose to return the innermost of
 	      ;; such elements.
-	      ((let ((cbeg  (org-element-property :contents-begin element))
+	      ((let ((cbeg (org-element-property :contents-begin element))
 		     (cend (org-element-property :contents-end element)))
 	         (when (and cbeg cend
 			    (or (< cbeg pos)
 			        (and (= cbeg pos)
 				     (not (memq type '(plain-list table)))))
 			    (or (> cend pos)
-			        (and (= cend pos) (= (point-max) pos))))
+			        (and (= (point-max) pos)
+                                     (or (= cend pos)
+                                         (let ((post-blank
+                                                (org-element-property :post-blank element)))
+                                           ;; i.e. section with empty
+                                           ;; lines at the end of
+                                           ;; file.
+                                           (and post-blank
+                                                (= (+ cend post-blank)
+                                                   end)
+                                                (> pos cend)))))))
 		   (goto-char (or next cbeg))
 		   (setq mode (if next mode (org-element--next-mode mode type t))
                          next nil
@@ -5711,7 +5721,8 @@ changes."
                                    headline section org-data))
 		     (let ((cbeg (org-element-property :contents-begin up))
                            (cend (org-element-property :contents-end up)))
-		       (and (<= cbeg beg)
+		       (and cbeg
+                            (<= cbeg beg)
 			    (or (> cend end)
                                 (and (= cend end)
                                      (= (+ end offset) (point-max))))))))
