@@ -5838,7 +5838,8 @@ change, as an integer."
                  (if (memq (org-element-type element) '(plain-list table))
                      (goto-char (or (1+ (org-element-property :contents-begin element))
                                     (org-element-property :end element)))
-                   (goto-char (or (org-element-property :contents-begin element)
+                   (goto-char (or (when-let ((cbeg (org-element-property :contents-begin element)))
+                                    (when (> cbeg (point)) cbeg))
                                   (org-element-property :end element))))
                (goto-char (org-element-property :end element))))))))))
 
