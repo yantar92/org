@@ -5923,7 +5923,13 @@ element ending there."
        (when (org-element--cache-active-p)
 	 (if (not org-element--cache) (org-element-cache-reset)
 	   (org-element--cache-sync (current-buffer) origin)))
-       (let ((element (org-element--parse-to origin)))
+       (let ((element (condition-case nil
+                          (org-element--parse-to origin)
+                        ;; FIXME: Detect cache corruption until fixed.
+                        (error
+                         (message "org-element-cache: Cache corruption detected. Resetting.")
+                         (org-element-cache-reset)
+                         (org-element--parse-to origin)))))
          (if (not (eq (org-element-type element) 'section))
              element
            (goto-char (1+ origin))
