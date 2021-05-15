@@ -5517,7 +5517,7 @@ element is not in cache yet."
          (org-skip-whitespace)
          (beginning-of-line)
          (setq element `(org-data ( :begin ,(point-min)
-                                    :contents-begin ,(point)
+                                    :contents-begin ,(point-min)
                                     :contents-end ,(point-max)
                                     :end ,(point-max)
                                     :mode 'first-section)))
@@ -5727,9 +5727,13 @@ changes."
                                    ;; changes can mess-up relative
                                    ;; positions of :contents-begin/end
                                    ;; because they necessarily start
-                                   ;; after/before whitespaces.
+                                   ;; after/before whitespaces:
                                    ;;
-                                   ;; section org-data
+                                   ;; section
+                                   ;;
+                                   ;; Yet, org-data should be robust.
+                                   ;; See `org-element--parse-to'.
+                                   org-data
                                    ))
 		     (let ((cbeg (org-element-property :contents-begin up))
                            (cend (org-element-property :contents-end up)))
