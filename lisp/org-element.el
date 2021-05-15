@@ -5718,7 +5718,15 @@ changes."
 	  (if (let ((type (org-element-type up)))
 		(and (memq type '( center-block dynamic-block
                                    quote-block special-block
-                                   headline section org-data))
+                                   ;; FIXME: The below are *almost*
+                                   ;; robust.  Yet, whitespace-only
+                                   ;; changes can mess-up relative
+                                   ;; positions of :contents-begin/end
+                                   ;; because they necessarily start
+                                   ;; after/before whitespaces.
+                                   ;;
+                                   ;; section org-data
+                                   ))
 		     (let ((cbeg (org-element-property :contents-begin up))
                            (cend (org-element-property :contents-end up)))
 		       (and cbeg
