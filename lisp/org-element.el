@@ -5569,6 +5569,8 @@ element is not in cache yet."
 	     (setq element (org-element--current-element
 			    end 'element mode
 			    (org-element-property :structure parent)))
+             ;; Nothing to parse (i.e. empty file).
+             (unless element (throw 'exit parent))
 	     (org-element-put-property element :parent parent)
 	     (org-element--cache-put element))
 	   (let ((elem-end (org-element-property :end element))
