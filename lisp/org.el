@@ -11544,7 +11544,7 @@ The tags are fontified when FONTIFY is non-nil."
         (org-back-to-heading t)
         (let ((ltags (org--get-local-tags fontify)) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
-            (let ((cached (and (org-element--cache-active-p) (org-element-at-point))))
+            (let ((cached (and nil (org-element--cache-active-p) (org-element-at-point))))
               (if cached
                   (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited
