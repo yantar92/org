@@ -664,8 +664,10 @@ defined in org-duration.el.")
   "Hook that is run after org.el has been loaded."
   :group 'org
   :type 'hook)
-(make-obsolete-variable 'org-load-hook
-                        "use `with-eval-after-load' instead." "Org 9.5")
+
+(make-obsolete-variable
+ 'org-load-hook
+ "use `with-eval-after-load' instead." "Org 9.5")
 
 (defcustom org-log-buffer-setup-hook nil
   "Hook that is run after an Org log buffer is created."
@@ -10358,10 +10360,13 @@ or a character."
 	    (setq
 	     new
 	     (if nump
-		 (string-to-number
-		  (read-string (format "Priority %s-%s, SPC to remove: "
-				       (number-to-string org-priority-highest)
-				       (number-to-string org-priority-lowest))))
+                 (let ((msg (format "Priority %s-%s, SPC to remove: "
+				    (number-to-string org-priority-highest)
+				    (number-to-string org-priority-lowest))))
+                   (if (< 9 org-priority-lowest)
+		       (string-to-number (read-string msg))
+                     (message msg)
+                     (string-to-number (char-to-string (read-char-exclusive)))))
 	       (progn (message "Priority %c-%c, SPC to remove: "
 			       org-priority-highest org-priority-lowest)
 		      (save-match-data
@@ -16934,12 +16939,13 @@ will not happen if point is in a table or on a \"dead\"
 object (e.g., within a comment).  In these case, you need to use
 `org-open-at-point' directly."
   (interactive "i\nP\np")
-  (let ((context (if org-return-follows-link (org-element-context)
-		   (org-element-at-point))))
+  (let* ((context (if org-return-follows-link (org-element-context)
+		   (org-element-at-point)))
+         (element-type (org-element-type context)))
     (cond
      ;; In a table, call `org-table-next-row'.  However, before first
      ;; column or after last one, split the table.
-     ((or (and (eq 'table (org-element-type context))
+     ((or (and (eq 'table element-type)
 	       (not (eq 'table.el (org-element-property :type context)))
 	       (>= (point) (org-element-property :contents-begin context))
 	       (< (point) (org-element-property :contents-end context)))
@@ -16953,7 +16959,7 @@ object (e.g., within a comment).  In these case, you need to use
      ;; `org-return-follows-link' allows it.  Tolerate fuzzy
      ;; locations, e.g., in a comment, as `org-open-at-point'.
      ((and org-return-follows-link
-	   (or (and (eq 'link (org-element-type context))
+	   (or (and (eq 'link element-type)
 		    ;; Ensure point is not on the white spaces after
 		    ;; the link.
 		    (let ((origin (point)))
@@ -16993,6 +16999,10 @@ object (e.g., within a comment).  In these case, you need to use
 	     (delete-and-extract-region (point) (line-end-position))))
 	(org--newline indent arg interactive)
 	(save-excursion (insert trailing-data))))
+     ;; FIXME: In a source block, don't try to indent as it may result
+     ;; in weird results due to `electric-indent-mode' being `t'.
+     ((eq element-type 'src-block)
+      (org--newline nil nil nil))
      (t
       ;; Do not auto-fill when point is in an Org property drawer.
       (let ((auto-fill-function (and (not (org-at-property-p))
@@ -17500,7 +17510,7 @@ Your bug report will be posted to the Org mailing list.
 ------------------------------------------------------------------------")
     (save-excursion
       (when (re-search-backward "^\\(Subject: \\)Org mode version \\(.*?\\);[ \t]*\\(.*\\)" nil t)
-	(replace-match "\\1Bug: \\3 [\\2]")))))
+	(replace-match "\\1[BUG] \\3 [\\2]")))))
 
 
 (defun org-install-agenda-files-menu ()
@@ -18117,13 +18127,13 @@ Also align node properties according to `org-property-format'."
   (interactive)
   (unless (or (org-at-heading-p)
               (and (eq org-adapt-indentation 'headline-data)
-                   (not (org-at-clock-log-p))
+                   (not (or (org-at-clock-log-p)
+                            (org-at-planning-p)))
                    (save-excursion
                      (beginning-of-line 1)
                      (skip-chars-backward "\n")
                      (or (org-at-heading-p)
-                         (looking-back ":END:.*" (point-at-bol))
-                         (org-at-planning-p)))))
+                         (looking-back ":END:.*" (point-at-bol))))))
     (let* ((element (save-excursion (beginning-of-line) (org-element-at-point)))
 	   (type (org-element-type element)))
       (cond ((and (memq type '(plain-list item))
@@ -18138,7 +18148,7 @@ Also align node properties according to `org-property-format'."
 		       (line-beginning-position 2))))
 	     nil)
 	    ((and (eq type 'src-block)
-		  org-src-tab-acts-natively
+                  org-src-tab-acts-natively
 		  (> (line-beginning-position)
 		     (org-element-property :post-affiliated element))
 		  (< (line-beginning-position)

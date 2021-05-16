@@ -6080,7 +6080,7 @@ See also the user option `org-agenda-clock-consistency-checks'."
 		       '((:background "DarkRed") (:foreground "white"))))
 	 issue face m te ts dt ov)
     (goto-char (point-min))
-    (while (re-search-forward " Clocked: +(-\\|\\([0-9]+:[0-9]+\\))" nil t)
+    (while (re-search-forward " Clocked: +(\\(?:-\\|\\([0-9]+:[0-9]+\\)\\))" nil t)
       (setq issue nil face def-face)
       (catch 'next
 	(setq m (org-get-at-bol 'org-marker)
@@ -7018,7 +7018,7 @@ HH:MM."
 	     (h2 (if (and string mod24 (not (and (= m 0) (= h1 24))))
 		     (mod h1 24) h1))
 	     (t0 (+ (* 100 h2) m))
-	     (t1 (concat (if (>= h1 24) "+" " ")
+	     (t1 (concat (if (>= h1 24) "+" "0")
 			 (if (and org-agenda-time-leading-zero
 				  (< t0 1000)) "0" "")
 			 (if (< t0 100) "0" "")
@@ -7168,13 +7168,14 @@ The optional argument TYPE tells the agenda type."
 	    (setq x
 		  (concat
 		   (substring x 0 (match-end 1))
-		   (format org-agenda-todo-keyword-format
-			   (match-string 2 x))
-		   ;; Remove `display' property as the icon could leak
+                   (unless (string-empty-p org-agenda-todo-keyword-format)
+		     (format org-agenda-todo-keyword-format
+			     (match-string 2 x)))
+                   ;; Remove `display' property as the icon could leak
 		   ;; on the white space.
 		   (org-add-props " " (org-plist-delete (text-properties-at 0 x)
-							'display))
-		   (substring x (match-end 3)))))))
+			 				'display))
+                   (substring x (match-end 3)))))))
       x)))
 
 (defsubst org-cmp-values (a b property)

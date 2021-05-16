@@ -518,100 +518,112 @@ See https://github.com/yantar92/org/issues/4."
 
 ;;; Link regexps
 
+
+(defmacro test-ol-parse-link-in-text (text)
+  "Return list of :type and :path of link parsed in TEXT.
+\"<point>\" string must be at the beginning of the link to be parsed."
+  (declare (indent 1))
+  `(org-test-with-temp-text ,text
+     (list (org-element-property :type (org-element-link-parser))
+           (org-element-property :path (org-element-link-parser)))))
+
 (ert-deftest test-ol/plain-link-re ()
   "Test `org-link-plain-re'."
   (should
    (equal
+    '("https" "//example.com")
+    (test-ol-parse-link-in-text
+        "(<point>https://example.com)")))
+  (should
+   (equal
     '("https" "//example.com/qwe()")
-    (org-test-with-temp-text
-        "(Some text in parenthesis followed by link with brackets <point>https://example.com/qwe())"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "(Some text <point>https://example.com/qwe())")))
   (should
    (equal
     '("https" "//doi.org/10.1016/0160-791x(79)90023-x")
-    (org-test-with-temp-text
-        "<point>https://doi.org/10.1016/0160-791x(79)90023-x"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "<point>https://doi.org/10.1016/0160-791x(79)90023-x")))
   (should
    (equal
     '("file" "aa")
-    (org-test-with-temp-text
-        "The <point>file:aa link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:aa link")))
   (should
    (equal
     '("file" "a(b)c")
-    (org-test-with-temp-text
-        "The <point>file:a(b)c link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:a(b)c link")))
   (should
    (equal
     '("file" "a()")
-    (org-test-with-temp-text
-        "The <point>file:a() link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:a() link")))
   (should
    (equal
     '("file" "aa((a))")
-    (org-test-with-temp-text
-        "The <point>file:aa((a)) link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:aa((a)) link")))
   (should
    (equal
     '("file" "aa(())")
-    (org-test-with-temp-text
-        "The <point>file:aa(()) link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:aa(()) link")))
   (should
    (equal
     '("file" "/a")
-    (org-test-with-temp-text
-        "The <point>file:/a link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:/a link")))
   (should
    (equal
     '("file" "/a/")
-    (org-test-with-temp-text
-        "The <point>file:/a/ link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:/a/ link")))
   (should
    (equal
     '("http" "//")
-    (org-test-with-temp-text
-        "The <point>http:// link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>http:// link")))
   (should
    (equal
     '("file" "ab")
-    (org-test-with-temp-text
-        "The (some <point>file:ab) link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The (some <point>file:ab) link")))
   (should
    (equal
     '("file" "aa")
-    (org-test-with-temp-text
-        "The <point>file:aa) link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
+    (test-ol-parse-link-in-text
+        "The <point>file:aa) link")))
   (should
    (equal
     '("file" "aa")
-    (org-test-with-temp-text
-        "The <point>file:aa( link"
-      (list (org-element-property :type (org-element-link-parser))
-            (org-element-property :path (org-element-link-parser))))))
-  )
+    (test-ol-parse-link-in-text
+        "The <point>file:aa( link")))
+  (should
+   (equal
+    '("http" "//foo.com/more_(than)_one_(parens)")
+    (test-ol-parse-link-in-text
+        "The <point>http://foo.com/more_(than)_one_(parens) link")))
+  (should
+   (equal
+    '("http" "//foo.com/blah_(wikipedia)#cite-1")
+    (test-ol-parse-link-in-text
+        "The <point>http://foo.com/blah_(wikipedia)#cite-1 link")))
+  (should
+   (equal
+    '("http" "//foo.com/blah_(wikipedia)_blah#cite-1")
+    (test-ol-parse-link-in-text
+        "The <point>http://foo.com/blah_(wikipedia)_blah#cite-1 link")))
+  (should
+   (equal
+    '("http" "//foo.com/unicode_(✪)_in_parens")
+    (test-ol-parse-link-in-text
+        "The <point>http://foo.com/unicode_(✪)_in_parens link")))
+  (should
+   (equal
+    '("http" "//foo.com/(something)?after=parens")
+    (test-ol-parse-link-in-text
+        "The <point>http://foo.com/(something)?after=parens link"))))
 
 (provide 'test-ol)
 ;;; test-ol.el ends here
