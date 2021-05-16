@@ -5661,9 +5661,12 @@ text.  See `before-change-functions' for more information."
      (let ((bottom (save-excursion (goto-char end) (line-end-position))))
        (setq org-element--cache-change-warning
 	     (save-match-data
-	       (let ((case-fold-search t))
-		 (re-search-forward
-		  org-element--cache-sensitive-re bottom t))))))))
+	       (if (and (org-with-limited-levels (org-at-heading-p))
+			(= (line-end-position) bottom))
+		   'headline
+		 (let ((case-fold-search t))
+		   (re-search-forward
+		    org-element--cache-sensitive-re bottom t)))))))))
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
@@ -5683,10 +5686,22 @@ that range.  See `after-change-functions' for more information."
 	 ;; to both previous and current state.  We make a special
 	 ;; case for headline editing: if a headline is modified but
 	 ;; not removed, do not extend.
-	 (when (or org-element--cache-change-warning
-		   (let ((case-fold-search t))
-		     (re-search-forward
-		      org-element--cache-sensitive-re bottom t)))
+	 (when (pcase org-element--cache-change-warning
+                 ;; Modified area contained `org-element--cache-sensitive-re'
+                 ;; before the modification.  See
+                 ;; `org-element--cache-before-change'.
+		 (`t t)
+		 (`headline
+		  (not (and (org-with-limited-levels (org-at-heading-p))
+			  (= (line-end-position) bottom))))
+		 (_
+		  (let ((case-fold-search t))
+                    ;; Modified area contains `org-element--cache-sensitive-re'
+                    ;; after the modification.  Element structure
+                    ;; might be broken, i.e. new headline insered in
+                    ;; the middle.
+		    (re-search-forward
+		     org-element--cache-sensitive-re bottom t))))
 	   ;; Effectively extend modified area.
 	   (org-with-limited-levels
 	    (setq top (progn (goto-char top)
