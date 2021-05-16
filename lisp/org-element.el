@@ -1263,69 +1263,69 @@ string instead.
 Assume point is at the beginning of the item."
   (save-excursion
     (beginning-of-line)
-    (looking-at org-list-full-item-re)
-    (let* ((begin (point))
-	   (bullet (match-string-no-properties 1))
-	   (checkbox (let ((box (match-string 3)))
-		       (cond ((equal "[ ]" box) 'off)
-			     ((equal "[X]" box) 'on)
-			     ((equal "[-]" box) 'trans))))
-	   (counter (let ((c (match-string 2)))
-		      (save-match-data
-			(cond
-			 ((not c) nil)
-			 ((string-match "[A-Za-z]" c)
-			  (- (string-to-char (upcase (match-string 0 c)))
-			     64))
-			 ((string-match "[0-9]+" c)
-			  (string-to-number (match-string 0 c)))))))
-	   (end (progn (goto-char (nth 6 (assq (point) struct)))
-		       (if (bolp) (point) (line-beginning-position 2))))
-	   (pre-blank 0)
-	   (contents-begin
-	    (progn
-	      (goto-char
-	       ;; Ignore tags in un-ordered lists: they are just
-	       ;; a part of item's body.
-	       (if (and (match-beginning 4)
-			(save-match-data (string-match "[.)]" bullet)))
-		   (match-beginning 4)
-		 (match-end 0)))
-	      (skip-chars-forward " \r\t\n" end)
-	      (cond ((= (point) end) nil)
-		    ;; If first line isn't empty, contents really
-		    ;; start at the text after item's meta-data.
-		    ((= (line-beginning-position) begin) (point))
-		    (t
-		     (setq pre-blank
-			   (count-lines (line-beginning-position) begin))
-		     (line-beginning-position)))))
-	   (contents-end (and contents-begin
-			      (progn (goto-char end)
-				     (skip-chars-backward " \r\t\n")
-				     (line-beginning-position 2))))
-	   (item
-	    (list 'item
-		  (list :bullet bullet
-			:begin begin
-			:end end
-			:contents-begin contents-begin
-			:contents-end contents-end
-			:checkbox checkbox
-			:counter counter
-			:structure struct
-			:pre-blank pre-blank
-			:post-blank (count-lines (or contents-end begin) end)
-			:post-affiliated begin))))
-      (org-element-put-property
-       item :tag
-       (let ((raw (org-list-get-tag begin struct)))
-	 (when raw
-	   (if raw-secondary-p raw
-	     (org-element--parse-objects
-	      (match-beginning 4) (match-end 4) nil
-	      (org-element-restriction 'item)
-	      item))))))))
+    (when (looking-at org-list-full-item-re)
+      (let* ((begin (point))
+	     (bullet (match-string-no-properties 1))
+	     (checkbox (let ((box (match-string 3)))
+		         (cond ((equal "[ ]" box) 'off)
+			       ((equal "[X]" box) 'on)
+			       ((equal "[-]" box) 'trans))))
+	     (counter (let ((c (match-string 2)))
+		        (save-match-data
+			  (cond
+			   ((not c) nil)
+			   ((string-match "[A-Za-z]" c)
+			    (- (string-to-char (upcase (match-string 0 c)))
+			       64))
+			   ((string-match "[0-9]+" c)
+			    (string-to-number (match-string 0 c)))))))
+	     (end (progn (goto-char (nth 6 (assq (point) struct)))
+		         (if (bolp) (point) (line-beginning-position 2))))
+	     (pre-blank 0)
+	     (contents-begin
+	      (progn
+	        (goto-char
+	         ;; Ignore tags in un-ordered lists: they are just
+	         ;; a part of item's body.
+	         (if (and (match-beginning 4)
+			  (save-match-data (string-match "[.)]" bullet)))
+		     (match-beginning 4)
+		   (match-end 0)))
+	        (skip-chars-forward " \r\t\n" end)
+	        (cond ((= (point) end) nil)
+		      ;; If first line isn't empty, contents really
+		      ;; start at the text after item's meta-data.
+		      ((= (line-beginning-position) begin) (point))
+		      (t
+		       (setq pre-blank
+			     (count-lines (line-beginning-position) begin))
+		       (line-beginning-position)))))
+	     (contents-end (and contents-begin
+			        (progn (goto-char end)
+				       (skip-chars-backward " \r\t\n")
+				       (line-beginning-position 2))))
+	     (item
+	      (list 'item
+		    (list :bullet bullet
+			  :begin begin
+			  :end end
+			  :contents-begin contents-begin
+			  :contents-end contents-end
+			  :checkbox checkbox
+			  :counter counter
+			  :structure struct
+			  :pre-blank pre-blank
+			  :post-blank (count-lines (or contents-end begin) end)
+			  :post-affiliated begin))))
+        (org-element-put-property
+         item :tag
+         (let ((raw (org-list-get-tag begin struct)))
+	   (when raw
+	     (if raw-secondary-p raw
+	       (org-element--parse-objects
+	        (match-beginning 4) (match-end 4) nil
+	        (org-element-restriction 'item)
+	        item)))))))))
 
 (defun org-element-item-interpreter (item contents)
   "Interpret ITEM element as Org syntax.
@@ -3996,7 +3996,7 @@ element it has to parse."
 	          (or structure (org-element--list-struct limit))))
 	        ;; Default element: Paragraph.
 	        (t (org-element-paragraph-parser limit affiliated)))))))
-        (org-element-put-property result :mode mode)
+        (when result (org-element-put-property result :mode mode))
         result))))
 
 
