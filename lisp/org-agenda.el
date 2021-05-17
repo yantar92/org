@@ -2953,7 +2953,7 @@ Pressing `<' twice means to restrict to the current subtree or region
 	          (`tags
 	           (org-tags-view current-prefix-arg org-match))
 	          (`tags-todo
-	           (org-tags-view '(4) org-match))
+	           (org-tags-view nil org-match))
 	          (`todo
 		   (org-todo-list org-match))
 		  (`tags-tree
@@ -3249,11 +3249,11 @@ s   Search for keywords                 M   Like m, but only TODO entries
 (defvar org-agenda-overriding-cmd-arguments nil)
 
 (defun org-let (list &rest body) ;FIXME: So many kittens are suffering here.
-  (declare (indent 1) (obsolete cl-progv "Mar 2021"))
+  (declare (indent 1) (obsolete cl-progv "2021"))
   (eval (cons 'let (cons list body))))
 
 (defun org-let2 (list1 list2 &rest body) ;FIXME: Where did our karma go?
-  (declare (indent 2) (obsolete cl-progv "Mar 2021"))
+  (declare (indent 2) (obsolete cl-progv "2021"))
   (eval (cons 'let (cons list1 (list (cons 'let (cons list2 body)))))))
 
 (defun org-agenda-run-series (name series)
@@ -10652,9 +10652,7 @@ The prefix arg is passed through to the command if possible."
 	      (let (org-loop-over-headlines-in-active-region) (funcall cmd))
 	      ;; `post-command-hook' is not run yet.  We make sure any
 	      ;; pending log note is processed.
-	      (when (or (memq 'org-add-log-note (default-value 'post-command-hook))
-			(memq 'org-add-log-note post-command-hook))
-		(org-add-log-note))
+	      (when org-log-setup (org-add-log-note))
 	      (cl-incf processed))))
 	(when redo-at-end (org-agenda-redo))
 	(unless org-agenda-persistent-marks (org-agenda-bulk-unmark-all))

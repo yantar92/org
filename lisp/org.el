@@ -667,7 +667,7 @@ defined in org-duration.el.")
 
 (make-obsolete-variable
  'org-load-hook
- "use `with-eval-after-load' instead." "Org 9.5")
+ "use `with-eval-after-load' instead." "9.5")
 
 (defcustom org-log-buffer-setup-hook nil
   "Hook that is run after an Org log buffer is created."
@@ -2227,8 +2227,20 @@ set a priority."
 
 (defcustom org-priority-highest ?A
   "The highest priority of TODO items.
+
 A character like ?A, ?B, etc., or a numeric value like 1, 2, etc.
-Must be smaller than `org-priority-lowest'."
+
+The default is the character ?A, which is 65 as a numeric value.
+
+If you set `org-priority-highest' to a numeric value inferior to
+65, Org assumes you want to use digits for the priority cookie.
+If you set it to >=65, Org assumes you want to use alphabetical
+characters.
+
+In both cases, the value of `org-priority-highest' must be
+smaller than `org-priority-lowest': for example, if \"A\" is the
+highest priority, it is smaller than the lowest \"C\" priority:
+65 < 67."
   :group 'org-priorities
   :type '(choice
 	  (character :tag "Character")
@@ -2237,8 +2249,20 @@ Must be smaller than `org-priority-lowest'."
 (defvaralias 'org-lowest-priority 'org-priority-lowest)
 (defcustom org-priority-lowest ?C
   "The lowest priority of TODO items.
-A character like ?A, ?B, etc., or a numeric value like 1, 2, etc.
-Must be higher than `org-priority-highest'."
+
+A character like ?C, ?B, etc., or a numeric value like 9, 8, etc.
+
+The default is the character ?C, which is 67 as a numeric value.
+
+If you set `org-priority-lowest' to a numeric value inferior to
+65, Org assumes you want to use digits for the priority cookie.
+If you set it to >=65, Org assumes you want to use alphabetical
+characters.
+
+In both cases, the value of `org-priority-lowest' must be greater
+than `org-priority-highest': for example, if \"C\" is the lowest
+priority, it is greater than the highest \"A\" priority: 67 >
+65."
   :group 'org-priorities
   :type '(choice
 	  (character :tag "Character")
@@ -5237,11 +5261,14 @@ by a #."
 (defun org-fontify-extend-region (beg end _old-len)
   (let ((begin-re "\\(\\\\\\[\\|\\(#\\+begin_\\|\\\\begin{\\)\\S-+\\)")
 	(end-re "\\(\\\\\\]\\|\\(#\\+end_\\|\\\\end{\\)\\S-+\\)")
-	(extend (lambda (r1 r2 dir)
-		  (let ((re (replace-regexp-in-string "\\(begin\\|end\\)" r1
-						      (replace-regexp-in-string "[][]" r2
-										(match-string-no-properties 0)))))
-		    (re-search-forward (regexp-quote re) nil t dir)))))
+	(extend
+         (lambda (r1 r2 dir)
+	   (let ((re (replace-regexp-in-string
+                      "\\(begin\\|end\\)" r1
+		      (replace-regexp-in-string
+                       "[][]" r2
+		       (match-string-no-properties 0)))))
+	     (re-search-forward (regexp-quote re) nil t dir)))))
     (save-match-data
       (save-excursion
 	(goto-char beg)
@@ -5462,115 +5489,113 @@ needs to be inserted at a specific position in the font-lock sequence.")
 (defun org-set-font-lock-defaults ()
   "Set font lock defaults for the current buffer."
   (let ((org-font-lock-extra-keywords
-	  (list
-	   ;; Call the hook
-	   '(org-font-lock-hook)
-	   ;; Headlines
-	   `(,(if org-fontify-whole-heading-line
-		  "^\\(\\**\\)\\(\\* \\)\\(.*\n?\\)"
-		"^\\(\\**\\)\\(\\* \\)\\(.*\\)")
-	     (1 (org-get-level-face 1))
-	     (2 (org-get-level-face 2))
-	     (3 (org-get-level-face 3)))
-	   ;; Table lines
-	   '("^[ \t]*\\(\\(|\\|\\+-[-+]\\).*\\S-\\)"
-	     (1 'org-table t))
-	   ;; Table internals
-	   '("^[ \t]*|\\(?:.*?|\\)? *\\(:?=[^|\n]*\\)" (1 'org-formula t))
-	   '("^[ \t]*| *\\([#*]\\) *|" (1 'org-formula t))
-	   '("^[ \t]*|\\( *\\([$!_^/]\\) *|.*\\)|" (1 'org-formula t))
-	   '("| *\\(<[lrc]?[0-9]*>\\)" (1 'org-formula t))
-           ;; Table alignment
-           '(org-table--fontify-fields)
-	   ;; Properties
-	   (list org-property-re
-		 '(1 'org-special-keyword t)
-		 '(3 'org-property-value t))
-	   ;; Drawers
-	   '(org-fontify-drawers)
-	   ;; Link related fontification.
-	   '(org-activate-links)
-	   (when (memq 'tag org-highlight-links) '(org-activate-tags (1 'org-tag prepend)))
-	   (when (memq 'radio org-highlight-links) '(org-activate-target-links (1 'org-link t)))
-	   (when (memq 'date org-highlight-links) '(org-activate-dates (0 'org-date t)))
-	   (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
-           ;; Targets.
-           (list org-radio-target-regexp '(0 'org-target t))
-	   (list org-target-regexp '(0 'org-target t))
-	   ;; Diary sexps.
-	   '("^&?%%(.*\\|<%%([^>\n]*?>" (0 'org-sexp-date t))
-	   ;; Macro
-	   '(org-fontify-macros)
-	   ;; TODO keyword
-	   (list (format org-heading-keyword-regexp-format
-			 org-todo-regexp)
-		 '(2 (org-get-todo-face 2) prepend))
-	   ;; TODO
-	   (when org-fontify-todo-headline
-	     (list (format org-heading-keyword-regexp-format
-			   (concat
-			    "\\(?:"
-			    (mapconcat 'regexp-quote org-not-done-keywords "\\|")
-			    "\\)"))
-		   '(2 'org-headline-todo prepend)))
-	   ;; DONE
-	   (when org-fontify-done-headline
-	     (list (format org-heading-keyword-regexp-format
-			   (concat
-			    "\\(?:"
-			    (mapconcat 'regexp-quote org-done-keywords "\\|")
-			    "\\)"))
-		   '(2 'org-headline-done prepend)))
-	   ;; Priorities
-	   '(org-font-lock-add-priority-faces)
-	   ;; Tags
-	   '(org-font-lock-add-tag-faces)
-	   ;; Tags groups
-	   (when (and org-group-tags org-tag-groups-alist)
-	     (list (concat org-outline-regexp-bol ".+\\(:"
-			   (regexp-opt (mapcar 'car org-tag-groups-alist))
-			   ":\\).*$")
-		   '(1 'org-tag-group prepend)))
-	   ;; Special keywords
-	   (list (concat "\\<" org-deadline-string) '(0 'org-special-keyword t))
-	   (list (concat "\\<" org-scheduled-string) '(0 'org-special-keyword t))
-	   (list (concat "\\<" org-closed-string) '(0 'org-special-keyword t))
-	   (list (concat "\\<" org-clock-string) '(0 'org-special-keyword t))
-	   ;; Emphasis
-	   (when org-fontify-emphasized-text '(org-do-emphasis-faces))
-	   ;; Checkboxes
-	   '("^[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)[ \t]+\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\(\\[[- X]\\]\\)"
-	     1 'org-checkbox prepend)
-	   (when (cdr (assq 'checkbox org-list-automatic-rules))
-	     '("\\[\\([0-9]*%\\)\\]\\|\\[\\([0-9]*\\)/\\([0-9]*\\)\\]"
-	       (0 (org-get-checkbox-statistics-face) prepend)))
-	   ;; Description list items
-           '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
-	     1 'org-list-dt prepend)
-           ;; Inline export snippets
-           '("\\(@@\\)\\([a-z-]+:\\).*?\\(@@\\)"
-             (1 'font-lock-comment-face t)
-             (2 'org-tag t)
-             (3 'font-lock-comment-face t))
-	   ;; ARCHIVEd headings
-	   (list (concat
-		  org-outline-regexp-bol
-		  "\\(.*:" org-archive-tag ":.*\\)")
-		 '(1 'org-archived prepend))
-	   ;; Specials
-	   '(org-do-latex-and-related)
-	   '(org-fontify-entities)
-	   '(org-raise-scripts)
-	   ;; Code
-	   '(org-activate-code (1 'org-code t))
-	   ;; COMMENT
-	   (list (format
-		  "^\\*+\\(?: +%s\\)?\\(?: +\\[#[A-Z0-9]\\]\\)? +\\(?9:%s\\)\\(?: \\|$\\)"
-		  org-todo-regexp
-		  org-comment-string)
-		 '(9 'org-special-keyword t))
-	   ;; Blocks and meta lines
-	   '(org-fontify-meta-lines-and-blocks))))
+	 (list
+	  ;; Call the hook
+	  '(org-font-lock-hook)
+	  ;; Headlines
+	  `(,(if org-fontify-whole-heading-line
+		 "^\\(\\**\\)\\(\\* \\)\\(.*\n?\\)"
+	       "^\\(\\**\\)\\(\\* \\)\\(.*\\)")
+	    (1 (org-get-level-face 1))
+	    (2 (org-get-level-face 2))
+	    (3 (org-get-level-face 3)))
+	  ;; Table lines
+	  '("^[ \t]*\\(\\(|\\|\\+-[-+]\\).*\\S-\\)"
+	    (1 'org-table t))
+	  ;; Table internals
+	  '("^[ \t]*|\\(?:.*?|\\)? *\\(:?=[^|\n]*\\)" (1 'org-formula t))
+	  '("^[ \t]*| *\\([#*]\\) *|" (1 'org-formula t))
+	  '("^[ \t]*|\\( *\\([$!_^/]\\) *|.*\\)|" (1 'org-formula t))
+	  '("| *\\(<[lrc]?[0-9]*>\\)" (1 'org-formula t))
+	  ;; Properties
+	  (list org-property-re
+		'(1 'org-special-keyword t)
+		'(3 'org-property-value t))
+	  ;; Drawers
+	  '(org-fontify-drawers)
+	  ;; Link related fontification.
+	  '(org-activate-links)
+	  (when (memq 'tag org-highlight-links) '(org-activate-tags (1 'org-tag prepend)))
+	  (when (memq 'radio org-highlight-links) '(org-activate-target-links (1 'org-link t)))
+	  (when (memq 'date org-highlight-links) '(org-activate-dates (0 'org-date t)))
+	  (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
+          ;; Targets.
+          (list org-radio-target-regexp '(0 'org-target t))
+	  (list org-target-regexp '(0 'org-target t))
+	  ;; Diary sexps.
+	  '("^&?%%(.*\\|<%%([^>\n]*?>" (0 'org-sexp-date t))
+	  ;; Macro
+	  '(org-fontify-macros)
+	  ;; TODO keyword
+	  (list (format org-heading-keyword-regexp-format
+			org-todo-regexp)
+		'(2 (org-get-todo-face 2) prepend))
+	  ;; TODO
+	  (when org-fontify-todo-headline
+	    (list (format org-heading-keyword-regexp-format
+			  (concat
+			   "\\(?:"
+			   (mapconcat 'regexp-quote org-not-done-keywords "\\|")
+			   "\\)"))
+		  '(2 'org-headline-todo prepend)))
+	  ;; DONE
+	  (when org-fontify-done-headline
+	    (list (format org-heading-keyword-regexp-format
+			  (concat
+			   "\\(?:"
+			   (mapconcat 'regexp-quote org-done-keywords "\\|")
+			   "\\)"))
+		  '(2 'org-headline-done prepend)))
+	  ;; Priorities
+	  '(org-font-lock-add-priority-faces)
+	  ;; Tags
+	  '(org-font-lock-add-tag-faces)
+	  ;; Tags groups
+	  (when (and org-group-tags org-tag-groups-alist)
+	    (list (concat org-outline-regexp-bol ".+\\(:"
+			  (regexp-opt (mapcar 'car org-tag-groups-alist))
+			  ":\\).*$")
+		  '(1 'org-tag-group prepend)))
+	  ;; Special keywords
+	  (list (concat "\\<" org-deadline-string) '(0 'org-special-keyword t))
+	  (list (concat "\\<" org-scheduled-string) '(0 'org-special-keyword t))
+	  (list (concat "\\<" org-closed-string) '(0 'org-special-keyword t))
+	  (list (concat "\\<" org-clock-string) '(0 'org-special-keyword t))
+	  ;; Emphasis
+	  (when org-fontify-emphasized-text '(org-do-emphasis-faces))
+	  ;; Checkboxes
+	  '("^[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)[ \t]+\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\(\\[[- X]\\]\\)"
+	    1 'org-checkbox prepend)
+	  (when (cdr (assq 'checkbox org-list-automatic-rules))
+	    '("\\[\\([0-9]*%\\)\\]\\|\\[\\([0-9]*\\)/\\([0-9]*\\)\\]"
+	      (0 (org-get-checkbox-statistics-face) prepend)))
+	  ;; Description list items
+          '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
+	    1 'org-list-dt prepend)
+          ;; Inline export snippets
+          '("\\(@@\\)\\([a-z-]+:\\).*?\\(@@\\)"
+            (1 'font-lock-comment-face t)
+            (2 'org-tag t)
+            (3 'font-lock-comment-face t))
+	  ;; ARCHIVEd headings
+	  (list (concat
+		 org-outline-regexp-bol
+		 "\\(.*:" org-archive-tag ":.*\\)")
+		'(1 'org-archived prepend))
+	  ;; Specials
+	  '(org-do-latex-and-related)
+	  '(org-fontify-entities)
+	  '(org-raise-scripts)
+	  ;; Code
+	  '(org-activate-code (1 'org-code t))
+	  ;; COMMENT
+	  (list (format
+		 "^\\*+\\(?: +%s\\)?\\(?: +\\[#[A-Z0-9]\\]\\)? +\\(?9:%s\\)\\(?: \\|$\\)"
+		 org-todo-regexp
+		 org-comment-string)
+		'(9 'org-special-keyword t))
+	  ;; Blocks and meta lines
+	  '(org-fontify-meta-lines-and-blocks))))
     (setq org-font-lock-extra-keywords (delq nil org-font-lock-extra-keywords))
     (run-hooks 'org-font-lock-set-keywords-hook)
     ;; Now set the full font-lock-keywords
@@ -5830,8 +5855,9 @@ and subscripts."
   "Remove outline overlays that do not contain non-white stuff."
   (dolist (o (overlays-at pos))
     (and (eq 'outline (overlay-get o 'invisible))
-	 (not (string-match-p "\\S-" (buffer-substring (overlay-start o)
-						    (overlay-end o))))
+	 (not (string-match-p
+             "\\S-" (buffer-substring (overlay-start o)
+				     (overlay-end o))))
 	 (delete-overlay o))))
 
 ;; FIXME: This function is unused.
@@ -7236,14 +7262,37 @@ Optional argument WITH-CASE means sort case-sensitively."
    with-case))
 
 (defun org-sort-remove-invisible (s)
-  "Remove invisible part of links and emphasis markers from string S."
-  (remove-text-properties 0 (length s) org-rm-props s)
-  (replace-regexp-in-string
-   org-verbatim-re (lambda (m) (format "%s " (match-string 4 m)))
-   (replace-regexp-in-string
-    org-emph-re (lambda (m) (format " %s " (match-string 4 m)))
-    (org-link-display-format s)
-    t t) t t))
+  "Remove emphasis markers and any invisible property from string S.
+Assume S may contain only objects."
+  ;; org-element-interpret-data clears any text property, including
+  ;; invisible part.
+  (org-element-interpret-data
+   (let ((tree (org-element-parse-secondary-string
+                s (org-element-restriction 'paragraph))))
+     (org-element-map tree '(bold code italic link strike-through underline verbatim)
+       (lambda (o)
+         (pcase (org-element-type o)
+           ;; Terminal object.  Replace it with its value.
+           ((or `code `verbatim)
+            (let ((new (org-element-property :value o)))
+              (org-element-insert-before new o)
+              (org-element-put-property
+               new :post-blank (org-element-property :post-blank o))))
+           ;; Non-terminal objects.  Splice contents.
+           (type
+            (let ((contents
+                   (or (org-element-contents o)
+                       (and (eq type 'link)
+                            (list (org-element-property :raw-link o)))))
+                  (c nil))
+              (while contents
+                (setq c (pop contents))
+                (org-element-insert-before c o))
+              (org-element-put-property
+               c :post-blank (org-element-property :post-blank o)))))
+         (org-element-extract-element o)))
+     ;; Return modified tree.
+     tree)))
 
 (defvar org-after-sorting-entries-or-items-hook nil
   "Hook that is run after a bunch of entries or items have been sorted.
@@ -9130,7 +9179,8 @@ all statistics cookies in the buffer."
   (if all
       (progn
 	(org-update-checkbox-count 'all)
-	(org-map-entries 'org-update-parent-todo-statistics))
+	(org-map-region 'org-update-parent-todo-statistics
+                        (point-min) (point-max)))
     (if (not (org-at-heading-p))
 	(org-update-checkbox-count)
       (let ((pos (point-marker))
@@ -9139,15 +9189,17 @@ all statistics cookies in the buffer."
 	(if (not (org-at-heading-p))
 	    (org-update-checkbox-count)
 	  (setq l1 (org-outline-level))
-	  (setq end (save-excursion
-		      (outline-next-heading)
-		      (when (org-at-heading-p) (setq l2 (org-outline-level)))
-		      (point)))
+	  (setq end
+                (save-excursion
+		  (outline-next-heading)
+		  (when (org-at-heading-p) (setq l2 (org-outline-level)))
+		  (point)))
 	  (if (and (save-excursion
 		     (re-search-forward
 		      "^[ \t]*\\([-+*]\\|[0-9]+[.)]\\) \\[[- X]\\]" end t))
-		   (not (save-excursion (re-search-forward
-					 ":COOKIE_DATA:.*\\<todo\\>" end t))))
+	           (not (save-excursion
+                          (re-search-forward
+			   ":COOKIE_DATA:.*\\<todo\\>" end t))))
 	      (org-update-checkbox-count)
 	    (if (and l2 (> l2 l1))
 		(progn
@@ -9168,8 +9220,9 @@ all statistics cookies in the buffer."
 When `org-hierarchical-todo-statistics' is nil, statistics will cover
 the entire subtree and this will travel up the hierarchy and update
 statistics everywhere."
-  (let* ((prop (save-excursion (org-up-heading-safe)
-			       (org-entry-get nil "COOKIE_DATA" 'inherit)))
+  (let* ((prop (save-excursion
+                 (org-up-heading-safe)
+		 (org-entry-get nil "COOKIE_DATA" 'inherit)))
 	 (recursive (or (not org-hierarchical-todo-statistics)
 			(and prop (string-match "\\<recursive\\>" prop))))
 	 (lim (or (and prop (marker-position org-entry-property-inherited-from))
@@ -9414,7 +9467,8 @@ prefer a state in the current sequence over on in another sequence."
   "Return the TODO keyword of the current subtree."
   (save-excursion
     (org-back-to-heading t)
-    (and (let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
+    (and (let ((case-fold-search nil))
+           (looking-at org-todo-line-regexp))
 	 (match-end 2)
 	 (match-string 2))))
 
@@ -9452,18 +9506,19 @@ this function is called before first heading.
 When optional argument TIMESTAMP is a string, extract the
 repeater from there instead."
   (save-match-data
-    (cond (timestamp
-	   (and (string-match org-repeat-re timestamp)
-		(match-string-no-properties 1 timestamp)))
-	  ((org-before-first-heading-p) nil)
-	  (t
-	   (save-excursion
-	     (org-back-to-heading t)
-	     (let ((end (org-entry-end-position)))
-	       (catch :repeat
-		 (while (re-search-forward org-repeat-re end t)
-		   (when (save-match-data (org-at-timestamp-p 'agenda))
-		     (throw :repeat (match-string-no-properties 1)))))))))))
+    (cond
+     (timestamp
+      (and (string-match org-repeat-re timestamp)
+	   (match-string-no-properties 1 timestamp)))
+     ((org-before-first-heading-p) nil)
+     (t
+      (save-excursion
+	(org-back-to-heading t)
+	(let ((end (org-entry-end-position)))
+	  (catch :repeat
+	    (while (re-search-forward org-repeat-re end t)
+	      (when (save-match-data (org-at-timestamp-p 'agenda))
+		(throw :repeat (match-string-no-properties 1)))))))))))
 
 (defvar org-last-changed-timestamp)
 (defvar org-last-inserted-timestamp)
@@ -9489,10 +9544,11 @@ This function is run automatically after each state change to a DONE state."
 	 (end (copy-marker (org-entry-end-position))))
     (when (and repeat (not (= 0 (string-to-number (substring repeat 1)))))
       (when (eq org-log-repeat t) (setq org-log-repeat 'state))
-      (let ((to-state (or (org-entry-get nil "REPEAT_TO_STATE" 'selective)
-			  (and (stringp org-todo-repeat-to-state)
-			       org-todo-repeat-to-state)
-			  (and org-todo-repeat-to-state org-last-state))))
+      (let ((to-state
+             (or (org-entry-get nil "REPEAT_TO_STATE" 'selective)
+		 (and (stringp org-todo-repeat-to-state)
+		      org-todo-repeat-to-state)
+		 (and org-todo-repeat-to-state org-last-state))))
 	(org-todo (cond ((and to-state (member to-state org-todo-keywords-1))
 			 to-state)
 			((eq interpret 'type) org-last-state)
@@ -9510,8 +9566,7 @@ This function is run automatically after each state change to a DONE state."
 	(org-entry-put nil "LAST_REPEAT" (format-time-string
 					  (org-time-stamp-format t t))))
       (when org-log-repeat
-	(if (or (memq 'org-add-log-note (default-value 'post-command-hook))
-		(memq 'org-add-log-note post-command-hook))
+	(if org-log-setup
 	    ;; We are already setup for some record.
 	    (when (eq org-log-repeat 'note)
 	      ;; Make sure we take a note, not only a time stamp.
@@ -9966,6 +10021,7 @@ narrowing."
 	 (forward-line)))))
    (if (bolp) (point) (line-beginning-position 2))))
 
+(defvar org-log-setup nil)
 (defun org-add-log-setup (&optional purpose state prev-state how extra)
   "Set up the post command hook to take a note.
 If this is about to TODO state change, the new state is expected in STATE.
@@ -9977,8 +10033,11 @@ EXTRA is additional text that will be inserted into the notes buffer."
 	org-log-note-previous-state prev-state
 	org-log-note-how how
 	org-log-note-extra extra
-	org-log-note-effective-time (org-current-effective-time))
-  (add-hook 'post-command-hook 'org-add-log-note 'append))
+	org-log-note-effective-time (org-current-effective-time)
+        org-log-setup t)
+  (if (eq how 'note)
+      (add-hook 'post-command-hook 'org-add-log-note 'append)
+    (org-add-log-note purpose)))
 
 (defun org-skip-over-state-notes ()
   "Skip past the list of State notes in an entry."
@@ -10006,6 +10065,7 @@ EXTRA is additional text that will be inserted into the notes buffer."
 (defun org-add-log-note (&optional _purpose)
   "Pop up a window for taking a note, and add this note later."
   (remove-hook 'post-command-hook 'org-add-log-note)
+  (setq org-log-setup nil)
   (setq org-log-note-window-configuration (current-window-configuration))
   (delete-other-windows)
   (move-marker org-log-note-return-to (point))
@@ -10114,19 +10174,13 @@ EXTRA is additional text that will be inserted into the notes buffer."
 	     (indent-line-to ind)
 	     (insert line)))
 	 (message "Note stored")
-	 (org-back-to-heading t))
-	;; Fix `buffer-undo-list' when `org-store-log-note' is called
-	;; from within `org-add-log-note' because `buffer-undo-list'
-	;; is then modified outside of `org-with-remote-undo'.
-	(when (eq this-command 'org-agenda-todo)
-	  (setcdr buffer-undo-list (cddr buffer-undo-list))))))
+	 (org-back-to-heading t)))))
   ;; Don't add undo information when called from `org-agenda-todo'.
-  (let ((buffer-undo-list (eq this-command 'org-agenda-todo)))
-    (set-window-configuration org-log-note-window-configuration)
-    (with-current-buffer (marker-buffer org-log-note-return-to)
-      (goto-char org-log-note-return-to))
-    (move-marker org-log-note-return-to nil)
-    (when org-log-post-message (message "%s" org-log-post-message))))
+  (set-window-configuration org-log-note-window-configuration)
+  (with-current-buffer (marker-buffer org-log-note-return-to)
+    (goto-char org-log-note-return-to))
+  (move-marker org-log-note-return-to nil)
+  (when org-log-post-message (message "%s" org-log-post-message)))
 
 (defun org-remove-empty-drawer-at (pos)
   "Remove an empty drawer at position POS.
@@ -13297,8 +13351,8 @@ user."
 	     (when (and (not (string-match "\\(\\`\\|[^+]\\)[012]?[0-9]:[0-9][0-9]\\([ \t\n]\\|$\\)" ans))
 			(string-match "\\(?:\\(?1:[012]?[0-9]\\)?h\\(?2:[0-5][0-9]\\)\\)\\|\\(?:\\(?1:[012]?[0-9]\\)h\\(?2:[0-5][0-9]\\)?\\)\\>" ans))
 	       (setq hour (if (match-end 1)
-				(string-to-number (match-string 1 ans))
-			      0)
+			      (string-to-number (match-string 1 ans))
+			    0)
 		     minute (if (match-end 2)
 				(string-to-number (match-string 2 ans))
 			      0))
@@ -16843,7 +16897,7 @@ Use `\\[org-edit-special]' to edit table.el tables")))
 	   "`\\[org-ctrl-c-ctrl-c]' can do nothing useful here"))))))))
 
 (defun org-mode-restart ()
-"Restart `org-mode'."
+  "Restart `org-mode'."
   (interactive)
   (let ((indent-status (bound-and-true-p org-indent-mode)))
     (funcall major-mode)
@@ -16940,7 +16994,7 @@ object (e.g., within a comment).  In these case, you need to use
 `org-open-at-point' directly."
   (interactive "i\nP\np")
   (let* ((context (if org-return-follows-link (org-element-context)
-		   (org-element-at-point)))
+		    (org-element-at-point)))
          (element-type (org-element-type context)))
     (cond
      ;; In a table, call `org-table-next-row'.  However, before first
