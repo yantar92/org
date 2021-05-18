@@ -359,6 +359,16 @@ The following properties are known:
                        The function called after changes are made with
                        two arguments: cons (beg . end) representing the
                        folded region and spec symbol.")
+(defvar-local org-fold-core--spec-symbols nil
+  "Alist holding buffer spec symbols and aliases.
+
+This variable is defined to reduce load on Emacs garbage collector
+reducing the number of transiently allocated variables.")
+(defvar-local org-fold-core--spec-list nil
+  "List holding buffer spec symbols, but not aliases.
+
+This variable is defined to reduce load on Emacs garbage collector
+reducing the number of transiently allocated variables.")
 
 (defvar-local org-fold-core-extend-changed-region-functions nil
   "Special hook run just before handling changes in buffer.
@@ -374,17 +384,19 @@ arguments: beginning and the end of the changed region.")
 (defsubst org-fold-core-folding-spec-list (&optional buffer)
   "Return list of all the folding spec symbols in BUFFER."
   (with-current-buffer (or buffer (current-buffer))
-    (mapcar #'car org-fold-core--specs)))
+    (or org-fold-core--spec-list
+        (setq org-fold-core--spec-list (mapcar #'car org-fold-core--specs)))))
 
 (defun org-fold-core-get-folding-spec-from-alias (spec-or-alias)
   "Return the folding spec symbol for SPEC-OR-ALIAS.
 Return nil when there is no matching folding spec."
-  (and spec-or-alias
-       (or (and (memq spec-or-alias (org-fold-core-folding-spec-list)) spec-or-alias)
-           (catch :found
-             (dolist (spec (org-fold-core-folding-spec-list))
-               (when  (memq spec-or-alias (cdr (assq :alias (assq spec org-fold-core--specs))))
-                 (throw :found spec)))))))
+  (when spec-or-alias
+    (unless org-fold-core--spec-symbols
+      (dolist (spec (org-fold-core-folding-spec-list))
+        (push (cons spec spec) org-fold-core--spec-symbols)
+        (dolist (alias (assq :alias (assq spec org-fold-core--specs)))
+          (push (cons alias spec) org-fold-core--spec-symbols))))
+    (alist-get spec-or-alias org-fold-core--spec-symbols)))
 
 (defsubst org-fold-core-folding-spec-p (spec-or-alias)
   "Check if SPEC-OR-ALIAS is a registered folding spec."
@@ -543,7 +555,9 @@ Do not check previous value when FORCE is non-nil."
        (if value
 	   (remove-from-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis)))
          (add-to-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis))))))
-    (:alias nil)
+    (:alias
+     ;; Clear symbol cache.
+     (setq org-fold-core--spec-symbols nil))
     (:isearch-open nil)
     (:isearch-ignore nil)
     (:front-sticky nil)
@@ -567,6 +581,9 @@ The folding spec properties will be set to PROPERTIES (see
 `org-fold-core--specs' for details)."
   (when (eq spec 'all) (error "Cannot use reserved folding spec symbol 'all"))
   (with-current-buffer (or buffer (current-buffer))
+    ;; Clear the cache.
+    (setq org-fold-core--spec-list nil
+          org-fold-core--spec-symbols nil)
     (let* ((full-properties (mapcar (lambda (prop) (cons prop (cdr (assq prop properties))))
                                     '( :visible :ellipsis :isearch-ignore
                                        :global :isearch-open :front-sticky
@@ -592,6 +609,9 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
 	  (buffer-list)))
   (let ((buffer (or buffer (current-buffer))))
     (with-current-buffer buffer
+      ;; Clear the cache.
+      (setq org-fold-core--spec-list nil
+            org-fold-core--spec-symbols nil)
       (org-fold-core-set-folding-spec-property spec :visible t)
       (setq org-fold-core--specs (delete (cdr (assq spec org-fold-core--specs)) org-fold-core--specs)))))
 
@@ -600,7 +620,9 @@ or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers
   ;; Preserve the priorities.
   (when specs (setq specs (nreverse specs)))
   (unless specs (setq specs org-fold-core--specs))
-  (setq org-fold-core--specs nil)
+  (setq org-fold-core--specs nil
+        org-fold-core--spec-list nil
+        org-fold-core--spec-symbols nil)
   (dolist (spec specs)
     (org-fold-core-add-folding-spec (car spec) (cdr spec)))
   (add-hook 'after-change-functions 'org-fold-core--fix-folded-region nil 'local)
