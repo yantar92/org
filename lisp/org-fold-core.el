@@ -254,20 +254,24 @@
 ;; same buffer at a time.
 
 ;; Alternatively, the library provides `org-fold-core--optimise-for-huge-buffers'
-;; to provide additional speedup.  This can be used as file-local
-;; variable in huge buffers.  This optimisation may break external
-;; packages though.  When using this optimisation, folded regions
-;; copied to other buffers (including buffers that do not use this
-;; library) will remain invisible.  org-fold-core provides functions
-;; to work around this issue: `org-fold-core-remove-optimisation' and
-;; `org-fold-core-update-optimisation', but it is unlikely that a random external
-;; package will use them.
+;; for additional speedup.  This can be used as file-local variable in
+;; huge buffers.  This optimisation may break external packages
+;; though.  When using this optimisation, folded regions copied to
+;; other buffers (including buffers that do not use this library) will
+;; remain invisible.  org-fold-core provides functions to work around
+;; this issue: `org-fold-core-remove-optimisation' and `org-fold-core-update-optimisation', but
+;; it is unlikely that a random external package will use them.
 
-;; Another possible bottleneck is the fragility check after changed
+;; Another possible bottleneck is the fragility check after the change
 ;; related to the folded text.  The functions used in `:fragile'
 ;; folding properties must be optimised.  Also,
 ;; `org-fold-core-ignore-fragility-checks' or even `org-fold-core-ignore-modifications' may be
-;; used when appropriate in the performance-critical code.
+;; used when appropriate in the performance-critical code.  When
+;; inserting text from within `org-fold-core-ignore-modifications' macro, it is
+;; recommended to use `insert-and-inherit' instead of `insert' and
+;; `insert-before-markers-and-inherit' instead of
+;; `insert-before-markers' to avoid revealing inserted text in the
+;; middle of a folded region.
 
 ;; Performance of isearch is currently limited by Emacs isearch
 ;; implementation.  For now, Emacs isearch only supports searching
