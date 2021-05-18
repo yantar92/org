@@ -504,12 +504,13 @@ unless RETURN-ONLY is non-nil."
                             ;; Generate new buffer-unique folding property
 	                    (new-prop (org-fold-core--property-symbol-get-create spec nil 'return-only)))
                        ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
-                       (while (< pos (point-max))
-	                 (let ((val (get-text-property pos old-prop))
-                               (next (next-single-char-property-change pos old-prop)))
-	                   (when val
-	                     (put-text-property pos next new-prop val))
-                           (setq pos next))))))
+                       (unless (eq old-prop new-prop)
+                         (while (< pos (point-max))
+	                   (let ((val (get-text-property pos old-prop))
+                                 (next (next-single-char-property-change pos old-prop)))
+	                     (when val
+	                       (put-text-property pos next new-prop val))
+                             (setq pos next)))))))
                   ;; Update `char-property-alias-alist' with folding
                   ;; properties unique for the current buffer.
                   (setq-local char-property-alias-alist
