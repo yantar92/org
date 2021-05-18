@@ -720,7 +720,7 @@ Return a non-nil value when toggling is successful."
                 (re-search-forward org-drawer-regexp end t))
       ;; Skip drawers in folded headings
       (if (org-fold-folded-p)
-          (goto-char (org-fold-next-visibility-change))
+          (goto-char (org-fold-next-visibility-change nil end t))
         (let* ((drawer
                 (or (and (org-element--cache-active-p)
                          (let ((cached (org-element--cache-find

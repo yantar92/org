@@ -450,7 +450,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (if (eq org-fold-core-style 'text-properties)
           (while (and (not (eobp))		;this is like `next-line'
 		      (org-fold-folded-p (1- (point))))
-	    (goto-char (org-fold-next-visibility-change (point)))
+	    (goto-char (org-fold-next-visibility-change nil nil t))
 	    (and (eolp) (beginning-of-line 2)))
         (while (and (not (eobp))		;this is like `next-line'
 		    (get-char-property (1- (point)) 'invisible))
