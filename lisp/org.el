@@ -9679,81 +9679,82 @@ of `org-todo-keywords-1'."
   "Insert DEADLINE or SCHEDULE information in current entry.
 TYPE is either `deadline' or `scheduled'.  See `org-deadline' or
 `org-schedule' for information about ARG and TIME arguments."
-  (let* ((deadline? (eq type 'deadline))
-	 (keyword (if deadline? org-deadline-string org-scheduled-string))
-	 (log (if deadline? org-log-redeadline org-log-reschedule))
-	 (old-date (org-entry-get nil (if deadline? "DEADLINE" "SCHEDULED")))
-	 (old-date-time (and old-date (org-time-string-to-time old-date)))
-	 ;; Save repeater cookie from either TIME or current scheduled
-	 ;; time stamp.  We are going to insert it back at the end of
-	 ;; the process.
-	 (repeater (or (and (org-string-nw-p time)
-			    ;; We use `org-repeat-re' because we need
-			    ;; to tell the difference between a real
-			    ;; repeater and a time delta, e.g. "+2d".
-			    (string-match org-repeat-re time)
-			    (match-string 1 time))
-		       (and (org-string-nw-p old-date)
-			    (string-match "\\([.+-]+[0-9]+[hdwmy]\
+  (org-fold-core-ignore-modifications
+      (let* ((deadline? (eq type 'deadline))
+	     (keyword (if deadline? org-deadline-string org-scheduled-string))
+	     (log (if deadline? org-log-redeadline org-log-reschedule))
+	     (old-date (org-entry-get nil (if deadline? "DEADLINE" "SCHEDULED")))
+	     (old-date-time (and old-date (org-time-string-to-time old-date)))
+	     ;; Save repeater cookie from either TIME or current scheduled
+	     ;; time stamp.  We are going to insert it back at the end of
+	     ;; the process.
+	     (repeater (or (and (org-string-nw-p time)
+			        ;; We use `org-repeat-re' because we need
+			        ;; to tell the difference between a real
+			        ;; repeater and a time delta, e.g. "+2d".
+			        (string-match org-repeat-re time)
+			        (match-string 1 time))
+		           (and (org-string-nw-p old-date)
+			        (string-match "\\([.+-]+[0-9]+[hdwmy]\
 \\(?:[/ ][-+]?[0-9]+[hdwmy]\\)?\\)"
-					  old-date)
-			    (match-string 1 old-date)))))
-    (pcase arg
-      (`(4)
-       (if (not old-date)
-	   (message (if deadline? "Entry had no deadline to remove"
-		      "Entry was not scheduled"))
-	 (when (and old-date log)
-	   (org-add-log-setup (if deadline? 'deldeadline 'delschedule)
-			      nil old-date log))
-	 (org-remove-timestamp-with-keyword keyword)
-	 (message (if deadline? "Entry no longer has a deadline."
-		    "Entry is no longer scheduled."))))
-      (`(16)
-       (save-excursion
-	 (org-back-to-heading t)
-	 (let ((regexp (if deadline? org-deadline-time-regexp
-			 org-scheduled-time-regexp)))
-	   (if (not (re-search-forward regexp (line-end-position 2) t))
-	       (user-error (if deadline? "No deadline information to update"
-			     "No scheduled information to update"))
-	     (let* ((rpl0 (match-string 1))
-		    (rpl (replace-regexp-in-string " -[0-9]+[hdwmy]" "" rpl0))
-		    (msg (if deadline? "Warn starting from" "Delay until")))
-	       (replace-match
-		(concat keyword
-			" <" rpl
-			(format " -%dd"
-				(abs (- (time-to-days
-					 (save-match-data
-					   (org-read-date
-					    nil t nil msg old-date-time)))
-					(time-to-days old-date-time))))
-			">") t t))))))
-      (_
-       (org-add-planning-info type time 'closed)
-       (when (and old-date
-		  log
-		  (not (equal old-date org-last-inserted-timestamp)))
-	 (org-add-log-setup (if deadline? 'redeadline 'reschedule)
-			    org-last-inserted-timestamp
-			    old-date
-			    log))
-       (when repeater
-	 (save-excursion
-	   (org-back-to-heading t)
-	   (when (re-search-forward
-		  (concat keyword " " org-last-inserted-timestamp)
-		  (line-end-position 2)
-		  t)
-	     (goto-char (1- (match-end 0)))
-	     (insert " " repeater)
-	     (setq org-last-inserted-timestamp
-		   (concat (substring org-last-inserted-timestamp 0 -1)
-			   " " repeater
-			   (substring org-last-inserted-timestamp -1))))))
-       (message (if deadline? "Deadline on %s" "Scheduled to %s")
-		org-last-inserted-timestamp)))))
+					      old-date)
+			        (match-string 1 old-date)))))
+        (pcase arg
+          (`(4)
+           (if (not old-date)
+	       (message (if deadline? "Entry had no deadline to remove"
+		          "Entry was not scheduled"))
+	     (when (and old-date log)
+	       (org-add-log-setup (if deadline? 'deldeadline 'delschedule)
+			       nil old-date log))
+	     (org-remove-timestamp-with-keyword keyword)
+	     (message (if deadline? "Entry no longer has a deadline."
+		        "Entry is no longer scheduled."))))
+          (`(16)
+           (save-excursion
+	     (org-back-to-heading t)
+	     (let ((regexp (if deadline? org-deadline-time-regexp
+			     org-scheduled-time-regexp)))
+	       (if (not (re-search-forward regexp (line-end-position 2) t))
+	           (user-error (if deadline? "No deadline information to update"
+			         "No scheduled information to update"))
+	         (let* ((rpl0 (match-string 1))
+		        (rpl (replace-regexp-in-string " -[0-9]+[hdwmy]" "" rpl0))
+		        (msg (if deadline? "Warn starting from" "Delay until")))
+	           (replace-match
+		    (concat keyword
+			    " <" rpl
+			    (format " -%dd"
+				    (abs (- (time-to-days
+					     (save-match-data
+					       (org-read-date
+					        nil t nil msg old-date-time)))
+					    (time-to-days old-date-time))))
+			    ">") t t))))))
+          (_
+           (org-add-planning-info type time 'closed)
+           (when (and old-date
+		      log
+		      (not (equal old-date org-last-inserted-timestamp)))
+	     (org-add-log-setup (if deadline? 'redeadline 'reschedule)
+			     org-last-inserted-timestamp
+			     old-date
+			     log))
+           (when repeater
+	     (save-excursion
+	       (org-back-to-heading t)
+	       (when (re-search-forward
+		      (concat keyword " " org-last-inserted-timestamp)
+		      (line-end-position 2)
+		      t)
+	         (goto-char (1- (match-end 0)))
+	         (insert-and-inherit " " repeater)
+	         (setq org-last-inserted-timestamp
+		       (concat (substring org-last-inserted-timestamp 0 -1)
+			       " " repeater
+			       (substring org-last-inserted-timestamp -1))))))
+           (message (if deadline? "Deadline on %s" "Scheduled to %s")
+		    org-last-inserted-timestamp))))))
 
 (defun org-deadline (arg &optional time)
   "Insert a \"DEADLINE:\" string with a timestamp to make a deadline.
@@ -9855,101 +9856,102 @@ among `closed', `deadline', `scheduled' and nil.  TIME indicates
 the time to use.  If none is given, the user is prompted for
 a date.  REMOVE indicates what kind of entries to remove.  An old
 WHAT entry will also be removed."
-  (let (org-time-was-given org-end-time-was-given default-time default-input)
-    (when (and (memq what '(scheduled deadline))
-	       (or (not time)
-		   (and (stringp time)
-			(string-match "^[-+]+[0-9]" time))))
-      ;; Try to get a default date/time from existing timestamp
-      (save-excursion
-	(org-back-to-heading t)
-	(let ((end (save-excursion (outline-next-heading) (point))) ts)
-	  (when (re-search-forward (if (eq what 'scheduled)
-				       org-scheduled-time-regexp
-				     org-deadline-time-regexp)
-				   end t)
-	    (setq ts (match-string 1)
-		  default-time (org-time-string-to-time ts)
-		  default-input (and ts (org-get-compact-tod ts)))))))
-    (when what
-      (setq time
-	    (if (stringp time)
-		;; This is a string (relative or absolute), set
-		;; proper date.
-		(apply #'encode-time
-		       (org-read-date-analyze
-			time default-time (decode-time default-time)))
-	      ;; If necessary, get the time from the user
-	      (or time (org-read-date nil 'to-time nil
-				      (cl-case what
-					(deadline "DEADLINE")
-					(scheduled "SCHEDULED")
-					(otherwise nil))
-				      default-time default-input)))))
-    (org-with-wide-buffer
-     (org-back-to-heading t)
-     (let ((planning? (save-excursion
-			(forward-line)
-			(looking-at-p org-planning-line-re))))
-       (cond
-	(planning?
-	 (forward-line)
-	 ;; Move to current indentation.
-	 (skip-chars-forward " \t")
-	 ;; Check if we have to remove something.
-	 (dolist (type (if what (cons what remove) remove))
-	   (save-excursion
-	     (when (re-search-forward
-		    (cl-case type
-		      (closed org-closed-time-regexp)
-		      (deadline org-deadline-time-regexp)
-		      (scheduled org-scheduled-time-regexp)
-		      (otherwise (error "Invalid planning type: %s" type)))
-		    (line-end-position)
-		    t)
-	       ;; Delete until next keyword or end of line.
-	       (delete-region
-		(match-beginning 0)
-		(if (re-search-forward org-keyword-time-not-clock-regexp
-				       (line-end-position)
-				       t)
+  (org-fold-core-ignore-modifications
+      (let (org-time-was-given org-end-time-was-given default-time default-input)
+        (when (and (memq what '(scheduled deadline))
+	           (or (not time)
+		       (and (stringp time)
+			    (string-match "^[-+]+[0-9]" time))))
+          ;; Try to get a default date/time from existing timestamp
+          (save-excursion
+	    (org-back-to-heading t)
+	    (let ((end (save-excursion (outline-next-heading) (point))) ts)
+	      (when (re-search-forward (if (eq what 'scheduled)
+				           org-scheduled-time-regexp
+				         org-deadline-time-regexp)
+				       end t)
+	        (setq ts (match-string 1)
+		      default-time (org-time-string-to-time ts)
+		      default-input (and ts (org-get-compact-tod ts)))))))
+        (when what
+          (setq time
+	        (if (stringp time)
+		    ;; This is a string (relative or absolute), set
+		    ;; proper date.
+		    (apply #'encode-time
+		           (org-read-date-analyze
+			    time default-time (decode-time default-time)))
+	          ;; If necessary, get the time from the user
+	          (or time (org-read-date nil 'to-time nil
+				       (cl-case what
+				         (deadline "DEADLINE")
+				         (scheduled "SCHEDULED")
+				         (otherwise nil))
+				       default-time default-input)))))
+        (org-with-wide-buffer
+         (org-back-to-heading t)
+         (let ((planning? (save-excursion
+			    (forward-line)
+			    (looking-at-p org-planning-line-re))))
+           (cond
+	    (planning?
+	     (forward-line)
+	     ;; Move to current indentation.
+	     (skip-chars-forward " \t")
+	     ;; Check if we have to remove something.
+	     (dolist (type (if what (cons what remove) remove))
+	       (save-excursion
+	         (when (re-search-forward
+		        (cl-case type
+		          (closed org-closed-time-regexp)
+		          (deadline org-deadline-time-regexp)
+		          (scheduled org-scheduled-time-regexp)
+		          (otherwise (error "Invalid planning type: %s" type)))
+		        (line-end-position)
+		        t)
+	           ;; Delete until next keyword or end of line.
+	           (delete-region
 		    (match-beginning 0)
-		  (line-end-position))))))
-	 ;; If there is nothing more to add and no more keyword is
-	 ;; left, remove the line completely.
-	 (if (and (looking-at-p "[ \t]*$") (not what))
-	     (delete-region (line-end-position 0)
-			    (line-end-position))
-	   ;; If we removed last keyword, do not leave trailing white
-	   ;; space at the end of line.
-	   (let ((p (point)))
-	     (save-excursion
-	       (end-of-line)
-	       (unless (= (skip-chars-backward " \t" p) 0)
-		 (delete-region (point) (line-end-position)))))))
-	(what
-	 (end-of-line)
-	 (insert "\n")
-	 (when org-adapt-indentation
-	   (indent-to-column (1+ (org-outline-level)))))
-	(t nil)))
-     (when what
-       ;; Insert planning keyword.
-       (insert (cl-case what
-		 (closed org-closed-string)
-		 (deadline org-deadline-string)
-		 (scheduled org-scheduled-string)
-		 (otherwise (error "Invalid planning type: %s" what)))
-	       " ")
-       ;; Insert associated timestamp.
-       (let ((ts (org-insert-time-stamp
-		  time
-		  (or org-time-was-given
-		      (and (eq what 'closed) org-log-done-with-time))
-		  (eq what 'closed)
-		  nil nil (list org-end-time-was-given))))
-	 (unless (eolp) (insert " "))
-	 ts)))))
+		    (if (re-search-forward org-keyword-time-not-clock-regexp
+				           (line-end-position)
+				           t)
+		        (match-beginning 0)
+		      (line-end-position))))))
+	     ;; If there is nothing more to add and no more keyword is
+	     ;; left, remove the line completely.
+	     (if (and (looking-at-p "[ \t]*$") (not what))
+	         (delete-region (line-end-position 0)
+			        (line-end-position))
+	       ;; If we removed last keyword, do not leave trailing white
+	       ;; space at the end of line.
+	       (let ((p (point)))
+	         (save-excursion
+	           (end-of-line)
+	           (unless (= (skip-chars-backward " \t" p) 0)
+		     (delete-region (point) (line-end-position)))))))
+	    (what
+	     (end-of-line)
+	     (insert-and-inherit "\n")
+	     (when org-adapt-indentation
+	       (indent-to-column (1+ (org-outline-level)))))
+	    (t nil)))
+         (when what
+           ;; Insert planning keyword.
+           (insert-and-inherit (cl-case what
+		                 (closed org-closed-string)
+		                 (deadline org-deadline-string)
+		                 (scheduled org-scheduled-string)
+		                 (otherwise (error "Invalid planning type: %s" what)))
+	                       " ")
+           ;; Insert associated timestamp.
+           (let ((ts (org-insert-time-stamp
+		      time
+		      (or org-time-was-given
+		          (and (eq what 'closed) org-log-done-with-time))
+		      (eq what 'closed)
+		      nil nil (list org-end-time-was-given))))
+	     (unless (eolp) (insert " "))
+	     ts))))))
 
 (defvar org-log-note-marker (make-marker)
   "Marker pointing at the entry where the note is to be inserted.")
@@ -10005,11 +10007,12 @@ narrowing."
              ;; the end of the fold, thus breaking the fold
              ;; continuity.
              (when (org-at-heading-p) (backward-char))
-	     (unless (bolp) (insert "\n"))
-	     (let ((beg (point)))
-	       (insert ":" drawer ":\n:END:\n")
-	       (org-indent-region beg (point))
-	       (org-fold-region (line-end-position -1) (1- (point)) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline))))
+             (org-fold-core-ignore-modifications
+	         (unless (bolp) (insert-and-inherit "\n"))
+	       (let ((beg (point)))
+	         (insert-and-inherit ":" drawer ":\n:END:\n")
+	         (org-indent-region beg (point))
+	         (org-fold-region (line-end-position -1) (1- (point)) t (if (eq org-fold-core-style 'text-properties) 'drawer 'outline)))))
 	   (end-of-line -1))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
@@ -10018,7 +10021,7 @@ narrowing."
        (unless org-log-states-order-reversed
 	 (org-skip-over-state-notes)
 	 (skip-chars-backward " \t\n")
-	 (forward-line)))))
+	 (beginning-of-line 2)))))
    (if (bolp) (point) (line-beginning-position 2))))
 
 (defvar org-log-setup nil)
@@ -10147,34 +10150,35 @@ EXTRA is additional text that will be inserted into the notes buffer."
       (push note lines))
     (when (and lines (not org-note-abort))
       (with-current-buffer (marker-buffer org-log-note-marker)
-	(org-with-wide-buffer
-	 ;; Find location for the new note.
-	 (goto-char org-log-note-marker)
-	 (set-marker org-log-note-marker nil)
-	 ;; Note associated to a clock is to be located right after
-	 ;; the clock.  Do not move point.
-	 (unless (eq org-log-note-purpose 'clock-out)
-	   (goto-char (org-log-beginning t)))
-	 ;; Make sure point is at the beginning of an empty line.
-	 (cond ((not (bolp)) (let ((inhibit-read-only t)) (insert "\n")))
-	       ((looking-at "[ \t]*\\S-") (save-excursion (insert "\n"))))
-	 ;; In an existing list, add a new item at the top level.
-	 ;; Otherwise, indent line like a regular one.
-	 (let ((itemp (org-in-item-p)))
-	   (if itemp
-	       (indent-line-to
-		(let ((struct (save-excursion
-				(goto-char itemp) (org-list-struct))))
-		  (org-list-get-ind (org-list-get-top-point struct) struct)))
-	     (org-indent-line)))
-	 (insert (org-list-bullet-string "-") (pop lines))
-	 (let ((ind (org-list-item-body-column (line-beginning-position))))
-	   (dolist (line lines)
-	     (insert "\n")
-	     (indent-line-to ind)
-	     (insert line)))
-	 (message "Note stored")
-	 (org-back-to-heading t)))))
+        (org-fold-core-ignore-modifications
+	    (org-with-wide-buffer
+	     ;; Find location for the new note.
+	     (goto-char org-log-note-marker)
+	     (set-marker org-log-note-marker nil)
+	     ;; Note associated to a clock is to be located right after
+	     ;; the clock.  Do not move point.
+	     (unless (eq org-log-note-purpose 'clock-out)
+	       (goto-char (org-log-beginning t)))
+	     ;; Make sure point is at the beginning of an empty line.
+	     (cond ((not (bolp)) (let ((inhibit-read-only t)) (insert-and-inherit "\n")))
+	           ((looking-at "[ \t]*\\S-") (save-excursion (insert-and-inherit "\n"))))
+	     ;; In an existing list, add a new item at the top level.
+	     ;; Otherwise, indent line like a regular one.
+	     (let ((itemp (org-in-item-p)))
+	       (if itemp
+	           (indent-line-to
+		    (let ((struct (save-excursion
+				    (goto-char itemp) (org-list-struct))))
+		      (org-list-get-ind (org-list-get-top-point struct) struct)))
+	         (org-indent-line)))
+	     (insert-and-inherit (org-list-bullet-string "-") (pop lines))
+	     (let ((ind (org-list-item-body-column (line-beginning-position))))
+	       (dolist (line lines)
+	         (insert-and-inherit "\n")
+	         (indent-line-to ind)
+	         (insert-and-inherit line)))
+	     (message "Note stored")
+	     (org-back-to-heading t))))))
   ;; Don't add undo information when called from `org-agenda-todo'.
   (set-window-configuration org-log-note-window-configuration)
   (with-current-buffer (marker-buffer org-log-note-return-to)
@@ -13569,23 +13573,24 @@ stamp will not contribute to the agenda.
 PRE and POST are optional strings to be inserted before and after the
 stamp.
 The command returns the inserted time stamp."
-  (let ((fmt (funcall (if with-hm 'cdr 'car) org-time-stamp-formats))
-	stamp)
-    (when inactive (setq fmt (concat "[" (substring fmt 1 -1) "]")))
-    (insert-before-markers (or pre ""))
-    (when (listp extra)
-      (setq extra (car extra))
-      (if (and (stringp extra)
-	       (string-match "\\([0-9]+\\):\\([0-9]+\\)" extra))
-	  (setq extra (format "-%02d:%02d"
-			      (string-to-number (match-string 1 extra))
-			      (string-to-number (match-string 2 extra))))
-	(setq extra nil)))
-    (when extra
-      (setq fmt (concat (substring fmt 0 -1) extra (substring fmt -1))))
-    (insert-before-markers (setq stamp (format-time-string fmt time)))
-    (insert-before-markers (or post ""))
-    (setq org-last-inserted-timestamp stamp)))
+  (org-fold-core-ignore-modifications
+      (let ((fmt (funcall (if with-hm 'cdr 'car) org-time-stamp-formats))
+	    stamp)
+        (when inactive (setq fmt (concat "[" (substring fmt 1 -1) "]")))
+        (insert-before-markers-and-inherit (or pre ""))
+        (when (listp extra)
+          (setq extra (car extra))
+          (if (and (stringp extra)
+	           (string-match "\\([0-9]+\\):\\([0-9]+\\)" extra))
+	      (setq extra (format "-%02d:%02d"
+			          (string-to-number (match-string 1 extra))
+			          (string-to-number (match-string 2 extra))))
+	    (setq extra nil)))
+        (when extra
+          (setq fmt (concat (substring fmt 0 -1) extra (substring fmt -1))))
+        (insert-before-markers-and-inherit (setq stamp (format-time-string fmt time)))
+        (insert-before-markers-and-inherit (or post ""))
+        (setq org-last-inserted-timestamp stamp))))
 
 (defun org-toggle-time-stamp-overlays ()
   "Toggle the use of custom time stamp formats."

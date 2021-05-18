@@ -526,9 +526,13 @@ unless RETURN-ONLY is non-nil."
                   ;; not want folding state to be sticky anyway.
                   (setq-local text-property-default-nonsticky
                               (delete-dups (append text-property-default-nonsticky
-                                                   (mapcar (lambda (spec)
-                                                             (cons (org-fold-core--property-symbol-get-create spec nil 'return-only) t))
-                                                           (org-fold-core-folding-spec-list))))))))))))))
+                                                   (delq nil
+                                                         (mapcar (lambda (spec)
+                                                                   (when (or (org-fold-core-get-folding-spec-property spec :front-sticky)
+                                                                             (org-fold-core-get-folding-spec-property spec :rear-sticky))
+                                                                     (cons (org-fold-core--property-symbol-get-create spec nil 'return-only)
+                                                                           (not (org-fold-core-get-folding-spec-property spec :front-sticky)))))
+                                                                 (org-fold-core-folding-spec-list)))))))))))))))
 
 (defun org-fold-core-decouple-indirect-buffer-folds ()
   "Copy and decouple folding state in a newly created indirect buffer.
