@@ -5507,6 +5507,11 @@ element is not in cache yet."
   (catch 'exit
     (org-with-wide-buffer
      (goto-char pos)
+     (save-excursion
+       (end-of-line)
+       (skip-chars-backward " \r\t\n")
+       ;; Within blank lines at the beginning of buffer, return nil.
+       (when (bobp) (throw 'exit nil)))
      (let* ((cached (and (org-element--cache-active-p)
 			 (org-element--cache-find pos nil)))
             (mode (org-element-property :mode cached))
@@ -5628,7 +5633,6 @@ element is not in cache yet."
 	      ;; element containing POS.
 	      (t (throw 'exit element))))
 	   (setq element nil)))))))
-
 
 ;;;; Staging Buffer Changes
 
@@ -5921,8 +5925,8 @@ buffers."
 
 
 ;;;###autoload
-(defun org-element-at-point ()
-  "Determine closest element around point.
+(defun org-element-at-point (&optional pom)
+  "Determine closest element around point or POM.
 
 Return value is a list like (TYPE PROPS) where TYPE is the type
 of the element and PROPS a plist of properties associated to the
@@ -5940,34 +5944,20 @@ instead of the first row.
 
 When point is at the end of the buffer, return the innermost
 element ending there."
-  (org-with-wide-buffer
-   (let ((origin (point)))
-     (end-of-line)
-     (skip-chars-backward " \r\t\n")
-     (cond
-      ;; Within blank lines at the beginning of buffer, return nil.
-      ((bobp) nil)
-      ;; Within blank lines right after a headline, return that
-      ;; headline.
-      ;; ((org-with-limited-levels (org-at-heading-p))
-      ;;  (beginning-of-line)
-      ;;  (org-element-headline-parser (point-max) t))
-      ;; Otherwise parse until we find element containing ORIGIN.
-      (t
-       (when (org-element--cache-active-p)
-	 (if (not org-element--cache) (org-element-cache-reset)
-	   (org-element--cache-sync (current-buffer) origin)))
-       (let ((element (condition-case nil
-                          (org-element--parse-to origin)
-                        ;; FIXME: Detect cache corruption until fixed.
-                        (error
-                         (message "org-element-cache: Cache corruption detected. Resetting.")
-                         (org-element-cache-reset)
-                         (org-element--parse-to origin)))))
-         (if (not (eq (org-element-type element) 'section))
-             element
-           (goto-char (1+ origin))
-           (org-element-at-point))))))))
+  (setq pom (or (point) pom))
+  (when (org-element--cache-active-p)
+    (if (not org-element--cache) (org-element-cache-reset)
+      (org-element--cache-sync (current-buffer) pom)))
+  (let ((element (condition-case nil
+                     (org-element--parse-to pom)
+                   ;; FIXME: Detect cache corruption until fixed.
+                   (error
+                    (message "org-element-cache: Cache corruption detected. Resetting.")
+                    (org-element-cache-reset)
+                    (org-element--parse-to pom)))))
+    (if (not (eq (org-element-type element) 'section))
+        element
+      (org-element-at-point (1+ pom)))))
 
 ;;;###autoload
 (defun org-element-context (&optional element)
