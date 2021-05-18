@@ -471,7 +471,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	 (outline-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil))))
      ((and (or (>= eol eos)
-	       (save-excursion (goto-char eol) (skip-chars-forward "\\s-" eos) (= (point) eos)))
+	       (save-excursion (goto-char eol) (skip-chars-forward "[:space:]" eos) (= (point) eos)))
 	   (or has-children
 	       (not (setq children-skipped
 			org-cycle-skip-children-state-if-no-children))))
