@@ -425,7 +425,7 @@ If GLOBAL is non-nil, do not make the property unique in the BUFFER."
                   ;; Using buffer-name is safe, since the only place where
                   ;; buffer-local text property actually matters is an indirect
                   ;; buffer, where the name cannot be same anyway.
-                  (if global ""
+                  (if global 'global
                     (sxhash (buffer-name (or buffer (current-buffer))))))))
 
 (defsubst org-fold-core-get-folding-spec-from-folding-prop (folding-prop)
