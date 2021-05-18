@@ -5199,7 +5199,8 @@ Assume ELEMENT belongs to cache and that a cache is active."
                 (org-element-type element)
                 (current-buffer)
                 (org-element-property :begin element))
-       (org-element-cache-reset))))
+       (org-element-cache-reset)
+       (throw 'quit nil))))
 
 
 ;;;; Synchronization
