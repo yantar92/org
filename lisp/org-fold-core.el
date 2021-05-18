@@ -521,7 +521,7 @@ unless RETURN-ONLY is non-nil."
 			                    char-property-alias-alist)))
                   ;; Do not let Emacs manage folding spec stickyness.
                   ;; The default Emacs behavior make stickyness work
-                  ;; only for interfactive edits, which is when we do
+                  ;; only for interactive edits, which is when we do
                   ;; not want folding state to be sticky anyway.
                   (setq-local text-property-default-nonsticky
                               (delete-dups (append text-property-default-nonsticky
