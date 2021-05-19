@@ -5593,13 +5593,9 @@ element is not in cache yet."
         ;; element in buffer down to POS.
         ((not cached)
          (goto-char (point-min))
+         (setq element (org-element-org-data-parser))
          (org-skip-whitespace)
          (beginning-of-line)
-         (setq element `(org-data ( :begin ,(point-min)
-                                    :contents-begin ,(point-min)
-                                    :contents-end ,(point-max)
-                                    :end ,(point-max)
-                                    :mode 'first-section)))
          (org-element--cache-put element)
 	 (setq mode 'first-section))
         ;; Check if CACHED or any of its ancestors contain point.
