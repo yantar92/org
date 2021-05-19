@@ -251,9 +251,9 @@ Case is significant."
 (define-obsolete-function-alias 'org-select-frame-set-input-focus 'select-frame-set-input-focus "9.0")
 (define-obsolete-function-alias 'org-file-remote-p 'file-remote-p "9.2")
 
-(define-obsolete-function-alias 'org-show-context 'org-fold-show-context "Org 9.4")
-(define-obsolete-function-alias 'org-show-entry 'org-fold-show-entry "Org 9.4")
-(define-obsolete-function-alias 'org-show-children 'org-fold-show-children "Org 9.4")
+(define-obsolete-function-alias 'org-show-context 'org-fold-show-context "9.5")
+(define-obsolete-function-alias 'org-show-entry 'org-fold-show-entry "9.5")
+(define-obsolete-function-alias 'org-show-children 'org-fold-show-children "9.5")
 
 
 (defmacro org-re (s)
@@ -358,78 +358,78 @@ Counting starts at 1."
   'org-clear-latex-preview "9.3")
 
 (define-obsolete-function-alias 'org-hide-archived-subtrees
-  'org-fold-hide-archived-subtrees "Org 9.4")
+  'org-fold-hide-archived-subtrees "9.5")
 
 (define-obsolete-function-alias 'org-flag-region
-  'org-fold-region "Org 9.4")
+  'org-fold-region "9.5")
 
 (define-obsolete-function-alias 'org-flag-subtree
-  'org-fold-subtree "Org 9.4")
+  'org-fold-subtree "9.5")
 
 (define-obsolete-function-alias 'org-hide-entry
-  'org-fold-hide-entry "Org 9.4")
+  'org-fold-hide-entry "9.5")
 
 (define-obsolete-function-alias 'org-show-subtree
-  'org-fold-show-subtree "Org 9.4")
+  'org-fold-show-subtree "9.5")
 
 (define-obsolete-function-alias 'org--hide-wrapper-toggle
-  'org-fold--hide-wrapper-toggle "Org 9.4")
+  'org-fold--hide-wrapper-toggle "9.5")
 
 (define-obsolete-function-alias 'org-hide-block-toggle
-  'org-fold-hide-block-toggle "Org 9.4")
+  'org-fold-hide-block-toggle "9.5")
 
 (define-obsolete-function-alias 'org-hide-drawer-toggle
-  'org-fold-hide-drawer-toggle "Org 9.4")
+  'org-fold-hide-drawer-toggle "9.5")
 
 (define-obsolete-function-alias 'org--hide-drawers
-  'org-fold--hide-drawers "Org 9.4")
+  'org-fold--hide-drawers "9.5")
 
 (define-obsolete-function-alias 'org-hide-block-all
-  'org-fold-hide-block-all "Org 9.4")
+  'org-fold-hide-block-all "9.5")
 
 (define-obsolete-function-alias 'org-hide-drawer-all
-  'org-fold-hide-drawer-all "Org 9.4")
+  'org-fold-hide-drawer-all "9.5")
 
 (define-obsolete-function-alias 'org-show-all
-  'org-fold-show-all "Org 9.4")
+  'org-fold-show-all "9.5")
 
 (define-obsolete-function-alias 'org-set-startup-visibility
-  'org-cycle-set-startup-visibility "Org 9.4")
+  'org-cycle-set-startup-visibility "9.5")
 
 (define-obsolete-function-alias 'org-show-set-visibility
-  'org-fold-show-set-visibility "Org 9.4")
+  'org-fold-show-set-visibility "9.5")
 
 (define-obsolete-function-alias 'org-check-before-invisible-edit
-  'org-fold-check-before-invisible-edit "Org 9.4")
+  'org-fold-check-before-invisible-edit "9.5")
 
 (define-obsolete-function-alias 'org-flag-above-first-heading
-  'org-fold-flag-above-first-heading "Org 9.4")
+  'org-fold-flag-above-first-heading "9.5")
 
 (define-obsolete-function-alias 'org-show-branches-buffer
-  'org-fold-show-branches-buffer "Org 9.4")
+  'org-fold-show-branches-buffer "9.5")
 
 (define-obsolete-function-alias 'org-show-siblings
-  'org-fold-show-siblings "Org 9.4")
+  'org-fold-show-siblings "9.5")
 
 (define-obsolete-function-alias 'org-show-hidden-entry
-  'org-fold-show-hidden-entry "Org 9.4")
+  'org-fold-show-hidden-entry "9.5")
 
 (define-obsolete-function-alias 'org-flag-heading
-  'org-fold-heading "Org 9.4")
+  'org-fold-heading "9.5")
 
 (define-obsolete-function-alias 'org-set-startup-visibility
-  'org-cycle-set-startup-visibility "Org 9.4")
+  'org-cycle-set-startup-visibility "9.5")
 
 (define-obsolete-function-alias 'org-set-visibility-according-to-property
-  'org-cycle-set-visibility-according-to-property "Org 9.4")
+  'org-cycle-set-visibility-according-to-property "9.5")
 
 (define-obsolete-variable-alias 'org-scroll-position-to-restore
-  'org-cycle-scroll-position-to-restore "Org 9.4")
+  'org-cycle-scroll-position-to-restore "9.5")
 (define-obsolete-function-alias 'org-optimize-window-after-visibility-change
-  'org-cycle-optimize-window-after-visibility-change "Org 9.4")
+  'org-cycle-optimize-window-after-visibility-change "9.5")
 
 (define-obsolete-function-alias 'org-force-cycle-archived
-  'org-cycle-force-archived "Org 9.4")
+  'org-cycle-force-archived "9.5")
 
 (define-obsolete-variable-alias 'org-attach-directory
   'org-attach-id-dir "9.3")
@@ -437,14 +437,14 @@ Counting starts at 1."
 (make-obsolete 'org-attach-expand-link "No longer used" "9.4")
 
 (define-obsolete-variable-alias 'org-show-context-detail
-  'org-fold-show-context-detail "Org 9.4")
+  'org-fold-show-context-detail "9.5")
 
 (define-obsolete-variable-alias 'org-catch-invisible-edits
-  'org-fold-catch-invisible-edits "Org 9.4")
+  'org-fold-catch-invisible-edits "9.5")
 
 (define-obsolete-variable-alias 'org-reveal-start-hook
-  'org-fold-reveal-start-hook "Org 9.4")
-
+  'org-fold-reveal-start-hook "9.5")
+(define-obsolete-function-alias 'org-file-url-p 'org-url-p "9.5")
 (defun org-in-fixed-width-region-p ()
   "Non-nil if point in a fixed-width region."
   (save-match-data

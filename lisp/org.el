@@ -202,7 +202,6 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-toggle-archive-tag "org-archive" (&optional find-done))
 (declare-function org-update-radio-target-regexp "ol" ())
 
-(defvar ffap-url-regexp)
 (defvar org-element-paragraph-separate)
 (defvar org-indent-indentation-per-level)
 (defvar org-radio-target-regexp)
@@ -4264,7 +4263,7 @@ directory."
 		 (when (and (org-string-nw-p value)
 			    (not buffer-read-only)) ;FIXME: bug in Gnus?
 		   (let* ((uri (org-strip-quotes value))
-			  (uri-is-url (org-file-url-p uri))
+			  (uri-is-url (org-url-p uri))
 			  (uri (if uri-is-url
 				   uri
 				 (expand-file-name uri))))
@@ -4394,11 +4393,6 @@ This is the cache of file URLs read using `org-file-contents'.")
   "Reset the cache of files downloaded by `org-file-contents'."
   (clrhash org--file-cache))
 
-(defun org-file-url-p (file)
-  "Non-nil if FILE is a URL."
-  (require 'ffap)
-  (string-match-p ffap-url-regexp file))
-
 (defun org-file-contents (file &optional noerror nocache)
   "Return the contents of FILE, as a string.
 
@@ -4413,7 +4407,7 @@ from file or URL, and return nil.
 
 If NOCACHE is non-nil, do a fresh fetch of FILE even if cached version
 is available.  This option applies only if FILE is a URL."
-  (let* ((is-url (org-file-url-p file))
+  (let* ((is-url (org-url-p file))
          (cache (and is-url
                      (not nocache)
                      (gethash file org--file-cache))))
@@ -16614,7 +16608,7 @@ Otherwise, return a user error."
 	 (let ((file (and (string-match "\\`\"\\(.*?\\)\"\\|\\S-+" value)
 			  (or (match-string 1 value)
 			      (match-string 0 value)))))
-	   (when (org-file-url-p file)
+	   (when (org-url-p file)
 	     (user-error "Files located with a URL cannot be edited"))
 	   (org-link-open-from-string
 	    (format "[[%s]]" (expand-file-name file))))))
@@ -17058,10 +17052,6 @@ object (e.g., within a comment).  In these case, you need to use
 	     (delete-and-extract-region (point) (line-end-position))))
 	(org--newline indent arg interactive)
 	(save-excursion (insert trailing-data))))
-     ;; FIXME: In a source block, don't try to indent as it may result
-     ;; in weird results due to `electric-indent-mode' being `t'.
-     ((eq element-type 'src-block)
-      (org--newline nil nil nil))
      (t
       ;; Do not auto-fill when point is in an Org property drawer.
       (let ((auto-fill-function (and (not (org-at-property-p))
@@ -18207,7 +18197,7 @@ Also align node properties according to `org-property-format'."
 		       (line-beginning-position 2))))
 	     nil)
 	    ((and (eq type 'src-block)
-                  org-src-tab-acts-natively
+		  org-src-tab-acts-natively
 		  (> (line-beginning-position)
 		     (org-element-property :post-affiliated element))
 		  (< (line-beginning-position)
