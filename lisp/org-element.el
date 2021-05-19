@@ -1133,6 +1133,49 @@ CONTENTS is the contents of the element."
      (make-string (1+ pre-blank) ?\n)
      contents)))
 
+;;;; org-data
+
+(defun org-element--get-global-node-properties ()
+  "Return node properties associated with the whole Org buffer.
+Upcase property names.  It avoids confusion between properties
+obtained through property drawer and default properties from the
+parser (e.g. `:end' and :END:).  Return value is a plist."
+  (org-with-wide-buffer
+   (goto-char (point-min))
+   (while (and (org-at-comment-p) (bolp)) (forward-line))
+   (org-element--get-node-properties t)))
+
+(defun org-element-org-data-parser (&optional _)
+  "Parse org-data."
+  (org-with-wide-buffer
+   (let* ((begin (point-min))
+          (contents-begin (point))
+	  (end (point-max))
+	  (pos-before-blank (progn (goto-char (point-max))
+                                   (skip-chars-backward " \r\t\n")
+                                   (point)))
+          (robust-end (when (> (1- pos-before-blank) contents-begin)
+                        (1- pos-before-blank)))
+          (robust-begin (when (and robust-end
+                                   (< (1+ contents-begin) pos-before-blank))
+                          (1+ contents-begin))))
+     (list 'org-data
+           (nconc
+            (list :begin begin
+                  :contents-begin contents-begin
+                  :contents-end pos-before-blank
+                  :end end
+                  :robust-begin robust-begin
+                  :robust-end robust-end
+                  :post-blank (count-lines pos-before-blank end)
+                  :post-affiliated begin
+                  :mode 'first-section)
+            (org-element--get-global-node-properties))))))
+
+(defun org-element-org-data-interpreter (org-data contents)
+  "Interpret ORG-DATA element as Org syntax.
+CONTENTS is the contents of the element."
+  contents)
 
 ;;;; Inlinetask
 
