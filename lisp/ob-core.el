@@ -2053,8 +2053,8 @@ to HASH."
 	     ;; buffer or outside CONTEXT parent.
 	     ((eq (point)
 		  (or (pcase (org-element-type (org-element-property :parent context))
-                        (`section (org-element-property
-		                   :end (org-element-property :parent context)))
+                        ((or `section `org-data) (org-element-property
+		                                  :end (org-element-property :parent context)))
                         (_ (org-element-property
 		            :contents-end (org-element-property :parent context))))
 		      (point-max))))
