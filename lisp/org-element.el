@@ -1153,9 +1153,9 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
 	  (end (point-max))
 	  (pos-before-blank (progn (goto-char (point-max))
                                    (skip-chars-backward " \r\t\n")
-                                   (point)))
-          (robust-end (when (> (1- pos-before-blank) contents-begin)
-                        (1- pos-before-blank)))
+                                   (line-beginning-position 2)))
+          (robust-end (when (> (- pos-before-blank 2) contents-begin)
+                        (- pos-before-blank 2)))
           (robust-begin (when (and robust-end
                                    (< (1+ contents-begin) pos-before-blank))
                           (1+ contents-begin))))
