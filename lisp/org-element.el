@@ -925,24 +925,34 @@ CONTENTS is the contents of the footnote-definition."
 	    (if (= pre-blank 0) (concat " " (org-trim contents))
 	      (concat (make-string pre-blank ?\n) contents)))))
 
-
 ;;;; Headline
 
-(defun org-element--get-node-properties ()
+(defun org-element--get-node-properties (&optional at-point-p?)
   "Return node properties associated to headline at point.
 Upcase property names.  It avoids confusion between properties
 obtained through property drawer and default properties from the
 parser (e.g. `:end' and :END:).  Return value is a plist."
   (save-excursion
-    (forward-line)
-    (when (looking-at-p org-planning-line-re) (forward-line))
+    (unless at-point-p?
+      (forward-line)
+      (when (looking-at-p org-planning-line-re) (forward-line)))
     (when (looking-at org-property-drawer-re)
       (forward-line)
       (let ((end (match-end 0)) properties)
 	(while (< (line-end-position) end)
 	  (looking-at org-property-re)
-	  (push (match-string-no-properties 3) properties)
-	  (push (intern (concat ":" (upcase (match-string 2)))) properties)
+          (let* ((property-name (concat ":" (upcase (match-string 2))))
+                 (property-name-symbol (intern property-name))
+                 (property-value (match-string-no-properties 3)))
+            (cond
+             ((and (plist-member properties property-name-symbol)
+                   (string-match-p "+$" property-name))
+              (let ((val (plist-get properties property-name-symbol)))
+                (if (listp val)
+                    (setf (plist-get properties property-name-symbol)
+                          (append (plist-get properties property-name-symbol) (list property-value)))
+                  (plist-put properties property-name-symbol (list val property-value)))))
+             (t (setq properties (plist-put properties property-name-symbol property-value)))))
 	  (forward-line))
 	properties))))
 
