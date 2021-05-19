@@ -5928,18 +5928,19 @@ change, as an integer."
      (goto-char (or beg (point-min)))
      (org-skip-whitespace)
      (beginning-of-line)
-     (org-element--parse-to (point))
      (catch 'interrupt
        (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
          (while (< (point) (or end (point-max)))
            (when (org-element--cache-interrupt-p time-limit)
 	     (throw 'interrupt nil))
-           (let ((element (org-element-at-point)))
+           (let ((element (org-element--parse-to (point))))
              (if (= (point) (org-element-property :begin element))
-                 (if (memq (org-element-type element) '(plain-list table))
+                 (if (memq (org-element-type element) '(plain-list table section))
                      (goto-char (or (1+ (org-element-property :contents-begin element))
                                     (org-element-property :end element)))
                    (goto-char (or (when-let ((cbeg (org-element-property :contents-begin element)))
+                                    ;; Paragraphs have cbeg=beg. Skip
+                                    ;; them.
                                     (when (> cbeg (point)) cbeg))
                                   (org-element-property :end element))))
                (goto-char (org-element-property :end element))))))))))
@@ -5976,7 +5977,6 @@ buffers."
     (org-element--cache-sync (current-buffer) pos)
     (org-element--cache-submit-request pos pos 0)
     (org-element--cache-set-timer (current-buffer))))
-
 
 
 ;;; The Toolbox
