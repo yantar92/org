@@ -12143,30 +12143,38 @@ strings."
 	  ;; Return value.
 	  props)))))
 
-(defun org--property-local-values (property literal-nil)
-  "Return value for PROPERTY in current entry.
+(defun org--property-local-values (property literal-nil &optional element)
+  "Return value for PROPERTY in current entry or ELEMENT.
 Value is a list whose car is the base value for PROPERTY and cdr
 a list of accumulated values.  Return nil if neither is found in
 the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
-  (let ((range (org-get-property-block)))
-    (when range
-      (goto-char (car range))
-      (let* ((case-fold-search t)
-	     (end (cdr range))
-	     (value
-	      ;; Base value.
-	      (save-excursion
-		(let ((v (and (re-search-forward
-			       (org-re-property property nil t) end t)
-			      (match-string-no-properties 3))))
-		  (list (if literal-nil v (org-not-nil v)))))))
-	;; Find additional values.
-	(let* ((property+ (org-re-property (concat property "+") nil t)))
-	  (while (re-search-forward property+ end t)
-	    (push (match-string-no-properties 3) value)))
-	;; Return final values.
-	(and (not (equal value '(nil))) (nreverse value))))))
+  (if (or element (org-element--cache-active-p))
+      (let* ((element (or element (org-element-lineage (org-element-at-point) '(headline org-data inlinetask) 'with-self)))
+             (base-value (org-element-property (intern (concat ":" (upcase property))) element))
+             (base-value (if literal-nil base-value (org-not-nil base-value)))
+             (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) element))
+             (extra-value (if (listp extra-value) extra-value (list extra-value)))
+             (value (cons base-value extra-value)))
+        (and (not (equal value '(nil))) value))
+    (let ((range (org-get-property-block)))
+      (when range
+        (goto-char (car range))
+        (let* ((case-fold-search t)
+	       (end (cdr range))
+	       (value
+	        ;; Base value.
+	        (save-excursion
+		  (let ((v (and (re-search-forward
+			         (org-re-property property nil t) end t)
+			        (match-string-no-properties 3))))
+		    (list (if literal-nil v (org-not-nil v)))))))
+	  ;; Find additional values.
+	  (let* ((property+ (org-re-property (concat property "+") nil t)))
+	    (while (re-search-forward property+ end t)
+	      (push (match-string-no-properties 3) value)))
+	  ;; Return final values.
+	  (and (not (equal value '(nil))) (nreverse value)))))))
 
 (defun org--property-global-or-keyword-value (property literal-nil)
   "Return value for PROPERTY as defined by global properties or by keyword.
@@ -12314,25 +12322,51 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
   (org-with-wide-buffer
    (let (value)
      (catch 'exit
-       (while t
-	 (let ((v (org--property-local-values property literal-nil)))
-	   (when v
-	     (setq value
-		   (concat (mapconcat #'identity (delq nil v) " ")
-			   (and value " ")
-			   value)))
-	   (cond
-	    ((car v)
-	     (org-back-to-heading-or-point-min t)
-	     (move-marker org-entry-property-inherited-from (point))
-	     (throw 'exit nil))
-	    ((org-up-heading-or-point-min))
-	    (t
-	     (let ((global (org--property-global-or-keyword-value property literal-nil)))
-	       (cond ((not global))
-		     (value (setq value (concat global " " value)))
-		     (t (setq value global))))
-	     (throw 'exit nil))))))
+       (if (org-element--cache-active-p)
+           (let ((element (org-element-lineage (org-element-at-point) '(headline org-data inlinetask) 'with-self)))
+             (while t
+               (let* ((v (org--property-local-values property literal-nil element))
+                      (v (if (listp v) v (list v))))
+                 (when v
+                   (setq value
+                         (concat (mapconcat #'identity (delq nil v) " ")
+                                 (and value " ")
+                                 value)))
+                 (cond
+	          ((car v)
+	           (move-marker org-entry-property-inherited-from (org-element-property :begin element))
+	           (throw 'exit nil))
+	          ((org-element-property :parent element)
+                   (setq element (org-element-property :parent element)))
+	          (t
+	           (let ((global (org--property-global-or-keyword-value property literal-nil)))
+	             (cond ((not global))
+		           (value (setq value (concat global " " value)))
+		           (t (setq value global))))
+	           (throw 'exit nil))))))
+         (while t
+	   (let ((v (org--property-local-values property literal-nil)))
+	     (when v
+	       (setq value
+		     (concat (mapconcat #'identity (delq nil v) " ")
+			     (and value " ")
+			     value)))
+	     (cond
+	      ((car v)
+	       (org-back-to-heading-or-point-min t)
+	       (move-marker org-entry-property-inherited-from (point))
+	       (throw 'exit nil))
+	      ((or (org-up-heading-safe)
+                   ;; `org-up-heading-safe' returned nil.  We are at bob.
+                   ;; If there is headline there, do not try to fetch
+                   ;; its properties.
+                   (not (org-at-heading-p))))
+	      (t
+	       (let ((global (org--property-global-or-keyword-value property literal-nil)))
+	         (cond ((not global))
+		       (value (setq value (concat global " " value)))
+		       (t (setq value global))))
+	       (throw 'exit nil)))))))
      (if literal-nil value (org-not-nil value)))))
 
 (defvar org-property-changed-functions nil
