@@ -1026,7 +1026,18 @@ Assume point is at beginning of the headline."
 	   (contents-end (and contents-begin
 			      (progn (goto-char end)
 				     (skip-chars-backward " \r\t\n")
-				     (line-beginning-position 2)))))
+				     (line-beginning-position 2))))
+           (robust-begin (and contents-begin
+                              (progn (goto-char contents-begin)
+                                     (when (looking-at-p org-planning-line-re)
+                                       (forward-line))
+                                     (when (looking-at org-property-drawer-re)
+                                       (goto-char (match-end 0)))
+                                     (point))))
+           (robust-end (and robust-begin
+                            (when (> (1- contents-end) robust-begin)
+                              (1- contents-end)))))
+      (unless robust-end (setq robust-begin nil))
       (let ((headline
 	     (list 'headline
 		   (nconc
@@ -1038,6 +1049,8 @@ Assume point is at beginning of the headline."
 			    (1- (count-lines begin contents-begin)))
 			  :contents-begin contents-begin
 			  :contents-end contents-end
+                          :robust-begin robust-begin
+                          :robust-end robust-end
 			  :level level
 			  :priority priority
 			  :tags tags
@@ -1604,16 +1617,22 @@ containing `:begin', `:end', `:contents-begin', `contents-end',
   (save-excursion
     ;; Beginning of section is the beginning of the first non-blank
     ;; line after previous headline.
-    (let ((begin (point))
-	  (end (progn (org-with-limited-levels (outline-next-heading))
-		      (point)))
-	  (pos-before-blank (progn (skip-chars-backward " \r\t\n")
-				   (line-beginning-position 2))))
+    (let* ((begin (point))
+	   (end (progn (org-with-limited-levels (outline-next-heading))
+		       (point)))
+	   (pos-before-blank (progn (skip-chars-backward " \r\t\n")
+				    (line-beginning-position 2)))
+           (robust-end (when (> (1- pos-before-blank) begin)
+                         (1- pos-before-blank)))
+           (robust-begin (when robust-end begin))
+           )
       (list 'section
 	    (list :begin begin
 		  :end end
 		  :contents-begin begin
 		  :contents-end pos-before-blank
+                  :robust-begin robust-begin
+                  :robust-end robust-end
 		  :post-blank (count-lines pos-before-blank end)
 		  :post-affiliated begin)))))
 
@@ -5244,7 +5263,8 @@ Properties are modified by side-effect."
       (dolist (item (plist-get properties :structure))
 	(cl-incf (car item) offset)
 	(cl-incf (nth 6 item) offset)))
-    (dolist (key '(:begin :contents-begin :contents-end :end :post-affiliated))
+    (dolist (key '( :begin :contents-begin :contents-end :end
+                    :post-affiliated :robust-begin :robust-end))
       (let ((value (and (or (not props) (memq key props))
 			(plist-get properties key))))
 	(and value (plist-put properties key (+ offset value)))))))
@@ -5740,31 +5760,32 @@ changes."
 	    (robust-flag t))
 	(while up
 	  (if (let ((type (org-element-type up)))
-		(and (memq type '( center-block dynamic-block
-                                   quote-block special-block
-                                   ;; FIXME: The below are *almost*
-                                   ;; robust.  Yet, whitespace-only
-                                   ;; changes can mess-up relative
-                                   ;; positions of :contents-begin/end
-                                   ;; because they necessarily start
-                                   ;; after/before whitespaces:
-                                   ;;
-                                   ;; section
-                                   ;;
-                                   ;; Yet, org-data should be robust.
-                                   ;; See `org-element--parse-to'.
-                                   org-data
-                                   ))
-		     (let ((cbeg (org-element-property :contents-begin up))
-                           (cend (org-element-property :contents-end up)))
-		       (and cbeg
-                            (<= cbeg beg)
-			    (or (> cend end)
-                                (and (= cend end)
-                                     (= (+ end offset) (point-max))))))))
+                (or (and (memq type '( center-block dynamic-block
+                                       quote-block special-block
+                                       org-data))
+		         (let ((cbeg (org-element-property :contents-begin up))
+                               (cend (org-element-property :contents-end up)))
+		           (and cbeg
+                                (<= cbeg beg)
+			        (or (> cend end)
+                                    (and (= cend end)
+                                         (= (+ end offset) (point-max)))))))
+                    (and (memq type '(headline section))
+		         (let ((rbeg (org-element-property :robust-begin up))
+                               (rend (org-element-property :robust-end up)))
+		           (and rbeg rend
+                                (<= rbeg beg)
+			        (or (> rend end)
+                                    (and (= rend end)
+                                         (= (+ end offset) (point-max)))))))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
-	      (org-element--cache-shift-positions up offset '(:contents-end :end))
+	      (org-element--cache-shift-positions
+               up offset
+               (if (and (org-element-property :robust-begin up)
+                        (org-element-property :robust-end up))
+                   '(:contents-end :end :robust-end)
+                 '(:contents-end :end)))
 	    (setq before up)
 	    (when robust-flag (setq robust-flag nil)))
 	  (setq up (org-element-property :parent up)))
@@ -5803,7 +5824,11 @@ change, as an integer."
 	      (let ((up (aref next 4)))
 		(while up
 		  (org-element--cache-shift-positions
-		   up offset '(:contents-end :end))
+		   up offset
+                   (if (and (org-element-property :robust-begin up)
+                            (org-element-property :robust-end up))
+                       '(:contents-end :end :robust-end)
+                     '(:contents-end :end)))
 		  (setq up (org-element-property :parent up))))
 	    (let ((first (org-element--cache-for-removal beg delete-to offset)))
 	      (when first
