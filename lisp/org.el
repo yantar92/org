@@ -19490,13 +19490,22 @@ interactive command with similar behavior."
   (or (org-at-heading-p (not invisible-ok))
       (let (found)
 	(save-excursion
+          ;; At inlinetask end.  Move to bol, so that the following
+          ;; search goes to the beginning of the inlinetask.
+          (when (and (featurep 'org-inlinetask)
+                     (org-inlinetask-end-p))
+            (goto-char (line-beginning-position)))
 	  (while (not found)
 	    (or (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
 				    nil t)
                 (user-error "Before first headline at position %d in buffer %s"
 		            (point) (current-buffer)))
-	    (setq found (and (or invisible-ok (not (org-fold-folded-p)))
-			     (point)))))
+            ;; Skip inlinetask end.
+            (if (and (featurep 'org-inlinetask)
+                     (org-inlinetask-end-p))
+                (org-inlinetask-goto-beginning)
+	      (setq found (and (or invisible-ok (not (org-fold-folded-p)))
+			       (point))))))
 	(goto-char found)
 	found)))
 
