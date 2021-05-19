@@ -5968,7 +5968,7 @@ instead of the first row.
 
 When point is at the end of the buffer, return the innermost
 element ending there."
-  (setq pom (or (point) pom))
+  (setq pom (or pom (point)))
   (when (org-element--cache-active-p)
     (if (not org-element--cache) (org-element-cache-reset)
       (org-element--cache-sync (current-buffer) pom)))
