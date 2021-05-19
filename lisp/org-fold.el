@@ -635,7 +635,7 @@ Return a non-nil value when toggling is successful."
                   (cond ((eq force 'off) nil)
                         (force t)
                         ((if (eq org-fold-core-style 'text-properties)
-                             (org-fold-folded-p start)
+                             (org-fold-folded-p start spec)
                            (eq spec (get-char-property start 'invisible)))
                          nil)
                         (t t))))
@@ -718,14 +718,14 @@ Return a non-nil value when toggling is successful."
     (goto-char begin)
     (while (and (< (point) end)
                 (re-search-forward org-drawer-regexp end t))
-      ;; Skip drawers in folded headings
-      (if (org-fold-folded-p)
-          (goto-char (org-fold-next-visibility-change nil end t))
+      ;; Skip folded drawers
+      (if (org-fold-folded-p nil 'drawer)
+          (goto-char (org-fold-next-folding-state-change 'drawer nil end))
         (let* ((drawer
                 (or (and (org-element--cache-active-p)
                          (let ((cached (org-element--cache-find
                                         (match-beginning 0))))
-                           (and (eq 'drawer (org-element-type cached))
+                           (and (memq (org-element-type cached) '(drawer property-drawer))
                                 (eq (match-beginning 0)
                                     (org-element-property
                                      :post-affiliated cached))

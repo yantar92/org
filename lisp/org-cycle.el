@@ -162,7 +162,6 @@ the values `folded', `children', or `subtree'."
   :type 'hook)
 
 (defcustom org-cycle-hook '(org-cycle-hide-archived-subtrees
-		   org-cycle-hide-drawers
 		   org-cycle-show-empty-lines
 		   org-cycle-optimize-window-after-visibility-change)
   "Hook that is run after `org-cycle' has changed the buffer visibility.
