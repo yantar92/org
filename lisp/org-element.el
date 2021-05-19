@@ -5810,8 +5810,7 @@ changes."
 	(while up
 	  (if (let ((type (org-element-type up)))
                 (or (and (memq type '( center-block dynamic-block
-                                       quote-block special-block
-                                       org-data))
+                                       quote-block special-block))
 		         (let ((cbeg (org-element-property :contents-begin up))
                                (cend (org-element-property :contents-end up)))
 		           (and cbeg
@@ -5819,7 +5818,7 @@ changes."
 			        (or (> cend end)
                                     (and (= cend end)
                                          (= (+ end offset) (point-max)))))))
-                    (and (memq type '(headline section))
+                    (and (memq type '(headline section org-data))
 		         (let ((rbeg (org-element-property :robust-begin up))
                                (rend (org-element-property :robust-end up)))
 		           (and rbeg rend
