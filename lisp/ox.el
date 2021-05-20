@@ -3647,9 +3647,9 @@ Caption lines are separated by a white space."
 	(`nil nil)
 	(c
 	 (setq caption
-	       (nconc (list " ")
-		      (copy-sequence c) caption)))))
-    (cdr caption)))
+	       (nconc caption (copy-sequence c)
+                      (list " "))))))
+    (butlast caption)))
 
 
 ;;;; For Derived Back-ends

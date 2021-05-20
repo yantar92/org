@@ -4084,6 +4084,8 @@ Return a list whose CAR is the position at the first of them and
 CDR a plist of keywords and values and move point to the
 beginning of the first line after them.
 
+The plist of keywords preserves their order.
+
 As a special case, if element doesn't start at the beginning of
 the line (e.g., a paragraph starting an item), CAR is current
 position of point and CDR is nil.
@@ -4138,7 +4140,7 @@ When PARSE is non-nil, values from keywords belonging to
 	  (when (or (member kwd org-element-multiple-keywords)
 		    ;; Attributes can always appear on multiple lines.
 		    (string-match "^ATTR_" kwd))
-	    (setq value (cons value (plist-get output kwd-sym))))
+	    (setq value (append (plist-get output kwd-sym) (list value))))
 	  ;; Eventually store the new value in OUTPUT.
 	  (setq output (plist-put output kwd-sym value))
 	  ;; Move to next keyword.
@@ -4376,7 +4378,7 @@ looking into captions:
 			   ((not value))
 			   ((member kwd org-element-dual-keywords)
 			    (if (member kwd org-element-multiple-keywords)
-				(dolist (line (reverse value))
+				(dolist (line value)
 				  (funcall --walk-tree (cdr line))
 				  (funcall --walk-tree (car line)))
 			      (funcall --walk-tree (cdr value))

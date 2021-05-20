@@ -68,8 +68,11 @@
 (defvar org-babel-update-intermediate nil
   "Update the in-buffer results of code blocks executed to resolve references.")
 
-(defun org-babel-ref-parse (assignment)
+(defun org-babel-ref-parse (assignment &optional vars-only)
   "Parse a variable ASSIGNMENT in a header argument.
+
+With optional argument VAR-ONLY return the the variable name
+without parsign its value.
 
 If the right hand side of the assignment has a literal value
 return that value, otherwise interpret it as a reference to an
@@ -80,19 +83,24 @@ Emacs Lisp representation of the value of the variable."
   (when (string-match "\\(.+?\\)=" assignment)
     (let ((var (org-trim (match-string 1 assignment)))
 	  (ref (org-trim (substring assignment (match-end 0)))))
-      (cons (intern var)
-	    (let ((out (save-excursion
-			 (when org-babel-current-src-block-location
-			   (goto-char (if (markerp org-babel-current-src-block-location)
-					  (marker-position org-babel-current-src-block-location)
-					org-babel-current-src-block-location)))
-			 (org-babel-read ref))))
-	      (if (equal out ref)
-		  (if (and (string-prefix-p "\"" ref)
-			   (string-suffix-p "\"" ref))
-		      (read ref)
-		    (org-babel-ref-resolve ref))
-		out))))))
+      (if vars-only (intern var)
+        (cons (intern var)
+	      (let ((out (save-excursion
+			   (when org-babel-current-src-block-location
+			     (goto-char (if (markerp org-babel-current-src-block-location)
+					    (marker-position org-babel-current-src-block-location)
+					  org-babel-current-src-block-location)))
+			   (org-babel-read ref))))
+	        (if (equal out ref)
+		    (if (and (string-prefix-p "\"" ref)
+			     (string-suffix-p "\"" ref))
+		        (read ref)
+                      (condition-case err
+                          (org-babel-ref-resolve ref)
+                        (error (if (boundp (intern ref))
+                                   (eval (read ref) t)
+                                 (error err)))))
+		  out)))))))
 
 (defun org-babel-ref-goto-headline-id (id)
   (or (let ((h (org-find-property "CUSTOM_ID" id)))

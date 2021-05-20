@@ -625,8 +625,8 @@ a list with the following pattern:
 			 (org-babel-params-from-properties lang light))
 		       (mapcar (lambda (h)
 				 (org-babel-parse-header-arguments h light))
-			       (cons (org-element-property :parameters datum)
-				     (org-element-property :header datum)))))
+			       (append (org-element-property :header datum)
+                                       (list (org-element-property :parameters datum))))))
 	       (or (org-element-property :switches datum) "")
 	       name
 	       (org-element-property (if inline :begin :post-affiliated)
@@ -1584,12 +1584,33 @@ shown below.
 
 (defun org-babel-process-params (params)
   "Expand variables in PARAMS and add summary parameters."
-  (let* ((processed-vars (mapcar (lambda (el)
-				   (if (consp el)
-				       el
-				     (org-babel-ref-parse el)))
-				 (org-babel--get-vars params)))
-	 (vars-and-names (if (and (assq :colname-names params)
+  (let* ((processed-vars
+          ;; Make it possible to refer to earlier vars in :var
+          ;; bindings.
+          (cl-progv (delq nil
+                          (delete-dups
+                           (mapcar (lambda (el)
+                                     (if (consp el)
+                                         (car el)
+                                       (org-babel-ref-parse el 'vars)))
+                                   (org-babel--get-vars params))))
+              nil
+            (cl-loop for el in
+                     (mapcar (lambda (el)
+                               (let ((binding
+		                      (if (consp el)
+			                  el
+		                        (org-babel-ref-parse el))))
+                                 (when (car binding)
+                                   (set (car binding) (cdr binding)))
+                                 binding))
+		             (org-babel--get-vars params))
+                     if (assq (car el) result)
+                     do (assq-delete-all (car el) result)
+                     end
+                     collect el into result
+                     finally return result)))
+         (vars-and-names (if (and (assq :colname-names params)
 				  (assq :rowname-names params))
 			     (list processed-vars)
 			   (org-babel-disassemble-tables
@@ -2682,8 +2703,7 @@ parameters when merging lists."
 	       (setq vars
 		     (append (if (not (assoc name vars)) vars
 			       (push name clearnames)
-			       (cl-remove-if (lambda (p) (equal name (car p)))
-					     vars))
+                               vars)
 			     (list (cons name pair)))))
 	      ((and vars (nth variable-index vars))
 	       ;; If no name is given and we already have named

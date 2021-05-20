@@ -1911,6 +1911,39 @@ default-directory
 	    (:result-params)
 	    (:result-type . value)))))
 
+(ert-deftest test-ob/process-params-reference-to-previous ()
+  "Test variable assignmnets referring to earlier vars in the header args."
+  (should
+   (equal '(1 3 1)
+          (org-test-with-temp-text ":PROPERTIES:
+:header-args: :var x=1
+:header-args+: :var y=2 :var tau=x
+:END:
+#+header: :var y=(+ x 2)
+<point>#+begin_src emacs-lisp :var a=y :var b=tau
+(list tau a b)
+#+end_src
+   "
+            (org-babel-execute-src-block))))
+  (should
+   (equal 1
+          (org-test-with-temp-text "
+#+header: :var x=1
+#+header: :var y=x
+<point>#+begin_src emacs-lisp
+y
+#+end_src
+   "
+            (org-babel-execute-src-block))))
+  (should
+   (equal 2
+          (org-test-with-temp-text "
+<point>#+begin_src emacs-lisp :var x=1 :var x=(1+ x)
+x
+#+end_src
+"
+            (org-babel-execute-src-block)))))
+
 (defun org-test-babel-confirm-evaluate (eval-value)
   (org-test-with-temp-text (format "#+begin_src emacs-lisp :eval %s
   nil
