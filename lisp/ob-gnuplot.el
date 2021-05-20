@@ -244,7 +244,23 @@ This function is called by `org-babel-execute-src-block'."
 (defun org-babel-variable-assignments:gnuplot (params)
   "Return list of gnuplot statements assigning the block's variables."
   (mapcar
-   (lambda (pair) (format "%s = \"%s\"" (car pair) (cdr pair)))
+   (lambda (pair)
+     (pcase (cdr pair)
+       ((pred vectorp) (format "array %s[%d] = [ %s ]"
+                               (car pair)
+                               (length (cdr pair))
+                               (mapconcat
+                                (lambda (val)
+                                  (pcase val
+                                    ((pred numberp) val)
+                                    (_ (format "\"%s\"" val))))
+                                (cdr pair)
+                                ", ")))
+       (_ (format "%s = %s"
+                  (car pair)
+                  (pcase (cdr pair)
+                    ((pred numberp) (cdr pair))
+                    (_ (format "\"%s\"" (cdr pair))))))))
    (org-babel-gnuplot-process-vars params)))
 
 (defvar gnuplot-buffer)
