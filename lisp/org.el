@@ -12320,7 +12320,7 @@ should be considered as undefined (this is the meaning of nil here).
 However, if LITERAL-NIL is set, return the string value \"nil\" instead."
   (move-marker org-entry-property-inherited-from nil)
   (org-with-wide-buffer
-   (let (value)
+   (let (value at-bob-no-heading)
      (catch 'exit
        (if (org-element--cache-active-p)
            (let ((element (org-element-lineage (org-element-at-point) '(headline org-data inlinetask) 'with-self)))
@@ -12360,7 +12360,10 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
                    ;; `org-up-heading-safe' returned nil.  We are at bob.
                    ;; If there is headline there, do not try to fetch
                    ;; its properties.
-                   (not (org-at-heading-p))))
+                   (and (bobp)
+                        (not at-bob-no-heading)
+                        (not (org-at-heading-p))
+                        (setq at-bob-no-heading t))))
 	      (t
 	       (let ((global (org--property-global-or-keyword-value property literal-nil)))
 	         (cond ((not global))
