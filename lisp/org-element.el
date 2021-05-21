@@ -5654,7 +5654,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 	      ((and (<= elem-end pos) (/= (point-max) elem-end))
                (when (and recursive
                           (org-element-property :contents-end element))
-                 (org-element--parse-to (org-element-property :contents-end element)
+                 (org-element--parse-to (1- (org-element-property :contents-end element))
                              syncp time-limit recursive))
 	       (goto-char elem-end)
 	       (setq mode (org-element--next-mode mode type nil)))
