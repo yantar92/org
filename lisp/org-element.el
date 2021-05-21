@@ -5366,7 +5366,11 @@ updated before current modification are actually submitted."
 	          (cl-incf (aref next 3) (aref request 3))
 	          (aset next 2 (aref request 2)))
 	        (setq org-element--cache-sync-requests
-		      (cdr org-element--cache-sync-requests)))))
+		      (cdr org-element--cache-sync-requests)))
+              ;; Finally, fill the holes left in the cache.
+              (unless threshold
+                (org-element--parse-to (or future-change (point-max))
+                            nil time-limit 'recursive))))
 	  ;; If more requests are awaiting, set idle timer accordingly.
 	  ;; Otherwise, reset keys.
 	  (if org-element--cache-sync-requests
@@ -5496,7 +5500,7 @@ request."
 	       ;; current one.
 	       (aset request 5 2))
 	      (t
-	       (let ((parent (org-element--parse-to limit t time-limit)))
+	       (let ((parent (org-element--parse-to limit t time-limit (when time-limit t))))
 		 (aset request 4 parent)
 		 (aset request 5 2))))))
     ;; Phase 2.
@@ -5563,7 +5567,7 @@ request."
       ;; We reached end of tree: synchronization complete.
       t)))
 
-(defun org-element--parse-to (pos &optional syncp time-limit)
+(defun org-element--parse-to (pos &optional syncp time-limit recursive)
   "Parse elements in current section, down to POS.
 
 Start parsing from the closest between the last known element in
@@ -5576,8 +5580,7 @@ possible to provide TIME-LIMIT, which is a time value specifying
 when the parsing should stop.  The function throws `interrupt' if
 the process stopped before finding the expected result.
 
-When cached-only is non-nil, do not try to parse and return nil if current
-element is not in cache yet."
+When optional argument RECURSIVE is non-nil, parse element recursively."
   (catch 'exit
     (org-with-wide-buffer
      (goto-char pos)
@@ -5649,6 +5652,10 @@ element is not in cache yet."
 	      ;; buffer) since we're sure that another element begins
 	      ;; after it.
 	      ((and (<= elem-end pos) (/= (point-max) elem-end))
+               (when (and recursive
+                          (org-element-property :contents-end element))
+                 (org-element--parse-to (org-element-property :contents-end element)
+                             syncp time-limit recursive))
 	       (goto-char elem-end)
 	       (setq mode (org-element--next-mode mode type nil)))
 	      ;; A non-greater element contains point: return it.
@@ -5914,30 +5921,6 @@ change, as an integer."
 	    (cl-incf (aref (car org-element--cache-sync-requests) 3)
 		     offset)))))))
 
-(defun org-element--cache-buffer-stealthly (&optional beg end)
-  "Queue caching all the elements between BEG and END of in buffer on idle."
-  (when (org-element--cache-active-p)
-    (org-with-wide-buffer
-     (goto-char (or beg (point-min)))
-     (org-skip-whitespace)
-     (beginning-of-line)
-     (catch 'interrupt
-       (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
-         (while (< (point) (or end (point-max)))
-           (when (org-element--cache-interrupt-p time-limit)
-	     (throw 'interrupt nil))
-           (let ((element (org-element--parse-to (point))))
-             (if (= (point) (org-element-property :begin element))
-                 (if (memq (org-element-type element) '(plain-list table section))
-                     (goto-char (or (1+ (org-element-property :contents-begin element))
-                                    (org-element-property :end element)))
-                   (goto-char (or (when-let ((cbeg (org-element-property :contents-begin element)))
-                                    ;; Paragraphs have cbeg=beg. Skip
-                                    ;; them.
-                                    (when (> cbeg (point)) cbeg))
-                                  (org-element-property :end element))))
-               (goto-char (org-element-property :end element))))))))))
-
 ;;;; Public Functions
 
 ;;;###autoload
@@ -5957,7 +5940,6 @@ buffers."
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
 	(setq-local org-element--cache-sync-timer nil)
-        ;; (org-element--cache-buffer-stealthly)
 	(add-hook 'before-change-functions
 		  #'org-element--cache-before-change nil t)
 	(add-hook 'after-change-functions
