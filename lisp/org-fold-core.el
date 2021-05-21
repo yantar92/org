@@ -496,9 +496,10 @@ unless RETURN-ONLY is non-nil."
                 (when (buffer-base-buffer)
                   (with-current-buffer (buffer-base-buffer)
                     (setq-local org-fold-core--indirect-buffers
-                                (let (org-fold-core--indirect-buffers)
+                                (let (indirect-buffers org-fold-core--indirect-buffers)
                                   (dolist (buf (delete-dups (append org-fold-core--indirect-buffers (list buf))))
-                                    (when (buffer-live-p buf) (push buf org-fold-core--indirect-buffers)))))))
+                                    (when (buffer-live-p buf) (push buf indirect-buffers)))
+                                  indirect-buffers))))
                 ;; Copy all the old folding properties to preserve the folding state
                 (with-silent-modifications
                   (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
@@ -524,19 +525,25 @@ unless RETURN-ONLY is non-nil."
 				                  (org-fold-core-folding-spec-list)))
 		                    (remove (assq 'invisible char-property-alias-alist)
 			                    char-property-alias-alist)))
-                  ;; Do not let Emacs manage folding spec stickyness.
-                  ;; The default Emacs behavior make stickyness work
-                  ;; only for interactive edits, which is when we do
-                  ;; not want folding state to be sticky anyway.
-                  (setq-local text-property-default-nonsticky
-                              (delete-dups (append text-property-default-nonsticky
-                                                   (delq nil
-                                                         (mapcar (lambda (spec)
-                                                                   (when (or (org-fold-core-get-folding-spec-property spec :front-sticky)
-                                                                             (org-fold-core-get-folding-spec-property spec :rear-sticky))
-                                                                     (cons (org-fold-core--property-symbol-get-create spec nil 'return-only)
-                                                                           (not (org-fold-core-get-folding-spec-property spec :front-sticky)))))
-                                                                 (org-fold-core-folding-spec-list)))))))))))))))
+                  ;; Set folding property stickyness according to
+                  ;; their `:font-sticky' and `:rear-sticky'
+                  ;; parameters.
+                  (let (full-prop-list)
+                    (org-fold-core-cycle-over-indirect-buffers
+                        (setq full-prop-list
+                              (append full-prop-list
+                                      (delq nil
+                                            (mapcar (lambda (spec)
+                                                      (when (or (org-fold-core-get-folding-spec-property spec :front-sticky)
+                                                                (org-fold-core-get-folding-spec-property spec :rear-sticky))
+                                                        (cons (org-fold-core--property-symbol-get-create spec nil 'return-only)
+                                                              (not (org-fold-core-get-folding-spec-property spec :front-sticky)))))
+                                                    (org-fold-core-folding-spec-list))))))
+                    (org-fold-core-cycle-over-indirect-buffers
+                        (setq-local text-property-default-nonsticky
+                                    (delete-dups (append
+                                                  text-property-default-nonsticky
+                                                  full-prop-list))))))))))))))
 
 (defun org-fold-core-decouple-indirect-buffer-folds ()
   "Copy and decouple folding state in a newly created indirect buffer.
