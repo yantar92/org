@@ -5620,13 +5620,6 @@ element is not in cache yet."
         (t
          (let ((up cached)
                (pos (if (= (point-max) pos) (1- pos) pos)))
-           ;; First, assume that POS is inside CACHED.
-           (setq element cached
-                 mode (org-element-property :mode cached))
-           (when (org-element-property :contents-begin cached)
-             (goto-char (org-element-property :contents-begin cached)))
-           ;; If not, find the first parent containing POS or move to
-           ;; the end of the last known outermost element.
            (while (and up (<= (org-element-property :end up) pos))
              (goto-char (org-element-property :end up))
              (setq element up
@@ -5636,12 +5629,10 @@ element is not in cache yet."
            (when up (setq element up)))))
        ;; Parse successively each element until we reach POS.
        (let ((end (or (org-element-property :end element) (point-max)))
-	     (parent element))
+	     (parent (org-element-property :parent element)))
          (while t
-	   (when syncp
-	     (cond ((= (point) pos) (throw 'exit parent))
-		   ((org-element--cache-interrupt-p time-limit)
-		    (throw 'interrupt nil))))
+	   (when (and syncp (org-element--cache-interrupt-p time-limit))
+             (throw 'interrupt nil))
 	   (unless element
 	     (setq element (org-element--current-element
 			    end 'element mode
@@ -5662,7 +5653,7 @@ element is not in cache yet."
 	       (setq mode (org-element--next-mode mode type nil)))
 	      ;; A non-greater element contains point: return it.
 	      ((not (memq type org-element-greater-elements))
-	       (throw 'exit element))
+	       (throw 'exit (if syncp parent element)))
 	      ;; Otherwise, we have to decide if ELEMENT really
 	      ;; contains POS.  In that case we start parsing from
 	      ;; contents' beginning.
@@ -5701,7 +5692,7 @@ element is not in cache yet."
 		         end (org-element-property :end element)))))
 	      ;; Otherwise, return ELEMENT as it is the smallest
 	      ;; element containing POS.
-	      (t (throw 'exit element))))
+	      (t (throw 'exit (if syncp parent element)))))
 	   (setq element nil)))))))
 
 ;;;; Staging Buffer Changes
