@@ -5995,11 +5995,11 @@ element ending there."
   (when (org-element--cache-active-p)
     (if (not org-element--cache) (org-element-cache-reset)
       (org-element--cache-sync (current-buffer) pom)))
-  (let ((element (condition-case nil
+  (let ((element (condition-case err
                      (org-element--parse-to pom)
                    ;; FIXME: Detect cache corruption until fixed.
                    (error
-                    (message "org-element-cache: Cache corruption detected. Resetting.")
+                    (message "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
                     (org-element-cache-reset)
                     (org-element--parse-to pom)))))
     (if (not (eq (org-element-type element) 'section))
