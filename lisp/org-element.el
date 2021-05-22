@@ -4968,7 +4968,7 @@ indentation removed from its contents."
 ;; even when the tree is only partially synchronized.
 
 
-(defvar org-element-use-cache t
+(defvar org-element-use-cache nil
   "Non-nil when Org parser should cache its results.
 
 WARNING: for the time being, using cache sometimes triggers
