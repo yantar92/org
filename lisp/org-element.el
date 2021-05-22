@@ -5369,8 +5369,11 @@ updated before current modification are actually submitted."
 		      (cdr org-element--cache-sync-requests)))
               ;; Finally, fill the holes left in the cache.
               (unless threshold
-                (org-element--parse-to (or future-change (point-max))
-                            nil time-limit 'recursive))))
+                ;; FIXME: This lets Emacs exit infinite loops I still
+                ;; need to figure out.
+                (let (inhibit-quit)
+                  (org-element--parse-to (or future-change (point-max))
+                              nil time-limit 'recursive)))))
 	  ;; If more requests are awaiting, set idle timer accordingly.
 	  ;; Otherwise, reset keys.
 	  (if org-element--cache-sync-requests
