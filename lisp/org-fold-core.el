@@ -450,6 +450,17 @@ This variable is needed to work around Emacs bug#46982, while Emacs
 does not provide a way `after-change-functions' in any other buffer
 than the buffer where the change was actually made.")
 
+(defmacro org-fold-core-cycle-over-indirect-buffers (&rest body)
+  "Execute BODY in current buffer and all its indirect buffers."
+  (declare (debug (form body)) (indent 1))
+  `(let (buffers)
+     (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
+                        (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
+       (when (buffer-live-p buf) (push buf buffers)))
+     (dolist (buf buffers)
+       (with-current-buffer buf
+         ,@body))))
+
 ;; This is the core function used to fold text in buffers.  We use
 ;; text properties to hide folded text, however 'invisible property is
 ;; not directly used (unless risky `org-fold-core--optimise-for-huge-buffers' is
@@ -1092,17 +1103,6 @@ This function is intended to be used as `isearch-filter-predicate'."
 
 (defvar-local org-fold-core--last-buffer-chars-modified-tick nil
   "Variable storing the last return value of `buffer-chars-modified-tick'.")
-
-(defmacro org-fold-core-cycle-over-indirect-buffers (&rest body)
-  "Execute BODY in current buffer and all its indirect buffers."
-  (declare (debug (form body)) (indent 1))
-  `(let (buffers)
-     (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
-                        (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
-       (when (buffer-live-p buf) (push buf buffers)))
-     (dolist (buf buffers)
-       (with-current-buffer buf
-         ,@body))))
 
 (defun org-fold-core--fix-folded-region (from to _)
   "Process modifications in folded elements within FROM . TO region.
