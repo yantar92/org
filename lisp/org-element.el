@@ -5660,7 +5660,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 	       (setq mode (org-element--next-mode mode type nil)))
 	      ;; A non-greater element contains point: return it.
 	      ((not (memq type org-element-greater-elements))
-	       (throw 'exit (if syncp parent element)))
+	       (throw 'exit element))
 	      ;; Otherwise, we have to decide if ELEMENT really
 	      ;; contains POS.  In that case we start parsing from
 	      ;; contents' beginning.
@@ -5699,7 +5699,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 		         end (org-element-property :end element)))))
 	      ;; Otherwise, return ELEMENT as it is the smallest
 	      ;; element containing POS.
-	      (t (throw 'exit (if syncp parent element)))))
+	      (t (throw 'exit element))))
 	   (setq element nil)))))))
 
 ;;;; Staging Buffer Changes
