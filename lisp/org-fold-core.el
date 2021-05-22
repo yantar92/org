@@ -451,14 +451,31 @@ does not provide a way `after-change-functions' in any other buffer
 than the buffer where the change was actually made.")
 
 (defmacro org-fold-core-cycle-over-indirect-buffers (&rest body)
-  "Execute BODY in current buffer and all its indirect buffers."
+  "Execute BODY in current buffer and all its indirect buffers.
+
+Also, make sure that folding properties from killed buffers are not
+hanging around."
   (declare (debug (form body)) (indent 1))
-  `(let (buffers)
+  `(let (buffers dead-properties)
      (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
                         (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
-       (when (buffer-live-p buf) (push buf buffers)))
+       (if (buffer-live-p buf)
+           (push buf buffers)
+         (dolist (spec (org-fold-core-folding-spec-list))
+           (when (gethash (cons buf spec) org-fold-core--property-symbol-cache)
+             ;; Make sure that dead-properties variable can be passed
+             ;; as argument to `remove-text-properties'.
+             (push t dead-properties)
+             (push (gethash (cons buf spec) org-fold-core--property-symbol-cache)
+                   dead-properties)))))
      (dolist (buf buffers)
        (with-current-buffer buf
+         (with-silent-modifications
+           (save-restriction
+             (widen)
+             (remove-text-properties
+              (point-min) (point-max)
+              dead-properties)))
          ,@body))))
 
 ;; This is the core function used to fold text in buffers.  We use
@@ -507,10 +524,10 @@ unless RETURN-ONLY is non-nil."
                 (when (buffer-base-buffer)
                   (with-current-buffer (buffer-base-buffer)
                     (setq-local org-fold-core--indirect-buffers
-                                (let (indirect-buffers org-fold-core--indirect-buffers)
-                                  (dolist (buf (delete-dups (append org-fold-core--indirect-buffers (list buf))))
-                                    (when (buffer-live-p buf) (push buf indirect-buffers)))
-                                  indirect-buffers))))
+                                (let (bufs)
+                                  (org-fold-core-cycle-over-indirect-buffers
+                                      (push (current-buffer) bufs))
+                                  (append bufs (list buf))))))
                 ;; Copy all the old folding properties to preserve the folding state
                 (with-silent-modifications
                   (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
