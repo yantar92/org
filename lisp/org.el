@@ -12357,9 +12357,12 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
 	       (move-marker org-entry-property-inherited-from (point))
 	       (throw 'exit nil))
 	      ((or (org-up-heading-safe)
-                   ;; `org-up-heading-safe' returned nil.  We are at bob.
-                   ;; If there is headline there, do not try to fetch
-                   ;; its properties.
+                   (and (not (bobp))
+                        (goto-char (point-min))
+                        nil)
+                   ;; `org-up-heading-safe' returned nil.  We are at low
+                   ;; level heading or bob.  If there is headline
+                   ;; there, do not try to fetch its properties.
                    (and (bobp)
                         (not at-bob-no-heading)
                         (not (org-at-heading-p))
