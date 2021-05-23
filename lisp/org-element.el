@@ -5637,7 +5637,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
        (let ((end (or (org-element-property :end element) (point-max)))
 	     (parent (org-element-property :parent element)))
          (while t
-	   (when (and syncp (org-element--cache-interrupt-p time-limit))
+	   (when (org-element--cache-interrupt-p time-limit)
              (throw 'interrupt nil))
 	   (unless element
 	     (setq element (org-element--current-element
