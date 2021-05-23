@@ -12438,19 +12438,20 @@ decreases scheduled or deadline date by one day."
         ((member property org-special-properties)
 	 (error "The %s property cannot be set with `org-entry-put'" property))
         (t
-	 (let* ((range (org-get-property-block beg 'force))
-	        (end (cdr range))
-	        (case-fold-search t))
-	   (goto-char (car range))
-	   (if (re-search-forward (org-re-property property nil t) end t)
-	       (progn (delete-region (match-beginning 0) (match-end 0))
-		      (goto-char (match-beginning 0)))
-	     (goto-char end)
-	     (insert "\n")
-	     (backward-char))
-	   (insert ":" property ":")
-	   (when value (insert " " value))
-	   (org-indent-line)))))
+         (org-fold-core-ignore-modifications
+	     (let* ((range (org-get-property-block beg 'force))
+	            (end (cdr range))
+	            (case-fold-search t))
+	       (goto-char (car range))
+	       (if (re-search-forward (org-re-property property nil t) end t)
+	           (progn (delete-region (match-beginning 0) (match-end 0))
+		          (goto-char (match-beginning 0)))
+	         (goto-char end)
+	         (insert-and-inherit "\n")
+	         (backward-char))
+	       (insert-and-inherit ":" property ":")
+	       (when value (insert-and-inherit " " value))
+	       (org-indent-line))))))
      (run-hook-with-args 'org-property-changed-functions property value))))
 
 (defun org-buffer-property-keys (&optional specials defaults columns)
@@ -18161,11 +18162,14 @@ Alignment is done according to `org-property-format', which see."
   (when (save-excursion
 	  (beginning-of-line)
 	  (looking-at org-property-re))
-    (replace-match
-     (concat (match-string 4)
-	     (org-trim
-	      (format org-property-format (match-string 1) (match-string 3))))
-     t t)))
+    (combine-change-calls (match-beginning 0) (match-end 0)
+      (let ((newtext (concat (match-string 4)
+	                     (org-trim
+	                      (format org-property-format (match-string 1) (match-string 3))))))
+        ;; Do not use `replace-match' here as we want to inherit folding
+        ;; properties if inside fold.
+        (setf (buffer-substring (match-beginning 0) (match-end 0)) "")
+        (insert-and-inherit newtext)))))
 
 (defun org-indent-line ()
   "Indent line depending on context.
