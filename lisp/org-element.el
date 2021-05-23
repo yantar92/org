@@ -5724,7 +5724,7 @@ section, possibly making cache invalid.")
 
 (defvar org-element--cache-change-warning nil
   "Non-nil when a sensitive line is about to be changed.
-It is a symbol among nil, t and `headline'.")
+It is a symbol among nil or t.")
 
 (defun org-element--cache-before-change (beg end)
   "Request extension of area going to be modified if needed.
