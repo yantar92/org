@@ -254,10 +254,13 @@
 ;; same buffer at a time.
 
 ;; Alternatively, the library provides `org-fold-core--optimise-for-huge-buffers'
-;; for additional speedup.  This can be used as file-local variable in
-;; huge buffers.  This optimisation may break external packages
-;; though.  When using this optimisation, folded regions copied to
-;; other buffers (including buffers that do not use this library) will
+;; for additional speedup.  This can be used as a file-local variable
+;; in huge buffers.  The variable can be set to enable various levels
+;; of extra optimisation.  See the docstring for detailed information.
+
+;; It is worth noting that when using `org-fold-core--optimise-for-huge-buffers'
+;; with `grab-invisible' option, folded regions copied to other
+;; buffers (including buffers that do not use this library) will
 ;; remain invisible.  org-fold-core provides functions to work around
 ;; this issue: `org-fold-core-remove-optimisation' and `org-fold-core-update-optimisation', but
 ;; it is unlikely that a random external package will use them.
@@ -277,7 +280,7 @@
 ;; implementation.  For now, Emacs isearch only supports searching
 ;; through text hidden using overlays.  This library handles isearch
 ;; by converting folds with matching text to overlays, which may
-;; affect performance in case of large number of mathes.  In the
+;; affect performance in case of large number of matches.  In the
 ;; future, Emacs will hopefully accept the relevant patch allowing
 ;; isearch to work with text hidden via text properties, but the
 ;; performance hit has to be accepted meanwhile.
@@ -309,10 +312,44 @@ be revealed.")
 (defvar-local org-fold-core--optimise-for-huge-buffers nil
   "Non-nil turns on extra speedup on huge buffers (Mbs of folded text).
 
-This setting is risky and may cause folded text to become invisible
-where it should not.  It is recommended to enable it on per-buffer
-basis as file-local variable.")
-(put 'org-fold-core--optimise-for-huge-buffers 'safe-local-variable 'booleanp)
+This setting is risky and may cause various artefacts and degraded
+functionality, especially when using external packages.  It is
+recommended to enable it on per-buffer basis as file-local variable.
+
+When set to non-nil, must be a list containing one of multiple the
+following symbols:
+
+- `grab-invisible': Use `invisible' text property to hide text.  This
+  will reduce the load on Emacs display engine and one may use it if
+  moving point across folded regions becomes slow.  However, as a side
+  effect, some external packages extracting i.e. headlings from folded
+  parts of buffer may keep the text invisible.
+
+- `ignore-fragility-checks': Do not try to detect when user edits
+  break structure of the folded elements.  This will speed up
+  modifying the folded regions at the cost that some higher-level
+  functions relying on this package might not be able to unfold the
+  edited text.  For example, removed leading stars from a folded
+  headline in Org mode will break visibility cycling since Org mode
+  will not be avare that the following folded text belonged to
+  headline.
+
+- `ignore-modification-checks': Do not try to detect insertions in the
+  middle of the folded regions.  This will speed up non-interactive
+  edits of the folded regions.  However, text inserted in the middle
+  of the folded regions may become visible for some external packages
+  inserting text using `insert' instead of `insert-and-inherit' (the
+  latter is rarely used in practice).
+  
+- `ignore-indirect': Do not decouple folding state in the indirect
+  buffers.  This can speed up Emacs display engine (and thus motion of
+  point), especially when large number of indirect buffers is being
+  used.
+
+- `merge-folds': Do not distinguish between different types of folding
+  specs.  This is the most aggressive optimisation with unforseen and
+  potentially drastic effects.")
+(put 'org-fold-core--optimise-for-huge-buffers 'safe-local-variable 'listp)
 
 ;;; Core functionality
 
@@ -415,7 +452,13 @@ Return nil when there is no matching folding spec."
   "Get PROPERTY of a folding SPEC-OR-ALIAS.
 Possible properties can be found in `org-fold-core--specs' docstring."
   (org-fold-core--check-spec spec-or-alias)
-  (cdr (assq property (assq (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs))))
+  (if (and (memql 'ignore-indirect org-fold-core--optimise-for-huge-buffers)
+           (eq property :global))
+      t
+    (if (and (memql 'merge-folds org-fold-core--optimise-for-huge-buffers)
+             (eq property :visible))
+        nil
+      (cdr (assq property (assq (org-fold-core-get-folding-spec-from-alias spec-or-alias) org-fold-core--specs))))))
 
 (defconst org-fold-core--spec-property-prefix "org-fold--spec-"
   "Prefix used to create property symbol.")
@@ -423,14 +466,16 @@ Possible properties can be found in `org-fold-core--specs' docstring."
 (defsubst org-fold-core-get-folding-property-symbol (spec &optional buffer global)
   "Get folding text property using to store SPEC in current buffer or BUFFER.
 If GLOBAL is non-nil, do not make the property unique in the BUFFER."
-  (intern (format (concat org-fold-core--spec-property-prefix "%s-%S")
-                  (symbol-name spec)
-                  ;; (sxhash buf) appears to be not constant over time.
-                  ;; Using buffer-name is safe, since the only place where
-                  ;; buffer-local text property actually matters is an indirect
-                  ;; buffer, where the name cannot be same anyway.
-                  (if global 'global
-                    (sxhash (buffer-name (or buffer (current-buffer))))))))
+  (if (memql 'merge-folds org-fold-core--optimise-for-huge-buffers)
+      (intern (format "%s-global" org-fold-core--spec-property-prefix))
+    (intern (format (concat org-fold-core--spec-property-prefix "%s-%S")
+                    (symbol-name spec)
+                    ;; (sxhash buf) appears to be not constant over time.
+                    ;; Using buffer-name is safe, since the only place where
+                    ;; buffer-local text property actually matters is an indirect
+                    ;; buffer, where the name cannot be same anyway.
+                    (if global 'global
+                      (sxhash (buffer-name (or buffer (current-buffer)))))))))
 
 (defsubst org-fold-core-get-folding-spec-from-folding-prop (folding-prop)
   "Return folding spec symbol used for folding property with name FOLDING-PROP."
@@ -462,7 +507,8 @@ hanging around."
        (if (buffer-live-p buf)
            (push buf buffers)
          (dolist (spec (org-fold-core-folding-spec-list))
-           (when (gethash (cons buf spec) org-fold-core--property-symbol-cache)
+           (when (and (not (org-fold-core-get-folding-spec-property spec :global))
+                      (gethash (cons buf spec) org-fold-core--property-symbol-cache))
              ;; Make sure that dead-properties variable can be passed
              ;; as argument to `remove-text-properties'.
              (push t dead-properties)
@@ -595,7 +641,8 @@ Do not check previous value when FORCE is non-nil."
        (unless (org-fold-core-get-folding-spec-property spec :visible)
          (add-to-invisibility-spec (cons spec value)))))
     (:visible
-     (unless (and (not force) (equal value (org-fold-core-get-folding-spec-property spec :visible)))
+     (unless (or (memql 'merge-folds org-fold-core--optimise-for-huge-buffers)
+                 (and (not force) (equal value (org-fold-core-get-folding-spec-property spec :visible))))
        (if value
 	   (remove-from-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis)))
          (add-to-invisibility-spec (cons spec (org-fold-core-get-folding-spec-property spec :ellipsis))))))
@@ -902,7 +949,7 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
 	       (put-text-property from to (org-fold-core--property-symbol-get-create spec) spec)
 	       (put-text-property from to 'isearch-open-invisible #'org-fold-core--isearch-show)
 	       (put-text-property from to 'isearch-open-invisible-temporary #'org-fold-core--isearch-show-temporary)
-               (when org-fold-core--optimise-for-huge-buffers
+               (when (memql 'grab-invisible org-fold-core--optimise-for-huge-buffers)
                  ;; If the SPEC has highest priority, assign it directly
                  ;; to 'invisible property as well.  This is done to speed
                  ;; up Emacs redisplay on huge (Mbs) folded regions where
@@ -911,7 +958,7 @@ If SPEC-OR-ALIAS is omitted and FLAG is nil, unfold everything in the region."
                  (when (eq spec (caar org-fold-core--specs)) (put-text-property from to 'invisible spec)))))
          (if (not spec)
              (mapc (lambda (spec) (org-fold-core-region from to nil spec)) (org-fold-core-folding-spec-list))
-           (when (and org-fold-core--optimise-for-huge-buffers
+           (when (and (memql 'grab-invisible org-fold-core--optimise-for-huge-buffers)
                       (eq org-fold-core-style 'text-properties))
              (when (eq spec (caar org-fold-core--specs))
                (let ((pos from))
@@ -1136,7 +1183,8 @@ If the folded region is folded with a spec with non-nil :fragile
 property, unfold the region if the :fragile function returns non-nil."
   ;; If no insertions or deletions in buffer, skip all the checks.
   (unless (or (eq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
-              org-fold-core--ignore-modifications)
+              org-fold-core--ignore-modifications
+              (memql 'ignore-modification-checks org-fold-core--optimise-for-huge-buffers))
     ;; Store the new buffer modification state.
     (setq org-fold-core--last-buffer-chars-modified-tick (buffer-chars-modified-tick))
     (save-match-data
@@ -1185,7 +1233,8 @@ property, unfold the region if the :fragile function returns non-nil."
       ;; only in current buffer to avoid verifying semantic structure
       ;; multiple times in indirect buffers that have exactly same
       ;; text anyway.
-      (unless org-fold-core--ignore-fragility-checks
+      (unless (or org-fold-core--ignore-fragility-checks
+                  (memql 'ignore-fragility-checks org-fold-core--optimise-for-huge-buffers))
         (dolist (func org-fold-core-extend-changed-region-functions)
           (let ((new-region (funcall func from to)))
             (setq from (car new-region))
@@ -1377,7 +1426,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 (defun org-fold-core-update-optimisation (beg end)
   "Update huge buffer optimisation between BEG and END.
 See `org-fold-core--optimise-for-huge-buffers'."
-  (when (and org-fold-core--optimise-for-huge-buffers
+  (when (and (memql 'grab-invisible org-fold-core--optimise-for-huge-buffers)
              (eq org-fold-core-style 'text-properties))
     (let ((pos beg))
       (while (< pos end)
@@ -1390,7 +1439,7 @@ See `org-fold-core--optimise-for-huge-buffers'."
 (defun org-fold-core-remove-optimisation (beg end)
   "Remove huge buffer optimisation between BEG and END.
 See `org-fold-core--optimise-for-huge-buffers'."
-  (when (and org-fold-core--optimise-for-huge-buffers
+  (when (and (memql 'grab-invisible org-fold-core--optimise-for-huge-buffers)
              (eq org-fold-core-style 'text-properties))
     (let ((pos beg))
       (while (< pos end)
