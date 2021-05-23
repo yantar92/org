@@ -5438,6 +5438,9 @@ request."
 		  (if (if (or (not next)
 			      (org-element--cache-key-less-p data-key next))
 			  (<= pos end)
+                        ;; FIXME: Isn't LAST-CONTAINER always nil here?
+                        ;; We are inside let-binding defining
+                        ;; last-container to be nil.
 			(and last-container
 			     (let ((up data))
 			       (while (and up (not (eq up last-container)))
@@ -5803,7 +5806,10 @@ Returned element is usually the first element in cache containing
 any position between BEG and END.  As an exception, greater
 elements around the changes that are robust to contents
 modifications are preserved and updated according to the
-changes."
+changes.  In the latter case, the returned element is the outermost
+non-robust element affected by changed.  Note that the returned
+element may end before END position in which case some cached element
+starting after the returned may still be affected by the changes."
   (let* ((elements (org-element--cache-find (1- beg) 'both))
 	 (before (car elements))
 	 (after (cdr elements)))
@@ -5872,6 +5878,15 @@ change, as an integer."
 	  ;; boundaries of robust parents, if any.  Otherwise, find
 	  ;; first element to remove and update request accordingly.
 	  (if (> beg delete-from)
+              ;; The current modification is completely inside NEXT.
+              ;; (aref next 4) is supposed to be the outermost parent
+              ;; to be removed.  Everything in cache inside that
+              ;; element will be removed later and we do not care
+              ;; about extending boundaries of robust elements in
+              ;; there.  Also, all the upper elements are guaranteed
+              ;; to be robust because otherwise `org-element--cache-for-removal'
+              ;; would return more outer element (to be stored in
+              ;; (aref next 4).
 	      (let ((up (aref next 4)))
 		(while up
 		  (org-element--cache-shift-positions
@@ -5881,6 +5896,11 @@ change, as an integer."
                        '(:contents-end :end :robust-end)
                      '(:contents-end :end)))
 		  (setq up (org-element-property :parent up))))
+            ;; The current and NEXT modifications are intersecting
+            ;; with current modification starting before NEXT and NEXT
+            ;; ending after current.  We need to update the common
+            ;; non-robust parent for the new extended modification
+            ;; region.
 	    (let ((first (org-element--cache-for-removal beg delete-to offset)))
 	      (when first
 		(aset next 0 (org-element--cache-key first))
@@ -5905,8 +5925,15 @@ change, as an integer."
 		     ;; Otherwise, we find the first non robust
 		     ;; element containing END.  All elements between
 		     ;; FIRST and this one are to be removed.
+                     ;;
+                     ;; The current modification is completely inside
+                     ;; FIRST.  Clear and update cached elements in
+                     ;; region containing FIRST.
 		     ((let ((first-end (org-element-property :end first)))
 			(and (>= first-end end)
+                             ;; FIXME: According to `org-element--cache-sync-requests'
+                             ;; docstring, (aref 4 request) must be the
+                             ;; parent of the first element to be removed.
 			     (vector key beg first-end offset first 0))))
 		     (t
 		      (let* ((element (org-element--cache-find end))
@@ -5916,6 +5943,8 @@ change, as an integer."
 				    (>= (org-element-property :begin up) beg))
 			  (setq end (org-element-property :end up)
 				element up))
+                        ;; Extend region to remove elements to parent
+                        ;; of the FIRST.
 			(vector key beg end offset element 0)))))
 		  org-element--cache-sync-requests)
 	  ;; No element to remove.  No need to re-parent either.
