@@ -16,6 +16,16 @@ tool for Emacs.
 - [[#license][License]]
 
 * Updates
+- [2021-05-23 Sun] Significant speed up of visibility cycling, setting properties, planning, and clocking-in/out. New customisation option for deeper (dangerous) levels of performance optimisation. The element cache is disabled for now until I figure out some annoying bugs.
+
+  Some of the earlier performance optimisation efforts on master came with a drawback of slowing down visibility cycling. On master, property drawers had to be re-folded upon unfolding the containing headline. That unfolding is slow in huge buffers and not needed anymore since outline and drawer folds are independent in this branch. Drawer's folding state is preserved automatically if the containing heading is folded/unfolded. Now, visibility cycling should be almost instant.
+
+  Another performance bottleneck exists by design only in this branch. It is related to the fact that non-interactive buffer edits do not inherit text properties by default. Hence, I had to implement manual tracking of buffer edits to re-hide text inserted inside folded regions. The tracking is fairly fast for trivial buffer modifications. Yet, doing something like agenda bulk commands could still slow down Emacs noticeably. I fixed the slowness by making sure that buffer edits done by common built-in functions do not need to trigger re-hiding.
+
+  Optimisations in this branch are generally reducing the load on Emacs display engine as text properties are handled much more efficiently. Yet, Emacs can sometimes be slow even with text properties for especially large buffers. There is not much I can do about it without side-effects. However, some more optimisation is still possible when side-effects can be acceptable trade-off. See the docstring of =org-fold-core--optimise-for-huge-buffers= for details.
+
+  On the org-element-cache effort, I ran into hard-to-track issues related to elusive bugs in cache on-the-fly update code. They can break things pretty badly, so I am disabling the element cache for now until I can understand the cache code better and resolve the bugs.
+
 - [2021-05-08 Sat] Extended org-element-cache to store headlines. The cache is enabled by default now.
 
   While waiting for the feedback from maintainers, I have been playing with org-element-cache to speed up folding and agendas. This is already coming beyond the scope of the initial ideas of org-fold, but the speedup appears to be significant enough to share with others.
