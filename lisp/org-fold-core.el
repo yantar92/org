@@ -316,7 +316,7 @@ This setting is risky and may cause various artefacts and degraded
 functionality, especially when using external packages.  It is
 recommended to enable it on per-buffer basis as file-local variable.
 
-When set to non-nil, must be a list containing one of multiple the
+When set to non-nil, must be a list containing one or multiple the
 following symbols:
 
 - `grab-invisible': Use `invisible' text property to hide text.  This
