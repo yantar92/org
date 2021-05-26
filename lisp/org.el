@@ -8860,55 +8860,55 @@ When called through ELisp, arg is also interpreted in the following way:
 		 (member (member this org-todo-keywords-1))
 		 (tail (cdr member))
 		 (org-state (cond
-			     ((eq arg 'right)
-			      ;; Next state
-			      (if this
-				  (if tail (car tail) nil)
-				(car org-todo-keywords-1)))
-			     ((eq arg 'left)
-			      ;; Previous state
-			      (unless (equal member org-todo-keywords-1)
-				(if this
-				    (nth (- (length org-todo-keywords-1)
-					    (length tail) 2)
-					 org-todo-keywords-1)
-				  (org-last org-todo-keywords-1))))
-			     (arg
-			      ;; User or caller requests a specific state.
-			      (cond
-			       ((equal arg "") nil)
-			       ((eq arg 'none) nil)
-			       ((eq arg 'done) (or done-word (car org-done-keywords)))
-			       ((eq arg 'nextset)
-				(or (car (cdr (member head org-todo-heads)))
-				    (car org-todo-heads)))
-			       ((eq arg 'previousset)
-				(let ((org-todo-heads (reverse org-todo-heads)))
-				  (or (car (cdr (member head org-todo-heads)))
-				      (car org-todo-heads))))
-			       ((car (member arg org-todo-keywords-1)))
-			       ((stringp arg)
-				(user-error "State `%s' not valid in this file" arg))
-			       ((nth (1- (prefix-numeric-value arg))
-				     org-todo-keywords-1))))
-			     ((and org-todo-key-trigger org-use-fast-todo-selection)
-			      ;; Use fast selection.
-			      (org-fast-todo-selection this))
-			     ((null member) (or head (car org-todo-keywords-1)))
-			     ((equal this final-done-word) nil) ;-> make empty
-			     ((null tail) nil) ;-> first entry
-			     ((memq interpret '(type priority))
-			      (if (eq this-command last-command)
-				  (car tail)
-				(if (> (length tail) 0)
-				    (or done-word (car org-done-keywords))
-				  nil)))
-			     (t
-			      (car tail))))
+			  ((eq arg 'right)
+			   ;; Next state
+			   (if this
+			       (if tail (car tail) nil)
+			     (car org-todo-keywords-1)))
+			  ((eq arg 'left)
+			   ;; Previous state
+			   (unless (equal member org-todo-keywords-1)
+			     (if this
+				 (nth (- (length org-todo-keywords-1)
+					 (length tail) 2)
+				      org-todo-keywords-1)
+			       (org-last org-todo-keywords-1))))
+			  (arg
+			   ;; User or caller requests a specific state.
+			   (cond
+			    ((equal arg "") nil)
+			    ((eq arg 'none) nil)
+			    ((eq arg 'done) (or done-word (car org-done-keywords)))
+			    ((eq arg 'nextset)
+			     (or (car (cdr (member head org-todo-heads)))
+				 (car org-todo-heads)))
+			    ((eq arg 'previousset)
+			     (let ((org-todo-heads (reverse org-todo-heads)))
+			       (or (car (cdr (member head org-todo-heads)))
+				   (car org-todo-heads))))
+			    ((car (member arg org-todo-keywords-1)))
+			    ((stringp arg)
+			     (user-error "State `%s' not valid in this file" arg))
+			    ((nth (1- (prefix-numeric-value arg))
+				  org-todo-keywords-1))))
+			  ((and org-todo-key-trigger org-use-fast-todo-selection)
+			   ;; Use fast selection.
+			   (org-fast-todo-selection this))
+			  ((null member) (or head (car org-todo-keywords-1)))
+			  ((equal this final-done-word) nil) ;-> make empty
+			  ((null tail) nil) ;-> first entry
+			  ((memq interpret '(type priority))
+			   (if (eq this-command last-command)
+			       (car tail)
+			     (if (> (length tail) 0)
+				 (or done-word (car org-done-keywords))
+			       nil)))
+			  (t
+			   (car tail))))
 		 (org-state (or
-			     (run-hook-with-args-until-success
-			      'org-todo-get-default-hook org-state org-last-state)
-			     org-state))
+			  (run-hook-with-args-until-success
+			   'org-todo-get-default-hook org-state org-last-state)
+			  org-state))
 		 (next (if (org-string-nw-p org-state) (concat " " org-state " ") " "))
 		 (change-plist (list :type 'todo-state-change :from this :to org-state
 				     :position startpos))
@@ -8933,7 +8933,11 @@ When called through ELisp, arg is also interpreted in the following way:
 			     this org-state block-reason)
 		    (throw 'exit nil)))))
 	    (store-match-data match-data)
-	    (replace-match next t t)
+            (org-fold-core-ignore-modifications
+                (save-excursion
+                  (goto-char (match-beginning 0))
+                  (setf (buffer-substring (match-beginning 0) (match-end 0)) "")
+                  (insert-and-inherit next)))
 	    (cond ((and org-state (equal this org-state))
 		   (message "TODO state was already %s" (org-trim next)))
 		  ((not (pos-visible-in-window-p hl-pos))
@@ -11205,34 +11209,35 @@ If TAGS is nil or the empty string, all tags are removed.
 
 This function assumes point is on a headline."
   (org-with-wide-buffer
-   (let ((tags (pcase tags
-		 ((pred listp) tags)
-		 ((pred stringp) (split-string (org-trim tags) ":" t))
-		 (_ (error "Invalid tag specification: %S" tags))))
-	 (old-tags (org-get-tags nil t))
-	 (tags-change? nil))
-     (when (functionp org-tags-sort-function)
-       (setq tags (sort tags org-tags-sort-function)))
-     (setq tags-change? (not (equal tags old-tags)))
-     (when tags-change?
-       ;; Delete previous tags and any trailing white space.
-       (goto-char (if (org-match-line org-tag-line-re) (match-beginning 1)
-		    (line-end-position)))
-       (skip-chars-backward " \t")
-       (delete-region (point) (line-end-position))
-       ;; Deleting white spaces may break an otherwise empty headline.
-       ;; Re-introduce one space in this case.
-       (unless (org-at-heading-p) (insert " "))
-       (when tags
-	 (save-excursion (insert " " (org-make-tag-string tags)))
-	 ;; When text is being inserted on an invisible region
-	 ;; boundary, it can be inadvertently sucked into
-	 ;; invisibility.
-	 (unless (org-invisible-p (line-beginning-position))
-	   (org-fold-region (point) (line-end-position) nil 'outline))))
-     ;; Align tags, if any.
-     (when tags (org-align-tags))
-     (when tags-change? (run-hooks 'org-after-tags-change-hook)))))
+   (org-fold-core-ignore-modifications
+       (let ((tags (pcase tags
+		     ((pred listp) tags)
+		     ((pred stringp) (split-string (org-trim tags) ":" t))
+		     (_ (error "Invalid tag specification: %S" tags))))
+	     (old-tags (org-get-tags nil t))
+	     (tags-change? nil))
+         (when (functionp org-tags-sort-function)
+           (setq tags (sort tags org-tags-sort-function)))
+         (setq tags-change? (not (equal tags old-tags)))
+         (when tags-change?
+           ;; Delete previous tags and any trailing white space.
+           (goto-char (if (org-match-line org-tag-line-re) (match-beginning 1)
+		        (line-end-position)))
+           (skip-chars-backward " \t")
+           (delete-region (point) (line-end-position))
+           ;; Deleting white spaces may break an otherwise empty headline.
+           ;; Re-introduce one space in this case.
+           (unless (org-at-heading-p) (insert " "))
+           (when tags
+	     (save-excursion (insert-and-inherit " " (org-make-tag-string tags)))
+	     ;; When text is being inserted on an invisible region
+	     ;; boundary, it can be inadvertently sucked into
+	     ;; invisibility.
+	     (unless (org-invisible-p (line-beginning-position))
+	       (org-fold-region (point) (line-end-position) nil 'outline))))
+         ;; Align tags, if any.
+         (when tags (org-align-tags))
+         (when tags-change? (run-hooks 'org-after-tags-change-hook))))))
 
 (defun org-change-tag-in-region (beg end tag off)
   "Add or remove TAG for each entry in the region.
