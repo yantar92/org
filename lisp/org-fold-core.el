@@ -573,7 +573,7 @@ unless RETURN-ONLY is non-nil."
                                 (let (bufs)
                                   (org-fold-core-cycle-over-indirect-buffers
                                       (push (current-buffer) bufs))
-                                  (delete-duplicates (append bufs (list buf)))))))
+                                  (delete-dups (append bufs (list buf)))))))
                 ;; Copy all the old folding properties to preserve the folding state
                 (with-silent-modifications
                   (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
