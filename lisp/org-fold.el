@@ -815,21 +815,23 @@ DETAIL is either nil, `minimal', `local', `ancestors',
       (org-fold-heading nil)
     (org-fold-show-entry)
     ;; If point is hidden make sure to expose it.
-    (when (org-fold-folded-p)
+    (when (org-invisible-p)
+      ;; FIXME: No clue why, but otherwise the following might not work.
+      (redisplay)
       (let ((region (org-fold-get-region-at-point))
             (spec (org-fold-get-folding-spec)))
         ;; Reveal emphasis markers.
-        (when (member spec '(org-link org-link-description))
-          (let (org-hide-emphasis-markers
-                org-link-descriptive
-                (region (or (org-find-text-property-region (point) 'org-emphasis)
-                            region)))
-            (when region
-              (org-with-point-at (car region)
-                (beginning-of-line)
-                (let (font-lock-extend-region-functions)
-                  (font-lock-fontify-region (1- (car region)) (cdr region)))))))
-        (org-fold-region (car region) (cdr region) nil)))
+        (let (org-hide-emphasis-markers
+              org-link-descriptive
+              (region (or (org-find-text-property-region (point) 'org-emphasis)
+                          region)))
+          (when region
+            (org-with-point-at (car region)
+              (beginning-of-line)
+              (let (font-lock-extend-region-functions)
+                (font-lock-fontify-region (1- (car region)) (cdr region))))))
+        (when region
+          (org-fold-region (car region) (cdr region) nil))))
     (unless (org-before-first-heading-p)
       (org-with-limited-levels
        (cl-case detail
@@ -1068,10 +1070,10 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 		 (org-invisible-p (max (point-min) (1- (point))))))
     ;; OK, we need to take a closer look.  Only consider invisibility
     ;; caused by folding.
-    (let* ((invisible-at-point (org-fold-folded-p))
+    (let* ((invisible-at-point (org-invisible-p))
 	   (invisible-before-point
 	    (and (not (bobp))
-	         (org-fold-folded-p (1- (point)))))
+	         (org-invisible-p (1- (point)))))
 	   (border-and-ok-direction
 	    (or
 	     ;; Check if we are acting predictably before invisible
