@@ -5601,14 +5601,24 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
             element next)
        (cond
         ;; Nothing in cache before point: start parsing from first
-        ;; element in buffer down to POS.
-        ((not cached)
+        ;; element in buffer down to POS or from the beginning of the
+        ;; section.
+        ((and (not cached) (org-element--cache-active-p))
          (goto-char (point-min))
          (setq element (org-element-org-data-parser))
          (org-skip-whitespace)
          (beginning-of-line)
          (org-element--cache-put element)
 	 (setq mode 'first-section))
+        ((not cached)
+         (if (org-with-limited-levels (outline-previous-heading))
+             (progn
+               (setq element (org-element-headline-parser))
+	       (setq mode 'planning)
+	       (forward-line))
+	   (setq mode 'top-comment))
+         (org-skip-whitespace)
+         (beginning-of-line))
         ;; Check if CACHED or any of its ancestors contain point.
         ;;
         ;; If there is such an element, we inspect it in order to know
