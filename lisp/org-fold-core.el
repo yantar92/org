@@ -491,6 +491,9 @@ If GLOBAL is non-nil, do not make the property unique in the BUFFER."
   "Saved values of folding properties for (buffer . spec) conses.")
 (defvar-local org-fold-core--indirect-buffers nil
   "List of indirect buffers created from current buffer.
+
+The first element of the list is always the current buffer.
+
 This variable is needed to work around Emacs bug#46982, while Emacs
 does not provide a way `after-change-functions' in any other buffer
 than the buffer where the change was actually made.")
@@ -502,18 +505,24 @@ Also, make sure that folding properties from killed buffers are not
 hanging around."
   (declare (debug (form body)) (indent 1))
   `(let (buffers dead-properties)
-     (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
-                        (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
-       (if (buffer-live-p buf)
-           (push buf buffers)
-         (dolist (spec (org-fold-core-folding-spec-list))
-           (when (and (not (org-fold-core-get-folding-spec-property spec :global))
-                      (gethash (cons buf spec) org-fold-core--property-symbol-cache))
-             ;; Make sure that dead-properties variable can be passed
-             ;; as argument to `remove-text-properties'.
-             (push t dead-properties)
-             (push (gethash (cons buf spec) org-fold-core--property-symbol-cache)
-                   dead-properties)))))
+     (if (and (not (buffer-base-buffer))
+              (not (eq (current-buffer) (car org-fold-core--indirect-buffers))))
+         ;; We are in base buffer with `org-fold-core--indirect-buffers' value from
+         ;; different buffer.  This can happen, for example, when
+         ;; org-capture copies local variables into *Capture* buffer.
+         (setq buffers (list (current-buffer)))
+       (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
+                          (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
+         (if (buffer-live-p buf)
+             (push buf buffers)
+           (dolist (spec (org-fold-core-folding-spec-list))
+             (when (and (not (org-fold-core-get-folding-spec-property spec :global))
+                        (gethash (cons buf spec) org-fold-core--property-symbol-cache))
+               ;; Make sure that dead-properties variable can be passed
+               ;; as argument to `remove-text-properties'.
+               (push t dead-properties)
+               (push (gethash (cons buf spec) org-fold-core--property-symbol-cache)
+                     dead-properties))))))
      (dolist (buf buffers)
        (with-current-buffer buf
          (with-silent-modifications
@@ -573,7 +582,8 @@ unless RETURN-ONLY is non-nil."
                                 (let (bufs)
                                   (org-fold-core-cycle-over-indirect-buffers
                                       (push (current-buffer) bufs))
-                                  (delete-dups (append bufs (list buf)))))))
+                                  (push buf bufs)
+                                  (delete-dups bufs)))))
                 ;; Copy all the old folding properties to preserve the folding state
                 (with-silent-modifications
                   (dolist (old-prop (cdr (assq 'invisible char-property-alias-alist)))
