@@ -4,8 +4,8 @@
 
 ;; Author: stardiviner <numbchild@gmail.com>
 ;; Maintainer: stardiviner <numbchild@gmail.com>
+;; Homepage: https://github.com/stardiviner/ob-eshell
 ;; Keywords: literate programming, reproducible research
-;; Homepage: https://orgmode.org
 
 ;; This file is part of GNU Emacs.
 
