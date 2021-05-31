@@ -170,7 +170,7 @@
 
 (defmacro org-no-popups (&rest body)
   "Suppress popup windows and evaluate BODY."
-  `(let (pop-up-frames display-buffer-alist)
+  `(let (pop-up-frames pop-up-windows)
      ,@body))
 
 
