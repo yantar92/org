@@ -618,10 +618,15 @@ unless RETURN-ONLY is non-nil."
                               (append full-prop-list
                                       (delq nil
                                             (mapcar (lambda (spec)
-                                                      (when (or (org-fold-core-get-folding-spec-property spec :front-sticky)
-                                                                (org-fold-core-get-folding-spec-property spec :rear-sticky))
+                                                      (cond
+                                                       ((org-fold-core-get-folding-spec-property spec :front-sticky)
                                                         (cons (org-fold-core--property-symbol-get-create spec nil 'return-only)
-                                                              (not (org-fold-core-get-folding-spec-property spec :front-sticky)))))
+                                                              nil))
+                                                       ((org-fold-core-get-folding-spec-property spec :rear-sticky)
+                                                        nil)
+                                                       (t
+                                                        (cons (org-fold-core--property-symbol-get-create spec nil 'return-only)
+                                                              t))))
                                                     (org-fold-core-folding-spec-list))))))
                     (org-fold-core-cycle-over-indirect-buffers
                         (setq-local text-property-default-nonsticky
