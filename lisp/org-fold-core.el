@@ -1101,32 +1101,33 @@ instead of text properties.  The created overlays will be stored in
       ;; We need loop below to make sure that we clean all invisible
       ;; properties, which may be nested.
       (dolist (spec (org-fold-core-get-folding-spec 'all pos))
-	(let* ((region (org-fold-core-get-region-at-point spec pos)))
-          (when (memq spec org-fold-core--isearch-special-specs)
-            (setq pos (min pos (car region)))
-            (setq end (max end (cdr region))))
-	  ;; Changing text properties is considered buffer modification.
-	  ;; We do not want it here.
-	  (with-silent-modifications
-            (org-fold-core-region (car region) (cdr region) nil spec)
-	    ;; The overlay is modelled after `outline-flag-region'
-	    ;; [2020-05-09 Sat] overlay for 'outline blocks.
-	    (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
-	      (overlay-put o 'evaporate t)
-	      (overlay-put o 'invisible spec)
-              (overlay-put o 'org-invisible spec)
-              ;; Make sure that overlays are applied in the same order
-              ;; with the folding specs.
-              ;; Note: `memq` returns cdr with car equal to the first
-              ;; found matching element.
-              (overlay-put o 'priority (length (memq spec (org-fold-core-folding-spec-list))))
-	      ;; `delete-overlay' here means that spec information will be lost
-	      ;; for the region. The region will remain visible.
-              (if (org-fold-core-get-folding-spec-property spec :isearch-open)
-	          (overlay-put o 'isearch-open-invisible #'delete-overlay)
-                (overlay-put o 'isearch-open-invisible #'ignore)
-                (overlay-put o 'isearch-open-invisible-temporary #'ignore))
-	      (push o org-fold-core--isearch-overlays)))))
+        (unless (org-fold-core-get-folding-spec-property spec :isearch-ignore)
+	  (let* ((region (org-fold-core-get-region-at-point spec pos)))
+            (when (memq spec org-fold-core--isearch-special-specs)
+              (setq pos (min pos (car region)))
+              (setq end (max end (cdr region))))
+	    ;; Changing text properties is considered buffer modification.
+	    ;; We do not want it here.
+	    (with-silent-modifications
+              (org-fold-core-region (car region) (cdr region) nil spec)
+	      ;; The overlay is modelled after `outline-flag-region'
+	      ;; [2020-05-09 Sat] overlay for 'outline blocks.
+	      (let ((o (make-overlay (car region) (cdr region) nil 'front-advance)))
+	        (overlay-put o 'evaporate t)
+	        (overlay-put o 'invisible spec)
+                (overlay-put o 'org-invisible spec)
+                ;; Make sure that overlays are applied in the same order
+                ;; with the folding specs.
+                ;; Note: `memq` returns cdr with car equal to the first
+                ;; found matching element.
+                (overlay-put o 'priority (length (memq spec (org-fold-core-folding-spec-list))))
+	        ;; `delete-overlay' here means that spec information will be lost
+	        ;; for the region. The region will remain visible.
+                (if (org-fold-core-get-folding-spec-property spec :isearch-open)
+	            (overlay-put o 'isearch-open-invisible #'delete-overlay)
+                  (overlay-put o 'isearch-open-invisible #'ignore)
+                  (overlay-put o 'isearch-open-invisible-temporary #'ignore))
+	        (push o org-fold-core--isearch-overlays))))))
       (setq pos (org-fold-core-next-folding-state-change nil pos end)))))
 
 (defun org-fold-core--isearch-filter-predicate-overlays (beg end)
