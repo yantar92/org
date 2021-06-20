@@ -238,9 +238,9 @@
 ;; This library is using text properties to hide text.  Text
 ;; properties are much faster than overlays, that could be used for
 ;; the same purpose.  Overlays are implemented with O(n) complexity in
-;; Emacs (2021-03-11).  It means that any attempt to move through
-;; hidden text in a file with many invisible overlays will require
-;; time scaling with the number of folded regions (the problem
+;; Emacs (as for 2021-03-11).  It means that any attempt to move
+;; through hidden text in a file with many invisible overlays will
+;; require time scaling with the number of folded regions (the problem
 ;; Overlays note of the manual warns about).  For curious, historical
 ;; reasons why overlays are not efficient can be found in
 ;; https://www.jwz.org/doc/lemacs.html.
