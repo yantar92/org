@@ -615,7 +615,7 @@ exact and fuzzy text search.")
 (defvar-local org-link--link-folding-spec '(org-link
                                             (:global t)
                                             (:ellipsis . nil)
-                                            (:isearch-open . nil)
+                                            (:isearch-open . t)
                                             (:fragile . org-link--reveal-maybe))
   "Folding spec used to hide invisible parts of links.")
 
