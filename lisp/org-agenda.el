@@ -7018,7 +7018,8 @@ where H:MM is the duration above midnight."
                  (group-n 3 (or "am" "pm")))
              word-end)))
     (save-match-data
-      (when (and (not (eq 'org-link (get-text-property 1 'face s)))
+      (when (and (not (string-empty-p s))
+                 (not (eq 'org-link (get-text-property 1 'face s)))
                  (string-match time-regexp s))
         (let ((hours
                (let* ((ampm (and (match-end 3) (downcase (match-string 3 s))))
