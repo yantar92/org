@@ -1671,28 +1671,24 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 	  (goto-char (match-end 0))
 	  (delete-region (point) (point-at-eol))
           (org-fold-core-ignore-modifications
-	      (insert-and-inherit "--")
-	    (setq te (org-insert-time-stamp (or at-time now) 'with-hm 'inactive))
-	    (setq s (org-time-convert-to-integer
-		     (time-subtract
-		      (org-time-string-to-time te)
-		      (org-time-string-to-time ts)))
-		  h (floor s 3600)
-		  m (floor (mod s 3600) 60))
-	    (insert-and-inherit " => " (format "%2d:%02d" h m))
-	    (move-marker org-clock-marker nil)
-	    (move-marker org-clock-hd-marker nil))
-	  ;; Possibly remove zero time clocks.  However, do not add
-	  ;; a note associated to the CLOCK line in this case.
-	  (cond ((and org-clock-out-remove-zero-time-clocks
-		      (= 0 h m))
-		 (setq remove t)
-		 (delete-region (line-beginning-position)
-				(line-beginning-position 2)))
-		(org-log-note-clock-out
-		 (org-add-log-setup
-		  'clock-out nil nil 'note
-		  (concat "# Task: " (org-get-heading t) "\n\n"))))
+              (insert-and-inherit "--")
+            (setq te (org-insert-time-stamp (or at-time now) 'with-hm 'inactive))
+            (setq s (org-time-convert-to-integer
+	             (time-subtract
+	              (org-time-string-to-time te)
+	              (org-time-string-to-time ts)))
+	          h (floor s 3600)
+	          m (floor (mod s 3600) 60))
+            (insert-and-inherit " => " (format "%2d:%02d" h m))
+            (move-marker org-clock-marker nil)
+            (move-marker org-clock-hd-marker nil)
+            ;; Possibly remove zero time clocks.
+            (when (and org-clock-out-remove-zero-time-clocks
+	               (= 0 h m))
+              (setq remove t)
+              (delete-region (line-beginning-position)
+		             (line-beginning-position 2)))
+            (org-clock-remove-empty-clock-drawer))
 	  (when org-clock-mode-line-timer
 	    (cancel-timer org-clock-mode-line-timer)
 	    (setq org-clock-mode-line-timer nil))
@@ -1715,19 +1711,22 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 		    (when newstate (org-todo newstate))))
 		 ((and org-clock-out-switch-to-state
 		       (not (looking-at (concat org-outline-regexp "[ \t]*"
-						org-clock-out-switch-to-state
-						"\\>"))))
+					      org-clock-out-switch-to-state
+					      "\\>"))))
 		  (org-todo org-clock-out-switch-to-state))))))
 	  (force-mode-line-update)
 	  (message (if remove
 		       "Clock stopped at %s after %s => LINE REMOVED"
 		     "Clock stopped at %s after %s")
 		   te (org-duration-from-minutes (+ (* 60 h) m)))
-	  (run-hooks 'org-clock-out-hook)
-	  (unless (org-clocking-p)
-	    (setq org-clock-current-task nil)))))))
-
-(add-hook 'org-clock-out-hook #'org-clock-remove-empty-clock-drawer)
+          (unless (org-clocking-p)
+	    (setq org-clock-current-task nil))
+          (run-hooks 'org-clock-out-hook)
+          ;; Add a note, but only if we didn't remove the clock line.
+          (when (and org-log-note-clock-out (not remove))
+            (org-add-log-setup
+	     'clock-out nil nil nil
+	     (concat "# Task: " (org-get-heading t) "\n\n"))))))))
 
 (defun org-clock-remove-empty-clock-drawer ()
   "Remove empty clock drawers in current subtree."
