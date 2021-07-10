@@ -94,6 +94,7 @@
 (require 'org-compat)
 (require 'org-keys)
 (require 'ol)
+(require 'oc)
 (require 'org-table)
 (require 'org-fold)
 
@@ -211,6 +212,8 @@ Stars are put in group 1 and the trimmed body in group 2.")
 
 ;; load languages based on value of `org-babel-load-languages'
 (defvar org-babel-load-languages)
+
+(defvar crm-separator)  ; dynamically scoped param
 
 ;;;###autoload
 (defun org-babel-do-load-languages (sym value)
@@ -5589,7 +5592,9 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		 org-comment-string)
 		'(9 'org-special-keyword t))
 	  ;; Blocks and meta lines
-	  '(org-fontify-meta-lines-and-blocks))))
+	  '(org-fontify-meta-lines-and-blocks)
+          ;; Citations
+          '(org-cite-activate))))
     (setq org-font-lock-extra-keywords (delq nil org-font-lock-extra-keywords))
     (run-hooks 'org-font-lock-set-keywords-hook)
     ;; Now set the full font-lock-keywords
@@ -8047,9 +8052,10 @@ a link."
 	    ;; closest one.
 	    (org-element-lineage
 	     (org-element-context)
-	     '(clock comment comment-block footnote-definition
-		     footnote-reference headline inline-src-block inlinetask
-		     keyword link node-property planning src-block timestamp)
+	     '(citation citation-reference clock comment comment-block
+                        footnote-definition footnote-reference headline
+                        inline-src-block inlinetask keyword link node-property
+                        planning src-block timestamp)
 	     t))
 	   (type (org-element-type context))
 	   (value (org-element-property :value context)))
@@ -8060,7 +8066,7 @@ a link."
        ((memq type '(comment comment-block node-property keyword))
 	(call-interactively #'org-open-at-point-global))
        ;; On a headline or an inlinetask, but not on a timestamp,
-       ;; a link, a footnote reference.
+       ;; a link, a footnote reference or a citation.
        ((memq type '(headline inlinetask))
 	(org-match-line org-complex-heading-regexp)
 	(let ((tags-beg (match-beginning 5))
@@ -8123,6 +8129,7 @@ a link."
        ((eq type 'inline-src-block) (org-babel-open-src-block-result))
        ((eq type 'timestamp) (org-follow-timestamp-link))
        ((eq type 'link) (org-link-open context arg))
+       ((memq type '(citation citation-reference)) (org-cite-follow context arg))
        (t (user-error "No link found")))))
   (run-hook-with-args 'org-follow-link-hook))
 
@@ -11167,12 +11174,15 @@ in Lisp code use `org-set-tags' instead."
 		      inherited-tags
 		      table
 		      (and org-fast-tag-selection-include-todo org-todo-key-alist))
-		   (let ((org-add-colon-after-tag-completion (< 1 (length table))))
-		     (org-trim (completing-read
-				"Tags: "
-				#'org-tags-completion-function
-				nil nil (org-make-tag-string current-tags)
-				'org-tags-history)))))))
+		   (let ((org-add-colon-after-tag-completion (< 1 (length table)))
+                         (crm-separator "[ \t]*:[ \t]*"))
+		     (mapconcat #'identity
+                                (completing-read-multiple
+			         "Tags: "
+			         org-last-tags-completion-table
+			         nil nil (org-make-tag-string current-tags)
+			         'org-tags-history)
+                                ":"))))))
 	  (org-set-tags tags)))))
     ;; `save-excursion' may not replace the point at the right
     ;; position.
@@ -11253,7 +11263,7 @@ This works in the agenda, and also in an Org buffer."
 		     (org-global-tags-completion-table))
 		  (org-global-tags-completion-table))))
 	   (completing-read
-	    "Tag: " 'org-tags-completion-function nil nil nil
+	    "Tag: " org-last-tags-completion-table nil nil nil
 	    'org-tags-history))
 	 (progn
 	   (message "[s]et or [r]emove? ")
@@ -16623,7 +16633,7 @@ When in a source code block, call `org-edit-src-code'.
 When in a fixed-width region, call `org-edit-fixed-width-region'.
 When in an export block, call `org-edit-export-block'.
 When in a LaTeX environment, call `org-edit-latex-environment'.
-When at an #+INCLUDE keyword, visit the included file.
+When at an INCLUDE, SETUPFILE or BIBLIOGRAPHY keyword, visit the included file.
 When at a footnote reference, call `org-edit-footnote-reference'.
 When at a planning line call, `org-deadline' and/or `org-schedule'.
 When at an active timestamp, call `org-time-stamp'.
@@ -16649,7 +16659,7 @@ Otherwise, return a user error."
 		       session params))))))
       (`keyword
        (unless (member (org-element-property :key element)
-		       '("INCLUDE" "SETUPFILE"))
+		       '("BIBLIOGRAPHY" "INCLUDE" "SETUPFILE"))
 	 (user-error "No special environment to edit here"))
        (let ((value (org-element-property :value element)))
 	 (unless (org-string-nw-p value) (user-error "No file to edit"))

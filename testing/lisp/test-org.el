@@ -7023,8 +7023,8 @@ Paragraph<point>"
   (should
    (equal "* H1 :foo:"
 	  (org-test-with-temp-text "* H1"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
@@ -7033,8 +7033,8 @@ Paragraph<point>"
   (should
    (equal "* H1 :foo:\nContents"
 	  (org-test-with-temp-text "* H1\n<point>Contents"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
@@ -7042,30 +7042,20 @@ Paragraph<point>"
   (should-not
    (equal "* H1 :foo:\nContents2"
 	  (org-test-with-temp-text "* H1\n<point>Contents2"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
 	    (org-at-heading-p))))
-  ;; Strip all forbidden characters from user-entered tags.
-  (should
-   (equal "* H1 :foo:"
-	  (org-test-with-temp-text "* H1"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ": foo *:")))
-	      (let ((org-use-fast-tag-selection nil)
-		    (org-tags-column 1))
-		(org-set-tags-command)))
-	    (buffer-string))))
   ;; When a region is active and
   ;; `org-loop-over-headlines-in-active-region' is non-nil, insert the
   ;; same value in all headlines in region.
   (should
    (equal "* H1 :foo:\nContents\n* H2 :foo:"
 	  (org-test-with-temp-text "* H1\nContents\n* H2"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-loop-over-headlines-in-active-region t)
 		    (org-tags-column 1))
@@ -7077,8 +7067,8 @@ Paragraph<point>"
   (should
    (equal "* H1\nContents\n* H2 :foo:"
 	  (org-test-with-temp-text "* H1\nContents\n* H2"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-loop-over-headlines-in-active-region nil)
 		    (org-tags-column 1))
@@ -7097,8 +7087,8 @@ Paragraph<point>"
   (should
    (equal ":foo:"
 	  (org-test-with-temp-text "* <point>"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
@@ -7107,8 +7097,8 @@ Paragraph<point>"
   (should
    (equal "* H1 :foo:"
 	  (org-test-with-temp-text "* H1"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
@@ -7117,8 +7107,8 @@ Paragraph<point>"
   (should
    (equal "* H1 :foo:"
 	  (org-test-with-temp-text "*<point>* H1"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
@@ -7127,8 +7117,8 @@ Paragraph<point>"
   (should
    (equal " b :foo:"
 	  (org-test-with-temp-text "* a<point> b"
-	    (cl-letf (((symbol-function 'completing-read)
-		       (lambda (&rest args) ":foo:")))
+	    (cl-letf (((symbol-function 'completing-read-multiple)
+		       (lambda (&rest args) '("foo"))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))
@@ -7137,9 +7127,9 @@ Paragraph<point>"
   (should
    (equal "b :foo:"
 	  (org-test-with-temp-text "* a :foo:\n** <point>b :foo:"
-	    (cl-letf (((symbol-function 'completing-read)
+	    (cl-letf (((symbol-function 'completing-read-multiple)
 		       (lambda (prompt coll &optional pred req initial &rest args)
-			 initial)))
+			 (list initial))))
 	      (let ((org-use-fast-tag-selection nil)
 		    (org-tags-column 1))
 		(org-set-tags-command)))

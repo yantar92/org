@@ -286,6 +286,12 @@ it is correctly configured as a Git repository.
 
 See [[msg:875z8njaol.fsf@protesilaos.com][this thread]].
 
+*** New option ~org-attach-sync-delete-empty-dir~
+
+~org-attach-sync-delete-empty-dir~ controls the deletion of an empty
+attachment directory at calls of ~org-attach-sync~.  There is
+Never delete, Always delete and Query the user (default).
+
 ** New features
 
 *** ~ox-koma-letter.el~ is now part of Org's core
@@ -506,6 +512,12 @@ The function does not allow for a third optional parameter anymore.
 
 If a babel src block produces a raw LaTeX environment, it will now be
 recognised as a result, and so replaced when re-evaluated.
+
+*** Tag completion now uses =completing-read-multiple=
+
+Tag completion now uses =completing-read-multiple= with a simple
+completion table, which should allow better interoperability with
+custom completion functions.
 
 * Version 9.4
 ** Incompatible changes

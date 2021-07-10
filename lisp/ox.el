@@ -74,6 +74,8 @@
 
 (require 'cl-lib)
 (require 'ob-exp)
+(require 'oc)
+(require 'oc-basic)    ;default value for `org-cite-export-processors'
 (require 'ol)
 (require 'org-element)
 (require 'org-macro)
@@ -140,7 +142,9 @@
     (:with-tasks nil "tasks" org-export-with-tasks)
     (:with-timestamps nil "<" org-export-with-timestamps)
     (:with-title nil "title" org-export-with-title)
-    (:with-todo-keywords nil "todo" org-export-with-todo-keywords))
+    (:with-todo-keywords nil "todo" org-export-with-todo-keywords)
+    ;; Citations processing.
+    (:cite-export "CITE_EXPORT" nil org-cite-export-processors))
   "Alist between export properties and ways to set them.
 
 The key of the alist is the property name, and the value is a list
@@ -1881,6 +1885,8 @@ Return a string."
 		(cond
 		 ;; Ignored element/object.
 		 ((memq data (plist-get info :ignore-list)) nil)
+                 ;; Raw code.
+                 ((eq type 'raw) (car (org-element-contents data)))
 		 ;; Plain text.
 		 ((eq type 'plain-text)
 		  (org-export-filter-apply-functions
@@ -1947,7 +1953,7 @@ Return a string."
 	   data
 	   (cond
 	    ((not results) "")
-	    ((memq type '(org-data plain-text nil)) results)
+	    ((memq type '(nil org-data plain-text raw)) results)
 	    ;; Append the same white space between elements or objects
 	    ;; as in the original buffer, and call appropriate filters.
 	    (t
@@ -2988,6 +2994,10 @@ Return code as a string."
 	 (setq info
 	       (org-combine-plists
 		info (org-export-get-environment backend subtreep ext-plist)))
+         ;; Pre-process citations environment, i.e. install
+	 ;; bibliography list, and citation processor in INFO.
+	 (org-cite-store-bibliography info)
+         (org-cite-store-export-processor info)
 	 ;; De-activate uninterpreted data from parsed keywords.
 	 (dolist (entry (append (org-export-get-all-options backend)
 				org-export-options-alist))
@@ -3021,6 +3031,11 @@ Return code as a string."
 	 ;; Now tree is complete, compute its properties and add them
 	 ;; to communication channel.
 	 (setq info (org-export--collect-tree-properties tree info))
+         ;; Process citations and bibliography.  Replace each citation
+	 ;; and "print_bibliography" keyword in the parse tree with
+	 ;; the output of the selected citation export processor.
+         (org-cite-process-citations info)
+         (org-cite-process-bibliography info)
 	 ;; Eventually transcode TREE.  Wrap the resulting string into
 	 ;; a template.
 	 (let* ((body (org-element-normalize-string
@@ -3033,16 +3048,19 @@ Return code as a string."
 			      (funcall inner-template body info))
 			    info))
 		(template (cdr (assq 'template
-				     (plist-get info :translate-alist)))))
+				     (plist-get info :translate-alist))))
+                (output
+                 (if (or (not (functionp template)) body-only) full-body
+	           (funcall template full-body info))))
+           ;; Call citation export finalizer.
+           (setq output (org-cite-finalize-export output info))
 	   ;; Remove all text properties since they cannot be
 	   ;; retrieved from an external process.  Finally call
 	   ;; final-output filter and return result.
 	   (org-no-properties
 	    (org-export-filter-apply-functions
 	     (plist-get info :filter-final-output)
-	     (if (or (not (functionp template)) body-only) full-body
-	       (funcall template full-body info))
-	     info))))))))
+	     output info))))))))
 
 ;;;###autoload
 (defun org-export-string-as (string backend &optional body-only ext-plist)
@@ -3670,7 +3688,8 @@ the communication channel used for export, as a plist."
   (when (symbolp backend) (setq backend (org-export-get-backend backend)))
   (org-export-barf-if-invalid-backend backend)
   (let ((type (org-element-type data)))
-    (when (memq type '(nil org-data)) (error "No foreign transcoder available"))
+    (when (memq type '(nil org-data raw))
+      (error "No foreign transcoder available"))
     (let* ((all-transcoders (org-export-get-all-transcoders backend))
 	   (transcoder (cdr (assq type all-transcoders))))
       (unless (functionp transcoder) (error "No foreign transcoder available"))
@@ -4564,6 +4583,17 @@ objects of the same type."
 	    ((funcall predicate el info) (cl-incf counter) nil)))
 	 info 'first-match)))))
 
+;;;; For Raw objects
+;;
+;; `org-export-raw-string' builds a pseudo-object out of a string
+;; that any export back-end returns as-is.
+
+(defun org-export-raw-string (s)
+  "Return a raw object containing string S.
+A raw string is exported as-is, with no additional processing
+from the export back-end."
+  (unless (stringp s) (error "Wrong raw contents type: %S" s))
+  (org-element-create 'raw nil s))
 
 ;;;; For Src-Blocks
 ;;
