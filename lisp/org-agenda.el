@@ -9457,7 +9457,11 @@ the same tree node, and the headline of the tree node in the Org file."
 	 (goto-char pos)
 	 (org-fold-show-context 'agenda)
 	 (let ((current-prefix-arg arg))
-	   (call-interactively 'org-todo))
+	   (call-interactively 'org-todo)
+           ;; Make sure that log is recorded in current undo.
+           (when (and org-log-setup
+                      (not (eq org-log-note-how 'note)))
+             (org-add-log-note)))
 	 (and (bolp) (forward-char 1))
          ;; We need to update the effort text property at changed TODO
          ;; keyword.
