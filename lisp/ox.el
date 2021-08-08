@@ -1212,12 +1212,12 @@ keywords are understood:
       or
 
       \\='(?l \"Export to LaTeX\"
-           (?p \"As PDF file\" org-latex-export-to-pdf)
-           (?o \"As PDF file and open\"
-               (lambda (a s v b)
-                 (if a (org-latex-export-to-pdf t s v b)
-                   (org-open-file
-                    (org-latex-export-to-pdf nil s v b)))))))
+           ((?p \"As PDF file\" org-latex-export-to-pdf)
+            (?o \"As PDF file and open\"
+                (lambda (a s v b)
+                  (if a (org-latex-export-to-pdf t s v b)
+                    (org-open-file
+                     (org-latex-export-to-pdf nil s v b)))))))
 
       or the following, which will be added to the previous
       sub-menu,
@@ -5930,7 +5930,7 @@ them."
      ("da" :default "Fodnoter")
      ("de" :html "Fu&szlig;noten" :default "Fußnoten")
      ("eo" :default "Piednotoj")
-     ("es" :ascii "Nota al pie de pagina" :html "Nota al pie de p&aacute;gina" :default "Nota al pie de página")
+     ("es" :ascii "Notas al pie de pagina" :html "Notas al pie de p&aacute;gina" :default "Notas al pie de página")
      ("et" :html "Allm&#228;rkused" :utf-8 "Allmärkused")
      ("fi" :default "Alaviitteet")
      ("fr" :default "Notes de bas de page")
