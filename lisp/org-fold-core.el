@@ -424,8 +424,8 @@ arguments: beginning and the end of the changed region.")
 
 (defsubst org-fold-core-folding-spec-list (&optional buffer)
   "Return list of all the folding spec symbols in BUFFER."
-  (with-current-buffer (or buffer (current-buffer))
-    (or org-fold-core--spec-list
+  (or (buffer-local-value 'org-fold-core--spec-list (or buffer (current-buffer)))
+      (with-current-buffer (or buffer (current-buffer))
         (setq org-fold-core--spec-list (mapcar #'car org-fold-core--specs)))))
 
 (defun org-fold-core-get-folding-spec-from-alias (spec-or-alias)
@@ -512,7 +512,7 @@ hanging around."
          ;; org-capture copies local variables into *Capture* buffer.
          (setq buffers (list (current-buffer)))
        (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
-                          (with-current-buffer (or (buffer-base-buffer) (current-buffer)) org-fold-core--indirect-buffers)))
+                          (buffer-local-value ' org-fold-core--indirect-buffers (or (buffer-base-buffer) (current-buffer)))))
          (if (buffer-live-p buf)
              (push buf buffers)
            (dolist (spec (org-fold-core-folding-spec-list))
