@@ -1228,6 +1228,16 @@ property, unfold the region if the :fragile function returns non-nil."
                 (unless (org-fold-core-region-folded-p from to spec)
 	          (let ((spec-to (org-fold-core-get-folding-spec spec (min to (1- (point-max)))))
 		        (spec-from (org-fold-core-get-folding-spec spec (max (point-min) (1- from)))))
+                    ;; Reveal folds around undoed deletion.
+                    (when undo-in-progress
+                      (let ((lregion (org-fold-core-get-region-at-point spec (max (point-min) (1- from))))
+                            (rregion (org-fold-core-get-region-at-point spec (min to (1- (point-max))))))
+                        (if (and lregion rregion)
+                            (org-fold-core-region (car lregion) (cdr rregion) nil spec)
+                          (when lregion
+                            (org-fold-core-region (car lregion) (cdr lregion) nil spec))
+                          (when rregion
+                            (org-fold-core-region (car rregion) (cdr rregion) nil spec)))))
                     ;; Hide text inserted in the middle of a fold.
 	            (when (and (or spec-from (eq from (point-min)))
                                (or spec-to (eq to (point-max)))
