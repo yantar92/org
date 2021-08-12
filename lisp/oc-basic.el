@@ -65,7 +65,10 @@
 ;;; Code:
 
 (require 'bibtex)
+(require 'json)
 (require 'oc)
+(require 'org)
+(require 'seq)
 
 (declare-function org-open-at-point "org" (&optional arg))
 
@@ -239,7 +242,7 @@ Optional argument INFO is the export state, as a property list."
         (when (file-readable-p file)
           (with-temp-buffer
             (insert-file-contents file)
-	    (let* ((file-id (cons file (buffer-hash)))
+	    (let* ((file-id (cons file (org-buffer-hash)))
                    (entries
                     (or (cdr (assoc file-id org-cite-basic--bibliography-cache))
                         (let ((table
@@ -667,7 +670,9 @@ present in the citation."
     (org-open-file file '(4))
     (pcase (file-name-extension file)
       ("json"
-       (let ((regexp (rx "\"id\":" (0+ (any "[ \t]")) "\"" (literal key) "\"")))
+       ;; `rx' can not be used with Emacs <27.1 since `literal' form
+       ;; is not supported.
+       (let ((regexp (rx-to-string `(seq "\"id\":" (0+ (any "[ \t]")) "\"" ,key "\"") t)))
          (goto-char (point-min))
          (re-search-forward regexp)
          (search-backward "{")))
@@ -677,7 +682,7 @@ present in the citation."
 
 
 ;;; "Insert" capability
-(defun org-cite-basic--complete-style ()
+(defun org-cite-basic--complete-style (_)
   "Offer completion for style.
 Return chosen style as a string."
   (let* ((styles
@@ -761,6 +766,5 @@ Raise an error when no bibliography is set in the buffer."
     (("text" "t") ("bare-caps" "bc") ("caps" "c"))
     (("nil") ("bare" "b") ("bare-caps" "bc") ("caps" "c"))))
 
-(provide 'org-cite-basic)
 (provide 'oc-basic)
 ;;; oc-default.el ends here

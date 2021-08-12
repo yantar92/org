@@ -57,6 +57,7 @@
 
 (require 'org-compat)
 (require 'org-macs)
+(require 'seq)
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-collect-keywords "org" (keywords &optional unique directory))
@@ -878,14 +879,19 @@ the same object, call `org-cite-adjust-punctuation' first."
   (when org-cite-adjust-note-numbers
     (pcase-let* ((rule (or rule (org-cite--get-note-rule info)))
                  (punct-re (regexp-opt (or punct org-cite-punctuation-marks)))
+                 ;; with Emacs <27.1. Argument of `regexp' form (PUNCT-RE this case)
+                 ;; must be a string literal.
                  (previous-punct-re
-                  (rx (opt (group (0+ (any blank ?\n)) (regexp punct-re)))
-                      (opt (0+ (any blank ?\n)) (group ?\"))
-                      (opt (group (1+ (any blank ?\n))))
-                      string-end))
+                  (rx-to-string `(seq (opt (group (regexp ,(rx (0+ (any blank ?\n))))
+                                                  (regexp ,punct-re)))
+                                      (regexp ,(rx (opt (0+ (any blank ?\n)) (group ?\"))
+                                                   (opt (group (1+ (any blank ?\n))))
+                                                   string-end)))
+                                t))
                  (next-punct-re
-                  (rx string-start
-                      (group (0+ (any blank ?\n)) (regexp punct-re))))
+                  (rx-to-string `(seq string-start
+                                      (group (0+ (any blank ?\n)) (regexp ,punct-re)))
+                                t))
                  (next (org-export-get-next-element citation info))
                  (final-punct
                   (and (stringp next)
@@ -928,7 +934,9 @@ the same object, call `org-cite-adjust-punctuation' first."
                      (concat final-punct "\"") previous nil nil 2))
                    (new-next
                     (replace-regexp-in-string
-                     (rx string-start (literal final-punct))
+                     ;; Before Emacs-27.1 `literal' `rx' form with a variable
+                     ;; as an argument is not available.
+                     (rx-to-string `(seq string-start ,final-punct) t)
                      "" next)))
                (org-element-set-element previous new-prev)
                (org-element-set-element next new-next)
@@ -1441,6 +1449,16 @@ ARG is the prefix argument received when calling `org-open-at-point', or nil."
         (insert-before-markers  string ";")
       (insert-before-markers ";" string))))
 
+(defun org-cite--keys-to-citation (keys)
+  "Build a citation object from a list of citation KEYS.
+Citation keys are strings without the leading \"@\"."
+  (apply #'org-element-create
+         'citation
+         nil
+         (mapcar (lambda (k)
+                   (org-element-create 'citation-reference (list :key k)))
+                 keys)))
+
 (defun org-cite-make-insert-processor (select-key select-style)
   "Build a function appropriate as an insert processor.
 
@@ -1449,8 +1467,8 @@ should return a citation key as a string, or nil.  Otherwise, the function
 should return a list of such keys, or nil.  The keys should not have any leading
 \"@\" character.
 
-SELECT-STYLE is a function called without any argument.  It should return a
-style string, or nil.
+SELECT-STYLE is a function called with one argument, the citation object being
+edited or constructed so far.  It should return a style string, or nil.
 
 The return value is a function of two arguments: CONTEXT and ARG.  CONTEXT is
 either a citation reference, a citation object, or nil.  ARG is a prefix
@@ -1533,7 +1551,8 @@ The generated function inserts or edit a citation at point.  More specifically,
          (insert
           (format "[cite%s:%s]"
                   (if arg
-                      (let ((style (funcall select-style)))
+                      (let ((style (funcall select-style
+                                            (org-cite--keys-to-citation keys))))
                         (if (org-string-nw-p style)
                             (concat "/" style)
                           ""))
@@ -1564,6 +1583,5 @@ ARG is the prefix argument received when calling interactively the function."
          (t
           (user-error "Cannot insert a citation here"))))))))
 
-(provide 'org-cite)
 (provide 'oc)
 ;;; oc.el ends here
