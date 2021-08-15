@@ -5954,6 +5954,10 @@ that range.  See `after-change-functions' for more information."
 	    (setq top (progn (goto-char top)
                              (when (outline-previous-heading) (forward-line))
                              (point)))
+            ;; Edge case:
+            ;; <bob>* headline<insert newline><eob>
+            ;; Previous setq moved `top' beying the edited region.
+            (when (> top beg) (setq top beg))
 	    (setq bottom (progn (goto-char bottom)
 				(if (outline-next-heading) (1- (point))
                                   (point))))))
