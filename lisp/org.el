@@ -12168,7 +12168,9 @@ Value is a list whose car is the base value for PROPERTY and cdr
 a list of accumulated values.  Return nil if neither is found in
 the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
-  (if (or element (org-element--cache-active-p))
+  (if (or element (and (org-element--cache-active-p)
+                       ;; Parsing the whole headline is slow.
+                       (eq (point) (org-element-property :begin (org-element--cache-find (point))))))
       (let* ((element (or element (org-element-lineage (org-element-at-point) '(headline org-data inlinetask) 'with-self)))
              (base-value (org-element-property (intern (concat ":" (upcase property))) element))
              (base-value (if literal-nil base-value (org-not-nil base-value)))
