@@ -5176,10 +5176,13 @@ the next element.  Set PARENT to the element containing NEXT.
 
 During phase 2, NEXT is the key of the next element to shift in
 the parse tree.  All elements starting from this one have their
-properties relatives to buffer positions shifted by integer
+properties relative to buffer positions shifted by integer
 OFFSET and, if they belong to element PARENT, are adopted by it.
 
-PHASE specifies the phase number, as an integer.")
+PHASE specifies the phase number, as an integer.
+
+For any synchronisation request, all the later requests in the cache
+must not start at or before END.  See `org-element--cache-submit-request'.")
 
 (defvar org-element--cache-sync-timer nil
   "Timer used for cache synchronization.")
@@ -5200,7 +5203,8 @@ Comparison is done with `org-element--cache-key-less-p'.
 When no synchronization is taking place, a key is simply the
 beginning position of the element, or that position plus one in
 the case of an first item (respectively row) in
-a list (respectively a table).
+a list (respectively a table).  They key of a section is its beginning
+position minus one.
 
 During a synchronization, the key is the one the element had when
 the cache was synchronized for the last time.  Elements added to
@@ -5318,8 +5322,7 @@ A and B are either integers or lists of integers, as returned by
 
 (defun org-element--cache-compare (a b)
   "Non-nil when element A is located before element B."
-  (org-element--cache-key-less-p (org-element--cache-key a)
-				 (org-element--cache-key b)))
+  (org-element--cache-key-less-p (org-element--cache-key a) (org-element--cache-key b)))
 
 (defsubst org-element--cache-root ()
   "Return root value in cache.
@@ -5419,10 +5422,10 @@ Assume ELEMENT belongs to cache and that a cache is active."
       (and
        ;; This should not happen, but if it is, would be better to know
        ;; where it happens.
-       (message "org-element-cache: Failed to delete %S element in %S at %S"
-                (org-element-type element)
-                (current-buffer)
-                (org-element-property :begin element))
+       (warn "org-element-cache: Failed to delete %S element in %S at %S"
+             (org-element-type element)
+             (current-buffer)
+             (org-element-property :begin element))
        (org-element-cache-reset)
        (throw 'quit nil))))
 
@@ -5656,7 +5659,7 @@ request."
 	       ;; current one.
 	       (aset request 5 2))
 	      (t
-	       (let ((parent (org-element--parse-to limit t time-limit (when time-limit t))))
+	       (let ((parent (org-element--parse-to limit t time-limit (when time-limit 'recursive))))
 		 (aset request 4 parent)
 		 (aset request 5 2))))))
     ;; Phase 2.
@@ -5752,7 +5755,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
        (cond
         ;; Nothing in cache before point: start parsing from first
         ;; element in buffer down to POS or from the beginning of the
-        ;; section.
+        ;; file.
         ((and (not cached) (org-element--cache-active-p))
          (goto-char (point-min))
          (setq element (org-element-org-data-parser))
@@ -5760,6 +5763,10 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
          (beginning-of-line)
          (org-element--cache-put element)
 	 (setq mode 'first-section))
+        ;; Nothing in cache before point because cache is not active.
+        ;; Parse from previous heading to avoid re-parsing the whole
+        ;; buffer above.  This comes at the cost of not calculating
+        ;; `:parent' property for headings.
         ((not cached)
          (if (org-with-limited-levels (outline-previous-heading))
              (progn
@@ -5920,7 +5927,7 @@ that range.  See `after-change-functions' for more information."
      (goto-char beg)
      (beginning-of-line)
      (save-match-data
-       (let ((top (point))
+       (let ((top beg)
 	     (bottom (save-excursion (goto-char end) (line-end-position))))
 	 ;; Determine if modified area needs to be extended, according
 	 ;; to both previous and current state.  We make a special
@@ -5967,7 +5974,7 @@ any position between BEG and END.  As an exception, greater
 elements around the changes that are robust to contents
 modifications are preserved and updated according to the
 changes.  In the latter case, the returned element is the outermost
-non-robust element affected by changed.  Note that the returned
+non-robust element affected by the changes.  Note that the returned
 element may end before END position in which case some cached element
 starting after the returned may still be affected by the changes."
   (let* ((elements (org-element--cache-find (1- beg) 'both))
@@ -6191,7 +6198,7 @@ element ending there."
                      (org-element--parse-to pom)
                    ;; FIXME: Detect cache corruption until fixed.
                    (error
-                    (message "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
+                    (warn "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
                     (org-element-cache-reset)
                     (org-element--parse-to pom)))))
     (if (not (eq (org-element-type element) 'section))
