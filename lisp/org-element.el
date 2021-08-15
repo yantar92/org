@@ -5997,7 +5997,12 @@ starting after the returned may still be affected by the changes."
                                 (<= cbeg beg)
 			        (or (> cend end)
                                     (and (= cend end)
-                                         (= (+ end offset) (point-max)))))))
+                                         (= (+ end offset) (point-max))))
+                                ;; Any robust block is invalid when it
+                                ;; contains a headline.
+                                (org-with-wide-buffer
+                                 (goto-char cbeg)
+                                 (not (re-search-forward org-outline-regexp-bol cend t))))))
                     (and (memq type '(headline section org-data))
 		         (let ((rbeg (org-element-property :robust-begin up))
                                (rend (org-element-property :robust-end up)))
@@ -6005,7 +6010,13 @@ starting after the returned may still be affected by the changes."
                                 (<= rbeg beg)
 			        (or (> rend end)
                                     (and (= rend end)
-                                         (= (+ end offset) (point-max)))))))))
+                                         (= (+ end offset) (point-max))))
+                                ;; Any heading/section is invalidated when
+                                ;; it contains a headline with lower level.
+                                (org-with-wide-buffer
+                                 (goto-char rbeg)
+                                 (when-let ((level (org-current-level)))
+                                   (not (re-search-forward (rx-to-string `(and bol (>= ,(1+ level) "*") " ")) rend t)))))))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
 	      (org-element--cache-shift-positions
