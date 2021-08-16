@@ -5952,18 +5952,24 @@ that range.  See `after-change-functions' for more information."
 	     (bottom (save-excursion (goto-char end) (line-end-position))))
 	 ;; Determine if modified area needs to be extended, according
 	 ;; to both previous and current state.
-         (when (or
-                ;; Modified area contained `org-element--cache-sensitive-re'
-                ;; before the modification.  See
-                ;; `org-element--cache-before-change'.
-                org-element--cache-change-warning
-                ;; Modified area might contain `org-element--cache-sensitive-re'
-                ;; after the modification.  Re-check.
-                (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
-                      (prog1 (org-element--cache-before-change beg end)
-                        (setq org-element--cache-change-warning
-                              (min org-element--cache-change-warning
-                                   org-element--cache-change-warning-before))))))
+         (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
+               (org-element--cache-change-warning-after (org-element--cache-before-change beg end)))
+           (setq org-element--cache-change-warning
+                 (cond
+                  ((and (numberp org-element--cache-change-warning-before)
+                        (numberp org-element--cache-change-warning-after))
+                   (min org-element--cache-change-warning-after
+                        org-element--cache-change-warning-before))
+                  ((numberp org-element--cache-change-warning-before)
+                   org-element--cache-change-warning-before)
+                  ((numberp org-element--cache-change-warning-after)
+                   org-element--cache-change-warning-after)
+                  (t (or org-element--cache-change-warning-after
+                         org-element--cache-change-warning-before)))))
+         ;; Modified area contained `org-element--cache-sensitive-re'
+         ;; before the modification.  See
+         ;; `org-element--cache-before-change'.
+         (when org-element--cache-change-warning
 	   ;; Effectively extend modified area.
            (org-with-limited-levels
 	    (setq top (progn (goto-char top)
@@ -6024,26 +6030,32 @@ starting after the returned may still be affected by the changes."
 			        (or (> rend end)
                                     (and (= rend end)
                                          (= (+ end offset) (point-max))))
-                                ;; Headline might be inserted.  This
-                                ;; is non-robust change when `up' is a
-                                ;; headline or `section' with `>'
-                                ;; level compared to the inserted
-                                ;; headline.
-                                (or (not (memq type '(headline section)))
-                                    (not (numberp org-element--cache-change-warning))
-                                    (> org-element--cache-change-warning
-                                       (org-element-property :level
-                                                  (org-element-lineage up
-                                                            '(headline)
-                                                            'with-self)))))))))
-	      ;; UP is a robust greater element containing changes.
-	      ;; We only need to extend its ending boundaries.
-	      (org-element--cache-shift-positions
-               up offset
-               (if (and (org-element-property :robust-begin up)
-                        (org-element-property :robust-end up))
-                   '(:contents-end :end :robust-end)
-                 '(:contents-end :end)))
+                                )))))
+              (if
+                  ;; Headline might be inserted.  This is non-robust
+                  ;; change when `up' is a `headline' or `section'
+                  ;; with `>' level compared to the inserted headline.
+                  ;; However, we do not need to remove it completely
+                  ;; together with all the subheadings before BEG.
+                  ;; Instead, we can simply re-parse the `headline'
+                  ;; and `section'.
+                  (or (not (memq (org-element-type up) '(headline section)))
+                      (not (numberp org-element--cache-change-warning))
+                      (> org-element--cache-change-warning
+                         (org-element-property :level (org-element-lineage up
+                                                     '(headline)
+                                                     'with-self))))
+	          ;; UP is a robust greater element containing changes.
+	          ;; We only need to extend its ending boundaries.
+	          (org-element--cache-shift-positions
+                   up offset
+                   (if (and (org-element-property :robust-begin up)
+                            (org-element-property :robust-end up))
+                       '(:contents-end :end :robust-end)
+                     '(:contents-end :end)))
+                ;; Re-insert re-parsed `up' into the cache.
+                (org-element--cache-remove up)
+                (setq up (org-element--parse-to (org-element-property :begin up))))
 	    (setq before up)
 	    (when robust-flag (setq robust-flag nil)))
 	  (setq up (org-element-property :parent up)))
