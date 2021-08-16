@@ -5878,14 +5878,15 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 ;;;; Staging Buffer Changes
 
 (defconst org-element--cache-sensitive-re
-  (concat
-   "^\\*+ " "\\|"
-   "\\\\end{[A-Za-z0-9*]+}[ \t]*$" "\\|"
-   "^[ \t]*\\(?:"
-   "#\\+\\(?:BEGIN[:_]\\|END\\(?:_\\|:?[ \t]*$\\)\\)" "\\|"
-   "\\\\begin{[A-Za-z0-9*]+}" "\\|"
-   ":\\(?:\\w\\|[-_]\\)+:[ \t]*$"
-   "\\)")
+  "^\\*+ "
+  ;; (concat
+  ;;  "^\\*+ " "\\|"
+  ;;  "\\\\end{[A-Za-z0-9*]+}[ \t]*$" "\\|"
+  ;;  "^[ \t]*\\(?:"
+  ;;  "#\\+\\(?:BEGIN[:_]\\|END\\(?:_\\|:?[ \t]*$\\)\\)" "\\|"
+  ;;  "\\\\begin{[A-Za-z0-9*]+}" "\\|"
+  ;;  ":\\(?:\\w\\|[-_]\\)+:[ \t]*$"
+  ;;  "\\)")
   "Regexp matching a sensitive line, structure wise.
 A sensitive line is a headline, inlinetask, block, drawer, or
 latex-environment boundary.  When such a line is modified,
@@ -5933,22 +5934,23 @@ that range.  See `after-change-functions' for more information."
 	 ;; to both previous and current state.  We make a special
 	 ;; case for headline editing: if a headline is modified but
 	 ;; not removed, do not extend.
-	 (when (pcase org-element--cache-change-warning
-                 ;; Modified area contained `org-element--cache-sensitive-re'
-                 ;; before the modification.  See
-                 ;; `org-element--cache-before-change'.
-		 (`t t)
-		 (`headline
-		  (not (and (org-with-limited-levels (org-at-heading-p))
-			  (= (line-end-position) bottom))))
-		 (_
-		  (let ((case-fold-search t))
-                    ;; Modified area contains `org-element--cache-sensitive-re'
-                    ;; after the modification.  Element structure
-                    ;; might be broken, i.e. new headline insered in
-                    ;; the middle.
-		    (re-search-forward
-		     org-element--cache-sensitive-re bottom t))))
+	 (when org-element--cache-change-warning
+           ;; (pcase org-element--cache-change-warning
+           ;;   ;; Modified area contained `org-element--cache-sensitive-re'
+           ;;   ;; before the modification.  See
+           ;;   ;; `org-element--cache-before-change'.
+	   ;;   (`t t)
+	   ;;   (`headline
+	   ;;    (not (and (org-with-limited-levels (org-at-heading-p))
+	   ;;            (= (line-end-position) bottom))))
+	   ;;   (_
+	   ;;    (let ((case-fold-search t))
+           ;;      ;; Modified area contains `org-element--cache-sensitive-re'
+           ;;      ;; after the modification.  Element structure
+           ;;      ;; might be broken, i.e. new headline insered in
+           ;;      ;; the middle.
+	   ;;      (re-search-forward
+	   ;;       org-element--cache-sensitive-re bottom t))))
 	   ;; Effectively extend modified area.
 	   (org-with-limited-levels
 	    (setq top (progn (goto-char top)
