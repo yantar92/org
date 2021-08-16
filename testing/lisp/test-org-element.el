@@ -4063,16 +4063,55 @@ Text
 
 (ert-deftest test-org-element/cache-bugs ()
   "Test basic expectations and common pitfalls for cache."
-  :expected-result :failed
+  ;; :expected-result :failed
   ;; Unindented second row of the table should not be re-parented by
   ;; inserted item.
   (should
    (eq 'table
        (let ((org-element-use-cache t))
 	 (org-test-with-temp-text
-	  "#+begin_center\nP0\n\n<point>\n\n  P1\n  | a | b |\n| c | d |\n#+end_center"
+	  "#+begin_center
+P0
+
+<point>
+
+  P1
+  | a | b |
+| c | d |
+#+end_center"
 	  (save-excursion (search-forward "| c |") (org-element-at-point))
 	  (insert "- item")
+	  (search-forward "| c |")
+	  (beginning-of-line)
+	  (org-element-type (org-element-at-point))))))
+  (should
+   (eq 'table
+       (let ((org-element-use-cache t))
+	 (org-test-with-temp-text
+	  "
+- item 1
+
+<point>
+  | a | b |
+| c | d |
+#+end_center"
+	  (save-excursion (search-forward "| c |") (org-element-at-point))
+          (delete-char 1)
+	  (search-forward "| c |")
+	  (beginning-of-line)
+	  (org-element-type (org-element-at-point))))))
+  (should
+   (eq 'table-row
+       (let ((org-element-use-cache t))
+	 (org-test-with-temp-text
+	  "
+- item 1
+<point>
+  | a | b |
+| c | d |
+#+end_center"
+	  (save-excursion (search-forward "| c |") (org-element-at-point))
+          (insert "\n")
 	  (search-forward "| c |")
 	  (beginning-of-line)
 	  (org-element-type (org-element-at-point)))))))
