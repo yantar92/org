@@ -5887,6 +5887,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
    "\\\\end{[A-Za-z0-9*]+}[ \t]*$" "\\|"
    "^[ \t]*\\(?:"
    "#\\+\\(?:BEGIN[:_]\\|END\\(?:_\\|:?[ \t]*$\\)\\)" "\\|"
+   org-list-full-item-re "\\|"
    "\\\\begin{[A-Za-z0-9*]+}" "\\|"
    ":\\(?:\\w\\|[-_]\\)+:[ \t]*$"
    "\\)")
