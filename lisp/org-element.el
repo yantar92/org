@@ -5169,6 +5169,13 @@ modifications.  Elements starting between them (inclusive) are
 removed.  So are elements whose parent is removed.  PARENT, when
 non-nil, is the parent of the first element to be removed.
 
+The meaning of NEXT is a parent element outside BEG END that is
+nevertheless affected by the changes and may need to be
+extended/shrinked, even though it's containing elements may not
+necessarily need to be removed.  For example, appending a subheading
+at the end of buffer will require extending parent heading, while
+other subheadings do not need to be re-parsed.
+
 During phase 1, NEXT is the key of the next known element in
 cache and BEG its beginning position.  Parse buffer between that
 element and the one before it in order to determine the parent of
