@@ -6188,8 +6188,11 @@ buffers."
 
 
 ;;;###autoload
-(defun org-element-at-point (&optional pom)
+(defun org-element-at-point (&optional pom cached-only)
   "Determine closest element around point or POM.
+
+Only check cached element when CACHED-ONLY is non-nil and return nil
+unconditionally when element at POM is not in cache.
 
 Return value is a list like (TYPE PROPS) where TYPE is the type
 of the element and PROPS a plist of properties associated to the
@@ -6211,16 +6214,20 @@ element ending there."
   (when (org-element--cache-active-p)
     (if (not org-element--cache) (org-element-cache-reset)
       (org-element--cache-sync (current-buffer) pom)))
-  (let ((element (condition-case err
-                     (org-element--parse-to pom)
-                   ;; FIXME: Detect cache corruption until fixed.
-                   (error
-                    (warn "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
-                    (org-element-cache-reset)
-                    (org-element--parse-to pom)))))
-    (if (not (eq (org-element-type element) 'section))
-        element
-      (org-element-at-point (1+ pom)))))
+  (let ((element (if cached-only
+                     (org-element--cache-find pom)
+                   (condition-case err
+                       (org-element--parse-to pom)
+                     ;; FIXME: Detect cache corruption until fixed.
+                     (error
+                      (warn "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
+                      (org-element-cache-reset)
+                      (org-element--parse-to pom))))))
+    (unless (and cached-only
+                 (not (eq pom (org-element-property :begin element))))
+      (if (not (eq (org-element-type element) 'section))
+          element
+        (org-element-at-point (1+ pom))))))
 
 ;;;###autoload
 (defun org-element-context (&optional element)

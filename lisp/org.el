@@ -11567,7 +11567,7 @@ TAGS is a list of strings."
 Assume point is at the beginning of the headline.
 
 The tags are fontified when FONTIFY is non-nil."
-  (let* ((cached (and (org-element--cache-active-p) (org-element-at-point)))
+  (let* ((cached (and (org-element--cache-active-p) (org-element-at-point nil 'cached)))
          (cached-tags (org-element-property :tags cached))
          (cached-tags-fontified?
           (or
@@ -11620,7 +11620,7 @@ The tags are fontified when FONTIFY is non-nil."
         (org-back-to-heading t)
         (let ((ltags (org--get-local-tags fontify)) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
-            (let ((cached (and (org-element--cache-active-p) (org-element-at-point))))
+            (let ((cached (and (org-element--cache-active-p) (org-element-at-point nil 'cached))))
               (if cached
                   (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited
@@ -12168,10 +12168,9 @@ Value is a list whose car is the base value for PROPERTY and cdr
 a list of accumulated values.  Return nil if neither is found in
 the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
-  (if (or element (and (org-element--cache-active-p)
-                       ;; Parsing the whole headline is slow.
-                       (eq (point) (org-element-property :begin (org-element--cache-find (point))))))
-      (let* ((element (or element (org-element-lineage (org-element-at-point) '(headline org-data inlinetask) 'with-self)))
+  (if-let ((element (or element (and (org-element--cache-active-p)
+                                     (org-element-at-point nil 'cached)))))
+      (let* ((element (or element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
              (base-value (org-element-property (intern (concat ":" (upcase property))) element))
              (base-value (if literal-nil base-value (org-not-nil base-value)))
              (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) element))
@@ -12343,8 +12342,9 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
   (org-with-wide-buffer
    (let (value at-bob-no-heading)
      (catch 'exit
-       (if (org-element--cache-active-p)
-           (let ((element (org-element-lineage (org-element-at-point) '(headline org-data inlinetask) 'with-self)))
+       (if-let ((element (and (org-element--cache-active-p)
+                              (org-element-at-point nil 'cached))))
+           (let ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
              (while t
                (let* ((v (org--property-local-values property literal-nil element))
                       (v (if (listp v) v (list v))))
@@ -19649,8 +19649,9 @@ headline found, or nil if no higher level is found.
 Also, this function will be a lot faster than `outline-up-heading',
 because it relies on stars being the outline starters.  This can really
 make a significant difference in outlines with very many siblings."
-  (if (org-element--cache-active-p)
-      (let* ((current-heading (org-element-lineage (org-element-at-point) '(headline) 'with-self))
+  (if-let ((element (and (org-element--cache-active-p)
+                         (org-element-at-point nil 'cached))))
+      (let* ((current-heading (org-element-lineage element '(headline) 'with-self))
              (parent (org-element-lineage current-heading '(headline))))
         (if (and parent
                  (<= (point-min) (org-element-property :begin parent)))
