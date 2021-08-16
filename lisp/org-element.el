@@ -5886,15 +5886,14 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 ;;;; Staging Buffer Changes
 
 (defconst org-element--cache-sensitive-re
-  "^\\*+ "
-  ;; (concat
-  ;;  "^\\*+ " "\\|"
-  ;;  "\\\\end{[A-Za-z0-9*]+}[ \t]*$" "\\|"
-  ;;  "^[ \t]*\\(?:"
-  ;;  "#\\+\\(?:BEGIN[:_]\\|END\\(?:_\\|:?[ \t]*$\\)\\)" "\\|"
-  ;;  "\\\\begin{[A-Za-z0-9*]+}" "\\|"
-  ;;  ":\\(?:\\w\\|[-_]\\)+:[ \t]*$"
-  ;;  "\\)")
+  (concat
+   "^\\*+ " "\\|"
+   "\\\\end{[A-Za-z0-9*]+}[ \t]*$" "\\|"
+   "^[ \t]*\\(?:"
+   "#\\+\\(?:BEGIN[:_]\\|END\\(?:_\\|:?[ \t]*$\\)\\)" "\\|"
+   "\\\\begin{[A-Za-z0-9*]+}" "\\|"
+   ":\\(?:\\w\\|[-_]\\)+:[ \t]*$"
+   "\\)")
   "Regexp matching a sensitive line, structure wise.
 A sensitive line is a headline, inlinetask, block, drawer, or
 latex-environment boundary.  When such a line is modified,
@@ -5903,12 +5902,16 @@ section, possibly making cache invalid.")
 
 (defvar org-element--cache-change-warning nil
   "Non-nil when a sensitive line is about to be changed.
-It is a symbol among nil or t.")
+It is a symbol among nil, t, or a number representing smallest level of
+modified headline.  The level considers headline levels both before
+and after the modification.")
 
 (defun org-element--cache-before-change (beg end)
   "Request extension of area going to be modified if needed.
 BEG and END are the beginning and end of the range of changed
-text.  See `before-change-functions' for more information."
+text.  See `before-change-functions' for more information.
+
+The function returns the new value of `org-element--cache-change-warning'."
   (when (org-element--cache-active-p)
     (org-with-wide-buffer
      (setq org-element--cache-change-tic (buffer-chars-modified-tick))
@@ -5917,12 +5920,21 @@ text.  See `before-change-functions' for more information."
      (let ((bottom (save-excursion (goto-char end) (line-end-position))))
        (setq org-element--cache-change-warning
 	     (save-match-data
-	       (if (and (org-with-limited-levels (org-at-heading-p))
-			(= (line-end-position) bottom))
-		   'headline
-		 (let ((case-fold-search t))
-		   (re-search-forward
-		    org-element--cache-sensitive-re bottom t)))))))))
+               (let ((case-fold-search t))
+                 (when (re-search-forward
+		        org-element--cache-sensitive-re bottom t)
+                   (goto-char beg)
+                   (beginning-of-line)
+                   (let (min-level)
+                     (cl-loop while (re-search-forward
+                                     (rx-to-string
+                                      (if min-level
+                                          `(and bol (repeat 1 ,(1- min-level) "*") " ")
+                                        `(and bol (+ "*") " ")))
+                                     bottom t)
+                              do (setq min-level (1- (length (match-string 0))))
+                              until (= min-level 1))
+                     (or min-level t))))))))))
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
@@ -5939,28 +5951,21 @@ that range.  See `after-change-functions' for more information."
        (let ((top beg)
 	     (bottom (save-excursion (goto-char end) (line-end-position))))
 	 ;; Determine if modified area needs to be extended, according
-	 ;; to both previous and current state.  We make a special
-	 ;; case for headline editing: if a headline is modified but
-	 ;; not removed, do not extend.
-	 (when org-element--cache-change-warning
-           ;; (pcase org-element--cache-change-warning
-           ;;   ;; Modified area contained `org-element--cache-sensitive-re'
-           ;;   ;; before the modification.  See
-           ;;   ;; `org-element--cache-before-change'.
-	   ;;   (`t t)
-	   ;;   (`headline
-	   ;;    (not (and (org-with-limited-levels (org-at-heading-p))
-	   ;;            (= (line-end-position) bottom))))
-	   ;;   (_
-	   ;;    (let ((case-fold-search t))
-           ;;      ;; Modified area contains `org-element--cache-sensitive-re'
-           ;;      ;; after the modification.  Element structure
-           ;;      ;; might be broken, i.e. new headline insered in
-           ;;      ;; the middle.
-	   ;;      (re-search-forward
-	   ;;       org-element--cache-sensitive-re bottom t))))
+	 ;; to both previous and current state.
+         (when (or
+                ;; Modified area contained `org-element--cache-sensitive-re'
+                ;; before the modification.  See
+                ;; `org-element--cache-before-change'.
+                org-element--cache-change-warning
+                ;; Modified area might contain `org-element--cache-sensitive-re'
+                ;; after the modification.  Re-check.
+                (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
+                      (prog1 (org-element--cache-before-change beg end)
+                        (setq org-element--cache-change-warning
+                              (min org-element--cache-change-warning
+                                   org-element--cache-change-warning-before))))))
 	   ;; Effectively extend modified area.
-	   (org-with-limited-levels
+           (org-with-limited-levels
 	    (setq top (progn (goto-char top)
                              (when (outline-previous-heading) (forward-line))
                              (point)))
@@ -5969,7 +5974,7 @@ that range.  See `after-change-functions' for more information."
             ;; Previous setq moved `top' beying the edited region.
             (when (> top beg) (setq top beg))
 	    (setq bottom (progn (goto-char bottom)
-				(if (outline-next-heading) (1- (point))
+			        (if (outline-next-heading) (1- (point))
                                   (point))))))
 	 ;; Store synchronization request.
 	 (let ((offset (- end beg pre)))
@@ -6008,11 +6013,9 @@ starting after the returned may still be affected by the changes."
 			        (or (> cend end)
                                     (and (= cend end)
                                          (= (+ end offset) (point-max))))
-                                ;; Any robust block is invalid when it
-                                ;; contains a headline.
-                                (org-with-wide-buffer
-                                 (goto-char cbeg)
-                                 (not (re-search-forward org-outline-regexp-bol (+ cend offset) t))))))
+                                ;; Headline was inserted.  This
+                                ;; is unconditionally non-robust change.
+                                (not org-element--cache-change-warning))))
                     (and (memq type '(headline section org-data))
 		         (let ((rbeg (org-element-property :robust-begin up))
                                (rend (org-element-property :robust-end up)))
@@ -6021,12 +6024,18 @@ starting after the returned may still be affected by the changes."
 			        (or (> rend end)
                                     (and (= rend end)
                                          (= (+ end offset) (point-max))))
-                                ;; Any heading/section is invalidated when
-                                ;; it contains a headline with lower level.
-                                (org-with-wide-buffer
-                                 (goto-char rbeg)
-                                 (when-let ((level (org-current-level)))
-                                   (not (re-search-forward (rx-to-string `(and bol (** 1 ,level "*") " ")) (+ rend offset) t)))))))))
+                                ;; Headline might be inserted.  This
+                                ;; is non-robust change when `up' is a
+                                ;; headline or `section' with `>'
+                                ;; level compared to the inserted
+                                ;; headline.
+                                (or (not (memq type '(headline section)))
+                                    (not (numberp org-element--cache-change-warning))
+                                    (> org-element--cache-change-warning
+                                       (org-element-property :level
+                                                  (org-element-lineage up
+                                                            '(headline)
+                                                            'with-self)))))))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
 	      (org-element--cache-shift-positions
