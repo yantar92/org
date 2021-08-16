@@ -6002,7 +6002,7 @@ starting after the returned may still be affected by the changes."
                                 ;; contains a headline.
                                 (org-with-wide-buffer
                                  (goto-char cbeg)
-                                 (not (re-search-forward org-outline-regexp-bol cend t))))))
+                                 (not (re-search-forward org-outline-regexp-bol (+ cend offset) t))))))
                     (and (memq type '(headline section org-data))
 		         (let ((rbeg (org-element-property :robust-begin up))
                                (rend (org-element-property :robust-end up)))
@@ -6016,7 +6016,7 @@ starting after the returned may still be affected by the changes."
                                 (org-with-wide-buffer
                                  (goto-char rbeg)
                                  (when-let ((level (org-current-level)))
-                                   (not (re-search-forward (rx-to-string `(and bol (>= ,(1+ level) "*") " ")) rend t)))))))))
+                                   (not (re-search-forward (rx-to-string `(and bol (** 1 ,level "*") " ")) (+ rend offset) t)))))))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
 	      (org-element--cache-shift-positions
