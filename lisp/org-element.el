@@ -5167,14 +5167,10 @@ During phase 0, NEXT is the key of the first element to be
 removed, BEG and END is buffer position delimiting the
 modifications.  Elements starting between them (inclusive) are
 removed.  So are elements whose parent is removed.  PARENT, when
-non-nil, is the parent of the first element to be removed.
+non-nil, is the common parent of all the elements between BEG and END.
 
-The meaning of NEXT is a parent element outside BEG END that is
-nevertheless affected by the changes and may need to be
-extended/shrinked, even though it's containing elements may not
-necessarily need to be removed.  For example, appending a subheading
-at the end of buffer will require extending parent heading, while
-other subheadings do not need to be re-parsed.
+It is guaranteed that NEXT lays within BEG END and no element starting
+before END ends after END.
 
 During phase 1, NEXT is the key of the next known element in
 cache and BEG its beginning position.  Parse buffer between that
@@ -6001,7 +5997,10 @@ modifications are preserved and updated according to the
 changes.  In the latter case, the returned element is the outermost
 non-robust element affected by the changes.  Note that the returned
 element may end before END position in which case some cached element
-starting after the returned may still be affected by the changes."
+starting after the returned may still be affected by the changes.
+
+Also, when there no elements in cache before BEG, return first known
+element in cache (it may start after END)."
   (let* ((elements (org-element--cache-find (1- beg) 'both))
 	 (before (car elements))
 	 (after (cdr elements)))
@@ -6128,13 +6127,13 @@ change, as an integer."
       (when next (org-element--cache-sync (current-buffer) end beg))
       (let ((first (org-element--cache-for-removal beg end offset)))
 	(if first
-	    (push (let ((beg (org-element-property :begin first))
+	    (push (let ((first-beg (org-element-property :begin first))
 			(key (org-element--cache-key first)))
 		    (cond
 		     ;; When changes happen before the first known
 		     ;; element, re-parent and shift the rest of the
 		     ;; cache.
-		     ((> beg end) (vector key beg nil offset nil 1))
+		     ((> first-beg end) (vector key first-beg nil offset nil 1))
 		     ;; Otherwise, we find the first non robust
 		     ;; element containing END.  All elements between
 		     ;; FIRST and this one are to be removed.
@@ -6144,21 +6143,24 @@ change, as an integer."
                      ;; region containing FIRST.
 		     ((let ((first-end (org-element-property :end first)))
 			(and (>= first-end end)
-                             ;; FIXME: According to `org-element--cache-sync-requests'
-                             ;; docstring, (aref 4 request) must be the
-                             ;; parent of the first element to be removed.
-			     (vector key beg first-end offset first 0))))
+			     (vector key first-beg first-end offset first 0))))
 		     (t
+                      ;; Now, FIRST is the first element after BEG.
+                      ;; However, FIRST ends before END and there
+                      ;; might be another ELEMENT before END that
+                      ;; spans beyond END.  If there is such element,
+                      ;; we need to extend the region to include
+                      ;; common parent of FIRST and ELEMENT.
 		      (let* ((element (org-element--cache-find end))
-			     (end (org-element-property :end element))
+			     (element-end (org-element-property :end element))
 			     (up element))
 			(while (and (setq up (org-element-property :parent up))
-				    (>= (org-element-property :begin up) beg))
-			  (setq end (org-element-property :end up)
+				    (>= (org-element-property :begin up) first-beg))
+			  (setq element-end (org-element-property :end up)
 				element up))
                         ;; Extend region to remove elements to parent
                         ;; of the FIRST.
-			(vector key beg end offset element 0)))))
+			(vector key first-beg element-end offset element 0)))))
 		  org-element--cache-sync-requests)
 	  ;; No element to remove.  No need to re-parent either.
 	  ;; Simply shift additional elements, if any, by OFFSET.
