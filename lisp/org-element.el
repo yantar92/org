@@ -1192,7 +1192,7 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                   :mode 'first-section)
             (org-element--get-global-node-properties))))))
 
-(defun org-element-org-data-interpreter (org-data contents)
+(defun org-element-org-data-interpreter (_ contents)
   "Interpret ORG-DATA element as Org syntax.
 CONTENTS is the contents of the element."
   contents)
