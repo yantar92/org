@@ -44,6 +44,8 @@
 (declare-function org-in-archived-heading-p "org" (&optional no-inheritance))
 (declare-function outline-previous-heading "outline" ())
 
+(defvar org-id-link-to-org-use-id)
+
 (defcustom org-babel-tangle-lang-exts
   '(("emacs-lisp" . "el")
     ("elisp" . "el"))
