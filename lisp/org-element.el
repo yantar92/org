@@ -5141,6 +5141,9 @@ seconds.")
   "Duration, as a time value, of the pause between synchronizations.
 See `org-element-cache-sync-duration' for more information.")
 
+(defvar org-element--cache-self-verify t
+  "Activate extra consistency for the cache.
+This will cause performance degradation.")
 
 ;;;; Data Structure
 
@@ -5428,10 +5431,21 @@ Assume ELEMENT belongs to cache and that a cache is active."
       (and
        ;; This should not happen, but if it is, would be better to know
        ;; where it happens.
-       (warn "org-element-cache: Failed to delete %S element in %S at %S"
-             (org-element-type element)
-             (current-buffer)
-             (org-element-property :begin element))
+       (if-let ((element-in-tree
+                 (catch :found
+                   (avl-tree-mapc
+                    (lambda (data)
+                      (when (equal data element)
+                        (throw :found t)))
+                    org-element--cache))))
+           (warn "org-element-cache: Failed to delete %S element in %S at %S. The element is in cache."
+                 (org-element-type element)
+                 (current-buffer)
+                 (org-element-property :begin element))
+         (warn "org-element-cache: Failed to delete %S element in %S at %S. The element is not in cache."
+               (org-element-type element)
+               (current-buffer)
+               (org-element-property :begin element)))
        (org-element-cache-reset)
        (throw 'quit nil))))
 
@@ -6266,6 +6280,19 @@ element ending there."
                       (warn "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
                       (org-element-cache-reset)
                       (org-element--parse-to pom))))))
+    ;; Verify correct parent for the element.
+    (when (and org-element--cache-self-verify
+               (derived-mode-p 'org-mode)
+               (org-element-property :parent element)
+               (eq 'headline (org-element-property :parent element)))
+      (org-with-point-at (org-element-property :begin element)
+        (org-up-heading-safe)
+        (unless (= (point) (org-element-property :begin (org-element-property :parent element)))
+          (warn "org-element-cache: Cached element has wrong parent. Resetting.\n The element is: %S\n The real parent is: %S"
+                element
+                (org-element--current-element))
+          (org-element-cache-reset)
+          (setq element (org-element--parse-to pom)))))
     (unless (eq 'org-data (org-element-type element))
       (unless (and cached-only
                    (not (eq pom (org-element-property :begin element))))
