@@ -5369,7 +5369,10 @@ the cache."
 	 ((> begin pos)
 	  (setq upper element
 		node (avl-tree--node-left node)))
-	 ((< begin pos)
+	 ((or (< begin pos)
+              ;; If the element is section or org-data, we also need
+              ;; to check the following element.
+              (memq (org-element-type element) '(section org-data)))
 	  (setq lower element
 		node (avl-tree--node-right node)))
 	 ;; We found an element in cache starting at POS.  If `side'
@@ -6255,11 +6258,12 @@ element ending there."
                       (warn "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
                       (org-element-cache-reset)
                       (org-element--parse-to pom))))))
-    (unless (and cached-only
-                 (not (eq pom (org-element-property :begin element))))
-      (if (not (eq (org-element-type element) 'section))
-          element
-        (org-element-at-point (1+ pom))))))
+    (unless (eq 'org-data (org-element-type element))
+      (unless (and cached-only
+                   (not (eq pom (org-element-property :begin element))))
+        (if (not (eq (org-element-type element) 'section))
+            element
+          (org-element-at-point (1+ pom) cached-only))))))
 
 ;;;###autoload
 (defun org-element-context (&optional element)
