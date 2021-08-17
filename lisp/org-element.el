@@ -5526,13 +5526,13 @@ updated before current modification are actually submitted."
 	          (aset next 2 (aref request 2)))
 	        (setq org-element--cache-sync-requests
 		      (cdr org-element--cache-sync-requests)))
-              ;; ;; Finally, fill the holes left in the cache.
-              ;; (unless threshold
-              ;;   ;; FIXME: This lets Emacs exit infinite loops I still
-              ;;   ;; need to figure out.
-              ;;   (let (inhibit-quit)
-              ;;     (org-element--parse-to (or future-change (point-max))
-              ;;                 nil time-limit 'recursive)))
+              ;; Finally, fill the holes left in the cache.
+              (unless threshold
+                ;; FIXME: This lets Emacs exit infinite loops I still
+                ;; need to figure out.
+                (let (inhibit-quit)
+                  (org-element--parse-to (or future-change (point-max))
+                              nil time-limit 'recursive)))
               ))
 	  ;; If more requests are awaiting, set idle timer accordingly.
 	  ;; Otherwise, reset keys.
@@ -5801,6 +5801,14 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
         ;; from NEXT, which is located after CACHED or its higher
         ;; ancestor not containing point.
         (t
+         (when recursive
+           (avl-tree-mapc
+            (lambda (element)
+              (when (and (org-element-property :contents-end element)
+                         (<= (org-element-property :contents-end element) pos))
+                (org-element--parse-to (1- (org-element-property :contents-end element))
+                            syncp time-limit nil)))
+            org-element--cache))
          (let ((up cached)
                (pos (if (= (point-max) pos) (1- pos) pos)))
            (while (and up (<= (org-element-property :end up) pos))
