@@ -5533,14 +5533,11 @@ updated before current modification are actually submitted."
 	          (aset next 2 (aref request 2)))
 	        (setq org-element--cache-sync-requests
 		      (cdr org-element--cache-sync-requests)))
-              ;; Finally, fill the holes left in the cache.
+              ;; Finally, fill the holes left in the cache.  Do it
+              ;; only when called on timer to avoid blocking Emacs.
               (unless threshold
-                ;; FIXME: This lets Emacs exit infinite loops I still
-                ;; need to figure out.
-                (let (inhibit-quit)
-                  (org-element--parse-to (or future-change (point-max))
-                              nil time-limit 'recursive)))
-              ))
+                (org-element--parse-to (or future-change (point-max))
+                            nil time-limit 'recursive))))
 	  ;; If more requests are awaiting, set idle timer accordingly.
 	  ;; Otherwise, reset keys.
 	  (if org-element--cache-sync-requests
