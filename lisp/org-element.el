@@ -5413,15 +5413,15 @@ the cache."
       ;; During synchronization, first build an appropriate key for
       ;; the new element so `avl-tree-enter' can insert it at the
       ;; right spot in the cache.
-      (let ((keys (org-element--cache-find
-		   (org-element-property :begin element) 'both)))
-	(puthash element
-		 (org-element--cache-generate-key
-		  (and (car keys) (org-element--cache-key (car keys)))
-		  (cond ((cdr keys) (org-element--cache-key (cdr keys)))
-			(org-element--cache-sync-requests
-			 (aref (car org-element--cache-sync-requests) 0))))
-		 org-element--cache-sync-keys)))
+      (let* ((keys (org-element--cache-find
+		    (org-element-property :begin element) 'both))
+             (new-key (org-element--cache-generate-key
+		       (and (car keys) (org-element--cache-key (car keys)))
+		       (cond ((cdr keys) (org-element--cache-key (cdr keys)))
+			     (org-element--cache-sync-requests
+			      (aref (car org-element--cache-sync-requests) 0))))))
+        (org-element-put-property element :cache-key new-key)
+	(puthash element new-key org-element--cache-sync-keys)))
     (avl-tree-enter org-element--cache element)))
 
 (defsubst org-element--cache-remove (element)
@@ -5431,21 +5431,13 @@ Assume ELEMENT belongs to cache and that a cache is active."
       (and
        ;; This should not happen, but if it is, would be better to know
        ;; where it happens.
-       (if-let ((element-in-tree
-                 (catch :found
-                   (avl-tree-mapc
-                    (lambda (data)
-                      (when (equal data element)
-                        (throw :found t)))
-                    org-element--cache))))
-           (warn "org-element-cache: Failed to delete %S element in %S at %S. The element is in cache."
-                 (org-element-type element)
-                 (current-buffer)
-                 (org-element-property :begin element))
-         (warn "org-element-cache: Failed to delete %S element in %S at %S. The element is not in cache."
-               (org-element-type element)
-               (current-buffer)
-               (org-element-property :begin element)))
+       (warn "org-element-cache: Failed to delete %S element in %S at %S. The element cache key was %S. The cache key after shifts was %S."
+             (org-element-type element)
+             (current-buffer)
+             (org-element-property :begin element)
+             (org-element-property :cache-key element)
+             (or (org-element-property :cache-key-shifted element)
+                 "unchanged"))
        (org-element-cache-reset)
        (throw 'quit nil))))
 
@@ -5495,6 +5487,7 @@ Properties are modified by side-effect."
                     :post-affiliated :robust-begin :robust-end))
       (let ((value (and (or (not props) (memq key props))
 			(plist-get properties key))))
+        (when (and value (eq key :begin)) (plist-put properties :cache-key-shifted (+ offset value)))
 	(and value (plist-put properties key (+ offset value)))))))
 
 (defun org-element--cache-sync (buffer &optional threshold future-change)
