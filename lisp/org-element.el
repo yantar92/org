@@ -1065,8 +1065,8 @@ Assume point is at beginning of the headline."
                                        (goto-char (match-end 0)))
                                      (point))))
            (robust-end (and robust-begin
-                            (when (> (1- contents-end) robust-begin)
-                              (1- contents-end)))))
+                            (when (>= contents-end robust-begin)
+                              contents-end))))
       (unless robust-end (setq robust-begin nil))
       (let ((headline
 	     (list 'headline
@@ -1705,8 +1705,7 @@ containing `:begin', `:end', `:contents-begin', `contents-end',
 				    (line-beginning-position 2)))
            (robust-end (when (> (1- pos-before-blank) begin)
                          (1- pos-before-blank)))
-           (robust-begin (when robust-end begin))
-           )
+           (robust-begin (when robust-end begin)))
       (list 'section
 	    (list :begin begin
 		  :end end
