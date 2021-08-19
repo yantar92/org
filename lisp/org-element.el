@@ -5861,6 +5861,13 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                    mode (org-element--next-mode (org-element-property :mode element) (org-element-type element) nil)
                    up (org-element-property :parent up)
                    next (point)))
+           ;; Avoid parsing headline siblings above.
+           (let ((beg-heading (org-with-point-at pos
+                                (org-with-limited-levels (outline-previous-heading)))))
+             (when (and next beg-heading
+                        (< next beg-heading))
+               (setq next beg-heading
+                     mode nil)))
            (when up (setq element up)))))
        ;; Parse successively each element until we reach POS.
        (let ((end (or (org-element-property :end element) (point-max)))
@@ -6071,9 +6078,7 @@ element in cache (it may start after END)."
                                (rend (org-element-property :robust-end up)))
 		           (and rbeg rend
                                 (<= rbeg beg)
-			        (or (> rend end)
-                                    (and (= rend end)
-                                         (= (+ end offset) (point-max))))))
+			        (>= rend end)))
                          (pcase type
                            ;; Sensitive change in section.  Need to
                            ;; re-parse.
