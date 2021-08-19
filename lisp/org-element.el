@@ -6071,7 +6071,8 @@ element in cache (it may start after END)."
                                (rend (org-element-property :robust-end up)))
 		           (and rbeg rend
                                 (<= rbeg beg)
-			        (>= rend end)))
+                                (and (= rend end)
+                                     (= (+ end offset) (point-max)))))
                          (pcase type
                            ;; Sensitive change in section.  Need to
                            ;; re-parse.
