@@ -5844,15 +5844,6 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
         ;; from NEXT, which is located after CACHED or its higher
         ;; ancestor not containing point.
         (t
-         ;; Parse cached element before POS reqursively if requested.
-         (when recursive
-           (avl-tree-mapc
-            (lambda (element)
-              (when (and (org-element-property :contents-end element)
-                         (<= (org-element-property :contents-end element) pos))
-                (org-element--parse-to (1- (org-element-property :contents-end element))
-                            syncp time-limit nil)))
-            org-element--cache))
          (let ((up cached)
                (pos (if (= (point-max) pos) (1- pos) pos)))
            (while (and up (<= (org-element-property :end up) pos))
@@ -5861,13 +5852,6 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                    mode (org-element--next-mode (org-element-property :mode element) (org-element-type element) nil)
                    up (org-element-property :parent up)
                    next (point)))
-           ;; Avoid parsing headline siblings above.
-           (let ((beg-heading (org-with-point-at pos
-                                (org-with-limited-levels (outline-previous-heading)))))
-             (when (and next beg-heading
-                        (< next beg-heading))
-               (setq next beg-heading
-                     mode nil)))
            (when up (setq element up)))))
        ;; Parse successively each element until we reach POS.
        (let ((end (or (org-element-property :end element) (point-max)))
@@ -5907,7 +5891,15 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                           (org-element-property :contents-end element))
                  (org-element--parse-to (1- (org-element-property :contents-end element))
                              syncp time-limit recursive))
-	       (goto-char elem-end)
+               ;; Avoid parsing headline siblings above.
+               (if (eq type 'headline)
+                   (goto-char (org-with-point-at pos
+                                (re-search-backward
+                                 (rx-to-string
+                                  `(and bol (repeat ,(org-element-property :level element) "*") " "))
+                                 elem-end t)
+                                (point)))
+	         (goto-char elem-end))
 	       (setq mode (org-element--next-mode mode type nil)))
 	      ;; A non-greater element contains point: return it.
 	      ((not (memq type org-element-greater-elements))
