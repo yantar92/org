@@ -18251,7 +18251,7 @@ Also align node properties according to `org-property-format'."
                      (skip-chars-backward "\n")
                      (or (org-at-heading-p)
                          (looking-back ":END:.*" (point-at-bol))))))
-    (let* ((element (save-excursion (beginning-of-line) (org-element-at-point)))
+    (let* ((element (save-excursion (beginning-of-line) (org-element-at-point-no-context)))
 	   (type (org-element-type element)))
       (cond ((and (memq type '(plain-list item))
 		  (= (line-beginning-position)
@@ -18309,7 +18309,7 @@ assumed to be significant there."
 	  (end (copy-marker end)))
       (while (< (point) end)
 	(if (or (looking-at-p " \r\t\n") (org-at-heading-p)) (forward-line)
-	  (let* ((element (org-element-at-point))
+	  (let* ((element (org-element-at-point-no-context))
 		 (type (org-element-type element))
 		 (element-end (copy-marker (org-element-property :end element)))
 		 (ind (org--get-expected-indentation element nil)))
@@ -18415,7 +18415,7 @@ assumed to be significant there."
 	    (beginning-of-line)
 	    (looking-at-p org-drawer-regexp))
     (user-error "Not at a drawer"))
-  (let ((element (org-element-at-point)))
+  (let ((element (org-element-at-point-no-context)))
     (unless (memq (org-element-type element) '(drawer property-drawer))
       (user-error "Not at a drawer"))
     (org-with-wide-buffer
@@ -18431,7 +18431,7 @@ assumed to be significant there."
 	    (let ((case-fold-search t))
 	      (looking-at-p "[ \t]*#\\+\\(begin\\|end\\)_")))
     (user-error "Not at a block"))
-  (let ((element (org-element-at-point)))
+  (let ((element (org-element-at-point-no-context)))
     (unless (memq (org-element-type element)
 		  '(comment-block center-block dynamic-block example-block
 				  export-block quote-block special-block

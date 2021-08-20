@@ -55,7 +55,8 @@
 (declare-function org-cycle "org" (&optional arg))
 (declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
 (declare-function org-edit-src-exit "org-src"  ())
-(declare-function org-element-at-point "org-element" ())
+(declare-function org-element-at-point "org-element" (&optional pom cached-only))
+(declare-function org-element-at-point-no-context "org-element" (&optional pom))
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-normalize-string "org-element" (s))
 (declare-function org-element-property "org-element" (property element))
@@ -312,7 +313,7 @@ environment, to override this check."
   "Execute BODY if point is in a source block and return t.
 
 Otherwise do nothing and return nil."
-  `(if (memq (org-element-type (org-element-context))
+  `(if (memq (org-element-type (org-element-context (org-element-at-point-no-context)))
 	     '(inline-src-block src-block))
        (progn
 	 ,@body

@@ -6317,6 +6317,16 @@ element ending there."
           (org-element-at-point (1+ pom) cached-only))))))
 
 ;;;###autoload
+(defsubst org-element-at-point-no-context (&optional pom)
+  "Quickly find element at point or POM.
+
+It is a faster version of `org-element-at-point' that is not
+guaranteed to return correct `:parent' properties even when cache is
+enabled."
+  (or (org-element-at-point pom 'cached-only)
+      (let (org-element-use-cache) (org-element-at-point pom))))
+
+;;;###autoload
 (defun org-element-context (&optional element)
   "Return smallest element or object around point.
 
