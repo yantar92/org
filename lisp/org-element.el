@@ -5925,7 +5925,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 			        (and (= cbeg pos)
 				     (not (memq type '(plain-list table)))))
 			    (or (> cend pos)
-			        (and (= (point-max) pos)
+			        (and (<= (save-excursion (goto-char (point-max)) (skip-chars-backward " \r\n\t") (point)) pos)
                                      (or (= cend pos)
                                          (let ((post-blank
                                                 (org-element-property :post-blank element)))
