@@ -7644,9 +7644,11 @@ call CMD."
   (save-match-data
     (when force-refresh (org-refresh-category-properties))
     (let ((pos (or pos (point))))
-      (or (get-text-property pos 'org-category)
-	  (progn (org-refresh-category-properties)
-		 (get-text-property pos 'org-category))))))
+      (or (and (org-element--cache-active-p)
+               (org-entry-get-with-inheritance "CATEGORY"))
+          (get-text-property pos 'org-category)
+          (progn (org-refresh-category-properties)
+	         (get-text-property pos 'org-category))))))
 
 ;;; Refresh properties
 
@@ -7718,13 +7720,15 @@ the whole buffer."
        ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
        ;; keyword.  If none is found, fall-back to `org-category' or
        ;; buffer file name, or set it by the document property drawer.
+       ;; FIXME: We should not need this when there is org-element-cache
+       ;; and org-data is properly parsed.
        (put-text-property
 	(point-min) (point-max)
 	'org-category
 	(catch 'buffer-category
 	  (goto-char (point-max))
 	  (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-	    (let ((element (org-element-at-point)))
+	    (let ((element (org-element-at-point-no-context)))
 	      (when (eq (org-element-type element) 'keyword)
 		(throw 'buffer-category
 		       (org-element-property :value element)))))
@@ -7733,18 +7737,19 @@ the whole buffer."
        ;; property drawers in the outline.  If category is found in
        ;; the property drawer for the whole buffer that value
        ;; overrides the keyword-based value set above.
-       (goto-char (point-min))
-       (let ((regexp (org-re-property "CATEGORY")))
-	 (while (re-search-forward regexp nil t)
-	   (let ((value (match-string-no-properties 3)))
-	     (when (org-at-property-p)
-	       (put-text-property
-		(save-excursion (org-back-to-heading-or-point-min t))
-		(save-excursion (if (org-before-first-heading-p)
-				    (point-max)
-				  (org-end-of-subtree t t)))
-		'org-category
-		value)))))))))
+       (unless (org-element--cache-active-p)
+         (goto-char (point-min))
+         (let ((regexp (org-re-property "CATEGORY")))
+           (while (re-search-forward regexp nil t)
+             (let ((value (match-string-no-properties 3)))
+               (when (org-at-property-p)
+                 (put-text-property
+        	  (save-excursion (org-back-to-heading-or-point-min t))
+        	  (save-excursion (if (org-before-first-heading-p)
+        			      (point-max)
+        			    (org-end-of-subtree t t)))
+        	  'org-category
+        	  value))))))))))
 
 (defun org-refresh-stats-properties ()
   "Refresh stats text properties in the buffer."
@@ -10904,7 +10909,7 @@ See also `org-scan-tags'."
 		     (propp
 		      (let* ((gv (pcase (upcase (match-string 5 term))
 				   ("CATEGORY"
-				    '(get-text-property (point) 'org-category))
+				    '(org-get-category (point)))
 				   ("TODO" 'todo)
 				   (p `(org-cached-entry-get nil ,p))))
 			     (pv (match-string 7 term))
