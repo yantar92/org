@@ -12171,9 +12171,10 @@ Value is a list whose car is the base value for PROPERTY and cdr
 a list of accumulated values.  Return nil if neither is found in
 the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
-  (if-let ((element (or element (and (org-element--cache-active-p)
-                                     (org-element-at-point nil 'cached)))))
-      (let* ((element (or element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
+  (if-let ((element (or element
+                        (and (org-element--cache-active-p)
+                             (org-element-at-point)))))
+      (let* ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self))
              (base-value (org-element-property (intern (concat ":" (upcase property))) element))
              (base-value (if literal-nil base-value (org-not-nil base-value)))
              (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) element))
@@ -12346,7 +12347,7 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
    (let (value at-bob-no-heading)
      (catch 'exit
        (if-let ((element (and (org-element--cache-active-p)
-                              (org-element-at-point nil 'cached))))
+                              (org-element-at-point))))
            (let ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
              (while t
                (let* ((v (org--property-local-values property literal-nil element))
