@@ -5549,7 +5549,7 @@ updated before current modification are actually submitted."
     (with-current-buffer buffer
       ;; Check if the buffer have been changed outside visibility of
       ;; `org-element--cache-before-change' and `org-element--cache-after-change'.
-      (if (/= erg-element--cache-change-tic
+      (if (/= org-element--cache-change-tic
              (buffer-chars-modified-tick))
           (progn
             (warn "org-element-cache: Unregistered buffer modifications detected. Resetting")
