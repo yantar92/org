@@ -6368,7 +6368,8 @@ element ending there."
     (if (not org-element--cache) (org-element-cache-reset)
       (org-element--cache-sync (current-buffer) pom)))
   (let ((element (if cached-only
-                     (org-element--cache-find pom)
+                     (and (org-element--cache-active-p)
+                          (org-element--cache-find pom))
                    (condition-case err
                        (org-element--parse-to pom)
                      ;; FIXME: Detect cache corruption until fixed.
@@ -6378,6 +6379,7 @@ element ending there."
                       (org-element--parse-to pom))))))
     ;; Verify correct parent for the element.
     (when (and org-element--cache-self-verify
+               (org-element--cache-active-p)
                (derived-mode-p 'org-mode)
                (org-element-property :parent element)
                (eq 'headline (org-element-property :parent element)))
