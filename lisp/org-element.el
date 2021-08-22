@@ -6271,11 +6271,18 @@ change, as an integer."
 			     (up element))
 			(while (and (setq up (org-element-property :parent up))
 				    (>= (org-element-property :begin up) first-beg))
-			  (setq element-end (org-element-property :end up)
+                          ;; Note that UP might have been already
+                          ;; shifted if it is a robust element.  After
+                          ;; deletion, it can put it's end before yet
+                          ;; unprocessed ELEMENT.
+			  (setq element-end (max (org-element-property :end up) element-end)
 				element up))
-                        ;; Extend region to remove elements to parent
+                        ;; Extend region to remove elements between
+                        ;; beginning of first and the end of outermost
+                        ;; element starting before END but after
+                        ;; beginning of first.
                         ;; of the FIRST.
-			(vector key first-beg element-end offset element 0)))))
+			(vector key first-beg element-end offset up 0)))))
 		  org-element--cache-sync-requests)
 	  ;; No element to remove.  No need to re-parent either.
 	  ;; Simply shift additional elements, if any, by OFFSET.
