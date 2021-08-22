@@ -5573,7 +5573,15 @@ updated before current modification are actually submitted."
 	        ;; Request processed.  Merge current and next offsets and
 	        ;; transfer ending position.
 	        (when next
+                  ;; The following requests can only be either phase 1
+                  ;; or phase 2 requests.  We need to let them know
+                  ;; that additional shifting happened ahead of them.
 	          (cl-incf (org-element--request-offset next) (org-element--request-offset request))
+                  ;; FIXME: END part of the request only matters for
+                  ;; phase 0 requests.  However, the only possible
+                  ;; phase 0 request must be the first request in the
+                  ;; list all the time.  END position should be
+                  ;; unused.
                   (setf (org-element--request-end next) (org-element--request-end request)))
 	        (setq org-element--cache-sync-requests
 		      (cdr org-element--cache-sync-requests)))))
