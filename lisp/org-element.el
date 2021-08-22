@@ -5903,7 +5903,10 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
              ;; Nothing to parse (i.e. empty file).
              (unless element (throw 'exit parent))
              ;; FIXME: Special case when parent is a headline and we
-             ;; encountered planning line or property drawer.
+             ;; encountered planning line or property drawer.  If
+             ;; headline was cached and the property drawer/planning
+             ;; was added, we may need to update the robust bounds of
+             ;; the headline.
              (when (and (org-element--cache-active-p)
                         (memq (org-element-type (org-element-property :parent parent)) '(headline org-data))
                         (memq (org-element-type element) '(planning property-drawer))
@@ -5911,9 +5914,9 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                             (> (org-element-property :begin element) (org-element-property :robust-begin (org-element-property :parent parent)))))
                (org-with-point-at (org-element-property :begin (org-element-property :parent parent))
                  (org-element-set-element (org-element-property :parent parent)
-                               (pcase (org-element-type (org-element-property :parent parent))
-                                 (`headline (org-element-headline-parser))
-                                 (`org-data (org-element-org-data-parser))))))
+                                          (pcase (org-element-type (org-element-property :parent parent))
+                                            (`headline (org-element-headline-parser))
+                                            (`org-data (org-element-org-data-parser))))))
 	     (org-element-put-property element :parent parent)
 	     (org-element--cache-put element))
 	   (let ((elem-end (org-element-property :end element))
@@ -5929,14 +5932,20 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                  (org-element--parse-to (1- (org-element-property :contents-end element))
                              syncp time-limit recursive))
                ;; Avoid parsing headline siblings above.
-               (if (eq type 'headline)
-                   (goto-char (org-with-point-at pos
-                                (re-search-backward
-                                 (rx-to-string
-                                  `(and bol (repeat ,(org-element-property :level element) "*") " "))
-                                 elem-end t)
-                                (point)))
-	         (goto-char elem-end))
+               (goto-char elem-end)
+               (when (eq type 'headline)
+                 (unless (when (and (/= 1 (org-element-property :level element))
+                                    (re-search-forward
+                                     (rx-to-string
+                                      `(and bol (repeat 1 ,(1- (org-element-property :level element)) "*") " "))
+                                     pos t))
+                           (beginning-of-line)
+                           t)
+                   (goto-char pos)
+                   (re-search-backward
+                    (rx-to-string
+                     `(and bol (repeat ,(org-element-property :level element) "*") " "))
+                    elem-end t)))
 	       (setq mode (org-element--next-mode mode type nil)))
 	      ;; A non-greater element contains point: return it.
 	      ((not (memq type org-element-greater-elements))

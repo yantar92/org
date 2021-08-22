@@ -4116,6 +4116,114 @@ P0
 	  (beginning-of-line)
 	  (org-element-type (org-element-at-point)))))))
 
+(ert-deftest test-org-element/cache-headline ()
+  "Test basic expectations and common pitfalls for cached headings."
+  ;; Appending to final headline in a subtree.
+  (org-test-with-temp-text
+      "
+* Heading
+Aliquam erat volutpat.
+
+*** Subheading
+** Another
+** Final
+:PROPERTIES:
+:ID: some
+<point>:END:
+* Heading 2
+** End
+"
+    (let ((org-element-use-cache t))
+      (org-element-at-point)
+      (save-excursion
+        (goto-char (point-max))
+        (org-element-at-point))
+      (insert ":CATEOGORY: cat\n")
+      (search-backward "* Heading")
+      (should
+       (eq (org-element-property :end (org-element-at-point))
+           (save-excursion
+             (search-forward "* Heading 2")
+             (line-beginning-position))))
+      (search-forward "* Heading 2")
+      (beginning-of-line)
+      (insert "\n\n")
+      (search-backward "* Heading")
+      (should
+       (eq (org-element-property :end (org-element-at-point))
+           (save-excursion
+             (search-forward "* Heading 2")
+             (line-beginning-position))))))
+  ;; Appending at eob.
+  (org-test-with-temp-text
+      "
+* Heading
+*** Sub-heading
+** Another
+*** 1
+***** 2
+** 3
+ Aenean in sem ac leo mollis blandit.
+
+
+<point>"
+    (let ((org-element-use-cache t))
+      (org-element-at-point (point-max))
+      (insert "\n\nTest\n")
+      (search-backward "* Heading")
+      (should
+       (eq (point-max)
+           (org-element-property :end (org-element-at-point))))))
+  ;; Breaking headline at eob.
+  (org-test-with-temp-text
+      "
+* Heading
+*** Sub-heading
+<point>"
+    (let ((org-element-use-cache t))
+      (org-element-at-point (point-max))
+      (insert "* heading 2")
+      (beginning-of-line)
+      (should
+       (eq (point-max)
+           (org-element-property :end (org-element-at-point))))
+      (delete-char 1)
+      (search-backward "* Heading")
+      (should
+       (eq (point-max)
+           (org-element-property :end (org-element-at-point))))))
+  ;; Inserting low-level headline in-between.
+  (org-test-with-temp-text
+      "
+* Heading
+*** Sub-heading
+<point>
+*** Sub-heading 2
+*** Sub-heading 3
+"
+    (let ((org-element-use-cache t))
+      (org-element-at-point (point-max))
+      (insert "** heading 2")
+      (search-forward "*** Sub-heading 2")
+      (should
+       (eq (org-element-property :parent (org-element-at-point))
+           (progn
+             (search-backward "** heading 2")
+             (org-element-at-point))))))
+  ;; Test when `org-element--cache-for-removal' modifies common parent
+  ;; (`org-data' in this case) around changed region.
+  (org-test-with-temp-text
+      "blah
+:DRAWER:
+<point>test
+:END:
+paragraph
+* headline"
+    (let ((org-element-use-cache t))
+      (org-element-at-point (point-max))
+      (delete-region (point) (point-max))
+      (should (eq 'paragraph (org-element-type (org-element-at-point)))))))
+
 (provide 'test-org-element)
 
 ;;; test-org-element.el ends here
