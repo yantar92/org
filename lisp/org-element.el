@@ -1048,7 +1048,17 @@ Assume point is at beginning of the headline."
 				    (string= org-footnote-section raw-value)))
 	   (standard-props (org-element--get-node-properties))
 	   (time-props (org-element--get-time-properties))
-	   (end (save-excursion (org-end-of-subtree t t)) )
+	   (end (save-excursion
+                  ;; Make sure that `org-end-of-subtree' does not try
+                  ;; to use cache.  The headline parser might be
+                  ;; called in the midst of cache processing.
+                  ;; FIXME: We cannot simply bind `org-element-use-cache' here
+                  ;; because apparently some magic related to lexical
+                  ;; scoping prevents `org-element--cache-active-p' call inside
+                  ;; `org-end-of-subtree' to use the overridden value
+                  ;; of `org-element-use-cache'.
+                  (cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
+                    (org-end-of-subtree t t))))
 	   (contents-begin (save-excursion
 			     (forward-line)
 			     (skip-chars-forward " \r\t\n" end)
