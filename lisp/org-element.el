@@ -6070,7 +6070,8 @@ that range.  See `after-change-functions' for more information."
                     org-element--cache-change-warning-before)))))
     ;; Store synchronization request.
     (let ((offset (- end beg pre)))
-      (org-element--cache-submit-request beg (- end offset) offset))
+      (save-match-data
+        (org-element--cache-submit-request beg (- end offset) offset)))
     ;; Activate a timer to process the request during idle time.
     (org-element--cache-set-timer (current-buffer))))
 
