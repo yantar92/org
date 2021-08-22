@@ -5576,12 +5576,7 @@ updated before current modification are actually submitted."
 	          (cl-incf (org-element--request-offset next) (org-element--request-offset request))
                   (setf (org-element--request-end next) (org-element--request-end request)))
 	        (setq org-element--cache-sync-requests
-		      (cdr org-element--cache-sync-requests)))
-              ;; Finally, fill the holes left in the cache.  Do it
-              ;; only when called on timer to avoid blocking Emacs.
-              (unless threshold
-                (org-element--parse-to (or future-change (point-max))
-                            nil time-limit 'recursive))))
+		      (cdr org-element--cache-sync-requests)))))
 	  ;; If more requests are awaiting, set idle timer accordingly.
 	  ;; Otherwise, reset keys.
 	  (if org-element--cache-sync-requests
