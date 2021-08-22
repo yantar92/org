@@ -22,7 +22,7 @@
 
 ;;; Macros
 
-(ert-deftest test-org/macro-replace-all ()
+(ert-deftest test-org-macro/macro-replace-all ()
   "Test `org-macro-replace-all' specifications."
   ;; Standard test.
   (should
