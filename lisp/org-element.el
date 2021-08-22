@@ -6090,8 +6090,8 @@ non-robust element affected by the changes.  Note that the returned
 element may end before END position in which case some cached element
 starting after the returned may still be affected by the changes.
 
-Also, when there no elements in cache before BEG, return first known
-element in cache (it may start after END)."
+Also, when there are no elements in cache before BEG, return first
+known element in cache (it may start after END)."
   (let* ((elements (org-element--cache-find (1- beg) 'both))
 	 (before (car elements))
 	 (after (cdr elements)))
@@ -6102,16 +6102,16 @@ element in cache (it may start after END)."
 	  (if (let ((type (org-element-type up)))
                 (or (and (memq type '( center-block dynamic-block
                                        quote-block special-block))
+                         ;; Sensitive change.  This is
+                         ;; unconditionally non-robust change.
+                         (not org-element--cache-change-warning)
 		         (let ((cbeg (org-element-property :contents-begin up))
                                (cend (org-element-property :contents-end up)))
 		           (and cbeg
                                 (<= cbeg beg)
 			        (or (> cend end)
                                     (and (= cend end)
-                                         (= (+ end offset) (point-max))))
-                                ;; Headline was inserted.  This
-                                ;; is unconditionally non-robust change.
-                                (not org-element--cache-change-warning))))
+                                         (= (+ end offset) (point-max)))))))
                     (and (memq type '(headline section org-data))
 		         (let ((rbeg (org-element-property :robust-begin up))
                                (rend (org-element-property :robust-end up)))
@@ -6139,17 +6139,44 @@ element in cache (it may start after END)."
                         (org-element-property :robust-end up))
                    '(:contents-end :end :robust-end)
                  '(:contents-end :end)))
-            (setq before up)
-	    (when robust-flag (setq robust-flag nil)))
+            (unless (or
+                     ;; UP is non-robust.  Yet, if UP is headline, flagging
+                     ;; everything inside for removal may be to
+                     ;; costly.  Instead, we should better re-parse only the
+                     ;; headline itself when possible.  If a headline is still
+                     ;; starting from old :begin position, we do not care that
+                     ;; its boundaries could have extended to shrinked - we
+                     ;; will re-parent and shift them anyway.
+                     ;; FIXME: This is actually slower when we,
+                     ;; i.e. are refiling a lot of small headings into
+                     ;; larger heading.
+                     (and (eq 'headline (org-element-type up)) nil ;; <- FIXME: Disabling for now
+                          ;; Headline is completely inside the
+                          ;; change. It might have been deleted.
+                          (not (and (>= (org-element-property :begin up) beg)
+                                  (<= (org-element-property :end up) end)))
+                          (let ((current (org-with-point-at (org-element-property :begin up)
+                                           (org-element--current-element (org-element-property :end up)))))
+                            (when (eq 'headline (org-element-type current))
+                              (org-element-set-element up current)
+                              t)))
+                     ;; If UP is org-data, the situation is similar to
+                     ;; headline case.  We just need to re-parse the
+                     ;; org-data itself.
+                     (when (eq 'org-data (org-element-type up))
+                       (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
+                       t))
+              (setq before up)
+	      (when robust-flag (setq robust-flag nil))))
 	  (setq up (org-element-property :parent up)))
-	;; We're at top level element containing ELEMENT: if it's
-	;; altered by buffer modifications, it is first element in
-	;; cache to be removed.  Otherwise, that first element is the
-	;; following one.
-	;;
-	;; As a special case, do not remove BEFORE if it is a robust
-	;; container for current changes.
-	(if (or (< (org-element-property :end before) beg) robust-flag) after
+        ;; We're at top level element containing ELEMENT: if it's
+        ;; altered by buffer modifications, it is first element in
+        ;; cache to be removed.  Otherwise, that first element is the
+        ;; following one.
+        ;;
+        ;; As a special case, do not remove BEFORE if it is a robust
+        ;; container for current changes.
+        (if (or (< (org-element-property :end before) beg) robust-flag) after
 	  before)))))
 
 (defun org-element--cache-submit-request (beg end offset)
