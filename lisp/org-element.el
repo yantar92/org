@@ -5608,8 +5608,8 @@ request."
     (when (= (org-element--request-phase request) 0)
       ;; Phase 0.
       ;;
-      ;; Delete all elements starting after BEG, but not after buffer
-      ;; position END.
+      ;; Delete all elements starting after beginning of the element
+      ;; with request key NEXT, but not after buffer position END.
       ;;
       ;; At each iteration, we start again at tree root since
       ;; a deletion modifies structure of the balanced tree.
@@ -5694,11 +5694,16 @@ request."
       (let ((limit (+ (org-element--request-beg request) (org-element--request-offset request))))
 	(cond ((and threshold (> limit threshold)) (throw 'interrupt nil))
 	      ((and future-change (>= limit future-change))
-	       ;; Changes are going to happen around this element and
-	       ;; they will trigger another phase 1 request.  Skip the
-	       ;; current one.
+	       ;; Changes happened around this element and they will
+	       ;; trigger another phase 1 request.  Skip re-parenting
+	       ;; and simply proceed with shifting (phase 2) to make
+	       ;; sure that followup phase 0 request for the recent
+	       ;; changes can operate on the correctly shifted cache.
                (setf (org-element--request-phase request) 2))
 	      (t
+               ;; No relevant changes happened after submitting this
+               ;; request.  We are safe to look at the actual Org
+               ;; buffer and calculate the new parent.
 	       (let ((parent (org-element--parse-to limit 'get-parent time-limit (when time-limit 'recursive))))
                  (setf (org-element--request-parent request) parent)
 		 (setf (org-element--request-phase request) 2))))))
@@ -5719,16 +5724,20 @@ request."
 	  (node (org-element--cache-root))
 	  (stack (list nil))
 	  (leftp t)
-	  exit-flag)
+	  exit-flag continue-flag)
       ;; No re-parenting nor shifting planned: request is over.
       (when (and (not parent) (zerop offset)) (throw 'quit t))
       (while node
 	(let* ((data (avl-tree--node-data node))
 	       (key (org-element--cache-key data)))
+          ;; Traverse the cache tree in order of keys using standard
+          ;; stack-based algorithm.
 	  (if (and leftp (avl-tree--node-left node)
 		   (not (org-element--cache-key-less-p key start)))
 	      (progn (push node stack)
 		     (setq node (avl-tree--node-left node)))
+            ;; Shift and re-parent when current node starts at or
+            ;; after START, but before NEXT.
 	    (unless (org-element--cache-key-less-p key start)
 	      ;; We reached NEXT.  Request is complete.
 	      (when (equal key next-request-key) (throw 'quit t))
@@ -5748,7 +5757,8 @@ request."
 		  (setq parent (org-element-property :parent parent)))
 		(cond ((and (not parent) (zerop offset)) (throw 'quit nil))
                       ;; Consider scenario when DATA lays within
-                      ;; sensitive lines of PARENT.  For example:
+                      ;; sensitive lines of PARENT that was found
+                      ;; during phase 2.  For example:
                       ;; 
                       ;; #+ begin_quote
                       ;; Paragraph
@@ -5764,7 +5774,16 @@ request."
                             (or (not (memq parent org-element-greater-elements))
                                 (< (org-element-property :begin data) (org-element-property :contents-begin parent))
                                 (> (org-element-property :end data) (org-element-property :contents-end parent))))
-                       (org-element--cache-remove data))
+                       (org-element--cache-remove data)
+                       ;; We altered the tree structure.  The tree
+                       ;; traversal needs to be restarted.
+                       (setf (org-element--request-key request) key)
+                       (setf (org-element--request-parent request) parent)
+                       ;; Restart tree traversal.
+                       (setq node (org-element--cache-root)
+	                     stack (list nil)
+	                     leftp t
+                             continue-flag t))
 		      ((and parent
 			    (let ((p (org-element-property :parent data)))
 			      (or (not p)
@@ -5778,9 +5797,11 @@ request."
 		;; Cache is up-to-date past THRESHOLD.  Request
 		;; interruption.
 		(when (and threshold (> begin threshold)) (setq exit-flag t))))
-	    (setq node (if (setq leftp (avl-tree--node-right node))
-			   (avl-tree--node-right node)
-			 (pop stack))))))
+            (if continue-flag
+                (setq continue-flag nil)
+	      (setq node (if (setq leftp (avl-tree--node-right node))
+			     (avl-tree--node-right node)
+			   (pop stack)))))))
       ;; We reached end of tree: synchronization complete.
       t)))
 
