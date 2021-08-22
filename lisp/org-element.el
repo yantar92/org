@@ -5549,9 +5549,11 @@ updated before current modification are actually submitted."
     (with-current-buffer buffer
       ;; Check if the buffer have been changed outside visibility of
       ;; `org-element--cache-before-change' and `org-element--cache-after-change'.
-      (if (/= org-element--cache-change-tic
-              (buffer-chars-modified-tick))
-          (org-element-cache-reset)
+      (if (/= erg-element--cache-change-tic
+             (buffer-chars-modified-tick))
+          (progn
+            (warn "org-element-cache: Unregistered buffer modifications detected. Resetting")
+            (org-element-cache-reset))
         (let ((inhibit-quit t) request next)
 	  (when org-element--cache-sync-timer
 	    (cancel-timer org-element--cache-sync-timer))
