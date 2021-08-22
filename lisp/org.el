@@ -12187,7 +12187,7 @@ the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
   (if-let ((element (or element
                         (and (org-element--cache-active-p)
-                             (org-element-at-point)))))
+                             (org-element-at-point nil 'cached)))))
       (let* ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self))
              (base-value (org-element-property (intern (concat ":" (upcase property))) element))
              (base-value (if literal-nil base-value (org-not-nil base-value)))
@@ -12361,7 +12361,7 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
    (let (value at-bob-no-heading)
      (catch 'exit
        (if-let ((element (and (org-element--cache-active-p)
-                              (org-element-at-point))))
+                              (org-element-at-point nil 'cached))))
            (let ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
              (while t
                (let* ((v (org--property-local-values property literal-nil element))
@@ -19668,19 +19668,7 @@ Also, this function will be a lot faster than `outline-up-heading',
 because it relies on stars being the outline starters.  This can really
 make a significant difference in outlines with very many siblings."
   (if-let ((element (and (org-element--cache-active-p)
-                         ;; When cache is active, direct parsing of
-                         ;; all the parents is, on average, giving
-                         ;; better performance compared to regexp
-                         ;; search.  In my tests, when building a
-                         ;; complex multi-section agenda view on a
-                         ;; huge org file with thousands of headings,
-                         ;; using direct regexp search is ~50% slower
-                         ;; compared to `org-element-cache'.  Hence, we
-                         ;; prefer (org-element-at-point) instead of
-                         ;; (org-element-at-point nil 'cached-only) and
-                         ;; allow full parsing of parent headings when
-                         ;; current heading is not yet in cache.
-                         (org-element-at-point))))
+                         (org-element-at-point nil t))))
       (let* ((current-heading (org-element-lineage element '(headline) 'with-self))
              (parent (org-element-lineage current-heading '(headline))))
         (if (and parent
