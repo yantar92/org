@@ -722,14 +722,7 @@ Return a non-nil value when toggling is successful."
       (if (org-fold-folded-p nil 'drawer)
           (goto-char (org-fold-next-folding-state-change 'drawer nil end))
         (let* ((drawer
-                (or (and (org-element--cache-active-p)
-                         (let ((cached (org-element--cache-find
-                                        (match-beginning 0))))
-                           (and (memq (org-element-type cached) '(drawer property-drawer))
-                                (eq (match-beginning 0)
-                                    (org-element-property
-                                     :post-affiliated cached))
-                                cached)))
+                (or (org-element-at-point nil 'cached)
                     (org-with-point-at (match-beginning 0)
                       (org-element--current-element (save-excursion (or (outline-next-heading) (point-max)))))))
                (type (org-element-type drawer)))
