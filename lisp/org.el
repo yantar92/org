@@ -179,6 +179,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-element-swap-A-B "org-element" (elem-a elem-b))
 (declare-function org-element-timestamp-parser "org-element" ())
 (declare-function org-element-type "org-element" (element))
+(declare-function org-element--cache-active-p "org-element" ())
 (declare-function org-export-dispatch "ox" (&optional arg))
 (declare-function org-export-get-backend "ox" (name))
 (declare-function org-export-get-environment "ox" (&optional backend subtreep ext-plist))
@@ -10629,7 +10630,8 @@ When FONTIFY is non-nil, make sure that matches are fontified."
               (jit-lock-fontify-now
                (match-beginning 0) (match-end 0))))
 	  (setq todo (and (match-end 1) (match-string-no-properties 1)))
-	  (setq tags (and (match-end 4) (org-trim (match-string 4))))
+          (unless (org-element--cache-active-p)
+	    (setq tags (and (match-end 4) (org-trim (match-string 4)))))
 	  (goto-char (setq lspos (match-beginning 0)))
 	  (setq level (org-reduced-level (org-outline-level))
 		category (org-get-category))
@@ -10638,34 +10640,38 @@ When FONTIFY is non-nil, make sure that matches are fontified."
 		  ts-date (car ts-date-pair)
 		  ts-date-type (cdr ts-date-pair)))
 	  (setq i llast llast level)
-	  ;; remove tag lists from same and sublevels
-	  (while (>= i level)
-	    (when (setq entry (assoc i tags-alist))
-	      (setq tags-alist (delete entry tags-alist)))
-	    (setq i (1- i)))
-	  ;; add the next tags
-	  (when tags
-	    (setq tags (org-split-string tags ":")
-		  tags-alist
-		  (cons (cons level tags) tags-alist)))
+          (unless (org-element--cache-active-p)
+	    ;; remove tag lists from same and sublevels
+	    (while (>= i level)
+	      (when (setq entry (assoc i tags-alist))
+	        (setq tags-alist (delete entry tags-alist)))
+	      (setq i (1- i)))
+	    ;; add the next tags
+	    (when tags
+	      (setq tags (org-split-string tags ":")
+		    tags-alist
+		    (cons (cons level tags) tags-alist))))
 	  ;; compile tags for current headline
-	  (setq tags-list
-		(if org-use-tag-inheritance
-		    (apply 'append (mapcar 'cdr (reverse tags-alist)))
-		  tags)
-		org-scanner-tags tags-list)
-	  (when org-use-tag-inheritance
-	    (setcdr (car tags-alist)
-		    (mapcar (lambda (x)
-			      (setq x (copy-sequence x))
-			      (org-add-prop-inherited x))
-			    (cdar tags-alist))))
-	  (when (and tags org-use-tag-inheritance
-		     (or (not (eq t org-use-tag-inheritance))
-			 org-tags-exclude-from-inheritance))
-	    ;; Selective inheritance, remove uninherited ones.
-	    (setcdr (car tags-alist)
-		    (org-remove-uninherited-tags (cdar tags-alist))))
+          (if (org-element--cache-active-p)
+              (setq tags-list (org-get-tags nil nil fontify)
+                    org-scanner-tags tags-list)
+	    (setq tags-list
+		  (if org-use-tag-inheritance
+		      (apply 'append (mapcar 'cdr (reverse tags-alist)))
+		    tags)
+		  org-scanner-tags tags-list)
+	    (when org-use-tag-inheritance
+	      (setcdr (car tags-alist)
+		      (mapcar (lambda (x)
+			        (setq x (copy-sequence x))
+			        (org-add-prop-inherited x))
+			      (cdar tags-alist))))
+	    (when (and tags org-use-tag-inheritance
+		       (or (not (eq t org-use-tag-inheritance))
+			   org-tags-exclude-from-inheritance))
+	      ;; Selective inheritance, remove uninherited ones.
+	      (setcdr (car tags-alist)
+		      (org-remove-uninherited-tags (cdar tags-alist)))))
 	  (when (and
 
 		 ;; eval matcher only when the todo condition is OK
