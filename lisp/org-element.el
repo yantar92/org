@@ -5587,7 +5587,7 @@ not registered yet in the cache are going to happen.  It is used
 in `org-element--cache-submit-request', where cache is partially
 updated before current modification are actually submitted."
   (when (buffer-live-p buffer)
-    (with-current-buffer buffer
+    (with-current-buffer (or (buffer-base-buffer buffer) buffer)
       ;; Check if the buffer have been changed outside visibility of
       ;; `org-element--cache-before-change' and `org-element--cache-after-change'.
       (if (/= org-element--cache-change-tic
@@ -6095,60 +6095,61 @@ BEG and END are the beginning and end of the range of changed
 text.  See `before-change-functions' for more information.
 
 The function returns the new value of `org-element--cache-change-warning'."
-  (when (org-element--cache-active-p)
-    (org-with-wide-buffer
-     (setq org-element--cache-change-tic (buffer-chars-modified-tick))
-     (goto-char beg)
-     (beginning-of-line)
-     (let ((bottom (save-excursion (goto-char end) (line-end-position))))
-       (setq org-element--cache-change-warning
-	     (save-match-data
-               (let ((case-fold-search t))
-                 (when (re-search-forward
-		        org-element--cache-sensitive-re bottom t)
-                   (goto-char beg)
-                   (beginning-of-line)
-                   (let (min-level)
-                     (cl-loop while (re-search-forward
-                                     (rx-to-string
-                                      (if min-level
-                                          `(and bol (repeat 1 ,(1- min-level) "*") " ")
-                                        `(and bol (+ "*") " ")))
-                                     bottom t)
-                              do (setq min-level (1- (length (match-string 0))))
-                              until (= min-level 1))
-                     (or min-level t))))))))))
   (when (org-element--cache-active-p t)
+    (with-current-buffer (or (buffer-base-buffer (current-buffer))
+                             (current-buffer))
+      (org-with-wide-buffer
+       (setq org-element--cache-change-tic (buffer-chars-modified-tick))
+       (goto-char beg)
+       (beginning-of-line)
+       (let ((bottom (save-excursion (goto-char end) (line-end-position))))
+         (setq org-element--cache-change-warning
+	       (save-match-data
+                 (let ((case-fold-search t))
+                   (when (re-search-forward
+		          org-element--cache-sensitive-re bottom t)
+                     (goto-char beg)
+                     (beginning-of-line)
+                     (let (min-level)
+                       (cl-loop while (re-search-forward
+                                       (rx-to-string
+                                        (if min-level
+                                            `(and bol (repeat 1 ,(1- min-level) "*") " ")
+                                          `(and bol (+ "*") " ")))
+                                       bottom t)
+                                do (setq min-level (1- (length (match-string 0))))
+                                until (= min-level 1))
+                       (or min-level t)))))))))))
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
 BEG and END are the beginning and end of the range of changed
 text, and the length in bytes of the pre-change text replaced by
 that range.  See `after-change-functions' for more information."
-  (when (and (org-element--cache-active-p)
-             (not (eq org-element--cache-change-tic (buffer-chars-modified-tick))))
-    (setq org-element--cache-change-tic (buffer-chars-modified-tick))
-    (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
-          (org-element--cache-change-warning-after (org-element--cache-before-change beg end)))
-      (setq org-element--cache-change-warning
-            (cond
-             ((and (numberp org-element--cache-change-warning-before)
-                   (numberp org-element--cache-change-warning-after))
-              (min org-element--cache-change-warning-after
-                   org-element--cache-change-warning-before))
-             ((numberp org-element--cache-change-warning-before)
-              org-element--cache-change-warning-before)
-             ((numberp org-element--cache-change-warning-after)
-              org-element--cache-change-warning-after)
-             (t (or org-element--cache-change-warning-after
-                    org-element--cache-change-warning-before)))))
-    ;; Store synchronization request.
-    (let ((offset (- end beg pre)))
-      (save-match-data
-        (org-element--cache-submit-request beg (- end offset) offset)))
-    ;; Activate a timer to process the request during idle time.
-    (org-element--cache-set-timer (current-buffer))))
   (when (org-element--cache-active-p t)
+    (with-current-buffer (or (buffer-base-buffer (current-buffer))
+                             (current-buffer))
+      (when (not (eq org-element--cache-change-tic (buffer-chars-modified-tick)))
+        (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
+              (org-element--cache-change-warning-after (org-element--cache-before-change beg end)))
+          (setq org-element--cache-change-warning
+                (cond
+                 ((and (numberp org-element--cache-change-warning-before)
+                       (numberp org-element--cache-change-warning-after))
+                  (min org-element--cache-change-warning-after
+                       org-element--cache-change-warning-before))
+                 ((numberp org-element--cache-change-warning-before)
+                  org-element--cache-change-warning-before)
+                 ((numberp org-element--cache-change-warning-after)
+                  org-element--cache-change-warning-after)
+                 (t (or org-element--cache-change-warning-after
+                        org-element--cache-change-warning-before)))))
+        ;; Store synchronization request.
+        (let ((offset (- end beg pre)))
+          (save-match-data
+            (org-element--cache-submit-request beg (- end offset) offset)))
+        ;; Activate a timer to process the request during idle time.
+        (org-element--cache-set-timer (current-buffer))))))
 
 (defun org-element--cache-for-removal (beg end offset)
   "Return first element to remove from cache.
@@ -6372,7 +6373,7 @@ When optional argument ALL is non-nil, reset cache in all Org
 buffers."
   (interactive "P")
   (dolist (buffer (if all (buffer-list) (list (current-buffer))))
-    (with-current-buffer buffer
+    (with-current-buffer (or (buffer-base-buffer buffer) buffer)
       (when (and org-element-use-cache (derived-mode-p 'org-mode))
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
 	(setq-local org-element--cache
