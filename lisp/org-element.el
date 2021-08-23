@@ -1075,8 +1075,8 @@ Assume point is at beginning of the headline."
                                        (goto-char (match-end 0)))
                                      (point))))
            (robust-end (and robust-begin
-                            (when (> (1- contents-end) robust-begin)
-                              (1- contents-end)))))
+                            (when (> (- contents-end 2) robust-begin)
+                              (- contents-end 2)))))
       (unless robust-end (setq robust-begin nil))
       (let ((headline
 	     (list 'headline
@@ -1191,7 +1191,7 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
           (robust-end (when (> (- pos-before-blank 2) contents-begin)
                         (- pos-before-blank 2)))
           (robust-begin (when (and robust-end
-                                   (< (1+ contents-begin) pos-before-blank))
+                                   (< (+ 2 contents-begin) pos-before-blank))
                           (or
                            (org-with-wide-buffer
                             (goto-char (point-min))
@@ -1200,7 +1200,7 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                               (goto-char (match-end 0))
                               (skip-chars-backward " \t")
                               (min robust-end (point))))
-                           (1+ contents-begin)))))
+                           (+ 2 contents-begin)))))
      (list 'org-data
            (nconc
             (list :begin begin
@@ -1722,8 +1722,8 @@ containing `:begin', `:end', `:contents-begin', `contents-end',
 		       (point)))
 	   (pos-before-blank (progn (skip-chars-backward " \r\t\n")
 				    (line-beginning-position 2)))
-           (robust-end (when (> (1- pos-before-blank) begin)
-                         (1- pos-before-blank)))
+           (robust-end (when (> (- pos-before-blank 2) begin)
+                         (- pos-before-blank 2)))
            (robust-begin (when robust-end begin))
            )
       (list 'section
