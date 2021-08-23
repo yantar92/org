@@ -5412,11 +5412,20 @@ This function assumes `org-element--cache' is a valid AVL tree."
 
 ;;;; Tools
 
-(defsubst org-element--cache-active-p ()
+(defsubst org-element--cache-active-p (&optional called-from-cache-change-func-p)
   "Non-nil when cache is active in current buffer."
   (and org-element-use-cache
        org-element--cache
-       (derived-mode-p 'org-mode)))
+       (derived-mode-p 'org-mode)
+       ;; org-num-mode calls some Org structure analysis functions
+       ;; that can trigger cache update in the middle of changes.  See
+       ;; `org-num--verify' calling `org-num--skip-value' calling
+       ;; `org-entry-get' that uses cache.
+       ;; Forcefully disable cache when called from inside a
+       ;; modification hook, where `inhibit-modification-hooks' is set
+       ;; to t.
+       (or called-from-cache-change-func-p
+           (not inhibit-modification-hooks))))
 
 (defun org-element--cache-find (pos &optional side)
   "Find element in cache starting at POS or before.
@@ -6109,6 +6118,7 @@ The function returns the new value of `org-element--cache-change-warning'."
                               do (setq min-level (1- (length (match-string 0))))
                               until (= min-level 1))
                      (or min-level t))))))))))
+  (when (org-element--cache-active-p t)
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
@@ -6138,6 +6148,7 @@ that range.  See `after-change-functions' for more information."
         (org-element--cache-submit-request beg (- end offset) offset)))
     ;; Activate a timer to process the request during idle time.
     (org-element--cache-set-timer (current-buffer))))
+  (when (org-element--cache-active-p t)
 
 (defun org-element--cache-for-removal (beg end offset)
   "Return first element to remove from cache.
