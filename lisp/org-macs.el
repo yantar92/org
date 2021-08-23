@@ -35,11 +35,16 @@
 (require 'format-spec)
 
 (declare-function org-mode "org" ())
-(declare-function org-show-context "org" (&optional key))
+(declare-function org-agenda-files "org" (&optional unrestricted archives))
+(declare-function org-fold-show-context "org-fold" (&optional key))
+(declare-function org-fold-save-outline-visibility "org-fold" (use-markers &rest body))
+(declare-function org-fold-next-visibility-change "org-fold" (&optional pos limit ignore-hidden-p previous-p))
+(declare-function org-fold-folded-p "org-fold" (&optional pos limit ignore-hidden-p previous-p))
 (declare-function org-string-collate-lessp "org-compat" (s1 s2 &optional locale ignore-case))
 
 (defvar org-ts-regexp0)
 (defvar ffap-url-regexp)
+(defvar org-fold-core-style)
 
 
 ;;; Macros

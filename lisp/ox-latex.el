@@ -32,6 +32,10 @@
 
 ;;; Function Declarations
 
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-next-visible-heading "org" (arg))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
+
 (defvar org-latex-default-packages-alist)
 (defvar org-latex-packages-alist)
 (defvar orgtbl-exp-regexp)

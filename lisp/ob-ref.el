@@ -63,7 +63,7 @@
 (declare-function org-id-find-id-in-file "org-id" (id file &optional markerp))
 (declare-function org-in-commented-heading-p "org" (&optional no-inheritance))
 (declare-function org-narrow-to-subtree "org" ())
-(declare-function org-show-context "org" (&optional key))
+(declare-function org-fold-show-context "org-fold" (&optional key))
 
 (defvar org-babel-update-intermediate nil
   "Update the in-buffer results of code blocks executed to resolve references.")

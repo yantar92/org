@@ -163,19 +163,26 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-duration-from-minutes "org-duration" (minutes &optional fmt canonical))
 (declare-function org-duration-to-minutes "org-duration" (duration &optional canonical))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
+(declare-function org-element-at-point-no-context "org-element" (&optional pom))
 (declare-function org-element-cache-refresh "org-element" (pos))
 (declare-function org-element-cache-reset "org-element" (&optional all))
 (declare-function org-element-contents "org-element" (element))
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-copy "org-element" (datum))
 (declare-function org-element-create "org-element" (type &optional props &rest children))
+(declare-function org-element-extract-element "org-element" (element))
+(declare-function org-element-insert-before "org-element" (element location))
 (declare-function org-element-interpret-data "org-element" (data))
+(declare-function org-element-keyword-parser "org-element" (limit affiliated))
 (declare-function org-element-lineage "org-element" (blob &optional types with-self))
 (declare-function org-element-link-parser "org-element" ())
+(declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
 (declare-function org-element-nested-p "org-element" (elem-a elem-b))
 (declare-function org-element-parse-buffer "org-element" (&optional granularity visible-only))
+(declare-function org-element-parse-secondary-string "org-element" (string restriction &optional parent))
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-put-property "org-element" (element property value))
+(declare-function org-element-restriction "org-element" (element))
 (declare-function org-element-swap-A-B "org-element" (elem-a elem-b))
 (declare-function org-element-timestamp-parser "org-element" ())
 (declare-function org-element-type "org-element" (element))
@@ -204,6 +211,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-toggle-archive-tag "org-archive" (&optional find-done))
 (declare-function org-update-radio-target-regexp "ol" ())
 
+(defvar org-agenda-buffer-name)
 (defvar org-element-paragraph-separate)
 (defvar org-indent-indentation-per-level)
 (defvar org-radio-target-regexp)
@@ -9546,6 +9554,7 @@ repeater from there instead."
 (defvar org-log-note-purpose)
 (defvar org-log-note-how nil)
 (defvar org-log-note-extra)
+(defvar org-log-setup nil)
 (defun org-auto-repeat-maybe (done-word)
   "Check if the current headline contains a repeated time-stamp.
 
@@ -10047,7 +10056,6 @@ narrowing."
 	 (beginning-of-line 2)))))
    (if (bolp) (point) (line-beginning-position 2))))
 
-(defvar org-log-setup nil)
 (defun org-add-log-setup (&optional purpose state prev-state how extra)
   "Set up the post command hook to take a note.
 If this is about to TODO state change, the new state is expected in STATE.
@@ -19542,6 +19550,7 @@ interactive command with similar behavior."
           ;; At inlinetask end.  Move to bol, so that the following
           ;; search goes to the beginning of the inlinetask.
           (when (and (featurep 'org-inlinetask)
+                     (fboundp 'org-inlinetask-end-p)
                      (org-inlinetask-end-p))
             (goto-char (line-beginning-position)))
 	  (while (not found)
@@ -19551,6 +19560,7 @@ interactive command with similar behavior."
 		            (point) (current-buffer)))
             ;; Skip inlinetask end.
             (if (and (featurep 'org-inlinetask)
+                     (fboundp 'org-inlinetask-end-p)
                      (org-inlinetask-end-p))
                 (org-inlinetask-goto-beginning)
 	      (setq found (and (or invisible-ok (not (org-fold-folded-p)))
@@ -19965,7 +19975,7 @@ With ARG, repeats or can move backward if negative."
 	(end-of-line))
       (cl-decf arg))
     (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
-(defsubst org-next-visible-heading (arg)
+(defun org-next-visible-heading (arg)
   "Move to the next visible heading line.
 With ARG, repeats or can move backward if negative."
   (interactive "p")
@@ -20245,7 +20255,7 @@ See `org-forward-paragraph'."
 	  (goto-char end)
 	  (skip-chars-backward " \t\n")
 	  (forward-line))))))))
-(defsubst org--forward-paragraph-once ()
+(defun org--forward-paragraph-once ()
   "Move forward to end of paragraph or equivalent, once.
 See `org-forward-paragraph'."
   (interactive)
@@ -20446,7 +20456,7 @@ See `org-backward-paragraph'."
 	 ;; Move to element's start.
 	 (t
 	  (funcall reach begin))))))))
-(defsubst org--backward-paragraph-once ()
+(defun org--backward-paragraph-once ()
   "Move backward to start of paragraph or equivalent, once.
 See `org-backward-paragraph'."
   (interactive)

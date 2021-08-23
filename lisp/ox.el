@@ -81,6 +81,9 @@
 (require 'org-macro)
 (require 'tabulated-list)
 
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-next-visible-heading "org" (arg))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 (declare-function org-src-coderef-format "org-src" (&optional element))
 (declare-function org-src-coderef-regexp "org-src" (fmt &optional label))
 (declare-function org-publish "ox-publish" (project &optional force async))

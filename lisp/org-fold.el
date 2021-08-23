@@ -61,12 +61,32 @@
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 (declare-function org-element-type "org-element" (element))
+(declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element--current-element "org-element" (limit &optional granularity mode structure))
 (declare-function org-element--cache-active-p "org-element" ())
 (declare-function org-element--cache-find "org-element" (pos &optional side))
 (declare-function org-element--cache-find "org-element" (pos &optional side))
 (declare-function org-toggle-custom-properties-visibility "org" ())
+(declare-function org-item-re "org-list" ())
+(declare-function org-up-heading-safe "org" ())
+(declare-function org-get-tags "org" (&optional pos local fontify))
+(declare-function org-get-valid-level "org" (level &optional change))
+(declare-function org-before-first-heading-p "org" ())
+(declare-function org-goto-sibling "org" (&optional previous))
+(declare-function org-block-map "org" (function &optional start end))
+(declare-function org-map-region "org" (fun beg end))
+(declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
+(declare-function org-back-to-heading-or-point-min "org" (&optional invisible-ok))
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
+(declare-function org-cycle-hide-drawers "org-cycle" (state))
+
+(declare-function outline-show-branches "outline" ())
+(declare-function outline-hide-sublevels "outline" (levels))
+(declare-function outline-get-next-sibling "outline" ())
+(declare-function outline-invisible-p "outline" (&optional pos))
+(declare-function outline-next-heading "outline" ())
 
 ;;; Customization
 
@@ -732,7 +752,7 @@ Return a non-nil value when toggling is successful."
             ;; another time when matching its ending line with
             ;; `org-drawer-regexp'.
             (goto-char (org-element-property :end drawer))))))))
-(defsubst org-fold--hide-drawers (begin end)
+(defun org-fold--hide-drawers (begin end)
   "Hide all drawers between BEGIN and END."
   (if (eq org-fold-core-style 'text-properties)
       (org-fold--hide-drawers--text-properties begin end)
@@ -844,7 +864,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
 	(org-fold-heading nil)
 	(when (memq detail '(canonical t)) (org-fold-show-entry))
 	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
-(defsubst org-fold-show-set-visibility (detail)
+(defun org-fold-show-set-visibility (detail)
   "Set visibility around point according to DETAIL.
 DETAIL is either nil, `minimal', `local', `ancestors', `lineage',
 `tree', `canonical' or t.  See `org-fold-show-context-detail' for more
@@ -990,9 +1010,9 @@ This function is intended to be used as :fragile property of
 ;; Catching user edits inside invisible text
 (defun org-fold-check-before-invisible-edit--overlays (kind)
   "Check if editing kind KIND would be dangerous with invisible text around.
-The detailed reaction depends on the user option `org-catch-invisible-edits'."
+The detailed reaction depends on the user option `org-fold-catch-invisible-edits'."
   ;; First, try to get out of here as quickly as possible, to reduce overhead
-  (when (and org-catch-invisible-edits
+  (when (and org-fold-catch-invisible-edits
              (or (not (boundp 'visible-mode)) (not visible-mode))
              (or (get-char-property (point) 'invisible)
                  (get-char-property (max (point-min) (1- (point))) 'invisible)))
@@ -1022,7 +1042,7 @@ The detailed reaction depends on the user option `org-catch-invisible-edits'."
              ;;  (memq kind '(insert delete)))
              )))
       (when (or invisible-at-point invisible-before-point)
-        (when (eq org-catch-invisible-edits 'error)
+        (when (eq org-fold-catch-invisible-edits 'error)
           (user-error "Editing in invisible areas is prohibited, make them visible first"))
         (if (and org-custom-properties-overlays
                  (y-or-n-p "Display invisible properties in this buffer? "))
@@ -1042,12 +1062,12 @@ The detailed reaction depends on the user option `org-catch-invisible-edits'."
                         (delete-overlay o)
                         t)))))
           (cond
-           ((eq org-catch-invisible-edits 'show)
+           ((eq org-fold-catch-invisible-edits 'show)
             ;; That's it, we do the edit after showing
             (message
              "Unfolding invisible region around point before editing")
             (sit-for 1))
-           ((and (eq org-catch-invisible-edits 'smart)
+           ((and (eq org-fold-catch-invisible-edits 'smart)
                  border-and-ok-direction)
             (message "Unfolding invisible region around point before editing"))
            (t
