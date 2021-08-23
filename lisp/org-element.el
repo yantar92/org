@@ -5159,9 +5159,15 @@ seconds.")
   "Duration, as a time value, of the pause between synchronizations.
 See `org-element-cache-sync-duration' for more information.")
 
-(defvar org-element--cache-self-verify nil
+(defvar org-element--cache-self-verify t
   "Activate extra consistency for the cache.
 This will cause performance degradation.")
+
+(defvar org-element--cache-self-verify-frequency 0.05
+  "Frequency of cache element verification.
+
+This number is a probability to check an element requested from cache
+to be correct.  Setting this to a value less than 0.0001 is useless.")
 
 ;;;; Data Structure
 
@@ -5559,7 +5565,9 @@ updated before current modification are actually submitted."
       (if (/= org-element--cache-change-tic
              (buffer-chars-modified-tick))
           (progn
-            (warn "org-element-cache: Unregistered buffer modifications detected. Resetting")
+            (warn "org-element-cache: Unregistered buffer modifications detected. Resetting\n The buffer is: %s\n Current command: %S"
+                  (buffer-name (current-buffer))
+                  this-command)
             (org-element-cache-reset))
         (let ((inhibit-quit t) request next)
 	  (when org-element--cache-sync-timer
@@ -6403,9 +6411,10 @@ element ending there."
                           (org-element--cache-find pom))
                    (condition-case err
                        (org-element--parse-to pom)
-                     ;; FIXME: Detect cache corruption until fixed.
                      (error
-                      (warn "org-element-cache: Cache corruption detected. Resetting.\n The error was: %S" err)
+                      (warn "org-element-cache: Cache corruption detected in %s. Resetting.\n The error was: %S"
+                            (buffer-name (current-buffer))
+                            err)
                       (org-element-cache-reset)
                       (org-element--parse-to pom))))))
     ;; Verify correct parent for the element.
@@ -6413,15 +6422,37 @@ element ending there."
                (org-element--cache-active-p)
                (derived-mode-p 'org-mode)
                (org-element-property :parent element)
-               (eq 'headline (org-element-property :parent element)))
+               (eq 'headline (org-element-property :parent element))
+               ;; Avoid too much slowdown
+               (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
       (org-with-point-at (org-element-property :begin element)
         (org-up-heading-safe)
         (unless (= (point) (org-element-property :begin (org-element-property :parent element)))
-          (warn "org-element-cache: Cached element has wrong parent. Resetting.\n The element is: %S\n The real parent is: %S"
+          (warn "org-element-cache: Cached element has wrong parent in %s. Resetting.\n The element is: %S\n The real parent is: %S"
+                (buffer-name (current-buffer))
                 element
-                (org-element--current-element (point)))
+                (org-element--current-element (org-element-property :end (org-element-property :parent element))))
           (org-element-cache-reset)
           (setq element (org-element--parse-to pom)))))
+    ;; Verify the element itself.
+    (when (and org-element--cache-self-verify
+               (org-element--cache-active-p)
+               element
+               ;; Avoid too much slowdown
+               (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
+      (org-with-point-at (org-element-property :begin element)
+        (let ((real-element (org-element--current-element (save-excursion (outline-next-heading) (point)) nil (org-element-property :mode element))))
+          (unless (and (eq (org-element-type real-element) (org-element-type element))
+                       (eq (org-element-property :begin real-element) (org-element-property :begin element))
+                       (eq (org-element-property :end real-element) (org-element-property :end element))
+                       (eq (org-element-property :contents-begin real-element) (org-element-property :contents-begin element))
+                       (eq (org-element-property :contents-end real-element) (org-element-property :contents-end element)))
+            (warn "org-element-cache: Cached element is incorrect in %s. Resetting.\n The element is: %S\n The real element is: %S"
+                  (buffer-name (current-buffer))
+                  element
+                  real-element)
+            (org-element-cache-reset)
+            (setq element (org-element--parse-to pom))))))
     (unless (eq 'org-data (org-element-type element))
       (unless (and cached-only
                    (not (and element
