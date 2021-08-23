@@ -1178,8 +1178,12 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
 (defun org-element-org-data-parser (&optional _)
   "Parse org-data."
   (org-with-wide-buffer
-   (let* ((begin (point-min))
-          (contents-begin (point))
+   (let* ((begin 1)
+          (contents-begin (progn
+                            (goto-char 1)
+                            (org-skip-whitespace)
+                            (beginning-of-line)
+                            (point)))
 	  (end (point-max))
 	  (pos-before-blank (progn (goto-char (point-max))
                                    (skip-chars-backward " \r\t\n")
