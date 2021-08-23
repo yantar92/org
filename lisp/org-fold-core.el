@@ -512,7 +512,7 @@ hanging around."
          ;; org-capture copies local variables into *Capture* buffer.
          (setq buffers (list (current-buffer)))
        (dolist (buf (cons (or (buffer-base-buffer) (current-buffer))
-                          (buffer-local-value ' org-fold-core--indirect-buffers (or (buffer-base-buffer) (current-buffer)))))
+                          (buffer-local-value 'org-fold-core--indirect-buffers (or (buffer-base-buffer) (current-buffer)))))
          (if (buffer-live-p buf)
              (push buf buffers)
            (dolist (spec (org-fold-core-folding-spec-list))
