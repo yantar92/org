@@ -5716,6 +5716,18 @@ request."
       (let ((key (org-element--request-key request)))
 	(when (and next-request-key (not (org-element--cache-key-less-p key next-request-key)))
 	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
+            ;; FIXME: I am not sure if it is always safe.  We are
+            ;; effectively bypassing processing of all elements before
+            ;; KEY and after NEXT-REQUEST-KEY.
+            ;;
+            ;; Real-life testing showed almost no errors in cache, but
+            ;; I saw seveal errors after then.  These things are hard
+            ;; to debug and this is the last suspicious place in the
+            ;; code I fail to understand.
+            ;; Listing errors I encountered from the time I stopped
+            ;; seing cache errors regularly:
+            ;; [2021-08-23 Mon]: inlinetask element had incorrect
+            ;; bounds.
 	    (setf (org-element--request-key next-request) key)
             (setf (org-element--request-beg next-request) (org-element--request-beg request))
 	    (setf (org-element--request-phase next-request) 1))
