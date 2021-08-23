@@ -6461,7 +6461,7 @@ element ending there."
                ;; Avoid too much slowdown
                (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
       (org-with-point-at (org-element-property :begin element)
-        (let ((real-element (org-element--current-element (save-excursion (outline-next-heading) (point)) nil (org-element-property :mode element))))
+        (let ((real-element (org-element--current-element (save-excursion (outline-next-heading) (point)) nil (org-element-property :mode element) (org-element-property :structure element))))
           (unless (and (eq (org-element-type real-element) (org-element-type element))
                        (eq (org-element-property :begin real-element) (org-element-property :begin element))
                        (eq (org-element-property :end real-element) (org-element-property :end element))
