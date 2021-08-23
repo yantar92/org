@@ -60,6 +60,8 @@
 (declare-function outline-next-heading "outline" ())
 (declare-function speedbar-line-directory "speedbar" (&optional depth))
 (declare-function table--at-cell-p "table" (position &optional object at-column))
+(declare-function org-fold-region "org-fold" (from to flag &optional spec))
+(declare-function org-fold-show-all "org-fold" (&optional types))
 
 (defvar calendar-mode-map)
 (defvar org-complex-heading-regexp)
@@ -70,6 +72,7 @@
 (defvar org-table-dataline-regexp)
 (defvar org-table-tab-recognizes-table.el)
 (defvar org-table1-hline-regexp)
+(defvar org-fold-core-style)
 
 
 ;;; Emacs < 28.1 compatibility

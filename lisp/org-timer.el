@@ -39,6 +39,9 @@
 (require 'org-clock)
 
 (declare-function org-agenda-error "org-agenda" ())
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-next-visible-heading "org" (arg))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
 (defvar org-timer-start-time nil
   "t=0 for the running timer.")
