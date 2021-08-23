@@ -5172,7 +5172,7 @@ See `org-element-cache-sync-duration' for more information.")
   "Activate extra consistency for the cache.
 This will cause performance degradation.")
 
-(defvar org-element--cache-self-verify-frequency 0.05
+(defvar org-element--cache-self-verify-frequency 1.0
   "Frequency of cache element verification.
 
 This number is a probability to check an element requested from cache
