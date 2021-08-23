@@ -3858,7 +3858,7 @@ Text
   ;; `org-element-at-point' or `org-element-context', the list is
   ;; limited to the current section.
   (should
-   (equal '(paragraph center-block section headline headline org-data)
+   (equal '(paragraph center-block section headline)
 	  (org-test-with-temp-text
 	      "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
 	    (mapcar #'car (org-element-lineage (org-element-context))))))
@@ -3883,7 +3883,7 @@ Text
      (org-element-lineage (org-element-context) '(example-block))))
   ;; Test WITH-SELF optional argument.
   (should
-   (equal '(bold paragraph center-block section headline headline org-data)
+   (equal '(bold paragraph center-block section headline)
 	  (org-test-with-temp-text
 	      "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
 	    (mapcar #'car (org-element-lineage (org-element-context) nil t)))))
