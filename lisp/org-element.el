@@ -5881,6 +5881,26 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
         ;; from NEXT, which is located after CACHED or its higher
         ;; ancestor not containing point.
         (t
+         (when recursive
+           (let ((cache-size (avl-tree-size org-element--cache)))
+             (avl-tree-mapc
+              (lambda (el)
+                (org-element-put-property el :org-element--cache-parsed-p nil))
+              org-element--cache)
+             (catch :fully-parsed
+               (while t
+                 (avl-tree-mapc
+                  (lambda (el)
+                    (when (and (org-element-property :contents-begin el)
+                               (not (org-element-property :org-element--cache-parsed-p el))
+                               (<= (org-element-property :end el) pos))
+                      (org-element-put-property el :org-element--cache-parsed-p t)
+                      (org-element--parse-to (max 1 (1- (org-element-property :begin el))) nil time-limit nil)
+                      (org-element--parse-to (1- (org-element-property :contents-end el)) nil time-limit nil)))
+                  org-element--cache)
+                 (if (= cache-size (avl-tree-size org-element--cache))
+                     (throw :fully-parsed t)
+                   (setq cache-size (avl-tree-size org-element--cache)))))))
          (let ((up cached)
                (pos (if (= (point-max) pos) (1- pos) pos)))
            (while (and up (<= (org-element-property :end up) pos))
@@ -5930,7 +5950,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                (when (and recursive
                           (org-element-property :contents-end element))
                  (org-element--parse-to (1- (org-element-property :contents-end element))
-                             syncp time-limit recursive))
+                             nil time-limit recursive))
                ;; Avoid parsing headline siblings above.
                (goto-char elem-end)
                (when (eq type 'headline)
