@@ -5218,6 +5218,13 @@ See `org-element--cache-key' for more information.")
 (defvar-local org-element--cache-change-tic nil
   "Last `buffer-chars-modified-tick' for registered changes.")
 
+(defvar org-element--cache-non-modifying-commands '(org-agenda
+                                         org-agenda-redo)
+  "List of commands that are not expected to change the cache state.
+
+This variable is used to determine when re-parsing buffer is not going
+to slow down the command.")
+
 (defmacro org-element--request-key (request)
   "Get NEXT part of a `org-element--cache-sync-requests' REQUEST."
   `(aref ,request 0))
@@ -6384,6 +6391,10 @@ instead of the first row.
 When point is at the end of the buffer, return the innermost
 element ending there."
   (setq pom (or pom (point)))
+  ;; Allow re-parsing when the command can benefit from it.
+  (when (and cached-only
+             (memq this-command org-element--cache-non-modifying-commands))
+    (setq cached-only nil))
   (when (org-element--cache-active-p)
     (if (not org-element--cache) (org-element-cache-reset)
       (org-element--cache-sync (current-buffer) pom)))
