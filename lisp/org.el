@@ -19806,11 +19806,9 @@ If there is no such heading, return nil."
   ;; than the outline version.
   (org-back-to-heading-or-point-min invisible-ok)
   (unless (and (org-element--cache-active-p)
-               (let ((cached (org-element--cache-find (point))))
+               (let ((cached (org-element-at-point nil t)))
                  (and cached
                       (eq 'headline (org-element-type cached))
-                      (eq (point)
-                          (org-element-property :post-affiliated cached))
                       (goto-char (org-element-property
                                   :end cached)))))
     (let ((first t)
