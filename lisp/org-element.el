@@ -6192,10 +6192,7 @@ known element in cache (it may start after END)."
                      ;; starting from old :begin position, we do not care that
                      ;; its boundaries could have extended to shrinked - we
                      ;; will re-parent and shift them anyway.
-                     ;; FIXME: This is actually slower when we,
-                     ;; i.e. are refiling a lot of small headings into
-                     ;; larger heading.
-                     (and (eq 'headline (org-element-type up)) nil ;; <- FIXME: Disabling for now
+                     (and (eq 'headline (org-element-type up))
                           ;; Headline is completely inside the
                           ;; change. It might have been deleted.
                           (not (and (>= (org-element-property :begin up) beg)
