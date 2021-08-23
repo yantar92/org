@@ -6393,7 +6393,17 @@ element ending there."
           (setq element (org-element--parse-to pom)))))
     (unless (eq 'org-data (org-element-type element))
       (unless (and cached-only
-                   (not (eq pom (org-element-property :begin element))))
+                   (not (and element
+                           (or (= pom (org-element-property :begin element))
+                               (and (org-element-property :contents-begin element)
+                                    (>= pom (org-element-property :begin element))
+                                    (< pom (org-element-property :contents-begin element)))
+                               (and (org-element-property :contents-end element)
+                                    (< pom (org-element-property :end element))
+                                    (>= pom (org-element-property :contents-end element)))
+                               (and (not (org-element-property :contents-end element))
+                                    (>= pom (org-element-property :begin element))
+                                    (< pom (org-element-property :end element)))))))
         (if (not (eq (org-element-type element) 'section))
             element
           (org-element-at-point (1+ pom) cached-only))))))
