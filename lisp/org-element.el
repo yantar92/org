@@ -5225,7 +5225,17 @@ See `org-element--cache-key' for more information.")
   "Last `buffer-chars-modified-tick' for registered changes.")
 
 (defvar org-element--cache-non-modifying-commands '(org-agenda
-                                         org-agenda-redo)
+                                         org-agenda-redo
+                                         org-sparse-tree
+                                         org-occur
+                                         org-columns
+                                         org-columns-redo
+                                         org-columns-new
+                                         org-columns-delete
+                                         org-columns-compute
+                                         org-columns-insert-dblock
+                                         org-agenda-columns
+                                         org-ctrl-c-ctrl-c)
   "List of commands that are not expected to change the cache state.
 
 This variable is used to determine when re-parsing buffer is not going
