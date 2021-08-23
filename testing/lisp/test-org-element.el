@@ -2204,7 +2204,11 @@ Outside list"
   ;; beginning.
   (should
    (org-test-with-temp-text "- list\n   \n   "
-     (= (org-element-property :end (org-element-at-point)) (point-max)))))
+     (= (org-element-property :end (org-element-at-point)) (point-max))))
+  ;; Correctly compute list ending when list is before first headline.
+  (dolist (org-element-use-cache '(t nil))
+    (org-test-with-temp-text "- list\n* Headline\n"
+      (should (= (org-element-property :end (org-element-at-point)) 8)))))
 
 
 ;;;; Planning

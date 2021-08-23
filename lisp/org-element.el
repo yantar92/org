@@ -1487,7 +1487,12 @@ CONTENTS is the contents of the element."
   (let ((case-fold-search t)
 	(top-ind limit)
 	(item-re (org-item-re))
-	(inlinetask-re (and (featurep 'org-inlinetask) "^\\*+ "))
+	(inlinetask-re (and (featurep 'org-inlinetask)
+                            (boundp 'org-inlinetask-min-level)
+                            (boundp 'org-inlinetask-max-level)
+                            (format "^\\*\\{%d,%d\\}+ "
+                                    org-inlinetask-min-level
+                                    org-inlinetask-max-level)))
 	items struct)
     (save-excursion
       (catch :exit
@@ -5885,11 +5890,9 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
         ;; element in buffer down to POS or from the beginning of the
         ;; file.
         ((and (not cached) (org-element--cache-active-p))
-         (goto-char (point-min))
          (setq element (org-element-org-data-parser))
-         (org-skip-whitespace)
-         (beginning-of-line)
          (org-element--cache-put element)
+         (goto-char (org-element-property :contents-begin element))
 	 (setq mode 'first-section))
         ;; Nothing in cache before point because cache is not active.
         ;; Parse from previous heading to avoid re-parsing the whole
