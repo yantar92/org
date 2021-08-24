@@ -5874,6 +5874,18 @@ request."
 			   (pop stack)))))))
       ;; We reached end of tree: synchronization complete.
       t)))
+(defsubst org-element--open-end-p (element)
+  "Check if ELEMENT in current buffer contains extra blank lines after
+it and does not have closing term.
+
+Examples of such elements are: section, headline, org-data,
+and footnote-definition."
+  (and (org-element-property :contents-end element)
+       (= (org-element-property :contents-end element)
+          (save-excursion
+            (goto-char (org-element-property :end element))
+            (skip-chars-backward " \r\n\t")
+            (line-beginning-position 2)))))
 
 (defun org-element--parse-to (pos &optional syncp time-limit recursive)
   "Parse elements in current section, down to POS.
@@ -6050,22 +6062,33 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 			        (and (= cbeg pos)
 				     (not (memq type '(plain-list table)))))
 			    (or (> cend pos)
-			        (and (<= (save-excursion (goto-char (point-max)) (skip-chars-backward " \r\n\t") (point)) pos)
-                                     (or (= cend pos)
-                                         (let ((post-blank
-                                                (org-element-property :post-blank element)))
-                                           ;; i.e. section with empty
-                                           ;; lines at the end of
-                                           ;; file.
-                                           (and post-blank
-                                                (= (+ cend post-blank)
-                                                   end)
-                                                (> pos cend)))))))
+                                ;; When we are at cend or within blank
+                                ;; lines after, it is a special case:
+                                ;; 1. At the end of buffer we return
+                                ;; the innermost element.
+                                ;; 2. At cend of element with return
+                                ;; that element.
+                                ;; 3. At the end of element, we would
+                                ;; return in the earlier cond form.
+                                ;; 4. Within blank lines after cend,
+                                ;; when element does not have a
+                                ;; closing keyword, we return that
+                                ;; outermost element, unless the
+                                ;; outermost element is a non-empty
+                                ;; headline.  In the latter case, we
+                                ;; return the outermost element inside
+                                ;; the headline section.
+			        (and (org-element--open-end-p element)
+                                     (or (= (org-element-property :end element) (point-max))
+                                         (and (> pos (org-element-property :contents-end element))
+                                              (memq (org-element-type element) '(org-data section headline)))))))
 		   (goto-char (or next cbeg))
 		   (setq mode (if next mode (org-element--next-mode mode type t))
                          next nil
 		         parent element
-		         end (org-element-property :end element)))))
+		         end (if (org-element--open-end-p element)
+                                 (org-element-property :end element)
+                               (org-element-property :contents-end element))))))
 	      ;; Otherwise, return ELEMENT as it is the smallest
 	      ;; element containing POS.
 	      (t (throw 'exit (if syncp parent element)))))
