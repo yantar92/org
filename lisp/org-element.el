@@ -1073,7 +1073,13 @@ Assume point is at beginning of the headline."
                                        (forward-line))
                                      (when (looking-at org-property-drawer-re)
                                        (goto-char (match-end 0)))
-                                     (point))))
+                                     ;; If there is :pre-blank, we
+                                     ;; need to be careful about
+                                     ;; robust beginning.
+                                     (max (if (< (+ 2 contents-begin) contents-end)
+                                              (+ 2 contents-begin)
+                                            0)
+                                          (point)))))
            (robust-end (and robust-begin
                             (when (> (- contents-end 2) robust-begin)
                               (- contents-end 2)))))
