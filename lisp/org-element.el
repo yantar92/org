@@ -6216,17 +6216,30 @@ known element in cache (it may start after END)."
                         (org-element-property :robust-end up))
                    '(:contents-end :end :robust-end)
                  '(:contents-end :end)))
-            (unless
-                ;; UP is non-robust.  Yet, if UP is org-data, flagging
-                ;; the whole cache for removal may be to
-                ;; costly.  Instead, we should better re-parse only the
-                ;; org-data itself.  Note that similar argument
-                ;; can be made for headline, but an attempted
-                ;; implementation revealed that things get slower
-                ;; as a result.
-                (when (eq 'org-data (org-element-type up))
-                  (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
-                  t)
+            (unless (or
+                     ;; UP is non-robust.  Yet, if UP is headline, flagging
+                     ;; everything inside for removal may be to
+                     ;; costly.  Instead, we should better re-parse only the
+                     ;; headline itself when possible.  If a headline is still
+                     ;; starting from old :begin position, we do not care that
+                     ;; its boundaries could have extended to shrinked - we
+                     ;; will re-parent and shift them anyway.
+                     (and (eq 'headline (org-element-type up))
+                          ;; Headline is completely inside the
+                          ;; change. It might have been deleted.
+                          (not (and (>= (org-element-property :begin up) beg)
+                                  (<= (org-element-property :end up) end)))
+                          (let ((current (org-with-point-at (org-element-property :begin up)
+                                           (org-element--current-element (org-element-property :end up)))))
+                            (when (eq 'headline (org-element-type current))
+                              (org-element-set-element up current)
+                              t)))
+                     ;; If UP is org-data, the situation is similar to
+                     ;; headline case.  We just need to re-parse the
+                     ;; org-data itself.
+                     (when (eq 'org-data (org-element-type up))
+                       (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
+                       t))
               (setq before up)
 	      (when robust-flag (setq robust-flag nil))))
 	  (setq up (org-element-property :parent up)))
