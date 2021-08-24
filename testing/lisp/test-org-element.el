@@ -2165,8 +2165,13 @@ e^{i\\pi}+1=0
   ;; Handle non-empty blank line at the end of buffer.
   (should
    (org-test-with-temp-text "#+BEGIN_CENTER\nC\n#+END_CENTER\n  "
-     (= (org-element-property :end (org-element-at-point)) (point-max)))))
-
+     (= (org-element-property :end (org-element-at-point)) (point-max))))
+  (should
+   (org-test-with-temp-text "#+BEGIN_CENTER\n<point>C\n#+END_CENTER\n  "
+     (= (org-element-property :end (org-element-at-point))
+        (save-excursion
+          (search-forward "END")
+          (line-beginning-position))))))
 
 ;;;; Plain List
 
