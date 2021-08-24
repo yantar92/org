@@ -5966,201 +5966,186 @@ the process stopped before finding the expected result.
 
 When optional argument RECURSIVE is non-nil, parse element recursively."
   (catch 'exit
-    (org-with-wide-buffer
-     (goto-char pos)
-     (save-excursion
-       (end-of-line)
-       (skip-chars-backward " \r\t\n")
-       ;; Within blank lines at the beginning of buffer, return nil.
-       (when (bobp) (throw 'exit nil)))
-     (let* ((cached (and (org-element--cache-active-p)
-			 (org-element--cache-find pos nil)))
-            (mode (org-element-property :mode cached))
-            element next)
-       (cond
-        ;; Nothing in cache before point: start parsing from first
-        ;; element in buffer down to POS or from the beginning of the
-        ;; file.
-        ((and (not cached) (org-element--cache-active-p))
-         (setq element (org-element-org-data-parser))
-         (when org-element--cache-diagnostics
-           (warn "Nothing in cache. Adding org-data: %S" (org-element--format-element element)))
-         (org-element--cache-put element)
-         (goto-char (org-element-property :contents-begin element))
-	 (setq mode 'first-section))
-        ;; Nothing in cache before point because cache is not active.
-        ;; Parse from previous heading to avoid re-parsing the whole
-        ;; buffer above.  This comes at the cost of not calculating
-        ;; `:parent' property for headings.
-        ((not cached)
-         (if (org-with-limited-levels (outline-previous-heading))
-             (progn
-               (setq element (org-element-headline-parser))
-	       (setq mode 'planning)
-	       (forward-line))
-	   (setq mode 'top-comment))
-         (org-skip-whitespace)
-         (beginning-of-line))
-        ;; Check if CACHED or any of its ancestors contain point.
-        ;;
-        ;; If there is such an element, we inspect it in order to know
-        ;; if we return it or if we need to parse its contents.
-        ;; Otherwise, we just start parsing from location, which is
-        ;; right after the top-most element containing CACHED but
-        ;; still before POS.
-        ;;
-        ;; As a special case, if POS is at the end of the buffer, we
-        ;; want to return the innermost element ending there.
-        ;;
-        ;; Also, if we find an ancestor and discover that we need to
-        ;; parse its contents, make sure we don't start from
-        ;; `:contents-begin', as we would otherwise go past CACHED
-        ;; again.  Instead, in that situation, we will resume parsing
-        ;; from NEXT, which is located after CACHED or its higher
-        ;; ancestor not containing point.
-        (t
-         (when recursive
-           (let ((cache-size (avl-tree-size org-element--cache)))
-             (avl-tree-mapc
-              (lambda (el)
-                (org-element-put-property el :org-element--cache-parsed-p nil))
-              org-element--cache)
-             (catch :fully-parsed
-               (while t
-                 (avl-tree-mapc
-                  (lambda (el)
-                    (when (and (org-element-property :contents-begin el)
-                               (not (org-element-property :org-element--cache-parsed-p el))
-                               (<= (org-element-property :end el) pos))
-                      (org-element-put-property el :org-element--cache-parsed-p t)
-                      (org-element--parse-to (max 1 (1- (org-element-property :begin el))) nil time-limit nil)
-                      (org-element--parse-to (1- (org-element-property :contents-end el)) nil time-limit nil)))
-                  org-element--cache)
-                 (if (= cache-size (avl-tree-size org-element--cache))
-                     (throw :fully-parsed t)
-                   (setq cache-size (avl-tree-size org-element--cache)))))))
-         (let ((up cached)
-               (pos (if (= (point-max) pos) (1- pos) pos)))
-           (while (and up (<= (org-element-property :end up) pos))
-             (goto-char (org-element-property :end up))
-             (setq element up
-                   mode (org-element--next-mode (org-element-property :mode element) (org-element-type element) nil)
-                   up (org-element-property :parent up)
-                   next (point)))
-           (when up (setq element up)))))
-       ;; Parse successively each element until we reach POS.
-       (let ((end (or (org-element-property :end element) (point-max)))
-	     (parent (org-element-property :parent element)))
-         (while t
-	   (when (org-element--cache-interrupt-p time-limit)
-             (throw 'interrupt nil))
-	   (unless element
-             (setq element (org-element--current-element
-			    end 'element mode
-			    (org-element-property :structure parent)))
-             ;; Nothing to parse (i.e. empty file).
-             (unless element (throw 'exit parent))
-             ;; FIXME: Special case when parent is a headline and we
-             ;; encountered planning line or property drawer.  If
-             ;; headline was cached and the property drawer/planning
-             ;; was added, we may need to update the robust bounds of
-             ;; the headline.
-             (when (and (org-element--cache-active-p)
-                        (memq (org-element-type (org-element-property :parent parent)) '(headline org-data))
-                        (memq (org-element-type element) '(planning property-drawer))
-                        (or (not (org-element-property :robust-begin (org-element-property :parent parent)))
-                            (> (org-element-property :begin element) (org-element-property :robust-begin (org-element-property :parent parent)))))
-               (org-with-point-at (org-element-property :begin (org-element-property :parent parent))
-                 (org-element-set-element (org-element-property :parent parent)
-                               (pcase (org-element-type (org-element-property :parent parent))
-                                 (`headline (org-element-headline-parser))
-                                 (`org-data (org-element-org-data-parser))))
-                 (when org-element--cache-diagnostics
-                   (warn "Detected new property drawer in cached headline. Updating to %S" (org-element--format-element (org-element-property :parent element))))))
-	     (org-element-put-property element :parent parent)
-             (org-element--cache-put element))
-	   (let ((elem-end (org-element-property :end element))
-	         (type (org-element-type element)))
-	     (cond
-	      ;; Skip any element ending before point.  Also skip
-	      ;; element ending at point (unless it is also the end of
-	      ;; buffer) since we're sure that another element begins
-	      ;; after it.
-	      ((and (<= elem-end pos) (/= (point-max) elem-end))
-               (when (and recursive
-                          (org-element-property :contents-end element))
-                 (org-element--parse-to (1- (org-element-property :contents-end element))
-                             nil time-limit recursive))
-               ;; Avoid parsing headline siblings above.
-               (goto-char elem-end)
-               (when (eq type 'headline)
-                 (unless (when (and (/= 1 (org-element-property :level element))
-                                    (re-search-forward
-                                     (rx-to-string
-                                      `(and bol (repeat 1 ,(1- (org-element-property :level element)) "*") " "))
-                                     pos t))
-                           (beginning-of-line)
-                           t)
-                   (goto-char pos)
-                   (re-search-backward
-                    (rx-to-string
-                     `(and bol (repeat ,(org-element-property :level element) "*") " "))
-                    elem-end t)))
-	       (setq mode (org-element--next-mode mode type nil)))
-	      ;; A non-greater element contains point: return it.
-	      ((not (memq type org-element-greater-elements))
-	       (throw 'exit (if syncp parent element)))
-	      ;; Otherwise, we have to decide if ELEMENT really
-	      ;; contains POS.  In that case we start parsing from
-	      ;; contents' beginning.
-	      ;;
-	      ;; If POS is at contents' beginning but it is also at
-	      ;; the beginning of the first item in a list or a table.
-	      ;; In that case, we need to create an anchor for that
-	      ;; list or table, so return it.
-	      ;;
-	      ;; Also, if POS is at the end of the buffer, no element
-	      ;; can start after it, but more than one may end there.
-	      ;; Arbitrarily, we choose to return the innermost of
-	      ;; such elements.
-	      ((let ((cbeg (org-element-property :contents-begin element))
-		     (cend (org-element-property :contents-end element)))
-	         (when (and cbeg cend
-			    (or (< cbeg pos)
-			        (and (= cbeg pos)
-				     (not (memq type '(plain-list table)))))
-			    (or (> cend pos)
-                                ;; When we are at cend or within blank
-                                ;; lines after, it is a special case:
-                                ;; 1. At the end of buffer we return
-                                ;; the innermost element.
-                                ;; 2. At cend of element with return
-                                ;; that element.
-                                ;; 3. At the end of element, we would
-                                ;; return in the earlier cond form.
-                                ;; 4. Within blank lines after cend,
-                                ;; when element does not have a
-                                ;; closing keyword, we return that
-                                ;; outermost element, unless the
-                                ;; outermost element is a non-empty
-                                ;; headline.  In the latter case, we
-                                ;; return the outermost element inside
-                                ;; the headline section.
-			        (and (org-element--open-end-p element)
-                                     (or (= (org-element-property :end element) (point-max))
-                                         (and (> pos (org-element-property :contents-end element))
-                                              (memq (org-element-type element) '(org-data section headline)))))))
-		   (goto-char (or next cbeg))
-		   (setq mode (if next mode (org-element--next-mode mode type t))
-                         next nil
-		         parent element
-		         end (if (org-element--open-end-p element)
-                                 (org-element-property :end element)
-                               (org-element-property :contents-end element))))))
-	      ;; Otherwise, return ELEMENT as it is the smallest
-	      ;; element containing POS.
-	      (t (throw 'exit (if syncp parent element)))))
-	   (setq element nil)))))))
+    (save-match-data
+      (org-with-wide-buffer
+       (goto-char pos)
+       (save-excursion
+         (end-of-line)
+         (skip-chars-backward " \r\t\n")
+         ;; Within blank lines at the beginning of buffer, return nil.
+         (when (bobp) (throw 'exit nil)))
+       (let* ((cached (and (org-element--cache-active-p)
+			   (org-element--cache-find pos nil)))
+              (mode (org-element-property :mode cached))
+              element next)
+         (cond
+          ;; Nothing in cache before point: start parsing from first
+          ;; element in buffer down to POS or from the beginning of the
+          ;; file.
+          ((and (not cached) (org-element--cache-active-p))
+           (setq element (org-element-org-data-parser))
+           (when org-element--cache-diagnostics
+             (warn "Nothing in cache. Adding org-data: %S" (org-element--format-element element)))
+           (org-element--cache-put element)
+           (goto-char (org-element-property :contents-begin element))
+	   (setq mode 'first-section))
+          ;; Nothing in cache before point because cache is not active.
+          ;; Parse from previous heading to avoid re-parsing the whole
+          ;; buffer above.  This comes at the cost of not calculating
+          ;; `:parent' property for headings.
+          ((not cached)
+           (if (org-with-limited-levels (outline-previous-heading))
+               (progn
+                 (setq element (org-element-headline-parser))
+	         (setq mode 'planning)
+	         (forward-line))
+	     (setq mode 'top-comment))
+           (org-skip-whitespace)
+           (beginning-of-line))
+          ;; Check if CACHED or any of its ancestors contain point.
+          ;;
+          ;; If there is such an element, we inspect it in order to know
+          ;; if we return it or if we need to parse its contents.
+          ;; Otherwise, we just start parsing from location, which is
+          ;; right after the top-most element containing CACHED but
+          ;; still before POS.
+          ;;
+          ;; As a special case, if POS is at the end of the buffer, we
+          ;; want to return the innermost element ending there.
+          ;;
+          ;; Also, if we find an ancestor and discover that we need to
+          ;; parse its contents, make sure we don't start from
+          ;; `:contents-begin', as we would otherwise go past CACHED
+          ;; again.  Instead, in that situation, we will resume parsing
+          ;; from NEXT, which is located after CACHED or its higher
+          ;; ancestor not containing point.
+          (t
+           (when recursive
+             (let ((cache-size (avl-tree-size org-element--cache)))
+               (avl-tree-mapc
+                (lambda (el)
+                  (org-element-put-property el :org-element--cache-parsed-p nil))
+                org-element--cache)
+               (catch :fully-parsed
+                 (while t
+                   (avl-tree-mapc
+                    (lambda (el)
+                      (when (and (org-element-property :contents-begin el)
+                                 (not (org-element-property :org-element--cache-parsed-p el))
+                                 (<= (org-element-property :end el) pos))
+                        (org-element-put-property el :org-element--cache-parsed-p t)
+                        (org-element--parse-to (max 1 (1- (org-element-property :begin el))) nil time-limit nil)
+                        (org-element--parse-to (1- (org-element-property :contents-end el)) nil time-limit nil)))
+                    org-element--cache)
+                   (if (= cache-size (avl-tree-size org-element--cache))
+                       (throw :fully-parsed t)
+                     (setq cache-size (avl-tree-size org-element--cache)))))))
+           (let ((up cached)
+                 (pos (if (= (point-max) pos) (1- pos) pos)))
+             (while (and up (<= (org-element-property :end up) pos))
+               (goto-char (org-element-property :end up))
+               (setq element up
+                     mode (org-element--next-mode (org-element-property :mode element) (org-element-type element) nil)
+                     up (org-element-property :parent up)
+                     next (point)))
+             (when up (setq element up)))))
+         ;; Parse successively each element until we reach POS.
+         (let ((end (or (org-element-property :end element) (point-max)))
+	       (parent (org-element-property :parent element)))
+           (while t
+	     (when (org-element--cache-interrupt-p time-limit)
+               (throw 'interrupt nil))
+	     (unless element
+               (setq element (org-element--current-element
+			      end 'element mode
+			      (org-element-property :structure parent)))
+               ;; Nothing to parse (i.e. empty file).
+               (unless element (throw 'exit parent))
+	       (org-element-put-property element :parent parent)
+               (org-element--cache-put element))
+	     (let ((elem-end (org-element-property :end element))
+	           (type (org-element-type element)))
+	       (cond
+	        ;; Skip any element ending before point.  Also skip
+	        ;; element ending at point (unless it is also the end of
+	        ;; buffer) since we're sure that another element begins
+	        ;; after it.
+	        ((and (<= elem-end pos) (/= (point-max) elem-end))
+                 (when (and recursive
+                            (org-element-property :contents-end element))
+                   (org-element--parse-to (1- (org-element-property :contents-end element))
+                               nil time-limit recursive))
+                 ;; Avoid parsing headline siblings above.
+                 (goto-char elem-end)
+                 (when (eq type 'headline)
+                   (save-match-data
+                     (unless (when (and (/= 1 (org-element-property :level element))
+                                        (re-search-forward
+                                         (rx-to-string
+                                          `(and bol (repeat 1 ,(1- (org-element-property :level element)) "*") " "))
+                                         pos t))
+                               (beginning-of-line)
+                               t)
+                       (goto-char pos)
+                       (re-search-backward
+                        (rx-to-string
+                         `(and bol (repeat ,(org-element-property :level element) "*") " "))
+                        elem-end t))))
+	         (setq mode (org-element--next-mode mode type nil)))
+	        ;; A non-greater element contains point: return it.
+	        ((not (memq type org-element-greater-elements))
+	         (throw 'exit (if syncp parent element)))
+	        ;; Otherwise, we have to decide if ELEMENT really
+	        ;; contains POS.  In that case we start parsing from
+	        ;; contents' beginning.
+	        ;;
+	        ;; If POS is at contents' beginning but it is also at
+	        ;; the beginning of the first item in a list or a table.
+	        ;; In that case, we need to create an anchor for that
+	        ;; list or table, so return it.
+	        ;;
+	        ;; Also, if POS is at the end of the buffer, no element
+	        ;; can start after it, but more than one may end there.
+	        ;; Arbitrarily, we choose to return the innermost of
+	        ;; such elements.
+	        ((let ((cbeg (org-element-property :contents-begin element))
+		       (cend (org-element-property :contents-end element)))
+	           (when (and cbeg cend
+			      (or (< cbeg pos)
+			          (and (= cbeg pos)
+				       (not (memq type '(plain-list table)))))
+			      (or (> cend pos)
+                                  ;; When we are at cend or within blank
+                                  ;; lines after, it is a special case:
+                                  ;; 1. At the end of buffer we return
+                                  ;; the innermost element.
+                                  ;; 2. At cend of element with return
+                                  ;; that element.
+                                  ;; 3. At the end of element, we would
+                                  ;; return in the earlier cond form.
+                                  ;; 4. Within blank lines after cend,
+                                  ;; when element does not have a
+                                  ;; closing keyword, we return that
+                                  ;; outermost element, unless the
+                                  ;; outermost element is a non-empty
+                                  ;; headline.  In the latter case, we
+                                  ;; return the outermost element inside
+                                  ;; the headline section.
+			          (and (org-element--open-end-p element)
+                                       (or (= (org-element-property :end element) (point-max))
+                                           (and (> pos (org-element-property :contents-end element))
+                                                (memq (org-element-type element) '(org-data section headline)))))))
+		     (goto-char (or next cbeg))
+		     (setq mode (if next mode (org-element--next-mode mode type t))
+                           next nil
+		           parent element
+		           end (if (org-element--open-end-p element)
+                                   (org-element-property :end element)
+                                 (org-element-property :contents-end element))))))
+	        ;; Otherwise, return ELEMENT as it is the smallest
+	        ;; element containing POS.
+	        (t (throw 'exit (if syncp parent element)))))
+	     (setq element nil))))))))
 
 ;;;; Staging Buffer Changes
 
@@ -6305,11 +6290,24 @@ known element in cache (it may start after END)."
                            ;; Headline might be inserted.  This is non-robust
                            ;; change when `up' is a `headline' or `section'
                            ;; with `>' level compared to the inserted headline.
+                           ;;
+                           ;; Also, planning info/property drawer
+                           ;; could have been inserted.  It is not
+                           ;; robust change then.
                            (`headline
-                            (or (not (numberp org-element--cache-change-warning))
-                                (> org-element--cache-change-warning
-                                   (org-element-property :level up))))
-                           (_ t)))))
+                            (and
+                             (or (not (numberp org-element--cache-change-warning))
+                                 (> org-element--cache-change-warning
+                                    (org-element-property :level up)))
+                             (org-with-point-at (org-element-property :contents-begin up)
+                               (unless
+                                   (save-match-data
+                                     (when (looking-at-p org-planning-line-re)
+                                       (forward-line))
+                                     (when (looking-at org-property-drawer-re)
+                                       (< beg (match-end 0))))
+                                 'robust))))
+                           (_ 'robust)))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
 	      (org-element--cache-shift-positions
