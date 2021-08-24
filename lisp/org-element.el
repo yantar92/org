@@ -6528,7 +6528,9 @@ change, as an integer."
                    (eq (org-element-property :begin real-element) (org-element-property :begin element))
                    (eq (org-element-property :end real-element) (org-element-property :end element))
                    (eq (org-element-property :contents-begin real-element) (org-element-property :contents-begin element))
-                   (eq (org-element-property :contents-end real-element) (org-element-property :contents-end element)))
+                   (eq (org-element-property :contents-end real-element) (org-element-property :contents-end element))
+                   (or (not (org-element-property :ID real-element))
+                       (string= (org-element-property :ID real-element) (org-element-property :ID element))))
         (warn "org-element-cache: Cached element is incorrect in %s. Resetting.\n The element is: %S\n The real element is: %S"
               (buffer-name (current-buffer))
               (org-element--format-element element)
