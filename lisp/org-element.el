@@ -6397,11 +6397,15 @@ change, as an integer."
                     ;; Non-robust element is now before NEXT.  Need to
                     ;; update.
                     (and first
-                         (< (org-element-property :begin first) (org-element--request-beg next)))
+                         (or (< (org-element-property :begin first) (org-element--request-beg next))
+                             (and (= (org-element-property :begin first) (org-element--request-beg next))
+                                  (> (org-element-property :end first) (org-element--request-end next)))))
                   (when org-element--cache-diagnostics
                     (warn "Current request is inside next. New parent: %S" (org-element--format-element first)))
                   (setf (org-element--request-key next) (org-element--cache-key first))
                   (setf (org-element--request-beg next) (org-element-property :begin first))
+                  (setf (org-element--request-end next) (max (org-element-property :end first)
+                                                  (org-element--request-end next)))
                   (setf (org-element--request-parent next) (org-element-property :parent first))))
             ;; The current and NEXT modifications are intersecting
             ;; with current modification starting before NEXT and NEXT
