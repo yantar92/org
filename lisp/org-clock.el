@@ -1304,7 +1304,7 @@ the default behavior."
 			   (org-base-buffer (current-buffer)))
 		       (= (point) (marker-position org-clock-hd-marker))
 		       (equal org-clock-current-task (org-get-heading t t t t)))
-	      (message "Clock continues in %S" org-clock-heading)
+	      (message "%s" (concat "Clock continues in " org-clock-heading))
 	      (throw 'abort nil))))
 	(move-marker org-clock-interrupted-task
 		     (marker-position org-clock-marker)
