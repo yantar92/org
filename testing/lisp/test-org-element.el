@@ -3741,6 +3741,14 @@ Text
        (org-test-with-temp-text "- Para1\n- Para2\n\nPara3"
 	 (progn (forward-line 2)
 		(org-element-type (org-element-at-point))))))
+  ;; Special case: at the last blank line in a plain list at the end of
+  ;; a headline, return the plain list, not the last item, and not the
+  ;; headline.
+  (should
+   (eq 'plain-list
+       (org-test-with-temp-text "* Headline\n- Para1\n- Para2\n\nPara3\n* Another headline"
+	 (progn (forward-line 3)
+		(org-element-type (org-element-at-point))))))
   ;; Special case: when a list ends at the end of buffer and there's
   ;; no final newline, return last element in last item.
   (should
