@@ -5757,41 +5757,48 @@ request."
       ;; Note that we only need to get the parent from the first
       ;; element in cache after the hole.
       ;;
-      ;; When next key is lesser or equal to the current one, delegate
-      ;; phase 1 processing to next request in order to preserve key
-      ;; order among requests.
+      ;; When next key is lesser or equal to the current one, current
+      ;; request is inside a to-be-shifted part of the cache.  It is
+      ;; fine because the order of elements will not be altered by
+      ;; shifting.  However, we cannot know the real position of the
+      ;; unshifted NEXT element in the current request.  So, we need
+      ;; to sort the request list according to keys and re-start
+      ;; processing from the new leftmost request.
       (when org-element--cache-diagnostics (warn "Phase 1"))
       (let ((key (org-element--request-key request)))
 	(when (and next-request-key (not (org-element--cache-key-less-p key next-request-key)))
-	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
-            ;; FIXME: I am not sure if it is always safe.  We are
-            ;; effectively bypassing processing of all elements before
-            ;; KEY and after NEXT-REQUEST-KEY.
-            ;;
-            ;; Real-life testing showed almost no errors in cache, but
-            ;; I saw seveal errors after then.  These things are hard
-            ;; to debug and this is the last suspicious place in the
-            ;; code I fail to understand.
-            ;; Listing errors I encountered from the time I stopped
-            ;; seing cache errors regularly:
-            ;; [2021-08-23 Mon]: inlinetask element had incorrect
-            ;; bounds.
-            (when (org-element--cache-key-less-p next-request-key key)
-              (warn "Unordered requests:\n%S\n%S\n Global: %S"
-                    (let ((print-length 10)) (prin1-to-string request))
-                    (let ((print-length 10)) (prin1-to-string next-request))
-                    (let (prev)
-                      (cl-loop for c in
-                               (mapcar (lambda (req) (cons (org-element--request-key req) (org-element--request-beg req)))
-                                       org-element--cache-sync-requests)
-                               if (and prev (<= (car c) (car prev)))
-                               collect (format ">!%S" c)
-                               else collect (format "%S" c)
-                               do (setq prev c)))))
-	    (setf (org-element--request-key next-request) key)
-            (setf (org-element--request-beg next-request) (org-element--request-beg request))
-	    (setf (org-element--request-phase next-request) 1))
-	  (throw 'quit t)))
+          (if (org-element--cache-key-less-p next-request-key key)
+              (progn
+                (when org-element--cache-diagnostics
+                  (warn "Unordered requests. Re-ordering:\n%S\n%S\n Global: %S"
+                        (let ((print-length 10)) (prin1-to-string request))
+                        (let ((print-length 10)) (prin1-to-string (nth 1 org-element--cache-sync-requests)))
+                        (let (prev)
+                          (cl-loop for c in
+                                   (mapcar (lambda (req) (cons (org-element--request-key req) (org-element--request-beg req)))
+                                           org-element--cache-sync-requests)
+                                   if (and prev (<= (car c) (car prev)))
+                                   collect (format ">!%S" c)
+                                   else collect (format "%S" c)
+                                   do (setq prev c)))))
+                (setq org-element--cache-sync-requests
+                      (sort org-element--cache-sync-requests
+                            (lambda (a b)
+                              (org-element--cache-key-less-p
+                               (org-element--request-key a)
+                               (org-element--request-key b)))))
+                (setq request (car org-element--cache-sync-requests))
+                (setq next-request-key (org-element--request-key (nth 1 org-element--cache-sync-requests))))
+            ;; They keys are equal. Merge the requests.
+	    (let ((next-request (nth 1 org-element--cache-sync-requests)))
+              (when org-element--cache-diagnostics
+                (warn "Phase 1: The first two requests start from the same key. Merging: %S\n%S\n"
+                      (let ((print-length 10)) (prin1-to-string request))
+                      (let ((print-length 10)) (prin1-to-string next-request))))
+	      (setf (org-element--request-key next-request) key)
+              (setf (org-element--request-beg next-request) (org-element--request-beg request))
+	      (setf (org-element--request-phase next-request) 1)
+              (throw 'quit t)))))
       ;; Next element will start at its beginning position plus
       ;; offset, since it hasn't been shifted yet.  Therefore, LIMIT
       ;; contains the real beginning position of the first element to
