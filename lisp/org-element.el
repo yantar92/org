@@ -5794,7 +5794,7 @@ request."
                ;; No relevant changes happened after submitting this
                ;; request.  We are safe to look at the actual Org
                ;; buffer and calculate the new parent.
-	       (let ((parent (org-element--parse-to limit 'get-parent time-limit (when time-limit 'recursive))))
+	       (let ((parent (org-element--parse-to limit nil time-limit)))
                  (when org-element--cache-diagnostics
                    (warn "New parent at %d: %S::%S" limit (org-element-property :org-element--cache-sync-key parent) parent))
                  (setf (org-element--request-parent request) parent)
