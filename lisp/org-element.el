@@ -5178,6 +5178,9 @@ This will cause performance degradation.")
 This number is a probability to check an element requested from cache
 to be correct.  Setting this to a value less than 0.0001 is useless.")
 
+(defvar org-element--cache-diagnostics nil
+  "Print detailed diagnostics of cache processing.")
+
 ;;;; Data Structure
 
 (defvar org-element--cache nil
@@ -5510,6 +5513,8 @@ the cache."
         (org-element-put-property element
                        :org-element--cache-sync-key
                        (cons org-element--cache-sync-keys-value new-key))))
+    (when org-element--cache-diagnostics
+      (warn "Added new element with %S key: %S" (org-element-property :org-element--cache-sync-key element) element))
     (avl-tree-enter org-element--cache element)))
 
 (defsubst org-element--cache-remove (element)
@@ -5657,6 +5662,8 @@ not registered yet in the cache are going to happen.  See
 
 Throw `interrupt' if the process stops before completing the
 request."
+  (when org-element--cache-diagnostics
+    (warn "org-element-cache: Processing request [%d] %s" (avl-tree-size org-element--cache) (let ((print-length 10)) (prin1-to-string request))))
   (catch 'quit
     (when (= (org-element--request-phase request) 0)
       ;; Phase 0.
@@ -5666,9 +5673,11 @@ request."
       ;;
       ;; At each iteration, we start again at tree root since
       ;; a deletion modifies structure of the balanced tree.
+      (when org-element--cache-diagnostics (warn "Phase 0"))
       (catch 'end-phase
         (while t
 	  (when (org-element--cache-interrupt-p time-limit)
+            (when org-element--cache-diagnostics (warn "Interrupt"))
 	    (throw 'interrupt nil))
 	  (let ((request-key (org-element--request-key request))
 		(end (org-element--request-end request))
@@ -5693,10 +5702,16 @@ request."
                 ;; We found first element in cache starting at or
                 ;; after REQUEST-KEY.
 		(let ((pos (org-element-property :begin data)))
-		  (if (<= pos end) (org-element--cache-remove data)
+		  (if (<= pos end)
+                      (progn
+                        (when org-element--cache-diagnostics
+                          (warn "removing %S" (let ((print-length 10)) (prin1-to-string data))))
+                        (org-element--cache-remove data) )
                     ;; Done deleting everthing starting before END.
                     ;; DATA-KEY is the first known element after END.
                     ;; Move on to phase 1.
+                    (when org-element--cache-diagnostics
+                      (warn "found element after %d: %S::%S" end (org-element-property :org-element--cache-sync-key data) data))
                     (setf (org-element--request-key request) data-key)
                     (setf (org-element--request-beg request) pos)
                     (setf (org-element--request-phase request) 1)
@@ -5733,6 +5748,7 @@ request."
       ;; When next key is lesser or equal to the current one, delegate
       ;; phase 1 processing to next request in order to preserve key
       ;; order among requests.
+      (when org-element--cache-diagnostics (warn "Phase 1"))
       (let ((key (org-element--request-key request)))
 	(when (and next-request-key (not (org-element--cache-key-less-p key next-request-key)))
 	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
@@ -5748,6 +5764,10 @@ request."
             ;; seing cache errors regularly:
             ;; [2021-08-23 Mon]: inlinetask element had incorrect
             ;; bounds.
+            (when (org-element--cache-key-less-p next-request-key key)
+              (warn "Unordered requests:\n%S\n%S"
+                    (let ((print-length 10)) (prin1-to-string request))
+                    (let ((print-length 10)) (prin1-to-string next-request))))
 	    (setf (org-element--request-key next-request) key)
             (setf (org-element--request-beg next-request) (org-element--request-beg request))
 	    (setf (org-element--request-phase next-request) 1))
@@ -5757,19 +5777,26 @@ request."
       ;; contains the real beginning position of the first element to
       ;; shift and re-parent.
       (let ((limit (+ (org-element--request-beg request) (org-element--request-offset request))))
-	(cond ((and threshold (> limit threshold)) (throw 'interrupt nil))
+	(cond ((and threshold (> limit threshold))
+               (when org-element--cache-diagnostics
+                 (warn "Interrupt: position %d after threshold %d" limit threshold))
+               (throw 'interrupt nil))
 	      ((and future-change (>= limit future-change))
 	       ;; Changes happened around this element and they will
 	       ;; trigger another phase 1 request.  Skip re-parenting
 	       ;; and simply proceed with shifting (phase 2) to make
 	       ;; sure that followup phase 0 request for the recent
 	       ;; changes can operate on the correctly shifted cache.
+               (when org-element--cache-diagnostics
+                 (warn "position %d after future change %d" limit future-change))
                (setf (org-element--request-phase request) 2))
 	      (t
                ;; No relevant changes happened after submitting this
                ;; request.  We are safe to look at the actual Org
                ;; buffer and calculate the new parent.
 	       (let ((parent (org-element--parse-to limit 'get-parent time-limit (when time-limit 'recursive))))
+                 (when org-element--cache-diagnostics
+                   (warn "New parent at %d: %S::%S" limit (org-element-property :org-element--cache-sync-key parent) parent))
                  (setf (org-element--request-parent request) parent)
 		 (setf (org-element--request-phase request) 2))))))
     ;; Phase 2.
@@ -5783,6 +5810,7 @@ request."
     ;; Once THRESHOLD, if any, is reached, or once there is an input
     ;; pending, exit.  Before leaving, the current synchronization
     ;; request is updated.
+    (when org-element--cache-diagnostics (warn "Phase 2"))
     (let ((start (org-element--request-key request))
 	  (offset (org-element--request-offset request))
 	  (parent (org-element--request-parent request))
@@ -5791,7 +5819,9 @@ request."
 	  (leftp t)
 	  exit-flag continue-flag)
       ;; No re-parenting nor shifting planned: request is over.
-      (when (and (not parent) (zerop offset)) (throw 'quit t))
+      (when (and (not parent) (zerop offset))
+        (when org-element--cache-diagnostics (warn "Empty offset. Request completed."))
+        (throw 'quit t))
       (while node
 	(let* ((data (avl-tree--node-data node))
 	       (key (org-element--cache-key data)))
@@ -5805,14 +5835,18 @@ request."
             ;; after START, but before NEXT.
 	    (unless (org-element--cache-key-less-p key start)
 	      ;; We reached NEXT.  Request is complete.
-	      (when (equal key next-request-key) (throw 'quit t))
+	      (when (equal key next-request-key)
+                (when org-element--cache-diagnostics (warn "Reached next request."))
+                (throw 'quit t))
 	      ;; Handle interruption request.  Update current request.
 	      (when (or exit-flag (org-element--cache-interrupt-p time-limit))
+                (when org-element--cache-diagnostics (warn "Interrupt"))
                 (setf (org-element--request-key request) key)
                 (setf (org-element--request-parent request) parent)
 		(throw 'interrupt nil))
 	      ;; Shift element.
 	      (unless (zerop offset)
+                (when org-element--cache-diagnostics (warn "Shifting positions (𝝙%S) in %S::%S" offset (org-element-property :org-element--cache-sync-key data) data))
 		(org-element--cache-shift-positions data offset))
 	      (let ((begin (org-element-property :begin data)))
 		;; Update PARENT and re-parent DATA, only when
@@ -5844,6 +5878,8 @@ request."
                                 (> (org-element-property :end data) (org-element-property :end parent))
                                 (and (org-element-property :contents-end data)
                                      (> (org-element-property :contents-end data) (org-element-property :contents-end parent)))))
+                       (when org-element--cache-diagnostics
+                         (warn "org-element-cache: Removing obsolete element with key %S::%S" (org-element-property :org-element--cache-sync-key data) data))
                        (org-element--cache-remove data)
                        ;; We altered the tree structure.  The tree
                        ;; traversal needs to be restarted.
@@ -5860,20 +5896,28 @@ request."
                                   (not (avl-tree-member-p org-element--cache p))
 				  (< (org-element-property :begin p)
 				     (org-element-property :begin parent)))))
+                       (when org-element--cache-diagnostics
+                         (warn "Updating parent in %S\n New parent: %S" data parent))
 		       (org-element-put-property data :parent parent)
 		       (let ((s (org-element-property :structure parent)))
 			 (when (and s (org-element-property :structure data))
 			   (org-element-put-property data :structure s)))))
 		;; Cache is up-to-date past THRESHOLD.  Request
 		;; interruption.
-		(when (and threshold (> begin threshold)) (setq exit-flag t))))
+		(when (and threshold (> begin threshold))
+                  (when org-element--cache-diagnostics
+                    (warn "Reached threshold %d: %S" threshold data))
+                  (setq exit-flag t))))
             (if continue-flag
                 (setq continue-flag nil)
 	      (setq node (if (setq leftp (avl-tree--node-right node))
 			     (avl-tree--node-right node)
 			   (pop stack)))))))
       ;; We reached end of tree: synchronization complete.
-      t)))
+      t))
+  (when org-element--cache-diagnostics
+    (warn "org-element-cache: Finished process. The cache size is %d" (avl-tree-size org-element--cache))))
+
 (defsubst org-element--open-end-p (element)
   "Check if ELEMENT in current buffer contains extra blank lines after
 it and does not have closing term.
@@ -5919,6 +5963,8 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
         ;; file.
         ((and (not cached) (org-element--cache-active-p))
          (setq element (org-element-org-data-parser))
+         (when org-element--cache-diagnostics
+           (warn "Nothing in cache. Adding org-data: %S" element))
          (org-element--cache-put element)
          (goto-char (org-element-property :contents-begin element))
 	 (setq mode 'first-section))
@@ -6006,11 +6052,13 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                             (> (org-element-property :begin element) (org-element-property :robust-begin (org-element-property :parent parent)))))
                (org-with-point-at (org-element-property :begin (org-element-property :parent parent))
                  (org-element-set-element (org-element-property :parent parent)
-                                          (pcase (org-element-type (org-element-property :parent parent))
-                                            (`headline (org-element-headline-parser))
-                                            (`org-data (org-element-org-data-parser))))))
+                               (pcase (org-element-type (org-element-property :parent parent))
+                                 (`headline (org-element-headline-parser))
+                                 (`org-data (org-element-org-data-parser))))
+                 (when org-element--cache-diagnostics
+                   (warn "Detected new property drawer in cached headline. Updating to %S" (org-element-property :parent element)))))
 	     (org-element-put-property element :parent parent)
-	     (org-element--cache-put element))
+             (org-element--cache-put element))
 	   (let ((elem-end (org-element-property :end element))
 	         (type (org-element-type element)))
 	     (cond
@@ -6133,23 +6181,27 @@ The function returns the new value of `org-element--cache-change-warning'."
        (goto-char beg)
        (beginning-of-line)
        (let ((bottom (save-excursion (goto-char end) (line-end-position))))
-         (setq org-element--cache-change-warning
-	       (save-match-data
-                 (let ((case-fold-search t))
-                   (when (re-search-forward
-		          org-element--cache-sensitive-re bottom t)
-                     (goto-char beg)
-                     (beginning-of-line)
-                     (let (min-level)
-                       (cl-loop while (re-search-forward
-                                       (rx-to-string
-                                        (if min-level
-                                            `(and bol (repeat 1 ,(1- min-level) "*") " ")
-                                          `(and bol (+ "*") " ")))
-                                       bottom t)
-                                do (setq min-level (1- (length (match-string 0))))
-                                until (= min-level 1))
-                       (or min-level t)))))))))))
+         (prog1
+             (setq org-element--cache-change-warning
+	           (save-match-data
+                     (let ((case-fold-search t))
+                       (when (re-search-forward
+		              org-element--cache-sensitive-re bottom t)
+                         (goto-char beg)
+                         (beginning-of-line)
+                         (let (min-level)
+                           (cl-loop while (re-search-forward
+                                           (rx-to-string
+                                            (if min-level
+                                                `(and bol (repeat 1 ,(1- min-level) "*") " ")
+                                              `(and bol (+ "*") " ")))
+                                           bottom t)
+                                    do (setq min-level (1- (length (match-string 0))))
+                                    until (= min-level 1))
+                           (or min-level t))))))
+           (when (and org-element--cache-change-warning
+                      org-element--cache-diagnostics)
+             (warn "About to modify sensitive text: %S" org-element--cache-change-warning))))))))
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
@@ -6262,6 +6314,8 @@ known element in cache (it may start after END)."
                           (let ((current (org-with-point-at (org-element-property :begin up)
                                            (org-element--current-element (org-element-property :end up)))))
                             (when (eq 'headline (org-element-type current))
+                              (when org-element--cache-diagnostics
+                                (warn "Found non-robust headline that can be updated individually: %S" current))
                               (org-element-set-element up current)
                               t)))
                      ;; If UP is org-data, the situation is similar to
@@ -6269,6 +6323,8 @@ known element in cache (it may start after END)."
                      ;; org-data itself.
                      (when (eq 'org-data (org-element-type up))
                        (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
+                       (when org-element--cache-diagnostics
+                         (warn "Found non-robust change invalidating org-data. Re-parsing: %S" up))
                        t))
               (setq before up)
 	      (when robust-flag (setq robust-flag nil))))
@@ -6288,6 +6344,8 @@ known element in cache (it may start after END)."
 BEG and END are buffer positions delimiting the minimal area
 where cache data should be removed.  OFFSET is the size of the
 change, as an integer."
+  (when org-element--cache-diagnostics
+    (warn "Submitting new synchronization request for [%S..%S]𝝙%S" beg end offset))
   (let ((next (car org-element--cache-sync-requests))
 	delete-to delete-from)
     (if (and next
@@ -6302,6 +6360,8 @@ change, as an integer."
 	;; Current changes can be merged with first sync request: we
 	;; can save a partial cache synchronization.
 	(progn
+          (when org-element--cache-diagnostics
+            (warn "Found another phase 0 request intersecting with current"))
           ;; Update OFFSET of the existing request.
 	  (cl-incf (org-element--request-offset next) offset)
 	  ;; If last change happened within area to be removed, extend
@@ -6317,11 +6377,15 @@ change, as an integer."
               ;; also need to update the request.
               (let ((first (org-element--cache-for-removal beg end offset) ; Shift as needed.
                            ))
+                (when org-element--cache-diagnostics
+                  (warn "Current request is inside next. Candidate parent: %S" first))
                 (when
                     ;; Non-robust element is now before NEXT.  Need to
                     ;; update.
                     (and first
                          (< (org-element-property :begin first) (org-element--request-beg next)))
+                  (when org-element--cache-diagnostics
+                    (warn "Current request is inside next. New parent: %S" first))
                   (setf (org-element--request-key next) (org-element--cache-key first))
                   (setf (org-element--request-beg next) (org-element-property :begin first))
                   (setf (org-element--request-parent next) (org-element-property :parent first))))
@@ -6331,7 +6395,11 @@ change, as an integer."
             ;; non-robust parent for the new extended modification
             ;; region.
 	    (let ((first (org-element--cache-for-removal beg delete-to offset)))
+              (when org-element--cache-diagnostics
+                (warn "Current request intersects with next. Candidate parent: %S" first))
 	      (when (and first (< (org-element-property :begin first) (org-element--request-beg next)))
+                (when org-element--cache-diagnostics
+                  (warn "Current request intersects with next. Updating. New parent: %S" first))
                 (setf (org-element--request-key next) (org-element--cache-key first))
                 (setf (org-element--request-beg next) (org-element-property :begin first))
                 (setf (org-element--request-parent next) (org-element-property :parent first))))))
@@ -6341,6 +6409,7 @@ change, as an integer."
       ;; optional parameter since current modifications are not known
       ;; yet to the otherwise correct part of the cache (i.e, before
       ;; the first request).
+      (when org-element--cache-diagnostics (warn "Adding new phase 0 request"))
       (when next (org-element--cache-sync (current-buffer) end beg))
       (let ((first (org-element--cache-for-removal beg end offset)))
 	(if first
@@ -6350,7 +6419,10 @@ change, as an integer."
 		     ;; When changes happen before the first known
 		     ;; element, re-parent and shift the rest of the
 		     ;; cache.
-		     ((> first-beg end) (vector key first-beg nil offset nil 1))
+		     ((> first-beg end)
+                      (when org-element--cache-diagnostics
+                        (warn "Changes are before first known element. Submitting phase 1 request"))
+                      (vector key first-beg nil offset nil 1))
 		     ;; Otherwise, we find the first non robust
 		     ;; element containing END.  All elements between
 		     ;; FIRST and this one are to be removed.
@@ -6360,6 +6432,8 @@ change, as an integer."
                      ;; region containing FIRST.
 		     ((let ((first-end (org-element-property :end first)))
 			(and (>= first-end end)
+                             (or (not org-element--cache-diagnostics)
+                                 (warn "Extending to non-robust element %S" first))
 			     (vector key first-beg first-end offset (org-element-property :parent first) 0))))
 		     (t
                       ;; Now, FIRST is the first element after BEG or
@@ -6386,11 +6460,15 @@ change, as an integer."
                         ;; element starting before END but after
                         ;; beginning of first.
                         ;; of the FIRST.
+                        (when org-element--cache-diagnostics
+                          (warn "Extending to all elements between:\n 1: %S\n 2: %S" first element))
 			(vector key first-beg element-end offset up 0)))))
 		  org-element--cache-sync-requests)
 	  ;; No element to remove.  No need to re-parent either.
 	  ;; Simply shift additional elements, if any, by OFFSET.
 	  (when org-element--cache-sync-requests
+            (when org-element--cache-diagnostics
+              (warn "Nothing to remove. Updating offset of the next request by 𝝙%d: %S" offset (car org-element--cache-sync-requests)))
 	    (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
 		     offset)))))))
 
