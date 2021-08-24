@@ -5226,8 +5226,8 @@ must not start at or before END.  See `org-element--cache-submit-request'.")
 (defvar org-element--cache-sync-timer nil
   "Timer used for cache synchronization.")
 
-(defvar org-element--cache-sync-keys nil
-  "Hash table used to store keys during synchronization.
+(defvar org-element--cache-sync-keys-value nil
+  "Id value used to identify keys during synchronisation.
 See `org-element--cache-key' for more information.")
 
 (defvar-local org-element--cache-change-tic nil
@@ -5291,9 +5291,11 @@ the cache was synchronized for the last time.  Elements added to
 cache during the synchronization get a new key generated with
 `org-element--cache-generate-key'.
 
-Such keys are stored in `org-element--cache-sync-keys'.  The hash
-table is cleared once the synchronization is complete."
-  (or (gethash element org-element--cache-sync-keys)
+Such keys are stored inside the element property
+`:org-element--cache-sync-key'.  The property is a cons containing
+current `org-element--cache-sync-keys-value' and the element key."
+  (or (when (eq org-element--cache-sync-keys-value (car (org-element-property :org-element--cache-sync-key element)))
+        (cdr (org-element-property :org-element--cache-sync-key element)))
       (let* ((begin (org-element-property :begin element))
 	     ;; Increase beginning position of items (respectively
 	     ;; table rows) by one, so the first item can get
@@ -5307,9 +5309,11 @@ table is cleared once the synchronization is complete."
                     (if (memq (org-element-type element) '(section org-data))
                         (1- begin)
 		      begin))))
-	(if org-element--cache-sync-requests
-	    (puthash element key org-element--cache-sync-keys)
-	  key))))
+        (when org-element--cache-sync-requests
+	  (org-element-put-property element
+                         :org-element--cache-sync-key
+                         (cons org-element--cache-sync-keys-value key)))
+        key)))
 
 (defun org-element--cache-generate-key (lower upper)
   "Generate a key between LOWER and UPPER.
@@ -5503,8 +5507,9 @@ the cache."
 		       (cond ((cdr keys) (org-element--cache-key (cdr keys)))
 			     (org-element--cache-sync-requests
 			      (org-element--request-key (car org-element--cache-sync-requests)))))))
-        (org-element-put-property element :cache-key new-key)
-	(puthash element new-key org-element--cache-sync-keys)))
+        (org-element-put-property element
+                       :org-element--cache-sync-key
+                       (cons org-element--cache-sync-keys-value new-key))))
     (avl-tree-enter org-element--cache element)))
 
 (defsubst org-element--cache-remove (element)
@@ -5514,13 +5519,11 @@ Assume ELEMENT belongs to cache and that a cache is active."
       (and
        ;; This should not happen, but if it is, would be better to know
        ;; where it happens.
-       (warn "org-element-cache: Failed to delete %S element in %S at %S. The element cache key was %S. The cache key after shifts was %S."
+       (warn "org-element-cache: Failed to delete %S element in %S at %S. The element cache key was %S."
              (org-element-type element)
              (current-buffer)
              (org-element-property :begin element)
-             (org-element-property :cache-key element)
-             (or (org-element-property :cache-key-shifted element)
-                 "unchanged"))
+             (org-element-property :org-element--cache-sync-key element))
        (org-element-cache-reset)
        (throw 'quit nil))))
 
@@ -5570,7 +5573,6 @@ Properties are modified by side-effect."
                     :post-affiliated :robust-begin :robust-end))
       (let ((value (and (or (not props) (memq key props))
 			(plist-get properties key))))
-        (when (and value (eq key :begin)) (plist-put properties :cache-key-shifted (+ offset value)))
 	(and value (plist-put properties key (+ offset value)))))))
 
 (defun org-element--cache-sync (buffer &optional threshold future-change)
@@ -5632,7 +5634,7 @@ updated before current modification are actually submitted."
 	  ;; Otherwise, reset keys.
 	  (if org-element--cache-sync-requests
 	      (org-element--cache-set-timer buffer)
-	    (clrhash org-element--cache-sync-keys)))))))
+            (setq org-element--cache-sync-keys-value (buffer-chars-modified-tick))))))))
 
 (defun org-element--cache-process-request
     (request next-request-key threshold time-limit future-change)
@@ -6419,8 +6421,7 @@ buffers."
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
 	(setq-local org-element--cache
 		    (avl-tree-create #'org-element--cache-compare))
-	(setq-local org-element--cache-sync-keys
-		    (make-hash-table :weakness 'key :test #'eq))
+	(setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
 	(setq-local org-element--cache-sync-timer nil)
