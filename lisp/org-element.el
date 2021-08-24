@@ -5285,7 +5285,7 @@ to slow down the command.")
 
 (defmacro org-element--format-element (element)
   "Format ELEMENT for printing in diagnostics."
-  `(let ((print-length 10)) (prin1-to-string element)))
+  `(let ((print-length 25)) (prin1-to-string ,element)))
 
 (defsubst org-element--cache-key (element)
   "Return a unique key for ELEMENT in cache tree.
@@ -6206,7 +6206,7 @@ The function returns the new value of `org-element--cache-change-warning'."
                            (or min-level t))))))
            (when (and org-element--cache-change-warning
                       org-element--cache-diagnostics)
-             (warn "About to modify sensitive text: %S" org-element--cache-change-warning))))))))
+             (warn "About to modify sensitive text by %S: %S" this-command org-element--cache-change-warning))))))))
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
@@ -6488,11 +6488,14 @@ change, as an integer."
 		  org-element--cache-sync-requests)
 	  ;; No element to remove.  No need to re-parent either.
 	  ;; Simply shift additional elements, if any, by OFFSET.
-	  (when org-element--cache-sync-requests
+	  (if org-element--cache-sync-requests
+              (progn
+                (when org-element--cache-diagnostics
+                  (warn "Nothing to remove. Updating offset of the next request by 𝝙%d: %S" offset (car org-element--cache-sync-requests)))
+	        (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
+		         offset))
             (when org-element--cache-diagnostics
-              (warn "Nothing to remove. Updating offset of the next request by 𝝙%d: %S" offset (car org-element--cache-sync-requests)))
-	    (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
-		     offset)))))))
+              (warn "Nothing to remove. No elements in cache after %d. Terminating." end))))))))
 
 (defun org-element--cache-verify-element (element)
   "Verify correctness of ELEMENT when `org-element--cache-self-verify' is non-nil."
