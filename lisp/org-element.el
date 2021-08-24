@@ -5836,9 +5836,14 @@ request."
                       ;; However, the paragraph element stored in
                       ;; cache must be deleted instead.
                       ((and parent
-                            (or (not (memq parent org-element-greater-elements))
-                                (< (org-element-property :begin data) (org-element-property :contents-begin parent))
-                                (> (org-element-property :end data) (org-element-property :contents-end parent))))
+                            (or (not (memq (org-element-type parent) org-element-greater-elements))
+                                (and (org-element-property :contents-begin parent)
+                                     (< (org-element-property :begin data) (org-element-property :contents-begin parent)))
+                                (and (org-element-property :contents-end parent)
+                                     (>= (org-element-property :begin data) (org-element-property :contents-end parent)))
+                                (> (org-element-property :end data) (org-element-property :end parent))
+                                (and (org-element-property :contents-end data)
+                                     (> (org-element-property :contents-end data) (org-element-property :contents-end parent)))))
                        (org-element--cache-remove data)
                        ;; We altered the tree structure.  The tree
                        ;; traversal needs to be restarted.
