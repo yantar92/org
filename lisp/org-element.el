@@ -614,11 +614,18 @@ Parse tree is modified by side effect."
     ;; Set appropriate :parent property.
     (org-element-put-property element :parent parent)))
 
+(defconst org-element--cache-element-properties '(:org-element--cache-parsed-p
+                                       :org-element--cache-sync-key)
+  "List of element properties used internally by cache.")
+
 (defun org-element-set-element (old new)
   "Replace element or object OLD with element or object NEW.
 The function takes care of setting `:parent' property for NEW."
   ;; Ensure OLD and NEW have the same parent.
   (org-element-put-property new :parent (org-element-property :parent old))
+  (dolist (p org-element--cache-element-properties)
+    (when (org-element-property p old)
+      (org-element-put-property new p (org-element-property p old))))
   (if (or (memq (org-element-type old) '(plain-text nil))
 	  (memq (org-element-type new) '(plain-text nil)))
       ;; We cannot replace OLD with NEW since one of them is not an
