@@ -5915,15 +5915,16 @@ request."
             ;; after START, but before NEXT.
 	    (unless (org-element--cache-key-less-p key start)
 	      ;; We reached NEXT.  Request is complete.
-	      (when (equal key next-request-key)
-                (when org-element--cache-diagnostics (warn "Reached next request."))
+	      (when (and next-request-key
+                         (not (org-element--cache-key-less-p key next-request-key)))
+                (org-element--cache-log-message "Reached next request.")
                 (throw 'quit t))
 	      ;; Handle interruption request.  Update current request.
 	      (when (or exit-flag (org-element--cache-interrupt-p time-limit))
                 (org-element--cache-log-message "Interrupt")
                 (setf (org-element--request-key request) key)
                 (setf (org-element--request-parent request) parent)
-		(throw 'interrupt nil))
+                (throw 'interrupt nil))
 	      ;; Shift element.
 	      (unless (zerop offset)
                 (org-element--cache-log-message "Shifting positions (𝝙%S) in %S::%S"
