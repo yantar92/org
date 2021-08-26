@@ -5305,7 +5305,9 @@ to slow down the command.")
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
   `(when org-element--cache-self-verify
-     (let* ((format-string (concat "org-element-cache diagnostics: " ,format-string))
+     (let* ((format-string (concat (format "org-element-cache diagnostics(%s): "
+                                           (buffer-name (current-buffer)))
+                                   ,format-string))
             (format-string (funcall #'format format-string ,@args)))
        (if org-element--cache-diagnostics
            (warn format-string)
@@ -5321,7 +5323,8 @@ to slow down the command.")
            (if (not org-element--cache-diagnostics-ring)
                format-string
              (prog1
-                 (concat "Warning: "
+                 (concat (format "Warning(%s): "
+                                 (buffer-name (current-buffer)))
                          format-string
                          "\nBacktrace:\n  "
                          (mapconcat #'identity
@@ -5658,14 +5661,16 @@ updated before current modification are actually submitted."
                           (buffer-name (current-buffer))
                           this-command)
             (org-element-cache-reset))
-        (org-element--cache-log-message "Syncing down to %S-%S" future-change threshold)
         (let ((inhibit-quit t) request next)
 	  (when org-element--cache-sync-timer
 	    (cancel-timer org-element--cache-sync-timer))
           (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
 	    (catch 'interrupt
+              (when org-element--cache-sync-requests
+                (org-element--cache-log-message "Syncing down to %S-%S" future-change threshold))
 	      (while org-element--cache-sync-requests
                 (when (org-element--cache-interrupt-p time-limit)
+                  (org-element--cache-log-message "Interrupt: time limit")
                   (throw 'interrupt nil))
 	        (setq request (car org-element--cache-sync-requests)
 		      next (nth 1 org-element--cache-sync-requests))
@@ -5738,7 +5743,7 @@ request."
       (catch 'end-phase
         (while t
 	  (when (org-element--cache-interrupt-p time-limit)
-            (org-element--cache-log-message "Interrupt")
+            (org-element--cache-log-message "Interrupt: time limit")
 	    (throw 'interrupt nil))
 	  (let ((request-key (org-element--request-key request))
 		(end (org-element--request-end request))
@@ -5921,7 +5926,7 @@ request."
                 (throw 'quit t))
 	      ;; Handle interruption request.  Update current request.
 	      (when (or exit-flag (org-element--cache-interrupt-p time-limit))
-                (org-element--cache-log-message "Interrupt")
+                (org-element--cache-log-message "Interrupt: %s" (if exit-flag "threshold" "time limit"))
                 (setf (org-element--request-key request) key)
                 (setf (org-element--request-parent request) parent)
                 (throw 'interrupt nil))
@@ -6002,8 +6007,9 @@ request."
 			   (pop stack)))))))
       ;; We reached end of tree: synchronization complete.
       t))
-  (org-element--cache-log-message "org-element-cache: Finished process. The cache size is %d"
-                       (avl-tree-size org-element--cache)))
+  (org-element--cache-log-message "org-element-cache: Finished process. The cache size is %d. The remaining sync requests: %S"
+                       (avl-tree-size org-element--cache)
+                       (let ((print-level 2)) (prin1-to-string org-element--cache-sync-requests))))
 
 (defsubst org-element--open-end-p (element)
   "Check if ELEMENT in current buffer contains extra blank lines after
@@ -6271,10 +6277,9 @@ The function returns the new value of `org-element--cache-change-warning'."
                                     do (setq min-level (1- (length (match-string 0))))
                                     until (= min-level 1))
                            (or min-level t))))))
-           (when org-element--cache-change-warning
-             (org-element--cache-log-message "About to modify sensitive text by %S: %S"
-                                  this-command
-                                  org-element--cache-change-warning))))))))
+           (org-element--cache-log-message "%S is about to modify text: warning %S"
+                                this-command
+                                org-element--cache-change-warning)))))))
 
 (defun org-element--cache-after-change (beg end pre)
   "Update buffer modifications for current buffer.
