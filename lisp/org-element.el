@@ -5669,9 +5669,6 @@ updated before current modification are actually submitted."
               (when org-element--cache-sync-requests
                 (org-element--cache-log-message "Syncing down to %S-%S" future-change threshold))
 	      (while org-element--cache-sync-requests
-                (when (org-element--cache-interrupt-p time-limit)
-                  (org-element--cache-log-message "Interrupt: time limit")
-                  (throw 'interrupt nil))
 	        (setq request (car org-element--cache-sync-requests)
 		      next (nth 1 org-element--cache-sync-requests))
 	        (org-element--cache-process-request
