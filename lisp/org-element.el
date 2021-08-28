@@ -5195,11 +5195,11 @@ to be correct.  Setting this to a value less than 0.0001 is useless.")
 (defvar org-element--cache-diagnostics nil
   "Print detailed diagnostics of cache processing.")
 
-(defvar org-element--cache-diagnostics-ring nil
+(defvar-local org-element--cache-diagnostics-ring nil
   "Ring containing last `org-element--cache-diagnostics-ring-size'
 cache process log entries.")
 
-(defvar org-element--cache-diagnostics-ring-size 50
+(defvar org-element--cache-diagnostics-ring-size 1000
   "Size of `org-element--cache-diagnostics-ring'.")
 
 ;;;; Data Structure
