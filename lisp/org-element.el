@@ -5677,6 +5677,10 @@ updated before current modification are actually submitted."
 	         threshold
 	         (unless threshold time-limit)
 	         future-change)
+                ;; Re-assign current and next requests.  It could have
+                ;; been altered during phase 1.
+                (setq request (car org-element--cache-sync-requests)
+		      next (nth 1 org-element--cache-sync-requests))
 	        ;; Request processed.  Merge current and next offsets and
 	        ;; transfer ending position.
 	        (when next
