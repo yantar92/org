@@ -6382,10 +6382,10 @@ known element in cache (it may start after END)."
                      ;; its boundaries could have extended to shrinked - we
                      ;; will re-parent and shift them anyway.
                      (and (eq 'headline (org-element-type up))
-                          ;; Headline is completely inside the
-                          ;; change. It might have been deleted.
-                          (not (and (>= (org-element-property :begin up) beg)
-                                  (<= (org-element-property :end up) end)))
+                          ;; The change is not inside headline.  Not
+                          ;; updating here.
+                          (not (<= beg (org-element-property :begin up)))
+                          (not (>= end (org-element-property :end up)))
                           (let ((current (org-with-point-at (org-element-property :begin up)
                                            (org-element--current-element (org-element-property :end up)))))
                             (when (eq 'headline (org-element-type current))
