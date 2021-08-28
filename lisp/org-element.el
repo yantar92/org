@@ -6453,9 +6453,8 @@ change, as an integer."
                     ;; Non-robust element is now before NEXT.  Need to
                     ;; update.
                     (and first
-                         (or (< (org-element-property :begin first) (org-element--request-beg next))
-                             (and (= (org-element-property :begin first) (org-element--request-beg next))
-                                  (> (org-element-property :end first) (org-element--request-end next)))))
+                         (org-element--cache-key-less-p (org-element--cache-key first)
+                                             (org-element--request-key next)))
                   (org-element--cache-log-message "Current request is inside next. New parent: %S"
                                        (org-element--format-element first))
                   (setf (org-element--request-key next) (org-element--cache-key first))
@@ -6471,11 +6470,15 @@ change, as an integer."
 	    (let ((first (org-element--cache-for-removal beg delete-to offset)))
               (org-element--cache-log-message "Current request intersects with next. Candidate parent: %S"
                                    (org-element--format-element first))
-	      (when (and first (< (org-element-property :begin first) (org-element--request-beg next)))
+	      (when (and first
+                         (org-element--cache-key-less-p (org-element--cache-key first)
+                                             (org-element--request-key next)))
                 (org-element--cache-log-message "Current request intersects with next. Updating. New parent: %S"
                                      (org-element--format-element first))
                 (setf (org-element--request-key next) (org-element--cache-key first))
                 (setf (org-element--request-beg next) (org-element-property :begin first))
+                (setf (org-element--request-end next) (max (org-element-property :end first)
+                                                (org-element--request-end next)))
                 (setf (org-element--request-parent next) (org-element-property :parent first))))))
       ;; Ensure cache is correct up to END.  Also make sure that NEXT,
       ;; if any, is no longer a 0-phase request, thus ensuring that
@@ -6504,7 +6507,7 @@ change, as an integer."
                      ;; FIRST.  Clear and update cached elements in
                      ;; region containing FIRST.
 		     ((let ((first-end (org-element-property :end first)))
-			(when (>= first-end end)
+			(when (> first-end end)
                           (org-element--cache-log-message "Extending to non-robust element %S" (org-element--format-element first))
 			  (vector key first-beg first-end offset (org-element-property :parent first) 0))))
 		     (t
