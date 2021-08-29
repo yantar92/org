@@ -820,13 +820,6 @@ Return nil when no fold is present at point of POM."
                 (setcdr region (cdr local-region)))))
 	  (unless (eq (car region) (cdr region)) region))))))
 
-(defsubst org-fold-core--xor (cond1 cond2)
-  "Return the boolean exclusive-or of COND1 and COND2.
-If only one of the arguments is non-nil, return it; otherwise
-return nil."
-  (cond ((not cond1) cond2)
-        ((not cond2) cond1)))
-
 (defun org-fold-core-next-visibility-change (&optional pos limit ignore-hidden-p previous-p)
   "Return next point from POS up to LIMIT where text becomes visible/invisible.
 By default, text hidden by any means (i.e. not only by folding, but
@@ -851,7 +844,7 @@ If PREVIOUS-P is non-nil, search backwards."
 			  (lambda (p) (next-single-char-property-change p 'invisible nil limit)))))
 	 (next pos))
     (while (and (funcall cmp next limit)
-		(not (org-fold-core--xor invisible-initially? (funcall invisible-p next))))
+		(not (org-xor invisible-initially? (funcall invisible-p next))))
       (setq next (funcall next-change next)))
     next))
 
