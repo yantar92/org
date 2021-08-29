@@ -8963,14 +8963,11 @@ When called through ELisp, arg is also interpreted in the following way:
 			     this org-state block-reason)
 		    (throw 'exit nil)))))
 	    (store-match-data match-data)
-            (save-excursion
-              (goto-char (match-beginning 0))
-              (if (org-fold-folded-p (line-beginning-position))
-                  (org-fold-core-ignore-modifications
-                      (setf (buffer-substring (match-beginning 0) (match-end 0)) "")
-                    (insert-and-inherit next))
-                (setf (buffer-substring (match-beginning 0) (match-end 0)) "")
-                (insert-and-inherit next)))
+            (org-fold-core-ignore-modifications
+                (save-excursion
+                  (goto-char (match-beginning 0))
+                  (setf (buffer-substring (match-beginning 0) (match-end 0)) "")
+                  (insert-and-inherit next)))
 	    (cond ((and org-state (equal this org-state))
 		   (message "TODO state was already %s" (org-trim next)))
 		  ((not (pos-visible-in-window-p hl-pos))
