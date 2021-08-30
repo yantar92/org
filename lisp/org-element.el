@@ -5312,7 +5312,7 @@ to slow down the command.")
                                    ,format-string))
             (format-string (funcall #'format format-string ,@args)))
        (if org-element--cache-diagnostics
-           (warn format-string)
+           (warn "%s" format-string)
          (unless org-element--cache-diagnostics-ring
            (setq org-element--cache-diagnostics-ring
                  (make-ring org-element--cache-diagnostics-ring-size)))
