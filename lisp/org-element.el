@@ -5889,7 +5889,9 @@ request."
 	  (leftp t)
 	  exit-flag continue-flag)
       ;; No re-parenting nor shifting planned: request is over.
-      (when (and (not parent) (zerop offset))
+      (when (and (or (not parent)
+                     (eq 'org-data (org-element-type parent)))
+                 (zerop offset))
         (org-element--cache-log-message "Empty offset. Request completed.")
         (throw 'quit t))
       (while node
