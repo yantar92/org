@@ -5184,7 +5184,11 @@ See `org-element-cache-sync-duration' for more information.")
 
 (defvar org-element--cache-self-verify t
   "Activate extra consistency for the cache.
-This will cause performance degradation.")
+
+This will cause performance degradation.
+
+When set to symbol `backtrace', record and display backtrace log if
+any inconsistency is detected.")
 
 (defvar org-element--cache-self-verify-frequency 1.0
   "Frequency of cache element verification.
@@ -5306,7 +5310,8 @@ to slow down the command.")
 
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
-  `(when org-element--cache-self-verify
+  `(when (or org-element--cache-diagnostics
+             (eq org-element--cache-self-verify 'backtrace))
      (let* ((format-string (concat (format "org-element-cache diagnostics(%s): "
                                            (buffer-name (current-buffer)))
                                    ,format-string))
@@ -5322,7 +5327,8 @@ to slow down the command.")
   "Raise warning for org-element-cache."
   `(let* ((format-string (funcall #'format ,format-string ,@args))
           (format-string
-           (if (not org-element--cache-diagnostics-ring)
+           (if (or (not org-element--cache-diagnostics-ring)
+                   (not (eq 'backtrace org-element--cache-self-verify)))
                format-string
              (prog1
                  (concat (format "Warning(%s): "
