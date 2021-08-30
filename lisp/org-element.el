@@ -5897,7 +5897,6 @@ request."
 	       (key (org-element--cache-key data)))
           ;; Traverse the cache tree in order of keys using standard
           ;; stack-based algorithm.
-          ;; FIXME: Can't we just use iter here?
 	  (if (and leftp (avl-tree--node-left node)
 		   (not (org-element--cache-key-less-p key start)))
 	      (progn (push node stack)
@@ -5965,6 +5964,7 @@ request."
                        (setq node (org-element--cache-root)
 	                     stack (list nil)
 	                     leftp t
+                             begin -1
                              continue-flag t))
 		      ((and parent
 			    (let ((p (org-element-property :parent data)))
