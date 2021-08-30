@@ -5829,19 +5829,19 @@ request."
       (org-element--cache-log-message "Phase 1")
       (let ((key (org-element--request-key request)))
 	(when (and next-request-key (not (org-element--cache-key-less-p key next-request-key)))
-          (when (org-element--cache-key-less-p next-request-key key)
-            ;; In theory, the only case when requests are not
-            ;; ordered is when key of the next request is either the
-            ;; same with current key or it is a key for a removed
-            ;; element.
-	    (let ((next-request (nth 1 org-element--cache-sync-requests)))
-              (org-element--cache-log-message "Phase 1: Unorderered requests. Merging: %S\n%S\n"
-                                   (let ((print-length 10)) (prin1-to-string request))
-                                   (let ((print-length 10)) (prin1-to-string next-request)))
-	      (setf (org-element--request-key next-request) key)
-              (setf (org-element--request-beg next-request) (org-element--request-beg request))
-	      (setf (org-element--request-phase next-request) 1)
-              (throw 'quit t)))))
+          ;; In theory, the only case when requests are not
+          ;; ordered is when key of the next request is either the
+          ;; same with current key or it is a key for a removed
+          ;; element. Either way, we can simply merge the two
+          ;; requests.
+	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
+            (org-element--cache-log-message "Phase 1: Unorderered requests. Merging: %S\n%S\n"
+                                            (let ((print-length 10)) (prin1-to-string request))
+                                            (let ((print-length 10)) (prin1-to-string next-request)))
+	    (setf (org-element--request-key next-request) key)
+            (setf (org-element--request-beg next-request) (org-element--request-beg request))
+	    (setf (org-element--request-phase next-request) 1)
+            (throw 'quit t))))
       ;; Next element will start at its beginning position plus
       ;; offset, since it hasn't been shifted yet.  Therefore, LIMIT
       ;; contains the real beginning position of the first element to
