@@ -6369,12 +6369,15 @@ known element in cache (it may start after END)."
                            (_ 'robust)))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
-	      (org-element--cache-shift-positions
-               up offset
-               (if (and (org-element-property :robust-begin up)
-                        (org-element-property :robust-end up))
-                   '(:contents-end :end :robust-end)
-                 '(:contents-end :end)))
+              (progn
+                (org-element--cache-log-message "Shifting end positions of robust parent: %S"
+                                     (org-element--format-element up))
+	        (org-element--cache-shift-positions
+                 up offset
+                 (if (and (org-element-property :robust-begin up)
+                          (org-element-property :robust-end up))
+                     '(:contents-end :end :robust-end)
+                   '(:contents-end :end))))
             (unless (or
                      ;; UP is non-robust.  Yet, if UP is headline, flagging
                      ;; everything inside for removal may be to
