@@ -5977,7 +5977,8 @@ request."
 			      (or (not p)
 				  (< (org-element-property :begin p)
 				     (org-element-property :begin parent))
-                                  (not (avl-tree-member-p org-element--cache p)))))
+                                  (unless (eq p parent)
+                                    (not (avl-tree-member-p org-element--cache p))))))
                        (org-element--cache-log-message "Updating parent in %S\n New parent: %S"
                                                        (org-element--format-element data)
                                                        (org-element--format-element parent))
