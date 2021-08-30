@@ -5669,7 +5669,7 @@ updated before current modification are actually submitted."
           (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
 	    (catch 'interrupt
               (when org-element--cache-sync-requests
-                (org-element--cache-log-message "Syncing down to %S-%S" future-change threshold))
+                (org-element--cache-log-message "Syncing down to %S-%S" (or future-change threshold) threshold))
 	      (while org-element--cache-sync-requests
 	        (setq request (car org-element--cache-sync-requests)
 		      next (nth 1 org-element--cache-sync-requests))
