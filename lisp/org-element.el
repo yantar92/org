@@ -5300,7 +5300,9 @@ to slow down the command.")
 
 (defmacro org-element--format-element (element)
   "Format ELEMENT for printing in diagnostics."
-  `(let ((print-length 25)) (prin1-to-string ,element)))
+  `(let ((print-length 25)
+         (print-level 5))
+     (prin1-to-string ,element)))
 
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
