@@ -5976,13 +5976,19 @@ request."
                              continue-flag t))
 		      ((and parent
 			    (let ((p (org-element-property :parent data)))
+                              (when (and p
+                                         org-element--cache-self-verify
+                                         (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
+                                (unless (avl-tree-member-p org-element--cache p)
+                                  (org-element--cache-warn "Found :parent not in cache:\n Element parent: %S\n New parent: %S\n Resetting." p parent)
+                                  (org-element-cache-reset)
+                                  (throw 'quit nil)))
 			      (or (not p)
 				  (< (org-element-property :begin p)
-				     (org-element-property :begin parent))
-                                  (not (avl-tree-member-p org-element--cache p)))))
+				     (org-element-property :begin parent)))))
                        (org-element--cache-log-message "Updating parent in %S\n New parent: %S"
-                                                       (org-element--format-element data)
-                                                       (org-element--format-element parent))
+                                            (org-element--format-element data)
+                                            (org-element--format-element parent))
 		       (org-element-put-property data :parent parent)
 		       (let ((s (org-element-property :structure parent)))
 			 (when (and s (org-element-property :structure data))
