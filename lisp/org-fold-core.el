@@ -288,6 +288,7 @@
 ;;; Code:
 
 (require 'org-macs)
+(require 'org-compat)
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 
