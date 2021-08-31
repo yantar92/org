@@ -224,7 +224,6 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-outline-maybe)
                        (:isearch-open . t)
-                       (:front-sticky . t)
                        (:rear-sticky . t)
                        (:font-lock-skip . t)
                        (:alias . (headline heading outline inlinetask plain-list)))
