@@ -5190,7 +5190,7 @@ This will cause performance degradation.
 When set to symbol `backtrace', record and display backtrace log if
 any inconsistency is detected.")
 
-(defvar org-element--cache-self-verify-frequency 1.0
+(defvar org-element--cache-self-verify-frequency 0.03
   "Frequency of cache element verification.
 
 This number is a probability to check an element requested from cache
