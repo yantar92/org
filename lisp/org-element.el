@@ -6433,140 +6433,142 @@ where cache data should be removed.  OFFSET is the size of the
 change, as an integer."
   (org-element--cache-log-message "Submitting new synchronization request for [%S..%S]𝝙%S"
                        beg end offset)
-  (let ((next (car org-element--cache-sync-requests))
-	delete-to delete-from)
-    (if (and next
-             ;; First existing sync request is in phase 0.
-	     (= 0 (org-element--request-phase next))
-             ;; Current changes intersect with the first sync request.
-	     (> (setq delete-to (+ (org-element--request-end next)
-                                   (org-element--request-offset next)))
-                end)
-	     (<= (setq delete-from (org-element--request-beg next))
-                end))
-	;; Current changes can be merged with first sync request: we
-	;; can save a partial cache synchronization.
-	(progn
-          (org-element--cache-log-message "Found another phase 0 request intersecting with current")
-          ;; Update OFFSET of the existing request.
-	  (cl-incf (org-element--request-offset next) offset)
-	  ;; If last change happened within area to be removed, extend
-	  ;; boundaries of robust parents, if any.  Otherwise, find
-	  ;; first element to remove and update request accordingly.
-	  (if (> beg delete-from)
-              ;; The current modification is completely inside NEXT.
-              ;; We already added the current OFFSET to the NEXT
-              ;; request.  However, the robust elements around
-              ;; modifications also need to be shifted.  Moreover, the
-              ;; new modification may also have non-nil
-              ;; `org-element--cache-change-warning'.  In the latter case, we
-              ;; also need to update the request.
-              (let ((first (org-element--cache-for-removal beg end offset) ; Shift as needed.
-                           ))
-                (org-element--cache-log-message "Current request is inside next. Candidate parent: %S"
+  (with-current-buffer (or (buffer-base-buffer (current-buffer))
+                           (current-buffer))
+    (let ((next (car org-element--cache-sync-requests))
+	  delete-to delete-from)
+      (if (and next
+               ;; First existing sync request is in phase 0.
+	       (= 0 (org-element--request-phase next))
+               ;; Current changes intersect with the first sync request.
+	       (> (setq delete-to (+ (org-element--request-end next)
+                                     (org-element--request-offset next)))
+                  end)
+	       (<= (setq delete-from (org-element--request-beg next))
+                  end))
+	  ;; Current changes can be merged with first sync request: we
+	  ;; can save a partial cache synchronization.
+	  (progn
+            (org-element--cache-log-message "Found another phase 0 request intersecting with current")
+            ;; Update OFFSET of the existing request.
+	    (cl-incf (org-element--request-offset next) offset)
+	    ;; If last change happened within area to be removed, extend
+	    ;; boundaries of robust parents, if any.  Otherwise, find
+	    ;; first element to remove and update request accordingly.
+	    (if (> beg delete-from)
+                ;; The current modification is completely inside NEXT.
+                ;; We already added the current OFFSET to the NEXT
+                ;; request.  However, the robust elements around
+                ;; modifications also need to be shifted.  Moreover, the
+                ;; new modification may also have non-nil
+                ;; `org-element--cache-change-warning'.  In the latter case, we
+                ;; also need to update the request.
+                (let ((first (org-element--cache-for-removal beg end offset) ; Shift as needed.
+                             ))
+                  (org-element--cache-log-message "Current request is inside next. Candidate parent: %S"
+                                       (org-element--format-element first))
+                  (when
+                      ;; Non-robust element is now before NEXT.  Need to
+                      ;; update.
+                      (and first
+                           (org-element--cache-key-less-p (org-element--cache-key first)
+                                               (org-element--request-key next)))
+                    (org-element--cache-log-message "Current request is inside next. New parent: %S"
+                                         (org-element--format-element first))
+                    (setf (org-element--request-key next) (org-element--cache-key first))
+                    (setf (org-element--request-beg next) (org-element-property :begin first))
+                    (setf (org-element--request-end next) (max (org-element-property :end first)
+                                                    (org-element--request-end next)))
+                    (setf (org-element--request-parent next) (org-element-property :parent first))))
+              ;; The current and NEXT modifications are intersecting
+              ;; with current modification starting before NEXT and NEXT
+              ;; ending after current.  We need to update the common
+              ;; non-robust parent for the new extended modification
+              ;; region.
+	      (let ((first (org-element--cache-for-removal beg delete-to offset)))
+                (org-element--cache-log-message "Current request intersects with next. Candidate parent: %S"
                                      (org-element--format-element first))
-                (when
-                    ;; Non-robust element is now before NEXT.  Need to
-                    ;; update.
-                    (and first
-                         (org-element--cache-key-less-p (org-element--cache-key first)
-                                             (org-element--request-key next)))
-                  (org-element--cache-log-message "Current request is inside next. New parent: %S"
+	        (when (and first
+                           (org-element--cache-key-less-p (org-element--cache-key first)
+                                               (org-element--request-key next)))
+                  (org-element--cache-log-message "Current request intersects with next. Updating. New parent: %S"
                                        (org-element--format-element first))
                   (setf (org-element--request-key next) (org-element--cache-key first))
                   (setf (org-element--request-beg next) (org-element-property :begin first))
                   (setf (org-element--request-end next) (max (org-element-property :end first)
                                                   (org-element--request-end next)))
-                  (setf (org-element--request-parent next) (org-element-property :parent first))))
-            ;; The current and NEXT modifications are intersecting
-            ;; with current modification starting before NEXT and NEXT
-            ;; ending after current.  We need to update the common
-            ;; non-robust parent for the new extended modification
-            ;; region.
-	    (let ((first (org-element--cache-for-removal beg delete-to offset)))
-              (org-element--cache-log-message "Current request intersects with next. Candidate parent: %S"
-                                   (org-element--format-element first))
-	      (when (and first
-                         (org-element--cache-key-less-p (org-element--cache-key first)
-                                             (org-element--request-key next)))
-                (org-element--cache-log-message "Current request intersects with next. Updating. New parent: %S"
-                                     (org-element--format-element first))
-                (setf (org-element--request-key next) (org-element--cache-key first))
-                (setf (org-element--request-beg next) (org-element-property :begin first))
-                (setf (org-element--request-end next) (max (org-element-property :end first)
-                                                (org-element--request-end next)))
-                (setf (org-element--request-parent next) (org-element-property :parent first))))))
-      ;; Ensure cache is correct up to END.  Also make sure that NEXT,
-      ;; if any, is no longer a 0-phase request, thus ensuring that
-      ;; phases are properly ordered.  We need to provide OFFSET as
-      ;; optional parameter since current modifications are not known
-      ;; yet to the otherwise correct part of the cache (i.e, before
-      ;; the first request).
-      (org-element--cache-log-message "Adding new phase 0 request")
-      (when next (org-element--cache-sync (current-buffer) end beg))
-      (let ((first (org-element--cache-for-removal beg end offset)))
-	(if first
-	    (push (let ((first-beg (org-element-property :begin first))
-			(key (org-element--cache-key first)))
-		    (cond
-		     ;; When changes happen before the first known
-		     ;; element, re-parent and shift the rest of the
-		     ;; cache.
-		     ((> first-beg end)
-                      (org-element--cache-log-message "Changes are before first known element. Submitting phase 1 request")
-                      (vector key first-beg nil offset nil 1))
-		     ;; Otherwise, we find the first non robust
-		     ;; element containing END.  All elements between
-		     ;; FIRST and this one are to be removed.
-                     ;;
-                     ;; The current modification is completely inside
-                     ;; FIRST.  Clear and update cached elements in
-                     ;; region containing FIRST.
-		     ((let ((first-end (org-element-property :end first)))
-			(when (> first-end end)
-                          (org-element--cache-log-message "Extending to non-robust element %S" (org-element--format-element first))
-			  (vector key first-beg first-end offset (org-element-property :parent first) 0))))
-		     (t
-                      ;; Now, FIRST is the first element after BEG or
-                      ;; non-robust element containing BEG.  However,
-                      ;; FIRST ends before END and there might be
-                      ;; another ELEMENT before END that spans beyond
-                      ;; END.  If there is such element, we need to
-                      ;; extend the region down to end of the common
-                      ;; parent of FIRST and everything inside
-                      ;; BEG..END.
-		      (let* ((element (org-element--cache-find end))
-			     (element-end (org-element-property :end element))
-			     (up element))
-			(while (and (setq up (org-element-property :parent up))
-				    (>= (org-element-property :begin up) first-beg))
-                          ;; Note that UP might have been already
-                          ;; shifted if it is a robust element.  After
-                          ;; deletion, it can put it's end before yet
-                          ;; unprocessed ELEMENT.
-			  (setq element-end (max (org-element-property :end up) element-end)
-				element up))
-                        ;; Extend region to remove elements between
-                        ;; beginning of first and the end of outermost
-                        ;; element starting before END but after
-                        ;; beginning of first.
-                        ;; of the FIRST.
-                        (org-element--cache-log-message "Extending to all elements between:\n 1: %S\n 2: %S"
-                                             (org-element--format-element first)
-                                             (org-element--format-element element))
-			(vector key first-beg element-end offset up 0)))))
-		  org-element--cache-sync-requests)
-	  ;; No element to remove.  No need to re-parent either.
-	  ;; Simply shift additional elements, if any, by OFFSET.
-	  (if org-element--cache-sync-requests
-              (progn
-                (org-element--cache-log-message "Nothing to remove. Updating offset of the next request by 𝝙%d: %S"
-                                     offset
-                                     (car org-element--cache-sync-requests))
-	        (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
-		         offset))
-            (org-element--cache-log-message "Nothing to remove. No elements in cache after %d. Terminating."
-                                 end)))))))
+                  (setf (org-element--request-parent next) (org-element-property :parent first))))))
+        ;; Ensure cache is correct up to END.  Also make sure that NEXT,
+        ;; if any, is no longer a 0-phase request, thus ensuring that
+        ;; phases are properly ordered.  We need to provide OFFSET as
+        ;; optional parameter since current modifications are not known
+        ;; yet to the otherwise correct part of the cache (i.e, before
+        ;; the first request).
+        (org-element--cache-log-message "Adding new phase 0 request")
+        (when next (org-element--cache-sync (current-buffer) end beg))
+        (let ((first (org-element--cache-for-removal beg end offset)))
+	  (if first
+	      (push (let ((first-beg (org-element-property :begin first))
+			  (key (org-element--cache-key first)))
+		      (cond
+		       ;; When changes happen before the first known
+		       ;; element, re-parent and shift the rest of the
+		       ;; cache.
+		       ((> first-beg end)
+                        (org-element--cache-log-message "Changes are before first known element. Submitting phase 1 request")
+                        (vector key first-beg nil offset nil 1))
+		       ;; Otherwise, we find the first non robust
+		       ;; element containing END.  All elements between
+		       ;; FIRST and this one are to be removed.
+                       ;;
+                       ;; The current modification is completely inside
+                       ;; FIRST.  Clear and update cached elements in
+                       ;; region containing FIRST.
+		       ((let ((first-end (org-element-property :end first)))
+			  (when (> first-end end)
+                            (org-element--cache-log-message "Extending to non-robust element %S" (org-element--format-element first))
+			    (vector key first-beg first-end offset (org-element-property :parent first) 0))))
+		       (t
+                        ;; Now, FIRST is the first element after BEG or
+                        ;; non-robust element containing BEG.  However,
+                        ;; FIRST ends before END and there might be
+                        ;; another ELEMENT before END that spans beyond
+                        ;; END.  If there is such element, we need to
+                        ;; extend the region down to end of the common
+                        ;; parent of FIRST and everything inside
+                        ;; BEG..END.
+		        (let* ((element (org-element--cache-find end))
+			       (element-end (org-element-property :end element))
+			       (up element))
+			  (while (and (setq up (org-element-property :parent up))
+				      (>= (org-element-property :begin up) first-beg))
+                            ;; Note that UP might have been already
+                            ;; shifted if it is a robust element.  After
+                            ;; deletion, it can put it's end before yet
+                            ;; unprocessed ELEMENT.
+			    (setq element-end (max (org-element-property :end up) element-end)
+				  element up))
+                          ;; Extend region to remove elements between
+                          ;; beginning of first and the end of outermost
+                          ;; element starting before END but after
+                          ;; beginning of first.
+                          ;; of the FIRST.
+                          (org-element--cache-log-message "Extending to all elements between:\n 1: %S\n 2: %S"
+                                               (org-element--format-element first)
+                                               (org-element--format-element element))
+			  (vector key first-beg element-end offset up 0)))))
+		    org-element--cache-sync-requests)
+	    ;; No element to remove.  No need to re-parent either.
+	    ;; Simply shift additional elements, if any, by OFFSET.
+	    (if org-element--cache-sync-requests
+                (progn
+                  (org-element--cache-log-message "Nothing to remove. Updating offset of the next request by 𝝙%d: %S"
+                                       offset
+                                       (car org-element--cache-sync-requests))
+	          (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
+		           offset))
+              (org-element--cache-log-message "Nothing to remove. No elements in cache after %d. Terminating."
+                                   end))))))))
 
 (defun org-element--cache-verify-element (element)
   "Verify correctness of ELEMENT when `org-element--cache-self-verify' is non-nil."
