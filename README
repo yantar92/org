@@ -16,6 +16,10 @@ tool for Emacs.
 - [[#license][License]]
 
 * Updates
+- [2021-09-02 Thu] I finally fixed =org-element-cache=. At least, I am not seeing any more problems. The cache is re-enabled by default now and several more built-in functions are making use of it.
+
+  Just in case, I left some self-checking code enabled. The cache will verify itself from time to time and report a warning if something is not right. If anyone is seeing warnings, please file an issue.
+
 - [2021-05-23 Sun] Significant speed up of visibility cycling, setting properties, planning, and clocking-in/out. New customisation option for deeper (dangerous) levels of performance optimisation. The element cache is disabled for now until I figure out some annoying bugs.
 
   Some of the earlier performance optimisation efforts on master came with a drawback of slowing down visibility cycling. On master, property drawers had to be re-folded upon unfolding the containing headline. That unfolding is slow in huge buffers and not needed anymore since outline and drawer folds are independent in this branch. Drawer's folding state is preserved automatically if the containing heading is folded/unfolded. Now, visibility cycling should be almost instant.
