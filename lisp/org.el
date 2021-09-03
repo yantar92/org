@@ -7653,13 +7653,15 @@ call CMD."
   (save-match-data
     (when force-refresh (org-refresh-category-properties))
     (let ((pos (or pos (point))))
-      (or (and (org-element--cache-active-p)
-               (org-entry-get-with-inheritance "CATEGORY"))
-          (get-text-property pos 'org-category)
-          (progn (org-refresh-category-properties)
-                 (or (and (org-element--cache-active-p)
-                          (org-entry-get-with-inheritance "CATEGORY"))
-	             (get-text-property pos 'org-category)))))))
+      (if (org-element--cache-active-p)
+          (progn
+            ;; Sync cache.
+            (org-element-at-point)
+            (org-entry-get-with-inheritance "CATEGORY"))
+        (or (get-text-property pos 'org-category)
+            (progn
+              (org-refresh-category-properties)
+              (get-text-property pos 'org-category)))))))
 
 ;;; Refresh properties
 
@@ -7756,23 +7758,23 @@ the whole buffer."
 	          (when (eq (org-element-type element) 'keyword)
 		    (throw 'buffer-category
 		           (org-element-property :value element)))))
-	      default-category))))
-        ;; Set categories from the document property drawer or
-        ;; property drawers in the outline.  If category is found in
-        ;; the property drawer for the whole buffer that value
-        ;; overrides the keyword-based value set above.
-        (goto-char (point-min))
-        (let ((regexp (org-re-property "CATEGORY")))
-          (while (re-search-forward regexp nil t)
-            (let ((value (match-string-no-properties 3)))
-              (when (org-at-property-p)
-                (put-text-property
-                 (save-excursion (org-back-to-heading-or-point-min t))
-                 (save-excursion (if (org-before-first-heading-p)
-        			     (point-max)
-        			   (org-end-of-subtree t t)))
-                 'org-category
-                 value)))))))))
+	      default-category))
+           ;; Set categories from the document property drawer or
+           ;; property drawers in the outline.  If category is found in
+           ;; the property drawer for the whole buffer that value
+           ;; overrides the keyword-based value set above.
+           (goto-char (point-min))
+           (let ((regexp (org-re-property "CATEGORY")))
+             (while (re-search-forward regexp nil t)
+               (let ((value (match-string-no-properties 3)))
+                 (when (org-at-property-p)
+                   (put-text-property
+                    (save-excursion (org-back-to-heading-or-point-min t))
+                    (save-excursion (if (org-before-first-heading-p)
+        			        (point-max)
+        			      (org-end-of-subtree t t)))
+                    'org-category
+                    value)))))))))))
 
 (defun org-refresh-stats-properties ()
   "Refresh stats text properties in the buffer."
