@@ -7657,7 +7657,9 @@ call CMD."
                (org-entry-get-with-inheritance "CATEGORY"))
           (get-text-property pos 'org-category)
           (progn (org-refresh-category-properties)
-	         (get-text-property pos 'org-category))))))
+                 (or (and (org-element--cache-active-p)
+                          (org-entry-get-with-inheritance "CATEGORY"))
+	             (get-text-property pos 'org-category)))))))
 
 ;;; Refresh properties
 
@@ -7735,7 +7737,10 @@ the whole buffer."
 	              default-category)))
       (if-let (((org-element--cache-active-p))
                (org-data (org-element-lineage (org-element-at-point 1) '(org-data) t)))
-          (org-element-put-property org-data :CATEGORY category)
+          ;; CATEGORY defined in the file's property drawer has top
+          ;; priority.
+          (unless (org-element-property :CATEGORY org-data)
+            (org-element-put-property org-data :CATEGORY category))
         (with-silent-modifications
           (org-with-wide-buffer
            ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
