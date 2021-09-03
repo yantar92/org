@@ -4676,6 +4676,10 @@ Elements are accumulated into ACC."
 			   end granularity mode structure))
 		 (type (org-element-type element))
 		 (cbeg (org-element-property :contents-begin element)))
+            (when (and (org-element--cache-active-p)
+                       (not org-element--cache-sync-requests)
+                       (not (org-element-property :cached element)))
+              (org-element--cache-put element))
 	    (goto-char (org-element-property :end element))
 	    ;; Fill ELEMENT contents by side-effect.
 	    (cond
@@ -5590,11 +5594,13 @@ the cache."
     (org-element--cache-log-message "Added new element with %S key: %S"
                          (org-element-property :org-element--cache-sync-key element)
                          (org-element--format-element element))
+    (org-element-put-property element :cached t)
     (avl-tree-enter org-element--cache element)))
 
 (defsubst org-element--cache-remove (element)
   "Remove ELEMENT from cache.
 Assume ELEMENT belongs to cache and that a cache is active."
+  (org-element-put-property element :cached nil)
   (or (avl-tree-delete org-element--cache element)
       (progn
         ;; This should not happen, but if it is, would be better to know
