@@ -5290,7 +5290,11 @@ See `org-element--cache-key' for more information.")
   "List of commands that are not expected to change the cache state.
 
 This variable is used to determine when re-parsing buffer is not going
-to slow down the command.")
+to slow down the command.
+
+If the commends end up modifying the cache, the worst case scenario is
+performance drop.  So, advicing these commands is safe.  Yet, it is
+better to remove the commands adviced in such way from this list.")
 
 (defmacro org-element--request-key (request)
   "Get NEXT part of a `org-element--cache-sync-requests' REQUEST."
