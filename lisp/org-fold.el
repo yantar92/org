@@ -222,6 +222,10 @@ smart            Make point visible, and do insertion/deletion if it is
                        (:ellipsis . ,ellipsis)
                        (:fragile . ,#'org-fold--reveal-outline-maybe)
                        (:isearch-open . t)
+                       ;; This is needed to make sure that inserting a
+                       ;; new planning line in folded heading is not
+                       ;; revealed.
+                       (:font-sticky . t)
                        (:rear-sticky . t)
                        (:font-lock-skip . t)
                        (:alias . (headline heading outline inlinetask plain-list)))
