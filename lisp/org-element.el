@@ -6076,6 +6076,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
            (org-element--cache-log-message "Nothing in cache. Adding org-data: %S"
                                 (org-element--format-element element))
            (org-element--cache-put element)
+           (org-refresh-category-properties)
            (goto-char (org-element-property :contents-begin element))
 	   (setq mode 'first-section))
           ;; Nothing in cache before point because cache is not active.
@@ -6292,7 +6293,12 @@ The function returns the new value of `org-element--cache-change-warning'."
                                            bottom t)
                                     do (setq min-level (1- (length (match-string 0))))
                                     until (= min-level 1))
-                           (or min-level t))))))
+                           (goto-char beg)
+                           (beginning-of-line)
+                           (or min-level
+                               (when (looking-at-p "^[ \t]*#\\+CATEGORY:")
+                                 'org-data)
+                               t))))))
            (org-element--cache-log-message "%S is about to modify text: warning %S"
                                 this-command
                                 org-element--cache-change-warning)))))))
@@ -6396,6 +6402,7 @@ known element in cache (it may start after END)."
                                      (when (looking-at org-property-drawer-re)
                                        (< beg (match-end 0))))
                                  'robust))))
+                           (`org-data (not (eq org-element--cache-change-warning 'org-data)))
                            (_ 'robust)))))
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
@@ -6433,6 +6440,7 @@ known element in cache (it may start after END)."
                      ;; org-data itself.
                      (when (eq 'org-data (org-element-type up))
                        (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
+                       (org-refresh-category-properties)
                        (org-element--cache-log-message "Found non-robust change invalidating org-data. Re-parsing: %S"
                                             (org-element--format-element up))
                        t))
