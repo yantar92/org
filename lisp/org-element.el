@@ -6085,7 +6085,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
           ((not cached)
            (if (org-with-limited-levels (outline-previous-heading))
                (progn
-                 (setq element (org-element-headline-parser))
+                 (setq element (org-element-headline-parser nil 'fast))
 	         (setq mode 'planning)
 	         (forward-line))
 	     (setq mode 'top-comment))
