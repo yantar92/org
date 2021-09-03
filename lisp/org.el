@@ -7724,41 +7724,50 @@ the whole buffer."
 		   "???"))
 		((symbolp org-category) (symbol-name org-category))
 		(t org-category))))
-    (with-silent-modifications
-      (org-with-wide-buffer
-       ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
-       ;; keyword.  If none is found, fall-back to `org-category' or
-       ;; buffer file name, or set it by the document property drawer.
-       ;; FIXME: We should not need this when there is org-element-cache
-       ;; and org-data is properly parsed.
-       (put-text-property
-	(point-min) (point-max)
-	'org-category
-	(catch 'buffer-category
-	  (goto-char (point-max))
-	  (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-	    (let ((element (org-element-at-point-no-context)))
-	      (when (eq (org-element-type element) 'keyword)
-		(throw 'buffer-category
-		       (org-element-property :value element)))))
-	  default-category))
-       ;; Set categories from the document property drawer or
-       ;; property drawers in the outline.  If category is found in
-       ;; the property drawer for the whole buffer that value
-       ;; overrides the keyword-based value set above.
-       (unless (org-element--cache-active-p)
-         (goto-char (point-min))
-         (let ((regexp (org-re-property "CATEGORY")))
-           (while (re-search-forward regexp nil t)
-             (let ((value (match-string-no-properties 3)))
-               (when (org-at-property-p)
-                 (put-text-property
-        	  (save-excursion (org-back-to-heading-or-point-min t))
-        	  (save-excursion (if (org-before-first-heading-p)
-        			      (point-max)
-        			    (org-end-of-subtree t t)))
-        	  'org-category
-        	  value))))))))))
+    (let ((category (catch 'buffer-category
+                      (org-with-wide-buffer
+	               (goto-char (point-max))
+	               (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
+	                 (let ((element (org-element-at-point-no-context)))
+	                   (when (eq (org-element-type element) 'keyword)
+		             (throw 'buffer-category
+		                    (org-element-property :value element))))))
+	              default-category)))
+      (if-let (((org-element--cache-active-p))
+               (org-data (org-element-lineage (org-element-at-point 1) '(org-data) t)))
+          (org-element-put-property org-data :CATEGORY category)
+        (with-silent-modifications
+          (org-with-wide-buffer
+           ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
+           ;; keyword.  If none is found, fall-back to `org-category' or
+           ;; buffer file name, or set it by the document property drawer.
+           (put-text-property
+	    (point-min) (point-max)
+	    'org-category
+	    (catch 'buffer-category
+	      (goto-char (point-max))
+	      (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
+	        (let ((element (org-element-at-point-no-context)))
+	          (when (eq (org-element-type element) 'keyword)
+		    (throw 'buffer-category
+		           (org-element-property :value element)))))
+	      default-category))))
+        ;; Set categories from the document property drawer or
+        ;; property drawers in the outline.  If category is found in
+        ;; the property drawer for the whole buffer that value
+        ;; overrides the keyword-based value set above.
+        (goto-char (point-min))
+        (let ((regexp (org-re-property "CATEGORY")))
+          (while (re-search-forward regexp nil t)
+            (let ((value (match-string-no-properties 3)))
+              (when (org-at-property-p)
+                (put-text-property
+                 (save-excursion (org-back-to-heading-or-point-min t))
+                 (save-excursion (if (org-before-first-heading-p)
+        			     (point-max)
+        			   (org-end-of-subtree t t)))
+                 'org-category
+                 value)))))))))
 
 (defun org-refresh-stats-properties ()
   "Refresh stats text properties in the buffer."
