@@ -7718,31 +7718,31 @@ the whole buffer."
 
 (defun org-refresh-category-properties ()
   "Refresh category text properties in the buffer."
-  (let ((case-fold-search t)
-	(inhibit-read-only t)
-	(default-category
-	  (cond ((null org-category)
-		 (if buffer-file-name
-		     (file-name-sans-extension
-		      (file-name-nondirectory buffer-file-name))
-		   "???"))
-		((symbolp org-category) (symbol-name org-category))
-		(t org-category))))
-    (let ((category (catch 'buffer-category
-                      (org-with-wide-buffer
-	               (goto-char (point-max))
-	               (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-	                 (let ((element (org-element-at-point-no-context)))
-	                   (when (eq (org-element-type element) 'keyword)
-		             (throw 'buffer-category
-		                    (org-element-property :value element))))))
-	              default-category)))
-      (if-let (((org-element--cache-active-p))
-               (org-data (org-element-lineage (org-element-at-point 1) '(org-data) t)))
-          ;; CATEGORY defined in the file's property drawer has top
-          ;; priority.
-          (unless (org-element-property :CATEGORY org-data)
-            (org-element-put-property org-data :CATEGORY category))
+  (if-let (((org-element--cache-active-p))
+           (org-data (org-element-lineage (org-element-at-point 1) '(org-data) t)))
+      ;; CATEGORY defined in the file's property drawer has top
+      ;; priority.
+      (unless (org-element-property :CATEGORY org-data)
+        (org-element-put-property org-data :CATEGORY category))
+    (let ((case-fold-search t)
+	  (inhibit-read-only t)
+	  (default-category
+	    (cond ((null org-category)
+		   (if buffer-file-name
+		       (file-name-sans-extension
+		        (file-name-nondirectory buffer-file-name))
+		     "???"))
+		  ((symbolp org-category) (symbol-name org-category))
+		  (t org-category))))
+      (let ((category (catch 'buffer-category
+                        (org-with-wide-buffer
+	                 (goto-char (point-max))
+	                 (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
+	                   (let ((element (org-element-at-point-no-context)))
+	                     (when (eq (org-element-type element) 'keyword)
+		               (throw 'buffer-category
+		                      (org-element-property :value element))))))
+	                default-category)))
         (with-silent-modifications
           (org-with-wide-buffer
            ;; Set buffer-wide property from keyword.  Search last #+CATEGORY

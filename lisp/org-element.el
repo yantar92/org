@@ -1214,7 +1214,25 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                               (goto-char (match-end 0))
                               (skip-chars-backward " \t")
                               (min robust-end (point))))
-                           (+ 2 contents-begin)))))
+                           (+ 2 contents-begin))))
+          (category (cond ((null org-category)
+		           (if buffer-file-name
+		               (file-name-sans-extension
+		                (file-name-nondirectory buffer-file-name))
+		             "???"))
+		          ((symbolp org-category) (symbol-name org-category))
+		          (t org-category)))
+          (category (catch 'buffer-category
+                      (org-with-point-at end
+	                (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
+	                  (let ((element (org-element-at-point-no-context)))
+	                    (when (eq (org-element-type element) 'keyword)
+		              (throw 'buffer-category
+		                     (org-element-property :value element))))))
+	              category))
+          (properties (org-element--get-global-node-properties)))
+     (unless (plist-get properties :CATEGORY)
+       (setq properties (plist-put properties :CATEGORY category)))
      (list 'org-data
            (nconc
             (list :begin begin
@@ -1226,7 +1244,7 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                   :post-blank (count-lines pos-before-blank end)
                   :post-affiliated begin
                   :mode 'first-section)
-            (org-element--get-global-node-properties))))))
+            properties)))))
 
 (defun org-element-org-data-interpreter (_ contents)
   "Interpret ORG-DATA element as Org syntax.
