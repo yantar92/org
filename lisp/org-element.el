@@ -6656,11 +6656,12 @@ change, as an integer."
                    (eq (org-element-property :contents-end real-element) (org-element-property :contents-end element))
                    (or (not (org-element-property :ID real-element))
                        (string= (org-element-property :ID real-element) (org-element-property :ID element))))
-        (org-element--cache-warn "(%S) Cached element is incorrect in %s. Resetting.\n The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S"
+        (org-element--cache-warn "(%S) Cached element is incorrect in %s. Resetting.\n The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
                       this-command
                       (buffer-name (current-buffer))
                       (org-element--format-element element)
                       (org-element--format-element real-element)
+                      (org-element--cache-find (1- (org-element-property :begin real-element)))
                       (car (org-element--cache-find (org-element-property :begin real-element) 'both))
                       (cdr (org-element--cache-find (org-element-property :begin real-element) 'both)))
         (org-element-cache-reset)))))
