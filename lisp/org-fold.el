@@ -225,7 +225,7 @@ smart            Make point visible, and do insertion/deletion if it is
                        ;; This is needed to make sure that inserting a
                        ;; new planning line in folded heading is not
                        ;; revealed.
-                       (:font-sticky . t)
+                       (:front-sticky . t)
                        (:rear-sticky . t)
                        (:font-lock-skip . t)
                        (:alias . (headline heading outline inlinetask plain-list)))
