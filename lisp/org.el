@@ -8983,7 +8983,11 @@ When called through ELisp, arg is also interpreted in the following way:
                 (save-excursion
                   (goto-char (match-beginning 0))
                   (setf (buffer-substring (match-beginning 0) (match-end 0)) "")
-                  (insert-and-inherit next)))
+                  (insert-and-inherit next)
+                  (unless (org-invisible-p (line-beginning-position))
+                    (org-fold-region (line-beginning-position)
+                                  (line-end-position)
+                                  nil))))
 	    (cond ((and org-state (equal this org-state))
 		   (message "TODO state was already %s" (org-trim next)))
 		  ((not (pos-visible-in-window-p hl-pos))
