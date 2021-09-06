@@ -5821,16 +5821,16 @@ request."
 		  (if (<= pos end)
                       (progn
                         (org-element--cache-log-message "removing %S::%S"
-                                                        (org-element-property :org-element--cache-sync-key data)
-                                                        (org-element--format-element data))
-                        (org-element--cache-remove data) )
+                                             (org-element-property :org-element--cache-sync-key data)
+                                             (org-element--format-element data))
+                        (org-element--cache-remove data))
                     ;; Done deleting everthing starting before END.
                     ;; DATA-KEY is the first known element after END.
                     ;; Move on to phase 1.
                     (org-element--cache-log-message "found element after %d: %S::%S"
-                                                    end
-                                                    (org-element-property :org-element--cache-sync-key data)
-                                                    (org-element--format-element data))
+                                         end
+                                         (org-element-property :org-element--cache-sync-key data)
+                                         (org-element--format-element data))
                     (setf (org-element--request-key request) data-key)
                     (setf (org-element--request-beg request) pos)
                     (setf (org-element--request-phase request) 1)
@@ -5838,7 +5838,7 @@ request."
 	      ;; No element starting after modifications left in
 	      ;; cache: further processing is futile.
               (org-element--cache-log-message "Phase 0 deleted all elements in cache after %S!"
-                                              request-key)
+                                   request-key)
 	      (throw 'quit t))))))
     (when (= (org-element--request-phase request) 1)
       ;; Phase 1.
@@ -5883,8 +5883,8 @@ request."
           ;; requests.
 	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
             (org-element--cache-log-message "Phase 1: Unorderered requests. Merging: %S\n%S\n"
-                                            (let ((print-length 10)) (prin1-to-string request))
-                                            (let ((print-length 10)) (prin1-to-string next-request)))
+                                 (let ((print-length 10)) (prin1-to-string request))
+                                 (let ((print-length 10)) (prin1-to-string next-request)))
 	    (setf (org-element--request-key next-request) key)
             (setf (org-element--request-beg next-request) (org-element--request-beg request))
 	    (setf (org-element--request-phase next-request) 1)
@@ -5911,9 +5911,9 @@ request."
                ;; buffer and calculate the new parent.
 	       (let ((parent (org-element--parse-to limit nil time-limit)))
                  (org-element--cache-log-message "New parent at %d: %S::%S"
-                                                 limit
-                                                 (org-element-property :org-element--cache-sync-key parent)
-                                                 (org-element--format-element parent))
+                                      limit
+                                      (org-element-property :org-element--cache-sync-key parent)
+                                      (org-element--format-element parent))
                  (setf (org-element--request-parent request) parent)
 		 (setf (org-element--request-phase request) 2))))))
     ;; Phase 2.
@@ -6000,8 +6000,8 @@ request."
                                 (and (org-element-property :contents-end data)
                                      (> (org-element-property :contents-end data) (org-element-property :contents-end parent)))))
                        (org-element--cache-log-message "org-element-cache: Removing obsolete element with key %S::%S"
-                                                       (org-element-property :org-element--cache-sync-key data)
-                                                       (org-element--format-element data))
+                                            (org-element-property :org-element--cache-sync-key data)
+                                            (org-element--format-element data))
                        (org-element--cache-remove data)
                        ;; We altered the tree structure.  The tree
                        ;; traversal needs to be restarted.
@@ -6184,7 +6184,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                  (when (and recursive
                             (org-element-property :contents-end element))
                    (org-element--parse-to (1- (org-element-property :contents-end element))
-                               nil time-limit recursive))
+                                          nil time-limit recursive))
                  ;; Avoid parsing headline siblings above.
                  (goto-char elem-end)
                  (when (eq type 'headline)
