@@ -5242,6 +5242,11 @@ Each node of the tree contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-at-point'.")
 
+(defvar org-element--cache-size 0
+  "Size of the `org-element--cache'.
+
+Storing value is variable is faster because `avl-tree-size' is O(N).")
+
 (defvar org-element--cache-sync-requests nil
   "List of pending synchronization requests.
 
@@ -5616,12 +5621,14 @@ the cache."
                          (org-element-property :org-element--cache-sync-key element)
                          (org-element--format-element element))
     (org-element-put-property element :cached t)
+    (cl-incf org-element--cache-size)
     (avl-tree-enter org-element--cache element)))
 
 (defsubst org-element--cache-remove (element)
   "Remove ELEMENT from cache.
 Assume ELEMENT belongs to cache and that a cache is active."
   (org-element-put-property element :cached nil)
+  (cl-decf org-element--cache-size)
   (or (avl-tree-delete org-element--cache element)
       (progn
         ;; This should not happen, but if it is, would be better to know
@@ -5787,55 +5794,66 @@ request."
       ;; a deletion modifies structure of the balanced tree.
       (org-element--cache-log-message "Phase 0")
       (catch 'end-phase
-        (while t
-	  (when (org-element--cache-interrupt-p time-limit)
-            (org-element--cache-log-message "Interrupt: time limit")
-	    (throw 'interrupt nil))
-	  (let ((request-key (org-element--request-key request))
-		(end (org-element--request-end request))
-		(node (org-element--cache-root))
-		data data-key)
-	    ;; Find first element in cache with key REQUEST-KEY or
-	    ;; after it.
-	    (while node
-	      (let* ((element (avl-tree--node-data node))
-		     (key (org-element--cache-key element)))
-		(cond
-		 ((org-element--cache-key-less-p key request-key)
-		  (setq node (avl-tree--node-right node)))
-		 ((org-element--cache-key-less-p request-key key)
-		  (setq data element
-			data-key key
-			node (avl-tree--node-left node)))
-		 (t (setq data element
+        (let ((deletion-count 0))
+          (while t
+	    (when (org-element--cache-interrupt-p time-limit)
+              (org-element--cache-log-message "Interrupt: time limit")
+	      (throw 'interrupt nil))
+	    (let ((request-key (org-element--request-key request))
+		  (end (org-element--request-end request))
+		  (node (org-element--cache-root))
+		  data data-key)
+	      ;; Find first element in cache with key REQUEST-KEY or
+	      ;; after it.
+	      (while node
+	        (let* ((element (avl-tree--node-data node))
+		       (key (org-element--cache-key element)))
+		  (cond
+		   ((org-element--cache-key-less-p key request-key)
+		    (setq node (avl-tree--node-right node)))
+		   ((org-element--cache-key-less-p request-key key)
+		    (setq data element
 			  data-key key
-			  node nil)))))
-	    (if data
-                ;; We found first element in cache starting at or
-                ;; after REQUEST-KEY.
-		(let ((pos (org-element-property :begin data)))
-		  (if (< pos end)
-                      (progn
-                        (org-element--cache-log-message "removing %S::%S"
-                                             (org-element-property :org-element--cache-sync-key data)
-                                             (org-element--format-element data))
-                        (org-element--cache-remove data))
-                    ;; Done deleting everthing starting before END.
-                    ;; DATA-KEY is the first known element after END.
-                    ;; Move on to phase 1.
-                    (org-element--cache-log-message "found element after %d: %S::%S"
-                                         end
-                                         (org-element-property :org-element--cache-sync-key data)
-                                         (org-element--format-element data))
-                    (setf (org-element--request-key request) data-key)
-                    (setf (org-element--request-beg request) pos)
-                    (setf (org-element--request-phase request) 1)
-		    (throw 'end-phase nil)))
-	      ;; No element starting after modifications left in
-	      ;; cache: further processing is futile.
-              (org-element--cache-log-message "Phase 0 deleted all elements in cache after %S!"
-                                   request-key)
-	      (throw 'quit t))))))
+			  node (avl-tree--node-left node)))
+		   (t (setq data element
+			    data-key key
+			    node nil)))))
+	      (if data
+                  ;; We found first element in cache starting at or
+                  ;; after REQUEST-KEY.
+		  (let ((pos (org-element-property :begin data)))
+		    (if (< pos end)
+                        (progn
+                          (org-element--cache-log-message "removing %S::%S"
+                                                          (org-element-property :org-element--cache-sync-key data)
+                                                          (org-element--format-element data))
+                          (cl-incf deletion-count)
+                          (org-element--cache-remove data)
+                          (when (and (> (log org-element--cache-size 2) 10)
+                                     (> deletion-count
+                                        (/ org-element--cache-size (log org-element--cache-size 2))))
+                            (org-element--cache-log-message "Removed %S>N/LogN(=%S/%S) elements.  Resetting cache to prevent performance degradation"
+                                                            deletion-count
+                                                            org-element--cache-size
+                                                            (log org-element--cache-size 2))
+                            (org-element-cache-reset)
+                            (throw 'quit t)))
+                      ;; Done deleting everthing starting before END.
+                      ;; DATA-KEY is the first known element after END.
+                      ;; Move on to phase 1.
+                      (org-element--cache-log-message "found element after %d: %S::%S"
+                                                      end
+                                                      (org-element-property :org-element--cache-sync-key data)
+                                                      (org-element--format-element data))
+                      (setf (org-element--request-key request) data-key)
+                      (setf (org-element--request-beg request) pos)
+                      (setf (org-element--request-phase request) 1)
+		      (throw 'end-phase nil)))
+	        ;; No element starting after modifications left in
+	        ;; cache: further processing is futile.
+                (org-element--cache-log-message "Phase 0 deleted all elements in cache after %S!"
+                                                request-key)
+	        (throw 'quit t)))))))
     (when (= (org-element--request-phase request) 1)
       ;; Phase 1.
       ;;
@@ -6047,7 +6065,7 @@ request."
       ;; We reached end of tree: synchronization complete.
       t))
   (org-element--cache-log-message "org-element-cache: Finished process. The cache size is %d. The remaining sync requests: %S"
-                       (avl-tree-size org-element--cache)
+                       org-element--cache-size
                        (let ((print-level 2)) (prin1-to-string org-element--cache-sync-requests))))
 
 (defsubst org-element--open-end-p (element)
@@ -6149,9 +6167,9 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                         (org-element--parse-to (max 1 (1- (org-element-property :begin el))) nil time-limit nil)
                         (org-element--parse-to (1- (org-element-property :contents-end el)) nil time-limit nil)))
                     org-element--cache)
-                   (if (= cache-size (avl-tree-size org-element--cache))
+                   (if (= cache-size org-element--cache-size)
                        (throw :fully-parsed t)
-                     (setq cache-size (avl-tree-size org-element--cache)))))))
+                     (setq cache-size org-element--cache-size))))))
            (let ((up cached)
                  (pos (if (= (point-max) pos) (1- pos) pos)))
              (while (and up (<= (org-element-property :end up) pos))
@@ -6695,6 +6713,7 @@ buffers."
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
 	(setq-local org-element--cache
 		    (avl-tree-create #'org-element--cache-compare))
+        (setq-local org-element--cache-size 0)
 	(setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
