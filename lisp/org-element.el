@@ -6102,7 +6102,6 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
            (org-element--cache-log-message "Nothing in cache. Adding org-data: %S"
                                 (org-element--format-element element))
            (org-element--cache-put element)
-           (org-refresh-category-properties)
            (goto-char (org-element-property :contents-begin element))
 	   (setq mode 'first-section))
           ;; Nothing in cache before point because cache is not active.
@@ -6466,7 +6465,6 @@ known element in cache (it may start after END)."
                      ;; org-data itself.
                      (when (eq 'org-data (org-element-type up))
                        (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
-                       (org-refresh-category-properties)
                        (org-element--cache-log-message "Found non-robust change invalidating org-data. Re-parsing: %S"
                                             (org-element--format-element up))
                        t))
