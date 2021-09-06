@@ -5409,9 +5409,11 @@ current `org-element--cache-sync-keys-value' and the element key."
                     ;; Decrease beginning position of sections by one,
                     ;; so that the first element of the section get
                     ;; different key from the parent section.
-                    (if (memq (org-element-type element) '(section org-data))
+                    (if (eq (org-element-type element) 'section)
                         (1- begin)
-		      begin))))
+                      (if (eq (org-element-type element) 'org-data)
+                          (- begin 2)
+		        begin)))))
         (when org-element--cache-sync-requests
 	  (org-element-put-property element
                          :org-element--cache-sync-key
