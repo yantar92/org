@@ -6622,7 +6622,9 @@ change, as an integer."
                                    end))))))))
 
 (defun org-element--cache-verify-element (element)
-  "Verify correctness of ELEMENT when `org-element--cache-self-verify' is non-nil."
+  "Verify correctness of ELEMENT when `org-element--cache-self-verify' is non-nil.
+
+Return non-nil when verification failed."
   ;; Verify correct parent for the element.
   (when (and org-element--cache-self-verify
              (org-element--cache-active-p)
