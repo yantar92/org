@@ -6596,7 +6596,8 @@ change, as an integer."
 		        (let* ((element (org-element--cache-find end))
 			       (element-end (org-element-property :end element))
 			       (up element))
-			  (while (and (setq up (org-element-property :parent up))
+			  (while (and (not (eq up first))
+                                      (setq up (org-element-property :parent up))
 				      (>= (org-element-property :begin up) first-beg))
                             ;; Note that UP might have been already
                             ;; shifted if it is a robust element.  After
