@@ -5818,7 +5818,7 @@ request."
                 ;; We found first element in cache starting at or
                 ;; after REQUEST-KEY.
 		(let ((pos (org-element-property :begin data)))
-		  (if (<= pos end)
+		  (if (< pos end)
                       (progn
                         (org-element--cache-log-message "removing %S::%S"
                                              (org-element-property :org-element--cache-sync-key data)
