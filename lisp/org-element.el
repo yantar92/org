@@ -5904,6 +5904,7 @@ request."
 	       ;; sure that followup phase 0 request for the recent
 	       ;; changes can operate on the correctly shifted cache.
                (org-element--cache-log-message "position %d after future change %d" limit future-change)
+               (setf (org-element--request-parent request) nil)
                (setf (org-element--request-phase request) 2))
 	      (t
                ;; No relevant changes happened after submitting this
