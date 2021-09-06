@@ -6464,8 +6464,13 @@ known element in cache (it may start after END)."
                        (org-element--cache-log-message "Found non-robust change invalidating org-data. Re-parsing: %S"
                                             (org-element--format-element up))
                        t))
+              (org-element--cache-log-message "Found non-robust element: %S"
+                                   (org-element--format-element up))
               (setq before up)
 	      (when robust-flag (setq robust-flag nil))))
+          (unless (or (org-element-property :parent up)
+                      (eq 'org-data (org-element-type up)))
+            (org-element--cache-warn "Got element without parent.\n%S" up))
 	  (setq up (org-element-property :parent up)))
         ;; We're at top level element containing ELEMENT: if it's
         ;; altered by buffer modifications, it is first element in
