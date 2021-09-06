@@ -5955,6 +5955,11 @@ request."
 	      (when (and next-request-key
                          (not (org-element--cache-key-less-p key next-request-key)))
                 (org-element--cache-log-message "Reached next request.")
+                (let ((next-request (nth 1 org-element--cache-sync-requests)))
+                  (unless (and (org-element-property :cached (org-element--request-parent next-request))
+                               (> (org-element-property :begin (org-element--request-parent next-request))
+                                  (org-element-property :begin parent)))
+                    (setf (org-element--request-parent next-request) parent)))
                 (throw 'quit t))
 	      ;; Handle interruption request.  Update current request.
 	      (when (or exit-flag (org-element--cache-interrupt-p time-limit))
