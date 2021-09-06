@@ -6298,28 +6298,42 @@ The function returns the new value of `org-element--cache-change-warning'."
        (beginning-of-line)
        (let ((bottom (save-excursion (goto-char end) (line-end-position))))
          (prog1
-             (setq org-element--cache-change-warning
-	           (save-match-data
-                     (let ((case-fold-search t))
-                       (when (re-search-forward
-		              org-element--cache-sensitive-re bottom t)
-                         (goto-char beg)
-                         (beginning-of-line)
-                         (let (min-level)
-                           (cl-loop while (re-search-forward
-                                           (rx-to-string
-                                            (if min-level
-                                                `(and bol (repeat 1 ,(1- min-level) "*") " ")
-                                              `(and bol (+ "*") " ")))
-                                           bottom t)
-                                    do (setq min-level (1- (length (match-string 0))))
-                                    until (= min-level 1))
+             (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
+                   (org-element--cache-change-warning-after))
+               (setq org-element--cache-change-warning-after
+	             (save-match-data
+                       (let ((case-fold-search t))
+                         (when (re-search-forward
+		                org-element--cache-sensitive-re bottom t)
                            (goto-char beg)
                            (beginning-of-line)
-                           (or min-level
-                               (when (looking-at-p "^[ \t]*#\\+CATEGORY:")
-                                 'org-data)
-                               t))))))
+                           (let (min-level)
+                             (cl-loop while (re-search-forward
+                                             (rx-to-string
+                                              (if min-level
+                                                  `(and bol (repeat 1 ,(1- min-level) "*") " ")
+                                                `(and bol (+ "*") " ")))
+                                             bottom t)
+                                      do (setq min-level (1- (length (match-string 0))))
+                                      until (= min-level 1))
+                             (goto-char beg)
+                             (beginning-of-line)
+                             (or min-level
+                                 (when (looking-at-p "^[ \t]*#\\+CATEGORY:")
+                                   'org-data)
+                                 t))))))
+               (setq org-element--cache-change-warning
+                     (cond
+                      ((and (numberp org-element--cache-change-warning-before)
+                            (numberp org-element--cache-change-warning-after))
+                       (min org-element--cache-change-warning-after
+                            org-element--cache-change-warning-before))
+                      ((numberp org-element--cache-change-warning-before)
+                       org-element--cache-change-warning-before)
+                      ((numberp org-element--cache-change-warning-after)
+                       org-element--cache-change-warning-after)
+                      (t (or org-element--cache-change-warning-after
+                             org-element--cache-change-warning-before)))))
            (org-element--cache-log-message "%S is about to modify text: warning %S"
                                 this-command
                                 org-element--cache-change-warning)))))))
@@ -6333,20 +6347,8 @@ that range.  See `after-change-functions' for more information."
     (with-current-buffer (or (buffer-base-buffer (current-buffer))
                              (current-buffer))
       (when (not (eq org-element--cache-change-tic (buffer-chars-modified-tick)))
-        (let ((org-element--cache-change-warning-before org-element--cache-change-warning)
-              (org-element--cache-change-warning-after (org-element--cache-before-change beg end)))
-          (setq org-element--cache-change-warning
-                (cond
-                 ((and (numberp org-element--cache-change-warning-before)
-                       (numberp org-element--cache-change-warning-after))
-                  (min org-element--cache-change-warning-after
-                       org-element--cache-change-warning-before))
-                 ((numberp org-element--cache-change-warning-before)
-                  org-element--cache-change-warning-before)
-                 ((numberp org-element--cache-change-warning-after)
-                  org-element--cache-change-warning-after)
-                 (t (or org-element--cache-change-warning-after
-                        org-element--cache-change-warning-before)))))
+        (org-element--cache-log-message "After change")
+        (setq org-element--cache-change-warning (org-element--cache-before-change beg end))
         ;; Store synchronization request.
         (let ((offset (- end beg pre)))
           (save-match-data
@@ -6428,14 +6430,14 @@ known element in cache (it may start after END)."
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
               (progn
-                (org-element--cache-log-message "Shifting end positions of robust parent: %S"
-                                     (org-element--format-element up))
 	        (org-element--cache-shift-positions
                  up offset
                  (if (and (org-element-property :robust-begin up)
                           (org-element-property :robust-end up))
                      '(:contents-end :end :robust-end)
-                   '(:contents-end :end))))
+                   '(:contents-end :end)))
+                (org-element--cache-log-message "Shifting end positions of robust parent: %S"
+                                     (org-element--format-element up)))
             (unless (or
                      ;; UP is non-robust.  Yet, if UP is headline, flagging
                      ;; everything inside for removal may be to
@@ -6626,7 +6628,8 @@ change, as an integer."
 	          (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
 		           offset))
               (org-element--cache-log-message "Nothing to remove. No elements in cache after %d. Terminating."
-                                   end))))))))
+                                   end))))))
+    (setq org-element--cache-change-warning nil)))
 
 (defun org-element--cache-verify-element (element)
   "Verify correctness of ELEMENT when `org-element--cache-self-verify' is non-nil.
