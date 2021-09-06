@@ -4694,11 +4694,7 @@ Elements are accumulated into ACC."
 			   end granularity mode structure))
 		 (type (org-element-type element))
 		 (cbeg (org-element-property :contents-begin element)))
-            (when (and (org-element--cache-active-p)
-                       (not org-element--cache-sync-requests)
-                       (not (org-element-property :cached element)))
-              (org-element--cache-put element))
-	    (goto-char (org-element-property :end element))
+            (goto-char (org-element-property :end element))
 	    ;; Fill ELEMENT contents by side-effect.
 	    (cond
 	     ;; If element has no contents, don't modify it.
