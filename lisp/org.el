@@ -7720,10 +7720,7 @@ the whole buffer."
   "Refresh category text properties in the buffer."
   (if-let (((org-element--cache-active-p))
            (org-data (org-element-lineage (org-element-at-point 1) '(org-data) t)))
-      ;; CATEGORY defined in the file's property drawer has top
-      ;; priority.
-      (unless (org-element-property :CATEGORY org-data)
-        (org-element-put-property org-data :CATEGORY category))
+      (org-element-property :CATEGORY org-data)
     (let ((case-fold-search t)
 	  (inhibit-read-only t)
 	  (default-category

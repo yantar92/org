@@ -1216,10 +1216,9 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                               (min robust-end (point))))
                            (+ 2 contents-begin))))
           (category (cond ((null org-category)
-		           (if buffer-file-name
-		               (file-name-sans-extension
-		                (file-name-nondirectory buffer-file-name))
-		             "???"))
+		           (when buffer-file-name
+		             (file-name-sans-extension
+		              (file-name-nondirectory buffer-file-name))))
 		          ((symbolp org-category) (symbol-name org-category))
 		          (t org-category)))
           (category (catch 'buffer-category
