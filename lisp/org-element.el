@@ -4447,12 +4447,14 @@ or objects within the parse tree.
 This function assumes that current major mode is `org-mode'."
   (save-excursion
     (goto-char (point-min))
-    (org-skip-whitespace)
-    (org-element--parse-elements
-     (point-at-bol) (point-max)
-     ;; Start in `first-section' mode so text before the first
-     ;; headline belongs to a section.
-     'first-section nil granularity visible-only (list 'org-data nil))))
+    (let ((org-data (or (org-element-lineage (org-element-at-point 1) '(org-data) t)
+                        (org-element-org-data-parser))))
+      (org-skip-whitespace)
+      (org-element--parse-elements
+       (point-at-bol) (point-max)
+       ;; Start in `first-section' mode so text before the first
+       ;; headline belongs to a section.
+       'first-section nil granularity visible-only org-data))))
 
 (defun org-element-parse-secondary-string (string restriction &optional parent)
   "Recursively parse objects in STRING and return structure.
@@ -4714,7 +4716,7 @@ Elements are accumulated into ACC."
 	  ;; Find current element's type and parse it accordingly to
 	  ;; its category.
 	  (let* ((element (org-element--current-element
-			   end granularity mode structure))
+		           end granularity mode structure 'add-to-cache))
 		 (type (org-element-type element))
 		 (cbeg (org-element-property :contents-begin element)))
             (goto-char (org-element-property :end element))

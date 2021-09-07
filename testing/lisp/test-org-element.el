@@ -195,12 +195,12 @@ Some other text
   "Test `org-element-extract-element' specifications."
   ;; Extract a greater element.
   (should
-   (equal '(org-data nil)
-	  (org-test-with-temp-text "* Headline"
-	    (let* ((tree (org-element-parse-buffer))
-		   (element (org-element-map tree 'headline 'identity nil t)))
-	      (org-element-extract-element element)
-	      tree))))
+   (eq 'org-data
+       (org-test-with-temp-text "* Headline"
+	 (let* ((tree (org-element-parse-buffer))
+		(element (org-element-map tree 'headline 'identity nil t)))
+	   (org-element-extract-element element)
+	   (org-element-type tree)))))
   ;; Extract an element.
   (should-not
    (org-element-map
@@ -3608,8 +3608,8 @@ Text
 	   (parent (org-element-property
 		    :parent (org-element-map tree 'italic 'identity nil t))))
       (should parent)
-      (should (eq parent
-		  (org-element-map tree 'headline 'identity nil t))))))
+      (should (equal parent
+		     (org-element-map tree 'headline 'identity nil t))))))
 
 
 
