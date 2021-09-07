@@ -5261,18 +5261,18 @@ cache process log entries.")
 
 ;;;; Data Structure
 
-(defvar org-element--cache nil
+(defvar-local org-element--cache nil
   "AVL tree used to cache elements.
 Each node of the tree contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-at-point'.")
 
-(defvar org-element--cache-size 0
+(defvar-local org-element--cache-size 0
   "Size of the `org-element--cache'.
 
 Storing value is variable is faster because `avl-tree-size' is O(N).")
 
-(defvar org-element--cache-sync-requests nil
+(defvar-local org-element--cache-sync-requests nil
   "List of pending synchronization requests.
 
 A request is a vector with the following pattern:
@@ -5309,10 +5309,10 @@ PHASE specifies the phase number, as an integer.
 For any synchronisation request, all the later requests in the cache
 must not start at or before END.  See `org-element--cache-submit-request'.")
 
-(defvar org-element--cache-sync-timer nil
+(defvar-local org-element--cache-sync-timer nil
   "Timer used for cache synchronization.")
 
-(defvar org-element--cache-sync-keys-value nil
+(defvar-local org-element--cache-sync-keys-value nil
   "Id value used to identify keys during synchronisation.
 See `org-element--cache-key' for more information.")
 
