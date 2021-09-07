@@ -7657,7 +7657,8 @@ call CMD."
           (progn
             ;; Sync cache.
             (org-with-point-at (org-element-property :begin (org-element-at-point))
-              (org-entry-get-with-inheritance "CATEGORY")))
+              (or (org-entry-get-with-inheritance "CATEGORY")
+                  "???")))
         (or (get-text-property pos 'org-category)
             (progn
               (org-refresh-category-properties)
