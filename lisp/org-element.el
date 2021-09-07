@@ -6798,6 +6798,9 @@ element ending there."
       (unless (and cached-only
                    (not (and element
                            (or (= pom (org-element-property :begin element))
+                               (and (not (memq (org-element-type element) org-element-greater-elements))
+                                    (>= pom (org-element-property :begin element))
+                                    (< pom (org-element-property :end element)))
                                (and (org-element-property :contents-begin element)
                                     (>= pom (org-element-property :begin element))
                                     (< pom (org-element-property :contents-begin element)))
