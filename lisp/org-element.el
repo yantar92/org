@@ -1242,7 +1242,7 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                   :robust-end robust-end
                   :post-blank (count-lines pos-before-blank end)
                   :post-affiliated begin
-                  :mode 'first-section)
+                  :mode 'org-data)
             properties)))))
 
 (defun org-element-org-data-interpreter (_ contents)
@@ -4643,7 +4643,7 @@ located inside the current one."
       (pcase type
 	(`headline 'section)
 	((and (guard (eq mode 'first-section)) `section) 'top-comment)
-        ((and (guard (eq mode 'first-section)) `org-data) 'first-section)
+        ((and (guard (eq mode 'org-data)) `org-data) 'first-section)
         ((and (guard (not mode)) `org-data) 'first-section)
 	(`inlinetask 'planning)
 	(`plain-list 'item)
@@ -6117,7 +6117,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
                                 (org-element--format-element element))
            (org-element--cache-put element)
            (goto-char (org-element-property :contents-begin element))
-	   (setq mode 'first-section))
+	   (setq mode 'org-data))
           ;; Nothing in cache before point because cache is not active.
           ;; Parse from previous heading to avoid re-parsing the whole
           ;; buffer above.  This comes at the cost of not calculating
