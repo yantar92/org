@@ -4090,7 +4090,7 @@ Assume point is at the first equal sign marker."
 ;; It returns the Lisp representation of the element starting at
 ;; point.
 
-(defun org-element--current-element (limit &optional granularity mode structure)
+(defun org-element--current-element (limit &optional granularity mode structure add-to-cache)
   "Parse the element starting at point.
 
 Return value is a list like (TYPE PROPS) where TYPE is the type
@@ -4115,17 +4115,31 @@ Optional argument MODE, when non-nil, can be either
 If STRUCTURE isn't provided but MODE is set to `item', it will be
 computed.
 
+Optional argument ADD-TO-CACHE, when non-nil, and when cache is active,
+will also add current element to cache if it is not yet there.  Use
+this argument with care, as validity of the element in parse tree is
+not checked.
+
 This function assumes point is always at the beginning of the
 element it has to parse."
-  (if-let* ((element (and (org-element--cache-active-p)
+  (if-let* ((element (and (not (buffer-narrowed-p))
+                          (org-element--cache-active-p)
                           (not org-element--cache-sync-requests)
                           (org-element--cache-find (point) t)))
-            (element (if (and (eq mode (org-element-property :mode element))
-                              (eq (point) (org-element-property :begin element)))
-                         element
-                       (when (and (eq mode (org-element-property :mode (org-element-property :parent element)))
-                                  (eq (point) (org-element-property :begin (org-element-property :parent element))))
-                         (org-element-property :parent element)))))
+            (element (progn (while (and element
+                                        (not (and (eq (point) (org-element-property :begin element))
+                                                (eq mode (org-element-property :mode element)))))
+                              (setq element (org-element-property :parent element)))
+                            element))
+            (old-element element)
+            (element (when
+                         (pcase (org-element-property :granularity element)
+                           (`nil t)
+                           (`object t)
+                           (`element (not (memq granularity '(nil object))))
+                           (`greater-element (not (memq granularity '(nil object element))))
+                           (`headline (eq granularity 'headline)))
+                       element)))
       element
     (save-excursion
       (let ((case-fold-search t)
@@ -4279,7 +4293,17 @@ element it has to parse."
 	          (or structure (org-element--list-struct limit))))
 	        ;; Default element: Paragraph.
 	        (t (org-element-paragraph-parser limit affiliated)))))))
-        (when result (org-element-put-property result :mode mode))
+        (when result
+          (org-element-put-property result :mode mode)
+          (org-element-put-property result :granularity granularity))
+        (when (and (not (buffer-narrowed-p))
+                   (org-element--cache-active-p)
+                   (not org-element--cache-sync-requests)
+                   add-to-cache)
+          (if (not old-element)
+              (setq result (org-element--cache-put result))
+            (org-element-set-element old-element result)
+            (setq result old-element)))
         result))))
 
 
@@ -6189,11 +6213,11 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 	     (unless element
                (setq element (org-element--current-element
 			      end 'element mode
-			      (org-element-property :structure parent)))
+			      (org-element-property :structure parent)
+                              'add-to-cache))
                ;; Nothing to parse (i.e. empty file).
                (unless element (throw 'exit parent))
-	       (org-element-put-property element :parent parent)
-               (org-element--cache-put element))
+	       (org-element-put-property element :parent parent))
 	     (let ((elem-end (org-element-property :end element))
 	           (type (org-element-type element)))
 	       (cond

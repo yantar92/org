@@ -4223,10 +4223,10 @@ Aliquam erat volutpat.
       (insert "** heading 2")
       (search-forward "*** Sub-heading 2")
       (should
-       (eq (org-element-property :parent (org-element-at-point))
-           (progn
-             (search-backward "** heading 2")
-             (org-element-at-point))))))
+       (equal (org-element-property :parent (org-element-at-point))
+              (progn
+                (search-backward "** heading 2")
+                (org-element-at-point))))))
   ;; Test when `org-element--cache-for-removal' modifies common parent
   ;; (`org-data' in this case) around changed region.
   (org-test-with-temp-text
