@@ -63,6 +63,7 @@
 (require 'cl-lib)
 (require 'ol)
 (require 'org)
+(require 'org-id)
 (require 'org-compat)
 (require 'org-entities)
 (require 'org-footnote)
