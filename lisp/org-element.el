@@ -4703,6 +4703,7 @@ elements.
 
 Elements are accumulated into ACC."
   (if (and (org-element-property :cached acc)
+           (eq granularity (org-element-property :granularity acc))
            (org-element-contents acc))
       acc
     (save-excursion
@@ -4754,6 +4755,7 @@ Elements are accumulated into ACC."
 	      ;; Update mode.
 	      (setq mode (org-element--next-mode mode type nil)))))
         ;; Return result.
+        (org-element-put-property acc :granularity granularity)
         (apply #'org-element-set-contents acc (nreverse elements))))))
 
 (defun org-element--object-lex (restriction)
