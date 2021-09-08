@@ -5242,7 +5242,7 @@ The index is a list of plists.  Each plist contains information about
 a file cache.  Each plist contains the following properties:
 
 - `:path':       buffer file path
-- `:inode':      buffer inode
+- `:inode':      buffer file inode
 - `:hash':       buffer hash
 - `:cache-file': cache file name")
 
