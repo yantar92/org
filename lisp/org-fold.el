@@ -742,10 +742,7 @@ Return a non-nil value when toggling is successful."
       ;; Skip folded drawers
       (if (org-fold-folded-p nil 'drawer)
           (goto-char (org-fold-next-folding-state-change 'drawer nil end))
-        (let* ((drawer
-                (or (org-element-at-point nil 'cached)
-                    (org-with-point-at (match-beginning 0)
-                      (org-element--current-element (save-excursion (or (outline-next-heading) (point-max)))))))
+        (let* ((drawer (org-element-at-point))
                (type (org-element-type drawer)))
           (when (memq type '(drawer property-drawer))
             (org-fold-hide-drawer-toggle t nil drawer)
