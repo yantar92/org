@@ -5370,8 +5370,8 @@ better to remove the commands adviced in such way from this list.")
 (defmacro org-element--format-element (element)
   "Format ELEMENT for printing in diagnostics."
   `(let ((print-length 25)
-         (print-level 5))
-     (prin1-to-string ,element)))
+         (print-level 3))
+     (prin1-to-string (list (org-element-copy ,element)))))
 
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
@@ -5775,7 +5775,7 @@ updated before current modification are actually submitted."
 	          (cl-incf (org-element--request-offset next) (org-element--request-offset request))
                   (org-element--cache-log-message "Updating next request offset to %d: %s"
                                        (org-element--request-offset next)
-                                       (let ((print-length 10)) (prin1-to-string next)))
+                                       (let ((print-length 10) (print-level 3)) (prin1-to-string next)))
                   ;; FIXME: END part of the request only matters for
                   ;; phase 0 requests.  However, the only possible
                   ;; phase 0 request must be the first request in the
@@ -5812,7 +5812,7 @@ not registered yet in the cache are going to happen.  See
 Throw `interrupt' if the process stops before completing the
 request."
   (org-element--cache-log-message "org-element-cache: Processing request %s up to %S-%S, next: %S"
-                       (let ((print-length 10)) (prin1-to-string request))
+                       (let ((print-length 10) (print-level 3)) (prin1-to-string request))
                        future-change
                        threshold
                        next-request-key)
@@ -5930,8 +5930,8 @@ request."
           ;; requests.
 	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
             (org-element--cache-log-message "Phase 1: Unorderered requests. Merging: %S\n%S\n"
-                                 (let ((print-length 10)) (prin1-to-string request))
-                                 (let ((print-length 10)) (prin1-to-string next-request)))
+                                 (let ((print-length 10) (print-level 3)) (prin1-to-string request))
+                                 (let ((print-length 10) (print-level 3)) (prin1-to-string next-request)))
 	    (setf (org-element--request-key next-request) key)
             (setf (org-element--request-beg next-request) (org-element--request-beg request))
 	    (setf (org-element--request-phase next-request) 1)
@@ -6676,7 +6676,8 @@ change, as an integer."
                 (progn
                   (org-element--cache-log-message "Nothing to remove. Updating offset of the next request by 𝝙%d: %S"
                                        offset
-                                       (car org-element--cache-sync-requests))
+                                       (let ((print-level 3))
+                                         (car org-element--cache-sync-requests)))
 	          (cl-incf (org-element--request-offset (car org-element--cache-sync-requests))
 		           offset))
               (org-element--cache-log-message "Nothing to remove. No elements in cache after %d. Terminating."
