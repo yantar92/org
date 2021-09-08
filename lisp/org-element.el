@@ -5225,6 +5225,26 @@ you want to help debugging the issue.
 UPDATE: At least part of the freezes should not happen anymore.
 Hopefully, this is finally fixed, but need more testing.")
 
+(defvar org-element-cache-persistent t
+  "Non-nil when cache should persist between Emacs sessions.")
+
+(defvar org-element-cache-path (file-name-concat user-emacs-directory "org-element-cache/")
+  "Directory where element cache is stored.")
+
+(defvar org-element-cache-index-file "index"
+  "File name used to store `org-element-cache--index'.")
+
+(defvar org-element-cache--index nil
+  "Global cache index.
+
+The index is a list of plists.  Each plist contains information about
+a file cache.  Each plist contains the following properties:
+
+- `:path':       buffer file path
+- `:inode':      buffer inode
+- `:hash':       buffer hash
+- `:cache-file': cache file name")
+
 (defvar org-element-cache-sync-idle-time 0.6
   "Length, in seconds, of idle time before syncing cache.")
 
@@ -6754,6 +6774,10 @@ buffers."
 	(setq-local org-element--cache
 		    (avl-tree-create #'org-element--cache-compare))
         (setq-local org-element--cache-size 0)
+        (when org-element-cache-persistent
+          (org-element--cache-read)
+          (add-hook 'kill-buffer-hook #'org-element--cache-write 1000 'local)
+          (add-hook 'kill-emacs-hook #'org-element--cache-write-all 1000))
 	(setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
 	(setq-local org-element--cache-change-warning nil)
 	(setq-local org-element--cache-sync-requests nil)
@@ -6772,6 +6796,75 @@ buffers."
     (org-element--cache-set-timer (current-buffer))))
 
 
+
+;;;; Persistent cache
+
+(defun org-element--cache-get-cache-index ()
+  "Return plist used to store cache of the current buffer."
+  (when (and (org-element--cache-active-p)
+             (buffer-file-name))
+    (let* ((buffer-file (buffer-file-name))
+           (inode (file-attribute-inode-number (file-attributes buffer-file))))
+      (let ((result (or (seq-find (lambda (plist) (equal inode (plist-get plist :inode))) org-element-cache--index)
+                        (seq-find (lambda (plist) (equal buffer-file (plist-get plist :path))) org-element-cache--index))))
+        (unless result
+          (push (list :path buffer-file
+                      :inode inode
+                      :hash (secure-hash 'md5 (current-buffer))
+                      :cache-file (replace-regexp-in-string "^.." "\\&/" (org-id-uuid)))
+                org-element-cache--index)
+          (setf result (car org-element-cache--index)))
+        result))))
+
+(defun org-element--cache-write (&optional all-buffers)
+  "Save cache in current buffer or all the buffers when AL-BUFFERS is non-nil."
+  (let ((buffer-list (if all-buffers (buffer-list) (list (current-buffer)))))
+    (dolist (buf buffer-list)
+      (with-current-buffer buf
+        (when (and (org-element--cache-active-p)
+                   (buffer-file-name)
+                   (not (buffer-modified-p)))
+          (let ((index (org-element--cache-get-cache-index)))
+            (setf index (plist-put index :hash (secure-hash 'md5 (current-buffer))))
+            (unless (file-exists-p org-element-cache-path)
+              (make-directory org-element-cache-path))
+            (let ((cache org-element--cache)
+                  (print-circle t))
+              (org-element--cache-sync (current-buffer))
+              (with-temp-file (file-name-concat org-element-cache-path org-element-cache-index-file)
+                (prin1 org-element-cache--index (current-buffer)))
+              (let ((file (file-name-concat org-element-cache-path (plist-get index :cache-file))))
+                (unless (file-exists-p (file-name-directory file))
+                  (make-directory (file-name-directory file) t))
+                (with-temp-file file
+                  (prin1 cache (current-buffer)))))))))))
+
+(defun org-element--cache-write-all ()
+  "Write cache in all buffers."
+  (org-element--cache-write t))
+
+(defun org-element--cache-read ()
+  "Restore cache for the current buffer"
+  (when (and (org-element--cache-active-p)
+             (buffer-file-name)
+             (not (buffer-modified-p)))
+    (unless org-element-cache--index
+      (when (file-exists-p (file-name-concat org-element-cache-path org-element-cache-index-file))
+        (with-temp-buffer
+          (insert-file-contents (file-name-concat org-element-cache-path org-element-cache-index-file))
+          (setq org-element-cache--index (read (current-buffer))))))
+    (let* ((index (org-element--cache-get-cache-index))
+           (cache-file (file-name-concat org-element-cache-path (plist-get index :cache-file)))
+           (cache nil))
+      (when (and (file-exists-p cache-file)
+                 (equal (secure-hash 'md5 (current-buffer)) (plist-get index :hash)))
+        (with-temp-buffer
+          (let ((coding-system-for-read 'utf-8))
+            (insert-file-contents cache-file))
+          (setq cache (read (current-buffer))))
+        (setq-local org-element--cache cache)
+        (setq-local org-element--cache-size (avl-tree-size org-element--cache))))))
+
 ;;; The Toolbox
 ;;
 ;; The first move is to implement a way to obtain the smallest element
