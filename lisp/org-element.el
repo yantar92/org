@@ -6778,6 +6778,7 @@ buffers."
         (when org-element-cache-persistent
           (org-element--cache-read)
           (add-hook 'kill-buffer-hook #'org-element--cache-write 1000 'local)
+          (add-hook 'kill-emacs-hook #'org-element-cache-gc)
           (add-hook 'kill-emacs-hook #'org-element--cache-write-all 1000))
 	(setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
 	(setq-local org-element--cache-change-warning nil)
@@ -6808,6 +6809,9 @@ buffers."
            (inode (file-attribute-inode-number (file-attributes buffer-file))))
       (let ((result (or (seq-find (lambda (plist) (equal inode (plist-get plist :inode))) org-element-cache--index)
                         (seq-find (lambda (plist) (equal buffer-file (plist-get plist :path))) org-element-cache--index))))
+        (when result
+          (unless (equal buffer-file (plist-get result :path))
+            (setf result (plist-put result :path buffer-file))))
         (unless result
           (push (list :path buffer-file
                       :inode inode
@@ -6843,6 +6847,20 @@ buffers."
 (defun org-element--cache-write-all ()
   "Write cache in all buffers."
   (org-element--cache-write t))
+
+(defun org-element-cache-gc ()
+  "Remove cached data for not existing files."
+  (let (new-index)
+    (dolist (index org-element-cache--index)
+      (let ((file (plist-get index :path))
+            (cache-file (plist-get index :cache-file)))
+        (if (file-exists-p file)
+            (push index new-index)
+          (when (file-exists-p (file-name-concat org-element-cache-path cache-file))
+            (delete-file (file-name-concat org-element-cache-path cache-file))
+            (when (directory-empty-p (file-name-directory (file-name-concat org-element-cache-path cache-file)))
+              (delete-directory (file-name-directory (file-name-concat org-element-cache-path cache-file))))))))
+    (setq org-element-cache--index (nreverse new-index))))
 
 (defun org-element--cache-read ()
   "Restore cache for the current buffer"
