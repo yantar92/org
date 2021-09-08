@@ -5565,7 +5565,8 @@ This function assumes `org-element--cache' is a valid AVL tree."
        ;; modification hook, where `inhibit-modification-hooks' is set
        ;; to t.
        (or called-from-cache-change-func-p
-           (not inhibit-modification-hooks))))
+           (not inhibit-modification-hooks)
+           (eq org-element--cache-change-tic (buffer-chars-modified-tick)))))
 
 (defun org-element--cache-find (pos &optional side)
   "Find element in cache starting at POS or before.
