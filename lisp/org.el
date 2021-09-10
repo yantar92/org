@@ -7719,9 +7719,7 @@ the whole buffer."
 
 (defun org-refresh-category-properties ()
   "Refresh category text properties in the buffer."
-  (if-let (((org-element--cache-active-p))
-           (org-data (org-element-lineage (org-element-at-point 1) '(org-data) t)))
-      (org-element-property :CATEGORY org-data)
+  (unless (org-element--cache-active-p)
     (let ((case-fold-search t)
 	  (inhibit-read-only t)
 	  (default-category
