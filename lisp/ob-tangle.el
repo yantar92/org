@@ -426,10 +426,13 @@ non-nil, return the full association list to be used by
                       ;; The created link is transient.  Using ID is
                       ;; not necessary, but could have side-effects if
                       ;; used.  An ID property may be added to
-                      ;; existing entries thus creatin unexpected file
-                      ;; modifications.
+                      ;; existing entries thus creating unexpected
+                      ;; file modifications.
                       (org-id-link-to-org-use-id nil)
-                      (l (org-no-properties (org-store-link nil))))
+                      (l (org-no-properties
+                          (cl-letf (((symbol-function 'org-store-link-functions)
+                                     (lambda () nil)))
+                            (org-store-link nil)))))
                  (and (string-match org-link-bracket-re l)
                       (match-string 1 l))))
 	 (source-name
