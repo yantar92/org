@@ -5228,7 +5228,7 @@ you want to help debugging the issue.
 UPDATE: At least part of the freezes should not happen anymore.
 Hopefully, this is finally fixed, but need more testing.")
 
-(defvar org-element-cache-persistent t
+(defvar org-element-cache-persistent nil
   "Non-nil when cache should persist between Emacs sessions.")
 
 (defvar org-element-cache-path (file-name-concat user-emacs-directory "org-element-cache/")
@@ -6829,6 +6829,7 @@ buffers."
     (dolist (buf buffer-list)
       (with-current-buffer buf
         (when (and (org-element--cache-active-p)
+                   org-element-cache-persistent
                    (buffer-file-name)
                    (not (buffer-modified-p)))
           (let ((index (org-element--cache-get-cache-index)))
@@ -6836,8 +6837,11 @@ buffers."
             (unless (file-exists-p org-element-cache-path)
               (make-directory org-element-cache-path))
             (let ((cache org-element--cache)
-                  (print-circle t))
-              (org-element--cache-sync (current-buffer))
+                  (print-circle t)
+                  (print-continuous-numbering t)
+                  print-number-table)
+              (org-with-wide-buffer
+               (org-element--cache-sync (current-buffer) (point-max)))
               (with-temp-file (file-name-concat org-element-cache-path org-element-cache-index-file)
                 (prin1 org-element-cache--index (current-buffer)))
               (let ((file (file-name-concat org-element-cache-path (plist-get index :cache-file))))
@@ -6852,21 +6856,23 @@ buffers."
 
 (defun org-element-cache-gc ()
   "Remove cached data for not existing files."
-  (let (new-index)
-    (dolist (index org-element-cache--index)
-      (let ((file (plist-get index :path))
-            (cache-file (plist-get index :cache-file)))
-        (if (file-exists-p file)
-            (push index new-index)
-          (when (file-exists-p (file-name-concat org-element-cache-path cache-file))
-            (delete-file (file-name-concat org-element-cache-path cache-file))
-            (when (directory-empty-p (file-name-directory (file-name-concat org-element-cache-path cache-file)))
-              (delete-directory (file-name-directory (file-name-concat org-element-cache-path cache-file))))))))
-    (setq org-element-cache--index (nreverse new-index))))
+  (when org-element-cache-persistent
+    (let (new-index)
+      (dolist (index org-element-cache--index)
+        (let ((file (plist-get index :path))
+              (cache-file (plist-get index :cache-file)))
+          (if (file-exists-p file)
+              (push index new-index)
+            (when (file-exists-p (file-name-concat org-element-cache-path cache-file))
+              (delete-file (file-name-concat org-element-cache-path cache-file))
+              (when (directory-empty-p (file-name-directory (file-name-concat org-element-cache-path cache-file)))
+                (delete-directory (file-name-directory (file-name-concat org-element-cache-path cache-file))))))))
+      (setq org-element-cache--index (nreverse new-index)))))
 
 (defun org-element--cache-read ()
   "Restore cache for the current buffer"
   (when (and (org-element--cache-active-p)
+             org-element-cache-persistent
              (buffer-file-name)
              (not (buffer-modified-p)))
     (unless org-element-cache--index
