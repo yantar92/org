@@ -6917,20 +6917,22 @@ element ending there."
   (when (and cached-only
              (memq this-command org-element--cache-non-modifying-commands))
     (setq cached-only nil))
-  (when (org-element--cache-active-p)
-    (if (not org-element--cache) (org-element-cache-reset)
-      (org-element--cache-sync (current-buffer) pom)))
-  (let ((element (if cached-only
-                     (and (org-element--cache-active-p)
-                          (org-element--cache-find pom))
-                   (condition-case err
-                       (org-element--parse-to pom)
-                     (error
-                      (org-element--cache-warn "Cache corruption detected in %s. Resetting.\n The error was: %S"
-                                    (buffer-name (current-buffer))
-                                    err)
-                      (org-element-cache-reset)
-                      (org-element--parse-to pom))))))
+  (let (element)
+    (when (org-element--cache-active-p)
+      (if (not org-element--cache) (org-element-cache-reset)
+        (unless cached-only (org-element--cache-sync (current-buffer) pom))))
+    (setq element (if cached-only
+                      (and (org-element--cache-active-p)
+                           (not org-element--cache-sync-requests)
+                           (org-element--cache-find pom))
+                    (condition-case err
+                        (org-element--parse-to pom)
+                      (error
+                       (org-element--cache-warn "Cache corruption detected in %s. Resetting.\n The error was: %S"
+                                     (buffer-name (current-buffer))
+                                     err)
+                       (org-element-cache-reset)
+                       (org-element--parse-to pom)))))
     (when (and (org-element--cache-active-p)
                element
                (org-element--cache-verify-element element))
