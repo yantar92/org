@@ -4703,7 +4703,9 @@ elements.
 
 Elements are accumulated into ACC."
   (if (and (org-element-property :cached acc)
-           (eq granularity (org-element-property :granularity acc))
+           ;; FIXME: If I use it, there might be not much performance
+           ;; benefit.
+           ;; (eq granularity (org-element-property :granularity acc))
            (org-element-contents acc))
       acc
     (save-excursion
@@ -6620,7 +6622,9 @@ change, as an integer."
         ;; yet to the otherwise correct part of the cache (i.e, before
         ;; the first request).
         (org-element--cache-log-message "Adding new phase 0 request")
-        (when next (org-element--cache-sync (current-buffer) end beg))
+        ;; FIXME: Disabling this optimisation to hunt errors.
+        ;; (when next (org-element--cache-sync (current-buffer) end beg))
+        (when next (org-element--cache-sync (current-buffer) end))
         (let ((first (org-element--cache-for-removal beg end offset)))
 	  (if first
 	      (push (let ((first-beg (org-element-property :begin first))
