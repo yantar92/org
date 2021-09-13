@@ -5282,7 +5282,7 @@ to be correct.  Setting this to a value less than 0.0001 is useless.")
   "Ring containing last `org-element--cache-diagnostics-ring-size'
 cache process log entries.")
 
-(defvar org-element--cache-diagnostics-ring-size 1000
+(defvar org-element--cache-diagnostics-ring-size 5000
   "Size of `org-element--cache-diagnostics-ring'.")
 
 ;;;; Data Structure
@@ -6732,9 +6732,12 @@ Return non-nil when verification failed."
                      (eq (org-element-property :contents-end real-element) (org-element-property :contents-end element))
                      (or (not (org-element-property :ID real-element))
                          (string= (org-element-property :ID real-element) (org-element-property :ID element))))
-          (org-element--cache-warn "(%S) Cached element is incorrect in %s. Resetting.\n The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
+          (org-element--cache-warn "(%S) Cached element is incorrect in %s. (Cache tic up to date: %S) Resetting.\n The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
                         this-command
                         (buffer-name (current-buffer))
+                        (if (/= org-element--cache-change-tic
+                               (buffer-chars-modified-tick))
+                            "no" "yes")
                         (org-element--format-element element)
                         (org-element--format-element real-element)
                         (org-element--cache-find (1- (org-element-property :begin real-element)))
