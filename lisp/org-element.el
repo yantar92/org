@@ -5394,9 +5394,9 @@ better to remove the commands adviced in such way from this list.")
 
 (defmacro org-element--format-element (element)
   "Format ELEMENT for printing in diagnostics."
-  `(let ((print-length 25)
-         (print-level 3))
-     (prin1-to-string (list (org-element-copy ,element)))))
+  `(let ((print-length 50)
+         (print-level 5))
+     (prin1-to-string ,element)))
 
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
@@ -6102,8 +6102,9 @@ request."
                                     (not (org-element-property :cached p))
                                     ;; (not (avl-tree-member-p org-element--cache p))
                                     ))))
-                       (org-element--cache-log-message "Updating parent in %S\n New parent: %S"
+                       (org-element--cache-log-message "Updating parent in %S\n Old parent: %S\n New parent: %S"
                                             (org-element--format-element data)
+                                            (org-element--format-element (org-element-property :parent data))
                                             (org-element--format-element parent))
 		       (org-element-put-property data :parent parent)
 		       (let ((s (org-element-property :structure parent)))
@@ -6173,6 +6174,7 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
           ;; file.
           ((and (not cached) (org-element--cache-active-p))
            (setq element (org-element-org-data-parser))
+           (unless (org-element-property :begin element) (org-element--cache-warn "Error parsing org-data. Got %S" element))
            (org-element--cache-log-message "Nothing in cache. Adding org-data: %S"
                                 (org-element--format-element element))
            (org-element--cache-put element)
@@ -6706,7 +6708,7 @@ Return non-nil when verification failed."
                (org-element--cache-active-p)
                (derived-mode-p 'org-mode)
                (org-element-property :parent element)
-               (eq 'headline (org-element-property :parent element))
+               (eq 'headline (org-element-type element))
                ;; Avoid too much slowdown
                (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
       (org-with-point-at (org-element-property :begin element)
