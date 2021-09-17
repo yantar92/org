@@ -6722,13 +6722,16 @@ Return non-nil when verification failed."
                ;; Avoid too much slowdown
                (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
       (org-with-point-at (org-element-property :begin element)
-        (org-up-heading-safe)
-        (unless (= (point) (org-element-property :begin (org-element-property :parent element)))
-          (org-element--cache-warn "Cached element has wrong parent in %s. Resetting.\n The element is: %S\n The real parent is: %S"
+        (org-element-with-disabled-cache (org-up-heading-or-point-min))
+        (unless (or (= (point) (org-element-property :begin (org-element-property :parent element)))
+                    (eq (point) (point-min)))
+          (org-element--cache-warn "Cached element has wrong parent in %s. Resetting.\n The element is: %S\n The parent is: %S\n The real parent is: %S"
                         (buffer-name (current-buffer))
                         (org-element--format-element element)
+                        (org-element--format-element (org-element-property :parent element))
                         (org-element--format-element (org-element--current-element (org-element-property :end (org-element-property :parent element)))))
-          (org-element-cache-reset))))
+          (org-element-cache-reset))
+        (org-element--cache-verify-element (org-element-property :parent element))))
     ;; Verify the element itself.
     (when (and org-element--cache-self-verify
                (org-element--cache-active-p)
