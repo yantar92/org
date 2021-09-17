@@ -1193,33 +1193,33 @@ move it back by one char before doing this check."
         (org-invisible-p (org-fold-next-visibility-change beg end)))))
 
 (defun org-find-visible--overlays ()
-  "Return closest visible buffer position, or `point-max'"
+  "Return closest visible buffer position, or `point-max'."
   (if (org-invisible-p)
       (next-single-char-property-change (point) 'invisible)
     (point)))
 (defun org-find-visible--text-properties ()
-  "Return closest visible buffer position, or `point-max'"
+  "Return closest visible buffer position, or `point-max'."
   (if (org-invisible-p)
       (org-fold-next-visibility-change (point))
     (point)))
 (defsubst org-find-visible ()
-  "Return closest visible buffer position, or `point-max'"
+  "Return closest visible buffer position, or `point-max'."
   (if (eq org-fold-core-style 'text-properties)
       (org-find-visible--text-properties)
     (org-find-visible--overlays)))
 
 (defun org-find-invisible--overlays ()
-  "Return closest invisible buffer position, or `point-max'"
+  "Return closest invisible buffer position, or `point-max'."
   (if (org-invisible-p)
       (point)
     (next-single-char-property-change (point) 'invisible)))
 (defun org-find-invisible--text-properties ()
-  "Return closest invisible buffer position, or `point-max'"
+  "Return closest invisible buffer position, or `point-max'."
   (if (org-invisible-p)
       (point)
     (org-fold-next-visibility-change (point))))
 (defsubst org-find-invisible ()
-  "Return closest invisible buffer position, or `point-max'"
+  "Return closest invisible buffer position, or `point-max'."
   (if (eq org-fold-core-style 'text-properties)
       (org-find-invisible--text-properties)
     (org-find-invisible--overlays)))
