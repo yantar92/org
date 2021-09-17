@@ -19648,7 +19648,11 @@ unless optional argument NO-INHERITANCE is non-nil."
 	   (cl-some (apply-partially #'string= org-archive-tag) tags))))
    (no-inheritance nil)
    (t
-    (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p))))))
+    (if (org-element--cache-active-p)
+        (let ((tags (org-get-tags)))
+          (and tags
+	       (cl-some (apply-partially #'string= org-archive-tag) tags)))
+      (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p)))))))
 
 (defun org-at-comment-p nil
   "Return t if cursor is in a commented line."
