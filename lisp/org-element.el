@@ -615,7 +615,7 @@ Parse tree is modified by side effect."
     ;; Set appropriate :parent property.
     (org-element-put-property element :parent parent)))
 
-(defconst org-element--cache-element-properties '(:org-element--cache-parsed-p
+(defconst org-element--cache-element-properties '(:cached
                                        :org-element--cache-sync-key)
   "List of element properties used internally by cache.")
 
@@ -6101,6 +6101,7 @@ request."
                              begin -1
                              continue-flag t))
 		      ((and parent
+                            (not (eq parent data))
 			    (let ((p (org-element-property :parent data)))
 			      (or (not p)
 				  (< (org-element-property :begin p)
@@ -6236,8 +6237,10 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 	     (unless element
                (setq element (org-element--current-element
 			      end 'element mode
-			      (org-element-property :structure parent)
-                              'add-to-cache))
+			      (org-element-property :structure parent)))
+               ;; Make sure that we return referenced element in cache
+               ;; that can be altered directly.
+               (setq element (or (org-element--cache-put element) element))
                ;; Nothing to parse (i.e. empty file).
                (unless element (throw 'exit parent))
 	       (org-element-put-property element :parent parent))
