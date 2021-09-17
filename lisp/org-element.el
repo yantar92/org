@@ -5230,7 +5230,7 @@ you want to help debugging the issue.
 UPDATE: At least part of the freezes should not happen anymore.
 Hopefully, this is finally fixed, but need more testing.")
 
-(defvar org-element-cache-persistent nil
+(defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
 (defvar org-element-cache-path (file-name-concat user-emacs-directory "org-element-cache/")
