@@ -368,6 +368,177 @@ If EXCLUDE-TMP is non-nil, ignore temporary buffers."
 	       nil))
 	   (buffer-list)))))
 
+
+;;; Async stack
+
+(defvar org-async--stack nil
+  "List of (%PROCESS :start-time %FLOAT :success %FUN :failure %FUN :timeout %FLOAT :buffer %BUFFER) forms.")
+
+(defvar org-async--wait-queue nil
+   "List of (%PROCESS :success %FUN :failure %FUN :timeout %FLOAT :buffer %BUFFER) forms.")
+
+(defvar org-async-process-limit 4
+  "Maximum number of processes to run at once.")
+
+(defvar org-async-timeout 120
+  "Default timeout for a process started via `org-async-queue'.")
+
+(defvar org-async-check-timeout-interval 1
+  "Check for processes which have exceeded their timeout every this many seconds.")
+
+(defvar org-async--counter 0)
+
+(cl-defun org-async-call (proc &key success failure filter buffer info timeout now
+                               (dir default-directory))
+  "Start PROC and register it with callbacks SUCCESS and FAILURE.
+
+PROC can be a process, string, or list.  A string will be run as
+a shell command, with `start-process-shell-command' and a list
+run using `start-process' with the car as the command and the cdr
+as the arguments.  The process will be executed in DIR (if set)
+or `default-directory'.
+
+When BUFFER is provided, the output of PROC will be directed to it.
+Shoud BUFFER be t, then a temp buffer will be created and removed
+during `org-async--cleanup-process'.
+
+SUCCESS and FAILURE can be any form accepted by `org-async--execute-callback',
+namely:
+- A string, which is used a `message' string with the exit-code,
+  process-buffer, and INFO as arguments.
+- A function, which is called with exit-code, process-buffer,
+  and INFO as arguments.
+- A list, which is used as an argument list for a new `org-async-call' invocation.
+- nil, which does nothing.
+
+When PROC succeeds by exiting with an exit code of zero, the SUCCESS
+callback will be run.  Should PROC fail, or be killed, or the process
+runs for more than TIMEOUT seconds, the FAILURE callback will be run.
+
+When NOW is non-nil, the PROC is started immediately, regardless
+of `org-async-process-limit'."
+  (if (or now (< (length org-async--stack) org-async-process-limit))
+      (let ((proc
+             (let ((default-directory (or dir default-directory)))
+               (cond ((processp proc) proc)
+                     ((stringp proc)
+                      (start-process-shell-command
+                       (format "org-async-%d" (cl-incf org-async--counter))
+                       buffer proc))
+                     ((consp proc)
+                      (apply #'start-process
+                             (format "org-async-%s-%d"
+                                     (car proc) (cl-incf org-async--counter))
+                             buffer proc))
+                     (t (error "Asycnc process input %S not a recognised format"
+                               proc)))))
+            (timeout (or timeout org-async-timeout)))
+        (set-process-sentinel proc #'org-async--sentinel)
+        (when filter
+          (set-process-filter proc filter))
+        (push (list proc
+                    :success success
+                    :failure failure
+                    :timeout timeout
+                    :buffer (if (eq buffer t)
+                                (cons :temp (generate-new-buffer " *temp*" t))
+                              buffer)
+                    :info info
+                    :start-time (float-time))
+              org-async--stack)
+        (org-async--monitor t)
+        (car org-async--stack))
+    (setq org-async--wait-queue
+          (append org-async--wait-queue
+                  (list (list proc
+                              :success success
+                              :failure failure
+                              :dir dir
+                              :info info
+                              :buffer buffer
+                              :timeout timeout
+                              :filter filter))))
+    (last org-async--wait-queue)))
+
+(defun org-async--sentinel (process _signal)
+  "Watch PROCESS for death, and cleanup accordingly.
+When a signal is recieved, the status of PROCESS is checked.
+Should the it have an exit status, with status code 0,
+`org-async--cleanup-process' is run with the \"failed\" argument
+unset.  Should the process have finished in any other manner,
+`org-async--cleanup-process' is run with the \"failed\" argument."
+  (pcase (process-status process)
+    ((and 'exit (guard (= 0 (process-exit-status process))))
+     (org-async--cleanup-process process))
+    ((or 'exit 'signal 'failed)
+     (org-async--cleanup-process process 'failed))))
+
+(defun org-async--cleanup-process (process &optional failed)
+  "Remove PROCESS from the async stack, and run its callback.
+If the exit code of PROCESS is zero and FAILED is non-nil, then
+the success callback is run (via `org-async--execute-callback').
+Otherwise, the failure callback is run."
+  (when (assq process org-async--stack)
+    (let* ((proc-info (cdr (assq process org-async--stack)))
+           (buffer-val (plist-get proc-info :buffer))
+           (proc-buf (if (consp buffer-val) (cdr buffer-val) buffer-val)))
+      (setq org-async--stack
+            (delq (assq process org-async--stack) org-async--stack))
+      (org-async--execute-callback
+       (plist-get
+        proc-info
+        (if (and (not failed)
+                 (= 0 (process-exit-status process)))
+            :success :failure))
+       (process-exit-status process)
+       proc-buf
+       (plist-get proc-info :info))
+      (when (and (consp buffer-val) (eq :temp (car buffer-val)))
+        (kill-buffer proc-buf)))
+    (when (and org-async--wait-queue
+               (< org-async-process-limit (length org-async--stack)))
+      (apply #'org-async-call (pop org-async--wait-queue)))))
+
+(defun org-async--execute-callback (callback exit-code process-buffer info)
+  "Run CALLBACK with EXIT-CODE, PROCESS-BUFFER, and INFO.
+CALLBACK can take one of four forms:
+- A string, which is used a `message' string with EXIT-CODE,
+  PROCESS-BUFFER, and INFO as arguments.
+- A function, which is called with EXIT-CODE, PROCESS-BUFFER,
+  and INFO as arguments.
+- A list, which is used as an argument list for a new `org-async-call' invocation.
+- nil, which does nothing."
+  (cond
+   ((stringp callback)
+    (message callback exit-code process-buffer info))
+   ((functionp callback)
+    (funcall callback exit-code process-buffer info))
+   ((consp callback)
+    (apply #'org-async-call callback))
+   ((null callback)) ; Do nothing.
+   (t (message "Ignoring invalid `org-async-call' callback: %S" callback))))
+
+(defvar org-async--monitor-scheduled nil)
+(defun org-async--monitor (&optional force)
+  "Check each process against their timeouts, and kill any overdue.
+The only runs when `org-async--monitor-scheduled' is nil, unless FORCE is set.
+Should any processes still be alive after checking the stack, this will run
+itself using a timer in `org-async-check-timeout-interval' seconds."
+  (when (or force (null org-async--monitor-scheduled))
+    (dolist (stack-proc org-async--stack)
+      (if (process-live-p (car stack-proc))
+          (let ((timeout (plist-get (cdr stack-proc) :timeout)))
+            (when (and (numberp timeout)
+                       (< 0 timeout
+                          (- (float-time)
+                             (plist-get (cdr stack-proc) :start-time))))
+              (kill-process (car stack-proc))))
+        (org-async--cleanup-process (car stack-proc))))
+    (if org-async--stack
+        (setq org-async--monitor-scheduled
+              (run-at-time org-async-check-timeout-interval
+                           nil #'org-async--monitor t))
+      (setq org-async--monitor-scheduled nil))))
 
 
 ;;; File
