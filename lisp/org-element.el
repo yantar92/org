@@ -4449,8 +4449,7 @@ or objects within the parse tree.
 This function assumes that current major mode is `org-mode'."
   (save-excursion
     (goto-char (point-min))
-    (let ((org-data (or (org-element-lineage (org-element-at-point 1) '(org-data) t)
-                        (org-element-org-data-parser))))
+    (let ((org-data (org-element-org-data-parser)))
       (org-skip-whitespace)
       (org-element--parse-elements
        (point-at-bol) (point-max)
@@ -4703,63 +4702,57 @@ When VISIBLE-ONLY is non-nil, don't parse contents of hidden
 elements.
 
 Elements are accumulated into ACC."
-  (if (and (org-element-property :cached acc)
-           ;; FIXME: If I use it, there might be not much performance
-           ;; benefit.
-           ;; (eq granularity (org-element-property :granularity acc))
-           (org-element-contents acc))
-      acc
-    (save-excursion
-      (goto-char beg)
-      ;; When parsing only headlines, skip any text before first one.
-      (when (and (eq granularity 'headline) (not (org-at-heading-p)))
-        (org-with-limited-levels (outline-next-heading)))
-      (let (elements)
-        (while (< (point) end)
-	  ;; Visible only: skip invisible parts due to folding.
-	  (if (and visible-only (org-invisible-p nil t))
-	      (progn
-	        (goto-char (org-find-visible))
-	        (when (and (eolp) (not (eobp))) (forward-char)))
-	    ;; Find current element's type and parse it accordingly to
-	    ;; its category.
-	    (let* ((element (org-element--current-element
-		             end granularity mode structure 'add-to-cache))
-		   (type (org-element-type element))
-		   (cbeg (org-element-property :contents-begin element)))
-              (goto-char (org-element-property :end element))
-	      ;; Fill ELEMENT contents by side-effect.
-	      (cond
-	       ;; If element has no contents, don't modify it.
-	       ((not cbeg))
-	       ;; Greater element: parse it between `contents-begin' and
-	       ;; `contents-end'.  Ensure GRANULARITY allows recursion,
-	       ;; or ELEMENT is a headline, in which case going inside
-	       ;; is mandatory, in order to get sub-level headings.
-	       ((and (memq type org-element-greater-elements)
-		     (or (memq granularity '(element object nil))
-		         (and (eq granularity 'greater-element)
-			      (eq type 'section))
-		         (eq type 'headline)))
-	        (org-element--parse-elements
-	         cbeg (org-element-property :contents-end element)
-	         ;; Possibly switch to a special mode.
-	         (org-element--next-mode mode type t)
-	         (and (memq type '(item plain-list))
-		      (org-element-property :structure element))
-	         granularity visible-only element))
-	       ;; ELEMENT has contents.  Parse objects inside, if
-	       ;; GRANULARITY allows it.
-	       ((memq granularity '(object nil))
-	        (org-element--parse-objects
-	         cbeg (org-element-property :contents-end element) element
-	         (org-element-restriction type))))
-	      (push (org-element-put-property element :parent acc) elements)
-	      ;; Update mode.
-	      (setq mode (org-element--next-mode mode type nil)))))
-        ;; Return result.
-        (org-element-put-property acc :granularity granularity)
-        (apply #'org-element-set-contents acc (nreverse elements))))))
+  (save-excursion
+    (goto-char beg)
+    ;; When parsing only headlines, skip any text before first one.
+    (when (and (eq granularity 'headline) (not (org-at-heading-p)))
+      (org-with-limited-levels (outline-next-heading)))
+    (let (elements)
+      (while (< (point) end)
+	;; Visible only: skip invisible parts due to folding.
+	(if (and visible-only (org-invisible-p nil t))
+	    (progn
+	      (goto-char (org-find-visible))
+	      (when (and (eolp) (not (eobp))) (forward-char)))
+	  ;; Find current element's type and parse it accordingly to
+	  ;; its category.
+	  (let* ((element (org-element--current-element
+		           end granularity mode structure))
+		 (type (org-element-type element))
+		 (cbeg (org-element-property :contents-begin element)))
+            (goto-char (org-element-property :end element))
+	    ;; Fill ELEMENT contents by side-effect.
+	    (cond
+	     ;; If element has no contents, don't modify it.
+	     ((not cbeg))
+	     ;; Greater element: parse it between `contents-begin' and
+	     ;; `contents-end'.  Ensure GRANULARITY allows recursion,
+	     ;; or ELEMENT is a headline, in which case going inside
+	     ;; is mandatory, in order to get sub-level headings.
+	     ((and (memq type org-element-greater-elements)
+		   (or (memq granularity '(element object nil))
+		       (and (eq granularity 'greater-element)
+			    (eq type 'section))
+		       (eq type 'headline)))
+	      (org-element--parse-elements
+	       cbeg (org-element-property :contents-end element)
+	       ;; Possibly switch to a special mode.
+	       (org-element--next-mode mode type t)
+	       (and (memq type '(item plain-list))
+		    (org-element-property :structure element))
+	       granularity visible-only element))
+	     ;; ELEMENT has contents.  Parse objects inside, if
+	     ;; GRANULARITY allows it.
+	     ((memq granularity '(object nil))
+	      (org-element--parse-objects
+	       cbeg (org-element-property :contents-end element) element
+	       (org-element-restriction type))))
+	    (push (org-element-put-property element :parent acc) elements)
+	    ;; Update mode.
+	    (setq mode (org-element--next-mode mode type nil)))))
+      ;; Return result.
+      (org-element-put-property acc :granularity granularity)
+      (apply #'org-element-set-contents acc (nreverse elements)))))
 
 (defun org-element--object-lex (restriction)
   "Return next object in current buffer or nil.
