@@ -6954,7 +6954,8 @@ element ending there."
         (unless cached-only (org-element--cache-sync (current-buffer) pom))))
     (setq element (if cached-only
                       (and (org-element--cache-active-p)
-                           (not org-element--cache-sync-requests)
+                           (or (not org-element--cache-sync-requests)
+                               (org-element--cache-key-less-p pom (org-element--request-key (car org-element--cache-sync-requests))))
                            (org-element--cache-find pom))
                     (condition-case err
                         (org-element--parse-to pom)
