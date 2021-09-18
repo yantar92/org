@@ -919,7 +919,7 @@ This function is intended to be used as a member of
   "Reveal folded outline in REGION when needed.
 
 This function is intended to be used as :fragile property of
-`org-fold-outline' spec."
+`org-fold-outline' spec.  See `org-fold-core--specs' for details."
   (save-match-data
     (save-excursion
       (goto-char (car region))
