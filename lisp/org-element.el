@@ -5598,6 +5598,12 @@ This function assumes `org-element--cache' is a valid AVL tree."
            (not inhibit-modification-hooks)
            (eq org-element--cache-change-tic (buffer-chars-modified-tick)))))
 
+(defmacro org-element-with-disabled-cache (&rest body)
+  "Run BODY without active org-element-cache."
+  (declare (debug (form body)) (indent 1))
+  `(cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
+     ,@body))
+
 (defun org-element--cache-find (pos &optional side)
   "Find element in cache starting at POS or before.
 
