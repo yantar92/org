@@ -6029,8 +6029,10 @@ request."
       (while node
 	(let* ((data (avl-tree--node-data node))
 	       (key (org-element--cache-key data)))
-          ;; Traverse the cache tree in order of keys using standard
-          ;; stack-based algorithm.
+          ;; Traverse the cache tree.  Ignore all the elements before
+          ;; START.  Note that `avl-tree-stack' would not bypass the
+          ;; elements before START and thus would have beeen less
+          ;; efficient.
 	  (if (and leftp (avl-tree--node-left node)
 		   (not (org-element--cache-key-less-p key start)))
 	      (progn (push node stack)
