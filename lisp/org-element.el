@@ -4644,6 +4644,91 @@ looking into captions:
 	;; Return value in a proper order.
 	(nreverse --acc)))))
 
+(defun org-element-cache-map (granularity func)
+  "Map all elements in current buffer with FUNC according to GRANULARITY.
+
+This function is a subset of what `org-element-map' does, but much more performant.
+Cached elements are supplied as the single argument of FUNC.  Changes
+to elements made in FUNC will also alter the cache.
+
+GRANULARITY can be `headline', `greater-element', or `element'.
+`object' granularity is not supported.
+
+If some elements are not yet in cache, they will be added."
+  (unless (org-element--cache-active-p)
+    (error "Cache must be active."))
+  (org-with-wide-buffer
+   ;; Synchronise cache up to the end of buffer.
+   (org-element-at-point (point-max))
+   (let ((start nil)
+	 (prev nil)
+	 (node (org-element--cache-root))
+	 (stack (list nil))
+	 (leftp t)
+         result
+         continue-flag)
+     (while node
+       (let ((data (avl-tree--node-data node)))
+	 (if (and leftp (avl-tree--node-left node)
+		  (or (not prev)
+		      (not (org-element--cache-key-less-p
+			  (org-element--cache-key data)
+			  (org-element--cache-key prev)))))
+	     (progn (push node stack)
+		    (setq node (avl-tree--node-left node)))
+	   (let ((type (org-element-type data))
+		 (beg (org-element-property :begin data))
+		 (end (org-element-property :end data))
+		 (cbeg (org-element-property :contents-begin data)))
+             (unless (or (and start (< beg start))
+			 (and prev (not (org-element--cache-key-less-p
+				       (org-element--cache-key prev)
+				       (org-element--cache-key data)))))
+	       (if (or (not start) (= beg start))
+		   (progn
+		     (pcase granularity
+		       (`headline
+			(when (eq type 'headline)
+			  (push (funcall func data) result)
+			  (unless (car result) (pop result)))
+			(setq start (or (and (memq type '(headline org-data)) cbeg)
+					end)))
+		       (`greater-element
+			(when (memq type org-element-greater-elements)
+			  (push (funcall func data) result)
+			  (unless (car result) (pop result)))
+			(setq start (or cbeg end))
+                        (let ((parent data))
+			  (catch :exit
+			    (while (setq parent (org-element-property :parent parent))
+			      (if (eq start (org-element-property :contents-end parent))
+				  (setq start (org-element-property :end parent))
+                                (throw :exit t))))))
+		       (`element
+			(push (funcall func data) result)
+			(unless (car result) (pop result))
+			(setq start (or cbeg end))
+                        (let ((parent data))
+			  (catch :exit
+			    (while (setq parent (org-element-property :parent parent))
+			      (if (eq start (org-element-property :contents-end parent))
+				  (setq start (org-element-property :end parent))
+                                (throw :exit t))))))
+		       (_ (error "Unsupported granularity: %S" granularity)))
+		     (setq prev data))
+                 (org-element--parse-to start)
+		 (setq node (org-element--cache-root)
+		       stack (list nil)
+		       leftp t
+		       continue-flag t))))
+	   (if continue-flag
+	       (setq continue-flag nil)
+	     (setq node (if (setq leftp (avl-tree--node-right node))
+			    (avl-tree--node-right node)
+			  (pop stack)))))))
+     ;; Return result.
+     (nreverse result))))
+
 ;; The following functions are internal parts of the parser.
 ;;
 ;; The first one, `org-element--parse-elements' acts at the element's
