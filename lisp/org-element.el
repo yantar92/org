@@ -1243,6 +1243,7 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                   :robust-end robust-end
                   :post-blank (count-lines pos-before-blank end)
                   :post-affiliated begin
+                  :path (buffer-file-name)
                   :mode 'org-data)
             properties)))))
 
