@@ -7661,13 +7661,10 @@ call CMD."
     (when force-refresh (org-refresh-category-properties))
     (let ((pos (or pos (point))))
       (if (org-element--cache-active-p)
-          (progn
-            ;; Sync cache.
-            (org-with-point-at (org-element-property :begin (org-element-at-point))
-              (or (org-entry-get-with-inheritance "CATEGORY")
-                  (progn (org-element-at-point) ; Force cache update.
-                         (org-entry-get-with-inheritance "CATEGORY"))
-                  "???")))
+          ;; Sync cache.
+          (org-with-point-at (org-element-property :begin (org-element-at-point pos))
+            (or (org-entry-get-with-inheritance "CATEGORY")
+                "???"))
         (or (get-text-property pos 'org-category)
             (progn
               (org-refresh-category-properties)
