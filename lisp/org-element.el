@@ -6897,9 +6897,18 @@ buffers."
       (when (and (file-exists-p cache-file)
                  (equal (secure-hash 'md5 (current-buffer)) (plist-get index :hash)))
         (with-temp-buffer
-          (let ((coding-system-for-read 'utf-8))
+          (let ((coding-system-for-read 'utf-8)
+                (read-circle t))
             (insert-file-contents cache-file))
-          (setq cache (read (current-buffer))))
+          ;; FIXME: Reading sometimes fails to read circular objects.
+          ;; I suspect that it happens when we have object reference
+          ;; #N# read before object definition #N=.  If it is really
+          ;; #so, it should be Emacs bug - either in `read' or in
+          ;; #`prin1'.  Meanwhile, just fail silently when `read'
+          ;; #fails to parse the saved cache object.
+          (condition-case nil
+              (setq cache (read (current-buffer)))
+            (error (setq cache nil))))
         (setq-local org-element--cache cache)
         (setq-local org-element--cache-size (avl-tree-size org-element--cache))))))
 
