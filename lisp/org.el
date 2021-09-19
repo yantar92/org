@@ -19758,7 +19758,9 @@ level of the headline found (down to 0) or nil if already at a
 point before the first headline or at point-min."
   (when (ignore-errors (org-back-to-heading t))
     (if (< 1 (funcall outline-level))
-	(org-up-heading-safe)
+	(or (org-up-heading-safe)
+            ;; The first heading may not be level 1 heading.
+            (goto-char (point-min)))
       (unless (= (point) (point-min)) (goto-char (point-min))))))
 
 (defun org-first-sibling-p ()
