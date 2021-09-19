@@ -6988,8 +6988,9 @@ buffers."
           (condition-case nil
               (setq cache (read (current-buffer)))
             (error (setq cache nil))))
-        (setq-local org-element--cache cache)
-        (setq-local org-element--cache-size (avl-tree-size org-element--cache))))))
+        (when cache
+          (setq-local org-element--cache cache)
+          (setq-local org-element--cache-size (avl-tree-size org-element--cache)))))))
 
 ;;; The Toolbox
 ;;
