@@ -6330,7 +6330,9 @@ When a subtree is being promoted, the hook will be called for each node.")
 See also `org-promote'."
   (interactive)
   (save-excursion
-    (org-with-limited-levels (org-map-tree 'org-promote)))
+    (org-back-to-heading t)
+    (combine-change-calls (point) (save-excursion (org-end-of-subtree t))
+      (org-with-limited-levels (org-map-tree 'org-promote))))
   (org-fix-position-after-promote))
 
 (defun org-demote-subtree ()
@@ -6338,7 +6340,9 @@ See also `org-promote'."
 See `org-demote' and `org-promote'."
   (interactive)
   (save-excursion
-    (org-with-limited-levels (org-map-tree 'org-demote)))
+    (org-back-to-heading t)
+    (combine-change-calls (point) (save-excursion (org-end-of-subtree t))
+      (org-with-limited-levels (org-map-tree 'org-demote))))
   (org-fix-position-after-promote))
 
 (defun org-do-promote ()
@@ -6432,7 +6436,7 @@ odd number.  Returns values greater than 0."
        (replace-match "# " nil t))
       ((= level 1)
        (user-error "Cannot promote to level 0.  UNDO to recover if necessary"))
-      (t (replace-match up-head nil t)))
+      (t (replace-match (apply #'propertize up-head (text-properties-at (match-beginning 0))) t)))
      (unless (= level 1)
        (when org-auto-align-tags (org-align-tags))
        (when org-adapt-indentation (org-fixup-indentation (- diff))))
@@ -6448,7 +6452,7 @@ odd number.  Returns values greater than 0."
 	  (down-head (concat (make-string (org-get-valid-level level 1) ?*) " "))
 	  (diff (abs (- level (length down-head) -1))))
      (org-fold-core-ignore-fragility-checks
-         (replace-match down-head nil t)
+         (replace-match (apply #'propertize down-head (text-properties-at (match-beginning 0))) t)
        (when org-auto-align-tags (org-align-tags))
        (when org-adapt-indentation (org-fixup-indentation diff)))
      (run-hooks 'org-after-demote-entry-hook))))
