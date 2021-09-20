@@ -6095,7 +6095,9 @@ unconditionally."
                           (org-before-first-heading-p)))
         (insert "\n")
         (backward-char))
-      (unless level (backward-char))
+      (when (and (not level) (not (eobp)) (not (bobp)))
+        (when (org-at-heading-p) (insert "\n"))
+        (backward-char))
       (unless (and blank? (org-previous-line-empty-p))
 	(org-N-empty-lines-before-current (if blank? 1 0)))
       (insert stars " ")
@@ -6692,8 +6694,8 @@ case."
   ;; First, find a reasonable region to look at:
   ;; Start two siblings above, end three below
   (let* ((beg (save-excursion
-		(and (org-get-last-sibling)
-		     (org-get-last-sibling))
+		(and (org-get-previous-sibling)
+		     (org-get-previous-sibling))
 		(point)))
 	 (end (save-excursion
 		(and (org-get-next-sibling)
@@ -6723,7 +6725,7 @@ case."
   (setq arg (prefix-numeric-value arg))
   (org-preserve-local-variables
    (let ((movfunc (if (> arg 0) 'org-get-next-sibling
-		    'org-get-last-sibling))
+		    'org-get-previous-sibling))
 	 (ins-point (make-marker))
 	 (cnt (abs arg))
 	 (col (current-column))
@@ -7983,7 +7985,7 @@ If the file does not exist, throw an error."
       (save-window-excursion
 	(message "Running %s...done" cmd)
         ;; Handlers such as "gio open" and kde-open5 start viewer in background
-        ;; and exit immediately.  Use pipe connnection type instead of pty to
+        ;; and exit immediately.  Use pipe connection type instead of pty to
         ;; avoid killing children processes with SIGHUP when temporary terminal
         ;; session is finished.
         ;;
@@ -19820,7 +19822,7 @@ This is like outline-next-sibling, but invisible headings are ok."
     (unless (or (eobp) (< (funcall outline-level) level))
       (point))))
 
-(defun org-get-last-sibling ()
+(defun org-get-previous-sibling ()
   "Move to previous heading of the same level, and return point.
 If there is no such heading, return nil."
   (let ((opoint (point))

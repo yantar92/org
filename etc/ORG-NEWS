@@ -351,7 +351,7 @@ that Org mode configures LaTeX to process any new float type.
 
 The LaTeX export back-end accepts four attributes for verse blocks:
 =:lines=, =:center=, =:versewidth= and =:latexcode=. The three first
-require the external LaTeX package =verse.sty=, wich is an extension
+require the external LaTeX package =verse.sty=, which is an extension
 of the standard LaTeX environment. The purpose of these attributes is
 explained below.
 
@@ -520,6 +520,12 @@ completion table, which should allow better interoperability with
 custom completion functions.
 
 *** Providing =directory-empty-p= from Emacs 28 as =org-directory-empty-p=
+
+*** =org-get-last-sibling= marked as obsolete
+
+Use =org-get-previous-sibling= instead.  This is just a rename to have
+a more consistent naming.  E.g. recall the pair of funtctions
+=next-line= / =previous-line=.
 
 * Version 9.4
 ** Incompatible changes
