@@ -5480,12 +5480,10 @@ better to remove the commands adviced in such way from this list.")
          (print-level 5))
      (prin1-to-string ,element)))
 
-(cl-defmacro org-element--cache-log-message (format-string &rest args &key (level 1) &allow-other-keys)
+(defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
-  `(when (and
-          (<= ,level org-element--cache-diagnostics-level)
-          (or org-element--cache-diagnostics
-              (eq org-element--cache-self-verify 'backtrace)))
+  `(when (or org-element--cache-diagnostics
+             (eq org-element--cache-self-verify 'backtrace))
      (let* ((format-string (concat (format "org-element-cache diagnostics(%s): "
                                            (buffer-name (current-buffer)))
                                    ,format-string))
@@ -5763,10 +5761,10 @@ the cache."
         (org-element-put-property element
                        :org-element--cache-sync-key
                        (cons org-element--cache-sync-keys-value new-key))))
-    (org-element--cache-log-message "Added new element with %S key: %S"
-                         (org-element-property :org-element--cache-sync-key element)
-                         (org-element--format-element element)
-                         :level 2)
+    (when (>= org-element--cache-diagnostics-level 2)
+      (org-element--cache-log-message "Added new element with %S key: %S"
+                           (org-element-property :org-element--cache-sync-key element)
+                           (org-element--format-element element)))
     (org-element-put-property element :cached t)
     (cl-incf org-element--cache-size)
     (avl-tree-enter org-element--cache element)))
@@ -6138,11 +6136,11 @@ request."
                 (throw 'interrupt nil))
 	      ;; Shift element.
 	      (unless (zerop offset)
-                (org-element--cache-log-message "Shifting positions (𝝙%S) in %S::%S"
-                                     offset
-                                     (org-element-property :org-element--cache-sync-key data)
-                                     (org-element--format-element data)
-                                     :level 3)
+                (when (>= org-element--cache-diagnostics-level 3)
+                  (org-element--cache-log-message "Shifting positions (𝝙%S) in %S::%S"
+                                       offset
+                                       (org-element-property :org-element--cache-sync-key data)
+                                       (org-element--format-element data)))
 		(org-element--cache-shift-positions data offset))
 	      (let ((begin (org-element-property :begin data)))
 		;; Update PARENT and re-parent DATA, only when
