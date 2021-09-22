@@ -6235,7 +6235,7 @@ and footnote-definition."
             (skip-chars-backward " \r\n\t")
             (line-beginning-position 2)))))
 
-(defun org-element--parse-to (pos &optional syncp time-limit recursive)
+(defun org-element--parse-to (pos &optional syncp time-limit)
   "Parse elements in current section, down to POS.
 
 Start parsing from the closest between the last known element in
@@ -6246,9 +6246,7 @@ When optional argument SYNCP is non-nil, return the parent of the
 element containing POS instead.  In that case, it is also
 possible to provide TIME-LIMIT, which is a time value specifying
 when the parsing should stop.  The function throws `interrupt' if
-the process stopped before finding the expected result.
-
-When optional argument RECURSIVE is non-nil, parse element recursively."
+the process stopped before finding the expected result."
   (catch 'exit
     (save-match-data
       (org-with-wide-buffer
@@ -6338,10 +6336,6 @@ When optional argument RECURSIVE is non-nil, parse element recursively."
 	        ;; buffer) since we're sure that another element begins
 	        ;; after it.
 	        ((and (<= elem-end pos) (/= (point-max) elem-end))
-                 (when (and recursive
-                            (org-element-property :contents-end element))
-                   (org-element--parse-to (1- (org-element-property :contents-end element))
-                                          nil time-limit recursive))
                  ;; Avoid parsing headline siblings above.
                  (goto-char elem-end)
                  (when (eq type 'headline)
