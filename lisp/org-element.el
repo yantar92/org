@@ -5312,7 +5312,7 @@ Hopefully, this is finally fixed, but need more testing.")
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
-(defvar org-element-cache-path (file-name-concat user-emacs-directory "org-element-cache/")
+(defvar org-element-cache-path (org-file-name-concat user-emacs-directory "org-element-cache/")
   "Directory where element cache is stored.")
 
 (defvar org-element-cache-index-file "index"
@@ -6930,9 +6930,9 @@ buffers."
                   print-number-table)
               (org-with-wide-buffer
                (org-element--cache-sync (current-buffer) (point-max)))
-              (with-temp-file (file-name-concat org-element-cache-path org-element-cache-index-file)
+              (with-temp-file (org-file-name-concat org-element-cache-path org-element-cache-index-file)
                 (prin1 org-element-cache--index (current-buffer)))
-              (let ((file (file-name-concat org-element-cache-path (plist-get index :cache-file))))
+              (let ((file (org-file-name-concat org-element-cache-path (plist-get index :cache-file))))
                 (unless (file-exists-p (file-name-directory file))
                   (make-directory (file-name-directory file) t))
                 (with-temp-file file
@@ -6951,10 +6951,10 @@ buffers."
               (cache-file (plist-get index :cache-file)))
           (if (file-exists-p file)
               (push index new-index)
-            (when (file-exists-p (file-name-concat org-element-cache-path cache-file))
-              (delete-file (file-name-concat org-element-cache-path cache-file))
-              (when (directory-empty-p (file-name-directory (file-name-concat org-element-cache-path cache-file)))
-                (delete-directory (file-name-directory (file-name-concat org-element-cache-path cache-file))))))))
+            (when (file-exists-p (org-file-name-concat org-element-cache-path cache-file))
+              (delete-file (org-file-name-concat org-element-cache-path cache-file))
+              (when (directory-empty-p (file-name-directory (org-file-name-concat org-element-cache-path cache-file)))
+                (delete-directory (file-name-directory (org-file-name-concat org-element-cache-path cache-file))))))))
       (setq org-element-cache--index (nreverse new-index)))))
 
 (defun org-element--cache-read ()
@@ -6964,12 +6964,12 @@ buffers."
              (buffer-file-name)
              (not (buffer-modified-p)))
     (unless org-element-cache--index
-      (when (file-exists-p (file-name-concat org-element-cache-path org-element-cache-index-file))
+      (when (file-exists-p (org-file-name-concat org-element-cache-path org-element-cache-index-file))
         (with-temp-buffer
-          (insert-file-contents (file-name-concat org-element-cache-path org-element-cache-index-file))
+          (insert-file-contents (org-file-name-concat org-element-cache-path org-element-cache-index-file))
           (setq org-element-cache--index (read (current-buffer))))))
     (let* ((index (org-element--cache-get-cache-index))
-           (cache-file (file-name-concat org-element-cache-path (plist-get index :cache-file)))
+           (cache-file (org-file-name-concat org-element-cache-path (plist-get index :cache-file)))
            (cache nil))
       (when (and (file-exists-p cache-file)
                  (equal (secure-hash 'md5 (current-buffer)) (plist-get index :hash)))

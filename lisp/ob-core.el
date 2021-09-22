@@ -1711,7 +1711,7 @@ of the vars, cnames and rnames."
       (lambda (var)
         (when (proper-list-p (cdr var))
           (when (and (not (equal colnames "no"))
-                     (or colnames (and (length> (cdr var) 1)
+                     (or colnames (and (org-length> (cdr var) 1)
                                        (eq (nth 1 (cdr var)) 'hline)
                                        (not (member 'hline (cddr (cdr var)))))))
             (let ((both (org-babel-get-colnames (cdr var))))
