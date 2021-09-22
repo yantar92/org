@@ -6073,7 +6073,7 @@ request."
                ;; No relevant changes happened after submitting this
                ;; request.  We are safe to look at the actual Org
                ;; buffer and calculate the new parent.
-	       (let ((parent (org-element--parse-to limit nil time-limit)))
+	       (let ((parent (org-element--parse-to (1- limit) nil time-limit)))
                  (org-element--cache-log-message "New parent at %d: %S::%S"
                                       limit
                                       (org-element-property :org-element--cache-sync-key parent)
