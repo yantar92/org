@@ -1225,11 +1225,11 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
           (category (catch 'buffer-category
                       (org-with-point-at end
 	                (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-                          (org-element-with-disabled-cache
-	                      (let ((element (org-element-at-point-no-context)))
-	                        (when (eq (org-element-type element) 'keyword)
-		                  (throw 'buffer-category
-		                         (org-element-property :value element)))))))
+                          (cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
+	                    (let ((element (org-element-at-point-no-context)))
+	                      (when (eq (org-element-type element) 'keyword)
+		                (throw 'buffer-category
+		                       (org-element-property :value element)))))))
 	              category))
           (properties (org-element--get-global-node-properties)))
      (unless (plist-get properties :CATEGORY)
