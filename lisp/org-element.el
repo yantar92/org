@@ -6979,7 +6979,9 @@ buffers."
           ;; #fails to parse the saved cache object.
           (condition-case nil
               (setq cache (read (current-buffer)))
-            (error (setq cache nil))))
+            (error
+             (org-element--cache-warn "Emacs reader failed to read cache for %S. Initial cache is empty." (current-buffer))
+             (setq cache nil))))
         (when cache
           (setq-local org-element--cache cache)
           (setq-local org-element--cache-size (avl-tree-size org-element--cache)))))))
