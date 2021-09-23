@@ -229,6 +229,12 @@ specially in `org-element--object-lex'.")
 
 (org-element--set-regexps)
 
+(defmacro org-element-with-disabled-cache (&rest body)
+  "Run BODY without active org-element-cache."
+  (declare (debug (form body)) (indent 1))
+  `(cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
+     ,@body))
+
 ;;;###autoload
 (defun org-element-update-syntax ()
   "Update parser internals."
@@ -1066,8 +1072,8 @@ Assume point is at beginning of the headline."
                   ;; scoping prevents `org-element--cache-active-p' call inside
                   ;; `org-end-of-subtree' to use the overridden value
                   ;; of `org-element-use-cache'.
-                  (cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
-                    (org-end-of-subtree t t))))
+                  (org-element-with-disabled-cache
+                      (org-end-of-subtree t t))))
 	   (contents-begin (save-excursion
 			     (forward-line)
 			     (skip-chars-forward " \r\t\n" end)
@@ -1225,11 +1231,11 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
           (category (catch 'buffer-category
                       (org-with-point-at end
 	                (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-                          (cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
-	                    (let ((element (org-element-at-point-no-context)))
-	                      (when (eq (org-element-type element) 'keyword)
-		                (throw 'buffer-category
-		                       (org-element-property :value element)))))))
+                          (org-element-with-disabled-cache
+	                      (let ((element (org-element-at-point-no-context)))
+	                        (when (eq (org-element-type element) 'keyword)
+		                  (throw 'buffer-category
+		                         (org-element-property :value element)))))))
 	              category))
           (properties (org-element--get-global-node-properties)))
      (unless (plist-get properties :CATEGORY)
@@ -5660,7 +5666,7 @@ This function assumes `org-element--cache' is a valid AVL tree."
 
 ;;;; Tools
 
-(defsubst org-element--cache-active-p (&optional called-from-cache-change-func-p)
+(defun org-element--cache-active-p (&optional called-from-cache-change-func-p)
   "Non-nil when cache is active in current buffer."
   (and org-element-use-cache
        org-element--cache
@@ -5675,12 +5681,6 @@ This function assumes `org-element--cache' is a valid AVL tree."
        (or called-from-cache-change-func-p
            (not inhibit-modification-hooks)
            (eq org-element--cache-change-tic (buffer-chars-modified-tick)))))
-
-(defmacro org-element-with-disabled-cache (&rest body)
-  "Run BODY without active org-element-cache."
-  (declare (debug (form body)) (indent 1))
-  `(cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
-     ,@body))
 
 (defun org-element--cache-find (pos &optional side)
   "Find element in cache starting at POS or before.
@@ -6603,8 +6603,8 @@ known element in cache (it may start after END)."
                           (not (<= beg (org-element-property :begin up)))
                           (not (>= end (org-element-property :end up)))
                           (let ((current (org-with-point-at (org-element-property :begin up)
-                                           (cl-letf (((symbol-function #'org-element--cache-active-p) (lambda () nil)))
-                                             (org-element--current-element (point-max))))))
+                                           (org-element-with-disabled-cache
+                                               (org-element--current-element (point-max))))))
                             (when (eq 'headline (org-element-type current))
                               (org-element--cache-log-message "Found non-robust headline that can be updated individually: %S"
                                                    (org-element--format-element current))
