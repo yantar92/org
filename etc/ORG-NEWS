@@ -3,8 +3,8 @@ ORG NEWS -- history of user-visible changes.   -*- mode: org; coding: utf-8 -*-
 #+STARTUP: overview
 
 #+LINK: doc https://orgmode.org/worg/doc.html#%s
-#+LINK: git https://code.orgmode.org/bzg/org-mode/commit/%s
-#+LINK: msg https://orgmode.org/list/%s/
+#+LINK: msg https://list.orgmode.org/%s/
+#+LINK: git https://git.savannah.gnu.org/cgit/emacs/org-mode.git/commit/?id=%s
 
 Copyright (C) 2012-2021 Free Software Foundation, Inc.
 See the end of the file for license conditions.
@@ -164,6 +164,25 @@ Hopefully problems have been fixed.  See [[https://orgmode.org/worg/org-faq.html
 Setting ~org-speed-commands-user~ in your configuration won't have any
 effect.  Please set ~org-speed-commands~ instead, which see.
 
+*** Some =ob-*.el= files have migrate to the org-contrib repo
+
+These files have been moved to https://git.sr.ht/~bzg/org-contrib:
+
+- ob-vala.el
+- ob-shen.el
+- ob-picolisp.el
+- ob-mscgen.el
+- ob-ledger.el
+- ob-io.el
+- ob-hledger.el
+- ob-ebnf.el
+- ob-coq.el
+- ob-asymptote.el
+- ob-abc.el
+- ob-J.el 
+
+See the discussion [[msg::87bl9rq29m.fsf@gnu.org][here]].
+
 ** New options and settings
 *** Option ~org-hidden-keywords~ now also applies to #+SUBTITLE:
 
@@ -246,6 +265,44 @@ values, or a function that generates such a list (see
 When specifying a custom agenda bulk option, you can now also specify
 a function which collects the arguments to be used with each call to
 the custom function.
+
+*** New faces to improve the contextuality of Org agenda views
+
+Four new faces improve certain styles and offer more flexibility for
+some Org agenda views: ~org-agenda-date-weekend-today~,
+~org-imminent-deadline~, ~org-agenda-structure-secondary~,
+~org-agenda-structure-filter~.  They inherit from existing faces in
+order to remain backward-compatible.
+
+Quoting from [[https://list.orgmode.org/87lf7q7gpq.fsf@protesilaos.com/][this thread]]:
+
+#+begin_quote
++ The 'org-imminent-deadline' is useful to disambiguate generic
+  warnings from deadlines.  For example, a warning could be rendered
+  in a yellow colored text and have a bold weight, whereas a deadline
+  might be red and styled with italics.
+
++ The 'org-agenda-structure-filter' applies to all tag/term filters
+  in agenda views that search for keywords or patterns.  It is
+  designed to inherit from 'org-agenda-structure' in addition to the
+  'org-warning' face that was present before (and removes the
+  generic 'warning' face from one place).  This offers the benefit
+  of consistency, as, say, an increase in font height or a change in
+  font family in 'org-agenda-structure' will propagate to the filter
+  as well.  The whole header line thus looks part of a singular
+  design.
+
++ The 'org-agenda-structure-secondary' complements the above for those
+  same views where a description follows the header.  For instance, the
+  tags view provides information to "Press N r" to filter by a
+  numbered tag.  Themes/users may prefer to disambiguate this line
+  from the header above it, such as by using a less intense color or by
+  reducing its height relative to the 'org-agenda-structure'.
+
++ The 'org-agenda-date-weekend-today' provides the option to
+  differentiate the current date on a weekend from the current date on
+  weekdays.
+#+end_quote
 
 *** New option ~org-clock-ask-before-exiting~
 
@@ -870,7 +927,7 @@ source buffers are displayed by modifying ~display-buffer-alist~ or
 *** New option ~org-archive-subtree-save-file-p~
 
 Archiving a subtree used to always save the target archive buffer.
-Commit [[https://code.orgmode.org/bzg/org-mode/commit/b186d1d7][b186d1d7]] changed this behavior by always not saving the target
+Commit [[git::b186d1d7][b186d1d7]] changed this behavior by always not saving the target
 buffer, because batch archiving from agenda could take too much time.
 
 This new option ~org-archive-subtree-save-file-p~ defaults to the
@@ -904,7 +961,7 @@ In all Babel libraries, the absence of a ~:results~ header should
 produce the same result than setting ~:results value~, unless there is
 an option to explicitly create an exception.
 
-See [[msg:CA+A2iZaziAfMeGpBqL6qGrzrWEVvLvC0DUw++T4gCF3NGuW-DQ@mail.gmail.com][this thread]] for more context.
+See [[https://list.orgmode.org/CA+A2iZaziAfMeGpBqL6qGrzrWEVvLvC0DUw++T4gCF3NGuW-DQ@mail.gmail.com/][this thread]] for more context.
 
 *** New option in ~org-attach-store-link-p~
 
@@ -5649,7 +5706,11 @@ that Calc formulas can operate on them.
 
     The new system has a technically cleaner implementation and more
     possibilities for capturing different types of data.  See
+<<<<<<< HEAD
     [[msg:C46F10DC-DE51-43D4-AFFE-F71E440D1E1F@gmail.com][Carsten's announcement]] for more details.
+=======
+    [[https://list.orgmode.org/C46F10DC-DE51-43D4-AFFE-F71E440D1E1F@gmail.com][Carsten's announcement]] for more details.
+>>>>>>> bugfix
 
     To switch over to the new system:
 
@@ -5780,7 +5841,11 @@ that Calc formulas can operate on them.
 
 **** Modified link escaping
 
+<<<<<<< HEAD
      David Maus worked on `org-link-escape'.  See [[msg:87k4gysacq.wl%dmaus@ictsoc.de][his message]]:
+=======
+     David Maus worked on `org-link-escape'.  See [[https://list.orgmode.org/87k4gysacq.wl%dmaus@ictsoc.de][his message]]:
+>>>>>>> bugfix
 
      : Percent escaping is used in Org mode to escape certain characters
      : in links that would either break the parser (e.g. square brackets

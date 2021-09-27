@@ -112,7 +112,7 @@ You can clone Org's repository and install Org like this:
 
 #+begin_example
 $ cd ~/src/
-$ git clone https://code.orgmode.org/bzg/org-mode.git
+$ git clone https://git.savannah.gnu.org/git/emacs/org-mode.git
 $ cd org-mode/
 $ make autoloads
 #+end_example
@@ -3991,9 +3991,9 @@ interpretation, but it means the same as =#+TODO=, or
 A setup for using several sets in parallel would be:
 
 #+begin_example
-,#+TODO: TODO | DONE
-,#+TODO: REPORT BUG KNOWNCAUSE | FIXED
-,#+TODO: | CANCELED
+,#+TODO: TODO(t) | DONE(d)
+,#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)
+,#+TODO: | CANCELED(c)
 #+end_example
 
 #+cindex: completion, of option keywords

@@ -289,32 +289,25 @@ requirement."
 		 (const :tag "Awk" awk)
 		 (const :tag "C" C)
 		 (const :tag "R" R)
-		 (const :tag "Asymptote" asymptote)
-		 (const :tag "Calc" calc)
+                 (const :tag "Calc" calc)
 		 (const :tag "Clojure" clojure)
 		 (const :tag "CSS" css)
 		 (const :tag "Ditaa" ditaa)
 		 (const :tag "Dot" dot)
-		 (const :tag "Ebnf2ps" ebnf2ps)
-		 (const :tag "Emacs Lisp" emacs-lisp)
+                 (const :tag "Emacs Lisp" emacs-lisp)
 		 (const :tag "Forth" forth)
 		 (const :tag "Fortran" fortran)
 		 (const :tag "Gnuplot" gnuplot)
 		 (const :tag "Haskell" haskell)
-		 (const :tag "hledger" hledger)
-		 (const :tag "IO" io)
-		 (const :tag "J" J)
-		 (const :tag "Java" java)
+                 (const :tag "Java" java)
 		 (const :tag "Javascript" js)
 		 (const :tag "LaTeX" latex)
-		 (const :tag "Ledger" ledger)
-		 (const :tag "Lilypond" lilypond)
+                 (const :tag "Lilypond" lilypond)
 		 (const :tag "Lisp" lisp)
 		 (const :tag "Makefile" makefile)
 		 (const :tag "Maxima" maxima)
 		 (const :tag "Matlab" matlab)
-		 (const :tag "Mscgen" mscgen)
-		 (const :tag "Ocaml" ocaml)
+                 (const :tag "Ocaml" ocaml)
 		 (const :tag "Octave" octave)
 		 (const :tag "Org" org)
 		 (const :tag "Perl" perl)
@@ -327,11 +320,9 @@ requirement."
 		 (const :tag "Scheme" scheme)
 		 (const :tag "Screen" screen)
 		 (const :tag "Shell Script" shell)
-		 (const :tag "Shen" shen)
-		 (const :tag "Sql" sql)
+                 (const :tag "Sql" sql)
 		 (const :tag "Sqlite" sqlite)
-		 (const :tag "Stan" stan)
-		 (const :tag "Vala" vala))
+		 (const :tag "Stan" stan))
 		:value-type (boolean :tag "Activate" :value t)))
 
 ;;;; Customization variables
@@ -713,12 +704,13 @@ defined in org-duration.el.")
 (defcustom org-modules '(ol-doi ol-w3m ol-bbdb ol-bibtex ol-docview ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-eww)
   "Modules that should always be loaded together with org.el.
 
-If a description starts with <C>, the file is not part of Emacs
-and loading it will require that you have downloaded and properly
-installed the Org mode distribution.
+If a description starts with <C>, the file is not part of Emacs and Org mode,
+so loading it will require that you have properly installed org-contrib
+package from NonGNU Emacs Lisp Package Archive
+http://elpa.nongnu.org/nongnu/org-contrib.html
 
 You can also use this system to load external packages (i.e. neither Org
-core modules, nor modules from the CONTRIB directory).  Just add symbols
+core modules, nor org-contrib modules).  Just add symbols
 to the end of the list.  If the package is called org-xyz.el, then you need
 to add the symbol `xyz', and the package must have a call to:
 
@@ -792,9 +784,10 @@ For export specific modules, see also `org-export-backends'."
 (defcustom org-export-backends '(ascii html icalendar latex odt)
   "List of export back-ends that should be always available.
 
-If a description starts with <C>, the file is not part of Emacs
-and loading it will require that you have downloaded and properly
-installed the Org mode distribution.
+If a description starts with <C>, the file is not part of Emacs and Org mode,
+so loading it will require that you have properly installed org-contrib
+package from NonGNU Emacs Lisp Package Archive
+http://elpa.nongnu.org/nongnu/org-contrib.html
 
 Unlike to `org-modules', libraries in this list will not be
 loaded along with Org, but only once the export framework is
@@ -5165,7 +5158,8 @@ by a #."
 	    (org-remove-flyspell-overlays-in nl-before-endline end-of-endline)
 	    (cond
 	     ((and lang (not (string= lang "")) org-src-fontify-natively)
-	      (org-src-font-lock-fontify-block lang block-start block-end)
+	      (save-match-data
+                (org-src-font-lock-fontify-block lang block-start block-end))
 	      (add-text-properties bol-after-beginline block-end '(src-block t)))
 	     (quoting
 	      (add-text-properties
@@ -5269,7 +5263,9 @@ by a #."
 	  t)))))
 
 (defun org-fontify-extend-region (beg end _old-len)
-  (let ((begin-re "\\(\\\\\\[\\|\\(#\\+begin_\\|\\\\begin{\\)\\S-+\\)")
+  (let ((end (if (progn (goto-char end) (looking-at-p "^[*#]"))
+                 (1+ end) end))
+        (begin-re "\\(\\\\\\[\\|\\(#\\+begin_\\|\\\\begin{\\)\\S-+\\)")
 	(end-re "\\(\\\\\\]\\|\\(#\\+end_\\|\\\\end{\\)\\S-+\\)")
 	(extend
          (lambda (r1 r2 dir)
@@ -5279,15 +5275,14 @@ by a #."
                        "[][]" r2
 		       (match-string-no-properties 0)))))
 	     (re-search-forward (regexp-quote re) nil t dir)))))
+    (goto-char beg)
+    (back-to-indentation)
     (save-match-data
-      (save-excursion
-	(goto-char beg)
-	(back-to-indentation)
-	(cond ((looking-at end-re)
-	       (cons (or (funcall extend "begin" "[" -1) beg) end))
-	      ((looking-at begin-re)
-	       (cons beg (or (funcall extend "end" "]" 1) end)))
-	      (t (cons beg end)))))))
+      (cond ((looking-at end-re)
+	     (cons (or (funcall extend "begin" "[" -1) beg) end))
+	    ((looking-at begin-re)
+	     (cons beg (or (funcall extend "end" "]" 1) end)))
+	    (t (cons beg end))))))
 
 (defun org-activate-footnote-links (limit)
   "Add text properties for footnotes."
@@ -6992,7 +6987,8 @@ called immediately, to move the markers with the entries."
   "Check if MARKER is between BEG and END.
 If yes, remember the marker and the distance to BEG."
   (when (and (marker-buffer marker)
-	     (equal (marker-buffer marker) (current-buffer))
+	     (or (equal (marker-buffer marker) (current-buffer))
+                 (equal (marker-buffer marker) (buffer-base-buffer (current-buffer))))
 	     (>= marker beg) (< marker end))
     (push (cons marker (- marker beg)) org-markers-to-move)))
 
@@ -8302,6 +8298,7 @@ or to another Org file, automatically push the old position onto the ring."
 
 (defvar org-agenda-buffer-tmp-name)
 (defvar org-agenda-start-on-weekday)
+(defvar org-agenda-buffer-name)
 (defun org-follow-timestamp-link ()
   "Open an agenda view for the time-stamp date/range at point."
   ;; Avoid changing the global value.
@@ -18316,6 +18313,21 @@ Also align node properties according to `org-property-format'."
 		     (org-with-point-at (org-element-property :end element)
 		       (skip-chars-backward " \t\n")
 		       (line-beginning-position))))
+             ;; At the beginning of a blank line, do some preindentation.  This
+             ;; signals org-src--edit-element to preserve the indentation on exit
+             (when (and (looking-at-p "^[[:space:]]*$")
+                        (not org-src-preserve-indentation))
+               (let ((element (org-element-at-point))
+                      block-content-ind some-ind)
+                 (org-with-point-at (org-element-property :begin element)
+                   (setq block-content-ind (+ (current-indentation)
+                                              org-edit-src-content-indentation))
+                   (forward-line)
+		   (save-match-data (re-search-forward "^[ \t]*\\S-" nil t))
+                   (backward-char)
+                   (setq some-ind (if (looking-at-p "#\\+end_src")
+                                      block-content-ind (current-indentation))))
+                 (indent-line-to (min block-content-ind some-ind))))
 	     (org-babel-do-key-sequence-in-edit-buffer (kbd "TAB")))
 	    (t
 	     (let ((column (org--get-expected-indentation element nil)))

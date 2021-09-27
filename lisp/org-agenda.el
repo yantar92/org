@@ -1233,7 +1233,8 @@ For example, 9:30am would become 09:30 rather than  9:30."
      ":" minute ampm)))
 
 (defun org-agenda-time-of-day-to-ampm-maybe (time)
-  "Conditionally convert TIME to AM/PM format based on `org-agenda-timegrid-use-ampm'."
+  "Conditionally convert TIME to AM/PM format.
+This is based on `org-agenda-timegrid-use-ampm'."
   (if org-agenda-timegrid-use-ampm
       (org-agenda-time-of-day-to-ampm time)
     time))
@@ -4109,7 +4110,9 @@ dimming them."                   ;FIXME: The arg isn't used, actually!
 	    (overlay-put ov 'face 'org-agenda-dimmed-todo-face))
 	  (when invisible
 	    (org-agenda-filter-hide-line 'todo-blocked)))
-	(move-beginning-of-line 2))))
+        (if (= (point-max) (line-end-position))
+            (goto-char (point-max))
+	  (move-beginning-of-line 2)))))
   (when (called-interactively-p 'interactive)
     (message "Dim or hide blocked tasks...done")))
 
@@ -4266,6 +4269,9 @@ This check for agenda markers in all agenda buffers currently active."
   "Return the face DATE should be displayed with."
   (cond ((and (functionp org-agenda-day-face-function)
 	      (funcall org-agenda-day-face-function date)))
+	((and (org-agenda-today-p date)
+              (memq (calendar-day-of-week date) org-agenda-weekend-days))
+         'org-agenda-date-weekend-today)
 	((org-agenda-today-p date) 'org-agenda-date-today)
 	((memq (calendar-day-of-week date) org-agenda-weekend-days)
 	 'org-agenda-date-weekend)
@@ -4592,7 +4598,7 @@ is active."
 		      'org-todo-regexp org-todo-regexp
 		      'org-complex-heading-regexp org-complex-heading-regexp
 		      'mouse-face 'highlight
-		      'help-echo (format "mouse-2 or RET jump to location")))
+		      'help-echo "mouse-2 or RET jump to location"))
 	 (full-words org-agenda-search-view-force-full-words)
 	 (org-agenda-text-search-extra-files org-agenda-text-search-extra-files)
 	 regexp rtn rtnall files file pos inherited-tags
@@ -4808,7 +4814,7 @@ is active."
 			       (list 'face 'org-agenda-structure))
 	  (setq pos (point))
 	  (insert string "\n")
-	  (add-text-properties pos (1- (point)) (list 'face 'org-warning))
+	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-filter))
 	  (setq pos (point))
 	  (unless org-agenda-multi
 	    (insert (substitute-command-keys "\\<org-agenda-mode-map>\
@@ -4818,7 +4824,7 @@ Press `\\[org-agenda-manipulate-query-add]', \
 `\\[org-agenda-manipulate-query-subtract-re]' to add/sub regexp, \
 `\\[universal-argument] \\[org-agenda-redo]' for a fresh search\n"))
 	    (add-text-properties pos (1- (point))
-				 (list 'face 'org-agenda-structure)))
+				 (list 'face 'org-agenda-structure-secondary)))
 	  (buffer-string)))
       (org-agenda-mark-header-line (point-min))
       (with-silent-modifications
@@ -4842,10 +4848,10 @@ Press `\\[org-agenda-manipulate-query-add]', \
   "Use `org-todo-keyword-faces' for the selected todo KEYWORDS."
   (concat
    (if (or (equal keywords "ALL") (not keywords))
-       (propertize "ALL" 'face 'warning)
+       (propertize "ALL" 'face 'org-agenda-structure-filter)
      (mapconcat
       (lambda (kw)
-        (propertize kw 'face (org-get-todo-face kw)))
+        (propertize kw 'face (list (org-get-todo-face kw) 'org-agenda-structure)))
       (org-split-string keywords "|")
       "|"))
    "\n"))
@@ -4930,7 +4936,7 @@ to search again: (0)[ALL]"))
                     (insert "\n                     "))
                   (insert " " s))))
 	    (insert "\n"))
-	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure))
+	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-secondary))
 	  (buffer-string)))
       (org-agenda-mark-header-line (point-min))
       (with-silent-modifications
@@ -5026,7 +5032,7 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
 				     (concat "Match: " match)))
 	  (setq pos (point))
 	  (insert match "\n")
-	  (add-text-properties pos (1- (point)) (list 'face 'org-warning))
+	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-filter))
 	  (setq pos (point))
 	  (unless org-agenda-multi
 	    (insert (substitute-command-keys
@@ -5034,7 +5040,7 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
 \\<org-agenda-mode-map>`\\[universal-argument] \\[org-agenda-redo]' \
 to search again\n")))
 	  (add-text-properties pos (1- (point))
-			       (list 'face 'org-agenda-structure))
+			       (list 'face 'org-agenda-structure-secondary))
 	  (buffer-string)))
       (org-agenda-mark-header-line (point-min))
       (with-silent-modifications
@@ -6968,7 +6974,7 @@ and stored in the variable `org-prefix-format-compiled'."
 		  (and (string-match "\\.[0-9]+" x)
 		       (string-to-number (substring (match-string 0 x) 1)))))))
       (if (eq var 'eval)
-	  (setq varform `(format ,f (org-eval ,(read (match-string 4 s)))))
+	  (setq varform `(format ,f (org-eval ,(read (substring s (match-beginning 4))))))
 	(if opt
 	    (setq varform
 		  `(if (member ,var '("" nil))
@@ -6977,7 +6983,12 @@ and stored in the variable `org-prefix-format-compiled'."
 	  (setq varform
 		`(format ,f (if (member ,var '("" nil)) ""
 			      (concat ,var ,c (get-text-property 0 'extra-space ,var)))))))
-      (setq s (replace-match "%s" t nil s))
+      (if (eq var 'eval)
+          (setf (substring s (match-beginning 0)
+                           (+ (match-beginning 4)
+                              (length (format "%S" (read (substring s (match-beginning 4)))))))
+                "%s")
+        (setq s (replace-match "%s" t nil s)))
       (push varform vars))
     (setq vars (nreverse vars))
     (with-current-buffer (or org-agenda-buffer (current-buffer))
@@ -7185,7 +7196,7 @@ The optional argument TYPE tells the agenda type."
 	    (setq x
 		  (concat
 		   (substring x 0 (match-end 1))
-                   (unless (string-empty-p org-agenda-todo-keyword-format)
+                   (unless (string= org-agenda-todo-keyword-format "")
 		     (format org-agenda-todo-keyword-format
 			     (match-string 2 x)))
                    ;; Remove `display' property as the icon could leak
