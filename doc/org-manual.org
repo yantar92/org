@@ -640,10 +640,10 @@ The following commands jump to other headlines in the buffer.
   where you can use the following keys to find your destination:
 
   #+attr_texinfo: :columns 0.3 0.7
-  | {{{kbd(TAB)}}}                  | Cycle visibility.               |
+  | {{{kbd(TAB)}}}            | Cycle visibility.               |
   | {{{kbd(DOWN)}}} / {{{kbd(UP)}}} | Next/previous visible headline. |
-  | {{{kbd(RET)}}}                  | Select this location.           |
-  | {{{kbd(/)}}}                    | Do a Sparse-tree search         |
+  | {{{kbd(RET)}}}            | Select this location.           |
+  | {{{kbd(/)}}}              | Do a Sparse-tree search         |
 
   #+texinfo: @noindent
   The following keys work if you turn off ~org-goto-auto-isearch~
@@ -651,9 +651,9 @@ The following commands jump to other headlines in the buffer.
   #+attr_texinfo: :columns 0.3 0.7
   | {{{kbd(n)}}} / {{{kbd(p)}}}   | Next/previous visible headline.    |
   | {{{kbd(f)}}} / {{{kbd(b)}}}   | Next/previous headline same level. |
-  | {{{kbd(u)}}}                  | One level up.                      |
+  | {{{kbd(u)}}}            | One level up.                      |
   | {{{kbd(0)}}} ... {{{kbd(9)}}} | Digit argument.                    |
-  | {{{kbd(q)}}}                  | Quit.                              |
+  | {{{kbd(q)}}}            | Quit.                              |
 
   #+vindex: org-goto-interface
   #+texinfo: @noindent
@@ -2178,7 +2178,7 @@ trailing white space and surrounded in double-quotes.  For example:
 concatenates the content of columns 1 and column 2.
 
 When the =N= flag is used, all referenced elements are parsed as
-numbers and interpolated as Lisp numbers, without quotes. Fields that
+numbers and interpolated as Lisp numbers, without quotes.  Fields that
 cannot be parsed as numbers are interpolated as zeros.  For example:
 
 : '(+ $1 $2);N
@@ -2186,7 +2186,7 @@ cannot be parsed as numbers are interpolated as zeros.  For example:
 #+texinfo: @noindent
 adds columns 1 and 2, equivalent to Calc's =$1+$2=.  Ranges are
 inserted as space-separated fields, so they can be embedded in list or
-vector syntax. For example:
+vector syntax.  For example:
 
 : '(apply '+ '($1..$4));N
 
@@ -2866,8 +2866,8 @@ For more information and examples see the [[https://orgmode.org/worg/org-tutoria
 
 - transpose ::
 
-  When =y=, =yes=, or =t= attempt to transpose the table data before plotting. Also
-  recognises the shorthand option =trans=.
+  When =y=, =yes=, or =t= attempt to transpose the table data before
+  plotting.  Also recognises the shorthand option =trans=.
 
 - =type= ::
 
@@ -2901,21 +2901,24 @@ For more information and examples see the [[https://orgmode.org/worg/org-tutoria
 
 - min ::
 
-  Provides a minimum axis value that may be used by a plot type. Implicitly
-  assumes the =y= axis is being referred to. Can explicitly provide a value for a
-  either the =x= or =y= axis with =xmin= and =ymin=.
+  Provides a minimum axis value that may be used by a plot type.
+  Implicitly assumes the =y= axis is being referred to.  Can
+  explicitly provide a value for a either the =x= or =y= axis with
+  =xmin= and =ymin=.
 
 - max ::
 
-  Provides a maximum axis value that may be used by a plot type. Implicitly
-  assumes the =y= axis is being referred to. Can explicitly provide a value for a
-  either the =x= or =y= axis with =xmax= and =ymax=.
+  Provides a maximum axis value that may be used by a plot type.
+  Implicitly assumes the =y= axis is being referred to.  Can
+  explicitly provide a value for a either the =x= or =y= axis with
+  =xmax= and =ymax=.
 
 - ticks ::
 
-  Provides a desired number of axis ticks to display, that may be used by a plot
-  type. If none is given a plot type that requires ticks will use
-  ~org--plot/sensible-tick-num~ to try to determine a good value.
+  Provides a desired number of axis ticks to display, that may be used
+  by a plot type.  If none is given a plot type that requires ticks
+  will use ~org--plot/sensible-tick-num~ to try to determine a good
+  value.
 
 - =timefmt= ::
 
@@ -3158,14 +3161,14 @@ Here is the full set of built-in link types:
 
 - =file= ::
 
-   File links.  File name may be remote, absolute, or relative.
+  File links.  File name may be remote, absolute, or relative.
 
-   Additionally, you can specify a line number, or a text search.
-   In Org files, you may link to a headline name, a custom ID, or a
-   code reference instead.
+  Additionally, you can specify a line number, or a text search.
+  In Org files, you may link to a headline name, a custom ID, or a
+  code reference instead.
 
-   As a special case, "file" prefix may be omitted if the file name
-   is complete, e.g., it starts with =./=, or =/=.
+  As a special case, "file" prefix may be omitted if the file name
+  is complete, e.g., it starts with =./=, or =/=.
 
 - =attachment= ::
 
@@ -8266,7 +8269,7 @@ To make Org mode take care of versioning of attachments for you, add
 the following to your Emacs config:
 
 #+begin_src emacs-lisp
-  (require 'org-attach-git)
+(require 'org-attach-git)
 #+end_src
 
 *** Attach from Dired
@@ -11372,7 +11375,7 @@ The following command handles footnotes:
   #+attr_texinfo: :columns 0.1 0.9
   | {{{kbd(s)}}} | Sort the footnote definitions by reference sequence.               |
   | {{{kbd(r)}}} | Renumber the simple =fn:N= footnotes.                              |
-  | {{{kbd(S)}}} | Short for first {{{kbd(r)}}}, then {{{kbd(s)}}} action.            |
+  | {{{kbd(S)}}} | Short for first {{{kbd(r)}}}, then {{{kbd(s)}}} action.                        |
   | {{{kbd(n)}}} | Rename all footnotes into a =fn:1= ... =fn:n= sequence.            |
   | {{{kbd(d)}}} | Delete the footnote at point, including definition and references. |
 
@@ -12029,7 +12032,7 @@ example
 #+texinfo: @noindent
 becomes
 
-: Rose is red, violet's blue. Life's ordered: Org assists you.
+: Rose is red, violet's blue.  Life's ordered: Org assists you.
 
 As a special case, Org parses any replacement text starting with
 =(eval= as an Emacs Lisp expression and evaluates it accordingly.
@@ -12764,8 +12767,8 @@ exports to:
 #+begin_src html
 <video controls="controls" width="350">
   <source src="movie.mp4" type="video/mp4">
-    <source src="movie.ogg" type="video/ogg">
-      <p>Your browser does not support the video tag.</p>
+  <source src="movie.ogg" type="video/ogg">
+  <p>Your browser does not support the video tag.</p>
 </video>
 #+end_src
 
@@ -13881,12 +13884,11 @@ The LaTeX export back-end converts horizontal rules by the specified
 #+cindex: @samp{ATTR_LATEX}, keyword
 
 The LaTeX export back-end accepts four attributes for verse blocks:
-=:lines=, =:center=, =:versewidth= and =:latexcode=. The three first
+=:lines=, =:center=, =:versewidth= and =:latexcode=.  The three first
 require the external LaTeX package =verse.sty=, which is an extension
-of the standard LaTeX environment. The purpose of these attributes is
-explained below.
+of the standard LaTeX environment.
 
-- =:lines= :: To add marginal verse numbering. Its value is an
+- =:lines= :: To add marginal verse numbering.  Its value is an
   integer, the sequence in which the verses should be numbered.
 - =:center= :: With value =t= all the verses on the page are optically
   centered (a typographic convention for poetry), taking as a
@@ -13901,20 +13903,20 @@ A complete example with Shakespeare's first sonnet:
 
 #+begin_src org
 ,#+ATTR_LATEX: :center t :latexcode \color{red} :lines 5
-,#+ATTR_LATEX: :versewidth Feed’st thy light’st flame with self-substantial fuel,
+,#+ATTR_LATEX: :versewidth Feed’st thy light’s flame with self-substantial fuel,
 ,#+BEGIN_VERSE
 From fairest creatures we desire increase,
 That thereby beauty’s rose might never die,
-But as the riper should by time decrease,
-His tender heir mught bear his memeory:
+But as the riper should by time decease
+His tender heir might bear his memory
 But thou, contracted to thine own bright eyes,
-Feed’st thy light’st flame with self-substantial fuel,
+Feed’st thy light’s flame with self-substantial fuel,
 Making a famine where abundance lies,
 Thyself thy foe, to thy sweet self too cruel.
-Thou that art now the world’s fresh ornament
+Thou that art now the world’s fresh ornament,
 And only herald to the gaudy spring,
-Within thine own bud buriest thy content
-And, tender churl, makest waste in niggarding.
+Within thine own bud buriest thy content,
+And, tender churl, mak’st waste in niggardly.
 Pity the world, or else this glutton be,
 To eat the world’s due, by the grave and thee.
 ,#+END_VERSE
@@ -13932,7 +13934,7 @@ To eat the world’s due, by the grave and thee.
 The LaTeX export back-end accepts two attributes for quote blocks:
 =:environment=, for an arbitrary quoting environment (the default
 value is that of ~org-latex-default-quote-environment~: ~"quote"~) and
-=:options=. For example, to choose the environment =quotation=,
+=:options=.  For example, to choose the environment =quotation=,
 included as an alternative to =quote= in standard LaTeX classes:
 
 #+begin_example
@@ -15320,7 +15322,7 @@ To specify the author of the quotation, use the =:author= attribute.
 ,#+BEGIN_QUOTE
 The Lady of the Lake, her arm clad in the purest shimmering samite,
 held aloft Excalibur from the bosom of the water, signifying by divine
-providence that I, Arthur, was to carry Excalibur. That is why I am
+providence that I, Arthur, was to carry Excalibur.  That is why I am
 your king.
 ,#+END_QUOTE
 #+end_example
@@ -16515,43 +16517,122 @@ keywords.
 :END:
 #+cindex: citation
 
-Org 9.5 provides a new library =oc.el= which provides tooling to
-handle citations in Org, e.g., activate, follow, insert, and export
-them, respectively called "activate", "follow", "insert" and "export"
-capabilities.  Libraries responsible for providing some, or all, of
-these capabilities are called "citation processors".
+As of Org 9.5, a new library =oc.el= provides tooling to handle
+citations in Org via "citation processors" that offer some or all of
+the following capabilities:
 
-Such processors are defined using ~org-cite-register-processor~.
-Using this function, it is possible, in addition to giving it a name,
-to attach functions associated to capabilities.  As such, a processor
-handling citation export must set the ~:export-citation~ property to
-an appropriate function.  Likewise, "activate" capability requires an
-appropriate ~:activate~ property, "insert" requires ~:insert~ property
-and, unsurprisingly, "follow" capability implies ~:follow~ property.
+- "activate" :: Fontification, tooltip preview, etc.
+- "follow" :: At-point actions on citations via ~org-open-at-point~.
+- "insert" :: Add and edit citations via ~org-cite-insert~.
+- "export" :: Via different libraries for different target formats.
 
-As a user, the first thing to do is setting a bibliography, either
+The user can configure these with ~org-cite-active-processor~,
+~org-cite-follow-processor~, ~org-cite-insert-processor~, and
+~org-cite-export-processors~ respectively.
+
+The included "basic" processor provides all four capabilities.
+
+** Citations
+
+Before adding citations, first set one-or-more bibliographies, either
 globally with ~org-cite-global-bibliography~, or locally using one or
-more "bibliography" keywords.  Then one can select any registered
-processor for each capability by providing a processor name to the
-variables ~org-cite-activate-processor~ and
-~org-cite-follow-processor~.
+more "bibliography" keywords.
 
-The "export" capability is slightly more involved as one need to
-select the processor providing it, but may also provide a default
-style for citations and bibliography.  Also, the choice of an export
-processor may depend of the current export back-end.  The association
-between export back-ends and triplets of parameters can be set in
-~org-cite-export-processors~ variable, or in a document, through the
-"cite_export" keyword.
+#+begin_example
+#+bibliography: SomeFile.bib
+#+bibliography: /some/other/file.json
+#+bibliography: "/some/file/with spaces/in its name.bib"
+#+end_example
 
-Eventually, this library provides some tools, mainly targeted at
-processor implementors.  Most are export-specific and are located in
-the "Tools only available during export" and "Tools generating or
-operating on parsed data" sections.
+One can then insert and edit citations using ~org-cite-insert~, called
+with {{{kbd(M-x org-cite-insert)}}}.
 
-This section of this manual will be enhanced with more practical
-information.  In the meantime, if you need help, please send an email
-to the mailing list at =emacs-orgmode@gnu.org=.
+A /citation/ requires one or more citation /key(s)/, elements
+identifying a reference in the bibliography.
+
+- Each citation is surrounded by brackets and uses the =cite= type.
+
+- Each key starts with the character =@=.
+
+- Each key can be qualified by a /prefix/ (e.g. "see ") and/or a
+  /suffix/ (e.g. "p. 123"), giving informations useful or necessary fo
+  the comprehension of the citation but not included in the reference.
+
+- A single citation can cite more than one reference ; the keys are
+  separated by semicolons ; the formatting of such citation groups is
+  specified by the style.
+
+- One can also specify a stylistic variation for the citations by
+  inserting a =/= and a style name between the =cite= keyword and the
+  colon ; this usially makes sense only for the author-year styles.
+
+#+begin_example
+[cite/style:common prefix ;prefix @key suffix; ... ; common suffix]
+#+end_example
+
+The only mandatory elements are:
+
+- The =cite= keyword and the colon.
+- The =@= character immediately preceding each key.
+- The brackets surrounding the citation(s) (group).
+
+** Citation export processors
+
+Org currently includes the following export processors:
+
+- Two processors can export to a variety of formats, including =latex=
+  (and therefore =pdf=), =html=, =odt= and plain (UTF8) text:
+
+  - basic :: a basic export processors, well adapted to situations
+    where backward compatibility is not a requirement and formatting
+    needs are minimal;
+
+  - csl :: this export processor uses format files written in [[https://en.wikipedia.org/wiki/Citation_Style_Language][Citation
+    Style Language]] via [[https://github.com/andras-simonyi/citeproc-el][citeproc-el]];
+
+- In contrast, two other processors target LaTeX and LaTeX-derived
+  formats exclusively:
+
+  - natbib :: this export processor uses =bibtex=, the historical
+    bibliographic processor used with LaTeX, thus allowing the use of
+    data and style files compatible with this processor (including a
+    large number of publishers' styles).  It uses citation commands
+    implemented in the LaTeX package =natbib=, allowing more stylistic
+    variants that LaTeX's =\cite= command.
+
+  - biblatex :: this backend allows the use of data and formats
+    prepared for =biblatex=, an alternate bibliographic processor used
+    with LaTeX, which overcomes some serious =bibtex= limitations, but
+    has not (yet?) been widely adopted by publishers.
+
+The =#+cite_export:= keyword specifies the export processor and the
+citation (and possibly reference) style(s); for example (all arguments
+are optional)
+
+#+begin_example
+#+cite_export: basic author author-year
+#+end_example
+
+specifies the "basic" export processor with citations inserted as
+author's name and references indexed by author's names and year;
+
+#+begin_example
+#+cite_export: csl /some/path/to/vancouver-brackets.csl
+#+end_example
+
+specifies the "csl" processor and CSL style, which in this case
+defines numeric citations and numeric references according to the
+=Vancouver= specification (as style used in many medical journals),
+following a typesetting variation putting citations between brackets;
+
+#+begin_example
+#+cite_export: natbib kluwer
+#+end_example
+
+specifies the "natbib" export processor with a label citation style
+conformant to the Harvard style and the specification of the
+Wolkers-Kluwer publisher; since it relies on the =bibtex= processor of
+your LaTeX installation, it won't export to anything but PDF.
 
 * Working with Source Code
 :PROPERTIES:
@@ -17822,7 +17903,7 @@ Handling options after collecting the results.
 
 - =none= ::
 
-  Do not process results at all. No inserting in the Org mode buffer
+  Do not process results at all.  No inserting in the Org mode buffer
   nor echo them in the minibuffer.  Usage example: =:results none=.
 
 - =append= ::
@@ -18782,7 +18863,7 @@ init file[fn:145].
 | {{{kbd(c)}}} | =#+BEGIN_CENTER= ... =#+END_CENTER=       |
 | {{{kbd(C)}}} | =#+BEGIN_COMMENT= ... =#+END_COMMENT=     |
 | {{{kbd(e)}}} | =#+BEGIN_EXAMPLE= ... =#+END_EXAMPLE=     |
-| {{{kbd(E)}}} | =#+BEGIN_EXPORT= ... =#+END_EXPORT= |
+| {{{kbd(E)}}} | =#+BEGIN_EXPORT= ... =#+END_EXPORT=       |
 | {{{kbd(h)}}} | =#+BEGIN_EXPORT html= ... =#+END_EXPORT=  |
 | {{{kbd(l)}}} | =#+BEGIN_EXPORT latex= ... =#+END_EXPORT= |
 | {{{kbd(q)}}} | =#+BEGIN_QUOTE= ... =#+END_QUOTE=         |
@@ -18887,11 +18968,11 @@ Emacs[fn:147].  With Org's support, you have to indent all lines to
 line up with the outline headers.  You would use these
 settings[fn:148]:
 
-  #+begin_src emacs-lisp
-  (setq org-adapt-indentation t
-        org-hide-leading-stars t
-        org-odd-levels-only t)
-  #+end_src
+#+begin_src emacs-lisp
+(setq org-adapt-indentation t
+      org-hide-leading-stars t
+      org-odd-levels-only t)
+#+end_src
 
 - /Indentation of text below headlines/ (~org-adapt-indentation~) ::
 
@@ -19828,9 +19909,9 @@ javascript:location.href='org-protocol://capture?template=x'+
       '&body='+encodeURIComponent(window.getSelection());
 #+end_example
 
-It is a bit more cluttered than the former one, but it is compatible with
-previous Org versions 9.0-9.4. In these versions encoding of space as "+"
-character was not supported by URI decoder.
+It is a bit more cluttered than the former one, but it is compatible
+with previous Org versions 9.0-9.4.  In these versions encoding of
+space as "+" character was not supported by URI decoder.
 
 #+vindex: org-protocol-default-template-key
 The capture template to be used can be specified in the bookmark (like
@@ -22006,7 +22087,7 @@ this timestamp are exported.
 
 [fn:123] For export to LaTeX format---or LaTeX-related formats such as
 Beamer---, the =org-latex-package-alist= variable needs further
-configuration. See [[LaTeX specific export settings]].
+configuration.  See [[LaTeX specific export settings]].
 
 [fn:124] At the moment, some export back-ends do not obey this
 specification.  For example, LaTeX export excludes every unnumbered

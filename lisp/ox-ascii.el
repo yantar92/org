@@ -1383,7 +1383,7 @@ contextual information."
 ;;;; Inlinetask
 
 (defun org-ascii-format-inlinetask-default
-  (_todo _type _priority _name _tags contents width inlinetask info)
+    (_todo _type _priority _name _tags contents width inlinetask info)
   "Format an inline task element for ASCII export.
 See `org-ascii-format-inlinetask-function' for a description
 of the parameters."
@@ -2094,7 +2094,7 @@ a communication channel."
 
 ;;;###autoload
 (defun org-ascii-export-as-ascii
-  (&optional async subtreep visible-only body-only ext-plist)
+    (&optional async subtreep visible-only body-only ext-plist)
   "Export current buffer to a text buffer.
 
 If narrowing is active in the current buffer, only export its
@@ -2129,7 +2129,7 @@ is non-nil."
 
 ;;;###autoload
 (defun org-ascii-export-to-ascii
-  (&optional async subtreep visible-only body-only ext-plist)
+    (&optional async subtreep visible-only body-only ext-plist)
   "Export current buffer to a text file.
 
 If narrowing is active in the current buffer, only export its

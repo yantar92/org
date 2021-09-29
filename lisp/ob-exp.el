@@ -104,7 +104,7 @@ Assume point is at block opening line."
 		       (apply #'org-babel-merge-params
 			      org-babel-default-header-args
 			      (and (boundp lang-headers)
-				   (eval-default-headers lang-headers))
+				   (symbol-value lang-headers))
 			      (append (org-babel-params-from-properties lang)
 				      (list raw-params)))))))
 	  (setf hash (org-babel-sha1-hash info :export)))
@@ -292,11 +292,11 @@ this template."
   "Return a string with the exported content of a code block.
 The function respects the value of the :exports header argument."
   (let ((silently (lambda () (let ((session (cdr (assq :session (nth 2 info)))))
-			  (unless (equal "none" session)
-			    (org-babel-exp-results info type 'silent)))))
+			       (unless (equal "none" session)
+			         (org-babel-exp-results info type 'silent)))))
 	(clean (lambda () (if (eq type 'inline)
-			 (org-babel-remove-inline-result)
-		       (org-babel-remove-result info)))))
+			      (org-babel-remove-inline-result)
+		            (org-babel-remove-result info)))))
     (pcase (or (cdr (assq :exports (nth 2 info))) "code")
       ("none" (funcall silently) (funcall clean) "")
       ("code" (funcall silently) (funcall clean) (org-babel-exp-code info type))
@@ -396,10 +396,10 @@ inhibit insertion of results into the buffer."
 	(setf (nth 1 info) body)
 	(setf (nth 2 info)
 	      (org-babel-exp--at-source
-		(org-babel-process-params
-		 (org-babel-merge-params
-		  (nth 2 info)
-		  `((:results . ,(if silent "silent" "replace")))))))
+		  (org-babel-process-params
+		   (org-babel-merge-params
+		    (nth 2 info)
+		    `((:results . ,(if silent "silent" "replace")))))))
 	(pcase type
 	  (`block (org-babel-execute-src-block nil info))
 	  (`inline

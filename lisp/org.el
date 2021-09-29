@@ -7,9 +7,9 @@
 ;; Maintainer: Bastien Guerry <bzg@gnu.org>
 ;; Keywords: outlines, hypermedia, calendar, wp
 ;; Homepage: https://orgmode.org
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "25.1"))
 
-;; Version: 9.5-dev
+;; Version: 9.5
 
 ;; This file is part of GNU Emacs.
 ;;
@@ -15850,6 +15850,7 @@ buffer boundaries with possible narrowing."
 				(overlay-put ov 'keymap image-map))
 			      (push ov org-inline-image-overlays))))))))))))))))
 
+(defvar visual-fill-column-width) ; Silence compiler warning
 (defun org-display-inline-image--width (link)
   "Determine the display width of the image LINK, in pixels.
 - When `org-image-actual-width' is t, the image's pixel width is used.
@@ -18344,7 +18345,7 @@ Also align node properties according to `org-property-format'."
              (when (and (looking-at-p "^[[:space:]]*$")
                         (not org-src-preserve-indentation))
                (let ((element (org-element-at-point))
-                      block-content-ind some-ind)
+                     block-content-ind some-ind)
                  (org-with-point-at (org-element-property :begin element)
                    (setq block-content-ind (+ (current-indentation)
                                               org-edit-src-content-indentation))

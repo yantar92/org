@@ -168,20 +168,33 @@ effect.  Please set ~org-speed-commands~ instead, which see.
 
 These files have been moved to https://git.sr.ht/~bzg/org-contrib:
 
-- ob-vala.el
-- ob-shen.el
-- ob-picolisp.el
-- ob-mscgen.el
-- ob-ledger.el
-- ob-io.el
-- ob-hledger.el
-- ob-ebnf.el
-- ob-coq.el
-- ob-asymptote.el
 - ob-abc.el
+- ob-asymptote.el
+- ob-coq.el
+- ob-ebnf.el
+- ob-hledger.el
+- ob-io.el
 - ob-J.el
+- ob-ledger.el
+- ob-mscgen.el
+- ob-picolisp.el
+- ob-shen.el
+- ob-stan.el
+- ob-vala.el
 
 See the discussion [[msg::87bl9rq29m.fsf@gnu.org][here]].
+
+*** Compatibility with Emacs versions
+
+We made it explicit that we aim at keeping the latest stable version
+of Org compatible with at least Emacs V, V-1 and V-2, where V is the
+stable major version of Emacs.
+
+For example, if the current major version of Emacs is 28.x, then the
+latest stable version of Org should be compatible with Emacs 28.x,
+27.x and 26.x – but not with Emacs 25.x.
+
+See [[https://orgmode.org/worg/org-maintenance.html#emacs-compatibility][this note on Worg]] and [[git::519947e508e081e71bf67db99e27b1c171ba4dfe][this commit]].
 
 ** New features
 
@@ -248,8 +261,6 @@ enable Calc units simplification mode.
 
 *** Support fontification of inline export snippets
 
-Inline 
-
 See [[msg:87im57fh8j.fsf@gmail.com][this thread]].
 
 *** New command =org-refile-reverse= bound to =C-c C-M-w=
@@ -274,8 +285,7 @@ that Org mode configures LaTeX to process any new float type.
 The LaTeX export back-end accepts four attributes for verse blocks:
 =:lines=, =:center=, =:versewidth= and =:latexcode=. The three first
 require the external LaTeX package =verse.sty=, which is an extension
-of the standard LaTeX environment. The purpose of these attributes is
-explained below.
+of the standard LaTeX environment.
 
 The LaTeX export back-end accepts two attributes for quote blocks:
 =:environment=, for an arbitrary quoting environment (the default
@@ -539,6 +549,33 @@ See [[msg:875z8njaol.fsf@protesilaos.com][this thread]].
 ~org-attach-sync-delete-empty-dir~ controls the deletion of an empty
 attachment directory at calls of ~org-attach-sync~.  There is
 Never delete, Always delete and Query the user (default).
+
+*** ~org-babel-default-header-args~ can now be specified as closures or strings
+
+~org-babel-default-header-args~ now also accepts closures that
+evaluate to a string. Previously, only direct strings were
+supported. These closures are evaluated when point is at the source
+block, which allows them to make use of contextual information at the
+relevant source block. One example that illustrates the usefulness of
+this addition (also given in the documentation for
+~org-babel-default-header-args~) is:
+
+#+begin_src elisp
+(defun org-src-sha ()
+  (let ((elem (org-element-at-point)))
+    (concat (sha1 (org-element-property :value elem)) \".svg\")))
+
+(setq org-babel-default-header-args:latex
+      `((:results . \"file link replace\")
+        (:file . (lambda () (org-src-sha)))))
+#+end_src
+
+This will set the ~:file~ header argument to the sha1 checksum of the
+contents of the current latex source block.
+
+Finally, the closures are only evaluated if they're not overridden for
+a source block. This improves efficiency in cases where the result of
+a compute-expensive closure would otherwise be discarded.
 
 ** Miscellaneous
 *** =org-bibtex= includes =doi= and =url= entries when exporting to BiBTeX
@@ -1009,7 +1046,7 @@ In all Babel libraries, the absence of a ~:results~ header should
 produce the same result than setting ~:results value~, unless there is
 an option to explicitly create an exception.
 
-See [[https://list.orgmode.org/CA+A2iZaziAfMeGpBqL6qGrzrWEVvLvC0DUw++T4gCF3NGuW-DQ@mail.gmail.com/][this thread]] for more context.
+See [[msg:CA+A2iZaziAfMeGpBqL6qGrzrWEVvLvC0DUw++T4gCF3NGuW-DQ@mail.gmail.com][this thread]] for more context.
 
 *** New option in ~org-attach-store-link-p~
 
@@ -5754,11 +5791,7 @@ that Calc formulas can operate on them.
 
     The new system has a technically cleaner implementation and more
     possibilities for capturing different types of data.  See
-<<<<<<< HEAD
     [[msg:C46F10DC-DE51-43D4-AFFE-F71E440D1E1F@gmail.com][Carsten's announcement]] for more details.
-=======
-    [[https://list.orgmode.org/C46F10DC-DE51-43D4-AFFE-F71E440D1E1F@gmail.com][Carsten's announcement]] for more details.
->>>>>>> bugfix
 
     To switch over to the new system:
 
@@ -5889,11 +5922,7 @@ that Calc formulas can operate on them.
 
 **** Modified link escaping
 
-<<<<<<< HEAD
      David Maus worked on `org-link-escape'.  See [[msg:87k4gysacq.wl%dmaus@ictsoc.de][his message]]:
-=======
-     David Maus worked on `org-link-escape'.  See [[https://list.orgmode.org/87k4gysacq.wl%dmaus@ictsoc.de][his message]]:
->>>>>>> bugfix
 
      : Percent escaping is used in Org mode to escape certain characters
      : in links that would either break the parser (e.g. square brackets
