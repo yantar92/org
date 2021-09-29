@@ -834,7 +834,9 @@ DETAIL is either nil, `minimal', `local', `ancestors',
         ;; Reveal emphasis markers.
         (let (org-hide-emphasis-markers
               org-link-descriptive
+              org-pretty-entities
               (region (or (org-find-text-property-region (point) 'org-emphasis)
+                          (org-find-text-property-region (point) 'invisible)
                           region)))
           (when region
             (org-with-point-at (car region)

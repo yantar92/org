@@ -5845,6 +5845,8 @@ and subscripts."
 			   (if (equal (char-after (match-beginning 2)) ?^)
 			       (nth (if table-p 3 1) org-script-display)
 			     (nth (if table-p 2 0) org-script-display)))
+        (put-text-property (match-beginning 2) (match-end 3)
+                           'org-emphasis t)
 	(add-text-properties (match-beginning 2) (match-end 2)
 			     (list 'invisible t))
 	(when (and (eq (char-after (match-beginning 3)) ?{)
