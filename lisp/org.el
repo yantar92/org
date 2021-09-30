@@ -19460,12 +19460,23 @@ a footnote definition, try to fill the first paragraph within."
 	     (save-excursion
 	       (goto-char beg)
 	       (let ((cuts (list beg)))
+                 ;; Cut fill on line breaks.
 		 (while (re-search-forward "\\\\\\\\[ \t]*\n" end t)
 		   (when (org-element-type-p
 			  (save-excursion (backward-char)
 					  (org-element-context))
                           'line-break)
 		     (push (point) cuts)))
+                 ;; Cut fill on displayed equations.
+                 (while (re-search-forward "^[ \t]*\\\\\\[" end t)
+                   (let ((el (org-element-context)))
+                     (when (eq 'latex-fragment (org-element-type el))
+                       (setf cuts (append
+                                   (list (org-element-property :end el)
+                                         (- (org-element-property :end el) 2)
+                                         (+ (org-element-property :begin el) 2)
+                                         (org-element-property :begin el))
+                                   cuts)))))
 		 (dolist (c (delq end cuts))
 		   (fill-region-as-paragraph c end justify)
 		   (setq end c))))
