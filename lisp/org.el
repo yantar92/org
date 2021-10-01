@@ -9,7 +9,7 @@
 ;; Homepage: https://orgmode.org
 ;; Package-Requires: ((emacs "25.1"))
 
-;; Version: 9.5
+;; Version: 9.6-dev
 
 ;; This file is part of GNU Emacs.
 ;;
@@ -3107,7 +3107,9 @@ All available processes and theirs documents can be found in
      :image-output-type "png"
      :image-size-adjust (1.0 . 1.0)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :image-converter ("dvipng -D %D -T tight -bg Transparent -o %O %f"))
+     :image-converter ("dvipng -D %D -T tight -o %O %f")
+     :transparent-image-converter
+     ("dvipng -D %D -T tight -bg Transparent -o %O %f"))
     (dvisvgm
      :programs ("latex" "dvisvgm")
      :description "dvi > svg"
@@ -3161,6 +3163,9 @@ PROPERTIES accepts the following attributes:
   :image-converter    list of image converter commands strings.  Each of them is
                       given to the shell and supports any of the following
                       place-holders defined below.
+
+If set, :transparent-image-converter is used instead of :image-converter to
+convert an image when the background color is nil or \"Transparent\".
 
 Place-holders used by `:image-converter' and `:latex-compiler':
 
@@ -15521,7 +15526,6 @@ a HTML file."
 	       org-format-latex-header
 	       'snippet)))
 	 (latex-compiler (plist-get processing-info :latex-compiler))
-	 (image-converter (plist-get processing-info :image-converter))
 	 (tmpdir temporary-file-directory)
 	 (texfilebase (make-temp-name
 		       (expand-file-name "orgtex" tmpdir)))
@@ -15535,7 +15539,11 @@ a HTML file."
 		 "Black"))
 	 (bg (or (plist-get options (if buffer :background :html-background))
 		 "Transparent"))
-	 (log-buf (get-buffer-create "*Org Preview LaTeX Output*"))
+	 (image-converter
+          (or (and (string= bg "Transparent")
+                   (plist-get processing-info :transparent-image-converter))
+              (plist-get processing-info :image-converter)))
+         (log-buf (get-buffer-create "*Org Preview LaTeX Output*"))
 	 (resize-mini-windows nil)) ;Fix Emacs flicker when creating image.
     (dolist (program programs)
       (org-check-external-command program error-message))
@@ -15897,7 +15905,7 @@ buffer boundaries with possible narrowing."
                     (/ (or (and (bound-and-true-p visual-fill-column-mode)
                                 (or visual-fill-column-width auto-fill-function))
                            (when auto-fill-function fill-column)
-                           (window-text-width))
+                           (- (window-text-width) display-line-numbers-width))
                        (float (window-total-width)))))
         width)))
    ((numberp org-image-actual-width)
