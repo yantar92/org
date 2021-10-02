@@ -6857,23 +6857,25 @@ buffers."
   (dolist (buffer (if all (buffer-list) (list (current-buffer))))
     (with-current-buffer (or (buffer-base-buffer buffer) buffer)
       (when (and org-element-use-cache (derived-mode-p 'org-mode))
-        (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
-	(setq-local org-element--cache
-		    (avl-tree-create #'org-element--cache-compare))
-        (setq-local org-element--cache-size 0)
-        (when org-element-cache-persistent
-          (org-element--cache-read)
-          (add-hook 'kill-buffer-hook #'org-element--cache-write 1000 'local)
-          (add-hook 'kill-emacs-hook #'org-element-cache-gc)
-          (add-hook 'kill-emacs-hook #'org-element--cache-write-all 1000))
-	(setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
-	(setq-local org-element--cache-change-warning nil)
-	(setq-local org-element--cache-sync-requests nil)
-	(setq-local org-element--cache-sync-timer nil)
-	(add-hook 'before-change-functions
-		  #'org-element--cache-before-change nil t)
-	(add-hook 'after-change-functions
-		  #'org-element--cache-after-change nil t)))))
+        (let ((first-load-p (null org-element--cache)))
+          (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
+	  (setq-local org-element--cache
+		      (avl-tree-create #'org-element--cache-compare))
+          (setq-local org-element--cache-size 0)
+          (when (and org-element-cache-persistent
+                     first-load-p)
+            (org-element--cache-read)
+            (add-hook 'kill-buffer-hook #'org-element--cache-write 1000 'local)
+            (add-hook 'kill-emacs-hook #'org-element-cache-gc)
+            (add-hook 'kill-emacs-hook #'org-element--cache-write-all 1000))
+	  (setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
+	  (setq-local org-element--cache-change-warning nil)
+	  (setq-local org-element--cache-sync-requests nil)
+	  (setq-local org-element--cache-sync-timer nil)
+	  (add-hook 'before-change-functions
+		    #'org-element--cache-before-change nil t)
+	  (add-hook 'after-change-functions
+		    #'org-element--cache-after-change nil t))))))
 
 ;;;###autoload
 (defun org-element-cache-refresh (pos)
