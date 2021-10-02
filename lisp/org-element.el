@@ -6325,9 +6325,10 @@ the process stopped before finding the expected result."
 			      (org-element-property :structure parent)))
                ;; Make sure that we return referenced element in cache
                ;; that can be altered directly.
-               (setq element (or (org-element--cache-put element) element))
-               ;; Nothing to parse (i.e. empty file).
-               (unless element (throw 'exit parent))
+               (if element
+                   (setq element (or (org-element--cache-put element) element))
+                 ;; Nothing to parse (i.e. empty file).
+                 (throw 'exit parent))
 	       (org-element-put-property element :parent parent))
 	     (let ((elem-end (org-element-property :end element))
 	           (type (org-element-type element)))
