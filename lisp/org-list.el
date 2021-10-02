@@ -1940,7 +1940,10 @@ Initial position of cursor is restored after the changes."
 	      (looking-at org-list-full-item-re)
 	      ;; a.  Replace bullet
 	      (unless (equal old-bul new-bul)
-		(replace-match new-bul nil nil nil 1))
+                (save-excursion
+                  (replace-match "" nil nil nil 1)
+                  (goto-char (match-end 1))
+                  (insert-before-markers new-bul)))
 	      ;; b.  Replace checkbox.
 	      (cond
 	       ((equal (match-string 3) new-box))
