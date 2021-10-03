@@ -5775,9 +5775,10 @@ the cache."
 Assume ELEMENT belongs to cache and that a cache is active."
   (org-element-put-property element :cached nil)
   (cl-decf org-element--cache-size)
-  (let ((parent element))
-    (while (setq parent (org-element-property :parent parent))
-      (org-element-set-contents parent)))
+  ;; Invalidate contents of parent.
+  (when (and (org-element-property :parent element)
+             (org-element-contents (org-element-property :parent element)))
+    (org-element-set-contents (org-element-property :parent element) nil))
   (or (avl-tree-delete org-element--cache element)
       (progn
         ;; This should not happen, but if it is, would be better to know
@@ -5789,7 +5790,6 @@ Assume ELEMENT belongs to cache and that a cache is active."
                       (org-element-property :org-element--cache-sync-key element))
         (org-element-cache-reset)
         (throw 'quit nil))))
-
 
 ;;;; Synchronization
 
