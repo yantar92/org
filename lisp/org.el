@@ -3418,7 +3418,7 @@ When this is non-nil, the headline after the keyword is set to the
   :group 'org-appearance
   :package-version '(Org . "9.4")
   :type 'boolean
-  :safe t)
+  :safe #'booleanp)
 
 (defcustom org-fontify-done-headline t
   "Non-nil means change the face of a headline if it is marked DONE.
@@ -4819,16 +4819,16 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 		  (and
 		   ;; Do not match table hlines.
 		   (not (and (equal marker "+")
-			   (org-match-line
-			    "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
+			     (org-match-line
+			      "[ \t]*\\(|[-+]+|?\\|\\+[-+]+\\+\\)[ \t]*$")))
 		   ;; Do not match headline stars.  Do not consider
 		   ;; stars of a headline as closing marker for bold
 		   ;; markup either.
 		   (not (and (equal marker "*")
-			   (save-excursion
-			     (forward-char)
-			     (skip-chars-backward "*")
-			     (looking-at-p org-outline-regexp-bol))))
+			     (save-excursion
+			       (forward-char)
+			       (skip-chars-backward "*")
+			       (looking-at-p org-outline-regexp-bol))))
 		   ;; Match full emphasis markup regexp.
 		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
 		   ;; Do not span over paragraph boundaries.
