@@ -4832,8 +4832,14 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 		   ;; Match full emphasis markup regexp.
 		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
 		   ;; Do not span over paragraph boundaries.
-		   (not (string-match-p org-element-paragraph-separate
-					(match-string 2)))
+		   (not (save-match-data
+                        (save-excursion
+                          (goto-char (match-beginning 2))
+                          (re-search-forward org-element-paragraph-separate
+                                             (save-excursion
+                                               (goto-char (match-end 2))
+                                               (line-end-position))
+                                             'noerror))))
 		   ;; Do not span over cells in table rows.
 		   (not (and (save-match-data (org-match-line "[ \t]*|"))
 			     (string-match-p "|" (match-string 4))))))
