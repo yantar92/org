@@ -89,7 +89,6 @@
 (declare-function org-element-type "org-element" (element))
 
 (declare-function org-export-derived-backend-p "org-export" (backend &rest backends))
-(declare-function org-export-get-footnote-definition "org-export" (footnote-reference info))
 (declare-function org-export-get-next-element "org-export" (blob info &optional n))
 (declare-function org-export-get-previous-element "org-export" (blob info &optional n))
 (declare-function org-export-raw-string "org-export" (s))
@@ -799,9 +798,20 @@ INFO is the export communication channel, as a property list."
 		        ;; Do not force entering inline definitions, since
 		        ;; `org-element-map' is going to enter it anyway.
                         ((guard (eq 'inline (org-element-property :type datum))))
+                        ;; Find definition for current standard
+                        ;; footnote reference.  Unlike to
+                        ;; `org-export-get-footnote-definition', do
+                        ;; not cache results as they would contain
+                        ;; un-processed citation objects.
                         (_
-                         (funcall search-cites
-                                  (org-export-get-footnote-definition datum info)))))
+                         (let ((label (org-element-property :label datum)))
+                           (funcall
+                            search-cites
+                            (org-element-map data 'footnote-definition
+                              (lambda (d)
+                                (and
+                                 (equal label (org-element-property :label d))
+                                 (or (org-element-contents d) "")))))))))
                     info nil 'footnote-definition t))))
         (funcall search-cites (plist-get info :parse-tree))
         (let ((result (nreverse cites)))
@@ -1436,7 +1446,11 @@ CONTEXT is the element or object at point, as returned by `org-element-context'.
 			  (skip-chars-backward " \r\t\n")
 			  (if (eq (org-element-class context) 'object) (point)
 			    (line-beginning-position 2)))))
-     ;; At the start of a list item is fine, as long as the bullet is unaffected.
+     ;; At the beginning of a footnote definition, right after the
+     ;; label, is OK.
+     ((eq type 'footnote-definition) (looking-at (rx space)))
+     ;; At the start of a list item is fine, as long as the bullet is
+     ;; unaffected.
      ((eq type 'item)
       (> (point) (+ (org-element-property :begin context)
                     (current-indentation)

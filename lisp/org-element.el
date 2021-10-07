@@ -5800,7 +5800,7 @@ Assume ELEMENT belongs to cache and that a cache is active."
   (setq org-element--cache-sync-timer
 	(run-with-idle-timer
 	 (let ((idle (current-idle-time)))
-	   (if idle (org-time-add idle org-element-cache-sync-break)
+	   (if idle (time-add idle org-element-cache-sync-break)
 	     org-element-cache-sync-idle-time))
 	 nil
 	 #'org-element--cache-sync
@@ -5811,7 +5811,7 @@ Assume ELEMENT belongs to cache and that a cache is active."
 TIME-LIMIT is a time value or nil."
   (and time-limit
        (or (input-pending-p)
-	   (org-time-less-p time-limit nil))))
+	   (time-less-p time-limit nil))))
 
 (defsubst org-element--cache-shift-positions (element offset &optional props)
   "Shift ELEMENT properties relative to buffer positions by OFFSET.
@@ -5865,7 +5865,7 @@ updated before current modification are actually submitted."
         (let ((inhibit-quit t) request next)
 	  (when org-element--cache-sync-timer
 	    (cancel-timer org-element--cache-sync-timer))
-          (let ((time-limit (org-time-add nil org-element-cache-sync-duration)))
+          (let ((time-limit (time-add nil org-element-cache-sync-duration)))
 	    (catch 'interrupt
               (when org-element--cache-sync-requests
                 (org-element--cache-log-message "Syncing down to %S-%S" (or future-change threshold) threshold))
@@ -6047,8 +6047,8 @@ request."
           ;; requests.
 	  (let ((next-request (nth 1 org-element--cache-sync-requests)))
             (org-element--cache-log-message "Phase 1: Unorderered requests. Merging: %S\n%S\n"
-                                 (let ((print-length 10) (print-level 3)) (prin1-to-string request))
-                                 (let ((print-length 10) (print-level 3)) (prin1-to-string next-request)))
+                                            (let ((print-length 10) (print-level 3)) (prin1-to-string request))
+                                            (let ((print-length 10) (print-level 3)) (prin1-to-string next-request)))
 	    (setf (org-element--request-key next-request) key)
             (setf (org-element--request-beg next-request) (org-element--request-beg request))
 	    (setf (org-element--request-phase next-request) 1)
@@ -6076,9 +6076,9 @@ request."
                ;; buffer and calculate the new parent.
 	       (let ((parent (org-element--parse-to (1- limit) nil time-limit)))
                  (org-element--cache-log-message "New parent at %d: %S::%S"
-                                      limit
-                                      (org-element-property :org-element--cache-sync-key parent)
-                                      (org-element--format-element parent))
+                                                 limit
+                                                 (org-element-property :org-element--cache-sync-key parent)
+                                                 (org-element--format-element parent))
                  (setf (org-element--request-parent request) parent)
 		 (setf (org-element--request-phase request) 2))))))
     ;; Phase 2.
@@ -6139,9 +6139,9 @@ request."
 	      (unless (zerop offset)
                 (when (>= org-element--cache-diagnostics-level 3)
                   (org-element--cache-log-message "Shifting positions (𝝙%S) in %S::%S"
-                                       offset
-                                       (org-element-property :org-element--cache-sync-key data)
-                                       (org-element--format-element data)))
+                                                  offset
+                                                  (org-element-property :org-element--cache-sync-key data)
+                                                  (org-element--format-element data)))
 		(org-element--cache-shift-positions data offset))
 	      (let ((begin (org-element-property :begin data)))
 		;; Update PARENT and re-parent DATA, only when
@@ -6174,8 +6174,8 @@ request."
                                 (and (org-element-property :contents-end data)
                                      (> (org-element-property :contents-end data) (org-element-property :contents-end parent)))))
                        (org-element--cache-log-message "org-element-cache: Removing obsolete element with key %S::%S"
-                                            (org-element-property :org-element--cache-sync-key data)
-                                            (org-element--format-element data))
+                                                       (org-element-property :org-element--cache-sync-key data)
+                                                       (org-element--format-element data))
                        (org-element--cache-remove data)
                        ;; We altered the tree structure.  The tree
                        ;; traversal needs to be restarted.
@@ -6198,9 +6198,9 @@ request."
                                     ;; (not (avl-tree-member-p org-element--cache p))
                                     ))))
                        (org-element--cache-log-message "Updating parent in %S\n Old parent: %S\n New parent: %S"
-                                            (org-element--format-element data)
-                                            (org-element--format-element (org-element-property :parent data))
-                                            (org-element--format-element parent))
+                                                       (org-element--format-element data)
+                                                       (org-element--format-element (org-element-property :parent data))
+                                                       (org-element--format-element parent))
 		       (org-element-put-property data :parent parent)
 		       (let ((s (org-element-property :structure parent)))
 			 (when (and s (org-element-property :structure data))
@@ -6209,8 +6209,8 @@ request."
 		;; interruption.
 		(when (and threshold (> begin threshold))
                   (org-element--cache-log-message "Reached threshold %d: %S"
-                                       threshold
-                                       (org-element--format-element data))
+                                                  threshold
+                                                  (org-element--format-element data))
                   (setq exit-flag t))))
             (if continue-flag
                 (setq continue-flag nil)
@@ -6220,8 +6220,8 @@ request."
       ;; We reached end of tree: synchronization complete.
       t))
   (org-element--cache-log-message "org-element-cache: Finished process. The cache size is %d. The remaining sync requests: %S"
-                       org-element--cache-size
-                       (let ((print-level 2)) (prin1-to-string org-element--cache-sync-requests))))
+                                  org-element--cache-size
+                                  (let ((print-level 2)) (prin1-to-string org-element--cache-sync-requests))))
 
 (defsubst org-element--open-end-p (element)
   "Check if ELEMENT in current buffer contains extra blank lines after
