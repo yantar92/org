@@ -4651,88 +4651,159 @@ looking into captions:
 	;; Return value in a proper order.
 	(nreverse --acc)))))
 
-(defun org-element-cache-map (granularity func)
-  "Map all elements in current buffer with FUNC according to GRANULARITY.
+(cl-defun org-element-cache-map (func &key (granularity 'headline) restrict-elements next-re fail-re from-pos (to-pos (point-max)) after-element)
+  "Map all elements in current buffer with FUNC according to
+GRANULARITY.  Collect non-nil return values into result list.
+
+If some elements are not yet in cache, they will be added.
+
+GRANULARITY can be `headline', `greater-element', or `element'.  The
+default is `headline'.  `object' granularity is not supported.
+
+ELEMENTS is a list of elements to be mapped over.
+
+NEXT-RE is a regexp used to search next candidate match when FUNC
+returns non-nil.  FAIL-RE is a regexp used to search next candidate
+match when FUNC returns nil.  The mapping will continue starting from
+headline at the RE match.
+
+FROM-POS and TO-POS are buffer positions.  When non-nil, they bound the
+mapped elements to elements starting at of after FROM-POS but before
+TO-POS.
+
+AFTER-ELEMENT, when non-nil, bounds the mapping to all the elements
+after AFTER-ELEMENT (i.e. if AFTER-ELEMENT is a headline section, we
+map all the elements starting from first element inside section, but
+not including the section).
 
 This function is a subset of what `org-element-map' does, but much more performant.
 Cached elements are supplied as the single argument of FUNC.  Changes
-to elements made in FUNC will also alter the cache.
-
-GRANULARITY can be `headline', `greater-element', or `element'.
-`object' granularity is not supported.
-
-If some elements are not yet in cache, they will be added."
+to elements made in FUNC will also alter the cache."
   (unless (org-element--cache-active-p)
     (error "Cache must be active."))
   (org-with-wide-buffer
    ;; Synchronise cache up to the end of buffer.
    (org-element-at-point (point-max))
-   (let ((start nil)
-	 (prev nil)
-	 (node (org-element--cache-root))
-	 (stack (list nil))
-	 (leftp t)
-         result
-         continue-flag)
+   (let* ((start from-pos)
+          (prev after-element)
+          (node (org-element--cache-root))
+          (next-re (or next-re
+                       (when (eq 'headline granularity)
+                         (org-with-limited-levels org-outline-regexp-bol))))
+          (fail-re (or fail-re
+                       (when (eq 'headline granularity)
+                         (org-with-limited-levels org-outline-regexp-bol))))
+          (stack (list nil))
+          (leftp t)
+          result
+          continue-flag)
      (while node
        (let ((data (avl-tree--node-data node)))
-	 (if (and leftp (avl-tree--node-left node)
+         (if (and leftp (avl-tree--node-left node)
 		  (or (not prev)
 		      (not (org-element--cache-key-less-p
 			  (org-element--cache-key data)
-			  (org-element--cache-key prev)))))
+			  (org-element--cache-key prev))))
+                  (or (not start)
+                      (not (> start (org-element-property :begin data)))))
 	     (progn (push node stack)
 		    (setq node (avl-tree--node-left node)))
 	   (let ((type (org-element-type data))
-		 (beg (org-element-property :begin data))
-		 (end (org-element-property :end data))
-		 (cbeg (org-element-property :contents-begin data)))
-             (unless (or (and start (< beg start))
-			 (and prev (not (org-element--cache-key-less-p
-				       (org-element--cache-key prev)
-				       (org-element--cache-key data)))))
-	       (if (or (not start) (= beg start))
-		   (progn
-		     (pcase granularity
-		       (`headline
-			(when (eq type 'headline)
-			  (push (funcall func data) result)
-			  (unless (car result) (pop result)))
-			(setq start (or (and (memq type '(headline org-data)) cbeg)
-					end)))
-		       (`greater-element
-			(when (memq type org-element-greater-elements)
-			  (push (funcall func data) result)
-			  (unless (car result) (pop result)))
-			(setq start (or cbeg end))
-                        (let ((parent data))
-			  (catch :exit
-			    (while (setq parent (org-element-property :parent parent))
-			      (if (eq start (org-element-property :contents-end parent))
-				  (setq start (org-element-property :end parent))
-                                (throw :exit t))))))
-		       (`element
-			(push (funcall func data) result)
-			(unless (car result) (pop result))
-			(setq start (or cbeg end))
-                        (let ((parent data))
-			  (catch :exit
-			    (while (setq parent (org-element-property :parent parent))
-			      (if (eq start (org-element-property :contents-end parent))
-				  (setq start (org-element-property :end parent))
-                                (throw :exit t))))))
-		       (_ (error "Unsupported granularity: %S" granularity)))
-		     (setq prev data))
-                 (org-element--parse-to start)
-		 (setq node (org-element--cache-root)
-		       stack (list nil)
-		       leftp t
-		       continue-flag t))))
-	   (if continue-flag
+	         (beg (org-element-property :begin data))
+	         (end (org-element-property :end data))
+	         (cbeg (org-element-property :contents-begin data)))
+             (if (>= beg to-pos)
+                 ;; Reached `to-pos'.  Abort.
+                 (setq continue-flag t
+                       node nil)
+               (unless (or (and start (< beg start))
+		           (and prev (not (org-element--cache-key-less-p
+				         (org-element--cache-key prev)
+				         (org-element--cache-key data)))))
+	         (if (or (not start) (= beg start))
+		     (progn
+                       (cl-labels ((predicate (el)
+                                     (when (or (not restrict-elements)
+                                               (memq type restrict-elements))
+                                       (let ((modified-tic org-element--cache-change-tic))
+                                         (push (save-excursion (funcall func el)) result)
+                                         (if (car result)
+                                             (when next-re
+                                               (org-with-point-at (or cbeg end)
+                                                 (if (re-search-forward next-re nil t)
+                                                     (setq start (org-element-property :begin (org-element-lineage (org-element-at-point) '(headline) t)))
+                                                   (setq continue-flag t
+                                                         node nil))))
+                                           (pop result)
+                                           (when fail-re
+                                             (org-with-point-at (or cbeg end)
+                                               (if (re-search-forward fail-re nil t)
+                                                   (setq start (org-element-property :begin (org-element-lineage (org-element-at-point) '(headline) t)))
+                                                 (setq continue-flag t
+                                                       node nil)))))
+                                         ;; FUNC could have modified the buffer.
+                                         (unless (eq modified-tic org-element--cache-change-tic)
+                                           (setq node (org-element--cache-root)
+		                                 stack (list nil)
+		                                 leftp t
+		                                 continue-flag t))))))
+		         (pcase granularity
+		           (`headline
+		             (when (eq type 'headline) (predicate data))
+		             (setq start (max (or start -1)
+                                              (org-with-point-at (or cbeg end)
+                                                (if (not (re-search-forward (org-with-limited-levels org-outline-regexp-bol) nil t))
+                                                    (point-max)
+                                                  (let ((modified-tic org-element--cache-change-tic))
+                                                    (prog1  
+                                                        (org-element-property :begin (org-element-at-point))
+                                                      (unless (eq modified-tic org-element--cache-change-tic)
+                                                        (setq node (org-element--cache-root)
+		                                              stack (list nil)
+		                                              leftp t
+		                                              continue-flag t))))))
+                                              (or (and (memq type '(headline org-data)) cbeg)
+				                  end))))
+		           (`greater-element
+		             (when (memq type org-element-greater-elements) (predicate data))
+		             (setq start (max start (or cbeg end)))
+                             (let ((parent data))
+		               (catch :exit
+			         (while (setq parent (org-element-property :parent parent))
+			           (if (eq start (org-element-property :contents-end parent))
+			               (setq start (org-element-property :end parent))
+                                     (throw :exit t))))))
+		           (`element
+                             (predicate data)
+		             (setq start (max start (or cbeg end)))
+                             (let ((parent data))
+		               (catch :exit
+			         (while (setq parent (org-element-property :parent parent))
+			           (if (eq start (org-element-property :contents-end parent))
+			               (setq start (org-element-property :end parent))
+                                     (throw :exit t))))))
+		           (_ (error "Unsupported granularity: %S" granularity))))
+                       (if (org-element-property :cached data)
+		           (setq prev data)
+                         (setq prev nil)))
+                   (org-element--parse-to start)
+	           (setq node (org-element--cache-root)
+		         stack (list nil)
+		         leftp t
+		         continue-flag t)))))
+           (if continue-flag
 	       (setq continue-flag nil)
-	     (setq node (if (setq leftp (avl-tree--node-right node))
-			    (avl-tree--node-right node)
-			  (pop stack)))))))
+	     (setq node (if (and (car stack)
+                                 (or (and start (< (org-element-property :begin (avl-tree--node-data (car stack))) start))
+		                     (and prev (not (org-element--cache-key-less-p
+				                   (org-element--cache-key prev)
+				                   (org-element--cache-key (avl-tree--node-data (car stack))))))))
+                            (progn
+                              (setq leftp nil)
+                              (pop stack))
+                          (if (setq leftp (avl-tree--node-right node))
+		              (avl-tree--node-right node)
+		            (pop stack))))))))
      ;; Return result.
      (nreverse result))))
 
