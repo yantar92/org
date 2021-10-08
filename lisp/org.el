@@ -5900,15 +5900,9 @@ open and agenda-wise Org files."
   "Return the beginning position of the current entry."
   (save-excursion (org-back-to-heading t) (point)))
 
-(defsubst org-entry-end-position (&optional element)
+(defsubst org-entry-end-position ()
   "Return the end position of the current entry."
-  (if (and element
-           (org-element--cache-active-p)
-           (eq 'headline (org-element-type element)))
-      (org-element-property :end
-                         (org-element-lineage (org-element-at-point (org-element-property :contents-begin element))
-                                           '(section)))
-    (save-excursion (outline-next-heading) (point))))
+  (save-excursion (outline-next-heading) (point)))
 
 (defun org-subtree-end-visible-p ()
   "Is the end of the current subtree visible?"
