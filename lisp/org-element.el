@@ -4688,12 +4688,6 @@ to elements made in FUNC will also alter the cache."
           (prev after-element)
           (node (org-element--cache-root))
           (heading-re (org-with-limited-levels org-outline-regexp-bol))
-          (next-re (or next-re
-                       (when (eq 'headline granularity)
-                         heading-re)))
-          (fail-re (or fail-re
-                       (when (eq 'headline granularity)
-                         heading-re)))
           (stack (list nil))
           (leftp t)
           result
@@ -4732,28 +4726,37 @@ to elements made in FUNC will also alter the cache."
                          (cl-labels ((predicate (el)
                                        (when (or (not restrict-elements)
                                                  (memq type restrict-elements))
-                                         (let ((modified-tic org-element--cache-change-tic))
-                                           (push (save-excursion (funcall func el)) result)
-                                           (if (car result)
-                                               (when next-re
+                                         (let ((modified-tic org-element--cache-change-tic)
+                                               (cache-size org-element--cache-size))
+                                           (push (funcall func el) result)
+                                           (let ((pos-after-call (point)))
+                                             (if (car result)
+                                                 (when next-re
+                                                   (goto-char (or cbeg end))
+                                                   (if (re-search-forward next-re nil 'move)
+                                                       (unless (< (point) start)
+                                                         (org-back-to-heading t)
+                                                         (setq start (point)))
+                                                     (setq continue-flag t
+                                                           node nil)))
+                                               (pop result)
+                                               (when fail-re
                                                  (goto-char (or cbeg end))
-                                                 (if (re-search-forward next-re nil 'move)
+                                                 (if (re-search-forward fail-re nil 'move)
                                                      (unless (< (point) start)
                                                        (org-back-to-heading t)
                                                        (setq start (point)))
                                                    (setq continue-flag t
-                                                         node nil)))
-                                             (pop result)
-                                             (when fail-re
-                                               (goto-char (or cbeg end))
-                                               (if (re-search-forward fail-re nil 'move)
-                                                   (unless (< (point) start)
-                                                     (org-back-to-heading t)
-                                                     (setq start (point)))
-                                                 (setq continue-flag t
-                                                       node nil))))
+                                                         node nil))))
+                                             (unless (>= start pos-after-call)
+                                               (goto-char pos-after-call)
+                                               (when (re-search-forward heading-re nil 'move)
+                                                 (goto-char (match-beginning 0)))
+                                               (org-element-at-point)
+                                               (setq start (point))))
                                            ;; FUNC could have modified the buffer.
-                                           (unless (eq modified-tic org-element--cache-change-tic)
+                                           (unless (and (eq modified-tic org-element--cache-change-tic)
+                                                        (eq cache-size org-element--cache-size))
                                              (setq node (org-element--cache-root)
 		                                   stack (list nil)
 		                                   leftp t
@@ -4766,13 +4769,15 @@ to elements made in FUNC will also alter the cache."
                                                   (goto-char (or cbeg end))
                                                   (if (not (re-search-forward heading-re nil t))
                                                       (point-max)
-                                                    (let ((modified-tic org-element--cache-change-tic))
+                                                    (let ((modified-tic org-element--cache-change-tic)
+                                                          (cache-size org-element--cache-size))
                                                       (prog1
                                                           (if (and start (> start (point)))
                                                               -1
                                                             (org-back-to-heading t)
                                                             (point))
-                                                        (unless (eq modified-tic org-element--cache-change-tic)
+                                                        (unless (and (eq modified-tic org-element--cache-change-tic)
+                                                                     (eq cache-size org-element--cache-size))
                                                           (setq node (org-element--cache-root)
 		                                                stack (list nil)
 		                                                leftp t
@@ -4810,9 +4815,9 @@ to elements made in FUNC will also alter the cache."
 	         (setq continue-flag nil)
 	       (setq node (if (and (car stack)
                                    (or (and start (< (org-element-property :begin (avl-tree--node-data (car stack))) start))
-		                       (and prev (not (org-element--cache-key-less-p
-				                     (org-element--cache-key prev)
-				                     (org-element--cache-key (avl-tree--node-data (car stack))))))))
+		                       (and prev (org-element--cache-key-less-p
+				                  (org-element--cache-key (avl-tree--node-data (car stack)))
+                                                  (org-element--cache-key prev)))))
                               (progn
                                 (setq leftp nil)
                                 (pop stack))
