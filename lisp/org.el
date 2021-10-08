@@ -11668,12 +11668,12 @@ The tags are fontified when FONTIFY is non-nil."
            (or (not pos) (eq pos (point)))
            (not local))
       org-scanner-tags
-    (org-with-point-at (or pos (point))
+    (org-with-point-at (unless (org-element-type pos) (or pos (point)))
       (unless (org-before-first-heading-p)
-        (org-back-to-heading t)
-        (let ((ltags (org--get-local-tags fontify)) itags)
+        (unless (org-element-type pos) (org-back-to-heading t))
+        (let ((ltags (if (org-element-type pos) (org-element-property :tags pos) (org--get-local-tags fontify))) itags)
           (if (or local (not org-use-tag-inheritance)) ltags
-            (let ((cached (and (org-element--cache-active-p) (org-element-at-point nil 'cached))))
+            (let ((cached (and (org-element--cache-active-p) (if (org-element-type pos) pos (org-element-at-point nil 'cached)))))
               (if cached
                   (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited
