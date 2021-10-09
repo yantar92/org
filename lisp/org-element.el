@@ -4690,6 +4690,10 @@ to elements made in FUNC will also alter the cache."
           (heading-re (org-with-limited-levels org-outline-regexp-bol))
           (stack (list nil))
           (leftp t)
+          ;; (time (float-time))
+          ;; (predicate-time 0)
+          ;; (count-predicate-calls-match 0)
+          ;; (count-predicate-calls-fail 0)
           result
           continue-flag)
      (when next-re
@@ -4723,90 +4727,107 @@ to elements made in FUNC will also alter the cache."
 				           (org-element--cache-key data)))))
 	           (if (or (not start) (= beg start))
 		       (progn
-                         (cl-labels ((predicate (el)
-                                       (when (or (not restrict-elements)
-                                                 (memq type restrict-elements))
-                                         (let ((modified-tic org-element--cache-change-tic)
-                                               (cache-size org-element--cache-size))
-                                           (push (funcall func el) result)
-                                           (let ((pos-after-call (point)))
-                                             (if (car result)
-                                                 (when next-re
-                                                   (goto-char (or cbeg end))
-                                                   (if (re-search-forward next-re nil 'move)
-                                                       (unless (< (point) start)
-                                                         (org-back-to-heading t)
-                                                         (setq start (point)))
-                                                     (setq continue-flag t
-                                                           node nil)))
-                                               (pop result)
-                                               (when fail-re
-                                                 (goto-char (or cbeg end))
-                                                 (if (re-search-forward fail-re nil 'move)
-                                                     (unless (< (point) start)
-                                                       (org-back-to-heading t)
-                                                       (setq start (point)))
-                                                   (setq continue-flag t
-                                                         node nil))))
-                                             (unless (>= start pos-after-call)
-                                               (goto-char pos-after-call)
-                                               (when (re-search-forward heading-re nil 'move)
-                                                 (goto-char (match-beginning 0)))
-                                               (org-element-at-point)
-                                               (setq start (point))))
-                                           ;; FUNC could have modified the buffer.
-                                           (unless (and (eq modified-tic org-element--cache-change-tic)
-                                                        (eq cache-size org-element--cache-size))
-                                             (setq node (org-element--cache-root)
-		                                   stack (list nil)
-		                                   leftp t
-		                                   continue-flag t))))))
+                         (cl-macrolet ((predicate (el)
+                                                  `(when (or (not restrict-elements)
+                                                             (memq type restrict-elements))
+                                                     (let ((modified-tic org-element--cache-change-tic)
+                                                           (cache-size org-element--cache-size))
+                                                       (push (funcall func ,el) result)
+                                                       ;; (let ((before-time (float-time)))
+                                                       ;;   (push (funcall func ,el) result)
+                                                       ;;   (cl-incf predicate-time (- (float-time) before-time)))
+                                                       (let ((pos-after-call (point)))
+                                                         (if (car result)
+                                                             (progn
+                                                               ;; (cl-incf count-predicate-calls-match)
+                                                               (when next-re
+                                                                 (goto-char (or cbeg end))
+                                                                 (if (re-search-forward next-re nil 'move)
+                                                                     (unless (< (point) start)
+                                                                       (org-back-to-heading t)
+                                                                       (setq start (point)))
+                                                                   (setq continue-flag t
+                                                                         node nil))))
+                                                           ;; (cl-incf count-predicate-calls-fail)
+                                                           (pop result)
+                                                           (when fail-re
+                                                             (goto-char (or cbeg end))
+                                                             (if (re-search-forward fail-re nil 'move)
+                                                                 (unless (< (point) start)
+                                                                   (org-back-to-heading t)
+                                                                   (setq start (point)))
+                                                               (setq continue-flag t
+                                                                     node nil))))
+                                                         (unless (>= start pos-after-call)
+                                                           (goto-char pos-after-call)
+                                                           (when (re-search-forward heading-re nil 'move)
+                                                             (goto-char (match-beginning 0)))
+                                                           (org-element-at-point)
+                                                           (setq start (point))))
+                                                       ;; FUNC could have modified the buffer.
+                                                       (unless (and (eq modified-tic org-element--cache-change-tic)
+                                                                    (eq cache-size org-element--cache-size))
+                                                         (setq node (org-element--cache-root)
+		                                               stack (list nil)
+		                                               leftp t
+		                                               continue-flag t))))))
 		           (pcase granularity
 		             (`headline
-		               (when (eq type 'headline) (predicate data))
-		               (setq start (max (or start -1)
-                                                (progn
-                                                  (goto-char (or cbeg end))
-                                                  (if (not (re-search-forward heading-re nil t))
-                                                      (point-max)
-                                                    (let ((modified-tic org-element--cache-change-tic)
-                                                          (cache-size org-element--cache-size))
-                                                      (prog1
-                                                          (if (and start (> start (point)))
-                                                              -1
-                                                            (org-back-to-heading t)
-                                                            (point))
-                                                        (unless (and (eq modified-tic org-element--cache-change-tic)
-                                                                     (eq cache-size org-element--cache-size))
-                                                          (setq node (org-element--cache-root)
-		                                                stack (list nil)
-		                                                leftp t
-		                                                continue-flag t))))))
-                                                (or (and (memq type '(headline org-data)) cbeg)
-				                    end))))
+		              (when (eq type 'headline) (predicate data))
+		              (setq start (max (or start -1)
+                                               (progn
+                                                 (goto-char (or cbeg end))
+                                                 (if (not (re-search-forward heading-re nil t))
+                                                     (point-max)
+                                                   (let ((modified-tic org-element--cache-change-tic)
+                                                         (cache-size org-element--cache-size))
+                                                     (prog1
+                                                         (if (and start (> start (point)))
+                                                             -1
+                                                           (org-back-to-heading t)
+                                                           (point))
+                                                       (unless (and (eq modified-tic org-element--cache-change-tic)
+                                                                    (eq cache-size org-element--cache-size))
+                                                         (setq node (org-element--cache-root)
+		                                               stack (list nil)
+		                                               leftp t
+		                                               continue-flag t))))))
+                                               (or (and (memq type '(headline org-data)) cbeg)
+				                   end))))
 		             (`greater-element
-		               (when (memq type org-element-greater-elements) (predicate data))
-		               (setq start (max start (or cbeg end)))
-                               (let ((parent data))
-		                 (catch :exit
-			           (while (setq parent (org-element-property :parent parent))
-			             (if (eq start (org-element-property :contents-end parent))
-			                 (setq start (org-element-property :end parent))
-                                       (throw :exit t))))))
+		              (when (memq type org-element-greater-elements) (predicate data))
+		              (setq start (max start
+                                               (or (when (memq type org-element-greater-elements)
+                                                     cbeg)
+                                                   end)))
+                              (let ((parent data))
+		                (catch :exit
+                                  (when (eq start (org-element-property :contents-end parent))
+			            (setq start (org-element-property :end parent)))
+			          (while (setq parent (org-element-property :parent parent))
+			            (if (eq start (org-element-property :contents-end parent))
+			                (setq start (org-element-property :end parent))
+                                      (throw :exit t))))))
 		             (`element
-                               (predicate data)
-		               (setq start (max start (or cbeg end)))
-                               (let ((parent data))
-		                 (catch :exit
-			           (while (setq parent (org-element-property :parent parent))
-			             (if (eq start (org-element-property :contents-end parent))
-			                 (setq start (org-element-property :end parent))
-                                       (throw :exit t))))))
+                              (predicate data)
+                              (setq start (max start
+                                               (or (when (memq type org-element-greater-elements)
+                                                     cbeg)
+                                                   end)))
+                              (let ((parent data))
+		                (catch :exit
+                                  (when (eq start (org-element-property :contents-end parent))
+			            (setq start (org-element-property :end parent)))
+			          (while (setq parent (org-element-property :parent parent))
+			            (if (eq start (org-element-property :contents-end parent))
+			                (setq start (org-element-property :end parent))
+                                      (throw :exit t))))))
 		             (_ (error "Unsupported granularity: %S" granularity))))
                          (if (org-element-property :cached data)
 		             (setq prev data)
                            (setq prev nil)))
-                     (org-element--parse-to start)
+                     (if (memq (org-element-type (org-element--parse-to start)) '(plain-list table))
+                         (org-element--parse-to (1+ start)))
 	             (setq node (org-element--cache-root)
 		           stack (list nil)
 		           leftp t
@@ -4824,6 +4845,20 @@ to elements made in FUNC will also alter the cache."
                             (if (setq leftp (avl-tree--node-right node))
 		                (avl-tree--node-right node)
 		              (pop stack)))))))))
+     ;; (when (> (+ count-predicate-calls-match
+     ;;             count-predicate-calls-fail)
+     ;;          100)
+     ;;   (warn "Mapped over elements in %S. %d/%d predicate matches. Total time: %f sec. Time running predicates: %f sec (%f sec avg)
+     ;; Calling parameters: :granularity %S :restrict-elements %S :next-re %S :fail-re %S :from-pos %S :to-pos %S :after-element %S"
+     ;;         (current-buffer)
+     ;;         count-predicate-calls-match
+     ;;         (+ count-predicate-calls-match
+     ;;            count-predicate-calls-fail)
+     ;;         (- (float-time) time)
+     ;;         predicate-time
+     ;;         (/ predicate-time (+ count-predicate-calls-match
+     ;;                              count-predicate-calls-fail))
+     ;;         granularity restrict-elements next-re fail-re from-pos to-pos after-element))
      ;; Return result.
      (nreverse result))))
 
