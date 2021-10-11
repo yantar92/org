@@ -4860,7 +4860,7 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 				       '(invisible t))
 		  (add-text-properties (match-beginning 3) (match-end 3)
 				       '(invisible t)))
-                (goto-char (match-end 0))
+                (goto-char (match-beginning 5))
 	        (throw :exit t)))))))))
 
 (defun org-emphasize (&optional char)
@@ -14887,13 +14887,9 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
 (defun org-agenda-prepare-buffers (files)
   "Create buffers for all agenda files, protect archived trees and comments."
   (interactive)
-  (let ((pa '(:org-archived t))
-	(pc '(:org-comment t))
-	(pall '(:org-archived t :org-comment t))
-	(inhibit-read-only t)
+  (let ((inhibit-read-only t)
 	(org-inhibit-startup org-agenda-inhibit-startup)
-	(rea (org-make-tag-string (list org-archive-tag)))
-	re pos)
+	pos)
     (setq org-tag-alist-for-agenda nil
 	  org-tag-groups-alist-for-agenda nil)
     (save-excursion
@@ -14933,20 +14929,6 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
 		  (if old
 		      (setcdr old (org-uniquify (append (cdr old) (cdr alist))))
 		    (push alist org-tag-groups-alist-for-agenda)))))
-	    (with-silent-modifications
-	      (save-excursion
-		(remove-text-properties (point-min) (point-max) pall)
-		(when org-agenda-skip-archived-trees
-		  (goto-char (point-min))
-		  (while (re-search-forward rea nil t)
-		    (when (org-at-heading-p)
-		      (add-text-properties (point-at-bol) (org-end-of-subtree t) pa))))
-		(goto-char (point-min))
-		(setq re (format "^\\*+ .*\\<%s\\>" org-comment-string))
-		(while (re-search-forward re nil t)
-		  (when (save-match-data (org-in-commented-heading-p t))
-		    (add-text-properties
-		     (match-beginning 0) (org-end-of-subtree t) pc)))))
 	    (goto-char pos)))))
     (setq org-todo-keywords-for-agenda
           (org-uniquify org-todo-keywords-for-agenda))
