@@ -63,7 +63,7 @@
 (require 'cl-lib)
 (require 'ol)
 (require 'org)
-(require 'org-id)
+(require 'org-persist)
 (require 'org-compat)
 (require 'org-entities)
 (require 'org-footnote)
@@ -5445,23 +5445,6 @@ Hopefully, this is finally fixed, but need more testing.")
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
-(defvar org-element-cache-path (org-file-name-concat user-emacs-directory "org-element-cache/")
-  "Directory where element cache is stored.")
-
-(defvar org-element-cache-index-file "index"
-  "File name used to store `org-element-cache--index'.")
-
-(defvar org-element-cache--index nil
-  "Global cache index.
-
-The index is a list of plists.  Each plist contains information about
-a file cache.  Each plist contains the following properties:
-
-- `:path':       buffer file path
-- `:inode':      buffer file inode
-- `:hash':       buffer hash
-- `:cache-file': cache file name")
-
 (defvar org-element-cache-sync-idle-time 0.6
   "Length, in seconds, of idle time before syncing cache.")
 
@@ -6974,6 +6957,7 @@ Return non-nil when verification failed."
 
 ;;;; Public Functions
 
+(defvar-local org-element--cache-loaded-p nil)
 ;;;###autoload
 (defun org-element-cache-reset (&optional all)
   "Reset cache in current buffer.
@@ -6983,17 +6967,24 @@ buffers."
   (dolist (buffer (if all (buffer-list) (list (current-buffer))))
     (with-current-buffer (or (buffer-base-buffer buffer) buffer)
       (when (and org-element-use-cache (derived-mode-p 'org-mode))
-        (let ((first-load-p (null org-element--cache)))
+        (let ((first-load-p (not org-element--cache-loaded-p)))
+          (when (not org-element-cache-persistent)
+            (org-persist-unregister 'org-element--headline-cache (current-buffer))
+            (org-persist-unregister 'org-element--cache (current-buffer)))
+          (when (and org-element-cache-persistent first-load-p)
+            (org-persist-register 'org-element--cache (current-buffer))
+            (org-persist-register 'org-element--headline-cache
+                                  (current-buffer)
+                                  :inherit 'org-element--cache))
           (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
-	  (setq-local org-element--cache
-		      (avl-tree-create #'org-element--cache-compare))
-          (setq-local org-element--cache-size 0)
-          (when (and org-element-cache-persistent
-                     first-load-p)
-            (org-element--cache-read)
-            (add-hook 'kill-buffer-hook #'org-element--cache-write 1000 'local)
-            (add-hook 'kill-emacs-hook #'org-element-cache-gc)
-            (add-hook 'kill-emacs-hook #'org-element--cache-write-all 1000))
+          (when (or (not org-element--cache)
+                    (not (and org-element-cache-persistent first-load-p)))
+	    (setq-local org-element--cache
+		        (avl-tree-create #'org-element--cache-compare))
+            (setq-local org-element--headline-cache
+		        (avl-tree-create #'org-element--cache-compare))
+            (setq-local org-element--cache-size 0)
+            (setq-local org-element--headline-cache-size 0))
 	  (setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
 	  (setq-local org-element--cache-change-warning nil)
 	  (setq-local org-element--cache-sync-requests nil)
@@ -7011,110 +7002,47 @@ buffers."
     (org-element--cache-submit-request pos pos 0)
     (org-element--cache-set-timer (current-buffer))))
 
+;;; Cache persistance
+
+(defun org-element--cache-persist-before-write (var &optional buffer)
+  "Sync cache before saving."
+  (when (and org-element-use-cache
+             buffer
+             org-element-cache-persistent
+             (eq var 'org-element--cache))
+    (with-current-buffer buffer
+      (org-with-wide-buffer
+       (org-element-at-point (point-max))))
+    nil))
+
+(defun org-element--cache-persist-before-read (var &optional buffer)
+  "Avoid reading cache before Org mode is loaded."
+  (if (not buffer) 'forbid
+    (with-current-buffer buffer
+      (unless (and org-element-use-cache
+                   org-element-cache-persistent
+                   (derived-mode-p 'org-mode)
+                   (not org-element--cache-loaded-p))
+        'forbid))))
+
+(defun org-element--cache-persist-after-read (var &optional buffer)
+  "Setup restored cache."
+  (with-current-buffer buffer
+    (when (and org-element-use-cache
+               org-element-cache-persistent)
+      (when (eq var 'org-element--cache)
+        (setq-local org-element--cache-loaded-p t)
+        (when org-element--cache (setq-local org-element--cache-size (avl-tree-size org-element--cache))))
+      (when (eq var 'org-element--headline-cache)
+        (setq-local org-element--cache-loaded-p t)
+        (when org-element--headline-cache (setq-local org-element--headline-cache-size (avl-tree-size org-element--headline-cache)))))))
+
+(add-hook 'org-persist-before-write-hook #'org-element--cache-persist-before-write)
+(add-hook 'org-persist-before-read-hook #'org-element--cache-persist-before-read)
+(add-hook 'org-persist-after-read-hook #'org-element--cache-persist-after-read)
+
 
 
-;;;; Persistent cache
-
-(defun org-element--cache-get-cache-index ()
-  "Return plist used to store cache of the current buffer."
-  (when (and (org-element--cache-active-p)
-             (buffer-file-name))
-    (let* ((buffer-file (buffer-file-name))
-           (inode (file-attribute-inode-number (file-attributes buffer-file))))
-      (let ((result (or (seq-find (lambda (plist) (equal inode (plist-get plist :inode))) org-element-cache--index)
-                        (seq-find (lambda (plist) (equal buffer-file (plist-get plist :path))) org-element-cache--index))))
-        (when result
-          (unless (equal buffer-file (plist-get result :path))
-            (setf result (plist-put result :path buffer-file))))
-        (unless result
-          (push (list :path buffer-file
-                      :inode inode
-                      :hash (secure-hash 'md5 (current-buffer))
-                      :cache-file (replace-regexp-in-string "^.." "\\&/" (org-id-uuid)))
-                org-element-cache--index)
-          (setf result (car org-element-cache--index)))
-        result))))
-
-(defun org-element--cache-write (&optional all-buffers)
-  "Save cache in current buffer or all the buffers when AL-BUFFERS is non-nil."
-  (let ((buffer-list (if all-buffers (buffer-list) (list (current-buffer)))))
-    (dolist (buf buffer-list)
-      (with-current-buffer buf
-        (when (and (org-element--cache-active-p)
-                   org-element-cache-persistent
-                   (buffer-file-name)
-                   (not (buffer-modified-p)))
-          (let ((index (org-element--cache-get-cache-index)))
-            (setf index (plist-put index :hash (secure-hash 'md5 (current-buffer))))
-            (unless (file-exists-p org-element-cache-path)
-              (make-directory org-element-cache-path))
-            (let ((cache org-element--cache)
-                  (print-circle t)
-                  (print-continuous-numbering t)
-                  print-number-table)
-              (org-with-wide-buffer
-               (org-element--cache-sync (current-buffer) (point-max)))
-              (with-temp-file (org-file-name-concat org-element-cache-path org-element-cache-index-file)
-                (prin1 org-element-cache--index (current-buffer)))
-              (let ((file (org-file-name-concat org-element-cache-path (plist-get index :cache-file))))
-                (unless (file-exists-p (file-name-directory file))
-                  (make-directory (file-name-directory file) t))
-                (with-temp-file file
-                  (prin1 cache (current-buffer)))))))))))
-
-(defun org-element--cache-write-all ()
-  "Write cache in all buffers."
-  (org-element--cache-write t))
-
-(defun org-element-cache-gc ()
-  "Remove cached data for not existing files."
-  (when org-element-cache-persistent
-    (let (new-index)
-      (dolist (index org-element-cache--index)
-        (let ((file (plist-get index :path))
-              (cache-file (plist-get index :cache-file)))
-          (if (file-exists-p file)
-              (push index new-index)
-            (when (file-exists-p (org-file-name-concat org-element-cache-path cache-file))
-              (delete-file (org-file-name-concat org-element-cache-path cache-file))
-              (when (directory-empty-p (file-name-directory (org-file-name-concat org-element-cache-path cache-file)))
-                (delete-directory (file-name-directory (org-file-name-concat org-element-cache-path cache-file))))))))
-      (setq org-element-cache--index (nreverse new-index)))))
-
-(defun org-element--cache-read ()
-  "Restore cache for the current buffer"
-  (when (and (org-element--cache-active-p)
-             org-element-cache-persistent
-             (buffer-file-name)
-             (not (buffer-modified-p)))
-    (unless org-element-cache--index
-      (when (file-exists-p (org-file-name-concat org-element-cache-path org-element-cache-index-file))
-        (with-temp-buffer
-          (insert-file-contents (org-file-name-concat org-element-cache-path org-element-cache-index-file))
-          (setq org-element-cache--index (read (current-buffer))))))
-    (let* ((index (org-element--cache-get-cache-index))
-           (cache-file (org-file-name-concat org-element-cache-path (plist-get index :cache-file)))
-           (cache nil))
-      (when (and (file-exists-p cache-file)
-                 (equal (secure-hash 'md5 (current-buffer)) (plist-get index :hash)))
-        (with-temp-buffer
-          (let ((coding-system-for-read 'utf-8)
-                (read-circle t))
-            (insert-file-contents cache-file))
-          ;; FIXME: Reading sometimes fails to read circular objects.
-          ;; I suspect that it happens when we have object reference
-          ;; #N# read before object definition #N=.  If it is really
-          ;; #so, it should be Emacs bug - either in `read' or in
-          ;; #`prin1'.  Meanwhile, just fail silently when `read'
-          ;; #fails to parse the saved cache object.
-          (condition-case nil
-              (setq cache (read (current-buffer)))
-            (error
-             (org-element--cache-warn "Emacs reader failed to read cache for %S. Initial cache is empty." (current-buffer))
-             (setq cache nil))))
-        (when cache
-          (setq-local org-element--cache cache)
-          (setq-local org-element--cache-size (avl-tree-size org-element--cache)))))))
 
 ;;; The Toolbox
 ;;
