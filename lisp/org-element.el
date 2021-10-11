@@ -984,8 +984,11 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
                    (string-match-p "+$" property-name))
               (let ((val (plist-get properties property-name-symbol)))
                 (if (listp val)
-                    (setf (plist-get properties property-name-symbol)
-                          (append (plist-get properties property-name-symbol) (list property-value)))
+                    (setq properties
+                          (plist-put properties
+                                     property-name-symbol
+                                     (append (plist-get properties property-name-symbol)
+                                             (list property-value))))
                   (plist-put properties property-name-symbol (list val property-value)))))
              (t (setq properties (plist-put properties property-name-symbol property-value)))))
 	  (forward-line))

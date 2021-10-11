@@ -130,8 +130,9 @@ When BUFFER is `all', unregister VAR in all buffers."
                               (plist-get plist :path))))
              (if (length> (plist-get plist :variable) 1)
                  (progn
-                   (setf (plist-get plist :variable)
-                         (delq var (plist-get plist :variable)))
+                   (setq plist
+                         (plist-put plist :variable
+                                    (delq var (plist-get plist :variable))))
                    ;; Do not remove the index though.
                    nil)
                (let ((persist-file (org-file-name-concat org-persist-path (plist-get plist :persist-file))))
