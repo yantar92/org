@@ -13,16 +13,6 @@ Please send Org bug reports to mailto:emacs-orgmode@gnu.org.
 
 * Version 9.6 (not yet released)
 
-** Miscellaneous
-
-*** New =transparent-image-converter= property for =dvipng=
-
-The =dvipng= option in ~org-preview-latex-process-alist~ has a new
-property =transparent-image-converter= which is used instead of
-=image-converter= when producing transparent images.
-
-* Version 9.5
-
 ** Important announcements and breaking changes
 
 *** Users experiencing performance issues can use new folding backend
@@ -122,6 +112,19 @@ rely on the details of visibility state implementation in
 =outline.el= folding, but it is not the case anymore with the new
 backend.  From now on, using =outline-*= functions is strongly
 discouraged when working with Org files.
+
+
+** Miscellaneous
+
+*** New =transparent-image-converter= property for =dvipng=
+
+The =dvipng= option in ~org-preview-latex-process-alist~ has a new
+property =transparent-image-converter= which is used instead of
+=image-converter= when producing transparent images.
+
+* Version 9.5
+
+** Important announcements and breaking changes
 
 *** The =contrib/= now lives in a separate repository
 
