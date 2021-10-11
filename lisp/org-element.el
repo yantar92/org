@@ -5493,8 +5493,19 @@ Each node of the tree contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-at-point'.")
 
+(defvar-local org-element--headline-cache nil
+  "AVL tree used to cache headline, inlinetask, and section elements.
+Each node of the tree contains an element.  Comparison is done
+with `org-element--cache-compare'.  This cache is used in
+`org-element-cache-map'.")
+
 (defvar-local org-element--cache-size 0
   "Size of the `org-element--cache'.
+
+Storing value is variable is faster because `avl-tree-size' is O(N).")
+
+(defvar-local org-element--headline-cache-size 0
+  "Size of the `org-element--headline-cache'.
 
 Storing value is variable is faster because `avl-tree-size' is O(N).")
 
@@ -5768,10 +5779,14 @@ A and B are either integers or lists of integers, as returned by
   (org-element--cache-key-less-p (org-element--cache-key a) (org-element--cache-key b)))
 
 (defsubst org-element--cache-root ()
-  "Return root value in cache.
+  "Return root value in `org-element--cache' .
 This function assumes `org-element--cache' is a valid AVL tree."
   (avl-tree--node-left (avl-tree--dummyroot org-element--cache)))
 
+(defsubst org-element--headline-cache-root ()
+  "Return root value in `org-element--headline-cache' .
+This function assumes `org-element--headline-cache' is a valid AVL tree."
+  (avl-tree--node-left (avl-tree--dummyroot org-element--headline-cache)))
 
 ;;;; Tools
 
@@ -5876,6 +5891,9 @@ the cache."
                            (org-element-property :org-element--cache-sync-key element)
                            (org-element--format-element element)))
     (org-element-put-property element :cached t)
+    (when (memq (org-element-type element) '(headline inlinetask section))
+      (cl-incf org-element--headline-cache-size)
+      (avl-tree-enter org-element--headline-cache element))
     (cl-incf org-element--cache-size)
     (avl-tree-enter org-element--cache element)))
 
@@ -5888,6 +5906,9 @@ Assume ELEMENT belongs to cache and that a cache is active."
   (when (and (org-element-property :parent element)
              (org-element-contents (org-element-property :parent element)))
     (org-element-set-contents (org-element-property :parent element) nil))
+  (when (memq (org-element-type element) '(headline inlinetask section))
+    (cl-decf org-element--headline-cache-size)
+    (avl-tree-delete org-element--headline-cache element))
   (or (avl-tree-delete org-element--cache element)
       (progn
         ;; This should not happen, but if it is, would be better to know
