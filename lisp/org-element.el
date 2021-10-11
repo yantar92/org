@@ -7020,32 +7020,29 @@ buffers."
   (dolist (buffer (if all (buffer-list) (list (current-buffer))))
     (with-current-buffer (or (buffer-base-buffer buffer) buffer)
       (when (and org-element-use-cache (derived-mode-p 'org-mode))
-        (let ((first-load-p (not org-element--cache-loaded-p)))
-          (when (not org-element-cache-persistent)
-            (org-persist-unregister 'org-element--headline-cache (current-buffer))
-            (org-persist-unregister 'org-element--cache (current-buffer)))
-          (when (and org-element-cache-persistent first-load-p)
-            (org-persist-register 'org-element--cache (current-buffer))
-            (org-persist-register 'org-element--headline-cache
-                                  (current-buffer)
-                                  :inherit 'org-element--cache))
-          (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
-          (when (or (not org-element--cache)
-                    (not (and org-element-cache-persistent first-load-p)))
-	    (setq-local org-element--cache
-		        (avl-tree-create #'org-element--cache-compare))
-            (setq-local org-element--headline-cache
-		        (avl-tree-create #'org-element--cache-compare))
-            (setq-local org-element--cache-size 0)
-            (setq-local org-element--headline-cache-size 0))
-	  (setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
-	  (setq-local org-element--cache-change-warning nil)
-	  (setq-local org-element--cache-sync-requests nil)
-	  (setq-local org-element--cache-sync-timer nil)
-	  (add-hook 'before-change-functions
-		    #'org-element--cache-before-change nil t)
-	  (add-hook 'after-change-functions
-		    #'org-element--cache-after-change nil t))))))
+        (when (not org-element-cache-persistent)
+          (org-persist-unregister 'org-element--headline-cache (current-buffer))
+          (org-persist-unregister 'org-element--cache (current-buffer)))
+        (when org-element-cache-persistent
+          (org-persist-register 'org-element--cache (current-buffer))
+          (org-persist-register 'org-element--headline-cache
+                                (current-buffer)
+                                :inherit 'org-element--cache))
+        (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
+	(setq-local org-element--cache
+		    (avl-tree-create #'org-element--cache-compare))
+        (setq-local org-element--headline-cache
+		    (avl-tree-create #'org-element--cache-compare))
+        (setq-local org-element--cache-size 0)
+        (setq-local org-element--headline-cache-size 0)
+	(setq-local org-element--cache-sync-keys-value (buffer-chars-modified-tick))
+	(setq-local org-element--cache-change-warning nil)
+	(setq-local org-element--cache-sync-requests nil)
+	(setq-local org-element--cache-sync-timer nil)
+	(add-hook 'before-change-functions
+		  #'org-element--cache-before-change nil t)
+	(add-hook 'after-change-functions
+		  #'org-element--cache-after-change nil t)))))
 
 ;;;###autoload
 (defun org-element-cache-refresh (pos)
