@@ -201,6 +201,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-latex-make-preamble "ox-latex" (info &optional template snippet?))
 (declare-function org-num-mode "org-num" (&optional arg))
 (declare-function org-plot/gnuplot "org-plot" (&optional params))
+(declare-function org-persist-read "org-persist" (var &optional buffer))
 (declare-function org-tags-view "org-agenda" (&optional todo-only match))
 (declare-function org-timer "org-timer" (&optional restart no-insert))
 (declare-function org-timer-item "org-timer" (&optional arg))
@@ -4541,6 +4542,8 @@ This is for getting out of special buffers like capture.")
 ;; babel
 (require 'ob)
 
+(defvar org-element-cache-persistent); Defined in org-element.el
+(defvar org-element-use-cache); Defined in org-element.el
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias
@@ -7758,17 +7761,8 @@ the whole buffer."
            ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
            ;; keyword.  If none is found, fall-back to `org-category' or
            ;; buffer file name, or set it by the document property drawer.
-           (put-text-property
-	    (point-min) (point-max)
-	    'org-category
-	    (catch 'buffer-category
-	      (goto-char (point-max))
-	      (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-	        (let ((element (org-element-at-point-no-context)))
-	          (when (eq (org-element-type element) 'keyword)
-		    (throw 'buffer-category
-		           (org-element-property :value element)))))
-	      default-category))
+           (put-text-property (point-min) (point-max)
+                              'org-category category)
            ;; Set categories from the document property drawer or
            ;; property drawers in the outline.  If category is found in
            ;; the property drawer for the whole buffer that value

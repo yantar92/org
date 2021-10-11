@@ -32,6 +32,10 @@
 (require 'org-attach)
 (require 'vc-git)
 
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-next-visible-heading "org" (arg))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
+
 (defcustom org-attach-git-annex-cutoff (* 32 1024)
   "If non-nil, files larger than this will be annexed instead of stored."
   :group 'org-attach

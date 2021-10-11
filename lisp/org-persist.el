@@ -30,6 +30,10 @@
 (require 'org-compat)
 (require 'org-id)
 
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-next-visible-heading "org" (arg))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
+
 (defvar org-persist-path (org-file-name-concat user-emacs-directory "org-persist/")
   "Directory where the data is stored.")
 

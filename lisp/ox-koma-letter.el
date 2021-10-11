@@ -168,6 +168,10 @@
 (require 'cl-lib)
 (require 'ox-latex)
 
+(declare-function org-back-to-heading "org" (&optional invisible-ok))
+(declare-function org-next-visible-heading "org" (arg))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
+
 ;; Install a default letter class.
 (unless (assoc "default-koma-letter" org-latex-classes)
   (add-to-list 'org-latex-classes

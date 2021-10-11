@@ -445,7 +445,7 @@ Return nil when there is no matching folding spec."
   (org-fold-core-get-folding-spec-from-alias spec-or-alias))
 
 (defsubst org-fold-core--check-spec (spec-or-alias)
-  "Throw an error if SPEC-OR-ALIAS is not present in `org-fold-core--spec-priority-list'."
+  "Throw an error if SPEC-OR-ALIAS is not in `org-fold-core--spec-priority-list'."
   (unless (org-fold-core-folding-spec-p spec-or-alias)
     (error "%s is not a valid folding spec" spec-or-alias)))
 
@@ -706,8 +706,10 @@ The folding spec properties will be set to PROPERTIES (see
   "Remove a folding SPEC in BUFFER.
 
 SPEC must be a symbol.
-BUFFER can be a buffer to remove SPEC in, nil to remove SPEC in current buffer,
-or 'all to remove SPEC in all open `org-mode' buffers and all future org buffers."
+
+BUFFER can be a buffer to remove SPEC in, nil to remove SPEC in current
+buffer, or 'all to remove SPEC in all open `org-mode' buffers and all
+future org buffers."
   (org-fold-core--check-spec spec)
   (when (eq buffer 'all)
     (setq-default org-fold-core--specs (delete (cdr (assq spec org-fold-core--specs)) org-fold-core--specs))
@@ -854,7 +856,7 @@ If PREVIOUS-P is non-nil, search backwards."
   (org-fold-core-next-visibility-change pos limit ignore-hidden-p 'previous))
 
 (defun org-fold-core-next-folding-state-change (&optional spec-or-alias pos limit previous-p)
-  "Return next point where folding state changes relative to POS up to LIMIT.
+  "Return point after POS where folding state changes up to LIMIT.
 If SPEC-OR-ALIAS is nil, return next point where _any_ single folding
 spec changes.
 For example, (org-fold-core-next-folding-state-change nil) with point
@@ -865,7 +867,8 @@ somewhere in the below structure will return the nearest <...> point.
 :ID: test
 :END:<end drawer fold>
 
-Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor ligula erat quis odio.
+Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo,
+quis tempor ligula erat quis odio.
 
 ** Another headline
 :DRAWER:<begin drawer fold>
@@ -873,7 +876,8 @@ Fusce suscipit, wisi nec facilisis facilisis, est dui fermentum leo, quis tempor
 ** Yet another headline
 <end of outline fold>
 
-If SPEC-OR-ALIAS is a folding spec symbol, only consider that folding spec.
+If SPEC-OR-ALIAS is a folding spec symbol, only consider that folding
+spec.
 
 If SPEC-OR-ALIAS is a list, only consider changes of folding specs
 from the list.
@@ -1150,7 +1154,7 @@ This function is intended to be used as `isearch-filter-predicate'."
   (delete-overlay ov))
 
 (defun org-fold-core--clear-isearch-overlays ()
-  "Convert overlays from `org-fold-core--isearch-overlays' back into using text properties."
+  "Convert overlays from `org-fold-core--isearch-overlays' back to text properties."
   (when org-fold-core--isearch-overlays
     (mapc #'org-fold-core--clear-isearch-overlay org-fold-core--isearch-overlays)
     (setq org-fold-core--isearch-overlays nil)))
@@ -1419,7 +1423,7 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 ;;; Do not fontify folded text until needed.
 
 (defun org-fold-core-fontify-region (beg end loudly &optional force)
-  "Run `font-lock-default-fontify-region' unless we are trying to fontify invisible text."
+  "Run `font-lock-default-fontify-region' in visible regions."
   (let ((pos beg) next
         (org-fold-core--fontifying t))
     (while (< pos end)

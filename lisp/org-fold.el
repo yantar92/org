@@ -815,6 +815,8 @@ DETAIL is either nil, `minimal', `local', `ancestors',
         (org-fold-heading nil)
         (when (memq detail '(canonical t)) (org-fold-show-entry))
         (when (memq detail '(tree canonical t)) (org-fold-show-children))))))
+(defvar org-hide-emphasis-markers); Defined in org.el
+(defvar org-pretty-entities); Defined in org.el
 (defun org-fold-show-set-visibility--text-properties (detail)
   "Set visibility around point according to DETAIL.
 DETAIL is either nil, `minimal', `local', `ancestors',
@@ -829,8 +831,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
     (when (org-invisible-p)
       ;; FIXME: No clue why, but otherwise the following might not work.
       (redisplay)
-      (let ((region (org-fold-get-region-at-point))
-            (spec (org-fold-get-folding-spec)))
+      (let ((region (org-fold-get-region-at-point)))
         ;; Reveal emphasis markers.
         (let (org-hide-emphasis-markers
               org-link-descriptive
@@ -1009,8 +1010,9 @@ This function is intended to be used as :fragile property of
 
 ;; Catching user edits inside invisible text
 (defun org-fold-check-before-invisible-edit--overlays (kind)
-  "Check if editing kind KIND would be dangerous with invisible text around.
-The detailed reaction depends on the user option `org-fold-catch-invisible-edits'."
+  "Check if editing KIND is dangerous with invisible text around.
+The detailed reaction depends on the user option
+`org-fold-catch-invisible-edits'."
   ;; First, try to get out of here as quickly as possible, to reduce overhead
   (when (and org-fold-catch-invisible-edits
              (or (not (boundp 'visible-mode)) (not visible-mode))
@@ -1074,8 +1076,9 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
             ;; Don't do the edit, make the user repeat it in full visibility
             (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
 (defun org-fold-check-before-invisible-edit--text-properties (kind)
-  "Check is editing if kind KIND would be dangerous with invisible text around.
-The detailed reaction depends on the user option `org-fold-catch-invisible-edits'."
+  "Check if editing KIND is dangerous with invisible text around.
+The detailed reaction depends on the user option
+`org-fold-catch-invisible-edits'."
   ;; First, try to get out of here as quickly as possible, to reduce overhead
   (when (and org-fold-catch-invisible-edits
 	     (or (not (boundp 'visible-mode)) (not visible-mode))
@@ -1119,8 +1122,9 @@ The detailed reaction depends on the user option `org-fold-catch-invisible-edits
 	    ;; Don't do the edit, make the user repeat it in full visibility
 	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
 (defsubst org-fold-check-before-invisible-edit (kind)
-  "Check is editing if kind KIND would be dangerous with invisible text around.
-The detailed reaction depends on the user option `org-fold-catch-invisible-edits'."
+  "Check if editing KIND is dangerous with invisible text around.
+The detailed reaction depends on the user option
+`org-fold-catch-invisible-edits'."
   ;; First, try to get out of here as quickly as possible, to reduce overhead
   (if (eq org-fold-core-style 'text-properties)
       (org-fold-check-before-invisible-edit--text-properties kind)
