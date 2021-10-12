@@ -5293,7 +5293,7 @@ with `org-element--cache-compare'.  This cache is used in
 `org-element-at-point'.")
 
 (defvar-local org-element--headline-cache nil
-  "AVL tree used to cache headline, inlinetask, and section elements.
+  "AVL tree used to cache headline and inlinetask elements.
 Each node of the tree contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-cache-map'.")
@@ -5690,7 +5690,7 @@ the cache."
                            (org-element-property :org-element--cache-sync-key element)
                            (org-element--format-element element)))
     (org-element-put-property element :cached t)
-    (when (memq (org-element-type element) '(headline inlinetask section))
+    (when (memq (org-element-type element) '(headline inlinetask))
       (cl-incf org-element--headline-cache-size)
       (avl-tree-enter org-element--headline-cache element))
     (cl-incf org-element--cache-size)
@@ -5705,7 +5705,7 @@ Assume ELEMENT belongs to cache and that a cache is active."
   (when (and (org-element-property :parent element)
              (org-element-contents (org-element-property :parent element)))
     (org-element-set-contents (org-element-property :parent element) nil))
-  (when (memq (org-element-type element) '(headline inlinetask section))
+  (when (memq (org-element-type element) '(headline inlinetask))
     (cl-decf org-element--headline-cache-size)
     (avl-tree-delete org-element--headline-cache element))
   (or (avl-tree-delete org-element--cache element)
