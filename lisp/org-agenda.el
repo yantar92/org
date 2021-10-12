@@ -4172,15 +4172,12 @@ continue from there."
     (when (or
 	   (save-excursion (goto-char p) (looking-at comment-start-skip))
 	   (and org-agenda-skip-archived-trees (not org-agenda-archives-mode)
-		(or (and (member org-archive-tag
-                                 (org-get-tags nil 'local))
-                         ;; (get-text-property p :org-archived)
-			 (org-end-of-subtree t))
+		(or (and (save-match-data (org-in-archived-heading-p))
+		         (org-end-of-subtree t))
 		    (and (member org-archive-tag org-file-tags)
 			 (goto-char (point-max)))))
 	   (and org-agenda-skip-comment-trees
-                (org-in-commented-heading-p t)
-		;; (get-text-property p :org-comment)
+                (org-in-commented-heading-p)
 		(org-end-of-subtree t))
 	   (and (setq to (or (org-agenda-skip-eval org-agenda-skip-function-global)
 			     (org-agenda-skip-eval org-agenda-skip-function)))
