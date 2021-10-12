@@ -6996,6 +6996,20 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
               (leftp t)
               result
               continue-flag
+              ;; Byte-compile FUNC making sure that it is as performant
+              ;; as it could be.
+              (func (if (or (byte-code-function-p func))
+                        func
+                      (let ((warning-minimum-log-level :error)
+                            (inhibit-message t))
+                        (condition-case nil
+                            (if (and (fboundp 'native-comp-available-p)
+                                     (native-comp-available-p))
+                                ;; Use native compilation to even better
+                                ;; performance.
+                                (native-compile func)
+                              (byte-compile func))
+                          (error func)))))
               ;; Generic regexp to search next potential match.  If it
               ;; is a cons of (regexp . 'match-beg), we are 100% sure
               ;; that the match beginning is the existing element
