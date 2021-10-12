@@ -6955,7 +6955,7 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                    (move-start-to-next-match
                     (re) `(save-match-data
                             (if (or (not ,re) (re-search-forward (or (car-safe ,re) ,re) nil 'move))
-                                (unless (< (point) start)
+                                (unless (< (point) (or start -1))
                                   (if (cdr-safe ,re)
                                       ;; Avoid parsing when we are 100%
                                       ;; sure that regexp is good enough
@@ -6996,18 +6996,6 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
               (leftp t)
               result
               continue-flag
-              ;; Byte-compile FUNC making sure that it is as performant
-              ;; as it could be.
-              (func (if (byte-code-function-p func)
-                        func
-                      (let ((warning-minimum-log-level :error)
-                            (inhibit-message t))
-                        (if (and (fboundp 'native-comp-available-p)
-                                 (native-comp-available-p))
-                            ;; Use native compilation to even better
-                            ;; performance.
-                            (native-compile func)
-                          (byte-compile func)))))
               ;; Generic regexp to search next potential match.  If it
               ;; is a cons of (regexp . 'match-beg), we are 100% sure
               ;; that the match beginning is the existing element
