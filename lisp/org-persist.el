@@ -151,6 +151,11 @@ When BUFFER is `all', unregister VAR in all buffers."
       (let ((index (org-persist--get-index var buffer)))
         (setf index (plist-put index :hash (when buffer (secure-hash 'md5 buffer))))
         (let ((print-circle t)
+              print-level
+              print-length
+              print-quoted
+              (print-escape-control-characters t)
+              (print-escape-nonascii t)
               (print-continuous-numbering t)
               print-number-table)
           (unless (seq-find (lambda (v)
