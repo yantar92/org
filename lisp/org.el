@@ -10651,124 +10651,215 @@ When FONTIFY is non-nil, make sure that matches are fontified."
       (when (eq action 'sparse-tree)
 	(org-cycle-overview)
 	(org-remove-occur-highlights))
-      (while (let (case-fold-search)
-	       (re-search-forward re nil t))
-	(setq org-map-continue-from nil)
-	(catch :skip
-	  ;; Ignore closing parts of inline tasks.
-	  (when (and (fboundp 'org-inlinetask-end-p) (org-inlinetask-end-p))
-	    (throw :skip t))
-          (when (and fontify (bound-and-true-p jit-lock-mode))
-            (save-match-data
-              (jit-lock-fontify-now
-               (match-beginning 0) (match-end 0))))
-	  (setq todo (and (match-end 1) (match-string-no-properties 1)))
-          (unless (org-element--cache-active-p)
-	    (setq tags (and (match-end 4) (org-trim (match-string 4)))))
-	  (goto-char (setq lspos (match-beginning 0)))
-	  (setq level (org-reduced-level (org-outline-level))
-		category (org-get-category))
-          (when (eq action 'agenda)
-            (setq ts-date-pair (org-agenda-entry-get-agenda-timestamp (point))
-		  ts-date (car ts-date-pair)
-		  ts-date-type (cdr ts-date-pair)))
-	  (setq i llast llast level)
-          (unless (org-element--cache-active-p)
-	    ;; remove tag lists from same and sublevels
-	    (while (>= i level)
-	      (when (setq entry (assoc i tags-alist))
-	        (setq tags-alist (delete entry tags-alist)))
-	      (setq i (1- i)))
-	    ;; add the next tags
-	    (when tags
-	      (setq tags (org-split-string tags ":")
-		    tags-alist
-		    (cons (cons level tags) tags-alist))))
-	  ;; compile tags for current headline
-          (if (org-element--cache-active-p)
-              (setq tags-list (org-get-tags nil nil fontify)
-                    org-scanner-tags tags-list)
-	    (setq tags-list
-		  (if org-use-tag-inheritance
-		      (apply 'append (mapcar 'cdr (reverse tags-alist)))
-		    tags)
-		  org-scanner-tags tags-list)
-	    (when org-use-tag-inheritance
-	      (setcdr (car tags-alist)
-		      (mapcar (lambda (x)
-			        (setq x (copy-sequence x))
-			        (org-add-prop-inherited x))
-			      (cdar tags-alist))))
-	    (when (and tags org-use-tag-inheritance
-		       (or (not (eq t org-use-tag-inheritance))
-			   org-tags-exclude-from-inheritance))
-	      ;; Selective inheritance, remove uninherited ones.
-	      (setcdr (car tags-alist)
-		      (org-remove-uninherited-tags (cdar tags-alist)))))
-	  (when (and
+      (if (org-element--cache-active-p)
+          (let ((fast-re (concat "^"
+                                 (if start-level
+		                     ;; Get the correct level to match
+		                     (concat "\\*\\{" (number-to-string start-level) "\\} ")
+		                   org-outline-regexp))))
+            (org-element-cache-map
+             (lambda (el)
+               (when (and fontify (bound-and-true-p jit-lock-mode))
+                 (save-match-data
+                   (jit-lock-fontify-now
+                    (org-element-property :begin el)
+                    (or (org-element-property :contents-begin el)
+                        (org-element-property :end el)))))
+               (goto-char (org-element-property :begin el))
+               (setq todo (org-element-property :todo-keyword el)
+                     level (org-element-property :level el)
+                     category (org-entry-get-with-inheritance "CATEGORY" nil el)
+                     tags-list (org-get-tags el)
+                     org-scanner-tags tags-list)
+               (when (eq action 'agenda)
+                 (setq ts-date-pair (org-agenda-entry-get-agenda-timestamp (point))
+		       ts-date (car ts-date-pair)
+		       ts-date-type (cdr ts-date-pair)))
+               (catch :skip
+                 (when (and
 
-		 ;; eval matcher only when the todo condition is OK
-		 (and (or (not todo-only) (member todo org-todo-keywords-1))
-		      (if (functionp matcher)
-			  (let ((case-fold-search t) (org-trust-scanner-tags t))
-			    (funcall matcher todo tags-list level))
-			matcher))
+		        ;; eval matcher only when the todo condition is OK
+		        (and (or (not todo-only) (member todo org-todo-keywords-1))
+		             (if (functionp matcher)
+			         (let ((case-fold-search t) (org-trust-scanner-tags t))
+			           (funcall matcher todo tags-list level))
+			       matcher))
 
-		 ;; Call the skipper, but return t if it does not
-		 ;; skip, so that the `and' form continues evaluating.
-		 (progn
-		   (unless (eq action 'sparse-tree) (org-agenda-skip))
-		   t)
+		        ;; Call the skipper, but return t if it does not
+		        ;; skip, so that the `and' form continues evaluating.
+		        (progn
+		          (unless (eq action 'sparse-tree) (org-agenda-skip el))
+		          t)
 
-		 ;; Check if timestamps are deselecting this entry
-		 (or (not todo-only)
-		     (and (member todo org-todo-keywords-1)
-			  (or (not org-agenda-tags-todo-honor-ignore-options)
-			      (not (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item))))))
+		        ;; Check if timestamps are deselecting this entry
+		        (or (not todo-only)
+		            (and (member todo org-todo-keywords-1)
+			         (or (not org-agenda-tags-todo-honor-ignore-options)
+			             (not (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item))))))
 
-	    ;; select this headline
-	    (cond
-	     ((eq action 'sparse-tree)
-	      (and org-highlight-sparse-tree-matches
-		   (org-get-heading) (match-end 0)
-		   (org-highlight-new-match
-		    (match-beginning 1) (match-end 1)))
-	      (org-fold-show-context 'tags-tree))
-	     ((eq action 'agenda)
-	      (setq txt (org-agenda-format-item
-			 ""
-			 (concat
-			  (if (eq org-tags-match-list-sublevels 'indented)
-			      (make-string (1- level) ?.) "")
-			  (org-get-heading))
-			 (make-string level ?\s)
-			 category
-			 tags-list)
-		    priority (org-get-priority txt))
-	      (goto-char lspos)
-	      (setq marker (org-agenda-new-marker))
-	      (org-add-props txt props
-		'org-marker marker 'org-hd-marker marker 'org-category category
-		'todo-state todo
-                'ts-date ts-date
-		'priority priority
-                'type (concat "tagsmatch" ts-date-type))
-	      (push txt rtn))
-	     ((functionp action)
-	      (setq org-map-continue-from nil)
-	      (save-excursion
-		(setq rtn1 (funcall action))
-		(push rtn1 rtn)))
-	     (t (user-error "Invalid action")))
+	           ;; select this headline
+	           (cond
+	            ((eq action 'sparse-tree)
+	             (and org-highlight-sparse-tree-matches
+		          (org-get-heading) (match-end 0)
+		          (org-highlight-new-match
+		           (match-beginning 1) (match-end 1)))
+	             (org-fold-show-context 'tags-tree))
+	            ((eq action 'agenda)
+	             (setq txt (org-agenda-format-item
+			        ""
+			        (concat
+			         (if (eq org-tags-match-list-sublevels 'indented)
+			             (make-string (1- level) ?.) "")
+			         (org-get-heading))
+			        (make-string level ?\s)
+			        category
+			        tags-list)
+		           priority (org-get-priority txt))
+	             (goto-char (org-element-property :begin el))
+	             (setq marker (org-agenda-new-marker))
+	             (org-add-props txt props
+		       'org-marker marker 'org-hd-marker marker 'org-category category
+		       'todo-state todo
+                       'ts-date ts-date
+		       'priority priority
+                       'type (concat "tagsmatch" ts-date-type))
+	             (push txt rtn))
+	            ((functionp action)
+	             (setq org-map-continue-from nil)
+	             (save-excursion
+		       (setq rtn1 (funcall action))
+		       (push rtn1 rtn)))
+	            (t (user-error "Invalid action")))
 
-	    ;; if we are to skip sublevels, jump to end of subtree
-	    (unless org-tags-match-list-sublevels
-	      (org-end-of-subtree t)
-	      (backward-char 1))))
-	;; Get the correct position from where to continue
-	(if org-map-continue-from
-	    (goto-char org-map-continue-from)
-	  (and (= (point) lspos) (end-of-line 1)))))
+	           ;; if we are to skip sublevels, jump to end of subtree
+	           (unless org-tags-match-list-sublevels
+	             (goto-char (1- (org-element-property :end el))))))
+               ;; Get the correct position from where to continue
+	       (when org-map-continue-from
+	         (goto-char org-map-continue-from))
+               ;; Return nil.
+               nil)
+             :next-re fast-re
+             :fail-re fast-re))
+        (while (let (case-fold-search)
+	         (re-search-forward re nil t))
+	  (setq org-map-continue-from nil)
+	  (catch :skip
+	    ;; Ignore closing parts of inline tasks.
+	    (when (and (fboundp 'org-inlinetask-end-p) (org-inlinetask-end-p))
+	      (throw :skip t))
+            (when (and fontify (bound-and-true-p jit-lock-mode))
+              (save-match-data
+                (jit-lock-fontify-now
+                 (match-beginning 0) (match-end 0))))
+	    (setq todo (and (match-end 1) (match-string-no-properties 1)))
+            (unless (org-element--cache-active-p)
+	      (setq tags (and (match-end 4) (org-trim (match-string 4)))))
+	    (goto-char (setq lspos (match-beginning 0)))
+	    (setq level (org-reduced-level (org-outline-level))
+		  category (org-get-category))
+            (when (eq action 'agenda)
+              (setq ts-date-pair (org-agenda-entry-get-agenda-timestamp (point))
+		    ts-date (car ts-date-pair)
+		    ts-date-type (cdr ts-date-pair)))
+	    (setq i llast llast level)
+            (unless (org-element--cache-active-p)
+	      ;; remove tag lists from same and sublevels
+	      (while (>= i level)
+	        (when (setq entry (assoc i tags-alist))
+	          (setq tags-alist (delete entry tags-alist)))
+	        (setq i (1- i)))
+	      ;; add the next tags
+	      (when tags
+	        (setq tags (org-split-string tags ":")
+		      tags-alist
+		      (cons (cons level tags) tags-alist))))
+	    ;; compile tags for current headline
+            (if (org-element--cache-active-p)
+                (setq tags-list (org-get-tags nil nil fontify)
+                      org-scanner-tags tags-list)
+	      (setq tags-list
+		    (if org-use-tag-inheritance
+		        (apply 'append (mapcar 'cdr (reverse tags-alist)))
+		      tags)
+		    org-scanner-tags tags-list)
+	      (when org-use-tag-inheritance
+	        (setcdr (car tags-alist)
+		        (mapcar (lambda (x)
+			          (setq x (copy-sequence x))
+			          (org-add-prop-inherited x))
+			        (cdar tags-alist))))
+	      (when (and tags org-use-tag-inheritance
+		         (or (not (eq t org-use-tag-inheritance))
+			     org-tags-exclude-from-inheritance))
+	        ;; Selective inheritance, remove uninherited ones.
+	        (setcdr (car tags-alist)
+		        (org-remove-uninherited-tags (cdar tags-alist)))))
+	    (when (and
+
+		   ;; eval matcher only when the todo condition is OK
+		   (and (or (not todo-only) (member todo org-todo-keywords-1))
+		        (if (functionp matcher)
+			    (let ((case-fold-search t) (org-trust-scanner-tags t))
+			      (funcall matcher todo tags-list level))
+			  matcher))
+
+		   ;; Call the skipper, but return t if it does not
+		   ;; skip, so that the `and' form continues evaluating.
+		   (progn
+		     (unless (eq action 'sparse-tree) (org-agenda-skip))
+		     t)
+
+		   ;; Check if timestamps are deselecting this entry
+		   (or (not todo-only)
+		       (and (member todo org-todo-keywords-1)
+			    (or (not org-agenda-tags-todo-honor-ignore-options)
+			        (not (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item))))))
+
+	      ;; select this headline
+	      (cond
+	       ((eq action 'sparse-tree)
+	        (and org-highlight-sparse-tree-matches
+		     (org-get-heading) (match-end 0)
+		     (org-highlight-new-match
+		      (match-beginning 1) (match-end 1)))
+	        (org-fold-show-context 'tags-tree))
+	       ((eq action 'agenda)
+	        (setq txt (org-agenda-format-item
+			   ""
+			   (concat
+			    (if (eq org-tags-match-list-sublevels 'indented)
+			        (make-string (1- level) ?.) "")
+			    (org-get-heading))
+			   (make-string level ?\s)
+			   category
+			   tags-list)
+		      priority (org-get-priority txt))
+	        (goto-char lspos)
+	        (setq marker (org-agenda-new-marker))
+	        (org-add-props txt props
+		  'org-marker marker 'org-hd-marker marker 'org-category category
+		  'todo-state todo
+                  'ts-date ts-date
+		  'priority priority
+                  'type (concat "tagsmatch" ts-date-type))
+	        (push txt rtn))
+	       ((functionp action)
+	        (setq org-map-continue-from nil)
+	        (save-excursion
+		  (setq rtn1 (funcall action))
+		  (push rtn1 rtn)))
+	       (t (user-error "Invalid action")))
+
+	      ;; if we are to skip sublevels, jump to end of subtree
+	      (unless org-tags-match-list-sublevels
+	        (org-end-of-subtree t)
+	        (backward-char 1))))
+	  ;; Get the correct position from where to continue
+	  (if org-map-continue-from
+	      (goto-char org-map-continue-from)
+	    (and (= (point) lspos) (end-of-line 1))))))
     (when (and (eq action 'sparse-tree)
 	       (not org-sparse-tree-open-archived-trees))
       (org-fold-hide-archived-subtrees (point-min) (point-max)))
@@ -11643,10 +11734,11 @@ The tags are fontified when FONTIFY is non-nil."
         ;; Return parsed tags.
         local-tags))))
 
-(defun org-get-tags (&optional pos local fontify)
+(defun org-get-tags (&optional pos-or-element local fontify)
   "Get the list of tags specified in the current headline.
 
-When argument POS is non-nil, retrieve tags for headline at POS.
+When argument POS-OR-ELEMENT is non-nil, retrieve tags for headline at
+POS.
 
 According to `org-use-tag-inheritance', tags may be inherited
 from parent headlines, and from the whole document, through
@@ -11663,16 +11755,23 @@ Inherited tags have the `inherited' text property.
 The tags are fontified when FONTIFY is non-nil."
   (save-match-data
     (if (and org-trust-scanner-tags
-             (or (not pos) (eq pos (point)))
+             (or (not pos-or-element) (eq pos-or-element (point)))
              (not local))
         org-scanner-tags
-      (org-with-point-at (unless (org-element-type pos) (or pos (point)))
-        (unless (and (not (org-element-type pos))
+      (org-with-point-at (unless (org-element-type pos-or-element)
+                        (or pos-or-element (point)))
+        (unless (and (not (org-element-type pos-or-element))
                      (org-before-first-heading-p))
-          (unless (org-element-type pos) (org-back-to-heading t))
-          (let ((ltags (if (org-element-type pos) (org-element-property :tags (org-element-lineage pos '(headline) t)) (org--get-local-tags fontify))) itags)
+          (unless (org-element-type pos-or-element) (org-back-to-heading t))
+          (let ((ltags (if (org-element-type pos-or-element)
+                           (org-element-property :tags (org-element-lineage pos-or-element '(headline) t))
+                         (org--get-local-tags fontify)))
+                itags)
             (if (or local (not org-use-tag-inheritance)) ltags
-              (let ((cached (and (org-element--cache-active-p) (if (org-element-type pos) (org-element-lineage pos '(headline) t) (org-element-at-point nil 'cached)))))
+              (let ((cached (and (org-element--cache-active-p)
+                                 (if (org-element-type pos-or-element)
+                                     (org-element-lineage pos-or-element '(headline) t)
+                                   (org-element-at-point nil 'cached)))))
                 (if cached
                     (while (setq cached (org-element-property :parent cached))
                       (setq itags (nconc (mapcar #'org-add-prop-inherited
@@ -12385,7 +12484,7 @@ no match, the marker will point nowhere.
 Note that also `org-entry-get' calls this function, if the INHERIT flag
 is set.")
 
-(defun org-entry-get-with-inheritance (property &optional literal-nil)
+(defun org-entry-get-with-inheritance (property &optional literal-nil element)
   "Get PROPERTY of entry or content at point, search higher levels if needed.
 The search will stop at the first ancestor which has the property defined.
 If the value found is \"nil\", return nil to show that the property
@@ -12395,8 +12494,9 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
   (org-with-wide-buffer
    (let (value at-bob-no-heading)
      (catch 'exit
-       (if-let ((element (and (org-element--cache-active-p)
-                              (org-element-at-point nil 'cached))))
+       (if-let ((element (or element
+                             (and (org-element--cache-active-p)
+                                  (org-element-at-point nil 'cached)))))
            (let ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
              (while t
                (let* ((v (org--property-local-values property literal-nil element))
@@ -19655,12 +19755,14 @@ If INVISIBLE-NOT-OK is non-nil, an invisible heading line is not ok."
     (and (bolp) (or (not invisible-not-ok) (not (org-fold-folded-p)))
 	 (looking-at outline-regexp))))
 
-(defun org-in-commented-heading-p (&optional no-inheritance)
+(defun org-in-commented-heading-p (&optional no-inheritance element)
   "Non-nil if point is under a commented heading.
 This function also checks ancestors of the current headline,
-unless optional argument NO-INHERITANCE is non-nil."
+unless optional argument NO-INHERITANCE is non-nil.
+
+Optional argument ELEMENT contains element at point."
   (save-match-data
-    (if-let ((el (org-element-at-point nil 'cached)))
+    (if-let ((el (or element (org-element-at-point nil 'cached))))
         (catch :found
           (setq el (org-element-lineage el '(headline) 'include-self))
           (if no-inheritance
@@ -19680,19 +19782,21 @@ unless optional argument NO-INHERITANCE is non-nil."
        (t
         (save-excursion (and (org-up-heading-safe) (org-in-commented-heading-p))))))))
 
-(defun org-in-archived-heading-p (&optional no-inheritance)
+(defun org-in-archived-heading-p (&optional no-inheritance element)
   "Non-nil if point is under an archived heading.
 This function also checks ancestors of the current headline,
-unless optional argument NO-INHERITANCE is non-nil."
+unless optional argument NO-INHERITANCE is non-nil.
+
+Optional argument ELEMENT contains element at point."
   (cond
    ((org-before-first-heading-p) nil)
-   ((let ((tags (org-get-tags nil 'local)))
+   ((let ((tags (org-get-tags element 'local)))
       (and tags
 	   (cl-some (apply-partially #'string= org-archive-tag) tags))))
    (no-inheritance nil)
    (t
     (if (org-element--cache-active-p)
-        (let ((tags (org-get-tags)))
+        (let ((tags (org-get-tags element)))
           (and tags
 	       (cl-some (apply-partially #'string= org-archive-tag) tags)))
       (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p)))))))
@@ -19875,8 +19979,8 @@ If there is no such heading, return nil."
       (unless (< (funcall outline-level) level)
         (point)))))
 
-(defun org-end-of-subtree (&optional invisible-ok to-heading)
-  "Goto to the end of a subtree."
+(defun org-end-of-subtree (&optional invisible-ok to-heading element)
+  "Goto to the end of a subtree at point or for ELEMENT heading."
   ;; This contains an exact copy of the original function, but it uses
   ;; `org-back-to-heading-or-point-min', to make it work also in invisible
   ;; trees and before first headline.  And is uses an invisible-ok argument.
@@ -19886,7 +19990,7 @@ If there is no such heading, return nil."
   ;; than the outline version.
   (org-back-to-heading-or-point-min invisible-ok)
   (unless (and (org-element--cache-active-p)
-               (let ((cached (org-element-at-point nil t)))
+               (let ((cached (or element (org-element-at-point nil t))))
                  (and cached
                       (eq 'headline (org-element-type cached))
                       (goto-char (org-element-property

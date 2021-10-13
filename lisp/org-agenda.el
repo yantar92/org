@@ -4164,21 +4164,23 @@ The correct usage for `org-agenda-skip-function' is to bind it with
 `let' to scope it dynamically into the agenda-constructing command.
 A good way to set it is through options in `org-agenda-custom-commands'.")
 
-(defun org-agenda-skip ()
+(defun org-agenda-skip (&optional element)
   "Throw to `:skip' in places that should be skipped.
 Also moves point to the end of the skipped region, so that search can
-continue from there."
+continue from there.
+
+Optional argument ELEMENT contains element at point."
   (let ((p (point-at-bol)) to)
     (when (or
 	   (save-excursion (goto-char p) (looking-at comment-start-skip))
 	   (and org-agenda-skip-archived-trees (not org-agenda-archives-mode)
-		(or (and (save-match-data (org-in-archived-heading-p))
-		         (org-end-of-subtree t))
+		(or (and (save-match-data (org-in-archived-heading-p nil element))
+		         (org-end-of-subtree t element))
 		    (and (member org-archive-tag org-file-tags)
 			 (goto-char (point-max)))))
 	   (and org-agenda-skip-comment-trees
-                (org-in-commented-heading-p)
-		(org-end-of-subtree t))
+                (org-in-commented-heading-p nil element)
+		(org-end-of-subtree t element))
 	   (and (setq to (or (org-agenda-skip-eval org-agenda-skip-function-global)
 			     (org-agenda-skip-eval org-agenda-skip-function)))
 		(goto-char to))
