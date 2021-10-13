@@ -79,6 +79,7 @@
 (declare-function org-macro-extract-arguments "org-macro" (s))
 (declare-function org-reduced-level "org" (l))
 (declare-function org-unescape-code-in-string "org-src" (s))
+(declare-function org-inlinetask-outline-regexp "org-inlinetask" ())
 (declare-function outline-next-heading "outline" ())
 (declare-function outline-previous-heading "outline" ())
 
