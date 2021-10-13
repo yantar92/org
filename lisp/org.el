@@ -166,6 +166,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-element-at-point-no-context "org-element" (&optional pom))
 (declare-function org-element-cache-refresh "org-element" (pos))
 (declare-function org-element-cache-reset "org-element" (&optional all))
+(declare-function org-element-cache-map "org-element" (func &rest keys))
 (declare-function org-element-contents "org-element" (element))
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-copy "org-element" (datum))
@@ -3614,7 +3615,7 @@ This is needed for font-lock setup.")
 		  "org-agenda"
 		  (beg end))
 (declare-function org-agenda-set-restriction-lock "org-agenda" (&optional type))
-(declare-function org-agenda-skip "org-agenda" ())
+(declare-function org-agenda-skip "org-agenda" (&optional element))
 (declare-function org-attach-expand "org-attach" (file))
 (declare-function org-attach-reveal "org-attach" ())
 (declare-function org-attach-reveal-in-emacs "org-attach" ())
@@ -10741,7 +10742,8 @@ When FONTIFY is non-nil, make sure that matches are fontified."
                ;; Return nil.
                nil)
              :next-re fast-re
-             :fail-re fast-re))
+             :fail-re fast-re
+             :narrow t))
         (while (let (case-fold-search)
 	         (re-search-forward re nil t))
 	  (setq org-map-continue-from nil)
