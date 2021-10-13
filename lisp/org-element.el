@@ -6855,7 +6855,7 @@ buffers."
     (org-element--cache-set-timer (current-buffer))))
 
 ;;;###autoload
-(cl-defun org-element-cache-map (func &key (granularity 'headline+inlinetask) restrict-elements next-re fail-re from-pos (to-pos (point-max)) after-element)
+(cl-defun org-element-cache-map (func &key (granularity 'headline+inlinetask) restrict-elements next-re fail-re from-pos (to-pos (point-max)) after-element limit-count)
   "Map all elements in current buffer with FUNC according to
 GRANULARITY.  Collect non-nil return values into result list.
 
@@ -6880,6 +6880,9 @@ AFTER-ELEMENT, when non-nil, bounds the mapping to all the elements
 after AFTER-ELEMENT (i.e. if AFTER-ELEMENT is a headline section, we
 map all the elements starting from first element inside section, but
 not including the section).
+
+LIMIT-COUNT limits mapping to that many first matches where FUNC
+returns non-nil.
 
 This function is a subset of what `org-element-map' does, but much
 more performant.  Cached elements are supplied as the single argument
@@ -7150,7 +7153,8 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                                      (if (car result)
                                          (cl-incf count-predicate-calls-match)
                                        (cl-incf count-predicate-calls-fail)))
-                                 (push (funcall func data) result))
+                                 (push (funcall func data) result)
+                                 (when (car result) (cl-incf count-predicate-calls-match)))
                                ;; Use NEXT-RE/FAIL-RE to skip
                                ;; forward to next match.
                                (goto-char (max start (point)))
@@ -7163,6 +7167,11 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                              (unless (and (eq modified-tic org-element--cache-change-tic)
                                           (eq cache-size (cache-size)))
                                (cache-walk-restart))
+                             ;; Reached LIMIT-COUNT.  Abort.
+                             (when (and limit-count
+                                        (>= count-predicate-calls-match
+                                           limit-count))
+                               (cache-walk-abort))
                              (if (org-element-property :cached data)
 		                 (setq prev data)
                                (setq prev nil)))
