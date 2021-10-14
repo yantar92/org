@@ -7238,7 +7238,7 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                        (or (not org-element--cache-map-statistics-threshold)
                            (> (- (float-time) time) org-element--cache-map-statistics-threshold)))
               (message "Mapped over elements in %S. %d/%d predicate matches. Total time: %f sec. Time running predicates: %f sec (%f sec avg)
-       Calling parameters: :granularity %S :restrict-elements %S :next-re %S :fail-re %S :from-pos %S :to-pos %S :after-element %S"
+       Calling parameters: :granularity %S :restrict-elements %S :next-re %S :fail-re %S :from-pos %S :to-pos %S :limit-count %S :after-element %S"
                        (current-buffer)
                        count-predicate-calls-match
                        (+ count-predicate-calls-match
@@ -7250,7 +7250,7 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                            0
                          (/ predicate-time (+ count-predicate-calls-match
                                               count-predicate-calls-fail)))
-                       granularity restrict-elements next-re fail-re from-pos to-pos after-element))
+                       granularity restrict-elements next-re fail-re from-pos to-pos limit-count after-element))
             ;; Return result.
             (nreverse result)))))))
 
