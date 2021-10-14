@@ -38,7 +38,7 @@
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-get-tags "org" (&optional pos local fontify))
 (declare-function org-subtree-end-visible-p "org" ())
-(declare-function org-narrow-to-subtree "org" ())
+(declare-function org-narrow-to-subtree "org" (&optional element))
 (declare-function org-at-property-p "org" ())
 (declare-function org-re-property "org" (property &optional literal allow-null value))
 (declare-function org-item-beginning-re "org" ())

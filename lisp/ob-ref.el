@@ -62,7 +62,7 @@
 (declare-function org-id-find-id-file "org-id" (id))
 (declare-function org-id-find-id-in-file "org-id" (id file &optional markerp))
 (declare-function org-in-commented-heading-p "org" (&optional no-inheritance))
-(declare-function org-narrow-to-subtree "org" ())
+(declare-function org-narrow-to-subtree "org" (&optional element))
 (declare-function org-fold-show-context "org-fold" (&optional key))
 
 (defvar org-babel-update-intermediate nil
