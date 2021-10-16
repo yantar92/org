@@ -6128,9 +6128,18 @@ request."
                                     ;; (not (avl-tree-member-p org-element--cache p))
                                     ))))
                        (org-element--cache-log-message "Updating parent in %S\n Old parent: %S\n New parent: %S"
-                                                       (org-element--format-element data)
-                                                       (org-element--format-element (org-element-property :parent data))
-                                                       (org-element--format-element parent))
+                                            (org-element--format-element data)
+                                            (org-element--format-element (org-element-property :parent data))
+                                            (org-element--format-element parent))
+                       (when (and (eq 'org-data (org-element-type parent))
+                                  (not (eq 'headline (org-element-type data))))
+                         ;; FIXME: This check is here to see whether
+                         ;; such error happens within
+                         ;; `org-element--cache-process-request' or somewhere
+                         ;; else.
+                         (org-element--cache-warn "Added org-data parent to non-headline element: %S" data)
+                         (org-element-cache-reset)
+                         (throw 'quit t))
 		       (org-element-put-property data :parent parent)
 		       (let ((s (org-element-property :structure parent)))
 			 (when (and s (org-element-property :structure data))
