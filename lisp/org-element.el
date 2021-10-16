@@ -6288,6 +6288,11 @@ the process stopped before finding the expected result."
                                          pos t))
                                (beginning-of-line)
                                t)
+                       ;; There are headings with lower level than
+                       ;; ELEMENT between ELEM-END and POS.  Siblings
+                       ;; may exist though.  Parse starting from the
+                       ;; last sibling or from ELEM-END if there are
+                       ;; no other siblings.
                        (goto-char pos)
                        (re-search-backward
                         (rx-to-string
