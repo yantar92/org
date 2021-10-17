@@ -6541,7 +6541,7 @@ scheduled items with an hour specification like [h]h:mm."
 		          (head (save-excursion
                                   (goto-char (org-element-property :begin el))
                                   (re-search-forward org-outline-regexp-bol)
-                                  (buffer-substring (point) (line-end-position))))
+                                  (org-buffer-substring-fontified (point) (line-end-position))))
 		          (time
 		           (cond
 		            ;; No time of day designation if it is only a
