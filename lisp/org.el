@@ -19799,18 +19799,24 @@ This function also checks ancestors of the current headline,
 unless optional argument NO-INHERITANCE is non-nil.
 
 Optional argument ELEMENT contains element at point."
-  (cond
-   ((org-before-first-heading-p) nil)
-   ((let ((tags (org-get-tags element 'local)))
-      (and tags
-	   (cl-some (apply-partially #'string= org-archive-tag) tags))))
-   (no-inheritance nil)
-   (t
-    (if (org-element--cache-active-p)
-        (let ((tags (org-get-tags element)))
+  (let ((element (or element
+                     (when (org-element--cache-active-p)
+                       (org-element-lineage
+                        (org-element-at-point)
+                        '(headline inlinetask) t)))))
+    (cond
+     ((org-before-first-heading-p) nil)
+     ((if element
+          (org-element-property :archivedp element)
+        (let ((tags (org-get-tags element 'local)))
           (and tags
-	       (cl-some (apply-partially #'string= org-archive-tag) tags)))
-      (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p)))))))
+	       (cl-some (apply-partially #'string= org-archive-tag) tags)))))
+     (no-inheritance nil)
+     (t
+      (if element
+          (seq-some (lambda (el) (org-element-property :archivedp el))
+                    (org-element-lineage (or element (org-element-at-point))))
+        (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p))))))))
 
 (defun org-at-comment-p nil
   "Return t if cursor is in a commented line."
