@@ -79,12 +79,6 @@
 
 ;;; Emacs < 28.1 compatibility
 
-(if (fboundp 'length>)
-    (defalias 'org-length> #'length>)
-  (defun org-length> (sequence length)
-    "Return non-nil if SEQUENCE is longer than LENGTH."
-    (> (length sequence) length)))
-
 (if (fboundp 'file-name-concat)
     (defalias 'org-file-name-concat #'file-name-concat)
   (defun org-file-name-concat (directory &rest components)
@@ -100,7 +94,7 @@ inserted before contatenating."
        (delq nil
              (mapcar
               (lambda (str)
-                (when (and str (not (string-empty-p str))
+                (when (and str (not (seq-empty-p str))
                            (string-match "\\(.+\\)/?" str))
                   (match-string 1 str)))
               (cons directory components)))
@@ -115,6 +109,17 @@ inserted before contatenating."
 
 
 ;;; Emacs < 27.1 compatibility
+
+(unless (fboundp 'combine-change-calls)
+  ;; A stub when `combine-change-calls' was not yet there.
+  (defmacro combine-change-calls (_beg _end &rest body)
+    (declare (debug (form form def-body)) (indent 2))
+    `(progn ,@body)))
+
+(if (version< emacs-version "27.1")
+    (defsubst org-replace-buffer-contents (source &optional _max-secs _max-costs)
+      (replace-buffer-contents source))
+  (defalias 'org-replace-buffer-contents #'replace-buffer-contents))
 
 (unless (fboundp 'proper-list-p)
   ;; `proper-list-p' was added in Emacs 27.1.  The function below is

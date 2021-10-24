@@ -13,7 +13,7 @@
 @c %**end of header
 
 @copying
-This manual is for Org version 9.5.
+This manual is for Org version 9.6.
 
 Copyright @copyright{} 2004--2021 Free Software Foundation, Inc.
 
@@ -39,7 +39,7 @@ modify this GNU manual.''
 @finalout
 @titlepage
 @title The Org Manual
-@subtitle Release 9.5
+@subtitle Release 9.6
 @author The Org Mode Developers
 @page
 @vskip 0pt plus 1filll
@@ -70,6 +70,7 @@ modify this GNU manual.''
 * Markup for Rich Contents::     Compose beautiful documents.
 * Exporting::                    Sharing and publishing notes.
 * Publishing::                   Create a web site of linked Org files.
+* Citation handling::            create, follow and export citations.
 * Working with Source Code::     Export, evaluate, and tangle code blocks.
 * Miscellaneous::                All the rest which did not fit elsewhere.
 * Hacking::                      How to hack your way around.
@@ -188,6 +189,11 @@ Column View
 * Using column view::            How to create and use column view.
 * Capturing column view::        A dynamic block for column view.
 
+Defining columns
+
+* Scope of column definitions::  Where defined, where valid?
+* Column attributes::            Appearance and content of a column.
+
 Dates and Times
 
 * Timestamps::                   Assigning a time to a tree entry.
@@ -234,6 +240,12 @@ Capture
 * Setting up capture::           Where notes will be stored.
 * Using capture::                Commands to invoke and terminate capture.
 * Capture templates::            Define the outline of different note types.
+
+Capture templates
+
+* Template elements::            What is needed for a complete template entry.
+* Template expansion::           Filling in information about time and context.
+* Templates in contexts::        Only show a template in a specific context.
 
 Attachments
 
@@ -353,6 +365,8 @@ HTML Export
 * Example blocks in @LaTeX{} export:: Attributes specific to example blocks.
 * Special blocks in @LaTeX{} export:: Attributes specific to special blocks.
 * Horizontal rules in @LaTeX{} export:: Attributes specific to horizontal rules.
+* Verse blocks in @LaTeX{} export:: Attributes specific to special blocks.
+* Quote blocks in @LaTeX{} export:: Attributes specific to quote blocks.
 
 OpenDocument Text Export
 
@@ -368,6 +382,11 @@ OpenDocument Text Export
 * Labels and captions in ODT export:: Rendering objects.
 * Literal examples in ODT export:: For source code and example blocks.
 * Advanced topics in ODT export:: For power users.
+
+Math formatting in ODT export
+
+* @LaTeX{} math snippets::       Embedding in @LaTeX{} format.
+* MathML and OpenDocument formula files:: Embedding in native format.
 
 Texinfo Export
 
@@ -413,6 +432,11 @@ Sample Configuration
 * Simple example::               One-component publishing.
 * Complex example::              A multi-component publishing example.
 
+Citation handling
+
+* Citations::
+* Citation export processors::
+
 Working with Source Code
 
 * Features Overview::            Enjoy the versatility of source blocks.
@@ -440,6 +464,7 @@ Miscellaneous
 * Dynamic Headline Numbering::   Display and update outline numbering.
 * The Very Busy @kbd{C-c C-c} Key:: When in doubt, press @kbd{C-c C-c}.
 * In-buffer Settings::           Overview of keywords.
+* Regular Expressions::          Elisp regular expressions.
 * Org Syntax::                   Formal description of Org's syntax.
 * Documentation Access::         Read documentation about current syntax.
 * Escape Character::             Prevent Org from interpreting your writing.
@@ -602,7 +627,7 @@ You can clone Org's repository and install Org like this:
 
 @example
 $ cd ~/src/
-$ git clone https://code.orgmode.org/bzg/org-mode.git
+$ git clone https://git.savannah.gnu.org/git/emacs/org-mode.git
 $ cd org-mode/
 $ make autoloads
 @end example
@@ -611,8 +636,11 @@ Note that in this case, @samp{make autoloads} is mandatory: it defines
 Org's version in @samp{org-version.el} and Org's autoloads in
 @samp{org-loaddefs.el}.
 
-Remember to add the correct load path as described in the method
-above.
+Make sure you set the load path correctly in your Emacs init file:
+
+@lisp
+(add-to-list 'load-path "~/src/org-mode/lisp")
+@end lisp
 
 You can also compile with @samp{make}, generate the documentation with
 @samp{make doc}, create a local configuration with @samp{make config} and
@@ -621,6 +649,18 @@ list of compilation/installation options.
 
 For more detailed explanations on Org's build system, please check the
 Org Build System page on @uref{https://orgmode.org/worg/dev/org-build-system.html, Worg}.
+
+@anchor{Installing Org's contributed packages}
+@subheading Installing Org's contributed packages
+
+Org's repository used to contain @samp{contrib/} directory for add-ons
+contributed by others.  As of Org 9.5, the directory has been moved to
+the dedicated org-contrib @uref{https://git.sr.ht/~bzg/org-contrib, repository}, which you can install
+separately as a @uref{https://elpa.nongnu.org/nongnu/org-contrib.html, package} from NonGNU ELPA@.
+
+There are enough valuable packages maintained outside of the Org repository.
+Worg has a list of @uref{https://orgmode.org/worg/org-contrib/index.html, org-contrib and external packages}, certainly it is not
+exhaustive.
 
 @node Activation
 @section Activation
@@ -633,7 +673,7 @@ Org Build System page on @uref{https://orgmode.org/worg/dev/org-build-system.htm
 
 Org mode buffers need Font Lock to be turned on: this is the default
 in Emacs@footnote{If you do not use Font Lock globally turn it on in Org buffer
-with @samp{(add-hook 'org-mode-hook 'turn-on-font-lock)}.}.
+with @samp{(add-hook 'org-mode-hook #'turn-on-font-lock)}.}.
 
 There are compatibility issues between Org mode and some other Elisp
 packages (see @ref{Conflicts}).  Please take the
@@ -650,9 +690,9 @@ to globally available keys, like the ones reserved for users (see
 please modify the keys to your own liking.
 
 @lisp
-(global-set-key (kbd "C-c l") 'org-store-link)
-(global-set-key (kbd "C-c a") 'org-agenda)
-(global-set-key (kbd "C-c c") 'org-capture)
+(global-set-key (kbd "C-c l") #'org-store-link)
+(global-set-key (kbd "C-c a") #'org-agenda)
+(global-set-key (kbd "C-c c") #'org-capture)
 @end lisp
 
 @cindex Org mode, turning on
@@ -742,7 +782,6 @@ shown below.
 
 ;; Add latest Org mode to load path.
 (add-to-list 'load-path (expand-file-name "/path/to/org-mode/lisp"))
-(add-to-list 'load-path (expand-file-name "/path/to/org-mode/contrib/lisp" t))
 @end lisp
 
 If an error occurs, a ``backtrace'' can be very useful---see below on
@@ -1405,16 +1444,16 @@ command.
 @kindex C-c / /
 @findex org-occur
 @vindex org-remove-highlights-with-change
-Prompts for a regexp and shows a sparse tree with all matches.  If
-the match is in a headline, the headline is made visible.  If the
-match is in the body of an entry, headline and body are made
-visible.  In order to provide minimal context, also the full
-hierarchy of headlines above the match is shown, as well as the
-headline following the match.  Each match is also highlighted; the
-highlights disappear when the buffer is changed by an editing
-command, or by pressing @kbd{C-c C-c}@footnote{This depends on the option @code{org-remove-highlights-with-change}.}.  When called with
-a @kbd{C-u} prefix argument, previous highlights are kept, so
-several calls to this command can be stacked.
+Prompts for a regexp (see @ref{Regular Expressions}) and shows a sparse
+tree with all matches.  If the match is in a headline, the headline
+is made visible.  If the match is in the body of an entry, headline
+and body are made visible.  In order to provide minimal context,
+also the full hierarchy of headlines above the match is shown, as
+well as the headline following the match.  Each match is also
+highlighted; the highlights disappear when the buffer is changed by
+an editing command, or by pressing @kbd{C-c C-c}@footnote{This depends on the option @code{org-remove-highlights-with-change}.}.  When
+called with a @kbd{C-u} prefix argument, previous highlights
+are kept, so several calls to this command can be stacked.
 
 @item @kbd{M-g n} or @kbd{M-g M-n} (@code{next-error})
 @kindex M-g n
@@ -1853,8 +1892,7 @@ Re-align the table without moving point.
 Re-align the table, move to the next field.  Creates a new row if
 necessary.
 
-@item @kbd{C-c @key{SPC}} (@code{org-table-blank-field})
-@kindex C-c SPC
+@item @kbd{M-x org-table-blank-field}
 @findex org-table-blank-field
 Blank the field at point.
 
@@ -2254,7 +2292,7 @@ mode with @kbd{M-x orgtbl-mode}.  To turn it on by default, for
 example in Message mode, use
 
 @lisp
-(add-hook 'message-mode-hook 'turn-on-orgtbl)
+(add-hook 'message-mode-hook #'turn-on-orgtbl)
 @end lisp
 
 Furthermore, with some special setup, it is possible to maintain
@@ -2680,7 +2718,7 @@ trailing white space and surrounded in double-quotes.  For example:
 concatenates the content of columns 1 and column 2.
 
 When the @samp{N} flag is used, all referenced elements are parsed as
-numbers and interpolated as Lisp numbers, without quotes. Fields that
+numbers and interpolated as Lisp numbers, without quotes.  Fields that
 cannot be parsed as numbers are interpolated as zeros.  For example:
 
 @example
@@ -2691,7 +2729,7 @@ cannot be parsed as numbers are interpolated as zeros.  For example:
 @noindent
 adds columns 1 and 2, equivalent to Calc's @samp{$1+$2}.  Ranges are
 inserted as space-separated fields, so they can be embedded in list or
-vector syntax. For example:
+vector syntax.  For example:
 
 @example
 '(apply '+ '($1..$4));N
@@ -3339,8 +3377,8 @@ the third and fourth columns.  Defaults to graphing all other
 columns aside from the @samp{ind} column.
 
 @item transpose
-When @samp{y}, @samp{yes}, or @samp{t} attempt to transpose the table data before plotting. Also
-recognises the shorthand option @samp{trans}.
+When @samp{y}, @samp{yes}, or @samp{t} attempt to transpose the table data before
+plotting.  Also recognises the shorthand option @samp{trans}.
 
 @item @samp{type}
 Specify the type of the plot, by default one of  @samp{2d}, @samp{3d}, @samp{radar}, or @samp{grid}.
@@ -3367,19 +3405,22 @@ When plotting @samp{3d} or @samp{grid} types, set this to @samp{t} to graph a fl
 mapping rather than a @samp{3d} slope.
 
 @item min
-Provides a minimum axis value that may be used by a plot type. Implicitly
-assumes the @samp{y} axis is being referred to. Can explicitly provide a value for a
-either the @samp{x} or @samp{y} axis with @samp{xmin} and @samp{ymin}.
+Provides a minimum axis value that may be used by a plot type.
+Implicitly assumes the @samp{y} axis is being referred to.  Can
+explicitly provide a value for a either the @samp{x} or @samp{y} axis with
+@samp{xmin} and @samp{ymin}.
 
 @item max
-Provides a maximum axis value that may be used by a plot type. Implicitly
-assumes the @samp{y} axis is being referred to. Can explicitly provide a value for a
-either the @samp{x} or @samp{y} axis with @samp{xmax} and @samp{ymax}.
+Provides a maximum axis value that may be used by a plot type.
+Implicitly assumes the @samp{y} axis is being referred to.  Can
+explicitly provide a value for a either the @samp{x} or @samp{y} axis with
+@samp{xmax} and @samp{ymax}.
 
 @item ticks
-Provides a desired number of axis ticks to display, that may be used by a plot
-type. If none is given a plot type that requires ticks will use
-@code{org--plot/sensible-tick-num} to try to determine a good value.
+Provides a desired number of axis ticks to display, that may be used
+by a plot type.  If none is given a plot type that requires ticks
+will use @code{org--plot/sensible-tick-num} to try to determine a good
+value.
 
 @item @samp{timefmt}
 Specify format of Org mode timestamps as they will be parsed by
@@ -3781,9 +3822,10 @@ it is not found, then the user is queried to create it.}
 @cindex VM links
 @cindex Wanderlust links
 On top of these built-in link types, additional ones are available
-through the @samp{contrib/} directory (see @ref{Installation}).  For example,
-these links to VM or Wanderlust messages are available when you load
-the corresponding libraries from the @samp{contrib/} directory:
+through the @samp{org-contrib} repository (see @ref{Installation}).  For
+example, these links to VM or Wanderlust messages are available when
+you load the corresponding libraries from the @samp{org-contrib}
+repository:
 
 @multitable {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa} {aaaaaaaaaaaaaaaaaaaaaaa}
 @item @samp{vm:folder}
@@ -4036,8 +4078,8 @@ this also to @kbd{M-n} and @kbd{M-p}.
 
 @lisp
 (with-eval-after-load 'org
-  (define-key org-mode-map (kbd "M-n") 'org-next-link)
-  (define-key org-mode-map (kbd "M-p") 'org-previous-link))
+  (define-key org-mode-map (kbd "M-n") #'org-next-link)
+  (define-key org-mode-map (kbd "M-p") #'org-previous-link))
 @end lisp
 @end table
 
@@ -4079,7 +4121,7 @@ replacement text.  Here is an example:
 @lisp
 (setq org-link-abbrev-alist
       '(("bugzilla"        . "http://10.1.2.9/bugzilla/show_bug.cgi?id=")
-        ("Nu Html Checker" . "https://validator.w3.org/nu/?doc=%h") 
+        ("Nu Html Checker" . "https://validator.w3.org/nu/?doc=%h")
         ("duckduckgo"      . "https://duckduckgo.com/?q=%s")
         ("omap"            . "http://nominatim.openstreetmap.org/search?q=%s&polygon=1")
         ("ads"             . "https://ui.adsabs.harvard.edu/search/q=%20author%3A\"%s\"")))
@@ -4173,10 +4215,9 @@ In an Org file, restrict search to headlines.
 Link to a heading with a @samp{CUSTOM_ID} property
 
 @item @samp{/REGEXP/}
-Do a regular expression search for @var{REGEXP}.  This uses the
-Emacs command @code{occur} to list all matches in a separate window.  If
-the target file is in Org mode, @code{org-occur} is used to create
-a sparse tree with the matches.
+Do a regular expression search for @var{REGEXP} (see @ref{Regular Expressions}).  This uses the Emacs command @code{occur} to list all
+matches in a separate window.  If the target file is in Org mode,
+@code{org-occur} is used to create a sparse tree with the matches.
 @end table
 
 As a degenerate case, a file link with an empty file name can be used
@@ -4510,9 +4551,9 @@ interpretation, but it means the same as @samp{#+TODO}, or
 A setup for using several sets in parallel would be:
 
 @example
-#+TODO: TODO | DONE
-#+TODO: REPORT BUG KNOWNCAUSE | FIXED
-#+TODO: | CANCELED
+#+TODO: TODO(t) | DONE(d)
+#+TODO: REPORT(r) BUG(b) KNOWNCAUSE(k) | FIXED(f)
+#+TODO: | CANCELED(c)
 @end example
 
 @cindex completion, of option keywords
@@ -4636,7 +4677,7 @@ checkboxes is blocked from switching to DONE@.
 
 If you need more complex dependency structures, for example
 dependencies between entries in different trees or files, check out
-the contributed module @samp{org-depend.el}.
+the module @samp{org-depend.el} in the @samp{org-contrib} repository.
 
 @node Progress Logging
 @section Progress Logging
@@ -4728,10 +4769,6 @@ example, with the setting
       '((sequence "TODO(t)" "WAIT(w@@/!)" "|" "DONE(d!)" "CANCELED(c@@)")))
 @end lisp
 
-@noindent
-To record a timestamp without a note for TODO keywords configured with
-@samp{@@}, just type @kbd{C-c C-c} to enter a blank note when prompted.
-
 @vindex org-log-done
 You not only define global TODO keywords and fast access keys, but
 also request that a time is recorded when the entry is set to @samp{DONE},
@@ -4756,6 +4793,9 @@ to a buffer:
 #+TODO: TODO(t) WAIT(w@@/!) | DONE(d!) CANCELED(c@@)
 @end example
 
+
+To record a timestamp without a note for TODO keywords configured with
+@samp{@@}, just type @kbd{C-c C-c} to enter a blank note when prompted.
 
 @cindex @samp{LOGGING}, property
 In order to define logging settings that are local to a subtree or
@@ -5034,7 +5074,7 @@ all children are done, you can use the following setup:
   (let (org-log-done org-log-states)   ; turn off logging
     (org-todo (if (= n-not-done 0) "DONE" "TODO"))))
 
-(add-hook 'org-after-todo-statistics-hook 'org-summary-todo)
+(add-hook 'org-after-todo-statistics-hook #'org-summary-todo)
 @end lisp
 
 Another possibility is the use of checkboxes to identify (a hierarchy
@@ -5567,8 +5607,9 @@ mutually exclusive.
 
 Furthermore, the members of a group tag can also be regular
 expressions, creating the possibility of a more dynamic and rule-based
-tag structure.  The regular expressions in the group must be specified
-within curly brackets.  Here is an expanded example:
+tag structure (see @ref{Regular Expressions}).  The regular expressions in
+the group must be specified within curly brackets.  Here is an
+expanded example:
 
 @example
 #+TAGS: [ Vision : @{V@@.+@} ]
@@ -5924,7 +5965,7 @@ prompts for the name of a property, and then for a value.  A sparse
 tree is created with all entries that define this property with the
 given value.  If you enclose the value in curly braces, it is
 interpreted as a regular expression and matched against the property
-values.
+values (see @ref{Regular Expressions}).
 @end table
 
 @node Property Inheritance
@@ -6007,6 +6048,11 @@ from a number of files.
 
 Setting up a column view first requires defining the columns.  This is
 done by defining a column format line.
+
+@menu
+* Scope of column definitions::  Where defined, where valid?
+* Column attributes::            Appearance and content of a column.
+@end menu
 
 @node Scope of column definitions
 @subsubsection Scope of column definitions
@@ -6387,8 +6433,8 @@ block.  If there is a @samp{TBLFM} keyword after the table, the table is
 recalculated automatically after an update.
 
 An alternative way to capture and process property values into a table
-is provided by Eric Schulte's @samp{org-collector.el}, which is
-a contributed package@footnote{Contributed packages are not part of Emacs, but are
+is provided by Eric Schulte's @samp{org-collector.el}, which is a package
+in @samp{org-contrib}@footnote{Contributed packages are not part of Emacs, but are
 distributed with the main distribution of Org---visit
 @uref{https://orgmode.org}.}.  It provides a general API to collect
 properties from entries in a certain scope, and arbitrary Lisp
@@ -6715,6 +6761,8 @@ separator in the latter case, e.g.:
 @multitable {aaaaaaaaaaaaaa} {aaaaaaaaaaaaaaaaaaaaa}
 @item @samp{11am-1:15pm}
 @tab @result{} 11:00-13:15
+@item @samp{11h-13h15}
+@tab @result{} same as above
 @item @samp{11am--1:15pm}
 @tab @result{} same as above
 @item @samp{11am+2:15}
@@ -7576,12 +7624,12 @@ current clock, or applying it to another one.
 By customizing the variable @code{org-clock-idle-time} to some integer,
 such as 10 or 15, Emacs can alert you when you get back to your
 computer after being idle for that many minutes@footnote{On computers using macOS, idleness is based on actual user
-idleness, not just Emacs' idle time.  For X11, you can install
-a utility program @samp{x11idle.c}, available in the @samp{contrib/scripts/}
-directory of the Org Git distribution, or install the xprintidle
-package and set it to the variable @code{org-clock-x11idle-program-name} if
-you are running Debian, to get the same general treatment of idleness.
-On other systems, idle time refers to Emacs idle time only.}, and ask what
+idleness, not just Emacs' idle time.  For X11, you can install a
+utility program @samp{x11idle.c}, available in the @samp{org-contrib/}
+repository, or install the xprintidle package and set it to the
+variable @code{org-clock-x11idle-program-name} if you are running Debian,
+to get the same general treatment of idleness.  On other systems, idle
+time refers to Emacs idle time only.}, and ask what
 you want to do with the idle time.  There will be a question waiting
 for you when you get back, indicating how much idle time has passed
 constantly updated with the current amount, as well as a set of
@@ -7918,6 +7966,15 @@ possible targets, you have to clear the cache with this command.
 @findex org-refile-copy
 Copying works like refiling, except that the original note is not
 deleted.
+
+@item @kbd{C-c C-M-w} (@code{org-refile-reverse})
+@kindex C-c C-M-w
+@findex org-refile-reverse
+Works like refiling, except that it temporarily toggles how the
+value of @code{org-reverse-note-order} applies to the current buffer.  So
+if @code{org-refile} would append the entry as the last entry under the
+target header, @code{org-refile-reverse} will prepend it as the first
+entry, and vice-versa.
 @end table
 
 @node Archiving
@@ -8259,6 +8316,12 @@ key binding like this:
 (define-key global-map (kbd "C-c x")
   (lambda () (interactive) (org-capture nil "x")))
 @end lisp
+
+@menu
+* Template elements::            What is needed for a complete template entry.
+* Template expansion::           Filling in information about time and context.
+* Templates in contexts::        Only show a template in a specific context.
+@end menu
 
 @node Template elements
 @subsubsection Template elements
@@ -9560,8 +9623,9 @@ Like before, but require the @samp{laptop} lines to be tagged also
 
 @cindex regular expressions, with tags search
 Instead of a tag, you may also specify a regular expression enclosed
-in curly braces.  For example, @samp{work+@{^boss.*@}} matches headlines that
-contain the tag @samp{:work:} and any tag @emph{starting} with @samp{boss}.
+in curly braces (see @ref{Regular Expressions}).  For example,
+@samp{work+@{^boss.*@}} matches headlines that contain the tag @samp{:work:} and
+any tag @emph{starting} with @samp{boss}.
 
 @cindex group tags, as regular expressions
 Group tags (see @ref{Tag Hierarchy}) are expanded as regular expressions.
@@ -9600,7 +9664,7 @@ to test the value of a property.  Here is a complex example:
 
 @example
 +work-boss+PRIORITY="A"+Coffee="unlimited"+Effort<2
-         +With=@{Sarah|Denny@}+SCHEDULED>="<2008-10-11>"
+         +With=@{Sarah\|Denny@}+SCHEDULED>="<2008-10-11>"
 @end example
 
 @noindent
@@ -9636,7 +9700,7 @@ So the search string in the example finds entries tagged @samp{work} but
 not @samp{boss}, which also have a priority value @samp{A}, a @samp{Coffee} property
 with the value @samp{unlimited}, an @samp{EFFORT} property that is numerically
 smaller than 2, a @samp{With} property that is matched by the regular
-expression @samp{Sarah|Denny}, and that are scheduled on or after October
+expression @samp{Sarah\|Denny}, and that are scheduled on or after October
 11, 2008.
 
 You can configure Org mode to use property inheritance during
@@ -10036,16 +10100,16 @@ in a single string, with full completion support.  For example,
 
 selects entries with category @samp{work} and effort estimates below 10
 minutes, and deselects entries with tag @samp{John} or matching the
-regexp @samp{plot}.  You can leave @samp{+} out if that does not lead to
-ambiguities.  The sequence of elements is arbitrary.  The filter
-syntax assumes that there is no overlap between categories and tags.
-Otherwise, tags take priority.  If you reply to the prompt with the
-empty string, all filtering is removed.  If a filter is specified,
-it replaces all current filters.  But if you call the command with
-a double prefix argument, or if you add an additional @samp{+} (e.g.,
-@samp{++work}) to the front of the string, the new filter elements are
-added to the active ones.  A single prefix argument applies the
-entire filter in a negative sense.
+regexp @samp{plot} (see @ref{Regular Expressions}).  You can leave @samp{+} out if
+that does not lead to ambiguities.  The sequence of elements is
+arbitrary.  The filter syntax assumes that there is no overlap
+between categories and tags.  Otherwise, tags take priority.  If you
+reply to the prompt with the empty string, all filtering is removed.
+If a filter is specified, it replaces all current filters.  But if
+you call the command with a double prefix argument, or if you add an
+additional @samp{+} (e.g., @samp{++work}) to the front of the string, the new
+filter elements are added to the active ones.  A single prefix
+argument applies the entire filter in a negative sense.
 
 @item @kbd{|} (@code{org-agenda-filter-remove-all})
 Remove all filters in the current agenda view.
@@ -11671,7 +11735,7 @@ current buffer with @kbd{M-x org-cdlatex-mode}, or for all Org
 files with
 
 @lisp
-(add-hook 'org-mode-hook 'turn-on-org-cdlatex)
+(add-hook 'org-mode-hook #'turn-on-org-cdlatex)
 @end lisp
 
 When this mode is enabled, the following features are present (for
@@ -12099,7 +12163,7 @@ Users can install libraries for additional formats from the Emacs
 packaging system.  For easy discovery, these packages have a common
 naming scheme: @code{ox-NAME}, where @var{NAME} is a format.  For
 example, @code{ox-koma-letter} for @emph{koma-letter} back-end.  More libraries
-can be found in the @samp{contrib/} directory (see @ref{Installation}).
+can be found in the @samp{org-contrib} repository (see @ref{Installation}).
 
 @vindex org-export-backends
 Org only loads back-ends for the following formats by default: ASCII,
@@ -12272,7 +12336,9 @@ The email address (@code{user-mail-address}).
 Language to use for translating certain strings
 (@code{org-export-default-language}).  With @samp{#+LANGUAGE: fr}, for
 example, Org translates @samp{Table of contents} to the French @samp{Table des
-  matières}@footnote{DEFINITION NOT FOUND@.}.
+  matières}@footnote{For export to @LaTeX{} format---or @LaTeX{}-related formats such as
+Beamer---, the @samp{org-latex-package-alist} variable needs further
+configuration.  See @ref{@LaTeX{} specific export settings}.}.
 
 @item @samp{SELECT_TAGS}
 @cindex @samp{SELECT_TAGS}, keyword
@@ -12713,7 +12779,7 @@ example
 becomes
 
 @example
-Rose is red, violet's blue. Life's ordered: Org assists you.
+Rose is red, violet's blue.  Life's ordered: Org assists you.
 @end example
 
 
@@ -13471,8 +13537,8 @@ exports to:
 @example
 <video controls="controls" width="350">
   <source src="movie.mp4" type="video/mp4">
-    <source src="movie.ogg" type="video/ogg">
-      <p>Your browser does not support the video tag.</p>
+  <source src="movie.ogg" type="video/ogg">
+  <p>Your browser does not support the video tag.</p>
 </video>
 @end example
 
@@ -14015,6 +14081,8 @@ on blank lines to tell apart syntactical elements, such as paragraphs.
 * Example blocks in @LaTeX{} export:: Attributes specific to example blocks.
 * Special blocks in @LaTeX{} export:: Attributes specific to special blocks.
 * Horizontal rules in @LaTeX{} export:: Attributes specific to horizontal rules.
+* Verse blocks in @LaTeX{} export:: Attributes specific to special blocks.
+* Quote blocks in @LaTeX{} export:: Attributes specific to quote blocks.
 @end menu
 
 @node @LaTeX{}/PDF export commands
@@ -14515,7 +14583,9 @@ blocks that may not fit on a page.
 The @LaTeX{} export back-end passes string values in @samp{:options} to @LaTeX{}
 packages for customization of that specific source block.  In the
 example below, the @samp{:options} are set for Minted.  Minted is a source
-code highlighting @LaTeX{} package with many configurable options.
+code highlighting @LaTeX{} package with many configurable options@footnote{Minted uses an external Python package for code highlighting,
+which requires the flag @samp{-shell-escape} to be added to
+@code{org-latex-pdf-process}.}.
 
 @example
 #+ATTR_LATEX: :options commentstyle=\bfseries
@@ -14612,6 +14682,97 @@ The @LaTeX{} export back-end converts horizontal rules by the specified
 @example
 #+ATTR_LATEX: :width .6\textwidth :thickness 0.8pt
 -----
+@end example
+
+@node Verse blocks in @LaTeX{} export
+@subsection Verse blocks in @LaTeX{} export
+
+@cindex verse blocks, in @LaTeX{} export
+@cindex @samp{ATTR_LATEX}, keyword
+
+The @LaTeX{} export back-end accepts four attributes for verse blocks:
+@samp{:lines}, @samp{:center}, @samp{:versewidth} and @samp{:latexcode}.  The three first
+require the external @LaTeX{} package @samp{verse.sty}, which is an extension
+of the standard @LaTeX{} environment.
+
+@table @asis
+@item @samp{:lines}
+To add marginal verse numbering.  Its value is an
+integer, the sequence in which the verses should be numbered.
+@item @samp{:center}
+With value @samp{t} all the verses on the page are optically
+centered (a typographic convention for poetry), taking as a
+reference the longest verse, which must be indicated by the
+attribute @samp{:versewidth}.
+@item @samp{:versewidth}
+Its value is a literal text string with the longest
+verse.
+@item @samp{:latexcode}
+It accepts any arbitrary @LaTeX{} code that can be
+included within a @LaTeX{} @samp{verse} environment.
+@end table
+
+A complete example with Shakespeare's first sonnet:
+
+@example
+#+ATTR_LATEX: :center t :latexcode \color@{red@} :lines 5
+#+ATTR_LATEX: :versewidth Feed’st thy light’s flame with self-substantial fuel,
+#+BEGIN_VERSE
+From fairest creatures we desire increase,
+That thereby beauty’s rose might never die,
+But as the riper should by time decease
+His tender heir might bear his memory
+But thou, contracted to thine own bright eyes,
+Feed’st thy light’s flame with self-substantial fuel,
+Making a famine where abundance lies,
+Thyself thy foe, to thy sweet self too cruel.
+Thou that art now the world’s fresh ornament,
+And only herald to the gaudy spring,
+Within thine own bud buriest thy content,
+And, tender churl, mak’st waste in niggardly.
+Pity the world, or else this glutton be,
+To eat the world’s due, by the grave and thee.
+#+END_VERSE
+@end example
+
+@node Quote blocks in @LaTeX{} export
+@subsection Quote blocks in @LaTeX{} export
+
+@cindex quote blocks, in @LaTeX{} export
+@cindex @samp{ATTR_LATEX}, keyword
+@cindex org-latex-default-quote-environment
+
+The @LaTeX{} export back-end accepts two attributes for quote blocks:
+@samp{:environment}, for an arbitrary quoting environment (the default
+value is that of @code{org-latex-default-quote-environment}: @code{"quote"}) and
+@samp{:options}.  For example, to choose the environment @samp{quotation},
+included as an alternative to @samp{quote} in standard @LaTeX{} classes:
+
+@example
+#+ATTR_LATEX: :environment quotation
+#+BEGIN_QUOTE
+some text...
+#+END_QUOTE
+@end example
+
+To choose the @samp{foreigndisplayquote} environment, included in the @LaTeX{}
+package @samp{csquotes}, with the @samp{german} option, use this syntax:
+
+@example
+#+LATEX_HEADER:\usepackage[autostyle=true]@{csquotes@}
+#+ATTR_LATEX: :environment foreigndisplayquote :options @{german@}
+#+BEGIN_QUOTE
+some text in German...
+#+END_QUOTE
+@end example
+
+@noindent
+which is exported to @LaTeX{} as
+
+@example
+\begin@{foreigndisplayquote@}@{german@}
+some text in German...
+\end@{foreigndisplayquote@}
 @end example
 
 @node Markdown Export
@@ -15036,6 +15197,11 @@ To create an image that is anchored to a page:
 @subsection Math formatting in ODT export
 
 The ODT exporter has special support for handling math.
+
+@menu
+* @LaTeX{} math snippets::       Embedding in @LaTeX{} format.
+* MathML and OpenDocument formula files:: Embedding in native format.
+@end menu
 
 @node @LaTeX{} math snippets
 @subsubsection @LaTeX{} math snippets
@@ -15994,7 +16160,7 @@ To specify the author of the quotation, use the @samp{:author} attribute.
 #+BEGIN_QUOTE
 The Lady of the Lake, her arm clad in the purest shimmering samite,
 held aloft Excalibur from the bosom of the water, signifying by divine
-providence that I, Arthur, was to carry Excalibur. That is why I am
+providence that I, Arthur, was to carry Excalibur.  That is why I am
 your king.
 #+END_QUOTE
 @end example
@@ -16254,7 +16420,7 @@ BACKEND is the export back-end being used, as a symbol."
   (org-map-entries
    (lambda () (delete-region (point) (line-beginning-position 2)))))
 
-(add-hook 'org-export-before-parsing-hook 'my-headline-removal)
+(add-hook 'org-export-before-parsing-hook #'my-headline-removal)
 @end lisp
 
 @anchor{Filters}
@@ -17372,6 +17538,175 @@ of the commands above, or by customizing the variable
 particular if files include other files via @samp{SETUPFILE} or @samp{INCLUDE}
 keywords.
 
+@node Citation handling
+@chapter Citation handling
+
+@cindex citation
+
+The @samp{oc.el} library provides tooling to handle citations in Org via
+``citation processors'' that offer some or all of the following
+capabilities:
+
+@table @asis
+@item activate
+Fontification, tooltip preview, etc.
+@item follow
+At-point actions on citations via @code{org-open-at-point}.
+@item insert
+Add and edit citations via @code{org-cite-insert}.
+@item export
+Via different libraries for different target formats.
+@end table
+
+The user can configure these with @code{org-cite-activate-processor},
+@code{org-cite-follow-processor}, @code{org-cite-insert-processor}, and
+@code{org-cite-export-processors} respectively.
+
+The included ``basic'' processor provides all four capabilities.
+
+@menu
+* Citations::
+* Citation export processors::
+@end menu
+
+@node Citations
+@section Citations
+
+Before adding citations, first set one-or-more bibliographies, either
+globally with @code{org-cite-global-bibliography}, or locally using one or
+more ``bibliography'' keywords.
+
+@example
+#+bibliography: SomeFile.bib
+#+bibliography: /some/other/file.json
+#+bibliography: "/some/file/with spaces/in its name.bib"
+@end example
+
+@kindex C-c C-x @@
+@findex org-cite-insert
+One can then insert and edit citations using @code{org-cite-insert}, called
+with @kbd{C-c C-x @@}.
+
+A @emph{citation} requires one or more citation @emph{key(s)}, elements
+identifying a reference in the bibliography.
+
+@itemize
+@item
+Each citation is surrounded by brackets and uses the @samp{cite} type.
+
+@item
+Each key starts with the character @samp{@@}.
+
+@item
+Each key can be qualified by a @emph{prefix} (e.g.@tie{}``see '') and/or
+a @emph{suffix} (e.g.@tie{}``p.@tie{}123''), giving informations useful or necessary
+fo the comprehension of the citation but not included in the
+reference.
+
+@item
+A single citation can cite more than one reference ; the keys are
+separated by semicolons ; the formatting of such citation groups is
+specified by the style.
+
+@item
+One can also specify a stylistic variation for the citations by
+inserting a @samp{/} and a style name between the @samp{cite} keyword and the
+colon; this usually makes sense only for the author-year styles.
+@end itemize
+
+@example
+[cite/style:common prefix ;prefix @@key suffix; ... ; common suffix]
+@end example
+
+
+The only mandatory elements are:
+
+@itemize
+@item
+The @samp{cite} keyword and the colon.
+@item
+The @samp{@@} character immediately preceding each key.
+@item
+The brackets surrounding the citation(s) (group).
+@end itemize
+
+@node Citation export processors
+@section Citation export processors
+
+Org currently includes the following export processors:
+
+@itemize
+@item
+Two processors can export to a variety of formats, including @samp{latex}
+(and therefore @samp{pdf}), @samp{html}, @samp{odt} and plain (UTF8) text:
+
+@table @asis
+@item basic
+a basic export processor, well adapted to situations
+where backward compatibility is not a requirement and formatting
+needs are minimal;
+
+@item csl
+this export processor uses format files written in @uref{https://en.wikipedia.org/wiki/Citation_Style_Language, Citation
+Style Language} via @uref{https://github.com/andras-simonyi/citeproc-el, citeproc-el};
+@end table
+
+@item
+In contrast, two other processors target @LaTeX{} and @LaTeX{}-derived
+formats exclusively:
+
+@table @asis
+@item natbib
+this export processor uses Bib@TeX{}, the historical
+bibliographic processor used with @LaTeX{}, thus allowing the use of
+data and style files compatible with this processor (including
+a large number of publishers' styles).  It uses citation commands
+implemented in the @LaTeX{} package @samp{natbib}, allowing more stylistic
+variants that @LaTeX{}'s @samp{\cite} command.
+
+@item biblatex
+this backend allows the use of data and formats
+prepared for Bib@LaTeX{}, an alternate bibliographic processor used
+with @LaTeX{}, which overcomes some serious Bib@TeX{} limitations, but
+has not (yet?)@tie{}been widely adopted by publishers.
+@end table
+@end itemize
+
+The @samp{CITE_EXPORT} keyword specifies the export processor and the
+citation (and possibly reference) style(s); for example (all arguments
+are optional)
+
+@example
+#+cite_export: basic author author-year
+@end example
+
+
+@noindent
+specifies the ``basic'' export processor with citations inserted as
+author's name and references indexed by author's names and year;
+
+@example
+#+cite_export: csl /some/path/to/vancouver-brackets.csl
+@end example
+
+
+@noindent
+specifies the ``csl'' processor and CSL style, which in this case
+defines numeric citations and numeric references according to the
+@samp{Vancouver} specification (as style used in many medical journals),
+following a typesetting variation putting citations between brackets;
+
+@example
+#+cite_export: natbib kluwer
+@end example
+
+
+@noindent
+specifies the @samp{natbib} export processor with a label citation style
+conformant to the Harvard style and the specification of the
+Wolkers-Kluwer publisher; since it relies on the @code{bibtex} processor of
+your @LaTeX{} installation, it won't export to anything but PDF@.
+
 @node Working with Source Code
 @chapter Working with Source Code
 
@@ -17432,7 +17767,7 @@ extract, export, and publish source code blocks.  Org can also compile
 and execute a source code block, then capture the results.  The Org
 mode literature sometimes refers to source code blocks as @emph{live code}
 blocks because they can alter the content of the Org document or the
-material that it exports.  Users can control how live they want each
+material that it exports.  Users can control the ``liveliness'' of each
 source code block by tweaking the header arguments (see @ref{Using Header Arguments}) for compiling, execution, extraction, and exporting.
 
 For editing and formatting a source code block, Org uses an
@@ -17773,7 +18108,14 @@ the @samp{var} header argument.
 body.  @var{ASSIGN} is a literal value, such as a string,
 a number, a reference to a table, a list, a literal example, another
 code block---with or without arguments---or the results of evaluating
-a code block.
+a code block.  @var{ASSIGN} may specify a filename for references
+to elements in a different file, using a @samp{:} to separate the filename
+from the reference.
+
+@example
+:var NAME=FILE:REFERENCE
+@end example
+
 
 Here are examples of passing values by reference:
 
@@ -17851,7 +18193,12 @@ table-handling in Emacs.
 | one | 11 | 12 | 13 | 14 | 15 |
 | two | 16 | 17 | 18 | 19 | 20 |
 @end example
+@end table
 
+To refer to a table in another file, join the filename and table name with
+a colon, for example: @samp{:var table=other-file.org:example-table}.
+
+@table @asis
 @item list
 A simple named list.
 
@@ -18606,13 +18953,17 @@ value listed above.  E.g.,
 Handling options after collecting the results.
 
 @table @asis
+@item @samp{replace}
+Default.  Insert results in the Org buffer.  Remove previous
+results.  Usage example: @samp{:results output replace}.
+
 @item @samp{silent}
 Do not insert results in the Org mode buffer, but echo them in the
 minibuffer.  Usage example: @samp{:results output silent}.
 
-@item @samp{replace}
-Default.  Insert results in the Org buffer.  Remove previous
-results.  Usage example: @samp{:results output replace}.
+@item @samp{none}
+Do not process results at all.  No inserting in the Org mode buffer
+nor echo them in the minibuffer.  Usage example: @samp{:results none}.
 
 @item @samp{append}
 Append results to the Org buffer.  Latest results are at the bottom.
@@ -19489,6 +19840,7 @@ emacs -Q --batch --eval "
 * Dynamic Headline Numbering::   Display and update outline numbering.
 * The Very Busy @kbd{C-c C-c} Key:: When in doubt, press @kbd{C-c C-c}.
 * In-buffer Settings::           Overview of keywords.
+* Regular Expressions::          Elisp regular expressions.
 * Org Syntax::                   Formal description of Org's syntax.
 * Documentation Access::         Read documentation about current syntax.
 * Escape Character::             Prevent Org from interpreting your writing.
@@ -19651,14 +20003,14 @@ the variable @code{org-use-speed-commands} to a non-@code{nil} value.  To
 trigger a Speed Key, point must be at the beginning of an Org
 headline, before any of the stars.
 
-@vindex org-speed-commands-user
+@vindex org-speed-commands
 @findex org-speed-command-help
 Org comes with a pre-defined list of Speed Keys.  To add or modify
-Speed Keys, customize the variable, @code{org-speed-commands-user}.  For
-more details, see the variable's docstring.  With Speed Keys
-activated, @kbd{M-x org-speed-command-help}, or @kbd{?} when
-point is at the beginning of an Org headline, shows currently active
-Speed Keys, including the user-defined ones.
+Speed Keys, customize the option @code{org-speed-commands}.  For more
+details, see the variable's docstring.  With Speed Keys activated,
+@kbd{M-x org-speed-command-help}, or @kbd{?} when point is at the
+beginning of an Org headline, shows currently active Speed Keys,
+including the user-defined ones.
 
 @node Clean View
 @section A Cleaner Outline View
@@ -20224,6 +20576,21 @@ These lines set the TODO keywords and their interpretation in the
 current file.  The corresponding variable is @code{org-todo-keywords}.
 @end table
 
+@node Regular Expressions
+@section Regular Expressions
+
+@cindex regular expressions syntax
+@cindex regular expressions, in searches
+
+Org, as an Emacs mode, makes use of Elisp regular expressions for
+searching, matching and filtering.  Elisp regular expressions have a
+somewhat different syntax then some common standards.  Most notably,
+alternation is indicated using @samp{\|} and matching groups are denoted by
+@samp{\(...\)}.  For example the string @samp{home\|work} matches either @samp{home}
+or @samp{work}.
+
+For more information, see @ref{Regexps,Regular Expressions in Emacs,,emacs,}.
+
 @node Org Syntax
 @section Org Syntax
 
@@ -20774,9 +21141,18 @@ To use this feature from a browser, add a bookmark with an arbitrary
 name, e.g., @samp{Org: store-link} and enter this as @emph{Location}:
 
 @example
+javascript:location.href='org-protocol://store-link?' +
+      new URLSearchParams(@{url:location.href, title:document.title@});
+@end example
+
+Title is an optional parameter.  Another expression was recommended earlier:
+
+@example
 javascript:location.href='org-protocol://store-link?url='+
       encodeURIComponent(location.href);
 @end example
+
+The latter form is compatible with older Org versions from 9.0 to 9.4.
 
 @node The @code{capture} protocol
 @subsection The @code{capture} protocol
@@ -20796,11 +21172,24 @@ To use this feature, add a bookmark with an arbitrary name, e.g.,
 @samp{Org: capture}, and enter this as @samp{Location}:
 
 @example
+javascript:location.href='org-protocol://capture?' +
+      new URLSearchParams(@{
+            template: 'x', url: window.location.href,
+            title: document.title, body: window.getSelection()@});
+@end example
+
+You might have seen another expression:
+
+@example
 javascript:location.href='org-protocol://capture?template=x'+
       '&url='+encodeURIComponent(window.location.href)+
       '&title='+encodeURIComponent(document.title)+
       '&body='+encodeURIComponent(window.getSelection());
 @end example
+
+It is a bit more cluttered than the former one, but it is compatible
+with previous Org versions 9.0-9.4.  In these versions encoding of
+space as ``+'' character was not supported by URI decoder.
 
 @vindex org-protocol-default-template-key
 The capture template to be used can be specified in the bookmark (like
@@ -21128,12 +21517,10 @@ documentation is maintained by the Worg project at
 
 @cindex add-on packages
 
-Various authors wrote a large number of add-on packages for Org.
-
-These packages are not part of Emacs, but they are distributed as
-contributed packages with the separate release available at
-@uref{https://orgmode.org}.  See the @samp{contrib/README} file in the source code
-directory for a list of contributed files.  Worg page with more
+Various authors wrote a large number of add-on packages for Org.  Some
+of these packages used to be part of the @samp{org-mode} repository but are
+now hosted in a separate @samp{org-contrib} repository
+@uref{https://git.sr.ht/~bzg/org-contrib, here}.  A Worg page with more
 information is at: @uref{https://orgmode.org/worg/org-contrib/}.
 
 @node Adding Hyperlink Types
@@ -22259,6 +22646,10 @@ Charles Cave's suggestion sparked the implementation of templates
 for Remember, which are now templates for capture.
 
 @item
+Timothy E Chapman worked on a complete overhaul of the orgmode.org
+website in 2020 and helped fixing various bugs.
+
+@item
 Pavel Chalmoviansky influenced the agenda treatment of items with
 specified time.
 
@@ -22380,6 +22771,10 @@ replies, small fixes and patches.
 Jason@tie{}F@.@tie{}McBrayer suggested agenda export to CSV format.
 
 @item
+Kyle Meyer helped setting up the @uref{https://public-inbox.org/, public-inbox} archive of the @uref{https://orgmode.org/list/, Org
+mailing list} and has been fixing many bugs.
+
+@item
 Max Mikhanosha came up with the idea of refiling.
 
 @item
@@ -22431,6 +22826,10 @@ Martin Pohlack provided the code snippet to bundle character
 insertion into bundles of 20 for undo.
 
 @item
+Ihor Radchenko helped with fixing bugs and improving the user
+experience regarding Org's speed.
+
+@item
 T@.@tie{}V@.@tie{}Raman reported bugs and suggested improvements.
 
 @item
@@ -22472,7 +22871,7 @@ literal examples, and remote highlighting for referenced code lines.
 
 @item
 Stathis Sideris wrote the @samp{ditaa.jar} ASCII to PNG converter that is
-now packaged into Org's @samp{contrib/} directory.
+now packaged into the @uref{https://git.sr.ht/~bzg/org-contrib, org-contrib} repository.
 
 @item
 Daniel Sinder came up with the idea of internal archiving by locking

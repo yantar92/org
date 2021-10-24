@@ -95,6 +95,7 @@
 (require 'org-keys)
 (require 'ol)
 (require 'oc)
+(require 'oc-basic)
 (require 'org-table)
 (require 'org-fold)
 
@@ -4268,7 +4269,7 @@ directory."
     (let ((case-fold-search t)
 	  (regexp (org-make-options-regexp keywords)))
       (while (and keywords (re-search-forward regexp nil t))
-        (let ((element (org-with-point-at (match-beginning 0) (org-element-keyword-parser (line-end-position) (list (match-beginning 0))))))
+        (let ((element (org-element-at-point)))
           (when (eq 'keyword (org-element-type element))
             (let ((value (org-element-property :value element)))
               (pcase (org-element-property :key element)
@@ -7019,14 +7020,15 @@ If yes, remember the marker and the distance to BEG."
   "Narrow buffer to the current subtree."
   (interactive)
   (if (org-element--cache-active-p)
-      (if-let* ((heading (org-element-lineage
-                          (or element (org-element-at-point))
-                          '(headline) t))
-                (end (org-element-property :end heading)))
-          (narrow-to-region (org-element-property :begin heading)
-                            (if (= end (point-max))
-                                end (1- end)))
-        (signal 'outline-before-first-heading nil))
+      (let* ((heading (org-element-lineage
+                       (or element (org-element-at-point))
+                       '(headline) t))
+             (end (org-element-property :end heading)))
+        (if (and heading end)
+            (narrow-to-region (org-element-property :begin heading)
+                              (if (= end (point-max))
+                                  end (1- end)))
+          (signal 'outline-before-first-heading nil)))
     (save-excursion
       (save-match-data
         (org-with-limited-levels
@@ -12330,34 +12332,35 @@ Value is a list whose car is the base value for PROPERTY and cdr
 a list of accumulated values.  Return nil if neither is found in
 the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
-  (if-let ((element (or element
-                        (and (org-element--cache-active-p)
-                             (org-element-at-point nil 'cached)))))
-      (let* ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self))
-             (base-value (org-element-property (intern (concat ":" (upcase property))) element))
-             (base-value (if literal-nil base-value (org-not-nil base-value)))
-             (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) element))
-             (extra-value (if (listp extra-value) extra-value (list extra-value)))
-             (value (cons base-value extra-value)))
-        (and (not (equal value '(nil))) value))
-    (let ((range (org-get-property-block)))
-      (when range
-        (goto-char (car range))
-        (let* ((case-fold-search t)
-	       (end (cdr range))
-	       (value
-	        ;; Base value.
-	        (save-excursion
-		  (let ((v (and (re-search-forward
-			         (org-re-property property nil t) end t)
-			        (match-string-no-properties 3))))
-		    (list (if literal-nil v (org-not-nil v)))))))
-	  ;; Find additional values.
-	  (let* ((property+ (org-re-property (concat property "+") nil t)))
-	    (while (re-search-forward property+ end t)
-	      (push (match-string-no-properties 3) value)))
-	  ;; Return final values.
-	  (and (not (equal value '(nil))) (nreverse value)))))))
+  (let ((element (or element
+                     (and (org-element--cache-active-p)
+                          (org-element-at-point nil 'cached)))))
+    (if element
+        (let* ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self))
+               (base-value (org-element-property (intern (concat ":" (upcase property))) element))
+               (base-value (if literal-nil base-value (org-not-nil base-value)))
+               (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) element))
+               (extra-value (if (listp extra-value) extra-value (list extra-value)))
+               (value (cons base-value extra-value)))
+          (and (not (equal value '(nil))) value))
+      (let ((range (org-get-property-block)))
+        (when range
+          (goto-char (car range))
+          (let* ((case-fold-search t)
+	         (end (cdr range))
+	         (value
+	          ;; Base value.
+	          (save-excursion
+		    (let ((v (and (re-search-forward
+			           (org-re-property property nil t) end t)
+			          (match-string-no-properties 3))))
+		      (list (if literal-nil v (org-not-nil v)))))))
+	    ;; Find additional values.
+	    (let* ((property+ (org-re-property (concat property "+") nil t)))
+	      (while (re-search-forward property+ end t)
+	        (push (match-string-no-properties 3) value)))
+	    ;; Return final values.
+	    (and (not (equal value '(nil))) (nreverse value))))))))
 
 (defun org--property-global-or-keyword-value (property literal-nil)
   "Return value for PROPERTY as defined by global properties or by keyword.
@@ -12505,59 +12508,60 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
   (org-with-wide-buffer
    (let (value at-bob-no-heading)
      (catch 'exit
-       (if-let ((element (or element
-                             (and (org-element--cache-active-p)
-                                  (org-element-at-point nil 'cached)))))
-           (let ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
-             (while t
-               (let* ((v (org--property-local-values property literal-nil element))
-                      (v (if (listp v) v (list v))))
-                 (when v
-                   (setq value
-                         (concat (mapconcat #'identity (delq nil v) " ")
-                                 (and value " ")
-                                 value)))
-                 (cond
-	          ((car v)
-	           (move-marker org-entry-property-inherited-from (org-element-property :begin element))
-	           (throw 'exit nil))
-	          ((org-element-property :parent element)
-                   (setq element (org-element-property :parent element)))
-	          (t
-	           (let ((global (org--property-global-or-keyword-value property literal-nil)))
-	             (cond ((not global))
-		           (value (setq value (concat global " " value)))
-		           (t (setq value global))))
-	           (throw 'exit nil))))))
-         (while t
-	   (let ((v (org--property-local-values property literal-nil)))
-	     (when v
-	       (setq value
-		     (concat (mapconcat #'identity (delq nil v) " ")
-			     (and value " ")
-			     value)))
-	     (cond
-	      ((car v)
-	       (org-back-to-heading-or-point-min t)
-	       (move-marker org-entry-property-inherited-from (point))
-	       (throw 'exit nil))
-	      ((or (org-up-heading-safe)
-                   (and (not (bobp))
-                        (goto-char (point-min))
-                        nil)
-                   ;; `org-up-heading-safe' returned nil.  We are at low
-                   ;; level heading or bob.  If there is headline
-                   ;; there, do not try to fetch its properties.
-                   (and (bobp)
-                        (not at-bob-no-heading)
-                        (not (org-at-heading-p))
-                        (setq at-bob-no-heading t))))
-	      (t
-	       (let ((global (org--property-global-or-keyword-value property literal-nil)))
-	         (cond ((not global))
-		       (value (setq value (concat global " " value)))
-		       (t (setq value global))))
-	       (throw 'exit nil)))))))
+       (let ((element (or element
+                          (and (org-element--cache-active-p)
+                               (org-element-at-point nil 'cached)))))
+         (if element
+             (let ((element (org-element-lineage element '(headline org-data inlinetask) 'with-self)))
+               (while t
+                 (let* ((v (org--property-local-values property literal-nil element))
+                        (v (if (listp v) v (list v))))
+                   (when v
+                     (setq value
+                           (concat (mapconcat #'identity (delq nil v) " ")
+                                   (and value " ")
+                                   value)))
+                   (cond
+	            ((car v)
+	             (move-marker org-entry-property-inherited-from (org-element-property :begin element))
+	             (throw 'exit nil))
+	            ((org-element-property :parent element)
+                     (setq element (org-element-property :parent element)))
+	            (t
+	             (let ((global (org--property-global-or-keyword-value property literal-nil)))
+	               (cond ((not global))
+		             (value (setq value (concat global " " value)))
+		             (t (setq value global))))
+	             (throw 'exit nil))))))
+           (while t
+	     (let ((v (org--property-local-values property literal-nil)))
+	       (when v
+	         (setq value
+		       (concat (mapconcat #'identity (delq nil v) " ")
+			       (and value " ")
+			       value)))
+	       (cond
+	        ((car v)
+	         (org-back-to-heading-or-point-min t)
+	         (move-marker org-entry-property-inherited-from (point))
+	         (throw 'exit nil))
+	        ((or (org-up-heading-safe)
+                     (and (not (bobp))
+                          (goto-char (point-min))
+                          nil)
+                     ;; `org-up-heading-safe' returned nil.  We are at low
+                     ;; level heading or bob.  If there is headline
+                     ;; there, do not try to fetch its properties.
+                     (and (bobp)
+                          (not at-bob-no-heading)
+                          (not (org-at-heading-p))
+                          (setq at-bob-no-heading t))))
+	        (t
+	         (let ((global (org--property-global-or-keyword-value property literal-nil)))
+	           (cond ((not global))
+		         (value (setq value (concat global " " value)))
+		         (t (setq value global))))
+	         (throw 'exit nil))))))))
      (if literal-nil value (org-not-nil value)))))
 
 (defvar org-property-changed-functions nil
@@ -19773,25 +19777,26 @@ unless optional argument NO-INHERITANCE is non-nil.
 
 Optional argument ELEMENT contains element at point."
   (save-match-data
-    (if-let ((el (or element (org-element-at-point nil 'cached))))
-        (catch :found
-          (setq el (org-element-lineage el '(headline) 'include-self))
-          (if no-inheritance
-              (org-element-property :commentedp el)
-            (while el
-              (when (org-element-property :commentedp el)
-                (throw :found t))
-              (setq el (org-element-property :parent el)))))
-      (cond
-       ((org-before-first-heading-p) nil)
-       ((let ((headline (nth 4 (org-heading-components))))
-          (and headline
-	       (let ((case-fold-search nil))
-	         (string-match-p (concat "^" org-comment-string "\\(?: \\|$\\)")
-			         headline)))))
-       (no-inheritance nil)
-       (t
-        (save-excursion (and (org-up-heading-safe) (org-in-commented-heading-p))))))))
+    (let ((el (or element (org-element-at-point nil 'cached))))
+      (if el
+          (catch :found
+            (setq el (org-element-lineage el '(headline) 'include-self))
+            (if no-inheritance
+                (org-element-property :commentedp el)
+              (while el
+                (when (org-element-property :commentedp el)
+                  (throw :found t))
+                (setq el (org-element-property :parent el)))))
+        (cond
+         ((org-before-first-heading-p) nil)
+         ((let ((headline (nth 4 (org-heading-components))))
+            (and headline
+	         (let ((case-fold-search nil))
+	           (string-match-p (concat "^" org-comment-string "\\(?: \\|$\\)")
+			           headline)))))
+         (no-inheritance nil)
+         (t
+          (save-excursion (and (org-up-heading-safe) (org-in-commented-heading-p)))))))))
 
 (defun org-in-archived-heading-p (&optional no-inheritance element)
   "Non-nil if point is under an archived heading.
@@ -19799,24 +19804,19 @@ This function also checks ancestors of the current headline,
 unless optional argument NO-INHERITANCE is non-nil.
 
 Optional argument ELEMENT contains element at point."
-  (let ((element (or element
-                     (when (org-element--cache-active-p)
-                       (org-element-lineage
-                        (org-element-at-point)
-                        '(headline inlinetask) t)))))
-    (cond
-     ((org-before-first-heading-p) nil)
-     ((if element
-          (org-element-property :archivedp element)
-        (let ((tags (org-get-tags element 'local)))
-          (and tags
-	       (cl-some (apply-partially #'string= org-archive-tag) tags)))))
-     (no-inheritance nil)
-     (t
-      (if element
-          (seq-some (lambda (el) (org-element-property :archivedp el))
-                    (org-element-lineage (or element (org-element-at-point))))
-        (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p))))))))
+  (cond
+   ((org-before-first-heading-p) nil)
+   ((if element
+        (org-element-property :archivedp element)
+      (let ((tags (org-get-tags element 'local)))
+        (and tags
+	     (cl-some (apply-partially #'string= org-archive-tag) tags)))))
+   (no-inheritance nil)
+   (t
+    (if (org-element--cache-active-p)
+        (cl-some (lambda (el) (org-element-property :archivedp el))
+                 (org-element-lineage (org-element-at-point) nil t))
+      (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p)))))))
 
 (defun org-at-comment-p nil
   "Return t if cursor is in a commented line."
@@ -19876,42 +19876,43 @@ headline found, or nil if no higher level is found.
 Also, this function will be a lot faster than `outline-up-heading',
 because it relies on stars being the outline starters.  This can really
 make a significant difference in outlines with very many siblings."
-  (if-let ((element (and (org-element--cache-active-p)
-                         (org-element-at-point nil t))))
-      (let* ((current-heading (org-element-lineage element '(headline) 'with-self))
-             (parent (org-element-lineage current-heading '(headline))))
-        (if (and parent
-                 (<= (point-min) (org-element-property :begin parent)))
-            (progn
-              (goto-char (org-element-property :begin parent))
-              (org-element-property :level parent))
-          (when (and current-heading
-                     (<= (point-min) (org-element-property :begin current-heading)))
-            (goto-char (org-element-property :begin current-heading))
-            nil)))
-    (when (ignore-errors (org-back-to-heading t))
-      (let (level-cache)
-        (unless org--up-heading-cache
-          (setq org--up-heading-cache (make-hash-table)))
-        (if (and (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
-                 (setq level-cache (gethash (point) org--up-heading-cache)))
-            (when (<= (point-min) (car level-cache) (point-max))
-              ;; Parent is inside accessible part of the buffer.
-              (progn (goto-char (car level-cache))
-                     (cdr level-cache)))
-          ;; Buffer modified.  Invalidate cache.
-          (unless (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
-            (setq-local org--up-heading-cache-tick
-                        (buffer-chars-modified-tick))
-            (clrhash org--up-heading-cache))
-          (let* ((level-up (1- (funcall outline-level)))
-                 (pos (point))
-                 (result (and (> level-up 0)
-	                      (re-search-backward
-                               (format "^\\*\\{1,%d\\} " level-up) nil t)
-	                      (funcall outline-level))))
-            (when result (puthash pos (cons (point) result) org--up-heading-cache))
-            result))))))
+  (let ((element (and (org-element--cache-active-p)
+                      (org-element-at-point nil t))))
+    (if element
+        (let* ((current-heading (org-element-lineage element '(headline) 'with-self))
+               (parent (org-element-lineage current-heading '(headline))))
+          (if (and parent
+                   (<= (point-min) (org-element-property :begin parent)))
+              (progn
+                (goto-char (org-element-property :begin parent))
+                (org-element-property :level parent))
+            (when (and current-heading
+                       (<= (point-min) (org-element-property :begin current-heading)))
+              (goto-char (org-element-property :begin current-heading))
+              nil)))
+      (when (ignore-errors (org-back-to-heading t))
+        (let (level-cache)
+          (unless org--up-heading-cache
+            (setq org--up-heading-cache (make-hash-table)))
+          (if (and (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
+                   (setq level-cache (gethash (point) org--up-heading-cache)))
+              (when (<= (point-min) (car level-cache) (point-max))
+                ;; Parent is inside accessible part of the buffer.
+                (progn (goto-char (car level-cache))
+                       (cdr level-cache)))
+            ;; Buffer modified.  Invalidate cache.
+            (unless (eq (buffer-chars-modified-tick) org--up-heading-cache-tick)
+              (setq-local org--up-heading-cache-tick
+                          (buffer-chars-modified-tick))
+              (clrhash org--up-heading-cache))
+            (let* ((level-up (1- (funcall outline-level)))
+                   (pos (point))
+                   (result (and (> level-up 0)
+	                        (re-search-backward
+                                 (format "^\\*\\{1,%d\\} " level-up) nil t)
+	                        (funcall outline-level))))
+              (when result (puthash pos (cons (point) result) org--up-heading-cache))
+              result)))))))
 
 (defun org-up-heading-or-point-min ()
   "Move to the heading line of which the present is a subheading, or point-min.
@@ -19965,20 +19966,21 @@ move point."
 Return t when a child was found.  Otherwise don't move point and
 return nil."
   (if (org-element--cache-active-p)
-      (when-let ((heading (org-element-lineage
-                           (or element (org-element-at-point))
-                           '(headline inlinetask org-data)
-                           t)))
-        (unless (or (eq 'inlinetask (org-element-type heading))
-                    (not (org-element-property :contents-begin heading)))
-          (let ((pos (point)))
-            (goto-char (org-element-property :contents-begin heading))
-            (if (re-search-forward
-                 org-outline-regexp-bol
-                 (org-element-property :end heading)
-                 t)
-                (progn (goto-char (match-beginning 0)) t)
-              (goto-char pos) nil))))
+      (let ((heading (org-element-lineage
+                      (or element (org-element-at-point))
+                      '(headline inlinetask org-data)
+                      t)))
+        (when heading
+          (unless (or (eq 'inlinetask (org-element-type heading))
+                      (not (org-element-property :contents-begin heading)))
+            (let ((pos (point)))
+              (goto-char (org-element-property :contents-begin heading))
+              (if (re-search-forward
+                   org-outline-regexp-bol
+                   (org-element-property :end heading)
+                   t)
+                  (progn (goto-char (match-beginning 0)) t)
+                (goto-char pos) nil)))))
     (let (level (pos (point)) (re org-outline-regexp-bol))
       (when (org-back-to-heading-or-point-min t)
         (setq level (org-outline-level))

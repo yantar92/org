@@ -77,6 +77,9 @@
 (declare-function org-columns-quit              "org-colview" ())
 (declare-function diary-date-display-form       "diary-lib"  (&optional type))
 (declare-function org-mobile-write-agenda-for-mobile "org-mobile" (file))
+(declare-function org-element-property "org-element" (property element))
+(declare-function org-element--cache-active-p "org-element"
+                  (&optional called-from-cache-change-func-p))
 (declare-function org-habit-insert-consistency-graphs
 		  "org-habit" (&optional line))
 (declare-function org-is-habit-p "org-habit" (&optional pom))
@@ -6028,10 +6031,9 @@ then those holidays will be skipped."
 	      clockp (not (or closedp statep))
 	      state (and statep (match-string 2))
 	      category (org-get-category (match-beginning 0))
+	      timestr (buffer-substring (match-beginning 0) (point-at-eol))
               effort (save-match-data (or (get-text-property (point) 'effort)
-                                          (org-entry-get (point) org-effort-property)))
-	      timestr (org-buffer-substring-fontified
-                       (match-beginning 0) (point-at-eol)))
+                                          (org-entry-get (point) org-effort-property))))
         (setq effort-minutes (when effort (save-match-data (org-duration-to-minutes effort))))
 	(when (string-match "\\]" timestr)
 	  ;; substring should only run to end of time stamp
@@ -6468,7 +6470,9 @@ scheduled items with an hour specification like [h]h:mm."
                                    (string= "habit" (org-element-property :STYLE el))))
 	              (suppress-delay
 		       (let ((deadline (and org-agenda-skip-scheduled-delay-if-deadline
-                                            (org-element-property :deadline el))))
+                                            (org-element-property
+                                             :raw-value
+                                             (org-element-property :deadline el)))))
 		         (cond
 		          ((not deadline) nil)
 		          ;; The current item has a deadline date, so
@@ -9794,7 +9798,8 @@ If FORCE-TAGS is non-nil, the car of it returns the new tags."
 	 (org-agenda-buffer (current-buffer))
 	 (thetags (with-current-buffer (marker-buffer hdmarker)
 		    (org-get-tags hdmarker)))
-	 props m undone-face done-face finish new dotime level cat tags) ;; pl
+	 props m undone-face done-face finish new dotime level cat tags
+         effort effort-minutes) ;; pl
     (save-excursion
       (goto-char (point-max))
       (beginning-of-line 1)

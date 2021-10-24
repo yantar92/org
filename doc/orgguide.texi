@@ -39,7 +39,7 @@ modify this GNU manual.''
 @finalout
 @titlepage
 @title Org Mode Compact Guide
-@subtitle Release 9.5
+@subtitle Release 9.6
 @author The Org Mode Developers
 @page
 @vskip 0pt plus 1filll
@@ -171,7 +171,6 @@ line to your Emacs init file:
 
 @example
 (add-to-list 'load-path "~/path/to/orgdir/lisp")
-(add-to-list 'load-path "~/path/to/orgdir/contrib/lisp" t)
 @end example
 
 
@@ -191,9 +190,9 @@ keys for three commands that are useful in any Emacs buffer, not just
 Org buffers.  Please choose suitable keys yourself.
 
 @lisp
-(global-set-key (kbd "C-c l") 'org-store-link)
-(global-set-key (kbd "C-c a") 'org-agenda)
-(global-set-key (kbd "C-c c") 'org-capture)
+(global-set-key (kbd "C-c l") #'org-store-link)
+(global-set-key (kbd "C-c a") #'org-agenda)
+(global-set-key (kbd "C-c c") #'org-capture)
 @end lisp
 
 Files with extension @samp{.org} will be put into Org mode automatically.

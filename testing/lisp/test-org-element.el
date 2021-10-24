@@ -4080,7 +4080,6 @@ Text
 
 (ert-deftest test-org-element/cache-bugs ()
   "Test basic expectations and common pitfalls for cache."
-  ;; :expected-result :failed
   ;; Unindented second row of the table should not be re-parented by
   ;; inserted item.
   (should
