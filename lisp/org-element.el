@@ -7051,27 +7051,26 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                       ;; Find expected begin position of an element after
                       ;; DATA.
                       (next-element-start
-                        (data) `(let (next-start
-                                      (data ,data))
-                                  (if (memq granularity '(headline headline+inlinetask))
-                                      (setq next-start (or (when (memq (org-element-type data) '(headline org-data))
-                                                             (org-element-property :contents-begin data))
-                                                           (org-element-property :end data)))
-		                    (setq next-start (or (when (memq (org-element-type data) org-element-greater-elements)
-                                                           (org-element-property :contents-begin data))
-                                                         (org-element-property :end data))))
-                                  ;; DATA end may be the last element inside
-                                  ;; i.e. source block.  Skip up to the end
-                                  ;; of parent in such case.
-                                  (let ((parent data))
-		                    (catch :exit
-                                      (when (eq next-start (org-element-property :contents-end parent))
-			                (setq start (org-element-property :end parent)))
-			              (while (setq parent (org-element-property :parent parent))
-			                (if (eq next-start (org-element-property :contents-end parent))
-			                    (setq next-start (org-element-property :end parent))
-                                          (throw :exit t)))))
-                                  next-start)))
+                       (data) `(let (next-start)
+                                 (if (memq granularity '(headline headline+inlinetask))
+                                     (setq next-start (or (when (memq (org-element-type data) '(headline org-data))
+                                                            (org-element-property :contents-begin data))
+                                                          (org-element-property :end data)))
+		                   (setq next-start (or (when (memq (org-element-type data) org-element-greater-elements)
+                                                          (org-element-property :contents-begin data))
+                                                        (org-element-property :end data))))
+                                 ;; DATA end may be the last element inside
+                                 ;; i.e. source block.  Skip up to the end
+                                 ;; of parent in such case.
+                                 (let ((parent data))
+		                   (catch :exit
+                                     (when (eq next-start (org-element-property :contents-end parent))
+			               (setq start (org-element-property :end parent)))
+			             (while (setq parent (org-element-property :parent parent))
+			               (if (eq next-start (org-element-property :contents-end parent))
+			                   (setq next-start (org-element-property :end parent))
+                                         (throw :exit t)))))
+                                 next-start)))
           ;; The core algorithm is simple walk along binary tree.  However,
           ;; instead of checking all the tree elements from first to last
           ;; (like in `avl-tree-mapcar'), we begin from FROM-POS skipping
@@ -7113,7 +7112,7 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                                ;; somehow alters the FUNC result in
                                ;; Emacs 26 and 27, but not in Emacs
                                ;; >=28.
-                               (version< emacs-version "28"))
+                               (version< emacs-version "29"))
                            func
                          (let ((warning-minimum-log-level :error)
                                (inhibit-message t))
