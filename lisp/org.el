@@ -4840,36 +4840,34 @@ stacked delimiters is N.  Escaping delimiters is not possible."
 		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
 		   ;; Do not span over paragraph boundaries.
 		   (not (save-match-data
-                        (save-excursion
-                          (goto-char (match-beginning 2))
-                          (re-search-forward org-element-paragraph-separate
-                                             (save-excursion
-                                               (goto-char (match-end 2))
-                                               (line-end-position))
-                                             'noerror))))
+                          (save-excursion
+                            (goto-char (match-beginning 2))
+                            (re-search-forward org-element-paragraph-separate
+                                               (save-excursion
+						 (goto-char (match-end 2))
+						 (line-end-position))
+                                               'noerror))))
 		   ;; Do not span over cells in table rows.
 		   (not (and (save-match-data (org-match-line "[ \t]*|"))
 			     (string-match-p "|" (match-string 4))))))
-            (with-silent-modifications
-	      (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
-			  (m (if org-hide-emphasis-markers 4 2)))
-	        (font-lock-prepend-text-property
-	         (match-beginning m) (match-end m) 'face face)
-	        (when verbatim?
-		  (org-remove-flyspell-overlays-in
-		   (match-beginning 0) (match-end 0))
-		  (remove-text-properties (match-beginning 2) (match-end 2)
-					  '(display t invisible t intangible t)))
-	        (add-text-properties (match-beginning 2) (match-end 2)
-				     '(font-lock-multiline t org-emphasis t))
-	        (when (and org-hide-emphasis-markers
-			   (not (org-at-comment-p)))
-		  (add-text-properties (match-end 4) (match-beginning 5)
-				       '(invisible t))
-		  (add-text-properties (match-beginning 3) (match-end 3)
-				       '(invisible t)))
-                (goto-char (match-beginning 5))
-	        (throw :exit t)))))))))
+	    (pcase-let ((`(,_ ,face ,_) (assoc marker org-emphasis-alist))
+			(m (if org-hide-emphasis-markers 4 2)))
+	      (font-lock-prepend-text-property
+	       (match-beginning m) (match-end m) 'face face)
+	      (when verbatim?
+		(org-remove-flyspell-overlays-in
+		 (match-beginning 0) (match-end 0))
+		(remove-text-properties (match-beginning 2) (match-end 2)
+					'(display t invisible t intangible t)))
+	      (add-text-properties (match-beginning 2) (match-end 2)
+				   '(font-lock-multiline t org-emphasis t))
+	      (when (and org-hide-emphasis-markers
+			 (not (org-at-comment-p)))
+		(add-text-properties (match-end 4) (match-beginning 5)
+				     '(invisible t))
+		(add-text-properties (match-beginning 3) (match-end 3)
+				     '(invisible t)))
+	      (throw :exit t))))))))
 
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
