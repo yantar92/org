@@ -18151,19 +18151,34 @@ NAMES is a list of strings containing names of blocks.
 Return first block name matched, or nil.  Beware that in case of
 nested blocks, the returned name may not belong to the closest
 block from point."
-  (save-match-data
-    (catch 'exit
-      (let ((case-fold-search t)
-	    (lim-up (save-excursion (outline-previous-heading)))
-	    (lim-down (save-excursion (outline-next-heading))))
-	(dolist (name names)
-	  (let ((n (regexp-quote name)))
-	    (when (org-between-regexps-p
-		   (concat "^[ \t]*#\\+begin_" n)
-		   (concat "^[ \t]*#\\+end_" n)
-		   lim-up lim-down)
-	      (throw 'exit n)))))
-      nil)))
+  (if (org-element--cache-active-p)
+      (let* ((element (org-element-at-point))
+             (element-name
+              (pcase (org-element-type element)
+                (`src_block "src")
+                (`center-block "center")
+                (`quote-block "quote")
+                (`comment-block "comment")
+                (`example-block "example")
+                (`export-block "export")
+                (`verse-block "verse")
+                (`special-block (org-element-property :type element))
+                (_ nil))))
+        (when element-name
+          (cl-member element-name (mapcar #'downcase names))))
+    (save-match-data
+      (catch 'exit
+        (let ((case-fold-search t)
+	      (lim-up (save-excursion (outline-previous-heading)))
+	      (lim-down (save-excursion (outline-next-heading))))
+	  (dolist (name names)
+	    (let ((n (regexp-quote name)))
+	      (when (org-between-regexps-p
+		     (concat "^[ \t]*#\\+begin_" n)
+		     (concat "^[ \t]*#\\+end_" n)
+		     lim-up lim-down)
+	        (throw 'exit n)))))
+        nil))))
 
 (defun org-occur-in-agenda-files (regexp &optional _nlines)
   "Call `multi-occur' with buffers for all agenda files."
