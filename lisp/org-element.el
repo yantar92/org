@@ -5817,9 +5817,10 @@ updated before current modification are actually submitted."
           (progn
             (org-element--cache-warn "Unregistered buffer modifications detected. Resetting.
 If this warning appears regularly, please report it to Org mode mailing list (M-x org-submit-bug-report).
-The buffer is: %s\n Current command: %S"
+The buffer is: %s\n Current command: %S\n Backtrace:\n%S"
                           (buffer-name (current-buffer))
-                          this-command)
+                          this-command
+                          (backtrace-to-string (backtrace-get-frames 'backtrace)))
             (org-element-cache-reset))
         (let ((inhibit-quit t) request next)
           (setq org-element--cache-interrupt-C-g-count 0)
@@ -7134,6 +7135,7 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                                (and (symbolp func)
                                     (subrp (symbol-function func)))
                                (and (symbolp func)
+                                    (fboundp 'native-comp-available-p)
                                     (native-comp-available-p)
                                     (fboundp 'subr-native-elisp-p)
                                     (subr-native-elisp-p (symbol-function func)))
