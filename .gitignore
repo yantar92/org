@@ -47,6 +47,9 @@ ChangeLog
 /org-pkg.el
 /org-autoloads.el
 /lisp/org-autoloads.el
+/lisp/org-loaddefs.el
+/lisp/org-version.el
+
 
 # texi2pdf --tidy
 
