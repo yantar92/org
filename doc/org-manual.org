@@ -10818,6 +10818,17 @@ To turn off fontification for marked up text, you can set
 ~org-fontify-emphasized-text~ to ~nil~.  To narrow down the list of
 available markup syntax, you can customize ~org-emphasis-alist~.
 
+=*=, =/=, =_=, ===, and =~= symbols inside =verbatim= or ~code~ can
+sometimes produce unexpected markup.  For example,
+
+#+begin_example
+/The whole line is supposed to be marked italic, but the following
+~user/?variable~ contains italics =/= marker and confuses Org parser/.
+#+end_example
+
+You can use zero width space to help Org sorting out the ambiguity.
+See [[*Escape Character]] for more details.
+
 ** Subscripts and Superscripts
 :PROPERTIES:
 :DESCRIPTION: Simple syntax for raising/lowering text.
