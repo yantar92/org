@@ -638,6 +638,24 @@ in the current buffer.  Positions include leading \"@\" character."
       (re-search-forward org-element-citation-key-re end t)
       (cons (match-beginning 0) (match-end 0)))))
 
+(defun org-cite-main-affixes (citation)
+  "Return main affixes for CITATION object.
+
+Some export back-ends only support a single pair of affixes per
+citation, even if it contains multiple keys.  This function
+decides what affixes are the most appropriate.
+
+Return a pair (PREFIX . SUFFIX) where PREFIX and SUFFIX are
+parsed data."
+  (let ((source
+         ;; When there are multiple references, use global affixes.
+         ;; Otherwise, local affixes have priority.
+         (pcase (org-cite-get-references citation)
+           (`(,reference) reference)
+           (_ citation))))
+    (cons (org-element-property :prefix source)
+          (org-element-property :suffix source))))
+
 (defun org-cite-supported-styles (&optional processors)
   "List of supported citation styles and variants.
 
@@ -872,7 +890,9 @@ When non-nil, the return value if the footnote container."
 INFO is the export state, as a property list.
 
 White space before the citation, if any, are removed.  The parse tree is
-modified by side-effect."
+modified by side-effect.
+
+Return newly created footnote object."
   (let ((footnote
          (list 'footnote-reference
                (list :label nil
@@ -1503,38 +1523,42 @@ Citation keys are strings without the leading \"@\"."
 (defun org-cite-make-insert-processor (select-key select-style)
   "Build a function appropriate as an insert processor.
 
-SELECT-KEY is a function called with one argument.  When it is nil, the function
-should return a citation key as a string, or nil.  Otherwise, the function
-should return a list of such keys, or nil.  The keys should not have any leading
-\"@\" character.
+SELECT-KEY is a function called with one argument.  When it is
+nil, the function should return a citation key as a string, or
+nil.  Otherwise, the function should return a list of such keys,
+or nil.  The keys should not have any leading \"@\" character.
 
-SELECT-STYLE is a function called with one argument, the citation object being
-edited or constructed so far.  It should return a style string, or nil.
+SELECT-STYLE is a function called with one argument, the citation
+object being edited or constructed so far.  It should return
+a style string, or nil.
 
-The return value is a function of two arguments: CONTEXT and ARG.  CONTEXT is
-either a citation reference, a citation object, or nil.  ARG is a prefix
-argument.
+The return value is a function of two arguments: CONTEXT and ARG.
+CONTEXT is either a citation reference, a citation object, or
+nil.  ARG is a prefix argument.
 
-The generated function inserts or edit a citation at point.  More specifically,
+The generated function inserts or edits a citation at point.
+More specifically,
 
   On a citation reference:
 
-    - on the prefix or right before th \"@\" character, insert a new reference
-      before the current one,
+    - on the prefix or right before th \"@\" character, insert
+      a new reference before the current one,
     - on the suffix, insert it after the reference,
     - otherwise, update the cite key, preserving both affixes.
 
-    When ARG is non-nil, remove the reference, possibly removing the whole
-    citation if it contains a single reference.
+    When ARG is non-nil, remove the reference, possibly removing
+    the whole citation if it contains a single reference.
 
   On a citation object:
 
     - on the style part, offer to update it,
-    - on the global prefix, add a new reference before the first one,
-    - on the global suffix, add a new reference after the last one,
+    - on the global prefix, add a new reference before the first
+      one,
+    - on the global suffix, add a new reference after the last
+      one.
 
-  Elsewhere, insert a citation at point.  When ARG is non-nil, offer to complete
-  style in addition to references."
+  Elsewhere, insert a citation at point.  When ARG is non-nil,
+  offer to complete style in addition to references."
   (unless (and (functionp select-key) (functionp select-style))
     (error "Wrong argument type(s)"))
   (lambda (context arg)

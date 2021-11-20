@@ -93,8 +93,6 @@
 (defvar org-done-keywords)
 (defvar org-drawer-regexp)
 (defvar org-edit-src-content-indentation)
-(defvar org-emph-re)
-(defvar org-emphasis-regexp-components)
 (defvar org-keyword-time-not-clock-regexp)
 (defvar org-match-substring-regexp)
 (defvar org-odd-levels-only)
@@ -109,7 +107,6 @@
 (defvar org-time-stamp-formats)
 (defvar org-todo-regexp)
 (defvar org-ts-regexp-both)
-(defvar org-verbatim-re)
 
 
 ;;; Definitions And Rules
@@ -194,9 +191,7 @@ specially in `org-element--object-lex'.")
 		      "\\(?:[_^][-{(*+.,[:alnum:]]\\)"
 		      ;; Bold, code, italic, strike-through, underline
 		      ;; and verbatim.
-		      (concat "[*~=+_/]"
-			      (format "[^%s]"
-				      (nth 2 org-emphasis-regexp-components)))
+                      (rx (or "*" "~" "=" "+" "_" "/") (not space))
 		      ;; Plain links.
 		      (concat "\\<" link-types ":")
 		      ;; Objects starting with "[": citations,
@@ -670,7 +665,21 @@ is cleared and contents are removed in the process."
 	(`plain-text (substring-no-properties datum))
 	(`nil (copy-sequence datum))
 	(_
-	 (list type (plist-put (copy-sequence (nth 1 datum)) :parent nil)))))))
+         (let ((element-copy (list type (plist-put (copy-sequence (nth 1 datum)) :parent nil))))
+           ;; We cannot simply return the copies property list.  When
+           ;; DATUM is i.e. a headline, it's property list (`:title'
+           ;; in case of headline) can contain parsed objects.  The
+           ;; objects will contain `:parent' property set to the DATUM
+           ;; iteself.  When copied, these inner `:parent' propery
+           ;; values will contain incorrect object decoupled from
+           ;; DATUM.  Changes to the DATUM copy will not longer be
+           ;; reflected in the `:parent' properties.  So, we need to
+           ;; reassign inner `:parent' propreties to the DATUM copy
+           ;; explicitly.
+           (org-element-map element-copy (cons 'plain-text org-element-all-objects)
+             (lambda (obj) (when (equal datum (org-element-property :parent obj))
+                        (org-element-put-property obj :parent element-copy))))
+           element-copy))))))
 
 
 
@@ -2890,6 +2899,50 @@ CONTENTS is verse block contents."
 
 ;;;; Bold
 
+(defun org-element--parse-generic-emphasis (mark type)
+  "Parse emphasis object at point, if any.
+
+MARK is the delimiter string used.  TYPE is a symbol among
+‘bold’, ‘code’, ‘italic’, ‘strike-through’, ‘underline’, and
+‘verbatim’.
+
+Assume point is at first MARK."
+  (save-excursion
+    (let ((origin (point)))
+      (unless (bolp) (forward-char -1))
+      (let ((opening-re
+             (rx-to-string
+              `(seq (or line-start (any space ?- ?\( ?' ?\" ?\{))
+                    ,mark
+                    (not space)))))
+        (when (looking-at opening-re)
+          (goto-char (1+ origin))
+          (let ((closing-re
+                 (rx-to-string
+                  `(seq
+                    (not space)
+                    (group ,mark)
+                    (or (any space ?- ?. ?, ?\; ?: ?! ?? ?' ?\" ?\) ?\} ?\\ ?\[)
+                        line-end)))))
+            (when (re-search-forward closing-re nil t)
+              (let ((closing (match-end 1)))
+                (goto-char closing)
+                (let* ((post-blank (skip-chars-forward " \t"))
+                       (contents-begin (1+ origin))
+                       (contents-end (1- closing)))
+                  (list type
+                        (append
+                         (list :begin origin
+                               :end (point)
+                               :post-blank post-blank)
+                         (if (memq type '(code verbatim))
+                             (list :value
+                                   (and (memq type '(code verbatim))
+                                        (buffer-substring
+                                         contents-begin contents-end)))
+                           (list :contents-begin contents-begin
+                                 :contents-end contents-end)))))))))))))
+
 (defun org-element-bold-parser ()
   "Parse bold object at point, if any.
 
@@ -2899,21 +2952,7 @@ is a plist with `:begin', `:end', `:contents-begin' and
 nil.
 
 Assume point is at the first star marker."
-  (save-excursion
-    (unless (bolp) (backward-char 1))
-    (when (looking-at org-emph-re)
-      (let ((begin (match-beginning 2))
-	    (contents-begin (match-beginning 4))
-	    (contents-end (match-end 4))
-	    (post-blank (progn (goto-char (match-end 2))
-			       (skip-chars-forward " \t")))
-	    (end (point)))
-	(list 'bold
-	      (list :begin begin
-		    :end end
-		    :contents-begin contents-begin
-		    :contents-end contents-end
-		    :post-blank post-blank))))))
+  (org-element--parse-generic-emphasis "*" 'bold))
 
 (defun org-element-bold-interpreter (_ contents)
   "Interpret bold object as Org syntax.
@@ -3054,19 +3093,7 @@ is a plist with `:value', `:begin', `:end' and `:post-blank'
 keywords.  Otherwise, return nil.
 
 Assume point is at the first tilde marker."
-  (save-excursion
-    (unless (bolp) (backward-char 1))
-    (when (looking-at org-verbatim-re)
-      (let ((begin (match-beginning 2))
-	    (value (match-string-no-properties 4))
-	    (post-blank (progn (goto-char (match-end 2))
-			       (skip-chars-forward " \t")))
-	    (end (point)))
-	(list 'code
-	      (list :value value
-		    :begin begin
-		    :end end
-		    :post-blank post-blank))))))
+  (org-element--parse-generic-emphasis "~" 'code))
 
 (defun org-element-code-interpreter (code _)
   "Interpret CODE object as Org syntax."
@@ -3300,21 +3327,7 @@ cdr is a plist with `:begin', `:end', `:contents-begin' and
 nil.
 
 Assume point is at the first slash marker."
-  (save-excursion
-    (unless (bolp) (backward-char 1))
-    (when (looking-at org-emph-re)
-      (let ((begin (match-beginning 2))
-	    (contents-begin (match-beginning 4))
-	    (contents-end (match-end 4))
-	    (post-blank (progn (goto-char (match-end 2))
-			       (skip-chars-forward " \t")))
-	    (end (point)))
-	(list 'italic
-	      (list :begin begin
-		    :end end
-		    :contents-begin contents-begin
-		    :contents-end contents-end
-		    :post-blank post-blank))))))
+  (org-element--parse-generic-emphasis "/" 'italic))
 
 (defun org-element-italic-interpreter (_ contents)
   "Interpret italic object as Org syntax.
@@ -3680,21 +3693,7 @@ When at a strike-through object, return a list whose car is
 Otherwise, return nil.
 
 Assume point is at the first plus sign marker."
-  (save-excursion
-    (unless (bolp) (backward-char 1))
-    (when (looking-at org-emph-re)
-      (let ((begin (match-beginning 2))
-	    (contents-begin (match-beginning 4))
-	    (contents-end (match-end 4))
-	    (post-blank (progn (goto-char (match-end 2))
-			       (skip-chars-forward " \t")))
-	    (end (point)))
-	(list 'strike-through
-	      (list :begin begin
-		    :end end
-		    :contents-begin contents-begin
-		    :contents-end contents-end
-		    :post-blank post-blank))))))
+  (org-element--parse-generic-emphasis "+" 'strike-through))
 
 (defun org-element-strike-through-interpreter (_ contents)
   "Interpret strike-through object as Org syntax.
@@ -4048,21 +4047,7 @@ When at an underline object, return a list whose car is
 Otherwise, return nil.
 
 Assume point is at the first underscore marker."
-  (save-excursion
-    (unless (bolp) (backward-char 1))
-    (when (looking-at org-emph-re)
-      (let ((begin (match-beginning 2))
-	    (contents-begin (match-beginning 4))
-	    (contents-end (match-end 4))
-	    (post-blank (progn (goto-char (match-end 2))
-			       (skip-chars-forward " \t")))
-	    (end (point)))
-	(list 'underline
-	      (list :begin begin
-		    :end end
-		    :contents-begin contents-begin
-		    :contents-end contents-end
-		    :post-blank post-blank))))))
+  (org-element--parse-generic-emphasis "_" 'underline))
 
 (defun org-element-underline-interpreter (_ contents)
   "Interpret underline object as Org syntax.
@@ -4080,19 +4065,7 @@ and cdr is a plist with `:value', `:begin', `:end' and
 `:post-blank' keywords.  Otherwise, return nil.
 
 Assume point is at the first equal sign marker."
-  (save-excursion
-    (unless (bolp) (backward-char 1))
-    (when (looking-at org-verbatim-re)
-      (let ((begin (match-beginning 2))
-	    (value (match-string-no-properties 4))
-	    (post-blank (progn (goto-char (match-end 2))
-			       (skip-chars-forward " \t")))
-	    (end (point)))
-	(list 'verbatim
-	      (list :value value
-		    :begin begin
-		    :end end
-		    :post-blank post-blank))))))
+  (org-element--parse-generic-emphasis "=" 'verbatim))
 
 (defun org-element-verbatim-interpreter (verbatim _)
   "Interpret VERBATIM object as Org syntax."
@@ -4732,8 +4705,20 @@ Elements are accumulated into ACC."
 	      (when (and (eolp) (not (eobp))) (forward-char)))
 	  ;; Find current element's type and parse it accordingly to
 	  ;; its category.
-	  (let* ((element (org-element--current-element
-		           end granularity mode structure))
+	  (let* ((element (org-element-copy
+                           ;; `org-element--current-element' may return cached
+                           ;; elements.  Below code reassigns
+                           ;; `:parent' property of the element and
+                           ;; may interfere with cache
+                           ;; synchronisation if parent element is not
+                           ;; yet in cache.  Moreover, the returned
+                           ;; structure may be altered by caller code
+                           ;; arbitrarily.  Hence, we return a copy of
+                           ;; the potentially cached element to make
+                           ;; potential modifications safe for element
+                           ;; cache.
+                           (org-element--current-element
+			    end granularity mode structure)))
 		 (type (org-element-type element))
 		 (cbeg (org-element-property :contents-begin element)))
             (goto-char (org-element-property :end element))
@@ -5283,6 +5268,18 @@ to be correct.  Setting this to a value less than 0.0001 is useless.")
 (defvar org-element--cache-map-statistics-threshold 0.1
   "Time threshold in seconds to log statistics for `org-element-cache-map'.")
 
+(defvar org-element--cache-diagnostics-modifications t
+  "Non-nil enables cache warnings when for silent modifications.
+
+Silent modifications are the modifications in Org buffers that are not
+registered by `org-element--cache-before-change' and
+`org-element--cache-after-change'.
+
+This variable may cause false-positives because some Emacs versions
+can change `buffer-chars-modified-tick' internally even though no
+visible changes in buffer are being made.  Some of such expected cases
+are covered by heuristics, but not all.")
+
 (defvar org-element--cache-diagnostics-level 2
   "Detail level of the diagnostics.")
 
@@ -5812,15 +5809,47 @@ updated before current modification are actually submitted."
     (with-current-buffer (or (buffer-base-buffer buffer) buffer)
       ;; Check if the buffer have been changed outside visibility of
       ;; `org-element--cache-before-change' and `org-element--cache-after-change'.
-      (if (/= org-element--cache-change-tic
-             (buffer-chars-modified-tick))
+      (if (and (/= org-element--cache-change-tic
+                  (buffer-chars-modified-tick))
+               ;; FIXME: Below is a heuristics noticed by observation.
+               ;; quail.el with non-latin input does silent
+               ;; modifications in buffer increasing the tick counter
+               ;; but not actually changing the buffer text:
+               ;; https://list.orgmode.org/87sfw2luhj.fsf@localhost/T/#you
+               ;; https://lists.gnu.org/archive/html/bug-gnu-emacs/2021-11/msg00894.html
+               ;; However, the values of `buffer-chars-modified-tick'
+               ;; and `buffer-modified-tick' appear to be same after
+               ;; the quail.el's changes in buffer.  We do not
+               ;; consider these exact changes as a dangerous silent
+               ;; edit.
+               (/= (buffer-chars-modified-tick)
+                  (buffer-modified-tick)))
           (progn
-            (org-element--cache-warn "Unregistered buffer modifications detected. Resetting.
+            (when (or (and org-element--cache-diagnostics-modifications
+                           ;; FIXME: Some more special cases when
+                           ;; non-latin input in Emacs <28 triggers
+                           ;; changes in `buffer-chars-modified-tick'
+                           ;; even though the buffer text remains
+                           ;; unchanged.  We still reset the cache as
+                           ;; safety precaution, but do not show the
+                           ;; warning.
+                           (not (memq (- (buffer-modified-tick)
+                                       (buffer-chars-modified-tick))
+                                    ;; Note: 4 is a footprint for
+                                    ;; (let ((inhibit-modification-hooks t))
+                                    ;; (insert "blah"))
+                                    '(1 3 6 7))))
+                      (and (boundp 'org-batch-test) org-batch-test))
+              (org-element--cache-warn "Unregistered buffer modifications detected. Resetting.
 If this warning appears regularly, please report it to Org mode mailing list (M-x org-submit-bug-report).
-The buffer is: %s\n Current command: %S\n Backtrace:\n%S"
-                          (buffer-name (current-buffer))
-                          this-command
-                          (backtrace-to-string (backtrace-get-frames 'backtrace)))
+The buffer is: %s\n Current command: %S\n Chars modified: %S\n Buffer modified: %S\n Backtrace:\n%S"
+                            (buffer-name (current-buffer))
+                            (list this-command (buffer-chars-modified-tick) (buffer-modified-tick))
+                            (buffer-chars-modified-tick)
+                            (buffer-modified-tick)
+                            (when (and (fboundp 'backtrace-get-frames)
+                                       (fboundp 'backtrace-to-string))
+                              (backtrace-to-string (backtrace-get-frames 'backtrace)))))
             (org-element-cache-reset))
         (let ((inhibit-quit t) request next)
           (setq org-element--cache-interrupt-C-g-count 0)
@@ -6336,7 +6365,10 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                      (unless (when (and (/= 1 (org-element-property :level element))
                                         (re-search-forward
                                          (rx-to-string
-                                          `(and bol (repeat 1 ,(1- (org-element-property :level element)) "*") " "))
+                                          `(and bol (repeat 1 ,(1- (let ((level (org-element-property :level element)))
+                                                                     (if org-odd-levels-only (1- (* level 2)) level)))
+                                                            "*")
+                                                " "))
                                          pos t))
                                (beginning-of-line)
                                t)
@@ -6348,7 +6380,10 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                        (goto-char pos)
                        (re-search-backward
                         (rx-to-string
-                         `(and bol (repeat ,(org-element-property :level element) "*") " "))
+                         `(and bol (repeat ,(let ((level (org-element-property :level element)))
+                                              (if org-odd-levels-only (1- (* level 2)) level))
+                                           "*")
+                               " "))
                         elem-end t))))
 	         (setq mode (org-element--next-mode mode type nil)))
 	        ;; A non-greater element contains point: return it.
@@ -6392,7 +6427,7 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                                   ;; the headline section.
 			          (and (org-element--open-end-p element)
                                        (or (= (org-element-property :end element) (point-max))
-                                           (and (> pos (org-element-property :contents-end element))
+                                           (and (>= pos (org-element-property :contents-end element))
                                                 (memq (org-element-type element) '(org-data section headline)))))))
 		     (goto-char (or next cbeg))
 		     (setq mode (if next mode (org-element--next-mode mode type t))
@@ -6466,7 +6501,7 @@ The function returns the new value of `org-element--cache-change-warning'."
                                       until (= min-level 1))
                              (goto-char beg)
                              (beginning-of-line)
-                             (or min-level
+                             (or (and min-level (org-reduced-level min-level))
                                  (when (looking-at-p "^[ \t]*#\\+CATEGORY:")
                                    'org-data)
                                  t))))))
@@ -6851,7 +6886,9 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
   (when (and org-element-use-cache
              buffer
              org-element-cache-persistent
-             (eq var 'org-element--cache))
+             (eq var 'org-element--cache)
+             (derived-mode-p 'org-mode)
+             org-element--cache)
     (with-current-buffer buffer
       ;; Cleanup cache request keys to avoid collisions during next
       ;; Emacs session.
@@ -7462,9 +7499,12 @@ element ending there."
                     (condition-case err
                         (org-element--parse-to pom)
                       (error
-                       (org-element--cache-warn "Cache corruption detected in %s. Resetting.\n The error was: %S\n Please report this to Org mode mailing list (M-x org-submit-bug-report)."
+                       (org-element--cache-warn "Cache corruption detected in %s. Resetting.\n The error was: %S\n Backtrace:\n%S\n Please report this to Org mode mailing list (M-x org-submit-bug-report)."
                                      (buffer-name (current-buffer))
-                                     err)
+                                     err
+                                     (when (and (fboundp 'backtrace-get-frames)
+                                                (fboundp 'backtrace-to-string))
+                                       (backtrace-to-string (backtrace-get-frames 'backtrace))))
                        (org-element-cache-reset)
                        (org-element--parse-to pom)))))
     (when (and (org-element--cache-active-p)
@@ -7481,9 +7521,6 @@ element ending there."
                                (and (org-element-property :contents-begin element)
                                     (>= pom (org-element-property :begin element))
                                     (< pom (org-element-property :contents-begin element)))
-                               (and (org-element-property :contents-end element)
-                                    (< pom (org-element-property :end element))
-                                    (>= pom (org-element-property :contents-end element)))
                                (and (not (org-element-property :contents-end element))
                                     (>= pom (org-element-property :begin element))
                                     (< pom (org-element-property :end element)))))))
