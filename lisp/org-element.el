@@ -73,7 +73,6 @@
 (require 'org-fold-core)
 
 (declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
 (declare-function org-escape-code-in-string "org-src" (s))
 (declare-function org-macro-escape-arguments "org-macro" (&rest args))
 (declare-function org-macro-extract-arguments "org-macro" (s))
@@ -83,25 +82,14 @@
 (declare-function outline-next-heading "outline" ())
 (declare-function outline-previous-heading "outline" ())
 
-(defvar org-archive-tag)
-(defvar org-clock-line-re)
-(defvar org-closed-string)
-(defvar org-comment-string)
 (defvar org-complex-heading-regexp)
-(defvar org-dblock-start-re)
-(defvar org-deadline-string)
 (defvar org-done-keywords)
-(defvar org-drawer-regexp)
 (defvar org-edit-src-content-indentation)
-(defvar org-keyword-time-not-clock-regexp)
 (defvar org-match-substring-regexp)
 (defvar org-odd-levels-only)
-(defvar org-outline-regexp-bol)
-(defvar org-planning-line-re)
 (defvar org-property-drawer-re)
 (defvar org-property-format)
 (defvar org-property-re)
-(defvar org-scheduled-string)
 (defvar org-src-preserve-indentation)
 (defvar org-tags-column)
 (defvar org-time-stamp-formats)
@@ -118,6 +106,9 @@
 ;; `org-element-update-syntax' builds proper syntax regexps according
 ;; to current setup.
 
+(defconst org-element-archive-tag "ARCHIVE"
+  "Tag marking a substree as archived.")
+
 (defconst org-element-citation-key-re
   (rx "@" (group (one-or-more (any word "-.:?!`'/*@+|(){}<>&_^$#%~"))))
   "Regexp matching a citation key.
@@ -130,6 +121,56 @@ Key is located in match group 1.")
       (zero-or-more (any "\t\n ")))
   "Regexp matching a citation prefix.
 Style, if any, is located in match group 1.")
+
+(defconst org-element-clock-line-re
+  (rx line-start (0+ (or ?\t ?\s)) "CLOCK:")
+  "Regexp matching a clock line.")
+
+(defconst org-element-comment-string "COMMENT"
+  "String marker for commented headlines.")
+
+(defconst org-element-closed-keyword "CLOSED:"
+  "Keyword used to close TODO entries.")
+
+(defconst org-element-deadline-keyword "DEADLINE:"
+  "Keyword used to mark deadline entries.")
+
+(defconst org-element-scheduled-keyword "SCHEDULED:"
+  "Keyword used to mark scheduled entries.")
+
+(defconst org-element-planning-keywords-re
+  (regexp-opt (list org-element-closed-keyword
+                    org-element-deadline-keyword
+                    org-element-scheduled-keyword))
+  "Regexp matching any planning line keyword.")
+
+(defconst org-element-planning-line-re
+  (rx-to-string
+   `(seq line-start (0+ (any ?\s ?\t))
+         (group (regexp ,org-element-planning-keywords-re))))
+  "Regexp matching a planning line.")
+
+(defconst org-element-drawer-re
+  (rx line-start (0+ (any ?\s ?\t))
+      ":" (group (1+ (any ?- ?_ word))) ":"
+      (0+ (any ?\s ?\t)) line-end)
+  "Regexp matching opening or closing line of a drawer.
+Drawer's name is located in match group 1.")
+
+(defconst org-element-dynamic-block-open-re
+  (rx line-start (0+ (any ?\s ?\t))
+      "#+BEGIN:" (0+ (any ?\s ?\t))
+      (group (1+ word))
+      (opt
+       (1+ (any ?\s ?\t))
+       (group (1+ nonl))))
+  "Regexp matching the opening line of a dynamic block.
+Dynamic block's name is located in match group 1.
+Parameters are in match group 2.")
+
+(defconst org-element-headline-re
+  (rx line-start (1+ "*") " ")
+  "Regexp matching a headline.")
 
 (defvar org-element-paragraph-separate nil
   "Regexp to separate paragraphs in an Org buffer.
@@ -790,8 +831,10 @@ Assume point is at beginning of drawer."
 	(org-element-paragraph-parser limit affiliated)
       (save-excursion
 	(let* ((drawer-end-line (match-beginning 0))
-	       (name (progn (looking-at org-drawer-regexp)
-			    (match-string-no-properties 1)))
+	       (name
+                (progn
+                  (looking-at org-element-drawer-re)
+		  (match-string-no-properties 1)))
 	       (begin (car affiliated))
 	       (post-affiliated (point))
 	       ;; Empty drawers have no contents.
@@ -846,9 +889,10 @@ Assume point is at beginning of dynamic block."
 	(org-element-paragraph-parser limit affiliated)
       (let ((block-end-line (match-beginning 0)))
 	(save-excursion
-	  (let* ((name (progn (looking-at org-dblock-start-re)
-			      (match-string-no-properties 1)))
-		 (arguments (match-string-no-properties 3))
+	  (let* ((name (progn
+                         (looking-at org-element-dynamic-block-open-re)
+			 (match-string-no-properties 1)))
+		 (arguments (match-string-no-properties 2))
 		 (begin (car affiliated))
 		 (post-affiliated (point))
 		 ;; Empty blocks have no contents.
@@ -886,7 +930,7 @@ CONTENTS is the contents of the element."
 ;;;; Footnote Definition
 
 (defconst org-element--footnote-separator
-  (concat org-outline-regexp-bol "\\|"
+  (concat org-element-headline-re "\\|"
 	  org-footnote-definition-re "\\|"
 	  "^\\([ \t]*\n\\)\\{2,\\}")
   "Regexp used as a footnote definition separator.")
@@ -983,7 +1027,7 @@ parse properties for property drawer at point."
   (save-excursion
     (unless at-point-p?
       (forward-line)
-      (when (looking-at-p org-planning-line-re) (forward-line)))
+      (when (looking-at-p org-element-planning-line-re) (forward-line)))
     (when (looking-at org-property-drawer-re)
       (forward-line)
       (let ((end (match-end 0)) properties)
@@ -1011,16 +1055,16 @@ parse properties for property drawer at point."
   "Return time properties associated to headline at point.
 Return value is a plist."
   (save-excursion
-    (when (progn (forward-line) (looking-at org-planning-line-re))
-      (let ((end (line-end-position)) plist)
-	(while (re-search-forward org-keyword-time-not-clock-regexp end t)
-	  (goto-char (match-end 1))
+    (when (progn (forward-line) (looking-at org-element-planning-line-re))
+      (let ((end (line-end-position))
+            plist)
+	(while (re-search-forward org-element-planning-keywords-re end t)
 	  (skip-chars-forward " \t")
-	  (let ((keyword (match-string 1))
+	  (let ((keyword (match-string 0))
 		(time (org-element-timestamp-parser)))
-	    (cond ((equal keyword org-scheduled-string)
+	    (cond ((equal keyword org-element-scheduled-keyword)
 		   (setq plist (plist-put plist :scheduled time)))
-		  ((equal keyword org-deadline-string)
+		  ((equal keyword org-element-deadline-keyword)
 		   (setq plist (plist-put plist :deadline time)))
 		  (t (setq plist (plist-put plist :closed time))))))
 	plist))))
@@ -1046,8 +1090,9 @@ parsed as a secondary string, but as a plain string instead.
 Assume point is at beginning of the headline."
   (save-excursion
     (let* ((begin (point))
-	   (level (prog1 (org-reduced-level (skip-chars-forward "*"))
-		    (skip-chars-forward " \t")))
+           (true-level (prog1 (skip-chars-forward "*")
+                         (skip-chars-forward " \t")))
+	   (level (org-reduced-level true-level))
 	   (todo (and org-todo-regexp
 		      (let (case-fold-search) (looking-at (concat org-todo-regexp " ")))
 		      (progn (goto-char (match-end 0))
@@ -1059,7 +1104,8 @@ Assume point is at beginning of the headline."
 			  (progn (goto-char (match-end 0))
 				 (aref (match-string 0) 2))))
 	   (commentedp
-	    (and (let (case-fold-search) (looking-at org-comment-string))
+	    (and (let ((case-fold-search nil))
+                   (looking-at org-element-comment-string))
 		 (goto-char (match-end 0))))
 	   (title-start (prog1 (point)
                           (unless (or todo priority commentedp)
@@ -1074,22 +1120,18 @@ Assume point is at beginning of the headline."
 	   (title-end (point))
 	   (raw-value (org-trim
 		       (buffer-substring-no-properties title-start title-end)))
-	   (archivedp (member org-archive-tag tags))
+	   (archivedp (member org-element-archive-tag tags))
 	   (footnote-section-p (and org-footnote-section
 				    (string= org-footnote-section raw-value)))
 	   (standard-props (org-element--get-node-properties))
 	   (time-props (org-element--get-time-properties))
-	   (end (save-excursion
-                  ;; Make sure that `org-end-of-subtree' does not try
-                  ;; to use cache.  The headline parser might be
-                  ;; called in the midst of cache processing.
-                  ;; FIXME: We cannot simply bind `org-element-use-cache' here
-                  ;; because apparently some magic related to lexical
-                  ;; scoping prevents `org-element--cache-active-p' call inside
-                  ;; `org-end-of-subtree' to use the overridden value
-                  ;; of `org-element-use-cache'.
-                  (org-element-with-disabled-cache
-                      (org-end-of-subtree t t))))
+	   (end
+            (save-excursion
+              (let ((re (rx-to-string
+                         `(seq line-start (** 1 ,true-level "*") " "))))
+                (if (re-search-forward re nil t)
+                    (line-beginning-position)
+                  (point-max)))))
 	   (contents-begin (save-excursion
 			     (forward-line)
 			     (skip-chars-forward " \r\t\n" end)
@@ -1100,7 +1142,7 @@ Assume point is at beginning of the headline."
 				     (line-beginning-position 2))))
            (robust-begin (and contents-begin
                               (progn (goto-char contents-begin)
-                                     (when (looking-at-p org-planning-line-re)
+                                     (when (looking-at-p org-element-planning-line-re)
                                        (forward-line))
                                      (when (looking-at org-property-drawer-re)
                                        (goto-char (match-end 0)))
@@ -1174,7 +1216,7 @@ CONTENTS is the contents of the element."
 	  (concat (make-string (if org-odd-levels-only (1- (* level 2)) level)
 			       ?*)
 		  (and todo (concat " " todo))
-		  (and commentedp (concat " " org-comment-string))
+		  (and commentedp (concat " " org-element-comment-string))
 		  (and priority (format " [#%c]" priority))
 		  " "
 		  (if (and org-footnote-section
@@ -1322,7 +1364,7 @@ Assume point is at beginning of the inline task."
 		       (buffer-substring-no-properties title-start title-end)))
 	   (task-end (save-excursion
 		       (end-of-line)
-		       (and (re-search-forward org-outline-regexp-bol limit t)
+		       (and (re-search-forward org-element-headline-re limit t)
 			    (looking-at-p "[ \t]*END[ \t]*$")
 			    (line-beginning-position))))
 	   (standard-props (and task-end (org-element--get-node-properties)))
@@ -1617,7 +1659,7 @@ CONTENTS is the contents of the element."
 		   (re-search-forward
 		    (format "^[ \t]*#\\+END%s[ \t]*$" (match-string 1))
 		    limit t)))
-	     ((and (looking-at org-drawer-regexp)
+	     ((and (looking-at org-element-drawer-re)
 		   (re-search-forward "^[ \t]*:END:[ \t]*$" limit t))))
 	    (forward-line))))))))
 
@@ -2507,7 +2549,7 @@ Assume point is at the beginning of the paragraph."
 		       ((not (and (re-search-forward
 				   org-element-paragraph-separate limit 'move)
 				  (progn (beginning-of-line) t))))
-		       ((looking-at org-drawer-regexp)
+		       ((looking-at org-element-drawer-re)
 			(save-excursion
 			  (re-search-forward "^[ \t]*:END:[ \t]*$" limit t)))
 		       ((looking-at "[ \t]*#\\+BEGIN_\\(\\S-+\\)")
@@ -2572,14 +2614,14 @@ containing `:closed', `:deadline', `:scheduled', `:begin',
 	   (end (point))
 	   closed deadline scheduled)
       (goto-char begin)
-      (while (re-search-forward org-keyword-time-not-clock-regexp end t)
-	(goto-char (match-end 1))
+      (while (re-search-forward org-element-planning-keywords-re end t)
 	(skip-chars-forward " \t" end)
-	(let ((keyword (match-string 1))
+	(let ((keyword (match-string 0))
 	      (time (org-element-timestamp-parser)))
-	  (cond ((equal keyword org-closed-string) (setq closed time))
-		((equal keyword org-deadline-string) (setq deadline time))
-		(t (setq scheduled time)))))
+	  (cond
+           ((equal keyword org-element-closed-keyword) (setq closed time))
+	   ((equal keyword org-element-deadline-keyword) (setq deadline time))
+	   (t (setq scheduled time)))))
       (list 'planning
 	    (list :closed closed
 		  :deadline deadline
@@ -2596,15 +2638,15 @@ containing `:closed', `:deadline', `:scheduled', `:begin',
    (delq nil
 	 (list (let ((deadline (org-element-property :deadline planning)))
 		 (when deadline
-		   (concat org-deadline-string " "
+		   (concat org-element-deadline-keyword " "
 			   (org-element-timestamp-interpreter deadline nil))))
 	       (let ((scheduled (org-element-property :scheduled planning)))
 		 (when scheduled
-		   (concat org-scheduled-string " "
+		   (concat org-element-scheduled-keyword " "
 			   (org-element-timestamp-interpreter scheduled nil))))
 	       (let ((closed (org-element-property :closed planning)))
 		 (when closed
-		   (concat org-closed-string " "
+		   (concat org-element-closed-keyword " "
 			   (org-element-timestamp-interpreter closed nil))))))
    " "))
 
@@ -4118,7 +4160,7 @@ element it has to parse."
                        (org-element--cache-find (point) t)))
          (element (progn (while (and element
                                      (not (and (eq (point) (org-element-property :begin element))
-                                             (eq mode (org-element-property :mode element)))))
+                                               (eq mode (org-element-property :mode element)))))
                            (setq element (org-element-property :parent element)))
                          element))
          (old-element element)
@@ -4164,7 +4206,7 @@ element it has to parse."
             ;; Planning.
             ((and (eq mode 'planning)
 	          (eq ?* (char-after (line-beginning-position 0)))
-	          (looking-at org-planning-line-re))
+	          (looking-at org-element-planning-line-re))
 	     (org-element-planning-parser limit))
             ;; Property drawer.
             ((and (pcase mode
@@ -4180,7 +4222,8 @@ element it has to parse."
             ;; a footnote definition: next item is always a paragraph.
             ((not (bolp)) (org-element-paragraph-parser limit (list (point))))
             ;; Clock.
-            ((looking-at org-clock-line-re) (org-element-clock-parser limit))
+            ((looking-at org-element-clock-line-re)
+             (org-element-clock-parser limit))
             ;; Inlinetask.
             ((looking-at "^\\*+ ")
 	     (org-element-inlinetask-parser limit raw-secondary-p))
@@ -4197,7 +4240,7 @@ element it has to parse."
 	          ((looking-at org-element--latex-begin-environment)
 	           (org-element-latex-environment-parser limit affiliated))
 	          ;; Drawer.
-	          ((looking-at org-drawer-regexp)
+	          ((looking-at org-element-drawer-re)
 	           (org-element-drawer-parser limit affiliated))
 	          ;; Fixed Width
 	          ((looking-at "[ \t]*:\\( \\|$\\)")
@@ -4260,7 +4303,7 @@ element it has to parse."
 		         ;; Start with a full rule.
 		         (and
 		          (looking-at rule-regexp)
-		          (< next limit)	;no room for a table.el table
+		          (< next limit) ;no room for a table.el table
 		          (save-excursion
 		            (end-of-line)
 		            (cond
@@ -6603,7 +6646,7 @@ known element in cache (it may start after END)."
                              (org-with-point-at (org-element-property :contents-begin up)
                                (unless
                                    (save-match-data
-                                     (when (looking-at-p org-planning-line-re)
+                                     (when (looking-at-p org-element-planning-line-re)
                                        (forward-line))
                                      (when (looking-at org-property-drawer-re)
                                        (< beg (match-end 0))))
@@ -6925,6 +6968,11 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
 
 ;;;; Public Functions
 
+(defvar-local org-element--cache-gapless nil
+  "An alist containing (granularity . `org-element--cache-change-tic') elements.
+Each element indicates the latest `org-element--cache-change-tic' when
+change did not contain gaps.")
+
 ;;;###autoload
 (defun org-element-cache-reset (&optional all)
   "Reset cache in current buffer.
@@ -6968,10 +7016,7 @@ buffers."
     (org-element--cache-set-timer (current-buffer))))
 
 (defvar warning-minimum-log-level) ; Defined in warning.el
-(defvar-local org-element--cache-gapless nil
-  "An alist containing (granularity . `org-element--cache-change-tic') elements.
-Each element indicates the latest `org-element--cache-change-tic' when
-change did not contain gaps.")
+
 (defvar org-element-cache-map--recurse nil)
 ;;;###autoload
 (cl-defun org-element-cache-map (func &key (granularity 'headline+inlinetask) restrict-elements
@@ -7206,13 +7251,13 @@ of FUNC.  Changes to elements made in FUNC will also alter the cache."
                                                     restrict-elements)))
                                      (cons
                                       (org-with-limited-levels
-                                       org-outline-regexp-bol)
+                                       org-element-headline-re)
                                       'match-beg))
                                     (`headline+inlinetask
                                      (cons
                                       (if (eq '(inlinetask) restrict-elements)
                                           (org-inlinetask-outline-regexp)
-                                        org-outline-regexp-bol)
+                                        org-element-headline-re)
                                       'match-beg))
                                     ;; TODO: May add other commonly
                                     ;; searched elements as needed.
@@ -7604,7 +7649,7 @@ Providing it allows for quicker computation."
 	   (let ((end (match-end 4)))
 	     (if (not end) (throw 'objects-forbidden element)
 	       (goto-char (match-beginning 4))
-	       (when (looking-at org-comment-string)
+	       (when (looking-at org-element-comment-string)
 		 (goto-char (match-end 0)))
 	       (if (>= (point) end) (throw 'objects-forbidden element)
 		 (narrow-to-region (point) end))))))

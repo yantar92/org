@@ -142,12 +142,12 @@ result.  The default value is `org-remove-indentation'."
   :version "24.1"
   :type 'function)
 
-(defcustom org-babel-tangle-default-mode #o544
+(defcustom org-babel-tangle-default-file-mode #o544
   "The default mode used for tangled files, as an integer.
 The default value 356 correspands to the octal #o544, which is
 read-write permissions for the user, read-only for everyone else."
   :group 'org-babel
-  :version "9.6"
+  :package-version '(Org . "9.6")
   :type 'integer)
 
 (defun org-babel-find-file-noselect-refresh (file)
@@ -312,21 +312,26 @@ matching a regular expression."
   "Determine the integer representation of a file MODE specification.
 The following forms are currently recognised:
 - an integer (returned without modification)
-- \"755\" (chmod style octal)
+- \"o755\" (chmod style octal)
 - \"rwxrw-r--\" (ls style specification)
 - \"a=rw,u+x\" (chmod style) *
 
 * The interpretation of these forms relies on `file-modes-symbolic-to-number',
-  and uses `org-babel-tangle-default-mode' as the base mode."
+  and uses `org-babel-tangle-default-file-mode' as the base mode."
   (cond
-   ((integerp mode) mode)
+   ((integerp mode)
+    (if (string-match-p "^[0-7][0-7][0-7]$" (format "%o" mode))
+        mode
+      (user-error "%1$o is not a valid file mode octal. \
+Did you give the decimal value %1$d by mistake?" mode)))
    ((not (stringp mode))
     (error "File mode %S not recognised as a valid format." mode))
-   ((string-match-p "^0?[0-7][0-7][0-7]$" mode)
-    (string-to-number mode 8))
+   ((string-match-p "^o0?[0-7][0-7][0-7]$" mode)
+    (string-to-number (replace-regexp-in-string "^o" "" mode) 8))
    ((string-match-p "^[ugoa]*\\(?:[+-=][rwxXstugo]*\\)+\\(,[ugoa]*\\(?:[+-=][rwxXstugo]*\\)+\\)*$" mode)
-    (file-modes-symbolic-to-number mode org-babel-tangle-default-mode))
-   ((string-match-p "^[rwx-]\\{9\\}$" mode)
+    ;; Match regexp taken from `file-modes-symbolic-to-number'.
+    (file-modes-symbolic-to-number mode org-babel-tangle-default-file-mode))
+   ((string-match-p "^\\(?:[r-][w-][x-]\\)\\{3\\}$" mode)
     (file-modes-symbolic-to-number (concat  "u=" (substring mode 0 3)
                                             ",g=" (substring mode 3 6)
                                             ",a=" (substring mode 6 9))
