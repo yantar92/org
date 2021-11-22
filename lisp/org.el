@@ -11785,54 +11785,54 @@ The tags are fontified when FONTIFY is non-nil."
         org-scanner-tags
       (org-with-point-at (unless (org-element-type pos-or-element)
                         (or pos-or-element (point)))
-        (unless (and (not (org-element-type pos-or-element))
-                     (org-before-first-heading-p))
-          (unless (org-element-type pos-or-element) (org-back-to-heading t))
-          (let ((ltags (if (org-element-type pos-or-element)
-                           (org-element-property :tags (org-element-lineage pos-or-element '(headline) t))
-                         (org--get-local-tags fontify)))
-                itags)
-            (if (or local (not org-use-tag-inheritance)) ltags
-              (let ((cached (and (org-element--cache-active-p)
-                                 (if (org-element-type pos-or-element)
-                                     (org-element-lineage pos-or-element '(headline) t)
-                                   (org-element-at-point nil 'cached)))))
-                (if cached
-                    (while (setq cached (org-element-property :parent cached))
-                      (setq itags (nconc (mapcar #'org-add-prop-inherited
-                                                 (let* ((cached-tags (org-element-property :tags cached))
-                                                        (cached-tags-fontified?
-                                                         (or
-                                                          ;; No tags. Fontification does not matter.
-                                                          (not cached-tags)
-                                                          ;; Fontification should never happen in the middle of
-                                                          ;; caching.
-                                                          (get-text-property 0 'fontified (car cached-tags)))))
-                                                   (if ;; Tags are cached and do not need to be re-fontified.
-                                                       (or (not fontify)
-                                                           cached-tags-fontified?)
-                                                       ;; If we do not wrap result into `cl-copy-list', reference would
-                                                       ;; be returned and cache element might be modified directly.
-                                                       (cl-copy-list cached-tags)
-                                                     ;; Parse tags manually.
-                                                     (let ((local-tags (org-with-point-at (org-element-property :begin cached)
-                                                                         (and (if fontify
-                                                                                  (org-looking-at-fontified org-tag-line-re)
-                                                                                (looking-at org-tag-line-re))
-                                                                              (split-string (match-string 2) ":" t)))))
-                                                       ;; Update the cache.
-                                                       (when cached (org-element-put-property cached :tags local-tags))
-                                                       ;; Return parsed tags.
-                                                       local-tags))))
-                                         itags)))
-                  (while (org-up-heading-safe)
+        (unless (or (org-element-type pos-or-element)
+		    (org-before-first-heading-p))
+          (org-back-to-heading t))
+        (let ((ltags (if (org-element-type pos-or-element)
+                         (org-element-property :tags (org-element-lineage pos-or-element '(headline inlinetask) t))
+                       (org--get-local-tags fontify)))
+              itags)
+          (if (or local (not org-use-tag-inheritance)) ltags
+            (let ((cached (and (org-element--cache-active-p)
+                               (if (org-element-type pos-or-element)
+                                   (org-element-lineage pos-or-element '(headline org-data inlinetask) t)
+                                 (org-element-at-point nil 'cached)))))
+              (if cached
+                  (while (setq cached (org-element-property :parent cached))
                     (setq itags (nconc (mapcar #'org-add-prop-inherited
-					       (org--get-local-tags fontify))
-				       itags)))))
-              (setq itags (append org-file-tags itags))
-              (nreverse
-	       (delete-dups
-	        (nreverse (nconc (org-remove-uninherited-tags itags) ltags)))))))))))
+                                               (let* ((cached-tags (org-element-property :tags cached))
+                                                      (cached-tags-fontified?
+                                                       (or
+                                                        ;; No tags. Fontification does not matter.
+                                                        (not cached-tags)
+                                                        ;; Fontification should never happen in the middle of
+                                                        ;; caching.
+                                                        (get-text-property 0 'fontified (car cached-tags)))))
+                                                 (if ;; Tags are cached and do not need to be re-fontified.
+                                                     (or (not fontify)
+                                                         cached-tags-fontified?)
+                                                     ;; If we do not wrap result into `cl-copy-list', reference would
+                                                     ;; be returned and cache element might be modified directly.
+                                                     (cl-copy-list cached-tags)
+                                                   ;; Parse tags manually.
+                                                   (let ((local-tags (org-with-point-at (org-element-property :begin cached)
+                                                                       (and (if fontify
+                                                                                (org-looking-at-fontified org-tag-line-re)
+                                                                              (looking-at org-tag-line-re))
+                                                                            (split-string (match-string 2) ":" t)))))
+                                                     ;; Update the cache.
+                                                     (when cached (org-element-put-property cached :tags local-tags))
+                                                     ;; Return parsed tags.
+                                                     local-tags))))
+                                       itags)))
+                (while (org-up-heading-safe)
+                  (setq itags (nconc (mapcar #'org-add-prop-inherited
+					     (org--get-local-tags fontify))
+				     itags)))))
+            (setq itags (append org-file-tags itags))
+            (nreverse
+	     (delete-dups
+	      (nreverse (nconc (org-remove-uninherited-tags itags) ltags))))))))))
 
 (defun org-get-buffer-tags ()
   "Get a table of all tags used in the buffer, for completion."
@@ -16020,7 +16020,7 @@ buffer boundaries with possible narrowing."
                     (/ (or (and (bound-and-true-p visual-fill-column-mode)
                                 (or visual-fill-column-width auto-fill-function))
                            (when auto-fill-function fill-column)
-                           (- (window-text-width) (or display-line-numbers-width 0)))
+                           (- (window-text-width) (line-number-display-width)))
                        (float (window-total-width)))))
         width)))
    ((numberp org-image-actual-width)
@@ -19811,7 +19811,7 @@ Optional argument ELEMENT contains element at point."
     (let ((el (or element (org-element-at-point nil 'cached))))
       (if el
           (catch :found
-            (setq el (org-element-lineage el '(headline) 'include-self))
+            (setq el (org-element-lineage el '(headline inlinetask) 'include-self))
             (if no-inheritance
                 (org-element-property :commentedp el)
               (while el

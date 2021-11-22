@@ -6158,6 +6158,7 @@ completing the request."
                 (let ((next-request (nth 1 org-element--cache-sync-requests)))
                   (unless (and (org-element-property :cached (org-element--request-parent next-request))
                                (org-element-property :begin (org-element--request-parent next-request))
+                               parent
                                (> (org-element-property :begin (org-element--request-parent next-request))
                                   (org-element-property :begin parent)))
                     (setf (org-element--request-parent next-request) parent)))
@@ -6536,7 +6537,8 @@ The function returns the new value of `org-element--cache-change-warning'."
                            (let (min-level)
                              (cl-loop while (re-search-forward
                                              (rx-to-string
-                                              (if min-level
+                                              (if (and min-level
+                                                       (> min-level 1))
                                                   `(and bol (repeat 1 ,(1- min-level) "*") " ")
                                                 `(and bol (+ "*") " ")))
                                              bottom t)
