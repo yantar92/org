@@ -239,7 +239,12 @@ STATE should be one of the symbols listed in the docstring of
                   (end (cond (global? (point-max))
                              ((eq state 'children) (org-entry-end-position))
                              (t (save-excursion (org-end-of-subtree t t))))))
-             (org-fold--hide-drawers beg end)))
+             (if (not global?)
+                 (org-fold--hide-drawers beg end)
+               ;; Delay folding drawers inside folded subtrees until
+               ;; first unfold.
+               (add-hook 'org-fold-core-first-unfold-functions
+                         #'org-fold--hide-drawers))))
           ((memq state '(overview contents))
            ;; Hide drawers before first heading.
            (let ((beg (point-min))
@@ -793,10 +798,14 @@ STATE should be one of the symbols listed in the docstring of
   (when (and (not org-cycle-open-archived-trees)
              (not (memq state '(overview folded))))
     (let ((globalp (memq state '(contents all))))
-      (org-fold-hide-archived-subtrees
-       (if globalp (point-min) (point))
-       (if globalp (point-max) (save-excursion
-                                 (org-end-of-subtree t))))
+      (if globalp
+          ;; Delay hiding inside folded subtrees until first unfold.
+          (add-hook 'org-fold-core-first-unfold-functions
+                    #'org-fold-hide-archived-subtrees)
+        (org-fold-hide-archived-subtrees
+         (point)
+         (save-excursion
+           (org-end-of-subtree t))))
       (when (and (not globalp)
                  (member org-archive-tag
                          (org-get-tags nil 'local)))

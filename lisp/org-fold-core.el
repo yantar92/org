@@ -300,10 +300,18 @@ Can be either `text-properties' or `overlays'.
 The former is faster on large files, while the latter is generally
 less error-prone."
   :group 'org
-  :package-version '(Org . "10.0")
+  :package-version '(Org . "9.6")
   :type '(choice
           (const :tag "Overlays" 'overlays)
           (const :tag "Text properties" 'text-properties)))
+
+(defcustom org-fold-core-first-unfold-functions nil
+  "Functions executed after first unfolding during fontification.
+Each function is exectured with two arguments: begin and end points of
+the unfolded region."
+  :group 'org
+  :package-version '(Org . "9.6")
+  :type 'hook)
 
 (defvar-local org-fold-core-isearch-open-function #'org-fold-core--isearch-reveal
   "Function used to reveal hidden text found by isearch.
@@ -1443,7 +1451,10 @@ The arguments and return value are as specified for `filter-buffer-substring'."
                            (throw :found spec)))))
                   (< next end))
         (setq next (org-fold-core-next-folding-state-change nil next end)))
-      (save-excursion (font-lock-default-fontify-region pos next loudly))
+      (save-excursion
+        (font-lock-default-fontify-region pos next loudly)
+        (save-match-data
+          (run-hook-with-args 'org-fold-core-first-unfold-functions pos next)))
       (put-text-property pos next 'org-fold-core-fontified t)
       (setq pos next))))
 
