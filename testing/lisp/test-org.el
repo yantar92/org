@@ -1522,6 +1522,7 @@
   (should
    (org-test-with-temp-text ":MYDRAWER:\n- a\n:END:"
      (forward-line)
+     (org-fold-reveal)
      (org-meta-return)
      (beginning-of-line)
      (looking-at "- $"))))
@@ -2921,6 +2922,7 @@ Foo Bar
    (let ((org-custom-properties '("FOO" "BAR")))
      (org-test-with-temp-text
 	 "* H\n:PROPERTIES:\n<point>:FOO: val\n:P: 1\n:BAR: baz\n:END:\n"
+       (org-fold-reveal)
        (org-toggle-custom-properties-visibility)
        (and (org-invisible-p2)
 	    (not (progn (forward-line) (org-invisible-p2)))
@@ -2941,6 +2943,7 @@ Foo Bar
    (let ((org-custom-properties '("A")))
      (org-test-with-temp-text
 	 "* H\n:PROPERTIES:\n:A: 1\n:END:\n\n:PROPERTIES:\n<point>:A: 2\n:END:"
+       (org-fold-reveal)
        (org-toggle-custom-properties-visibility)
        (org-invisible-p2)))))
 
@@ -8098,6 +8101,7 @@ CLOSED: %s
   ;; Hide drawer.
   (should
    (org-test-with-temp-text ":drawer:\ncontents\n:end:"
+     (org-fold-show-all)
      (org-fold-hide-drawer-toggle)
      (get-char-property (line-end-position) 'invisible)))
   ;; Show drawer unconditionally when optional argument is `off'.
@@ -8114,6 +8118,7 @@ CLOSED: %s
   ;; Do not hide drawer when called from final blank lines.
   (should-not
    (org-test-with-temp-text ":drawer:\ncontents\n:end:\n\n<point>"
+     (org-fold-show-all)
      (org-fold-hide-drawer-toggle)
      (goto-char (point-min))
      (get-char-property (line-end-position) 'invisible)))
@@ -8454,6 +8459,7 @@ Text here"
 :END:
 Text here"
      (org-cycle)
+     (org-fold-hide-drawer-all)
      (re-search-forward "ID")
      (should (org-invisible-p))
      (re-search-backward ":PROPERTIES:")
@@ -8467,6 +8473,7 @@ Text here"
 :END:
 Text here"
      (org-cycle)
+     (org-fold-hide-drawer-all)
      (re-search-forward "ID")
      (should (org-invisible-p))
      (re-search-forward ":END:")
@@ -8480,6 +8487,7 @@ Text here"
 #+end_src
 Text here"
      (org-cycle)
+     (org-fold-hide-drawer-all)
      (re-search-forward "end")
      (should (org-invisible-p))
      (delete-char -1)
