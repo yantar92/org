@@ -31,9 +31,16 @@ orgcard_letter.tex
 orgcard.txt
 org
 orgguide
+org-loaddefs.el
+org-version.el
+doc/org.texi
+doc/orgguide.texi
+doc/org-version.inc
+doc/org-version.tex
 org-*.tar*
 orgplus-*.tar*
 org-*.zip
+version.mk
 manual
 org_dual_license.texi
 ORGWEBPAGE/Changes.txt
