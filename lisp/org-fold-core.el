@@ -1454,7 +1454,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
       (save-excursion
         (font-lock-default-fontify-region pos next loudly)
         (save-match-data
-          (run-hook-with-args 'org-fold-core-first-unfold-functions pos next)))
+          (unless (<= pos (point) next)
+            (run-hook-with-args 'org-fold-core-first-unfold-functions pos next))))
       (put-text-property pos next 'org-fold-core-fontified t)
       (setq pos next))))
 
