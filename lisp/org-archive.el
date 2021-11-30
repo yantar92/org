@@ -35,6 +35,9 @@
 (declare-function org-datetree-find-date-create "org-datetree" (date &optional keep-restriction))
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 
+;; From org-element.el
+(defvar org-element--cache-avoid-synchronous-headline-re-parsing)
+
 (defcustom org-archive-default-command 'org-archive-subtree
   "The default archiving command."
   :group 'org-archive
