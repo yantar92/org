@@ -1,0 +1,64 @@
+#+TITLE: Shared Org parser testing fileset
+#+AUTHOR: Ihor Radchenko
+#+EMAIL: yantar92 at gmail dot com
+
+This is a shared test suite for Org mode syntax.  It is a part of Org
+mode's own test suite extracted for easier contributions.
+
+The test suite consists of a number of .org example files alongside
+with the expected parser output.  Each .org file can be parsed as is
+and the result should match the corresponding .el file.  
+
+The parser results in .el files are Emacs sexps.  Each sexp is an
+output of =org-element-parse-buffer= stripped from unessential
+properties.  Each sexp has the following form:
+
+#+begin_src emacs-lisp
+(org-data
+ (:property1 value-1 :property2 value-2 ...)
+ (inner-element-1 
+  (:inner-element-property1 value ...)
+  ... <other elements inside inner-element-1>)
+ ...
+ "string element is not a list, but a string"
+ ...
+ (heading
+  (:property1 value1 ... :title (object-inside-title1 (<properties>) ...))
+  ...)
+ ...)
+#+end_src
+
+The properties of elements can be specified in arbitrary order.
+
+The common properties are =:begin=, =:end=, =:contents-begin=, and
+=:contents-end=.  Their values are 1-indexed char positions from the
+beginning of the Org file.
+
+* Contributing
+
+To add new test files to this suite, send a patch to Org mode mailing
+list, as described in https://orgmode.org/contribute.html.
+
+The expected parser output can be generated using Emacs and latest
+version of Org mode.  You need to open an Org file in Emacs, load
+=/path/to/Org/git/repo/testing/lisp/test-org-element-parser.el=, and
+run =M-x test-org-element-parser-save-expected-result=.  The expected
+output will be saved alongside with the Org file.
+
+* License
+
+Org-mode is published under [[https://www.gnu.org/licenses/gpl-3.0.html][the GNU GPLv3 license]] or any later
+version, the same as GNU Emacs.
+
+Org-mode is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+GNU Emacs is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Org mode.  If not, see <https://www.gnu.org/licenses/>.
