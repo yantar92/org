@@ -7058,8 +7058,8 @@ buffers."
 (defvar org-element-cache-map--recurse nil)
 ;;;###autoload
 (cl-defun org-element-cache-map (func &key (granularity 'headline+inlinetask) restrict-elements
-                           next-re fail-re from-pos (to-pos (point-max-marker)) after-element limit-count
-                           narrow)
+                                      next-re fail-re from-pos (to-pos (point-max-marker)) after-element limit-count
+                                      narrow)
   "Map all elements in current buffer with FUNC according to
 GRANULARITY.  Collect non-nil return values into result list.
 
@@ -7112,7 +7112,11 @@ the cache."
       (setq to-pos mk)))
   ;; Make sure that garbage collector does not stand on the way to
   ;; maximum performance.
-  (let ((gc-cons-threshold #x40000000))
+  (let ((gc-cons-threshold #x40000000)
+        ;; Bind variables used inside loop to avoid memory
+        ;; re-allocation on every iteration.
+        ;; See https://emacsconf.org/2021/talks/faster/
+        tmpnext-start tmpparent tmpelement)
     (save-excursion
       (save-restriction
         (unless narrow (widen))
@@ -7167,10 +7171,11 @@ the cache."
                                   ;; and making sure that we do not go all
                                   ;; the way to `org-data' as `org-element-lineage'
                                   ;; does.
-                                  (let ((el (org-element--parse-to (point))))
-                                    (while (and el (not (memq (org-element-type el) restrict-elements)))
-                                      (setq el (org-element-property :parent el)))
-                                    el)
+                                  (progn
+                                    (setq tmpelement (org-element--parse-to (point)))
+                                    (while (and tmpelement (not (memq (org-element-type tmpelement) restrict-elements)))
+                                      (setq tmpelement (org-element-property :parent tmpelement)))
+                                    tmpelement)
                                 (org-element--parse-to (point)))))
                       ;; Starting from (point), search RE and move START to
                       ;; the next valid element to be matched according to
@@ -7179,7 +7184,14 @@ the cache."
                       ;; point.
                       (move-start-to-next-match
                         (re) `(save-match-data
-                                (if (or (not ,re) (re-search-forward (or (car-safe ,re) ,re) nil 'move))
+                                (if (or (not ,re) (if org-element--cache-map-statistics
+                                                    (progn
+                                                      (setq before-time (float-time))
+                                                      (re-search-forward (or (car-safe ,re) ,re) nil 'move)
+                                                      (cl-incf re-search-time
+                                                               (- (float-time)
+                                                                  before-time)))
+                                                  (re-search-forward (or (car-safe ,re) ,re) nil 'move)))
                                     (unless (or (< (point) (or start -1))
                                                 (and data
                                                      (< (point) (org-element-property :begin data))))
@@ -7196,26 +7208,27 @@ the cache."
                       ;; Find expected begin position of an element after
                       ;; DATA.
                       (next-element-start
-                        (data) `(let (next-start)
-                                  (if (memq granularity '(headline headline+inlinetask))
-                                      (setq next-start (or (when (memq (org-element-type data) '(headline org-data))
-                                                             (org-element-property :contents-begin data))
-                                                           (org-element-property :end data)))
-		                    (setq next-start (or (when (memq (org-element-type data) org-element-greater-elements)
-                                                           (org-element-property :contents-begin data))
-                                                         (org-element-property :end data))))
-                                  ;; DATA end may be the last element inside
-                                  ;; i.e. source block.  Skip up to the end
-                                  ;; of parent in such case.
-                                  (let ((parent data))
-		                    (catch :exit
-                                      (when (eq next-start (org-element-property :contents-end parent))
-			                (setq next-start (org-element-property :end parent)))
-			              (while (setq parent (org-element-property :parent parent))
-			                (if (eq next-start (org-element-property :contents-end parent))
-			                    (setq next-start (org-element-property :end parent))
-                                          (throw :exit t)))))
-                                  next-start))
+                        () `(progn
+                              (setq tmpnext-start nil)
+                              (if (memq granularity '(headline headline+inlinetask))
+                                  (setq tmpnext-start (or (when (memq (org-element-type data) '(headline org-data))
+                                                            (org-element-property :contents-begin data))
+                                                          (org-element-property :end data)))
+		                (setq tmpnext-start (or (when (memq (org-element-type data) org-element-greater-elements)
+                                                          (org-element-property :contents-begin data))
+                                                        (org-element-property :end data))))
+                              ;; DATA end may be the last element inside
+                              ;; i.e. source block.  Skip up to the end
+                              ;; of parent in such case.
+                              (setq tmpparent data)
+		              (catch :exit
+                                (when (eq tmpnext-start (org-element-property :contents-end tmpparent))
+			          (setq tmpnext-start (org-element-property :end tmpparent)))
+			        (while (setq tmpparent (org-element-property :parent tmpparent))
+			          (if (eq tmpnext-start (org-element-property :contents-end tmpparent))
+			              (setq tmpnext-start (org-element-property :end tmpparent))
+                                    (throw :exit t))))
+                              tmpnext-start))
                       ;; Check if cache does not have gaps.
                       (cache-gapless-p
                         () `(eq org-element--cache-change-tic
@@ -7330,8 +7343,13 @@ the cache."
                  (time (float-time))
                  (predicate-time 0)
                  (pre-process-time 0)
+                 (re-search-time 0)
                  (count-predicate-calls-match 0)
-                 (count-predicate-calls-fail 0))
+                 (count-predicate-calls-fail 0)
+                 ;; Bind variables used inside loop to avoid memory
+                 ;; re-allocation on every iteration.
+                 ;; See https://emacsconf.org/2021/talks/faster/
+                 cache-size before-time modified-tic)
             ;; Skip to first element within region.
             (goto-char (or start (point-min)))
             (move-start-to-next-match next-element-re)
@@ -7346,13 +7364,13 @@ the cache."
                           (and (eq granularity 'element)
                                (or next-re fail-re)))
                 (let ((org-element-cache-map--recurse t))
-                  (let ((before-time (float-time)))
-                    (org-element-cache-map
-                     #'ignore
-                     :granularity granularity)  
-                    (cl-incf pre-process-time
-                             (- (float-time)
-                                before-time)))
+                  (setq before-time (float-time))
+                  (org-element-cache-map
+                   #'ignore
+                   :granularity granularity)  
+                  (cl-incf pre-process-time
+                           (- (float-time)
+                              before-time))
                   ;; Re-assign the cache root after filling the cache
                   ;; gaps.
                   (setq node (cache-root)))
@@ -7393,8 +7411,9 @@ the cache."
                         ;; DATA is at START.  Match it.
                         ;; In the process, we may alter the buffer,
                         ;; so also keep track of the cache state.
-                        (let ((modified-tic org-element--cache-change-tic)
-                              (cache-size (cache-size)))
+                        (progn
+                          (setq modified-tic org-element--cache-change-tic)
+                          (setq cache-size (cache-size))
                           ;; When NEXT-RE/FAIL-RE is provided, skip to
                           ;; next regexp match after :begin of the current
                           ;; element.
@@ -7406,7 +7425,7 @@ the cache."
                                      (< (org-element-property :begin data) to-pos)) 
                             ;; Calculate where next possible element
                             ;; starts and update START if needed.
-		            (setq start (next-element-start data))
+		            (setq start (next-element-start))
                             (goto-char start)
                             ;; Move START further if possible.
                             (when (and next-element-re
@@ -7427,7 +7446,8 @@ the cache."
                               ;; 
                               ;; Call FUNC.  FUNC may move point.
                               (if org-element--cache-map-statistics
-                                  (let ((before-time (float-time)))
+                                  (progn
+                                    (setq before-time (float-time))
                                     (push (funcall func data) result)
                                     (cl-incf predicate-time
                                              (- (float-time)
@@ -7451,7 +7471,7 @@ the cache."
                             ;; advance but simply loop to the next cache
                             ;; element.
                             (when (and (cache-gapless-p)
-                                       (eq (next-element-start data)
+                                       (eq (next-element-start)
                                            start))
                               (setq start nil))
                             ;; Check if the buffer has been modified.
@@ -7472,15 +7492,16 @@ the cache."
                               ;; element past already processed
                               ;; place.
                               (when (<= start (org-element-property :begin data))
-                                (goto-char start)                                 
-                                (goto-char (next-element-start (element-match-at-point)))
+                                (goto-char start)
+                                (setq data (element-match-at-point))
+                                (goto-char (next-element-start))
                                 (move-start-to-next-match next-element-re))
                               (org-element-at-point to-pos)
                               (cache-walk-restart))
                             ;; Reached LIMIT-COUNT.  Abort.
                             (when (and limit-count
                                        (>= count-predicate-calls-match
-                                          limit-count))
+                                           limit-count))
                               (cache-walk-abort))
                             (if (org-element-property :cached data)
 		                (setq prev data)
@@ -7516,7 +7537,7 @@ the cache."
             (when (and org-element--cache-map-statistics
                        (or (not org-element--cache-map-statistics-threshold)
                            (> (- (float-time) time) org-element--cache-map-statistics-threshold)))
-              (message "Mapped over elements in %S. %d/%d predicate matches. Total time: %f sec. Pre-process time: %f sec. Time running predicates: %f sec (%f sec avg)
+              (message "Mapped over elements in %S. %d/%d predicate matches. Total time: %f sec. Pre-process time: %f sec. Predicate time: %f sec. Re-search time: %f sec.
        Calling parameters: :granularity %S :restrict-elements %S :next-re %S :fail-re %S :from-pos %S :to-pos %S :limit-count %S :after-element %S"
                        (current-buffer)
                        count-predicate-calls-match
@@ -7525,11 +7546,7 @@ the cache."
                        (- (float-time) time)
                        pre-process-time
                        predicate-time
-                       (if (zerop (+ count-predicate-calls-match
-                                     count-predicate-calls-fail))
-                           0
-                         (/ predicate-time (+ count-predicate-calls-match
-                                              count-predicate-calls-fail)))
+                       re-search-time
                        granularity restrict-elements next-re fail-re from-pos to-pos limit-count after-element))
             ;; Return result.
             (nreverse result)))))))
