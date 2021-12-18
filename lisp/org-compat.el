@@ -30,7 +30,7 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'subr-x)
+(require 'seq)
 (require 'org-macs)
 
 (declare-function org-agenda-diary-entry "org-agenda")
