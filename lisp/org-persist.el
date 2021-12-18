@@ -35,19 +35,44 @@
 (declare-function org-next-visible-heading "org" (arg))
 (declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
-(defvar org-persist-directory (expand-file-name
-                    (org-file-name-concat
-                     (let ((cache-dir (when (fboundp 'xdg-cache-home)
-                                        (xdg-cache-home))))
-                       (if (or (seq-empty-p cache-dir)
-                               (not (file-exists-p cache-dir))
-                               (file-exists-p (org-file-name-concat
-                                               user-emacs-directory
-                                               "org-persist")))
-                           user-emacs-directory
-                         cache-dir))
-                     "org-persist/"))
-  "Directory where the data is stored.")
+
+(defgroup org-persist nil
+  "Persistent cache for Org mode."
+  :tag "Org persist"
+  :group 'org)
+
+(defcustom org-persist-directory (expand-file-name
+                       (org-file-name-concat
+                        (let ((cache-dir (when (fboundp 'xdg-cache-home)
+                                           (xdg-cache-home))))
+                          (if (or (seq-empty-p cache-dir)
+                                  (not (file-exists-p cache-dir))
+                                  (file-exists-p (org-file-name-concat
+                                                  user-emacs-directory
+                                                  "org-persist")))
+                              user-emacs-directory
+                            cache-dir))
+                        "org-persist/"))
+  "Directory where the data is stored."
+  :group 'org-persist
+  :type 'directory)
+
+(defcustom org-persist-remote-files 100
+  "Whether to keep persistent data for remote files.
+
+When this variable is nil, never save persitent data associated with
+remote files.  When `t', always keep the data.  When
+`check-existence', contact remote server containing the file and only
+keep the data when the file exists on the server. When a number, keep
+up to that number persistent values for remote files.
+
+Note that the last option `check-existence' may cause Emacs to show
+password prompts to log in."
+  :group 'org-persist
+  :type '(choice (const :tag "Never" nil)
+                 (const :tag "Always" t)
+                 (number :tag "Keep note more than X files")
+                 (const :tag "Check if exist on remote" 'check-existence)))
 
 (defvar org-persist-index-file "index"
   "File name used to store the data index.")
@@ -279,15 +304,26 @@ When BUFFER is `all', unregister VAR in all buffers."
 
 (defun org-persist-gc ()
   "Remove stored data for not existing files or unregistered variables."
-  (let (new-index)
+  (let (new-index (remote-files-num 0))
     (dolist (index org-persist--index)
-      (let ((file (plist-get index :path))
-            (persist-file (when (plist-get index :persist-file)
-                            (org-file-name-concat
-                             org-persist-directory
-                             (plist-get index :persist-file)))))
+      (let* ((file (plist-get index :path))
+             (file-remote (when file (file-remote-p file)))
+             (persist-file (when (plist-get index :persist-file)
+                             (org-file-name-concat
+                              org-persist-directory
+                              (plist-get index :persist-file)))))
         (when (and file persist-file)
-          (if (file-exists-p file)
+          (when (and file-remote persist-file)
+            (cl-incf remote-files-num))
+          (if (if (not file-remote)
+                  (file-exists-p file)
+                (pcase org-persist-remote-files
+                  ('t t)
+                  ('check-existence
+                   (file-exists-p file))
+                  ((pred #'numberp)
+                   (<= org-persist-remote-files remote-files-num))
+                  (_ nil)))
               (push index new-index)
             (when (file-exists-p persist-file)
               (delete-file persist-file)
