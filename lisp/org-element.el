@@ -5337,14 +5337,14 @@ cache process log entries.")
 ;;;; Data Structure
 
 (defvar-local org-element--cache nil
-  "AVL tree used to cache elements.
-Each node of the tree contains an element.  Comparison is done
+  "Skip list used to cache elements.
+Each node of the list contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-at-point'.")
 
 (defvar-local org-element--headline-cache nil
-  "AVL tree used to cache headline and inlinetask elements.
-Each node of the tree contains an element.  Comparison is done
+  "Skip list used to cache headline and inlinetask elements.
+Each node of the list contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-cache-map'.")
 
@@ -5627,16 +5627,6 @@ A and B are either integers or lists of integers, as returned by
 (defun org-element--cache-compare (a b)
   "Non-nil when element A is located before element B."
   (org-element--cache-key-less-p (org-element--cache-key a) (org-element--cache-key b)))
-
-(defsubst org-element--cache-root ()
-  "Return root value in `org-element--cache' .
-This function assumes `org-element--cache' is a valid AVL tree."
-  (avl-tree--node-left (avl-tree--dummyroot org-element--cache)))
-
-(defsubst org-element--headline-cache-root ()
-  "Return root value in `org-element--headline-cache' .
-This function assumes `org-element--headline-cache' is a valid AVL tree."
-  (avl-tree--node-left (avl-tree--dummyroot org-element--headline-cache)))
 
 ;;;; Tools
 
