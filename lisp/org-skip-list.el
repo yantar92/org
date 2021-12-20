@@ -52,12 +52,19 @@
 ;;; Code:
 
 (eval-when-compile (require 'cl-lib))
+(require 'generator)
 
 ;; Each node is a cons of (data . forward vector).
 
 (defmacro org-skip-list--head-p (node)
   "Check if NODE is a head node."
   `(eq 'org-skip-list--head (org-skip-list--node-data ,node)))
+
+(defmacro org-skip-list--node-p (node)
+  "Return non-nil when NODE is a skip list node."
+  (and (consp node)
+       (car node)
+       (vectorp (cdr node))))
 
 (defmacro org-skip-list--node-create (data level)
   "Create a new LEVEL node conaining DATA."
@@ -250,6 +257,21 @@ Return NILFLAG if SKIPLIST does not contain such nodes."
 (defmacro org-skip-list-first (skiplist)
   "Return first node in SKIPLIST."
   `(org-skip-list-cdr (org-skip-list--header ,skiplist)))
+
+(iter-defun org-skip-list-iter (skiplist &optional start)
+  "Return skip list iterator object.
+
+Optional argument START will make the iterator begin from or after
+START."
+  (let ((current-node (org-skip-list-first skiplist)))
+    (while current-node
+      (when start
+        (if (org-skip-list--node-p start)
+            (setq current-node start)
+          (setq current-node (org-skip-list-find-geq skiplist start))))
+      (when current-node
+        (setq start (iter-yield (org-skip-list--node-data current-node)))
+        (setq current-node (org-skip-list-cdr current-node))))))
 
 (defun org-skip-list-verify (slist)
   "Assert SLIST consistency."
