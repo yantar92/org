@@ -277,6 +277,15 @@ make the iterator yield skip list node instead of the node value."
                        (org-skip-list--node-data current-node))))
         (setq current-node (org-skip-list-cdr current-node))))))
 
+(defun org-skip-list-size (slist)
+  "Return size of skip list SLIST."
+  (let ((elem (org-skip-list-first slist))
+        (size 0))
+    (while elem
+      (cl-incf size)
+      (setq elem (org-skip-list-cdr elem)))
+    size))
+
 (defun org-skip-list-verify (slist)
   "Assert SLIST consistency."
   (let ((header (org-skip-list--header slist)))

@@ -6996,9 +6996,9 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
   (with-current-buffer buffer
     (when (and org-element-use-cache org-element-cache-persistent)
       (when (and (eq var 'org-element--cache) org-element--cache)
-        (setq-local org-element--cache-size (avl-tree-size org-element--cache)))
+        (setq-local org-element--cache-size (org-skip-list-size org-element--cache)))
       (when (and (eq var 'org-element--headline-cache) org-element--headline-cache)
-        (setq-local org-element--headline-cache-size (avl-tree-size org-element--headline-cache))))))
+        (setq-local org-element--headline-cache-size (org-skip-list-size org-element--headline-cache))))))
 
 (add-hook 'org-persist-before-write-hook #'org-element--cache-persist-before-write)
 (add-hook 'org-persist-before-read-hook #'org-element--cache-persist-before-read)
