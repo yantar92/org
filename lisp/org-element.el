@@ -5671,7 +5671,7 @@ the cache."
                    (list 'dummy (list :begin (- pos 3))) ; keys can be down to -3 from :begin
                    (org-skip-list-first org-element--cache)))
       (while (and lower (org-skip-list-cdr lower)
-		  (< (org-element-property :begin (org-skip-list-car lower)) pos))
+		  (<= (org-element-property :begin (org-skip-list-cadr lower)) pos))
 	(setq lower (org-skip-list-cdr lower)))
       (setq upper (when lower (org-skip-list-cdr lower)))
       (when limit
@@ -5948,7 +5948,8 @@ completing the request."
                (request-key (org-element--request-key request))
                (node (org-skip-list-find-before
 		      org-element--cache
-		      (list 'dummy (list :begin request-key))))
+		      (list 'dummy (list :begin request-key))
+                      (org-skip-list-first org-element--cache)))
                (end (org-element--request-end request))
                data data-key)
 	  ;; Find first element in cache with key REQUEST-KEY or
@@ -7133,7 +7134,7 @@ the cache."
                               (org-element-at-point (point-max))
                               (setq node
 				    (if start
-					(org-skip-list-find-geq
+					(org-skip-list-find-before
 					 (if (memq granularity '(headline headline+inlinetask))
 					     org-element--headline-cache org-element--cache)
                                          (list 'dummy (list :begin start)))
