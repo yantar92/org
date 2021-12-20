@@ -5728,8 +5728,8 @@ Assume ELEMENT belongs to cache and that a cache is active."
     (org-element-set-contents (org-element-property :parent element) nil))
   (when (memq (org-element-type element) '(headline inlinetask))
     (cl-decf org-element--headline-cache-size)
-    (avl-tree-delete org-element--headline-cache element))
-  (or (avl-tree-delete org-element--cache element)
+    (org-skip-list-remove org-element--headline-cache element))
+  (or (org-skip-list-remove org-element--cache element)
       (progn
         ;; This should not happen, but if it is, would be better to know
         ;; where it happens.
