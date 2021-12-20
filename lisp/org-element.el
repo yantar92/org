@@ -7033,9 +7033,9 @@ buffers."
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
         (setq-local org-element--cache-gapless nil)
 	(setq-local org-element--cache
-		    (avl-tree-create #'org-element--cache-compare))
+		    (org-skip-list-create #'org-element--cache-compare))
         (setq-local org-element--headline-cache
-		    (avl-tree-create #'org-element--cache-compare))
+		    (org-skip-list-create #'org-element--cache-compare))
         (setq-local org-element--cache-size 0)
         (setq-local org-element--headline-cache-size 0)
 	(setq-local org-element--cache-sync-keys-value 0)
