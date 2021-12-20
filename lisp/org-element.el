@@ -58,6 +58,7 @@
 
 ;;; Code:
 
+(require 'org-skip-list)
 (require 'ring)
 (require 'cl-lib)
 (require 'ol)
@@ -5682,7 +5683,7 @@ the cache."
       (pcase side
         (`both (cons lower upper))
         (`nil lower)
-        (_ (if (= pos (org-element-property :begin lower) lower upper)))))))
+        (_ (if (= pos (org-element-property :begin lower)) lower upper))))))
 
 (defun org-element--cache-put (element)
   "Store ELEMENT in current buffer's cache, if allowed."
@@ -6125,9 +6126,7 @@ completing the request."
 	   (offset (org-element--request-offset request))
 	   (parent (org-element--request-parent request))
 	   (node (org-skip-list-find-geq org-element--cache (list 'dummy (list :begin start))))
-	   (stack (list nil))
-	   (leftp t)
-	   exit-flag continue-flag data key)
+	   exit-flag data key)
       ;; No re-parenting nor shifting planned: request is over.
       (when (and (not parent) (zerop offset))
         (org-element--cache-log-message "Empty offset. Request completed.")
@@ -7258,8 +7257,6 @@ the cache."
                  (prev after-element)
                  (node (cache-root))
                  data
-                 (stack (list nil))
-                 (leftp t)
                  result
                  ;; Whether previous element matched FUNC (FUNC
                  ;; returned non-nil).
