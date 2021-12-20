@@ -5713,9 +5713,9 @@ the cache."
     (org-element-put-property element :cached t)
     (when (memq (org-element-type element) '(headline inlinetask))
       (cl-incf org-element--headline-cache-size)
-      (avl-tree-enter org-element--headline-cache element))
+      (org-skip-list-insert org-element--headline-cache element))
     (cl-incf org-element--cache-size)
-    (avl-tree-enter org-element--cache element)))
+    (org-skip-list-insert org-element--cache element)))
 
 (defsubst org-element--cache-remove (element)
   "Remove ELEMENT from cache.
