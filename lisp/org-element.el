@@ -5272,7 +5272,7 @@ indentation removed from its contents."
 (defvar org-element-use-cache t
   "Non-nil when Org parser should cache its results.")
 
-(defvar org-element-cache-persistent t
+(defvar org-element-cache-persistent nil
   "Non-nil when cache should persist between Emacs sessions.")
 
 (defvar org-element-cache-sync-idle-time 0.6
