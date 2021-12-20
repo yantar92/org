@@ -258,19 +258,23 @@ Return NILFLAG if SKIPLIST does not contain such nodes."
   "Return first node in SKIPLIST."
   `(org-skip-list-cdr (org-skip-list--header ,skiplist)))
 
-(iter-defun org-skip-list-iter (skiplist &optional start)
+(iter-defun org-skip-list-iter (skiplist &optional start node-iter?)
   "Return skip list iterator object.
 
-Optional argument START will make the iterator begin from or after
-START."
+Optional argument START will make the iterator begin from first
+element at or after START.  Non-nil optional argument NODE-ITER? will
+make the iterator yield skip list node instead of the node value."
   (let ((current-node (org-skip-list-first skiplist)))
     (while current-node
       (when start
         (if (org-skip-list--node-p start)
             (setq current-node start)
-          (setq current-node (org-skip-list-find-geq skiplist start))))
+          (setq current-node (org-skip-list-find-before skiplist start))))
       (when current-node
-        (setq start (iter-yield (org-skip-list--node-data current-node)))
+        (setq start (iter-yield
+                     (if node-iter?
+                         current-node
+                       (org-skip-list--node-data current-node))))
         (setq current-node (org-skip-list-cdr current-node))))))
 
 (defun org-skip-list-verify (slist)
