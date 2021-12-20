@@ -5668,22 +5668,23 @@ the cache."
 	  lower upper)
       (setq lower (org-skip-list-find-before
 		   org-element--cache
-                   (list 'dummy (list :begin (- pos 2))) ; keys can be down to -2 from :begin
+                   (list 'dummy (list :begin (- pos 3))) ; keys can be down to -3 from :begin
                    (org-skip-list-first org-element--cache)))
       (while (and lower (org-skip-list-cdr lower)
 		  (< (org-element-property :begin (org-skip-list-car lower)) pos))
 	(setq lower (org-skip-list-cdr lower)))
       (setq upper (when lower (org-skip-list-cdr lower)))
-      (when (and lower (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car lower)) limit))
-	(setq lower (org-skip-list-find-before org-element--cache (list 'dummy (list :begin limit)))))
-      (when (and upper (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car upper)) limit))
-	(setq upper nil))
+      (when limit
+        (when (and lower (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car lower)) limit))
+	  (setq lower (org-skip-list-find-before org-element--cache (list 'dummy (list :begin limit)))))
+        (when (and upper (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car upper)) limit))
+	  (setq upper nil)))
       (when lower (setq lower (org-skip-list-car lower)))
       (when upper (setq upper (org-skip-list-car upper)))
       (pcase side
         (`both (cons lower upper))
         (`nil lower)
-        (_ (if (= pos (org-element-property :begin lower)) lower upper))))))
+        (_ (if (eq pos (org-element-property :begin lower)) lower upper))))))
 
 (defun org-element--cache-put (element)
   "Store ELEMENT in current buffer's cache, if allowed."
@@ -5962,7 +5963,7 @@ completing the request."
               (org-element--cache-log-message "Interrupt: time limit")
 	      (throw 'org-element--cache-interrupt nil))
             (setq data (when node (org-skip-list-car node)))
-            (setq data-key (org-element--cache-key data))
+            (setq data-key (when data (org-element--cache-key data)))
 	    (if data
                 ;; We found first element in cache starting at or
                 ;; after REQUEST-KEY.
@@ -7497,8 +7498,9 @@ the cache."
                     ;; re-balanced upon adding elements.  We can no
                     ;; longer trust STACK.
                     (cache-walk-restart)))
-                (setq node (org-skip-list-cdr node))
-                (when (and start (< (org-element-property :begin (org-skip-list-car node)) start))
+                (when node
+                  (setq node (org-skip-list-cdr node)))
+                (when (and start node (< (org-element-property :begin (org-skip-list-car node)) start))
                   (cache-walk-restart))))
             (when (and org-element--cache-map-statistics
                        (or (not org-element--cache-map-statistics-threshold)
