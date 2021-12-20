@@ -58,7 +58,6 @@
 
 ;;; Code:
 
-(require 'avl-tree)
 (require 'ring)
 (require 'cl-lib)
 (require 'ol)
@@ -5349,14 +5348,10 @@ with `org-element--cache-compare'.  This cache is used in
 `org-element-cache-map'.")
 
 (defvar-local org-element--cache-size 0
-  "Size of the `org-element--cache'.
-
-Storing value is variable is faster because `avl-tree-size' is O(N).")
+  "Size of the `org-element--cache'.")
 
 (defvar-local org-element--headline-cache-size 0
-  "Size of the `org-element--headline-cache'.
-
-Storing value is variable is faster because `avl-tree-size' is O(N).")
+  "Size of the `org-element--headline-cache'.")
 
 (defvar-local org-element--cache-sync-requests nil
   "List of pending synchronization requests.
@@ -5694,7 +5689,7 @@ the cache."
   (when (org-element--cache-active-p)
     (when org-element--cache-sync-requests
       ;; During synchronization, first build an appropriate key for
-      ;; the new element so `avl-tree-enter' can insert it at the
+      ;; the new element so `org-skip-list-insert' can insert it at the
       ;; right spot in the cache.
       (let* ((keys (org-element--cache-find
 		    (org-element-property :begin element) 'both))
