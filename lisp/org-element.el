@@ -5666,18 +5666,34 @@ the cache."
     (let ((limit (and org-element--cache-sync-requests
                       (org-element--request-key (car org-element--cache-sync-requests))))
 	  lower upper)
+      ;; Find an element close to POS, but before.  Accounting for
+      ;; cache key vs. actual pos.
       (setq lower (org-skip-list-find-before
 		   org-element--cache
                    (list 'dummy (list :begin (- pos 3))) ; keys can be down to -3 from :begin
                    (org-skip-list-first org-element--cache)))
+      ;; Move to last element in cache starting before POS.
+      ;; Note that if POS = 1, we might be already at an element
+      ;; starting at POS (if it is the first element in cache).
       (while (and lower (org-skip-list-cdr lower)
 		  (< (org-element-property :begin (org-skip-list-cadr lower)) pos))
 	(setq lower (org-skip-list-cdr lower)))
+      ;; Move to an element starting right at POS, if any.
       (when (and lower (org-skip-list-cdr lower)
                  (/= (org-element-property :begin (org-skip-list-car lower)) pos)
                  (= (org-element-property :begin (org-skip-list-cadr lower)) pos))
         (setq lower (org-skip-list-cdr lower)))
+      ;; Special case: If we are at section or org-data, prefer inner
+      ;; element at POS, if any.
+      (while (and lower (memq (org-element-type (org-skip-list-car lower))
+                              '(section org-data))
+                  (eq (org-element-property :begin (org-skip-list-cadr lower)) pos))
+        (setq lower (org-skip-list-cdr lower)))
+      ;; Upper is next element, unless it also starts at POS.
       (setq upper (when lower (org-skip-list-cdr lower)))
+      (while (and upper (org-skip-list-cdr upper)
+		  (<= (org-element-property :begin (org-skip-list-cadr upper)) pos))
+	(setq upper (org-skip-list-cdr upper)))
       (when limit
         (unless (and lower (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car lower)) limit))
 	  (setq lower (org-skip-list-find-before org-element--cache (list 'dummy (list :begin limit)))))
