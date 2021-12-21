@@ -55,6 +55,8 @@
 (require 'generator)
 
 ;; Each node is a cons of (data . forward vector).
+;; Nodes must use as little memory as possible because there may
+;; potentially be a lot of them.
 
 (defmacro org-skip-list--head-p (node)
   "Check if NODE is a head node."
