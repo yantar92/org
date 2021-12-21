@@ -5675,9 +5675,9 @@ the cache."
 	(setq lower (org-skip-list-cdr lower)))
       (setq upper (when lower (org-skip-list-cdr lower)))
       (when limit
-        (when (and lower (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car lower)) limit))
+        (unless (and lower (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car lower)) limit))
 	  (setq lower (org-skip-list-find-before org-element--cache (list 'dummy (list :begin limit)))))
-        (when (and upper (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car upper)) limit))
+        (unless (and upper (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car upper)) limit))
 	  (setq upper nil)))
       (when lower (setq lower (org-skip-list-car lower)))
       (when upper (setq upper (org-skip-list-car upper)))
