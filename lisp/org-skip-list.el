@@ -94,6 +94,7 @@
 
 (cl-defstruct (org-skip-list-
                :named
+               (:type vector)
                (:constructor nil)
                (:constructor org-skip-list--create ( cmpfun
                                         &key
