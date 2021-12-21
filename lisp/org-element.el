@@ -5671,8 +5671,12 @@ the cache."
                    (list 'dummy (list :begin (- pos 3))) ; keys can be down to -3 from :begin
                    (org-skip-list-first org-element--cache)))
       (while (and lower (org-skip-list-cdr lower)
-		  (<= (org-element-property :begin (org-skip-list-cadr lower)) pos))
+		  (< (org-element-property :begin (org-skip-list-cadr lower)) pos))
 	(setq lower (org-skip-list-cdr lower)))
+      (when (and lower (org-skip-list-cdr lower)
+                 (/= (org-element-property :begin (org-skip-list-car lower)) pos)
+                 (= (org-element-property :begin (org-skip-list-cadr lower)) pos))
+        (setq lower (org-skip-list-cdr lower)))
       (setq upper (when lower (org-skip-list-cdr lower)))
       (when limit
         (unless (and lower (org-element--cache-key-less-p (org-element--cache-key (org-skip-list-car lower)) limit))
