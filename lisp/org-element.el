@@ -7277,6 +7277,7 @@ the cache."
                  ;; also keep track of the last processed element and make
                  ;; sure that we do not try to search it again.
                  (prev after-element)
+                 (prev-node (cache-root))
                  (node (cache-root))
                  data
                  result
@@ -7507,8 +7508,10 @@ the cache."
                                         limit-count))
                             (cache-walk-abort))
                           (if (org-element-property :cached data)
-		              (setq prev data)
-                            (setq prev nil))))
+                              (setq prev-node node
+		                    prev data)
+                            (setq prev-node (cache-root)
+                                  prev nil))))
                     ;; DATA is after START.  Fill the gap.
                     (if (memq (org-element-type (org-element--parse-to start)) '(plain-list table))
                         ;; Tables and lists are special, we need a
@@ -7518,7 +7521,8 @@ the cache."
                     ;; Restart tree traversal as AVL tree is
                     ;; re-balanced upon adding elements.  We can no
                     ;; longer trust STACK.
-                    (cache-walk-restart)))
+                    ;; (cache-walk-restart)
+                    (setq node prev-node)))
                 (when node
                   (setq node (org-skip-list-cdr node)))
                 (when (and start node (< (org-element-property :begin (org-skip-list-car node)) start))
