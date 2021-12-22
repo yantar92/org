@@ -179,7 +179,7 @@ When BUFFER is `all', unregister VAR in all buffers."
                           (string= (buffer-file-name
                                     (or (buffer-base-buffer buffer)
                                         buffer))
-                                   (plist-get plist :path))))
+                                   (or (plist-get plist :path) ""))))
              (if (> (length (plist-get plist :variable)) 1)
                  (progn
                    (setq plist
