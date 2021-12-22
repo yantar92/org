@@ -6633,6 +6633,7 @@ starting after the returned may still be affected by the changes.
 
 Also, when there are no elements in cache before BEG, return first
 known element in cache (it may start after END)."
+  (org-element--cache-log-message "Searching element to be removed after change at %S-%S:Δ%S" beg end offset)
   (let* ((elements (org-element--cache-find (1- beg) 'both))
 	 (before (car elements))
 	 (after (cdr elements)))
