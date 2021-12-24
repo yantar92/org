@@ -42,6 +42,12 @@
 ;; Internally, a skip list consist of a header node, MaxLevel of the
 ;; list, and the comparison function.
 
+;; I also modified the canonic implementation to store the recent
+;; search data.  This way, inserting, deleting, and searching for
+;; consequent elements is done in O(1) - a useful feature for
+;; org-element-cache where cached elements are usually modified one by
+;; one in confined regions of buffer.
+
 ;; Each node of the skip list is a cons cell with its car containing
 ;; data and cdr is a vector of forward pointers to following list
 ;; elements.  For each node the forward vector size is randomly
@@ -101,7 +107,8 @@
                                         maxlevel
                                         probability-constant
                                         &aux
-                                        (header (org-skip-list--node-create 'org-skip-list--head maxlevel))))
+                                        (header (org-skip-list--node-create 'org-skip-list--head maxlevel))
+                                        (cursor (make-vector maxlevel header))))
                (:predicate org-skip-list-p)
                (:copier nil))
   (maxlevel 16)
@@ -120,6 +127,10 @@
   ;; of nodes, which is negligible compared to typical org-element
   ;; sizes).  (probability-constant (/ 1.0 8))
   header
+  ;; The cursor below stores last update vector.  The purpose is
+  ;; speeding up local searches (i.e. subsequent element
+  ;; insertion/deletion/lookup).
+  cursor
   cmpfun)
 
 (defalias 'org-skip-list-create #'org-skip-list--create
@@ -153,20 +164,54 @@ length. The vector will be modified for side-effects storing nodes
 where DATA is splicing the node forward references."
   (cl-loop for idx from (1- (org-skip-list--level skiplist)) downto 0
            with node = (org-skip-list--header skiplist)
+           with cursor = (org-skip-list--cursor skiplist)
+           ;; with check-cursor? = t
+           initially
+           (cl-loop for idx2 from 0 upto (1- (org-skip-list--level skiplist))
+                    do
+                    (when (and (aref cursor idx2)
+                               (not (org-skip-list--head-p (aref cursor idx)))
+                               (org-skip-list-cdr (aref cursor idx2) idx2)
+                               (funcall (org-skip-list--cmpfun skiplist)
+                                        (org-skip-list-car (aref cursor idx2))
+                                        data)
+                               (funcall (org-skip-list--cmpfun skiplist)
+                                        data
+                                        (org-skip-list-cadr (aref cursor idx2) idx2)))
+                      (setq node (aref cursor idx2)
+                            idx  (1- idx2))
+                      (cl-return)))
            do
+           ;; (when (and check-cursor? (aref cursor idx)
+           ;;            (not (org-skip-list--head-p (aref cursor idx)))
+           ;;            (and
+           ;;             (or (org-skip-list--head-p node)
+           ;;                 (funcall (org-skip-list--cmpfun skiplist)
+           ;;                          (org-skip-list-car node)
+           ;;                          (org-skip-list-car (aref cursor idx))))
+           ;;             (or (funcall (org-skip-list--cmpfun skiplist)
+           ;;                          (org-skip-list-car (aref cursor idx))
+           ;;                          data)
+           ;;                 ;; cursor is ahead.  Do not waste
+           ;;                 ;; comparisons trying to check cursor.
+           ;;                 (setq check-cursor? nil))))
+           ;;   (setq node (aref cursor idx)))
            (while (and (org-skip-list-cdr node idx)
                        (funcall (org-skip-list--cmpfun skiplist)
                                 (org-skip-list-cadr node idx)
                                 data))
              (setq node (org-skip-list-cdr node idx)))
-           (when update (aset update idx node))
+           (aset cursor idx node)
+           ;; (when update (aset update idx node))
            finally return node))
 
 (defun org-skip-list-insert (skiplist data)
   "Insert DATA into SKIPLIST.
 If data is equal with the existing node according to CMPFUN, replace
 that node's data field with DATA."
-  (let* ((update (make-vector (org-skip-list--maxlevel skiplist) nil))
+  (let* ((update (org-skip-list--cursor skiplist)
+                 ;; (make-vector (org-skip-list--maxlevel skiplist) nil)
+                 )
          (node-before (org-skip-list--find-before skiplist data update)))
     ;; DATA key should not be equal to existing list element.
     (unless (equal (org-skip-list-cadr node-before) data)
@@ -193,7 +238,9 @@ that node's data field with DATA."
 (defun org-skip-list-remove (skiplist data)
   "Remove element matching DATA from SKIPLIST.
 Return non-nil when operation actually deletes an element."
-  (let* ((update (make-vector (org-skip-list--maxlevel skiplist) nil))
+  (let* ((update (org-skip-list--cursor skiplist)
+                 ;; (make-vector (org-skip-list--maxlevel skiplist) nil)
+                 )
          (node (org-skip-list-cdr (org-skip-list--find-before skiplist data update)))
          (idx 0)
          (skip-list-level (org-skip-list--level skiplist))
@@ -207,6 +254,7 @@ Return non-nil when operation actually deletes an element."
         (cl-incf idx))
       (while (and (> (org-skip-list--level skiplist) 1)
                   (not (org-skip-list-cdr (org-skip-list--header skiplist) (1- (org-skip-list--level skiplist)))))
+        (aset (org-skip-list--cursor skiplist) (1- (org-skip-list--level skiplist)) (org-skip-list--header skiplist))
         (cl-decf (org-skip-list--level skiplist)))
       t)))
 
