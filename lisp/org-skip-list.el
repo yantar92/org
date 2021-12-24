@@ -132,8 +132,9 @@
   ;; insertion/deletion/lookup).
   cursor
   ;; Maximum level examined from previous UPDATE vector to determine
-  ;; if search is local.
-  (proximity-search-maxlevel 2)
+  ;; if search is local.  Please, do not change this default without
+  ;; benchmarking how it affects performance.
+  (proximity-search-maxlevel 3)
   cmpfun)
 
 (defalias 'org-skip-list-create #'org-skip-list--create
@@ -173,7 +174,7 @@ where DATA is splicing the node forward references."
            ;; Variations, p. 10).
            with alreadyChecked = nil
            initially
-           (cl-loop for idx2 from 0 upto (min (org-skip-list--proximity-search-maxlevel skiplist)
+           (cl-loop for idx2 from 0 upto (min (1- (org-skip-list--proximity-search-maxlevel skiplist))
                                               (1- (org-skip-list--level skiplist)))
                     do
                     (when (and (aref cursor idx2)
