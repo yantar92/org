@@ -157,7 +157,7 @@ See Pugh's paper (DOI: 10.1007/3-540-51542-9_36)."
       (cl-incf level))
     level))
 
-(defun org-skip-list--find-before (skiplist data &optional update)
+(defun org-skip-list--find-before (skiplist data)
   "Find an element in SKIPLIST strictly smaller than DATA.
 An optional argument UPDATE should be a vector of SKIPLIST maxlevel
 length. The vector will be modified for side-effects storing nodes
@@ -182,37 +182,22 @@ where DATA is splicing the node forward references."
                             idx  (1- idx2))
                       (cl-return)))
            do
-           ;; (when (and check-cursor? (aref cursor idx)
-           ;;            (not (org-skip-list--head-p (aref cursor idx)))
-           ;;            (and
-           ;;             (or (org-skip-list--head-p node)
-           ;;                 (funcall (org-skip-list--cmpfun skiplist)
-           ;;                          (org-skip-list-car node)
-           ;;                          (org-skip-list-car (aref cursor idx))))
-           ;;             (or (funcall (org-skip-list--cmpfun skiplist)
-           ;;                          (org-skip-list-car (aref cursor idx))
-           ;;                          data)
-           ;;                 ;; cursor is ahead.  Do not waste
-           ;;                 ;; comparisons trying to check cursor.
-           ;;                 (setq check-cursor? nil))))
-           ;;   (setq node (aref cursor idx)))
            (while (and (org-skip-list-cdr node idx)
+                       (not (eq alreadyChecked (org-skip-list-cdr node idx)))
                        (funcall (org-skip-list--cmpfun skiplist)
                                 (org-skip-list-cadr node idx)
                                 data))
              (setq node (org-skip-list-cdr node idx)))
+           (setq alreadyChecked (org-skip-list-cdr node idx))
            (aset cursor idx node)
-           ;; (when update (aset update idx node))
            finally return node))
 
 (defun org-skip-list-insert (skiplist data)
   "Insert DATA into SKIPLIST.
 If data is equal with the existing node according to CMPFUN, replace
 that node's data field with DATA."
-  (let* ((update (org-skip-list--cursor skiplist)
-                 ;; (make-vector (org-skip-list--maxlevel skiplist) nil)
-                 )
-         (node-before (org-skip-list--find-before skiplist data update)))
+  (let* ((update (org-skip-list--cursor skiplist))
+         (node-before (org-skip-list--find-before skiplist data)))
     ;; DATA key should not be equal to existing list element.
     (unless (equal (org-skip-list-cadr node-before) data)
       (let ((level (org-skip-list--get-level skiplist))
@@ -238,10 +223,8 @@ that node's data field with DATA."
 (defun org-skip-list-remove (skiplist data)
   "Remove element matching DATA from SKIPLIST.
 Return non-nil when operation actually deletes an element."
-  (let* ((update (org-skip-list--cursor skiplist)
-                 ;; (make-vector (org-skip-list--maxlevel skiplist) nil)
-                 )
-         (node (org-skip-list-cdr (org-skip-list--find-before skiplist data update)))
+  (let* ((update (org-skip-list--cursor skiplist))
+         (node (org-skip-list-cdr (org-skip-list--find-before skiplist data)))
          (idx 0)
          (skip-list-level (org-skip-list--level skiplist))
          ;; Terminating the process can garble the list structure.
@@ -254,7 +237,7 @@ Return non-nil when operation actually deletes an element."
         (cl-incf idx))
       (while (and (> (org-skip-list--level skiplist) 1)
                   (not (org-skip-list-cdr (org-skip-list--header skiplist) (1- (org-skip-list--level skiplist)))))
-        (aset (org-skip-list--cursor skiplist) (1- (org-skip-list--level skiplist)) (org-skip-list--header skiplist))
+        (aset update (1- (org-skip-list--level skiplist)) (org-skip-list--header skiplist))
         (cl-decf (org-skip-list--level skiplist)))
       t)))
 
@@ -268,7 +251,7 @@ Return non-nil when operation actually deletes an element."
 (defun org-skip-list-find (skiplist data &optional nilflag)
   "Find a node matching DATA in SKIPLIST.
 Return NILFLAG if DATA is not in the SKIPLIST."
-  (let ((node (org-skip-list-cdr (org-skip-list--find-before skiplist data nil))))
+  (let ((node (org-skip-list-cdr (org-skip-list--find-before skiplist data))))
     (if (or (not node)
             (not (equal data (org-skip-list-car node))))
         nilflag
