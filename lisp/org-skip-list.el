@@ -127,10 +127,13 @@
   ;; of nodes, which is negligible compared to typical org-element
   ;; sizes).  (probability-constant (/ 1.0 8))
   header
-  ;; The cursor below stores last update vector.  The purpose is
+  ;; The CURSOR below stores last update vector.  The purpose is
   ;; speeding up local searches (i.e. subsequent element
   ;; insertion/deletion/lookup).
   cursor
+  ;; Maximum level examined from previous UPDATE vector to determine
+  ;; if search is local.
+  (proximity-search-maxlevel 2)
   cmpfun)
 
 (defalias 'org-skip-list-create #'org-skip-list--create
@@ -165,9 +168,13 @@ where DATA is splicing the node forward references."
   (cl-loop for idx from (1- (org-skip-list--level skiplist)) downto 0
            with node = (org-skip-list--header skiplist)
            with cursor = (org-skip-list--cursor skiplist)
-           ;; with check-cursor? = t
+           ;; Optimisation to reduce number of comparisons.
+           ;; See W. Pugh (1990) A skip list cookbook (3.5 Skip List
+           ;; Variations, p. 10).
+           with alreadyChecked = nil
            initially
-           (cl-loop for idx2 from 0 upto (1- (org-skip-list--level skiplist))
+           (cl-loop for idx2 from 0 upto (min (org-skip-list--proximity-search-maxlevel skiplist)
+                                              (1- (org-skip-list--level skiplist)))
                     do
                     (when (and (aref cursor idx2)
                                (not (org-skip-list--head-p (aref cursor idx)))
