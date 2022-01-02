@@ -600,7 +600,7 @@ unless RETURN-ONLY is non-nil."
                      (let* ((pos (point-min))
 	                    (spec (org-fold-core-get-folding-spec-from-folding-prop old-prop))
                             ;; Generate new buffer-unique folding property
-	                    (new-prop (org-fold-core--property-symbol-get-create spec nil 'return-only)))
+	                    (new-prop (when spec (org-fold-core--property-symbol-get-create spec nil 'return-only))))
                        ;; Copy the visibility state for `spec' from `old-prop' to `new-prop'
                        (unless (eq old-prop new-prop)
                          (while (< pos (point-max))
