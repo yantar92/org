@@ -32,6 +32,8 @@ TMPDIR ?= /tmp
 testdir = $(TMPDIR)/tmp-orgtest
 
 # Configuration for testing
+# setup ERT vebosity
+BTEST_ERT_VERBOSE = yes
 # add options before standard load-path
 BTEST_PRE   =
 # add options after standard load path

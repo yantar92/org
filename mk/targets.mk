@@ -103,7 +103,11 @@ vanilla:
 check test::	compile
 check test test-dirty::
 	-$(MKDIR) $(testdir)
+ifeq ($(BTEST_ERT_VERBOSE),yes)
+	TMPDIR=$(testdir) EMACS_TEST_VERBOSE=yes $(BTEST)
+else
 	TMPDIR=$(testdir) $(BTEST)
+endif
 ifeq ($(TEST_NO_AUTOCLEAN),) # define this variable to leave $(testdir) around for inspection
 	$(MAKE) cleantest
 endif
