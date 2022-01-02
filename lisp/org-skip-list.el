@@ -135,6 +135,7 @@
   ;; if search is local.  Please, do not change this default without
   ;; benchmarking how it affects performance.
   (proximity-search-maxlevel 3)
+  (size 0)
   cmpfun)
 
 (defalias 'org-skip-list-create #'org-skip-list--create
@@ -155,9 +156,10 @@ allowing up to 8.8E9 elements.
   "Generate level for a new node.
 See Pugh's paper (DOI: 10.1007/3-540-51542-9_36)."
   (let ((level 1)
+        (maxlevel (org-skip-list--maxlevel skiplist))
         (threshold (* #x40000000 (org-skip-list--probability-constant skiplist))))
     (while (and (< (random #x40000000) threshold)
-                (< level (org-skip-list--maxlevel skiplist)))
+                (< level maxlevel))
       (cl-incf level))
     level))
 
@@ -225,6 +227,7 @@ that node's data field with DATA."
             (setf (org-skip-list-cdr (aref update idx) idx)
                   node)
             (cl-incf idx))
+          (cl-incf (org-skip-list--size skiplist))
           ;; Return the inserted data.
           (org-skip-list-car node))))))
 
@@ -247,6 +250,7 @@ Return non-nil when operation actually deletes an element."
                   (not (org-skip-list-cdr (org-skip-list--header skiplist) (1- (org-skip-list--level skiplist)))))
         (aset update (1- (org-skip-list--level skiplist)) (org-skip-list--header skiplist))
         (cl-decf (org-skip-list--level skiplist)))
+      (cl-decf (org-skip-list--size skiplist))
       t)))
 
 (defun org-skip-list-flatten (skiplist)
@@ -287,14 +291,9 @@ Return NILFLAG if SKIPLIST does not contain such nodes."
   (let ((node (org-skip-list--find-before skiplist data)))
     (if (org-skip-list--head-p node) nilflag node)))
 
-(defun org-skip-list-length (skiplist)
+(defmacro org-skip-list-size (skiplist)
   "Return length of SKIPLIST."
-  (cl-loop with node = (org-skip-list-cdr (org-skip-list--header skiplist))
-           with size = 0
-           while node
-           do (setq node (org-skip-list-cdr node))
-           do (cl-incf size)
-           finally return size))
+  `(org-skip-list--size ,skiplist))
 
 (defmacro org-skip-list-first (skiplist)
   "Return first node in SKIPLIST."
@@ -318,15 +317,6 @@ make the iterator yield skip list node instead of the node value."
                          current-node
                        (org-skip-list--node-data current-node))))
         (setq current-node (org-skip-list-cdr current-node))))))
-
-(defun org-skip-list-size (slist)
-  "Return size of skip list SLIST."
-  (let ((elem (org-skip-list-first slist))
-        (size 0))
-    (while elem
-      (cl-incf size)
-      (setq elem (org-skip-list-cdr elem)))
-    size))
 
 (defun org-skip-list-verify (slist)
   "Assert SLIST consistency."
