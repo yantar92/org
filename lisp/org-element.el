@@ -6697,6 +6697,14 @@ known element in cache (it may start after END)."
 	 (before (car elements))
 	 (after (cdr elements)))
     (if (not before) after
+      ;; If BEFORE is a keyword, it may need to be removed to become
+      ;; an affiliated keyword.
+      (when (eq 'keyword (org-element-type before))
+        (let ((prev before))
+          (while (eq 'keyword (org-element-type prev))
+            (setq before prev
+                  beg (org-element-property :begin prev))
+            (setq prev (org-element--cache-find (1- (org-element-property :begin before)))))))
       (let ((up before)
 	    (robust-flag t))
 	(while up
@@ -7291,7 +7299,8 @@ the cache."
                                         (setq start (max (or start -1)
                                                          (or (org-element-property :begin data) -1)
                                                          (or (org-element-property :begin (element-match-at-point)) -1))))
-                                      (when (>= start to-pos) (cache-walk-abort)))
+                                      (when (>= start to-pos) (cache-walk-abort))
+                                      (when (eq start -1) (setq start nil)))
                                   (cache-walk-abort))))
                       ;; Find expected begin position of an element after
                       ;; DATA.
@@ -7574,14 +7583,15 @@ the cache."
                               ;; inside an element.  We want to move
                               ;; it to real beginning then despite
                               ;; START being larger.
-                              (setq start -1)
+                              (setq start nil)
                               (move-start-to-next-match nil)
                               ;; The new element may now start before
                               ;; or at already processed position.
                               ;; Make sure that we continue from an
                               ;; element past already processed
                               ;; place.
-                              (when (and (<= start (org-element-property :begin data))
+                              (when (and start
+                                         (<= start (org-element-property :begin data))
                                          (not org-element-cache-map-continue-from))
                                 (goto-char start)
                                 (setq data (element-match-at-point))
