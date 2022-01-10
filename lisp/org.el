@@ -202,7 +202,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-latex-make-preamble "ox-latex" (info &optional template snippet?))
 (declare-function org-num-mode "org-num" (&optional arg))
 (declare-function org-plot/gnuplot "org-plot" (&optional params))
-(declare-function org-persist-read "org-persist" (var &optional buffer))
+(declare-function org-persist-load "org-persist" (container &optional associated hash-must-match))
 (declare-function org-tags-view "org-agenda" (&optional todo-only match))
 (declare-function org-timer "org-timer" (&optional restart no-insert))
 (declare-function org-timer-item "org-timer" (&optional arg))
@@ -4570,7 +4570,7 @@ The following commands are available:
              (eq org-fold-core-style 'overlays))
     (add-to-invisibility-spec '(org-link)))
   (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
-                        "..."))
+                           "..."))
   (make-local-variable 'org-link-descriptive)
   (when (eq org-fold-core-style 'overlays) (add-to-invisibility-spec '(org-hide-block . t)))
   (if org-link-descriptive
@@ -4621,7 +4621,7 @@ The following commands are available:
   (org-element-cache-reset)
   (when (and org-element-cache-persistent
              org-element-use-cache)
-    (org-persist-read 'org-element--cache (current-buffer)))
+    (org-persist-load 'org-element--cache (current-buffer) t))
   ;; Beginning/end of defun
   (setq-local beginning-of-defun-function 'org-backward-element)
   (setq-local end-of-defun-function
