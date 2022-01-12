@@ -90,6 +90,8 @@
 (declare-function org-capture "org-capture" (&optional goto keys))
 (declare-function org-clock-modify-effort-estimate "org-clock" (&optional value))
 
+(declare-function org-element-type "org-element" (&optional element))
+
 (defvar calendar-mode-map)
 (defvar org-clock-current-task)
 (defvar org-current-tag-alist)
@@ -5761,7 +5763,8 @@ displayed in agenda view."
 		    (org-at-planning-p)
 		    (org-before-first-heading-p)
 		    (and org-agenda-include-inactive-timestamps
-			 (org-at-clock-log-p)))
+			 (org-at-clock-log-p))
+                    (not (eq 'timestamp (org-element-type (org-element-context)))))
 	    (throw :skip nil))
 	  (org-agenda-skip))
 	(let* ((pos (match-beginning 0))
