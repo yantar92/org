@@ -4545,6 +4545,8 @@ This is for getting out of special buffers like capture.")
 
 (defvar org-element-cache-persistent); Defined in org-element.el
 (defvar org-element-use-cache); Defined in org-element.el
+(defvar org-mode-loading nil
+  "Non-nil during Org mode initialisation.")
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias
@@ -4564,6 +4566,7 @@ can be exported as a structured ASCII or HTML file.
 The following commands are available:
 
 \\{org-mode-map}"
+  (setq-local org-mode-loading t)
   (org-load-modules-maybe)
   (org-install-agenda-files-menu)
   (when (and org-link-descriptive
@@ -4606,6 +4609,11 @@ The following commands are available:
   (add-hook 'before-change-functions 'org-before-change-function nil 'local)
   ;; Check for running clock before killing a buffer
   (add-hook 'kill-buffer-hook 'org-check-running-clock nil 'local)
+  ;; Initialize cache.
+  (org-element-cache-reset)
+  (when (and org-element-cache-persistent
+             org-element-use-cache)
+    (org-persist-read 'org-element--cache (current-buffer)))
   ;; Initialize macros templates.
   (org-macro-initialize-templates)
   ;; Initialize radio targets.
@@ -4617,11 +4625,6 @@ The following commands are available:
   (org-setup-filling)
   ;; Comments.
   (org-setup-comments-handling)
-  ;; Initialize cache.
-  (org-element-cache-reset)
-  (when (and org-element-cache-persistent
-             org-element-use-cache)
-    (org-persist-read 'org-element--cache (current-buffer)))
   ;; Beginning/end of defun
   (setq-local beginning-of-defun-function 'org-backward-element)
   (setq-local end-of-defun-function
@@ -4710,7 +4713,8 @@ The following commands are available:
   ;; Set face extension as requested.
   (org--set-faces-extend '(org-block-begin-line org-block-end-line)
                          org-fontify-whole-block-delimiter-line)
-  (org--set-faces-extend org-level-faces org-fontify-whole-heading-line))
+  (org--set-faces-extend org-level-faces org-fontify-whole-heading-line)
+  (setq-local org-mode-loading nil))
 
 ;; Update `customize-package-emacs-version-alist'
 (add-to-list 'customize-package-emacs-version-alist
@@ -16532,10 +16536,10 @@ for more information."
    ((run-hook-with-args-until-success 'org-metaup-hook))
    ((org-region-active-p)
     (let* ((a (save-excursion
-		(goto-char (min (region-beginning) (region-end)))
+		(goto-char (region-beginning))
 		(line-beginning-position)))
 	   (b (save-excursion
-		(goto-char (max (region-beginning) (region-end)))
+		(goto-char (region-end))
 		(if (bolp) (1- (point)) (line-end-position))))
 	   (c (save-excursion
 		(goto-char a)
@@ -16565,10 +16569,10 @@ commands for more information."
    ((run-hook-with-args-until-success 'org-metadown-hook))
    ((org-region-active-p)
     (let* ((a (save-excursion
-		(goto-char (min (region-beginning) (region-end)))
+		(goto-char (region-beginning))
 		(line-beginning-position)))
 	   (b (save-excursion
-		(goto-char (max (region-beginning) (region-end)))
+		(goto-char (region-end))
 		(if (bolp) (1- (point)) (line-end-position))))
 	   (c (save-excursion
 		(goto-char b)
