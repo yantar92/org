@@ -11756,9 +11756,9 @@ The tags are fontified when FONTIFY is non-nil."
         (and cached
              (or (not fontified)
                  cached-tags-fontified?))
-        ;; If we do not wrap result into `cl-copy-list', reference would
+        ;; If we do explicitly copy the result, reference would
         ;; be returned and cache element might be modified directly.
-        (cl-copy-list cached-tags)
+        (mapcar #'copy-sequence cached-tags)
       ;; Parse tags manually.
       (let ((local-tags (and (if fontified
                                  (org-looking-at-fontified org-tag-line-re)
@@ -11821,9 +11821,9 @@ The tags are fontified when FONTIFY is non-nil."
                                                  (if ;; Tags are cached and do not need to be re-fontified.
                                                      (or (not fontify)
                                                          cached-tags-fontified?)
-                                                     ;; If we do not wrap result into `cl-copy-list', reference would
-                                                     ;; be returned and cache element might be modified directly.
-                                                     (cl-copy-list cached-tags)
+						     ;; If we do explicitly copy the result, reference would
+						     ;; be returned and cache element might be modified directly.
+                                                     (mapcar #'copy-sequence cached-tags)
                                                    ;; Parse tags manually.
                                                    (let ((local-tags (org-with-point-at (org-element-property :begin cached)
                                                                        (and (if fontify
