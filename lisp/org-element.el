@@ -6996,6 +6996,10 @@ change, as an integer."
 
 Return non-nil when verification failed."
   ;; Verify correct parent for the element.
+  (unless (or (org-element-property :parent element)
+              (eq 'org-data (org-element-type element)))
+    (org-element--cache-warn "Got element without parent. Please report it to Org mode mailing list (M-x org-submit-bug-report).\n%S" element)
+    (org-element-cache-reset))
   (let ((org-element--cache-self-verify (or org-element--cache-self-verify
                                  (and (boundp 'org-batch-test) org-batch-test)))
         (org-element--cache-self-verify-frequency (if (and (boundp 'org-batch-test) org-batch-test)
