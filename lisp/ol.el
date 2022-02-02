@@ -1346,7 +1346,7 @@ PATH is the sexp to evaluate, as a string."
 	       (string-match-p org-link-elisp-skip-confirm-regexp path))
 	  (not org-link-elisp-confirm-function)
 	  (funcall org-link-elisp-confirm-function
-		   (format "Execute %S as Elisp? "
+		   (format "Execute %s as Elisp? "
 			   (org-add-props path nil 'face 'org-warning))))
       (message "%s => %s" path
 	       (if (eq ?\( (string-to-char path))
@@ -1401,7 +1401,7 @@ PATH is the command to execute, as a string."
 	       (string-match-p org-link-shell-skip-confirm-regexp path))
 	  (not org-link-shell-confirm-function)
 	  (funcall org-link-shell-confirm-function
-		   (format "Execute %S in shell? "
+		   (format "Execute %s in shell? "
 			   (org-add-props path nil 'face 'org-warning))))
       (let ((buf (generate-new-buffer "*Org Shell Output*")))
 	(message "Executing %s" path)
