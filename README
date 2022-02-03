@@ -16,6 +16,23 @@ tool for Emacs.
 - [[#license][License]]
 
 * Updates
+
+- Progress towards merging to master
+  - [X] =org-fold-core=
+  - [X] Write detailed documentation about internals (in the =.el= file headers)
+  - [X] Implement user-level customisation between old and new folding implementations
+  - [X] Cherry-pick unrelated patches and push to master
+  - [NO RESPONSE] Discuss and finalise folding API in the mailing list
+  - [WAITING, got response] Discuss and finalise the full patch
+  - [ ] Merge =isearch.el= patches to Emacs master
+  - [ ] Discuss =org-special-properties= rewrite
+  - [ ] Discuss and possibly merge other changes
+    - [ ] Getting actual Org buffer fontification to agenda (i.e. pretty-symbols support)
+    - [ ] Pixel table alignment
+    - [ ] Various other patches
+
+- [2022-02-03 Thu] I have separated all the folding-related changes and submitted a clean patch to Org ML (https://list.orgmode.org/87a6f84edg.fsf@localhost/T/#u). The patch will hopefully be merged in the coming weeks.
+
 - [2021-09-02 Thu] I finally fixed =org-element-cache=. At least, I am not seeing any more problems. The cache is re-enabled by default now and several more built-in functions are making use of it.
 
   Just in case, I left some self-checking code enabled. The cache will verify itself from time to time and report a warning if something is not right. If anyone is seeing warnings, please file an issue.
@@ -52,14 +69,6 @@ tool for Emacs.
 
   This is a major rework of the =org-fold= internals. I aimed to make things more modular and easier to maintain. Now, the core org-independent functionality is separated into =org-fold-core= library.
   
-- Progress towards merging to master
-  - [X] =org-fold-core=
-  - [X] Write detailed documentation about internals (in the =.el= file headers)
-  - [X] Implement user-level customisation between old and new folding implementations
-  - [ ] Cherry-pick unrelated patches and push to master
-  - [WAITING] Discuss and finalise folding API in the mailing list
-  - [ ] Discuss and finalise the full patch
-  - [ ] Merge =isearch.el= patches to Emacs master
 
 * Org-mode::org-fold branch
 
