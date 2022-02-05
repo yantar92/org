@@ -6450,6 +6450,13 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                    (setq element (or (org-element--cache-put element) element))
                  ;; Nothing to parse (i.e. empty file).
                  (throw 'exit parent))
+               (unless (or (not (org-element--cache-active-p)) parent)
+                 (org-element--cache-warn "Got empty parent while parsing. Please report it to Org mode mailing list (M-x org-submit-bug-report).\n Backtrace:\n%S"
+                               (when (and (fboundp 'backtrace-get-frames)
+                                          (fboundp 'backtrace-to-string))
+                                 (backtrace-to-string (backtrace-get-frames 'backtrace))
+                                 (org-element-cache-reset)
+                                 (error "org-element--cache: Emergency exit"))))
 	       (org-element-put-property element :parent parent))
 	     (let ((elem-end (org-element-property :end element))
 	           (type (org-element-type element)))
@@ -6478,18 +6485,17 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                        ;; may exist though.  Parse starting from the
                        ;; last sibling or from ELEM-END if there are
                        ;; no other siblings.
-                       (let ((p (point)))
-                         (goto-char pos)
-                         (unless
-                             (re-search-backward
-                              (rx-to-string
-                               `(and bol (repeat ,(let ((level (org-element-property :level element)))
-                                                    (if org-odd-levels-only (1- (* level 2)) level))
-                                                 "*")
-                                     " "))
-                              elem-end t)
-                           ;; Roll-back to normal parsing.
-                           (goto-char p))))))
+                       (goto-char pos)
+                       (unless
+                           (re-search-backward
+                            (rx-to-string
+                             `(and bol (repeat ,(let ((level (org-element-property :level element)))
+                                                  (if org-odd-levels-only (1- (* level 2)) level))
+                                               "*")
+                                   " "))
+                            elem-end t)
+                         ;; Roll-back to normal parsing.
+                         (goto-char elem-end)))))
 	         (setq mode (org-element--next-mode mode type nil)))
 	        ;; A non-greater element contains point: return it.
 	        ((not (memq type org-element-greater-elements))
@@ -6579,7 +6585,9 @@ The function returns the new value of `org-element--cache-change-warning'."
        (beginning-of-line)
        (let ((bottom (save-excursion
                        (goto-char end)
-                       (if (bolp)
+                       (if (and (bolp)
+                                ;; When beg == end, still extent to eol.
+                                (> (point) beg))
                            ;; FIXME: Potential pitfall.
                            ;; We are appending to an element end.
                            ;; Unless the last inserted char is not
@@ -6992,7 +7000,7 @@ Return non-nil when verification failed."
   ;; Verify correct parent for the element.
   (unless (or (org-element-property :parent element)
               (eq 'org-data (org-element-type element)))
-    (org-element--cache-warn "Got element without parent. Please report it to Org mode mailing list (M-x org-submit-bug-report).\n%S" element)
+    (org-element--cache-warn "Got element without parent (cache active?: %S). Please report it to Org mode mailing list (M-x org-submit-bug-report).\n%S" (org-element--cache-active-p)  element)
     (org-element-cache-reset))
   (let ((org-element--cache-self-verify (or org-element--cache-self-verify
                                  (and (boundp 'org-batch-test) org-batch-test)))
@@ -7041,16 +7049,16 @@ The element is: %S\n The parent is: %S\n The real parent is: %S"
           (org-element--cache-warn "(%S) Cached element is incorrect in %s. (Cache tic up to date: %S) Resetting.
 If this warning appears regularly, please report the warning text to Org mode mailing list (M-x org-submit-bug-report).
 The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
-                        this-command
-                        (buffer-name (current-buffer))
-                        (if (/= org-element--cache-change-tic
-                               (buffer-chars-modified-tick))
-                            "no" "yes")
-                        (org-element--format-element element)
-                        (org-element--format-element real-element)
-                        (org-element--cache-find (1- (org-element-property :begin real-element)))
-                        (car (org-element--cache-find (org-element-property :begin real-element) 'both))
-                        (cdr (org-element--cache-find (org-element-property :begin real-element) 'both)))
+                                   this-command
+                                   (buffer-name (current-buffer))
+                                   (if (/= org-element--cache-change-tic
+                                           (buffer-chars-modified-tick))
+                                       "no" "yes")
+                                   (org-element--format-element element)
+                                   (org-element--format-element real-element)
+                                   (org-element--cache-find (1- (org-element-property :begin real-element)))
+                                   (car (org-element--cache-find (org-element-property :begin real-element) 'both))
+                                   (cdr (org-element--cache-find (org-element-property :begin real-element) 'both)))
           (org-element-cache-reset))))))
 
 ;;; Cache persistance
