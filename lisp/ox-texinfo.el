@@ -87,7 +87,8 @@
     (verse-block . org-texinfo-verse-block))
   :filters-alist
   '((:filter-headline . org-texinfo--filter-section-blank-lines)
-    (:filter-parse-tree . org-texinfo--normalize-headlines)
+    (:filter-parse-tree . (org-texinfo--normalize-headlines
+			   org-texinfo--separate-definitions))
     (:filter-section . org-texinfo--filter-section-blank-lines)
     (:filter-final-output . org-texinfo--untabify))
   :menu-entry
@@ -122,8 +123,8 @@
     (:texinfo-table-default-markup nil nil org-texinfo-table-default-markup)
     (:texinfo-text-markup-alist nil nil org-texinfo-text-markup-alist)
     (:texinfo-format-drawer-function nil nil org-texinfo-format-drawer-function)
-    (:texinfo-format-inlinetask-function nil nil org-texinfo-format-inlinetask-function)))
-
+    (:texinfo-format-inlinetask-function nil nil org-texinfo-format-inlinetask-function)
+    (:texinfo-compact-itemx nil "compact-itemx" org-texinfo-compact-itemx)))
 
 
 ;;; User Configurable Variables
@@ -358,6 +359,20 @@ The function should return the string to be exported."
   :group 'org-export-texinfo
   :type 'function)
 
+;;;; Itemx
+
+(defcustom org-texinfo-compact-itemx nil
+  "Non-nil means certain items in description list become `@itemx'.
+
+If this is non-nil and an item in a description list has no
+body but is followed by another item, then the second item is
+transcoded to `@itemx'.  See info node `(org)Plain lists in
+Texinfo export' for how to enable this for individual lists."
+  :package-version '(Org . "9.6")
+  :group 'org-export-texinfo
+  :type 'boolean
+  :safe t)
+
 ;;;; Compilation
 
 (defcustom org-texinfo-info-process '("makeinfo --no-split %f")
@@ -410,6 +425,30 @@ If two strings share the same prefix (e.g. \"ISO-8859-1\" and
   (list (cons "file"
 	      (regexp-opt '("eps" "pdf" "png" "jpg" "jpeg" "gif" "svg"))))
   "Rules characterizing image files that can be inlined.")
+
+(defvar org-texinfo--quoted-keys-regexp
+  (regexp-opt '("BS" "TAB" "RET" "ESC" "SPC" "DEL"
+		"LFD" "DELETE" "SHIFT" "Ctrl" "Meta" "Alt"
+		"Cmd" "Super" "UP" "LEFT" "RIGHT" "DOWN")
+	      'words)
+  "Regexp matching keys that have to be quoted using @key{KEY}.")
+
+(defconst org-texinfo--definition-command-alist
+  '(("deffn Command" . "Command")
+    ("defun" . "Function")
+    ("defmac" . "Macro")
+    ("defspec" . "Special Form")
+    ("defvar" . "Variable")
+    ("defopt" . "User Option")
+    (nil . "Key"))
+  "Alist mapping Texinfo definition commands to output in Info files.")
+
+(defconst org-texinfo--definition-command-regexp
+  (format "\\`%s: \\(.+\\)"
+	  (regexp-opt
+	   (delq nil (mapcar #'cdr org-texinfo--definition-command-alist))
+	   t))
+  "Regexp used to match definition commands in descriptive lists.")
 
 
 ;;; Internal Functions
@@ -573,6 +612,130 @@ INFO is a plist holding export options."
     (pcase (assoc class (plist-get info :texinfo-classes))
       (`(,_ ,_ . ,sections) sections)
       (_ (user-error "Unknown Texinfo class: %S" class)))))
+
+(defun org-texinfo--separate-definitions (tree _backend info)
+  "Split up descriptive lists in TREE that contain Texinfo definition commands.
+INFO is a plist used as a communication channel.
+Return new tree."
+  (org-element-map tree 'plain-list
+    (lambda (plain-list)
+      (when (eq (org-element-property :type plain-list) 'descriptive)
+	(let ((contents (org-element-contents plain-list))
+	      (items nil))
+	  (dolist (item contents)
+	    (pcase-let ((`(,cmd . ,args) (org-texinfo--match-definition item)))
+	      (cond
+	       (cmd
+		(when items
+		  (org-texinfo--split-plain-list plain-list (nreverse items))
+		  (setq items nil))
+		(org-texinfo--split-definition plain-list item cmd args))
+	       (t
+		(when args
+		  (org-texinfo--massage-key-item plain-list item args info))
+		(push item items)))))
+	  (unless (org-element-contents plain-list)
+	    (org-element-extract-element plain-list)))))
+    info)
+  tree)
+
+(defun org-texinfo--match-definition (item)
+  "Return a cons-cell if ITEM specifies a Texinfo definition command.
+The car is the command and the cdr is its arguments."
+  (let ((tag (car-safe (org-element-property :tag item))))
+    (and tag
+	 (stringp tag)
+	 (string-match org-texinfo--definition-command-regexp tag)
+	 (pcase-let*
+	     ((cmd (car (rassoc (match-string-no-properties 1 tag)
+				 org-texinfo--definition-command-alist)))
+	      (`(,cmd ,category)
+	       (and cmd (save-match-data (split-string cmd " "))))
+	      (args (match-string-no-properties 2 tag)))
+	   (cons cmd (if category (concat category " " args) args))))))
+
+(defun org-texinfo--split-definition (plain-list item cmd args)
+  "Insert a definition command before list PLAIN-LIST.
+Replace list item ITEM with a special-block that inherits the
+contents of ITEM and whose type and Texinfo attributes are
+specified by CMD and ARGS."
+  (let ((contents (org-element-contents item)))
+    (org-element-insert-before
+     (apply #'org-element-create 'special-block
+	    (list :type cmd
+		  :attr_texinfo (list (format ":options %s" args))
+		  :post-blank (if contents 1 0))
+	    (mapc #'org-element-extract-element contents))
+     plain-list))
+  (org-element-extract-element item))
+
+(defun org-texinfo--split-plain-list (plain-list items)
+  "Insert a new plain list before the plain list PLAIN-LIST.
+Remove ITEMS from PLAIN-LIST and use them as the contents of the
+new plain list."
+  (org-element-insert-before
+   (apply #'org-element-create 'plain-list
+	  (list :type 'descriptive
+                :attr_texinfo (org-element-property :attr_texinfo plain-list)
+                :post-blank 1)
+	  (mapc #'org-element-extract-element items))
+   plain-list))
+
+(defun org-texinfo--massage-key-item (plain-list item args info)
+  "In PLAIN-LIST modify ITEM based on ARGS.
+
+Reformat ITEM's tag property and determine the arguments for the
+`@findex' and `@kindex' commands for ITEM and store them in ITEM
+using the `:findex' and `:kindex' properties.
+
+If PLAIN-LIST is a description list whose `:compact' attribute is
+non-nil and ITEM has no content but is followed by another item,
+then store the `@findex' and `@kindex' values in the next item.
+If the previous item stored its respecive values in this item,
+then move them to the next item.
+
+INFO is a plist used as a communication channel."
+  (let ((key nil)
+	(cmd nil))
+    (if (string-match (rx (+ " ")
+			  "(" (group (+ (not (any "()")))) ")"
+			  (* " ")
+			  eos)
+		      args)
+	(setq key (substring args 0 (match-beginning 0))
+	      cmd (match-string 1 args))
+      (setq key args))
+    (org-element-put-property
+     item :tag
+     (cons (org-export-raw-string (org-texinfo-kbd-macro key t))
+	   (and cmd `(" (" (code (:value ,cmd :post-blank 0)) ")"))))
+    (let ((findex (org-element-property :findex item))
+	  (kindex (org-element-property :kindex item))
+	  (next-item (org-export-get-next-element item nil))
+	  (mx (string-prefix-p "M-x " key)))
+      (when (and (not cmd) mx)
+	(setq cmd (substring key 4)))
+      (when (and cmd (not (member cmd findex)))
+	(setq findex (nconc findex (list cmd))))
+      (unless mx
+	(setq kindex (nconc kindex (list key))))
+      (cond
+       ((and next-item
+             (or (plist-get info :texinfo-compact-itemx)
+	         (org-not-nil
+	          (org-export-read-attribute :attr_texinfo plain-list :compact)))
+	     (not (org-element-contents item))
+	     (eq 1 (org-element-property :post-blank item)))
+	(org-element-put-property next-item :findex findex)
+	(org-element-put-property next-item :kindex kindex)
+	(org-element-put-property item :findex nil)
+	(org-element-put-property item :kindex nil))
+       (t
+	(org-element-set-contents
+	 item
+	 (nconc (mapcar (lambda (key) `(keyword (:key "KINDEX" :value ,key))) kindex)
+		(mapcar (lambda (cmd) `(keyword (:key "FINDEX" :value ,cmd))) findex)
+		(org-element-contents item))))))))
 
 ;;; Template
 
@@ -994,25 +1157,42 @@ contextual information."
 CONTENTS holds the contents of the item.  INFO is a plist holding
 contextual information."
   (let* ((tag (org-element-property :tag item))
-	 (split (org-string-nw-p
-		 (org-export-read-attribute :attr_texinfo
-					    (org-element-property :parent item)
-					    :sep)))
-	 (items (and tag
-		     (let ((tag (org-export-data tag info)))
-		       (if split
-			   (split-string tag (regexp-quote split) t "[ \t\n]+")
-			 (list tag))))))
-    (format "%s\n%s"
-	    (pcase items
-	      (`nil "@item")
-	      (`(,item) (concat "@item " item))
-	      (`(,item . ,items)
-	       (concat "@item " item "\n"
-		       (mapconcat (lambda (i) (concat "@itemx " i))
-				  items
-				  "\n"))))
-	    (or contents ""))))
+         (plain-list (org-element-property :parent item))
+         (compact (and (eq (org-element-property :type plain-list) 'descriptive)
+                       (or (plist-get info :texinfo-compact-itemx)
+                           (org-not-nil (org-export-read-attribute
+                                         :attr_texinfo plain-list :compact)))))
+         (previous-item nil))
+    (when (and compact
+               (org-export-get-next-element item info)
+               (not (org-element-contents item))
+               (eq 1 (org-element-property :post-blank item)))
+      (org-element-put-property item :post-blank 0))
+    (if (and compact
+             (setq previous-item (org-export-get-previous-element item info))
+             (not (org-element-contents previous-item))
+	     (eq 0 (org-element-property :post-blank previous-item)))
+        (format "@itemx%s\n%s"
+                (if tag (concat " " (org-export-data tag info)) "")
+                (or contents ""))
+      (let* ((split (org-string-nw-p (org-export-read-attribute
+                                      :attr_texinfo plain-list :sep)))
+	     (items (and tag
+		         (let ((tag (org-export-data tag info)))
+		           (if split
+			       (split-string tag (regexp-quote split)
+                                             t "[ \t\n]+")
+			     (list tag))))))
+        (format "%s\n%s"
+	        (pcase items
+	          (`nil "@item")
+	          (`(,item) (concat "@item " item))
+	          (`(,item . ,items)
+	           (concat "@item " item "\n"
+		           (mapconcat (lambda (i) (concat "@itemx " i))
+				      items
+				      "\n"))))
+	        (or contents ""))))))
 
 ;;;; Keyword
 
@@ -1615,7 +1795,28 @@ contextual information."
   (format "@display\n%s@end display" contents))
 
 
-;;; Interactive functions
+;;; Public Functions
+
+(defun org-texinfo-kbd-macro (key &optional noquote)
+  "Quote KEY using @kbd{...} and if necessary @key{...}.
+
+This is intended to be used as an Org macro like so:
+
+  #+macro: kbd (eval (org-texinfo-kbd-macro $1))
+  Type {{{kbd(C-c SPC)}}}.
+
+Also see info node `(org)Key bindings in Texinfo export'.
+
+If optional NOQOUTE is non-nil, then do not add the quoting
+that is necessary when using this in an Org macro."
+  (format (if noquote "@kbd{%s}" "@@texinfo:@kbd{@@%s@@texinfo:}@@")
+	  (let ((case-fold-search nil))
+	    (replace-regexp-in-string
+	     org-texinfo--quoted-keys-regexp
+	     (if noquote "@key{\\&}" "@@texinfo:@key{@@\\&@@texinfo:}@@")
+	     key t))))
+
+;;; Interactive Functions
 
 ;;;###autoload
 (defun org-texinfo-export-to-texinfo
