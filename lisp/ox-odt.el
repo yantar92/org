@@ -366,7 +366,6 @@ When this option is turned on, `indent-region' is run on all
 component xml buffers before they are saved.  Turn this off for
 regular use.  Turn this on if you need to examine the xml
 visually."
-  :group 'org-export-odt
   :version "24.1"
   :type 'boolean)
 
@@ -403,7 +402,6 @@ with GNU ELPA tar or standard Emacs distribution."
   :type '(choice
 	  (const :tag "Not set" nil)
 	  (directory :tag "Schema directory"))
-  :group 'org-export-odt
   :version "24.1"
   :set
   (lambda (var value)
@@ -441,7 +439,6 @@ If unspecified, the file named \"OrgOdtContentTemplate.xml\"
 under `org-odt-styles-dir' is used."
   :type '(choice (const nil)
 		 (file))
-  :group 'org-export-odt
   :version "24.3")
 
 (defcustom org-odt-styles-file nil
@@ -475,7 +472,6 @@ a per-file basis.  For example,
 
 #+ODT_STYLES_FILE: \"/path/to/styles.xml\" or
 #+ODT_STYLES_FILE: (\"/path/to/file.ott\" (\"styles.xml\" \"image/hdr.png\"))."
-  :group 'org-export-odt
   :version "24.1"
   :type
   '(choice
@@ -490,7 +486,6 @@ a per-file basis.  For example,
 
 (defcustom org-odt-display-outline-level 2
   "Outline levels considered for enumerating captioned entities."
-  :group 'org-export-odt
   :version "24.4"
   :package-version '(Org . "8.0")
   :type 'integer)
@@ -520,7 +515,6 @@ specifiers are interpreted as below:
 %d output dir in full
 %D output dir as a URL.
 %x extra options as set in `org-odt-convert-capabilities'."
-  :group 'org-export-odt
   :version "24.1"
   :type
   '(choice
@@ -533,7 +527,6 @@ specifiers are interpreted as below:
   "Use this converter to convert from \"odt\" format to other formats.
 During customization, the list of converter names are populated
 from `org-odt-convert-processes'."
-  :group 'org-export-odt
   :version "24.1"
   :type '(choice :convert-widget
 		 (lambda (w)
@@ -595,7 +588,6 @@ format) to be converted to any of the export formats associated
 with that class.
 
 See default setting of this variable for a typical configuration."
-  :group 'org-export-odt
   :version "24.1"
   :type
   '(choice
@@ -622,7 +614,6 @@ variable, the list of valid values are populated based on
 
 You can set this option on per-file basis using file local
 values.  See Info node `(emacs) File Variables'."
-  :group 'org-export-odt
   :version "24.1"
   :type '(choice :convert-widget
 		 (lambda (w)
@@ -648,7 +639,6 @@ The function must accept two parameters:
 The function should return the string to be exported.
 
 The default value simply returns the value of CONTENTS."
-  :group 'org-export-odt
   :version "26.1"
   :package-version '(Org . "8.3")
   :type 'function)
@@ -668,7 +658,6 @@ TEXT      the main headline text (string).
 TAGS      the tags string, separated with colons (string or nil).
 
 The function result will be used as headline text."
-  :group 'org-export-odt
   :version "26.1"
   :package-version '(Org . "8.3")
   :type 'function)
@@ -689,7 +678,6 @@ The function must accept six parameters:
   CONTENTS  the contents of the inlinetask, as a string.
 
 The function should return the string to be exported."
-  :group 'org-export-odt
   :version "26.1"
   :package-version '(Org . "8.3")
   :type 'function)
@@ -716,7 +704,6 @@ nil            Ignore math snippets.
                be loaded.
 
 Any other symbol is a synonym for `mathjax'."
-  :group 'org-export-odt
   :version "24.4"
   :package-version '(Org . "8.0")
   :type '(choice
@@ -736,7 +723,6 @@ Any other symbol is a synonym for `mathjax'."
 A rule consists in an association whose key is the type of link
 to consider, and value is a regexp that will be matched against
 link's path."
-  :group 'org-export-odt
   :version "24.4"
   :package-version '(Org . "8.0")
   :type '(alist :key-type (string :tag "Type")
@@ -749,7 +735,6 @@ link's path."
 A rule consists in an association whose key is the type of link
 to consider, and value is a regexp that will be matched against
 link's path."
-  :group 'org-export-odt
   :version "26.1"
   :package-version '(Org . "8.3")
   :type '(alist :key-type (string :tag "Type")
@@ -760,7 +745,6 @@ link's path."
 Use this for sizing of embedded images.  See Info node `(org)
 Images in ODT export' for more information."
   :type 'float
-  :group 'org-export-odt
   :version "24.4"
   :package-version '(Org . "8.1"))
 
@@ -782,7 +766,6 @@ styles.xml already contains needed styles for colorizing to work.
 
 This variable is effective only if `org-odt-fontify-srcblocks' is
 turned on."
-  :group 'org-export-odt
   :version "24.1"
   :type 'boolean)
 
@@ -792,7 +775,6 @@ Turn this option on if you want to colorize the source code
 blocks in the exported file.  For colorization to work, you need
 to make available an enhanced version of `htmlfontify' library."
   :type 'boolean
-  :group 'org-export-odt
   :version "24.1")
 
 
@@ -877,7 +859,6 @@ implementation filed under `org-odt-get-table-cell-styles'.
 The TABLE-STYLE-NAME \"OrgEquation\" is used internally for
 formatting of numbered display equations.  Do not delete this
 style from the list."
-  :group 'org-export-odt
   :version "24.1"
   :type '(choice
           (const :tag "None" nil)
@@ -922,7 +903,6 @@ document by setting the default language and country either using
 the application UI or through a custom styles file.
 
 See `org-odt--build-date-styles' for implementation details."
-  :group 'org-export-odt
   :version "24.4"
   :package-version '(Org . "8.0")
   :type 'boolean)
@@ -2009,14 +1989,16 @@ information."
 
 ;;;; Latex Environment
 
-
 ;; (eval-after-load 'ox-odt '(ad-deactivate 'org-format-latex-as-mathml))
-;; (defadvice org-format-latex-as-mathml	; FIXME
-;;   (after org-odt-protect-latex-fragment activate)
+;; (advice-add 'org-format-latex-as-mathml	; FIXME
+;;   :around #'org--odt-protect-latex-fragment)
+;; (defun org--odt-protect-latex-fragment (orig-fun latex-frag &rest args)
 ;;   "Encode LaTeX fragment as XML.
 ;; Do this when translation to MathML fails."
-;;   (unless (> (length ad-return-value) 0)
-;;     (setq ad-return-value (org-odt--encode-plain-text (ad-get-arg 0)))))
+;;   (let ((retval (apply orig-fun latex-frag args)))
+;;     (if (> (length retval) 0)
+;;         retval
+;;       (org-odt--encode-plain-text latex-frag))))
 
 (defun org-odt-latex-environment (latex-environment _contents info)
   "Transcode a LATEX-ENVIRONMENT element from Org to ODT.
