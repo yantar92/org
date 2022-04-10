@@ -1377,11 +1377,17 @@ Assume point is at beginning of the inline task."
 				  (skip-chars-forward " \t\n")
 				  (line-beginning-position))))
 	   (contents-end (and contents-begin task-end))
+           (contents-begin (if (eq contents-begin contents-end)
+                               nil
+                             contents-begin))
+           (contents-end (if (eq contents-begin contents-end)
+                             nil
+                           contents-end))
 	   (end (progn (when task-end (goto-char task-end))
 		       (forward-line)
 		       (skip-chars-forward " \r\t\n" limit)
 		       (if (eobp) (point) (line-beginning-position))))
-	   (inlinetask
+           (inlinetask
 	    (list 'inlinetask
 		  (nconc
 		   (list :raw-value raw-value
