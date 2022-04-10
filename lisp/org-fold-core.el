@@ -1447,25 +1447,18 @@ folded regions.")
                              (org-fold-core-get-folding-spec-property spec :font-lock-skip))
                     (push spec result)))
                 result))))
-      ;; Move POS to first visible point within BEG..END.
-      (unless force
-        (while (and (catch :found
-                      (dolist (spec (org-fold-core-get-folding-spec 'all pos))
-                        (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
-                          (throw :found spec))))
-                    (< pos end))
-          (setq pos (org-fold-core-next-folding-state-change nil pos end))))
       (when force (setq pos beg next end))
       (while (< pos end)
         (unless force
-          (setq next (org-fold-core-next-folding-state-change skip-specs pos end))
-          ;; Move to the end of the region to be fontified.
-          (while (and (not (catch :found
-                           (dolist (spec (org-fold-core-get-folding-spec 'all next))
-                             (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
-                               (throw :found spec)))))
-                      (< next end))
-            (setq next (org-fold-core-next-folding-state-change nil next end))))
+          ;; Move POS to first visible point within BEG..END.
+          (while (and (catch :found
+                        (dolist (spec (org-fold-core-get-folding-spec 'all pos))
+                          (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
+                            (throw :found spec))))
+                      (< pos end))
+            (setq pos (org-fold-core-next-folding-state-change skip-specs pos end)))
+          ;; Find end of the visible region.
+          (setq next (org-fold-core-next-folding-state-change skip-specs pos end)))
         (save-excursion
           (font-lock-default-fontify-region pos next loudly)
           (save-match-data
