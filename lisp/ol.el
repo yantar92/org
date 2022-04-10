@@ -68,7 +68,7 @@
 (declare-function org-occur "org" (regexp &optional keep-previous callback))
 (declare-function org-open-file "org" (path &optional in-emacs line search))
 (declare-function org-cycle-overview "org-cycle" ())
-(declare-function org-restart-font-lock "org" ())
+(declare-function org-font-lock-restart "org-font-lock" ())
 (declare-function org-run-like-in-org-mode "org" (cmd))
 (declare-function org-fold-show-context "org-fold" (&optional key))
 (declare-function org-src-coderef-format "org-src" (&optional element))
@@ -1479,7 +1479,7 @@ If the link is in hidden text, expose it."
   (interactive)
   (if org-link-descriptive (remove-from-invisibility-spec '(org-link))
     (add-to-invisibility-spec '(org-link)))
-  (org-restart-font-lock)
+  (org-font-lock-restart)
   (setq org-link-descriptive (not org-link-descriptive)))
 (defun org-toggle-link-display--text-properties ()
   "Toggle the literal or descriptive display of links in current buffer."
@@ -2068,7 +2068,7 @@ Also refresh fontification if needed."
 	      (org-element-cache-refresh (match-beginning 1))))))
       ;; Re fontify buffer.
       (when (memq 'radio org-highlight-links)
-	(org-restart-font-lock)))))
+	(org-font-lock-restart)))))
 
 
 ;;; Initialize Regexps

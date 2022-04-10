@@ -384,7 +384,7 @@ DATELINE is non-nil when the face used should be
   (save-excursion
     (beginning-of-line)
     (let* ((level-face (and (looking-at "\\(\\**\\)\\(\\* \\)")
-			    (org-get-level-face 2)))
+			    (org-get-level-face (org-element-at-point))))
 	   (ref-face (or level-face
 			 (and (eq major-mode 'org-agenda-mode)
 			      (org-get-at-bol 'face))

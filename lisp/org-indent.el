@@ -194,7 +194,7 @@ during idle time."
     (add-hook 'after-change-functions 'org-indent-refresh-maybe nil 'local)
     (add-hook 'before-change-functions
 	      'org-indent-notify-modified-headline nil 'local)
-    (and font-lock-mode (org-restart-font-lock))
+    (and font-lock-mode (org-font-lock-restart))
     (org-indent-remove-properties (point-min) (point-max))
     ;; Submit current buffer to initialize agent.  If it's the first
     ;; buffer submitted, also start the agent.  Current buffer is
@@ -225,7 +225,7 @@ during idle time."
 		 'org-indent-notify-modified-headline 'local)
     (org-with-wide-buffer
      (org-indent-remove-properties (point-min) (point-max)))
-    (and font-lock-mode (org-restart-font-lock))
+    (and font-lock-mode (org-font-lock-restart))
     (redraw-display))))
 
 (defun org-indent-indent-buffer ()
