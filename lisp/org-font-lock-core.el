@@ -204,6 +204,17 @@ DATUM is a parse tree."
                                (org-element-property :mode element)
                                (org-element-property :structure element))))
                       (throw :done t))))
+                ;; Fontify affiliated keywords.
+                (when (and (org-element-property :post-affiliated element)
+                           (> (org-element-property :post-affiliated element)
+                              (org-element-property :begin element)))
+                  (org-with-wide-buffer
+                   (narrow-to-region
+                    (org-element-property :begin element)
+                    (org-element-property :post-affiliated element))
+                   (org-font-lock--fontify-objects
+                    beg end
+                    (org-element-map (org-element-parse-buffer) 'keyword #'identity))))
                 ;; Fontify element and secondary objects inside.
                 (org-font-lock--fontify-objects beg end element)
                 (if (and (org-element-property :contents-begin element)
@@ -252,6 +263,13 @@ DATUM is a parse tree."
        (goto-char (org-element-property :end element))
        (skip-chars-backward "\rn\t ")
        (point)))
+   (if (and (org-element-property :post-affiliated element)
+            (> (org-element-property :post-affiliated element)
+               (org-element-property :begin element)))
+       `(:affiliated
+         ,(org-element-property :begin element)
+         ,(org-element-property :post-affiliated element))
+     `(:affiliated nil nil))
    `(:full-no-affiliated
      ,(or (org-element-property :post-affiliated element)
           (org-element-property :begin element))
@@ -300,6 +318,25 @@ DATUM is a parse tree."
               ,(cadr (alist-get :full-no-blank result))))
     result))
 (defalias 'org-font-lock--matcher-code #'org-font-lock--matcher-verbatim)
+
+(defun org-font-lock--matcher-keyword (element)
+  "Match keyword ELEMENT."
+  (let (beg-key end-key beg-value end-value)
+    (save-match-data
+      (org-with-point-at (org-element-property :begin element)
+        (skip-chars-forward " \t")
+        (setq beg-key (point))
+        (let ((case-fold-search t)) (search-forward (org-element-property :key element)))
+        (skip-chars-forward ":")
+        (setq end-key (point))
+        (let ((case-fold-search t)) (search-forward (org-element-property :value element)))
+        (setq beg-value (match-beginning 0)
+              end-value (match-end 0))))
+    (nconc
+     (org-font-lock--matcher-default element)
+     (list
+      `(:key ,beg-key ,end-key)
+      `(:value ,beg-value ,end-value)))))
 
 (defun org-font-lock--matcher-table-row (element)
   "Match table-row ELEMENT."

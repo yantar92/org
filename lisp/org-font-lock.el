@@ -987,6 +987,10 @@ and subscripts."
   "Set font lock defaults for the current buffer."
   (setq org-font-lock-element-keywords
         `(
+          ;; Keywords, including affiliated keywords.
+          (keyword
+           (:key 'org-special-keyword t)
+           (:value 'org-property-value t))
           ;; Headlines
           ,(if org-level-color-stars-only
                '(headline (:stars (org-get-level-face)))
@@ -1068,10 +1072,10 @@ and subscripts."
 	  ;; '("^[ \t]*| *\\([#*]\\) *|" (1 'org-formula t))
 	  ;; '("^[ \t]*|\\( *\\([$!_^/]\\) *|.*\\)|" (1 'org-formula t))
 	  ;; '("| *\\(<[lrc]?[0-9]*>\\)" (1 'org-formula t))
-	  ;; Properties
-	  (list org-property-re
-	        '(1 'org-special-keyword t)
-	        '(3 'org-property-value t))
+	  ;; ;; Properties
+	  ;; (list org-property-re
+	  ;;       '(1 'org-special-keyword t)
+	  ;;       '(3 'org-property-value t))
 	  ;; Drawers
 	  '(org-fontify-drawers)
 	  ;; Link related fontification.
