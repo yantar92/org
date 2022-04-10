@@ -1033,6 +1033,11 @@ and subscripts."
            ("\\s-*\\(<[lrc]?[0-9]*>\\)"
             nil nil
             (1 'org-formula prepend)))
+          ;; Drawers.
+          ,@(cl-loop for element-name in '(drawer property-drawer)
+                     collect `(,element-name
+                               (:begin-marker 'org-drawer t)
+                               (:end-marker 'org-drawer t)))
           ;; Emphasis.
           ,@(when org-fontify-emphasized-text
               (cl-loop for (_ fontspec . _) in org-emphasis-alist
@@ -1076,8 +1081,8 @@ and subscripts."
 	  ;; (list org-property-re
 	  ;;       '(1 'org-special-keyword t)
 	  ;;       '(3 'org-property-value t))
-	  ;; Drawers
-	  '(org-fontify-drawers)
+	  ;; ;; Drawers
+	  ;; '(org-fontify-drawers)
 	  ;; Link related fontification.
 	  '(org-activate-links)
 	  (when (memq 'tag org-highlight-links) '(org-activate-tags (1 'org-tag prepend)))
