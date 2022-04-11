@@ -6421,6 +6421,17 @@ the expected result."
                      mode (org-element--next-mode (org-element-property :mode element) (org-element-type element) nil)
                      up (org-element-property :parent up)
                      next (point)))
+             ;; Within blank lines at the end of UP, we may need to
+             ;; return ancestor in some special cases (see below).
+             (let ((parent (org-element-property :parent up)))
+               (when (org-element--open-end-p up)
+                 (while (and parent
+                             (org-element-property :contents-end parent)
+                             (not (memq (org-element-type parent) '(headline section org-data)))
+                             (<= (org-element-property :contents-end parent) pos)
+                             (org-element--open-end-p parent))
+                   (setq up parent
+                         parent (org-element-property :parent up)))))
              (when up (setq element up)))))
          ;; Parse successively each element until we reach POS.
          (let ((end (or (org-element-property :end element) (point-max)))
