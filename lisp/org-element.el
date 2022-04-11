@@ -7801,7 +7801,8 @@ Providing it allows for quicker computation."
 	 (setq type 'keyword))
 	;; At an item, objects can only be located within tag, if any.
 	((eq type 'item)
-	 (let ((tag (org-element-property :tag element)))
+	 (let* ((tag (org-element-property :tag element))
+                (tag (and tag (org-element-interpret-data tag))))
 	   (if (or (not tag) (/= (line-beginning-position) post))
 	       (throw 'objects-forbidden element)
 	     (beginning-of-line)
