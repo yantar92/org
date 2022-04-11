@@ -364,6 +364,51 @@ DATUM is a parse tree."
       `(:value ,beg-value ,end-value)))))
 (defalias 'org-font-lock--matcher-node-property #'org-font-lock--matcher-keyword)
 
+(defun org-font-lock--matcher-link (element)
+  "Match link ELEMENT."
+  (let ((components (org-font-lock--matcher-default element))
+        visible-beg visible-end)
+    (pcase (org-element-property :format element)
+      (`bracket
+       (setq components (assq-delete-all :begin-marker components))
+       (setq components (assq-delete-all :end-marker components))
+       (push `(:begin-marker
+               ,(car (alist-get :full-no-blank components))
+               ,(+ 2 (car (alist-get :full-no-blank components))))
+             components)
+       (push `(:end-marker
+               ,(- (cadr (alist-get :full-no-blank components)) 2)
+               ,(cadr (alist-get :full-no-blank components)))
+             components)
+       (if (org-element-property :contents-begin element)
+           (setq visible-beg (org-element-property :contents-begin element)
+                 visible-end (org-element-property :contents-end element))
+         (setq visible-beg (cadr (alist-get :begin-marker components))
+               visible-end (car (alist-get :end-marker components)))))
+      (`angle
+       (setq components (assq-delete-all :begin-marker components))
+       (setq components (assq-delete-all :end-marker components))
+       (push `(:begin-marker
+               ,(car (alist-get :full-no-blank components))
+               ,(1+ (car (alist-get :full-no-blank components))))
+             components)
+       (push `(:end-marker
+               ,(1- (cadr (alist-get :full-no-blank components)))
+               ,(cadr (alist-get :full-no-blank components)))
+             components)
+       (setq visible-beg (org-element-property :begin element))
+       (setq visible-end (org-element-property :end element)))
+      (`plain
+       (setq components (assq-delete-all :begin-marker components))
+       (setq components (assq-delete-all :end-marker components))
+       (push `(:begin-marker nil nil) components)
+       (push `(:end-marker nil nil) components)
+       (setq visible-beg (org-element-property :begin element))
+       (setq visible-end (org-element-property :end element)))
+      (unknown (error "Uknown link format: %S" unknown)))
+    (nconc components
+           (list `(:visible ,visible-beg ,visible-end)))))
+
 (defun org-font-lock--matcher-table-row (element)
   "Match table-row ELEMENT."
   (nconc

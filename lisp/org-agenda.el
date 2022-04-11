@@ -3687,10 +3687,11 @@ removed from the entry content.  Currently only `planning' is allowed here."
 				     ".*\n?"))
 	   (with-temp-buffer
 	     (insert txt)
-	     (when org-agenda-add-entry-text-descriptive-links
-	       (goto-char (point-min))
-	       (while (org-activate-links (point-max))
-		 (goto-char (match-end 0))))
+             ;; FIXME: Find other way to fontify links.
+	     ;; (when org-agenda-add-entry-text-descriptive-links
+	     ;;   (goto-char (point-min))
+	     ;;   (while (org-activate-links (point-max))
+	     ;;     (goto-char (match-end 0))))
 	     (goto-char (point-min))
 	     (while (re-search-forward org-link-bracket-re (point-max) t)
 	       (set-text-properties (match-beginning 0) (match-end 0)
@@ -3964,9 +3965,10 @@ agenda display, configure `org-agenda-finalize-hook'."
     (let ((inhibit-read-only t))
       (save-excursion
 	(goto-char (point-min))
-	(save-excursion
-	  (while (org-activate-links (point-max))
-	    (goto-char (match-end 0))))
+        ;; FIXME: Find new way to fontify links in agenda.
+	;; (save-excursion
+	;;   (while (org-activate-links (point-max))
+	;;     (goto-char (match-end 0))))
 	(unless (eq org-agenda-remove-tags t)
 	  (org-agenda-align-tags))
 	(unless org-agenda-with-colors
