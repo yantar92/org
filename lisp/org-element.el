@@ -432,7 +432,8 @@ still has an entry since one of its properties (`:title') does.")
     (headline :title)
     (inlinetask :title)
     (item :tag)
-    (citation-reference :prefix :suffix))
+    (citation-reference :prefix :suffix)
+    (planning :scheduled :deadline :closed))
   "Alist between element types and locations of secondary values.")
 
 (defconst org-element--pair-round-table
