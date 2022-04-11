@@ -168,77 +168,79 @@ DATUM is a parse tree."
   (let ((beg (point)) (end limit))
     (unwind-protect
         (let ((element (org-element-at-point beg)))
-          (if (or (not (org-element-property :contents-begin element))
-                  (< beg (org-element-property :contents-begin element))
-                  (>= beg (org-element-property :contents-end element)))
-              ;; Fontify the element itself and move point to
-              ;; :contents-begin or :end for further fontification.
-              (progn
-                (catch :done
-                  ;; Parse objects outside element contents.
-                  (dolist (parsed-property
-                           (alist-get
-                            (org-element-type element)
-                            org-element-secondary-value-alist))
-                    (when (stringp (org-element-property parsed-property element))
-                      (org-element-set-element
-                       element
-                       (org-with-point-at (org-element-property :begin element)
-                         (org-element--current-element
-                          (org-element-property :end element)
-                          'object
-                          (org-element-property :mode element)
-                          (org-element-property :structure element))))
-                      (throw :done t)))
-                  ;; Parse objects inside parsed affiliated keywords.
-                  (dolist (parsed-property
-                           (mapcar (lambda (prop)
-                                     (intern (concat ":" (downcase prop))))
-                                   org-element-parsed-keywords))
-                    (when (org-element-property parsed-property element)
-                      (setq element
-                            (org-with-point-at (org-element-property :begin element)
-                              (org-element--current-element
-                               (org-element-property :end element)
-                               'object
-                               (org-element-property :mode element)
-                               (org-element-property :structure element))))
-                      (throw :done t))))
-                ;; Fontify affiliated keywords.
-                (when (and (org-element-property :post-affiliated element)
-                           (> (org-element-property :post-affiliated element)
-                              (org-element-property :begin element)))
-                  (org-with-wide-buffer
-                   (narrow-to-region
-                    (org-element-property :begin element)
-                    (org-element-property :post-affiliated element))
-                   (org-font-lock--fontify-objects
-                    beg end
-                    (org-element-map (org-element-parse-buffer) 'keyword #'identity))))
-                ;; Fontify element and secondary objects inside.
-                (org-font-lock--fontify-objects beg end element)
-                (if (and (org-element-property :contents-begin element)
-                         (>= (org-element-property :contents-begin element) beg))
-                    (goto-char (org-element-property :contents-begin element))
-                  (goto-char (org-element-property :end element))))
-            ;; We are inside lesser element.  Fontify all the objects
-            ;; inside.
-            ;; Collect all the objects inside.
-            (org-element--parse-objects
-             (org-element-property :contents-begin element)
-             (org-element-property :contents-end element)
-             element
-             (org-element-restriction element))
-            (org-font-lock--fontify-objects beg end element)
-            (if (and (eq (org-element-property :contents-begin element)
-                         (org-element-property :post-affiliated element))
-                     ;; Lists and tables have inner element right at
-                     ;; begin.
-                     (memq (org-element-type element) '(table plain-list)))
-                (goto-char (1+ (org-element-property :contents-begin element)))
-              ;; Finished fontifying element.  Move point to its :end.
-              (goto-char (org-element-property :end element))))
-          `(jit-lock-bounds ,(org-element-property :begin element) . ,(point)))
+          (when element
+            (if (or (not (org-element-property :contents-begin element))
+                    (< beg (org-element-property :contents-begin element))
+                    (>= beg (org-element-property :contents-end element)))
+                ;; Fontify the element itself and move point to
+                ;; :contents-begin or :end for further fontification.
+                (progn
+                  (catch :done
+                    ;; Parse objects outside element contents.
+                    (dolist (parsed-property
+                             (alist-get
+                              (org-element-type element)
+                              org-element-secondary-value-alist))
+                      (when (stringp (org-element-property parsed-property element))
+                        (org-element-set-element
+                         element
+                         (org-with-point-at (org-element-property :begin element)
+                           (org-element--current-element
+                            (org-element-property :end element)
+                            'object
+                            (org-element-property :mode element)
+                            (org-element-property :structure element))))
+                        (throw :done t)))
+                    ;; Parse objects inside parsed affiliated keywords.
+                    (dolist (parsed-property
+                             (mapcar (lambda (prop)
+                                       (intern (concat ":" (downcase prop))))
+                                     org-element-parsed-keywords))
+                      (when (org-element-property parsed-property element)
+                        (setq element
+                              (org-with-point-at (org-element-property :begin element)
+                                (org-element--current-element
+                                 (org-element-property :end element)
+                                 'object
+                                 (org-element-property :mode element)
+                                 (org-element-property :structure element))))
+                        (throw :done t))))
+                  ;; Fontify affiliated keywords.
+                  (when (and (org-element-property :post-affiliated element)
+                             (> (org-element-property :post-affiliated element)
+                                (org-element-property :begin element)))
+                    (org-with-wide-buffer
+                     (narrow-to-region
+                      (org-element-property :begin element)
+                      (org-element-property :post-affiliated element))
+                     (org-font-lock--fontify-objects
+                      beg end
+                      (org-element-map (org-element-parse-buffer) 'keyword #'identity))))
+                  ;; Fontify element and secondary objects inside.
+                  (org-font-lock--fontify-objects beg end element)
+                  (if (and (org-element-property :contents-begin element)
+                           (>= (org-element-property :contents-begin element) beg))
+                      (goto-char (org-element-property :contents-begin element))
+                    (goto-char (org-element-property :end element))))
+              ;; We are inside lesser element.  Fontify all the objects
+              ;; inside.
+              ;; Collect all the objects inside.
+              (org-element--parse-objects
+               (org-element-property :contents-begin element)
+               (org-element-property :contents-end element)
+               element
+               (org-element-restriction element))
+              (org-font-lock--fontify-objects beg end element)
+              (if (and (eq (org-element-property :contents-begin element)
+                           (org-element-property :post-affiliated element))
+                       ;; Lists and tables have inner element right at
+                       ;; begin.
+                       (memq (org-element-type element) '(table plain-list)))
+                  (goto-char (1+ (org-element-property :contents-begin element)))
+                ;; Finished fontifying element.  Move point to its :end.
+                (goto-char (org-element-property :end element)))))
+          (when element
+            `(jit-lock-bounds ,(org-element-property :begin element) . ,(point))))
       (setq org-font-lock-current-element nil
             org-font-lock-current-element-components nil))))
 
