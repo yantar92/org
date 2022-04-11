@@ -63,6 +63,14 @@ regions for the elements.")
   "Like `font-lock-keywords', but also allows MATCHER to be element symbol
 and SUBEXP to be element component.")
 
+(defun org-font-lock-create-glyph (string)
+  "Transform STRING into glyph, displayed correctly."
+  (let ((composition nil))
+    (dolist (char (string-to-list string)
+		  (nreverse (cdr composition)))
+      (push char composition)
+      (push '(Br . Bl) composition))))
+
 (defun org-font-lock--group-keywords (keywords)
   "Merge keywords for the same elements."
   (let (matchers result)

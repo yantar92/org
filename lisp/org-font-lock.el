@@ -415,6 +415,16 @@ See also the `org-block' face."
   :group 'org-appearance
   :group 'org-babel)
 
+(defcustom org-display-custom-times nil
+  "Non-nil means overlay custom formats over all time stamps.
+The formats are defined through the variable `org-time-stamp-custom-formats'.
+To turn this on on a per-file basis, insert anywhere in the file:
+   #+STARTUP: customtime"
+  :group 'org-time
+  :set 'set-default
+  :type 'sexp)
+(make-variable-buffer-local 'org-display-custom-times)
+
 (defun org-fontify-meta-lines-and-blocks (limit)
   (condition-case nil
       (org-fontify-meta-lines-and-blocks-1 limit)
@@ -618,20 +628,32 @@ See also the `org-block' face."
 				   'font-lock-multiline t
 				   'face 'org-footnote))))))
 
-(defun org-activate-dates (limit)
-  "Add text properties for dates."
+(defun org-display-custom-time (beg end)
+  "Overlay modified time stamp format over timestamp between BEG and END."
+  (let* ((ts (buffer-substring beg end))
+	 t1 with-hm tf time str (off 0))
+    (save-match-data
+      (setq t1 (org-parse-time-string ts t))
+      (when (string-match "\\(-[0-9]+:[0-9]+\\)?\\( [.+]?\\+[0-9]+[hdwmy]\\(/[0-9]+[hdwmy]\\)?\\)?\\'" ts)
+	(setq off (- (match-end 0) (match-beginning 0)))))
+    (setq end (- end off))
+    (setq with-hm (and (nth 1 t1) (nth 2 t1))
+	  tf (funcall (if with-hm 'cdr 'car) org-time-stamp-custom-formats)
+	  time (org-fix-decoded-time t1)
+	  str (org-add-props
+		  (format-time-string
+		   (substring tf 1 -1) (apply 'encode-time time))
+		  nil 'mouse-face 'highlight))
+    (compose-region beg end (org-font-lock-create-glyph str) 'decompose-region)))
+
+(defun org-font-lock-activate-custom-time (limit)
+  "Add custom time for dates."
   (when (and (re-search-forward org-tsr-regexp-both limit t)
 	     (not (equal (char-before (match-beginning 0)) 91)))
-    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
-    (add-text-properties (match-beginning 0) (match-end 0)
-			 (list 'mouse-face 'highlight
-			       'keymap org-mouse-map))
-    (org-rear-nonsticky-at (match-end 0))
-    (when org-display-custom-times
-      ;; If it's a date range, activate custom time for second date.
-      (when (match-end 3)
-	(org-display-custom-time (match-beginning 3) (match-end 3)))
-      (org-display-custom-time (match-beginning 1) (match-end 1)))
+    ;; If it's a date range, activate custom time for second date.
+    (when (match-end 3)
+      (org-display-custom-time (match-beginning 3) (match-end 3)))
+    (org-display-custom-time (match-beginning 1) (match-end 1))
     t))
 
 (defun org-do-latex-and-related (limit)
@@ -973,6 +995,20 @@ and subscripts."
                      collect `(,element-name
                                (:begin-marker 'org-drawer t)
                                (:end-marker 'org-drawer t)))
+          ;; Timestamps
+          ,(when (memq 'date org-highlight-links)
+             '(timestamp
+               (:full-no-blank
+                '( face 'org-date
+                   mouse-face 'highlight
+	           keymap org-mouse-map
+                   help-echo "Open agenda for the date/range")
+                t)))
+          ,(when (and org-display-custom-times
+                      (memq 'date org-highlight-links))
+             '(timestamp
+               (org-font-lock-activate-custom-time
+                (goto-char (org-element-property :begin org-font-lock-current-element)))))
           ;; Emphasis.
           ,@(when org-fontify-emphasized-text
               (cl-loop for (_ fontspec . _) in org-emphasis-alist
@@ -997,7 +1033,6 @@ and subscripts."
 	  ;; Call the hook
 	  '(org-font-lock-hook)
           '(org-font-lock-matcher)
-	  (when (memq 'date org-highlight-links) '(org-activate-dates (0 'org-date t)))
 	  (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
           ;; Targets.
           (list org-radio-target-regexp '(0 'org-target t))

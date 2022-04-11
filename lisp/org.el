@@ -2322,16 +2322,6 @@ of minutes to shift."
 	(list org-time-stamp-rounding-minutes
 	      org-time-stamp-rounding-minutes)))
 
-(defcustom org-display-custom-times nil
-  "Non-nil means overlay custom formats over all time stamps.
-The formats are defined through the variable `org-time-stamp-custom-formats'.
-To turn this on on a per-file basis, insert anywhere in the file:
-   #+STARTUP: customtime"
-  :group 'org-time
-  :set 'set-default
-  :type 'sexp)
-(make-variable-buffer-local 'org-display-custom-times)
-
 (defcustom org-time-stamp-custom-formats
   '("<%m/%d/%y %a>" . "<%m/%d/%y %a %H:%M>") ; american
   "Custom formats for time stamps.  See `format-time-string' for the syntax.
@@ -12795,24 +12785,6 @@ The command returns the inserted time stamp."
   (if org-display-custom-times
       (message "Time stamps are overlaid with custom format")
     (message "Time stamp overlays removed")))
-
-(defun org-display-custom-time (beg end)
-  "Overlay modified time stamp format over timestamp between BEG and END."
-  (let* ((ts (buffer-substring beg end))
-	 t1 with-hm tf time str (off 0))
-    (save-match-data
-      (setq t1 (org-parse-time-string ts t))
-      (when (string-match "\\(-[0-9]+:[0-9]+\\)?\\( [.+]?\\+[0-9]+[hdwmy]\\(/[0-9]+[hdwmy]\\)?\\)?\\'" ts)
-	(setq off (- (match-end 0) (match-beginning 0)))))
-    (setq end (- end off))
-    (setq with-hm (and (nth 1 t1) (nth 2 t1))
-	  tf (funcall (if with-hm 'cdr 'car) org-time-stamp-custom-formats)
-	  time (org-fix-decoded-time t1)
-	  str (org-add-props
-		  (format-time-string
-		   (substring tf 1 -1) (apply 'encode-time time))
-		  nil 'mouse-face 'highlight))
-    (put-text-property beg end 'display str)))
 
 (defun org-fix-decoded-time (time)
   "Set 0 instead of nil for the first 6 elements of time.
