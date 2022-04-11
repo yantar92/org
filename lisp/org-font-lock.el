@@ -987,6 +987,22 @@ and subscripts."
   "Set font lock defaults for the current buffer."
   (setq org-font-lock-element-keywords
         `(
+          ;; Remove flyspell overlays if they are not allowed inside
+          ;; element.  This is needed when users types in a new
+          ;; element and typing initially triggers flyspell error
+          ;; inside the incomplete element.
+          (,(org-font-lock-cond
+             (org-with-point-at
+                 (org-element-property :end org-font-lock-current-element)
+               (when (memq (org-element-type org-font-lock-current-element)
+                           org-element-all-objects)
+                 (not (org-mode-flyspell-verify)))))
+           (:full-no-blank
+            (prog1 nil
+              (org-remove-flyspell-overlays-in
+               (org-element-property :begin org-font-lock-current-element)
+               (org-element-property :end org-font-lock-current-element)))
+            nil t))
           ;; Node properties and keywords, including affiliated
           ;; keywords.
           (keyword
