@@ -166,6 +166,11 @@ DATUM is a parse tree."
         org-font-lock-current-element-components nil
         org-font-lock-element-keywords (org-font-lock--group-keywords org-font-lock-element-keywords))
   (let ((beg (point)) (end limit))
+    ;; `org-element-at-point' returns nil within blank lines at bob.
+    ;; Skip it.
+    (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
+      (skip-chars-forward " \t\n\r")
+      (setq beg (point)))
     (unwind-protect
         (let ((element (org-element-at-point beg)))
           (when element
@@ -239,8 +244,10 @@ DATUM is a parse tree."
                   (goto-char (1+ (org-element-property :contents-begin element)))
                 ;; Finished fontifying element.  Move point to its :end.
                 (goto-char (org-element-property :end element)))))
-          (when element
-            `(jit-lock-bounds ,(org-element-property :begin element) . ,(point))))
+          (if element
+              `(jit-lock-bounds ,(org-element-property :begin element) . ,(point))
+            (goto-char limit)
+            t))
       (setq org-font-lock-current-element nil
             org-font-lock-current-element-components nil))))
 
