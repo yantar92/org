@@ -923,8 +923,8 @@ and subscripts."
           ,(if org-level-color-stars-only
                '(headline (:stars (org-get-level-face)))
              (if org-fontify-whole-heading-line
-                 '(headline (:title-line-whole (org-get-level-face)))
-               '(headline (:title-line (org-get-level-face)))))
+                 '(headline (:title-line-whole (org-get-level-face) append))
+               '(headline (:title-line (org-get-level-face) append))))
           ,(when org-hide-leading-stars
              '(headline (:leading-stars 'org-hide t)))
           ;; Table lines
