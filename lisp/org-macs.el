@@ -1205,7 +1205,7 @@ fontification."
       (org-invisible-p--text-properties pos folding-only)
     (org-invisible-p--overlays pos folding-only)))
 
-(defun org-truely-invisible-p ()
+(defun org-truly-invisible-p ()
   "Check if point is at a character currently not visible.
 This version does not only check the character property, but also
 `visible-mode'."
