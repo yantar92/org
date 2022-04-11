@@ -5177,22 +5177,23 @@ Text.
      (org-at-planning-p)))
   ;; Correctly find planning attached to inlinetasks.
   (when (featurep 'org-inlinetask)
-    (should
-     (org-test-with-temp-text
-	 "*** Inlinetask\n<point>DEADLINE: <2014-03-04 tue.>\n*** END"
-       (let ((org-inlinetask-min-level 3)) (org-at-planning-p))))
-    (should-not
-     (org-test-with-temp-text
-	 "*** Inlinetask\n<point>DEADLINE: <2014-03-04 tue.>"
-       (let ((org-inlinetask-min-level 3)) (org-at-planning-p))))
-    (should-not
-     (org-test-with-temp-text
-	 "* Headline\n*** Inlinetask\n<point>DEADLINE: <2014-03-04 tue.>"
-       (let ((org-inlinetask-min-level 3)) (org-at-planning-p))))
-    (should-not
-     (org-test-with-temp-text
-	 "* Headline\n*** Inlinetask\n*** END\n<point>DEADLINE: <2014-03-04 tue.>"
-       (let ((org-inlinetask-min-level 3)) (org-at-planning-p))))))
+    (let ((org-inlinetask-min-level 3))
+      (should
+       (org-test-with-temp-text
+	   "*** Inlinetask\n<point>DEADLINE: <2014-03-04 tue.>\n*** END"
+         (org-at-planning-p)))
+      (should-not
+       (org-test-with-temp-text
+	   "*** Inlinetask\n<point>DEADLINE: <2014-03-04 tue.>"
+         (org-at-planning-p)))
+      (should-not
+       (org-test-with-temp-text
+	   "* Headline\n*** Inlinetask\n<point>DEADLINE: <2014-03-04 tue.>"
+         (org-at-planning-p)))
+      (should-not
+       (org-test-with-temp-text
+	   "* Headline\n*** Inlinetask\n*** END\n<point>DEADLINE: <2014-03-04 tue.>"
+         (org-at-planning-p))))))
 
 (ert-deftest test-org/add-planning-info ()
   "Test `org-add-planning-info'."
