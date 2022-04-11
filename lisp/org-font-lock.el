@@ -555,15 +555,6 @@ See also the `org-block' face."
 			       '(font-lock-fontified t face org-meta-line))
 	  t))))))
 
-(defun org-fontify-drawers (limit)
-  "Fontify drawers."
-  (when (re-search-forward org-drawer-regexp limit t)
-    (add-text-properties (1- (match-beginning 1)) (1+ (match-end 1))
-			 '(font-lock-fontified t face org-drawer))
-    (org-remove-flyspell-overlays-in
-     (line-beginning-position) (line-beginning-position 2))
-    t))
-
 (defun org-fontify-macros (limit)
   "Fontify macros."
   (when (re-search-forward "{{{\\([a-zA-Z][-a-zA-Z0-9_]*\\)" limit t)
