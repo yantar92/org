@@ -1139,5 +1139,11 @@ and subscripts."
 
 ;; FIXME: Rewrite regexps using rx.
 
+;; FIXME: Make sure that flyspell is not broken.  It should not, in
+;; theory - Org does provide a flyspell predicate that should already
+;; take care about not running flyspell where it is not needed.
+
+;; FIXME: Check rear-nosticky usage and where it is actually needed.
+
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here
