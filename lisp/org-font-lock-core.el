@@ -329,15 +329,19 @@ DATUM is a parse tree."
 
 (defun org-font-lock--matcher-verbatim (element)
   "Match verbatim ELEMENT."
-  (let ((result (org-font-lock--matcher-emphasis element)))
+  (let ((components (org-font-lock--matcher-emphasis element)))
     ;; Verbatim does not have :contents.
-    (setcdr (assoc :begin-marker result)
-            `(,(car (alist-get :full-no-blank result))
-              ,(1+ (car (alist-get :full-no-blank result)))))
-    (setcdr (assoc :end-marker result)
-            `(,(1- (cadr (alist-get :full-no-blank result)))
-              ,(cadr (alist-get :full-no-blank result))))
-    result))
+    (setq components (assq-delete-all :begin-marker components))
+    (setq components (assq-delete-all :end-marker components))
+    (push `(:begin-marker
+            ,(car (alist-get :full-no-blank components))
+            ,(1+ (car (alist-get :full-no-blank components))))
+          components)
+    (push `(:end-marker
+            ,(1- (cadr (alist-get :full-no-blank components)))
+            ,(cadr (alist-get :full-no-blank components)))
+          components)
+    components))
 (defalias 'org-font-lock--matcher-code #'org-font-lock--matcher-verbatim)
 
 (defun org-font-lock--matcher-keyword (element)
