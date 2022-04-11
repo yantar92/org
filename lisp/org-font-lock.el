@@ -927,6 +927,13 @@ and subscripts."
                '(headline (:title-line (org-get-level-face) append))))
           ,(when org-hide-leading-stars
              '(headline (:leading-stars 'org-hide t)))
+          ;; Headline tags
+          ,(when (memq 'tag org-highlight-links)
+             '(headline (:tags `( face 'org-tag
+                                  mouse-face 'highlight
+                                  keymap 'org-mouse-map
+                                  help-echo "Open tags agenda")
+                               prepend)))
           ;; Table lines
           (table-row (:line 'org-table t))
           ;; table.el table lines are not parsed.  Fall back to regexp
@@ -990,7 +997,6 @@ and subscripts."
 	  ;; Call the hook
 	  '(org-font-lock-hook)
           '(org-font-lock-matcher)
-	  (when (memq 'tag org-highlight-links) '(org-activate-tags (1 'org-tag prepend)))
 	  (when (memq 'date org-highlight-links) '(org-activate-dates (0 'org-date t)))
 	  (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
           ;; Targets.
