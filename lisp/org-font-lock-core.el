@@ -106,6 +106,21 @@ and SUBEXP to be element component.")
       (set-match-data match-data t)
       (goto-char (cadr (alist-get :full org-font-lock-current-element-components))))))
 
+(defun org-font-lock--compile-highlight (highlights)
+  "Transform HIGHGLIGHTS to original font-lock format."
+  (let ((new-highlights))
+    (dolist (highlight highlights)
+      (let ((count 0))
+        (catch :found
+          (dolist (component org-font-lock-current-element-components)
+            (when (eq (car-safe highlight) (car component))
+              (push (cons count (cdr highlight)) new-highlights)
+              (throw :found t))
+            (cl-incf count))
+          ;; Ordinary highlight.  No need to alter.
+          (push highlight new-highlights))))
+    (nreverse new-highlights)))
+
 (defun org-font-lock--compile-keyword (keyword)
   "Transform KEYWORD to original font-lock format.
 Use `org-font-lock--current-element'."
@@ -116,20 +131,14 @@ Use `org-font-lock--current-element'."
       ;; Filter out non-matching elements.
       (when (eq (car-safe keyword)
                 (org-element-type org-font-lock-current-element))
-        (let ((new-highlights))
-          (dolist (highlight (cdr keyword))
-            (let ((count 0))
-              (catch :found
-                (dolist (component org-font-lock-current-element-components)
-                  (when (eq (car-safe highlight) (car component))
-                    (push (cons count (cdr highlight)) new-highlights)
-                    (throw :found t))
-                  (cl-incf count))
-                ;; Ordinary matcher.  No need to alter.
-                (push highlight new-highlights))))
-          (cons 'org-font-lock--element-matcher (nreverse new-highlights))))
-    ;; Ordinary font-lock keyword.  Leave it as is.
-    keyword))
+        (cons 'org-font-lock--element-matcher
+              (org-font-lock--compile-highlight (cdr keyword))))
+    ;; Ordinary font-lock matcher.  Leave the matcher and compile
+    ;; highlight.
+    (if (car-safe keyword)
+        (cons (car-safe keyword)
+              (org-font-lock--compile-highlight (cdr keyword)))
+      keyword)))
 
 (defsubst org-font-lock--compile-keywords (keywords)
   "Transform KEYWORDS as defined in `org-font-lock-element-keywords' to original
@@ -140,7 +149,10 @@ font-lock format.  Use `org-font-lock--current-element'."
   "Fontify a single OBJECT."
   (let* ((org-font-lock--component-matcher
           (or (intern-soft (format "org-font-lock--matcher-%S" (org-element-type object)))
-              'org-font-lock--matcher-default)))
+              'org-font-lock--matcher-default))
+         (org-font-lock--component-matcher (if (functionp org-font-lock--component-matcher)
+                                               org-font-lock--component-matcher
+                                               'org-font-lock--matcher-default)))
     (setq org-font-lock-current-element object
           org-font-lock-current-element-components (funcall org-font-lock--component-matcher object))
     (let ((font-lock-keywords (org-font-lock--compile-keywords org-font-lock-element-keywords)))
