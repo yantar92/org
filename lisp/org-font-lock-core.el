@@ -404,8 +404,8 @@ DATUM is a parse tree."
 			     "[ \t]+\\(:[[:alnum:]_@#%:]+:\\)[ \t]*$"
 			     (line-end-position)
 			     'move)
-		        (goto-char (match-beginning 0))))
-            (tags-end (and tags-beg (match-end 0)))
+		        (goto-char (match-beginning 1))))
+            (tags-end (and tags-beg (match-end 1)))
             (line-end (line-end-position))
             (title-end (point)))
        (nconc
