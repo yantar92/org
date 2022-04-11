@@ -339,6 +339,7 @@ DATUM is a parse tree."
      (list
       `(:key ,beg-key ,end-key)
       `(:value ,beg-value ,end-value)))))
+(defalias 'org-font-lock--matcher-node-property #'org-font-lock--matcher-keyword)
 
 (defun org-font-lock--matcher-table-row (element)
   "Match table-row ELEMENT."

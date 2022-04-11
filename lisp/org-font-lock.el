@@ -987,8 +987,12 @@ and subscripts."
   "Set font lock defaults for the current buffer."
   (setq org-font-lock-element-keywords
         `(
-          ;; Keywords, including affiliated keywords.
+          ;; Node properties and keywords, including affiliated
+          ;; keywords.
           (keyword
+           (:key 'org-special-keyword t)
+           (:value 'org-property-value t))
+          (node-property
            (:key 'org-special-keyword t)
            (:value 'org-property-value t))
           ;; Headlines
