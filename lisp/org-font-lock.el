@@ -1008,6 +1008,14 @@ and subscripts."
                   (goto-char (car (alist-get :tags org-font-lock-current-element-components))))
                 nil
                 (0 'org-tag-group prepend))))
+          ;; Planning
+          (planning
+           (:scheduled-keyword 'org-special-keyword t)
+           (:deadline-keyword 'org-special-keyword t)
+           (:closed-keyword 'org-special-keyword t))
+          ;; Clock
+          (clock
+           (:clock-keyword 'org-special-keyword t))
           ;; Table lines
           (table-row (:line 'org-table append))
           ;; table.el table lines are not parsed.  Fall back to regexp
