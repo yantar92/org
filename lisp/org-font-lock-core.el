@@ -192,7 +192,7 @@ DATUM is a parse tree."
       (skip-chars-forward " \t\n\r")
       (setq beg (point)))
     (unwind-protect
-        (let ((element (org-element-at-point beg)))
+        (let ((element (org-element-copy (org-element-at-point beg))))
           (when element
             (if (or (not (org-element-property :contents-begin element))
                     (< beg (org-element-property :contents-begin element))
