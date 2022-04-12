@@ -942,6 +942,13 @@ and subscripts."
 			          help-echo "Radio target link"
 			          org-linked-text t))))
           ;; Headlines
+          (headline
+           (:title-line
+            (pcase (org-element-property :todo-type org-font-lock-current-element)
+              (`todo (when org-fontify-todo-headline 'org-headline-todo))
+              (`done (when org-fontify-done-headline 'org-headline-done))
+              (_ nil))
+            append))
           ,(if org-level-color-stars-only
                '(headline (:stars (org-get-level-face)))
              (if org-fontify-whole-heading-line
@@ -949,6 +956,12 @@ and subscripts."
                '(headline (:title-line (org-get-level-face) append))))
           ,(when org-hide-leading-stars
              '(headline (:leading-stars 'org-hide t)))
+          ;; TODO keywords
+          (headline
+           (:todo
+            (org-get-todo-face
+             (org-element-property :todo-keyword org-font-lock-current-element))
+            prepend))
           ;; Headline tags
           ,(when (memq 'tag org-highlight-links)
              '(headline (:tags `( face 'org-tag
@@ -1041,26 +1054,6 @@ and subscripts."
 	  '("^&?%%(.*\\|<%%([^>\n]*?>" (0 'org-sexp-date t))
 	  ;; Macro
 	  '(org-fontify-macros)
-	  ;; TODO keyword
-	  (list (format org-heading-keyword-regexp-format
-	        	org-todo-regexp)
-	        '(2 (org-get-todo-face 2) prepend))
-	  ;; TODO
-	  (when org-fontify-todo-headline
-	    (list (format org-heading-keyword-regexp-format
-	        	  (concat
-	        	   "\\(?:"
-	        	   (mapconcat 'regexp-quote org-not-done-keywords "\\|")
-	        	   "\\)"))
-	          '(2 'org-headline-todo prepend)))
-	  ;; DONE
-	  (when org-fontify-done-headline
-	    (list (format org-heading-keyword-regexp-format
-	        	  (concat
-	        	   "\\(?:"
-	        	   (mapconcat 'regexp-quote org-done-keywords "\\|")
-	        	   "\\)"))
-	          '(2 'org-headline-done prepend)))
 	  ;; Priorities
 	  '(org-font-lock-add-priority-faces)
 	  ;; Tags
