@@ -975,7 +975,7 @@ and subscripts."
                                   help-echo "Open tags agenda")
                                prepend)))
           ;; Table lines
-          (table-row (:line 'org-table t))
+          (table-row (:line 'org-table append))
           ;; table.el table lines are not parsed.  Fall back to regexp
           ;; matching.
           (,(org-font-lock-cond
@@ -987,7 +987,7 @@ and subscripts."
               (goto-char (org-element-property :begin org-font-lock-current-element))
               (org-element-property :end org-font-lock-current-element))
             (goto-char (org-element-property :end org-font-lock-current-element))
-            (1 'org-table t)))
+            (1 'org-table append)))
           ;; Column formulas.
           (table-cell
            ("\s-*=.*"
