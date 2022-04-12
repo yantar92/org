@@ -962,6 +962,14 @@ and subscripts."
             (org-get-todo-face
              (org-element-property :todo-keyword org-font-lock-current-element))
             prepend))
+          ;; Priority
+          (headline
+           (:priority
+            (org-get-priority-face (org-element-property :priority org-font-lock-current-element))
+            prepend))
+          ;; Headline COMMENT
+          (headline
+           (:comment 'org-special-keyword t))
           ;; Headline tags
           ,(when (memq 'tag org-highlight-links)
              '(headline (:tags `( face 'org-tag
@@ -969,6 +977,35 @@ and subscripts."
                                   keymap 'org-mouse-map
                                   help-echo "Open tags agenda")
                                prepend)))
+          ;; Special tag faces.
+          ,(when org-tag-faces
+             `(headline
+               (,org-tag-re
+                ;; When nil, no matching will be done.
+                (when (car (alist-get :tags org-font-lock-current-element-components))
+                  (goto-char (car (alist-get :tags org-font-lock-current-element-components))))
+                nil
+                (0
+                 (let ((tg (org-get-tag-face 0)))
+                   (unless (eq 'org-tag tg)
+                     tg))
+                 prepend))))
+          ;; Tags groups.
+          ,(when (and org-group-tags org-tag-groups-alist)
+             `(headline
+               ((lambda (limit)
+                  (when (re-search-forward
+                         (concat
+                          ":"
+                          ,(regexp-opt (mapcar 'car org-tag-groups-alist) t)
+                          ":")
+                         limit t)
+                    (prog1 (point)
+                      (backward-char 2))))
+                (when (car (alist-get :tags org-font-lock-current-element-components))
+                  (goto-char (car (alist-get :tags org-font-lock-current-element-components))))
+                nil
+                (0 'org-tag-group prepend))))
           ;; Table lines
           (table-row (:line 'org-table append))
           ;; table.el table lines are not parsed.  Fall back to regexp
@@ -1063,23 +1100,6 @@ and subscripts."
 	  (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
 	  ;; Macro
 	  '(org-fontify-macros)
-	  ;; Priorities
-	  '(org-font-lock-add-priority-faces)
-	  ;; Tags
-	  '(org-font-lock-add-tag-faces)
-	  ;; Tags groups
-	  (when (and org-group-tags org-tag-groups-alist)
-	    (list (concat org-outline-regexp-bol ".+\\(:"
-	        	  (regexp-opt (mapcar 'car org-tag-groups-alist))
-	        	  ":\\).*$")
-	          '(1 'org-tag-group prepend)))
-	  ;; Special keywords
-	  (list (concat "\\<" org-deadline-string) '(0 'org-special-keyword t))
-	  (list (concat "\\<" org-scheduled-string) '(0 'org-special-keyword t))
-	  (list (concat "\\<" org-closed-string) '(0 'org-special-keyword t))
-	  (list (concat "\\<" org-clock-string) '(0 'org-special-keyword t))
-	  ;; ;; Emphasis
-	  ;; (when org-fontify-emphasized-text '(org-do-emphasis-faces))
 	  ;; Checkboxes
 	  '("^[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)[ \t]+\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\(\\[[- X]\\]\\)"
 	    1 'org-checkbox prepend)
@@ -1094,23 +1114,12 @@ and subscripts."
             (1 'font-lock-comment-face t)
             (2 'org-tag t)
             (3 'font-lock-comment-face t))
-	  ;; ARCHIVEd headings
-	  (list (concat
-	         org-outline-regexp-bol
-	         "\\(.*:" org-archive-tag ":.*\\)")
-	        '(1 'org-archived prepend))
 	  ;; Specials
 	  '(org-do-latex-and-related)
 	  '(org-fontify-entities)
 	  '(org-raise-scripts)
 	  ;; Code
 	  '(org-activate-code (1 'org-code t))
-	  ;; COMMENT
-	  (list (format
-	         "^\\*+\\(?: +%s\\)?\\(?: +\\[#[A-Z0-9]\\]\\)? +\\(?9:%s\\)\\(?: \\|$\\)"
-	         org-todo-regexp
-	         org-comment-string)
-	        '(9 'org-special-keyword t))
 	  ;; Blocks and meta lines
 	  '(org-fontify-meta-lines-and-blocks)
           '(org-fontify-inline-src-blocks)
