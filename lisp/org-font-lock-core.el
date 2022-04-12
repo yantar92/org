@@ -395,6 +395,26 @@ DATUM is a parse tree."
       `(:value ,beg-value ,end-value)))))
 (defalias 'org-font-lock--matcher-node-property #'org-font-lock--matcher-keyword)
 
+(defun org-font-lock--matcher-macro (element)
+  "Match macro ELEMENT."
+  (let ((components (org-font-lock--matcher-default element))
+        contents-beg contents-end)
+    (setq components (assq-delete-all :contents components))
+    (setq components (assq-delete-all :begin-marker components))
+    (setq components (assq-delete-all :end-marker components))
+    (setq contents-beg (+ 3 (car (alist-get :full-no-blank components))))
+    (setq contents-end (- (cadr (alist-get :full-no-blank components)) 3))
+    (push `(:contents ,contents-beg ,contents-end) components)
+    (push `(:begin-marker
+            ,(car (alist-get :full-no-blank components))
+            ,contents-beg)
+          components)
+    (push `(:end-marker
+            ,contents-end
+            ,(cadr (alist-get :full-no-blank components)))
+          components)
+    components))
+
 (defun org-font-lock--matcher-link (element)
   "Match link ELEMENT."
   (let ((components (org-font-lock--matcher-default element))
@@ -439,6 +459,37 @@ DATUM is a parse tree."
       (unknown (error "Uknown link format: %S" unknown)))
     (nconc components
            (list `(:visible ,visible-beg ,visible-end)))))
+
+(defun org-font-lock--matcher-export-snippet (element)
+  "Match export-snippet ELEMENT."
+  (let ((components (org-font-lock--matcher-default element)))
+    (setq components (assq-delete-all :contents components))
+    (setq components (assq-delete-all :begin-marker components))
+    (setq components (assq-delete-all :end-marker components))
+    (org-with-wide-buffer
+     (goto-char (car (alist-get :full-no-blank components)))
+     (re-search-forward "\\(@@\\)\\([^:]+:\\)")
+     (push `(:begin-marker
+             ,(match-beginning 1)
+             ,(match-end 1))
+           components)
+     (push `(:back-end
+             ,(match-beginning 2)
+             ,(match-end 2))
+           components)
+     (push `(:back-end-no-colon
+             ,(match-beginning 2)
+             ,(1- (match-end 2)))
+           components)
+     (push `(:contents
+             ,(match-end 2)
+             ,(- (cadr (alist-get :full-no-blank components)) 2))
+           components)
+     (push `(:end-marker
+             ,(cadr (alist-get :contents components))
+             ,(+ 2 (cadr (alist-get :contents components))))
+           components)
+     components)))
 
 (defun org-font-lock--matcher-table-row (element)
   "Match table-row ELEMENT."

@@ -315,6 +315,18 @@ prompted for."
 (defsubst org-rear-nonsticky-at (pos)
   (add-text-properties (1- pos) pos (list 'rear-nonsticky org-nonsticky-props)))
 
+(defun org-font-lock-footnote-reference-get-properties (&optional element)
+  "Get text property plist for `org-font-lock-current-element' or ELEMENT footnote
+reference or definition."
+  `( face org-footnote
+     mouse-face highlight
+     keymap org-mouse-map
+     help-echo ,(pcase (org-element-type (or element org-font-lock-current-element))
+                  (`footnote-reference "Footnote reference")
+                  (`footnote-definition "Footnote reference")
+                  (_ (error "%S is not a footnote"
+                            (org-element-type (or element org-font-lock-current-element)))))))
+
 (defun org-font-lock-link-get-properties (&optional element)
   "Get text property plist for `org-font-lock-current-element' or ELEMENT link."
   (let ((type (org-element-property :type (or element org-font-lock-current-element)))
@@ -573,6 +585,20 @@ To turn this on on a per-file basis, insert anywhere in the file:
 	  (add-text-properties beg (match-end 0)
 			       '(font-lock-fontified t face org-meta-line))
 	  t))))))
+
+(defun org-font-lock-macro-fold (&optional element)
+  "Hide invisible parts of macro ELEMENT of `org-font-lock-current-element'."
+  (when org-hide-macro-markers
+    (let* ((element (or element org-font-lock-current-element)))
+      (add-text-properties
+       (car (alist-get :begin-marker org-font-lock-current-element-components))
+       (cadr (alist-get :begin-marker org-font-lock-current-element-components))
+       '(invisible t))
+      (add-text-properties
+       (car (alist-get :end-marker org-font-lock-current-element-components))
+       (cadr (alist-get :end-marker org-font-lock-current-element-components))
+       '(invisible t))))
+  nil)
 
 (defun org-fontify-macros (limit)
   "Fontify macros."
@@ -1016,6 +1042,17 @@ and subscripts."
           ;; Clock
           (clock
            (:clock-keyword 'org-special-keyword t))
+          ;; Footnote reference and footnote definition
+          ,(when (memq 'footnote org-highlight-links)
+             '(footnote-reference
+               (:full-no-blank
+                (org-font-lock-footnote-reference-get-properties)
+                t)))
+          ,(when (memq 'footnote org-highlight-links)
+             '(footnote-definition
+               (:full-no-blank
+                (org-font-lock-footnote-reference-get-properties)
+                t)))
           ;; Table lines
           (table-row (:line 'org-table append))
           ;; table.el table lines are not parsed.  Fall back to regexp
@@ -1055,6 +1092,18 @@ and subscripts."
                      collect `(,element-name
                                (:begin-marker 'org-drawer t)
                                (:end-marker 'org-drawer t)))
+          ;; Macro
+          (macro (:full-no-blank '(face org-macro org-macro t) t)
+                 (:full (org-font-lock-macro-fold) nil t))
+          ;; Inline export snippets
+          (export-snippet
+           (:begin-marker 'font-lock-comment-face append)
+           (:back-end 'org-tag append)
+           (:end-marker 'font-lock-comment-face append))
+          ;; Statistics cookies
+          ,(when (cdr (assq 'checkbox org-list-automatic-rules))
+             '(statistics-cookie
+               (:full-no-blank (org-get-checkbox-statistics-face) prepend)))
           ;; Links.
           (link
            (:full-no-blank (org-font-lock-link-get-properties) prepend)
@@ -1107,29 +1156,16 @@ and subscripts."
 	  ;; Call the hook
 	  '(org-font-lock-hook)
           '(org-font-lock-matcher)
-	  (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
-	  ;; Macro
-	  '(org-fontify-macros)
 	  ;; Checkboxes
 	  '("^[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)[ \t]+\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\(\\[[- X]\\]\\)"
 	    1 'org-checkbox prepend)
-	  (when (cdr (assq 'checkbox org-list-automatic-rules))
-	    '("\\[\\([0-9]*%\\)\\]\\|\\[\\([0-9]*\\)/\\([0-9]*\\)\\]"
-	      (0 (org-get-checkbox-statistics-face) prepend)))
 	  ;; Description list items
           '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
 	    1 'org-list-dt prepend)
-          ;; Inline export snippets
-          '("\\(@@\\)\\([a-z-]+:\\).*?\\(@@\\)"
-            (1 'font-lock-comment-face t)
-            (2 'org-tag t)
-            (3 'font-lock-comment-face t))
 	  ;; Specials
 	  '(org-do-latex-and-related)
 	  '(org-fontify-entities)
 	  '(org-raise-scripts)
-	  ;; Code
-	  '(org-activate-code (1 'org-code t))
 	  ;; Blocks and meta lines
 	  '(org-fontify-meta-lines-and-blocks)
           '(org-fontify-inline-src-blocks)
