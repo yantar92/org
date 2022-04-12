@@ -1199,6 +1199,9 @@ and subscripts."
 ;; FIXME: Make sure that flyspell is not broken.  It should not, in
 ;; theory - Org does provide a flyspell predicate that should already
 ;; take care about not running flyspell where it is not needed.
+;; However, the predicate is quite slow. It will be better to write a
+;; dedicated function collecting all elements and removing only
+;; uncheckable parts.
 
 ;; FIXME: Check rear-nosticky usage and where it is actually needed.
 
