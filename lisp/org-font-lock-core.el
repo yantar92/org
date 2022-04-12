@@ -326,18 +326,36 @@ DATUM is a parse tree."
            (point)))
      `(:end-marker nil nil))))
 
-(defun org-font-lock--matcher-emphasis (element)
-  "Match an emphasis ELEMENT."
-  (org-font-lock--matcher-default element))
+(defun org-font-lock--matcher-planning (element)
+  "Match planning ELEMENT."
+  (let ((components (org-font-lock--matcher-default element)))
+    (org-with-wide-buffer
+     (dolist (kwd '("scheduled" "deadline" "closed"))
+       (let ((prop (intern (concat ":" kwd)))
+             (kwd-str (symbol-value (intern (format "org-element-%s-keyword" kwd))))
+             (cmp-name (intern (format ":%s-keyword" kwd))))
+         (if (not (org-element-property prop element))
+             (push `(,cmp-name nil nil) components)
+           (goto-char (org-element-property :begin element))
+           (search-forward kwd-str (org-element-property :end element))
+           (push `(,cmp-name ,(match-beginning 0) ,(match-end 0))
+                 components)
+           ))))
+    components))
 
-(defalias 'org-font-lock--matcher-bold #'org-font-lock--matcher-emphasis)
-(defalias 'org-font-lock--matcher-italic #'org-font-lock--matcher-emphasis)
-(defalias 'org-font-lock--matcher-underline #'org-font-lock--matcher-emphasis)
-(defalias 'org-font-lock--matcher-strike-through #'org-font-lock--matcher-emphasis)
+(defun org-font-lock--matcher-clock (element)
+  "Match clock ELEMENT."
+  (let ((components (org-font-lock--matcher-default element)))
+    (org-with-wide-buffer
+     (goto-char (org-element-property :begin element))
+     (search-forward org-clock-string (org-element-property :end element))
+     (nconc
+      components
+      (list `(:clock-keyword ,(match-beginning 0) ,(match-end 0)))))))
 
 (defun org-font-lock--matcher-verbatim (element)
   "Match verbatim ELEMENT."
-  (let ((components (org-font-lock--matcher-emphasis element)))
+  (let ((components (org-font-lock--matcher-default element)))
     ;; Verbatim does not have :contents.
     (setq components (assq-delete-all :begin-marker components))
     (setq components (assq-delete-all :end-marker components))
