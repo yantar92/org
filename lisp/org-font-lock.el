@@ -386,17 +386,24 @@ prompted for."
 
 (defun org-font-lock-link-activate-func ()
   "Run :activate-func for `org-font-lock-current-element'."
-  (let ((f (org-link-get-parameter
-            (org-element-property :type org-font-lock-current-element)
-            :activate-func)))
+  (let* ((f (org-link-get-parameter
+             (org-element-property :type org-font-lock-current-element)
+             :activate-func))
+         (fail-message
+          (format
+           "Failed to run activate function %S for %S link: %%S"
+           f (org-element-property :type org-font-lock-current-element))))
     (when (functionp f)
-      (funcall
-       f
-       (car (alist-get :full-no-blank org-font-lock-current-element-components))
-       (cadr (alist-get :full-no-blank org-font-lock-current-element-components))
-       (org-element-property :path org-font-lock-current-element)
-       (eq (org-element-property :format org-font-lock-current-element)
-           'bracket))))
+      ;; 
+      (with-demoted-errors fail-message
+        (save-excursion
+          (funcall
+           f
+           (car (alist-get :full-no-blank org-font-lock-current-element-components))
+           (cadr (alist-get :full-no-blank org-font-lock-current-element-components))
+           (org-element-property :path org-font-lock-current-element)
+           (eq (org-element-property :format org-font-lock-current-element)
+               'bracket))))))
   nil)
 
 (defun org-activate-code (limit)
