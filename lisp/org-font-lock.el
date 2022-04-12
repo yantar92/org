@@ -31,7 +31,9 @@
 
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-link-parser "org-element" ())
+(declare-function org-element-type "org-element" (element))
 
+(defvar org-element-all-objects)
 (defvar org-element-paragraph-separate)
 
 (defgroup org-appearance nil

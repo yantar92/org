@@ -37,6 +37,10 @@
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
 (declare-function org-element--parse-objects "org-element" (beg end acc restriction &optional parent))
+(declare-function org-element-parse-buffer "org-element" (&optional granularity visible-only))
+(declare-function org-element--current-element "org-element" (limit &optional granularity mode structure add-to-cache))
+(declare-function org-element-set-element "org-element" (org new))
+(declare-function org-element-copy "org-element" (datum))
 (declare-function org-element-restriction "org-element" (element))
 (declare-function org-element-parse-secondary-string "org-element" (string restriction &optional parent))
 (declare-function org-element-put-property "org-element" (element property value))
@@ -49,6 +53,7 @@
 (defvar org-element-secondary-value-alist)
 (defvar org-element-comment-string)
 (defvar org-element-paragraph-separate)
+(defvar org-element-parsed-keywords)
 
 (defvar org-font-lock-current-element nil
   "Dynamically scoped element to be fontified.
