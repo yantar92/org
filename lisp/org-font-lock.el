@@ -974,9 +974,9 @@ and subscripts."
            (:comment 'org-special-keyword t))
           ;; Headline tags
           ,(when (memq 'tag org-highlight-links)
-             '(headline (:tags `( face 'org-tag
-                                  mouse-face 'highlight
-                                  keymap 'org-mouse-map
+             '(headline (:tags `( face org-tag
+                                  mouse-face highlight
+                                  keymap org-mouse-map
                                   help-echo "Open tags agenda")
                                prepend)))
           ;; Special tag faces.
@@ -1065,8 +1065,8 @@ and subscripts."
           ,(when (memq 'date org-highlight-links)
              '(timestamp
                (:full-no-blank
-                '( face 'org-date
-                   mouse-face 'highlight
+                '( face org-date
+                   mouse-face highlight
 	           keymap org-mouse-map
                    help-echo "Open agenda for the date/range")
                 t)))
