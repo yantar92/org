@@ -472,7 +472,7 @@ DATUM is a parse tree."
             (todo-end (and todo-beg (match-end 0)))
             (priority-beg (when (org-element-property :priority element)
                             (skip-chars-forward " \t")
-                            (when (looking-at "\\(\\[#.\\]\\)[ \t]*")
+                            (when (looking-at "\\(\\[#[A-Z0-9]\\]\\)[ \t]*")
                               (goto-char (match-end 0))
                               (match-beginning 1))))
             (priority-end (and priority-beg (match-end 1)))
