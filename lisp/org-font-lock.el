@@ -1136,7 +1136,7 @@ and subscripts."
           ,@(when org-fontify-emphasized-text
               (cl-loop for (_ fontspec . _) in org-emphasis-alist
                        for element-name in '(bold italic underline verbatim code strike-through)
-                       collect `(,element-name (:full-no-blank ',fontspec append))))
+                       collect `(,element-name (:full-no-blank ',fontspec prepend))))
           ;; `org-emphasis' text property.
           ,@(when org-fontify-emphasized-text
               (cl-loop for  element-name in '(bold italic underline verbatim code strike-through)
