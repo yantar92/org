@@ -433,7 +433,8 @@ still has an entry since one of its properties (`:title') does.")
     (inlinetask :title)
     (item :tag)
     (citation-reference :prefix :suffix)
-    (planning :scheduled :deadline :closed))
+    (planning :scheduled :deadline :closed)
+    (clock :value))
   "Alist between element types and locations of secondary values.")
 
 (defconst org-element--pair-round-table
