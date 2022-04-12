@@ -1166,5 +1166,9 @@ and subscripts."
 
 ;; FIXME: Check rear-nosticky usage and where it is actually needed.
 
+;; FIXME: In theory, element-based fontification should not need to
+;; worry about font-lock-multiline property. It already uses an even more
+;; fine-grained approach.
+
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here
