@@ -286,11 +286,11 @@ DATUM is a parse tree."
    `(:full-no-blank
      ,(org-with-wide-buffer
        (goto-char (org-element-property :begin element))
-       (skip-chars-forward "\rn\t ")
+       (skip-chars-forward "\r\n\t ")
        (point))
      ,(org-with-wide-buffer
        (goto-char (org-element-property :end element))
-       (skip-chars-backward "\rn\t ")
+       (skip-chars-backward "\r\n\t ")
        (point)))
    (if (and (org-element-property :post-affiliated element)
             (> (org-element-property :post-affiliated element)
