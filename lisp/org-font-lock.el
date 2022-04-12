@@ -934,20 +934,6 @@ and subscripts."
           (node-property
            (:key 'org-special-keyword t)
            (:value 'org-property-value t))
-          ;; Links.
-          (link
-           (:full-no-blank (org-font-lock-link-get-properties) prepend)
-           ;; nil t makes font-lock ignore nil return value.
-           (:full-no-blank (org-font-lock-link-fold) nil t)
-           (:full-no-blank (org-font-lock-link-activate-func) nil t))
-          ,(when (memq 'radio org-highlight-links)
-             `(,(org-font-lock-cond
-                 (string= "radio" (org-element-property :type org-font-lock-current-element)))
-               (:full-no-blank `( face nil ; face was set above.
-                                  mouse-face 'highlight
-			          keymap 'org-mouse-map
-			          help-echo "Radio target link"
-			          org-linked-text t))))
           ;; Targets and radio targets.
           (target (:full-no-blank 'org-target t))
           (radio-target (:full-no-blank 'org-target t))
@@ -1020,6 +1006,20 @@ and subscripts."
                      collect `(,element-name
                                (:begin-marker 'org-drawer t)
                                (:end-marker 'org-drawer t)))
+          ;; Links.
+          (link
+           (:full-no-blank (org-font-lock-link-get-properties) prepend)
+           ;; nil t makes font-lock ignore nil return value.
+           (:full-no-blank (org-font-lock-link-fold) nil t)
+           (:full-no-blank (org-font-lock-link-activate-func) nil t))
+          ,(when (memq 'radio org-highlight-links)
+             `(,(org-font-lock-cond
+                 (string= "radio" (org-element-property :type org-font-lock-current-element)))
+               (:full-no-blank `( face nil ; face was set above.
+                                  mouse-face highlight
+			          keymap 'org-mouse-map
+			          help-echo "Radio target link"
+			          org-linked-text t))))
           ;; Timestamps
           ,(when (memq 'date org-highlight-links)
              '(timestamp
