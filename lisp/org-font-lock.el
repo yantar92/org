@@ -941,6 +941,11 @@ and subscripts."
 			          keymap 'org-mouse-map
 			          help-echo "Radio target link"
 			          org-linked-text t))))
+          ;; Targets and radio targets.
+          (target (:full-no-blank 'org-target t))
+          (radio-target (:full-no-blank 'org-target t))
+          ;; Diary sexp elements.
+          (diary-sexp (:full-no-blank 'org-sexp-date t))
           ;; Headlines
           (headline
            (:title-line
@@ -1047,11 +1052,6 @@ and subscripts."
 	  '(org-font-lock-hook)
           '(org-font-lock-matcher)
 	  (when (memq 'footnote org-highlight-links) '(org-activate-footnote-links))
-          ;; Targets.
-          (list org-radio-target-regexp '(0 'org-target t))
-	  (list org-target-regexp '(0 'org-target t))
-	  ;; Diary sexps.
-	  '("^&?%%(.*\\|<%%([^>\n]*?>" (0 'org-sexp-date t))
 	  ;; Macro
 	  '(org-fontify-macros)
 	  ;; Priorities
