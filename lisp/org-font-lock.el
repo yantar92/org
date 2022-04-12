@@ -929,7 +929,7 @@ and subscripts."
            (:value 'org-property-value t))
           ;; Links.
           (link
-           (:full-no-blank (org-font-lock-link-get-properties) append)
+           (:full-no-blank (org-font-lock-link-get-properties) prepend)
            ;; nil t makes font-lock ignore nil return value.
            (:full-no-blank (org-font-lock-link-fold) nil t)
            (:full-no-blank (org-font-lock-link-activate-func) nil t))
