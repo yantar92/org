@@ -942,11 +942,13 @@ and subscripts."
           ;; Headlines
           (headline
            (:title-line
-            (pcase (org-element-property :todo-type org-font-lock-current-element)
-              (`todo (when org-fontify-todo-headline 'org-headline-todo))
-              (`done (when org-fontify-done-headline 'org-headline-done))
-              (_ nil))
-            append))
+            (if (org-element-property :archivedp org-font-lock-current-element)
+                'org-archived
+              (pcase (org-element-property :todo-type org-font-lock-current-element)
+                (`todo (when org-fontify-todo-headline 'org-headline-todo))
+                (`done (when org-fontify-done-headline 'org-headline-done))
+                (_ nil)))
+            t))
           ,(if org-level-color-stars-only
                '(headline (:stars (org-get-level-face)))
              (if org-fontify-whole-heading-line
