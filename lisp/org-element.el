@@ -4727,7 +4727,7 @@ located inside the current one."
       ((and `top-comment (guard (eq type 'comment))) 'property-drawer))))
 
 (defun org-element--parse-elements
-    (beg end mode structure granularity visible-only acc)
+    (beg end mode structure granularity visible-only acc &optional first-only)
   "Parse elements between BEG and END positions.
 
 MODE prioritizes some elements over the others.  It can be set to
@@ -4743,6 +4743,8 @@ GRANULARITY determines the depth of the recursion.  See
 When VISIBLE-ONLY is non-nil, don't parse contents of hidden
 elements.
 
+When FIRST-ONLY is non-nil, only parse the first inner elements.
+
 Elements are accumulated into ACC."
   (save-excursion
     (goto-char beg)
@@ -4750,7 +4752,9 @@ Elements are accumulated into ACC."
     (when (and (eq granularity 'headline) (not (org-at-heading-p)))
       (org-with-limited-levels (outline-next-heading)))
     (let (elements)
-      (while (< (point) end)
+      (while (and (< (point) end)
+                  (or (not first-only)
+                      (not elements)))
 	;; Visible only: skip invisible parts due to folding.
 	(if (and visible-only (org-invisible-p nil t))
 	    (progn
@@ -4794,7 +4798,7 @@ Elements are accumulated into ACC."
 	       (org-element--next-mode mode type t)
 	       (and (memq type '(item plain-list))
 		    (org-element-property :structure element))
-	       granularity visible-only element))
+	       granularity visible-only element first-only))
 	     ;; ELEMENT has contents.  Parse objects inside, if
 	     ;; GRANULARITY allows it.
 	     ((memq granularity '(object nil))
@@ -4805,8 +4809,12 @@ Elements are accumulated into ACC."
 	    ;; Update mode.
 	    (setq mode (org-element--next-mode mode type nil)))))
       ;; Return result.
-      (org-element-put-property acc :granularity granularity)
-      (apply #'org-element-set-contents acc (nreverse elements)))))
+      (when acc
+        (org-element-put-property acc :granularity granularity))
+      (if acc
+          (apply #'org-element-set-contents acc (nreverse elements))
+        (nreverse elements)
+        ))))
 
 (defun org-element--object-lex (restriction)
   "Return next object in current buffer or nil.

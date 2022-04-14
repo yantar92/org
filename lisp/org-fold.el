@@ -55,6 +55,7 @@
 (defvar org-outline-regexp-bol)
 (defvar org-custom-properties-hidden-p)
 (defvar org-archive-tag)
+(defvar org-hide-macro-markers)
 
 ;; Needed for overlays only
 (defvar org-custom-properties-overlays)

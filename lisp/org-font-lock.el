@@ -316,22 +316,24 @@ prompted for."
   (add-text-properties (1- pos) pos (list 'rear-nonsticky org-nonsticky-props)))
 
 (defun org-font-lock-footnote-reference-get-properties (&optional element)
-  "Get text property plist for `org-font-lock-current-element' or ELEMENT footnote
-reference or definition."
+  "Get text property plist or ELEMENT footnote reference or definition."
   `( face org-footnote
      mouse-face highlight
      keymap org-mouse-map
-     help-echo ,(pcase (org-element-type (or element org-font-lock-current-element))
+     help-echo ,(pcase (org-element-type (or element (org-element-match-last)))
                   (`footnote-reference "Footnote reference")
                   (`footnote-definition "Footnote reference")
                   (_ (error "%S is not a footnote"
-                            (org-element-type (or element org-font-lock-current-element)))))))
+                            (org-element-type
+                             (or element
+                                 (org-element-match-last))))))))
 
 (defun org-font-lock-link-get-properties (&optional element)
-  "Get text property plist for `org-font-lock-current-element' or ELEMENT link."
-  (let ((type (org-element-property :type (or element org-font-lock-current-element)))
-        (link (org-element-property :raw-link (or element org-font-lock-current-element)))
-        (path (org-element-property :path (or element org-font-lock-current-element))))
+  "Get text property plist for ELEMENT link."
+  (setq element (or element (org-element-match-last)))
+  (let ((type (org-element-property :type element))
+        (link (org-element-property :raw-link element))
+        (path (org-element-property :path element)))
     (list
      'face (pcase (org-link-get-parameter type :face)
 	     ((and (pred functionp) face) (funcall face path))
@@ -353,12 +355,12 @@ reference or definition."
      'font-lock-multiline t)))
 
 (defun org-font-lock-link-fold (&optional element)
-  "Fold hidden parts of the link ELEMENT or `org-font-lock-current-element'."
-  (let* ((element (or element org-font-lock-current-element))
-         (start (car (alist-get :full-no-blank org-font-lock-current-element-components)))
-         (end (cadr (alist-get :full-no-blank org-font-lock-current-element-components)))
-         (visible-start (car (alist-get :visible org-font-lock-current-element-components)))
-         (visible-end (cadr (alist-get :visible org-font-lock-current-element-components)))
+  "Fold hidden parts of the link ELEMENT."
+  (let* ((element (or element (org-element-match-last)))
+         (start (org-element-match-beginning :full-no-blank))
+         (end (org-element-match-end :full-no-blank))
+         (visible-start (org-element-match-beginning :visible))
+         (visible-end (org-element-match-end :visible))
          (spec (or (org-link-get-parameter
                     (org-element-property :type element)
                     :display)
@@ -399,25 +401,24 @@ reference or definition."
   nil)
 
 (defun org-font-lock-link-activate-func ()
-  "Run :activate-func for `org-font-lock-current-element'."
+  "Run :activate-func for matched element."
   (let* ((f (org-link-get-parameter
-             (org-element-property :type org-font-lock-current-element)
+             (org-element-match-type)
              :activate-func))
          (fail-message
           (format
            "Failed to run activate function %S for %S link: %%S"
-           f (org-element-property :type org-font-lock-current-element))))
+           f (org-element-match-type))))
     (when (functionp f)
       ;; 
       (with-demoted-errors fail-message
         (save-excursion
           (funcall
            f
-           (car (alist-get :full-no-blank org-font-lock-current-element-components))
-           (cadr (alist-get :full-no-blank org-font-lock-current-element-components))
-           (org-element-property :path org-font-lock-current-element)
-           (eq (org-element-property :format org-font-lock-current-element)
-               'bracket))))))
+           (org-element-match-beginning :full-no-blank)
+           (org-element-match-end :full-no-blank)
+           (org-element-match-property :path)
+           (eq (org-element-match-property :format) 'bracket))))))
   nil)
 
 (defun org-activate-code (limit)
@@ -586,18 +587,17 @@ To turn this on on a per-file basis, insert anywhere in the file:
 			       '(font-lock-fontified t face org-meta-line))
 	  t))))))
 
-(defun org-font-lock-macro-fold (&optional element)
-  "Hide invisible parts of macro ELEMENT of `org-font-lock-current-element'."
+(defun org-font-lock-macro-fold ()
+  "Hide invisible parts of the last matched macro."
   (when org-hide-macro-markers
-    (let* ((element (or element org-font-lock-current-element)))
-      (add-text-properties
-       (car (alist-get :begin-marker org-font-lock-current-element-components))
-       (cadr (alist-get :begin-marker org-font-lock-current-element-components))
-       '(invisible t))
-      (add-text-properties
-       (car (alist-get :end-marker org-font-lock-current-element-components))
-       (cadr (alist-get :end-marker org-font-lock-current-element-components))
-       '(invisible t))))
+    (add-text-properties
+     (org-element-match-beginning :begin-marker)
+     (org-element-match-end :begin-marker)
+     '(invisible t))
+    (add-text-properties
+     (org-element-match-beginning :end-marker)
+     (org-element-match-end :end-marker)
+     '(invisible t)))
   nil)
 
 (defun org-fontify-macros (limit)
@@ -782,21 +782,9 @@ highlighting was done, nil otherwise."
            (buffer-string))
         (buffer-string)))))
 
-;; (defun org-get-level-face (n)
-;;   "Get the right face for match N in font-lock matching of headlines."
-;;   (let* ((org-l0 (- (match-end 2) (match-beginning 1) 1))
-;; 	 (org-l (if org-odd-levels-only (1+ (/ org-l0 2)) org-l0))
-;; 	 (org-f (if org-cycle-level-faces
-;; 		    (nth (% (1- org-l) org-n-level-faces) org-level-faces)
-;; 		  (nth (1- (min org-l org-n-level-faces)) org-level-faces))))
-;;     (cond
-;;      ((eq n 1) (if org-hide-leading-stars 'org-hide org-f))
-;;      ((eq n 2) org-f)
-;;      (t (unless org-level-color-stars-only org-f)))))
-(defun org-get-level-face (&optional element)
-  "Get the right face for ELEMENT or `org-font-lock-current-element'."
-  (let* ((org-font-lock-current-element (or element org-font-lock-current-element))
-         (level (org-element-property :level org-font-lock-current-element)))
+(defun org-get-level-face ()
+  "Get the right face for the last matched element."
+  (let* ((level (org-element-match-property :level)))
     (if org-cycle-level-faces
 	(nth (% (1- level) org-n-level-faces) org-level-faces)
       (nth (1- (min level org-n-level-faces)) org-level-faces))))
@@ -943,16 +931,15 @@ and subscripts."
           ;; element and typing initially triggers flyspell error
           ;; inside the incomplete element.
           (,(org-font-lock-cond
-             (org-with-point-at
-                 (org-element-property :end org-font-lock-current-element)
-               (when (memq (org-element-type org-font-lock-current-element)
+             (org-with-point-at (org-element-match-property :end)
+               (when (memq (org-element-match-type)
                            org-element-all-objects)
                  (not (org-mode-flyspell-verify)))))
            (:full-no-blank
             (prog1 nil
               (org-remove-flyspell-overlays-in
-               (org-element-property :begin org-font-lock-current-element)
-               (org-element-property :end org-font-lock-current-element)))
+               (org-element-match-property :begin)
+               (org-element-match-property :end)))
             nil t))
           ;; Node properties and keywords, including affiliated
           ;; keywords.
@@ -970,9 +957,9 @@ and subscripts."
           ;; Headlines
           (headline
            (:title-line
-            (if (org-element-property :archivedp org-font-lock-current-element)
+            (if (org-element-match-property :archivedp)
                 'org-archived
-              (pcase (org-element-property :todo-type org-font-lock-current-element)
+              (pcase (org-element-match-property :todo-type)
                 (`todo (when org-fontify-todo-headline 'org-headline-todo))
                 (`done (when org-fontify-done-headline 'org-headline-done))
                 (_ nil)))
@@ -988,12 +975,13 @@ and subscripts."
           (headline
            (:todo
             (org-get-todo-face
-             (org-element-property :todo-keyword org-font-lock-current-element))
+             (org-element-match-property :todo-keyword))
             prepend))
           ;; Priority
           (headline
            (:priority
-            (org-get-priority-face (org-element-property :priority org-font-lock-current-element))
+            (org-get-priority-face
+             (org-element-match-property :priority))
             prepend))
           ;; Headline COMMENT
           (headline
@@ -1010,8 +998,8 @@ and subscripts."
              `(headline
                (,org-tag-re
                 ;; When nil, no matching will be done.
-                (when (car (alist-get :tags org-font-lock-current-element-components))
-                  (goto-char (car (alist-get :tags org-font-lock-current-element-components))))
+                (when (org-element-match-beginning :tags)
+                  (goto-char (org-element-match-beginning :tags)))
                 nil
                 (0
                  (let ((tg (org-get-tag-face 0)))
@@ -1030,8 +1018,8 @@ and subscripts."
                          limit t)
                     (prog1 (point)
                       (backward-char 2))))
-                (when (car (alist-get :tags org-font-lock-current-element-components))
-                  (goto-char (car (alist-get :tags org-font-lock-current-element-components))))
+                (when (org-element-match-beginning :tags)
+                  (goto-char (org-element-match-beginning :tags)))
                 nil
                 (0 'org-tag-group prepend))))
           ;; Planning
@@ -1058,14 +1046,13 @@ and subscripts."
           ;; table.el table lines are not parsed.  Fall back to regexp
           ;; matching.
           (,(org-font-lock-cond
-             (eq (org-element-property :type org-font-lock-current-element)
-                 'table.el))
+             (eq (org-element-match-property :type) 'table.el))
            ("^\\s-*\\(\\S-.*?\\)\\s-*$"
             ;; Search regex till :end.
             (progn
-              (goto-char (org-element-property :begin org-font-lock-current-element))
-              (org-element-property :end org-font-lock-current-element))
-            (goto-char (org-element-property :end org-font-lock-current-element))
+              (goto-char (org-element-match-beginning))
+              (org-element-match-end))
+            (goto-char (org-element-match-end))
             (1 'org-table append)))
           ;; Column formulas.
           (table-cell
@@ -1112,7 +1099,7 @@ and subscripts."
            (:full-no-blank (org-font-lock-link-activate-func) nil t))
           ,(when (memq 'radio org-highlight-links)
              `(,(org-font-lock-cond
-                 (string= "radio" (org-element-property :type org-font-lock-current-element)))
+                 (string= "radio" (org-element-match-property :type)))
                (:full-no-blank `( face nil ; face was set above.
                                   mouse-face highlight
 			          keymap 'org-mouse-map
@@ -1131,7 +1118,7 @@ and subscripts."
                       (memq 'date org-highlight-links))
              '(timestamp
                (org-font-lock-activate-custom-time
-                (goto-char (org-element-property :begin org-font-lock-current-element)))))
+                (goto-char (org-element-match-beginning)))))
           ;; Emphasis.
           ,@(when org-fontify-emphasized-text
               (cl-loop for (_ fontspec . _) in org-emphasis-alist

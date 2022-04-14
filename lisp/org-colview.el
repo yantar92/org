@@ -41,6 +41,7 @@
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-restriction "org-element" (element))
 (declare-function org-element-type "org-element" (element))
+(declare-function org-element-match "org-element-match" (&optional type element-or-object inner?))
 (declare-function org-dynamic-block-define "org" (type func))
 (declare-function org-link-display-format "ol" (s))
 (declare-function org-link-open-from-string "ol" (s &optional arg))
@@ -384,7 +385,8 @@ DATELINE is non-nil when the face used should be
   (save-excursion
     (beginning-of-line)
     (let* ((level-face (and (looking-at "\\(\\**\\)\\(\\* \\)")
-			    (org-get-level-face (org-element-at-point))))
+                            (org-element-match 'headline)
+			    (org-get-level-face)))
 	   (ref-face (or level-face
 			 (and (eq major-mode 'org-agenda-mode)
 			      (org-get-at-bol 'face))
