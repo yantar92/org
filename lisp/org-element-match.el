@@ -165,7 +165,11 @@ at point."
 TYPES can be an element type, object type, or a list of such.
 BOUND, when non-nil, limits the search."
   (when types (unless (listp types) (setq types (list types))))
-  (setq (org-element-match-data) nil (org-element-match-element) nil)
+  (setq org-element-match--data nil org-element-match--element nil)
+  ;; `org-element-at-point' returns nil within blank lines at bob.
+  ;; Skip it.
+  (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
+    (skip-chars-forward " \t\n\r"))
   (let* ((re (org-element-match--quick-re types))
          (beg (point))
          (bound (or bound (point-max)))
@@ -209,10 +213,19 @@ BOUND, when non-nil, limits the search."
                    (setq next (org-element-property :end el)))
                  nil)
                nil 'first-match nil 'with-affiliated)
-             (when re (re-search-forward re bound 'move))
+             (when re (save-match-data (re-search-forward re bound 'move)))
              (when (> next (point)) (goto-char next))
              (setq next (point))
-             (setq element (org-element-at-point)))
+             ;; Check if we are at the end of outer element contents.
+             ;; Move to parent's end if necessary.
+             (let ((elp (org-element-at-point)))
+               (while (and (<= (org-element-property :begin elp)
+                              (org-element-property :begin element))
+                           (< (point) bound))
+                 (goto-char (org-element-property :end elp))
+                 (setq next (point))
+                 (setq elp (org-element-at-point)))
+               (setq element elp)))
            ;; Nothing found.
            nil))
       (goto-char next))))
