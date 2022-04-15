@@ -533,13 +533,14 @@ Extra components are: `:key', `:value'."
     (setq contents-end (- (cadr (alist-get :full-no-blank components)) 3))
     (org-element-match--add :contents contents-beg contents-end components)
     (org-element-match--add :begin-marker
-           (org-element-match--beginning :full-no-blank components)
-           contents-beg
-           components)
+                            (org-element-match--beginning :full-no-blank components)
+                            contents-beg
+                            components)
     (org-element-match--add :end-marker
-           contents-end
-           (org-element-match--end :full-no-blank components)
-           components)
+                            contents-end
+                            (org-element-match--end :full-no-blank components)
+                            components)
+    components))
 
 (defun org-element-match--timestamp (element)
   "Match-timestamp element."
