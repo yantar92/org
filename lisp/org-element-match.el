@@ -572,7 +572,7 @@ Extra components are: `:key', `:value'."
            ".+"
            (if (and (org-element-property :hour-start element)
                     (org-element-property :minute-start element))
-               (format "\\(%d\\):\\(%d\\)"
+               (format "\\(%d\\):\\(%.2d\\)"
                        (org-element-property :hour-start element)
                        (org-element-property :minute-start element))
              "")
@@ -604,7 +604,7 @@ Extra components are: `:key', `:value'."
              ".+"
              (if (and (org-element-property :hour-end element)
                       (org-element-property :minute-end element))
-                 (format "\\(%d\\):\\(%d\\)"
+                 (format "\\(%d\\):\\(%.2d\\)"
                          (org-element-property :hour-end element)
                          (org-element-property :minute-end element))
                "")
