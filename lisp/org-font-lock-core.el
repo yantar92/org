@@ -3,7 +3,6 @@
 ;; Copyright (C) 2004-2022 Free Software Foundation, Inc.
 
 ;; Author: Ihor Radchenko <yantar92@gmail.com>
-;; Keywords: faces
 ;; Homepage: https://orgmode.org
 
 ;; This file is part of GNU Emacs.

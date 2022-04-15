@@ -1196,5 +1196,7 @@ and subscripts."
 ;; worry about font-lock-multiline property. It already uses an even more
 ;; fine-grained approach.
 
+;; FIXME: Empty drawers have no contents - matching is not correct.
+
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here
