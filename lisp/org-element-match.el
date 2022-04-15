@@ -159,8 +159,8 @@ at point."
                         (if (listp type) type (list type)))
             (setq element nil))
         (setq element
-              (car (org-element-lineage
-                    element (if (listp type) type (list type)) t)))))
+              (org-element-lineage
+               element (if (listp type) type (list type)) t))))
     (when element
       (let ((matcher (intern-soft (format
                                    "org-element-match--%S"
