@@ -105,6 +105,17 @@
 
 ;;;; API
 
+(defmacro org-element-match-save-data (&rest body)
+  "Run BODY without modifying match data."
+  (declare (debug (form body)) (indent 1))
+  `(save-match-data
+     (let ((org-element-match--data-saved org-element-match--data)
+           (org-element-match--element-saved org-element-match--element))
+       (unwind-protect
+           (progn ,@body)
+         (setq org-element-match--data org-element-match--data-saved
+               org-element-match--element org-element-match--element-saved)))))
+
 (defmacro org-element-match-last ()
   "Return last matched element."
   `org-element-match--element)
