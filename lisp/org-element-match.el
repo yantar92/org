@@ -540,6 +540,104 @@ Extra components are: `:key', `:value'."
            contents-end
            (org-element-match--end :full-no-blank components)
            components)
+
+(defun org-element-match--timestamp (element)
+  "Match-timestamp element."
+  (let ((components (org-element-match--default element)))
+    (org-element-match--add :begin-marker
+                            (org-element-match--beginning :full-no-blank components)
+                            (1+ (org-element-match--beginning :full-no-blank components))
+                            components)
+    (org-element-match--add :end-marker
+                            (1- (org-element-match--end :full-no-blank components))
+                            (org-element-match--end :full-no-blank components)
+                            components)
+    (if (eq 'diary (org-element-property :type element))
+        (org-element-match--add :diary-sexp
+                                (+ 3 (org-element-match--beginning :full-no-blank components))
+                                (org-element-match--beginning :end-marker components)
+                                components)
+      (org-with-wide-buffer
+       (goto-char (org-element-match--beginning :full-no-blank components))
+       (save-match-data
+         ;; Begin range.
+         (re-search-forward
+          (concat
+           "[<[]\\("
+           (format "\\(%.4d\\)-\\(%.2d\\)-\\(%.2d\\)"
+                   (org-element-property :year-start element)
+                   (org-element-property :month-start element)
+                   (org-element-property :day-start element))
+           ".+"
+           (if (and (org-element-property :hour-start element)
+                    (org-element-property :minute-start element))
+               (format "\\(%d\\):\\(%d\\)"
+                       (org-element-property :hour-start element)
+                       (org-element-property :minute-start element))
+             "")
+           "[^]>]*\\)[]>]")
+          (org-element-property :end element))
+         (org-element-match--add :timestamp-start (match-beginning 0) (match-end 0) components)
+         (org-element-match--add :date-start (match-beginning 1) (match-end 1) components)
+         (org-element-match--add :year-start (match-beginning 2) (match-end 2) components)
+         (org-element-match--add :month-start (match-beginning 3) (match-end 3) components)
+         (org-element-match--add :day-start (match-beginning 4) (match-end 4) components)
+         (when  (match-beginning 5)
+           (org-element-match--add :hour-start (match-beginning 5) (match-end 5) components)
+           (org-element-match--add :minute-start (match-beginning 6) (match-end 6) components))
+         ;; End range
+         (when (memq (org-element-property :type element) '(active-range inactive-range))
+           (goto-char (org-element-match--beginning :full-no-blank components))
+           (when (re-search-forward "[]>]--[<[]"
+                                    (org-element-property :end element)
+                                    t)
+             (org-element-match--add :middle-marker (match-beginning 0) (match-end 0) components))
+           (goto-char (org-element-match--beginning :full-no-blank components))
+           (re-search-forward
+            (concat
+             "[<[]\\("
+             (format "\\(%.4d\\)-\\(%.2d\\)-\\(%.2d\\)"
+                     (org-element-property :year-end element)
+                     (org-element-property :month-end element)
+                     (org-element-property :day-end element))
+             ".+"
+             (if (and (org-element-property :hour-end element)
+                      (org-element-property :minute-end element))
+                 (format "\\(%d\\):\\(%d\\)"
+                         (org-element-property :hour-end element)
+                         (org-element-property :minute-end element))
+               "")
+             "[^]>]*\\)[]>]")
+            (org-element-property :end element))
+           ;; Only set when we have [..]--[..]-type range, not time
+           ;; range inside a single timestamp.
+           (if (= (match-beginning 0) (org-element-match--beginning :timestamp-start components))
+               ;; Time range.
+               (when (match-beginning 5)
+                 (org-element-match--add :time-range
+                                         (org-element-match--beginning :hour-start components)
+                                         (match-end 6)
+                                         components))
+             (org-element-match--add :timestamp-end (match-beginning 0) (match-end 0) components)
+             (org-element-match--add :date-end (match-beginning 1) (match-end 1) components)
+             (org-element-match--add :year-end (match-beginning 2) (match-end 2) components)
+             (org-element-match--add :month-end (match-beginning 3) (match-end 3) components)
+             (org-element-match--add :day-end (match-beginning 4) (match-end 4) components))
+           (when (match-beginning 5)
+             (org-element-match--add :hour-end (match-beginning 5) (match-end 5) components)
+             (org-element-match--add :minute-end (match-beginning 6) (match-end 6) components)))
+         (when (org-element-property :repeater-type element)
+           (goto-char (org-element-match--beginning :full-no-blank components))
+           (re-search-forward
+            "\\([.+]?\\+\\)\\([0-9]+\\)\\([hdwmy]\\)"
+            (org-element-property :end element))
+           (org-element-match--add :repeater (match-beginning 0) (match-end 0) components))
+         (when (org-element-property :warning-type element)
+           (goto-char (org-element-match--beginning :full-no-blank components))
+           (re-search-forward
+            "\\(-\\)?-\\([0-9]+\\)\\([hdwmy]\\)"
+            (org-element-property :end element))
+           (org-element-match--add :warning (match-beginning 0) (match-end 0) components)))))
     components))
 
 (defun org-element-match--link (element)
