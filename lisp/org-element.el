@@ -7779,6 +7779,8 @@ enabled."
   (or (org-element-at-point pom 'cached-only)
       (let (org-element-use-cache) (org-element-at-point pom))))
 
+;; FIXME: This function does not honour `org-element-secondary-value-alist' and
+;; assumes its specific value. Make more general?
 ;;;###autoload
 (defun org-element-context (&optional element)
   "Return smallest element or object around point.
