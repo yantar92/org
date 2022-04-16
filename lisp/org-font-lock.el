@@ -1198,5 +1198,7 @@ and subscripts."
 
 ;; FIXME: Empty drawers have no contents - matching is not correct.
 
+;; FIXME: inlinetasks are now handled separately from headlines. Add them.
+
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here
