@@ -152,15 +152,13 @@ element/object will be returned.
 When INNER? is non-nil, only try to match the innermost object/elemetn
 at point."
   (setq org-element-match--element nil org-element-match--data nil)
+  (setq type (org-element-match--resolve-types type))
   (let ((element (or element-or-object (org-element-context))))
     (when type
       (if inner?
-          (unless (memq (org-element-type element)
-                        (if (listp type) type (list type)))
+          (unless (memq (org-element-type element) type)
             (setq element nil))
-        (setq element
-              (org-element-lineage
-               element (if (listp type) type (list type)) t))))
+        (setq element (org-element-lineage element type t))))
     (when element
       (let ((matcher (intern-soft (format
                                    "org-element-match--%S"
@@ -176,6 +174,7 @@ at point."
 TYPES can be an element type, object type, or a list of such.
 BOUND, when non-nil, limits the search."
   (when types (unless (listp types) (setq types (list types))))
+  (setq types (org-element-match--resolve-types types))
   (setq org-element-match--data nil org-element-match--element nil)
   ;; `org-element-at-point' returns nil within blank lines at bob.
   ;; Skip it.
@@ -369,11 +368,23 @@ BOUND, when non-nil, limits the search."
 
 ;;;; Internal functions
 
+(defmacro org-element-match--resolve-types (&optional types)
+  "Convert TYPES into list of element types or nil for everything."
+  `(pcase ,types
+     (`nil nil)
+     (`greater-element org-element-greater-elements)
+     (`element (append org-element-greater-elements
+                       org-element-all-elements))
+     (`object nil)
+     ((pred symbolp) (list ,types))
+     ((pred listp) ,types)
+     (_ (error "Uknown element type: %S" ,types))))
+
 (defun org-element-match--quick-re (types)
   "Get quick regexp to move to next element TYPES.
 Return nil when no such regexp can be constructed."
+  (setq types (org-element-match--resolve-types types))
   (when types
-    (unless (listp types) (setq types (list types)))
     (let (re-list)
       (catch :no-re
         (dolist (type types)
