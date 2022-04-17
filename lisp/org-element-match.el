@@ -103,141 +103,6 @@
      subscript superscript table-cell target timestamp underline verbatim)
   "List of all possible element types.")
 
-;;;; API
-
-(defmacro org-element-match-save-data (&rest body)
-  "Run BODY without modifying match data."
-  (declare (debug (form body)) (indent 1))
-  `(save-match-data
-     (let ((org-element-match--data-saved org-element-match--data)
-           (org-element-match--element-saved org-element-match--element))
-       (unwind-protect
-           (progn ,@body)
-         (setq org-element-match--data org-element-match--data-saved
-               org-element-match--element org-element-match--element-saved)))))
-
-(defmacro org-element-match-last ()
-  "Return last matched element."
-  `org-element-match--element)
-
-(defmacro org-element-match-type ()
-  "Return type of the last matched element."
-  `(org-element-type org-element-match--element))
-
-(defmacro org-element-match-data ()
-  "Return last matched element components data."
-  `org-element-match--data)
-
-(defmacro org-element-match-property (property)
-  "Return PROPERTY of the last matched element."
-  `(org-element-property ,property (org-element-match-last)))
-
-(defsubst org-element-match-string (&optional component)
-  "Return last matched `:full' or COMPONENT string."
-  (org-element-match--string component (org-element-match-data)))
-
-(defsubst org-element-match-beginning (&optional component)
-  "Return beginning of the last matched element `:full' or COMPONENT."
-  (org-element-match--beginning component (org-element-match-data)))
-
-(defsubst org-element-match-end (&optional component)
-  "Return end of the last matched element `:full' or COMPONENT."
-  (org-element-match--end component (org-element-match-data)))
-
-(defun org-element-match (&optional type element-or-object inner?)
-  "Match TYPE ELEMENT-OR-OBJECT or element/object at point.
-When TYPE is nil, match any element/object at point.
-TYPE can be a list of element/object types.  The innermost matching
-element/object will be returned.
-When INNER? is non-nil, only try to match the innermost object/elemetn
-at point."
-  (setq org-element-match--element nil org-element-match--data nil)
-  (setq type (org-element-match--resolve-types type))
-  (let ((element (or element-or-object (org-element-context))))
-    (when type
-      (if inner?
-          (unless (memq (org-element-type element) type)
-            (setq element nil))
-        (setq element (org-element-lineage element type t))))
-    (when element
-      (let ((matcher (intern-soft (format
-                                   "org-element-match--%S"
-                                   (org-element-type element)))))
-        (unless (functionp matcher) (setq matcher 'org-element-match--default))
-        (condition-case nil
-            (setq org-element-match--data (funcall matcher element)
-                  org-element-match--element element)
-          (error (setq org-element-match--element nil org-element-match--data nil)))))))
-
-(defun org-element-match-forward (&optional types bound current-element)
-  "Move to and match next element or an element of TYPES.
-TYPES can be an element type, object type, or a list of such.
-BOUND, when non-nil, limits the search.
-
-CURRENT-ELEMENT, when non-nil contains element at point."
-  (setq types (org-element-match--resolve-types types))
-  (setq org-element-match--data nil org-element-match--element nil)
-  ;; `org-element-at-point' returns nil within blank lines at bob.
-  ;; Skip it.
-  (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
-    (skip-chars-forward " \t\n\r"))
-  (let* ((re (org-element-match--quick-re types))
-         (beg (point))
-         (bound (or bound (point-max)))
-         (next bound)
-         (element (or current-element (org-element-at-point)))
-         (match-object? (or (not types)
-                            (cl-intersection
-                             types org-element-all-objects))))
-    ;; Check starting from outermost element starting at point.
-    (when (= (point) (org-element-property :begin element))
-      (while (and (org-element-property :parent element)
-                  (not (eq 'org-data
-                           (org-element-type
-                            (org-element-property :parent element))))
-                  (= (org-element-property :begin element)
-                     (org-element-property
-                      :begin
-                      (org-element-property :parent element))))
-        (setq element (org-element-property :parent element))))
-    (prog1
-        (catch :found
-          (org-with-wide-buffer
-           (while (< (point) bound)
-             (org-element-map
-                 (org-element-parse-element
-                  element
-                  (if match-object? 'object 'element)
-                  nil 'first)
-                 org-element-match--all-types
-               (lambda (el)
-                 (when (and (>= (org-element-property :begin el) beg)
-                            (org-element-match types el 'inner))
-                   (setq next (min bound (org-element-property :end el)))
-                   (org-element-set-contents el nil)
-                   (throw :found el))
-                 (unless (memq (org-element-type el)
-                               org-element-all-objects)
-                   (setq next (org-element-property :end el)))
-                 nil)
-               nil 'first-match nil 'with-affiliated)
-             (when re (save-match-data (re-search-forward re bound 'move)))
-             (when (> next (point)) (goto-char next))
-             (setq next (point))
-             ;; Check if we are at the end of outer element contents.
-             ;; Move to parent's end if necessary.
-             (let ((elp (org-element-at-point)))
-               (while (and (<= (org-element-property :begin elp)
-                              (org-element-property :begin element))
-                           (< (point) bound))
-                 (goto-char (org-element-property :end elp))
-                 (setq next (point))
-                 (setq elp (org-element-at-point)))
-               (setq element elp)))
-           ;; Nothing found.
-           nil))
-      (goto-char next))))
-
 ;;;;; Quick regexps to search for next element or object
 
 ;; The below regexps are designed to be short, but may match
@@ -792,6 +657,142 @@ Extra components are: `:stars', `:leading-stars', `:todo',
          `(:title ,title-beg ,title-end)
          `(:title-line ,beg ,line-end)
          `(:title-line-whole ,beg ,(min (1+ line-end) (org-element-property :end element)))))))))
+
+
+;;;; API
+
+(defmacro org-element-match-save-data (&rest body)
+  "Run BODY without modifying match data."
+  (declare (debug (form body)) (indent 1))
+  `(save-match-data
+     (let ((org-element-match--data-saved org-element-match--data)
+           (org-element-match--element-saved org-element-match--element))
+       (unwind-protect
+           (progn ,@body)
+         (setq org-element-match--data org-element-match--data-saved
+               org-element-match--element org-element-match--element-saved)))))
+
+(defmacro org-element-match-last ()
+  "Return last matched element."
+  `org-element-match--element)
+
+(defmacro org-element-match-type ()
+  "Return type of the last matched element."
+  `(org-element-type org-element-match--element))
+
+(defmacro org-element-match-data ()
+  "Return last matched element components data."
+  `org-element-match--data)
+
+(defmacro org-element-match-property (property)
+  "Return PROPERTY of the last matched element."
+  `(org-element-property ,property (org-element-match-last)))
+
+(defsubst org-element-match-string (&optional component)
+  "Return last matched `:full' or COMPONENT string."
+  (org-element-match--string component (org-element-match-data)))
+
+(defsubst org-element-match-beginning (&optional component)
+  "Return beginning of the last matched element `:full' or COMPONENT."
+  (org-element-match--beginning component (org-element-match-data)))
+
+(defsubst org-element-match-end (&optional component)
+  "Return end of the last matched element `:full' or COMPONENT."
+  (org-element-match--end component (org-element-match-data)))
+
+(defun org-element-match (&optional type element-or-object inner?)
+  "Match TYPE ELEMENT-OR-OBJECT or element/object at point.
+When TYPE is nil, match any element/object at point.
+TYPE can be a list of element/object types.  The innermost matching
+element/object will be returned.
+When INNER? is non-nil, only try to match the innermost object/elemetn
+at point."
+  (setq org-element-match--element nil org-element-match--data nil)
+  (setq type (org-element-match--resolve-types type))
+  (let ((element (or element-or-object (org-element-context))))
+    (when type
+      (if inner?
+          (unless (memq (org-element-type element) type)
+            (setq element nil))
+        (setq element (org-element-lineage element type t))))
+    (when element
+      (let ((matcher (intern-soft (format
+                                   "org-element-match--%S"
+                                   (org-element-type element)))))
+        (unless (functionp matcher) (setq matcher 'org-element-match--default))
+        (condition-case nil
+            (setq org-element-match--data (funcall matcher element)
+                  org-element-match--element element)
+          (error (setq org-element-match--element nil org-element-match--data nil)))))))
+
+(defun org-element-match-forward (&optional types bound current-element)
+  "Move to and match next element or an element of TYPES.
+TYPES can be an element type, object type, or a list of such.
+BOUND, when non-nil, limits the search.
+
+CURRENT-ELEMENT, when non-nil contains element at point."
+  (setq types (org-element-match--resolve-types types))
+  (setq org-element-match--data nil org-element-match--element nil)
+  ;; `org-element-at-point' returns nil within blank lines at bob.
+  ;; Skip it.
+  (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
+    (skip-chars-forward " \t\n\r"))
+  (let* ((re (org-element-match--quick-re types))
+         (beg (point))
+         (bound (or bound (point-max)))
+         (next bound)
+         (element (or current-element (org-element-at-point)))
+         (match-object? (or (not types)
+                            (cl-intersection
+                             types org-element-all-objects))))
+    ;; Check starting from outermost element starting at point.
+    (when (= (point) (org-element-property :begin element))
+      (while (and (org-element-property :parent element)
+                  (not (eq 'org-data
+                           (org-element-type
+                            (org-element-property :parent element))))
+                  (= (org-element-property :begin element)
+                     (org-element-property
+                      :begin
+                      (org-element-property :parent element))))
+        (setq element (org-element-property :parent element))))
+    (prog1
+        (catch :found
+          (org-with-wide-buffer
+           (while (< (point) bound)
+             (org-element-map
+                 (org-element-parse-element
+                  element
+                  (if match-object? 'object 'element)
+                  nil 'first)
+                 org-element-match--all-types
+               (lambda (el)
+                 (when (and (>= (org-element-property :begin el) beg)
+                            (org-element-match types el 'inner))
+                   (setq next (min bound (org-element-property :end el)))
+                   (org-element-set-contents el nil)
+                   (throw :found el))
+                 (unless (memq (org-element-type el)
+                               org-element-all-objects)
+                   (setq next (org-element-property :end el)))
+                 nil)
+               nil 'first-match nil 'with-affiliated)
+             (when re (save-match-data (re-search-forward re bound 'move)))
+             (when (> next (point)) (goto-char next))
+             (setq next (point))
+             ;; Check if we are at the end of outer element contents.
+             ;; Move to parent's end if necessary.
+             (let ((elp (org-element-at-point)))
+               (while (and (<= (org-element-property :begin elp)
+                              (org-element-property :begin element))
+                           (< (point) bound))
+                 (goto-char (org-element-property :end elp))
+                 (setq next (point))
+                 (setq elp (org-element-at-point)))
+               (setq element elp)))
+           ;; Nothing found.
+           nil))
+      (goto-char next))))
 
 (provide 'org-element-match)
 ;;; org-element-match.el ends here
