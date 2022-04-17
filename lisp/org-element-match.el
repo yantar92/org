@@ -193,8 +193,8 @@ CURRENT-ELEMENT, when non-nil contains element at point."
     (when (= (point) (org-element-property :begin element))
       (while (and (org-element-property :parent element)
                   (not (eq 'org-data
-                         (org-element-type
-                          (org-element-property :parent element))))
+                           (org-element-type
+                            (org-element-property :parent element))))
                   (= (org-element-property :begin element)
                      (org-element-property
                       :begin
@@ -205,13 +205,10 @@ CURRENT-ELEMENT, when non-nil contains element at point."
           (org-with-wide-buffer
            (while (< (point) bound)
              (org-element-map
-                 (org-element--parse-elements
-                  (org-element-property :begin element)
-                  (org-element-property :end element)
-                  (org-element-property :mode element)
-                  (org-element-property :structure element)
+                 (org-element-parse-element
+                  element
                   (if match-object? 'object 'element)
-                  nil nil 'first)
+                  nil 'first)
                  org-element-match--all-types
                (lambda (el)
                  (when (and (>= (org-element-property :begin el) beg)
