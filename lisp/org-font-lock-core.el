@@ -181,32 +181,24 @@ DATUM is a parse tree."
     (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
       (skip-chars-forward " \t\n\r")
       (setq beg (point)))
-    (let ((element (org-element-at-point beg)))
+    (let ((element (org-element-match nil (org-element-at-point beg))))
       (when element
-        ;; Fontify the element itself.
-        (org-font-lock--fontify-object element)
         ;; Set match data.
         (org-font-lock--element-matcher nil)
-        ;; Fontify all the objects inside.
+        ;; Fontify the element and all the objects inside.
         ;; We do not modify match data to keep only current element
         ;; match for font-lock.
         (org-element-match-save-data
             (org-font-lock--fontify-objects
              beg end
-             (org-element-map
-                 (org-element--parse-elements
-                  (org-element-property :begin element)
-                  (org-element-property :end element)
-                  (org-element-property :mode element)
-                  (org-element-property :structure element)
-                  'object nil nil 'first-only)
-                 org-element-all-objects
-               #'identity nil nil nil 'with-affiliated)))
+             (org-element-parse-element
+              element 'object nil 'no-recursion)))
         (goto-char (max beg (1+ (org-element-property :begin element))))
         (org-element-match-forward
          (append org-element-all-elements
                  org-element-greater-elements)
-         end)
+         end
+         element)
         (when (org-element-match-data)
           (goto-char (org-element-match-beginning))))
       (if element
