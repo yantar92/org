@@ -171,6 +171,8 @@ DATUM is a parse tree."
          (org-font-lock--fontify-object el)))
     nil nil nil 'with-affiliated))
 
+(defvar org-font-lock-verbose nil
+  "Whether to display fontification info in modeline.")
 (defun org-font-lock-matcher (limit)
   "Fontify first chunk down to LIMIT.  Move point as needed."
   (setq org-font-lock-element-keywords
@@ -199,8 +201,19 @@ DATUM is a parse tree."
                  org-element-greater-elements)
          end
          element)
-        (when (org-element-match-data)
-          (goto-char (org-element-match-beginning))))
+        (if (org-element-match-data)
+            (goto-char (org-element-match-beginning))
+          ;; No other element before end.  element is completely
+          ;; fontified.  Move to its end.
+          (goto-char (min end (org-element-property :end element)))))
+      (when (and element org-font-lock-verbose)
+        (message "Fontified %S(%S:+%S) up to +%S"
+                 (org-element-type element)
+                 (org-element-property :begin element)
+                 (- (org-element-property :end element)
+                    (org-element-property :begin element))
+                 (- (point)
+                    (org-element-property :begin element))))
       (if element
           `(jit-lock-bounds ,(org-element-property :begin element) . ,(point))
         (goto-char limit)
