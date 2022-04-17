@@ -4202,7 +4202,8 @@ element it has to parse."
             ;; Node Property.
             ((eq mode 'node-property) (org-element-node-property-parser limit))
             ;; Headline.
-            ((org-with-limited-levels (looking-at-p org-outline-regexp-bol))
+            ((and (looking-at "^\\*+ ")
+                  (org-with-limited-levels (looking-at-p org-outline-regexp-bol)))
              (org-element-headline-parser limit raw-secondary-p))
             ;; Sections (must be checked after headline).
             ((eq mode 'section) (org-element-section-parser limit))
