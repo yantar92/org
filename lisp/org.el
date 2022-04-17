@@ -689,13 +689,21 @@ defined in org-duration.el.")
 (defvar org-modules-loaded nil
   "Have the modules been loaded already?")
 
+(defvar org-load-modules-statistics nil
+  "Whether to display module loading time in messages.")
 ;;;###autoload
 (defun org-load-modules-maybe (&optional force)
   "Load all extensions listed in `org-modules'."
   (when (or force (not org-modules-loaded))
-    (dolist (ext org-modules)
-      (condition-case nil (require ext)
-	(error (message "Problems while trying to load feature `%s'" ext))))
+    (let (time-before)
+      (dolist (ext org-modules)
+        (when org-load-modules-statistics
+          (setq time-before (current-time)))
+        (condition-case nil (require ext)
+	  (error (message "Problems while trying to load feature `%s'" ext)))
+        (when org-load-modules-statistics
+          (message "Loaded `%s' in %f sec"
+                   ext (time-to-seconds (time-since time-before))))))
     (setq org-modules-loaded t)))
 
 (defun org-set-modules (var value)
