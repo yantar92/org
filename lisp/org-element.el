@@ -7377,19 +7377,19 @@ the cache."
                                                                (- (float-time)
                                                                   before-time)))
                                                   (re-search-forward (or (car-safe ,re) ,re) nil 'move)))
-                                    (unless (or (< (point) (or start -1))
-                                                (and data
-                                                     (< (point) (org-element-property :begin data))))
-                                      (if (cdr-safe ,re)
-                                          ;; Avoid parsing when we are 100%
-                                          ;; sure that regexp is good enough
-                                          ;; to find new START.
-                                          (setq start (match-beginning 0))
-                                        (setq start (max (or start -1)
-                                                         (or (org-element-property :begin data) -1)
-                                                         (or (org-element-property :begin (element-match-at-point)) -1))))
-                                      (when (>= start to-pos) (cache-walk-abort))
-                                      (when (eq start -1) (setq start nil)))
+                                    (let ((beg-data (org-element-property :begin data)))
+                                      (unless (or (< (point) (or start -1))
+                                                  (and data (< (point) beg-data)))
+                                        (if (cdr-safe ,re)
+                                            ;; Avoid parsing when we are 100%
+                                            ;; sure that regexp is good enough
+                                            ;; to find new START.
+                                            (setq start (match-beginning 0))
+                                          (setq start (max (or start -1)
+                                                           (or beg-data -1)
+                                                           (or (org-element-property :begin (element-match-at-point)) -1))))
+                                        (when (>= start to-pos) (cache-walk-abort))
+                                        (when (eq start -1) (setq start nil))))
                                   (cache-walk-abort))))
                       ;; Find expected begin position of an element after
                       ;; DATA.
@@ -7505,7 +7505,7 @@ the cache."
                  ;; Bind variables used inside loop to avoid memory
                  ;; re-allocation on every iteration.
                  ;; See https://emacsconf.org/2021/talks/faster/
-                 cache-size before-time modified-tic)
+                 cache-size before-time modified-tic data-beg)
             ;; Skip to first element within region.
             (goto-char (or start (point-min)))
             (move-start-to-next-match next-element-re)
@@ -7534,16 +7534,19 @@ the cache."
                       org-element--cache-change-tic))
               (while node
                 (setq data (avl-tree--node-data node))
+                ;; Query :begin once since `org-element-property' is O(N_props) -
+                ;; not ideal.
+                (setq data-beg (org-element-property :begin data))
                 (if (and leftp (avl-tree--node-left node) ; Left branch.
                          ;; Do not move to left branch when we are before
                          ;; PREV.
 		         (or (not prev)
 		             (not (org-element--cache-key-less-p
-			           (org-element--cache-key data)
-			           (org-element--cache-key prev))))
+			         (org-element--cache-key data)
+			         (org-element--cache-key prev))))
                          ;; ... or when we are before START.
                          (or (not start)
-                             (not (> start (org-element-property :begin data)))))
+                             (not (> start data-beg))))
 	            (progn (push node stack)
 		           (setq node (avl-tree--node-left node)))
                   ;; The whole tree left to DATA is before START and
@@ -7558,12 +7561,12 @@ the cache."
                   ;; NEXT-ELEMENT-RE.
                   ;; If DATA is after start, we have found a cache gap
                   ;; and need to fill it.
-                  (unless (or (and start (< (org-element-property :begin data) start))
+                  (unless (or (and start (< data-beg start))
 		              (and prev (not (org-element--cache-key-less-p
-				              (org-element--cache-key prev)
-				              (org-element--cache-key data)))))
+				            (org-element--cache-key prev)
+				            (org-element--cache-key data)))))
                     ;; DATA is at of after START and PREV.
-	            (if (or (not start) (= (org-element-property :begin data) start))
+	            (if (or (not start) (= data-beg start))
                         ;; DATA is at START.  Match it.
                         ;; In the process, we may alter the buffer,
                         ;; so also keep track of the cache state.
@@ -7574,11 +7577,11 @@ the cache."
                           ;; next regexp match after :begin of the current
                           ;; element.
                           (when (if last-match next-re fail-re)
-                            (goto-char (org-element-property :begin data))
+                            (goto-char data-beg)
                             (move-start-to-next-match
                              (if last-match next-re fail-re)))
-                          (when (and (or (not start) (eq (org-element-property :begin data) start))
-                                     (< (org-element-property :begin data) to-pos)) 
+                          (when (and (or (not start) (eq data-beg start))
+                                     (< data-beg to-pos)) 
                             ;; Calculate where next possible element
                             ;; starts and update START if needed.
 		            (setq start (next-element-start))
@@ -7650,7 +7653,7 @@ the cache."
                               ;; element past already processed
                               ;; place.
                               (when (and start
-                                         (<= start (org-element-property :begin data))
+                                         (<= start data-beg)
                                          (not org-element-cache-map-continue-from))
                                 (goto-char start)
                                 (setq data (element-match-at-point))
@@ -7664,7 +7667,7 @@ the cache."
                             ;; Reached LIMIT-COUNT.  Abort.
                             (when (and limit-count
                                        (>= count-predicate-calls-match
-                                           limit-count))
+                                          limit-count))
                               (cache-walk-abort))
                             (if (org-element-property :cached data)
 		                (setq prev data)
