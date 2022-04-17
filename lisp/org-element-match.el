@@ -169,11 +169,12 @@ at point."
                   org-element-match--element element)
           (error (setq org-element-match--element nil org-element-match--data nil)))))))
 
-(defun org-element-match-forward (&optional types bound)
+(defun org-element-match-forward (&optional types bound current-element)
   "Move to and match next element or an element of TYPES.
 TYPES can be an element type, object type, or a list of such.
-BOUND, when non-nil, limits the search."
-  (when types (unless (listp types) (setq types (list types))))
+BOUND, when non-nil, limits the search.
+
+CURRENT-ELEMENT, when non-nil contains element at point."
   (setq types (org-element-match--resolve-types types))
   (setq org-element-match--data nil org-element-match--element nil)
   ;; `org-element-at-point' returns nil within blank lines at bob.
@@ -184,7 +185,7 @@ BOUND, when non-nil, limits the search."
          (beg (point))
          (bound (or bound (point-max)))
          (next bound)
-         (element (org-element-at-point))
+         (element (or current-element (org-element-at-point)))
          (match-object? (or (not types)
                             (cl-intersection
                              types org-element-all-objects))))
