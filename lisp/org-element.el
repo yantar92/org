@@ -4445,6 +4445,38 @@ When PARSE is non-nil, values from keywords belonging to
 ;; resulting values.  In an export situation, it also skips unneeded
 ;; parts of the parse tree.
 
+(defun org-element-parse-element (&optional pos-or-element granularity visible-only first-only)
+  "Parse element at POS-OR-ELEMENT or point in current buffer.
+When POS-OR-ELEMENT is nil, parse element at point.  When position,
+parse element at that position.  When element, parse the provided
+element assuming that it is located in current buffer.
+
+The parsing is done recursively.  See `org-element-parse-buffer' for the detailed
+info on the return value.
+
+When VISIBLE-ONLY is non-nil, don't parse contents of hidden
+elements.
+
+When VISIBLE-ONLY is non-nil, don't parse contents of hidden
+elements.
+
+FIRST-ONLY controls parsing of elements inside.  When its value is
+`no-recursion', do not parse inner elements.  Otherwise, when it is
+non-nil, don't parse beyond first inner element, first inner element of
+that inner element, and so on."
+  (org-with-wide-buffer
+   (let ((element (pcase pos-or-element
+                    (`nil (org-element-at-point))
+                    ((pred number-or-marker-p)
+                     (org-element-at-point pos-or-element))
+                    (_ pos-or-element))))
+     (org-element--parse-elements
+      (org-element-property :begin element)
+      (org-element-property :end element)
+      (org-element-property :mode element)
+      (org-element-property :structure element)
+      granularity visible-only nil first-only))))
+
 (defun org-element-parse-buffer (&optional granularity visible-only)
   "Recursively parse the buffer and return structure.
 If narrowing is in effect, only parse the visible part of the
@@ -4744,7 +4776,9 @@ GRANULARITY determines the depth of the recursion.  See
 When VISIBLE-ONLY is non-nil, don't parse contents of hidden
 elements.
 
-When FIRST-ONLY is non-nil, only parse the first inner elements.
+When FIRST-ONLY is `no-recursion', do not parse elements inside.
+Otherwise, when FIRST-ONLY is non-nil, only parse the first inner
+elements in contents.
 
 Elements are accumulated into ACC."
   (save-excursion
@@ -4789,17 +4823,18 @@ Elements are accumulated into ACC."
 	     ;; or ELEMENT is a headline, in which case going inside
 	     ;; is mandatory, in order to get sub-level headings.
 	     ((and (memq type org-element-greater-elements)
-		   (or (memq granularity '(element object nil))
+	           (or (memq granularity '(element object nil))
 		       (and (eq granularity 'greater-element)
 			    (eq type 'section))
 		       (eq type 'headline)))
-	      (org-element--parse-elements
-	       cbeg (org-element-property :contents-end element)
-	       ;; Possibly switch to a special mode.
-	       (org-element--next-mode mode type t)
-	       (and (memq type '(item plain-list))
-		    (org-element-property :structure element))
-	       granularity visible-only element first-only))
+              (unless (eq first-only 'no-recursion)
+	        (org-element--parse-elements
+	         cbeg (org-element-property :contents-end element)
+	         ;; Possibly switch to a special mode.
+	         (org-element--next-mode mode type t)
+	         (and (memq type '(item plain-list))
+		      (org-element-property :structure element))
+	         granularity visible-only element first-only)))
 	     ;; ELEMENT has contents.  Parse objects inside, if
 	     ;; GRANULARITY allows it.
 	     ((memq granularity '(object nil))
@@ -4814,8 +4849,7 @@ Elements are accumulated into ACC."
         (org-element-put-property acc :granularity granularity))
       (if acc
           (apply #'org-element-set-contents acc (nreverse elements))
-        (nreverse elements)
-        ))))
+        (nreverse elements)))))
 
 (defun org-element--object-lex (restriction)
   "Return next object in current buffer or nil.
