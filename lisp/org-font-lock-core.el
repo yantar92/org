@@ -99,7 +99,9 @@ and SUBEXP to be element component.")
                         (append
                          (make-list component-count "\\(")
                          '(".")
-                         (make-list component-count "\\)")))))
+                         (make-list component-count "\\)"))
+                        "" ;; Not optional in Emacs <29.
+                        )))
     ;; Create match data with appropriate number of elements.
     (re-search-forward re)
     (let ((match-data (match-data)))
