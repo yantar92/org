@@ -46,12 +46,12 @@ The old folding backend used in Org is poorly scalable when the file
 size increases beyond few Mbs.  The symptoms usually include slow
 cursor motion, especially in long-running Emacs sessions.
 
-A new optimised folding backend is now available, but disabled by
-default.  To enable it, put the following to the Emacs config *before*
+A new optimised folding backend is now available, and enabled by
+default.  To disable it, put the following to the Emacs config *before*
 loading Org:
 
 #+begin_src emacs-lisp
-(setq org-fold-core-style 'text-properties)
+(setq org-fold-core-style 'overlays)
 #+end_src
 
 Even more performance optimisation can be enabled by customising
@@ -62,9 +62,6 @@ understand the possible consequences.
 When =org-fold-core-style= is set to =text-properties=, several new
 features will become available and several notable changes will happen
 to the Org behaviour.  The new features and changes are listed below.
-
-Note that below items will not change the Org behaviour by default.
-They are only relevant when the new folding backend is enabled.
 
 **** Hidden parts of the links can now be searched and revealed during isearch
 
@@ -85,11 +82,13 @@ config:
 
 See docstring of =org-fold-core--specs= to see more details about
 =:isearch-open= and =:isearch-ignore= properties.
+
 **** =org-catch-invisible-edits= now works for hidden parts of the links and for emphasis markers
 
 In the past, user could edit invisible parts of the links and emphasis markers.  Now, the editing is respecting the value of =org-catch-invisible-edits=.
 
 Note that hidden parts of sub-/super-scripts are still not handled.
+
 **** Breaking structure of folded elements automatically reveals the folded text
 
 In the past, the user could be left with unfoldable text after breaking the org structure.
@@ -113,6 +112,7 @@ The hidden text would not be revealed.
 
 Now, breaking structure of drawers, blocks, and headings automatically
 reveals the folded text.
+
 **** Folding state of the drawers is now preserved when cycling headline visibility
 
 In the past drawers were folded every time a headline is unfolded.
@@ -129,6 +129,7 @@ To restore the old behaviour, add the following code to Emacs config:
 
 Note that old behaviour may cause performance issues when cycling
 headline visibility in large buffers.
+
 **** =outline-*= functions may no longer work correctly in Org mode
 
 The new folding backend breaks some of the =outline-*= functions that
@@ -214,6 +215,11 @@ argument.
 
 This function is intended for us in the definition of a ~kbd~ macro in
 files that are exported to Texinfo.
+
+*** =org-at-heading-p= now recognises optional argument. Its meaning is inverted.
+
+=org-at-heading-p= now returns t by default on headings inside folds.
+Passing optional argument will produce the old behaviour.
 
 ** Miscellaneous
 
@@ -684,9 +690,6 @@ This is the CSS class name to use for the top level content wrapper.
 
 *** New option ~org-babel-plantuml-svg-text-to-path~
 
-** New features
-*** =ob-python= improvements to =:return= header argument
-
 This option, nil by default, allows to add a SVG-specific post-export
 step that runs inkscape text-to-path replacement over the output file.
 
@@ -700,10 +703,6 @@ you can now configure them.
 ~org-attach-git-dir~ will decide whether to use ~org-attach-git-dir~
 (the default) or use the attachment directory of the current node, if
 it is correctly configured as a Git repository.
-
-*** Some faces now use fixed-pitch
-
-See [[msg:875z8njaol.fsf@protesilaos.com][this thread]].
 
 *** New option ~org-attach-sync-delete-empty-dir~
 
@@ -759,7 +758,7 @@ heading, except return nil.
 
 In the past, faces of todo keywords, emphasised text, tags, and
 priority cookies inherited =default= face.  The resulting headline
-fontification was not always consistent, as discussed in [[https://lists.gnu.org/archive/html/emacs-orgmode/2020-09/msg00331.html][this bug
+fontification was not always consistent, as discussed in [[msg::87h7sawubl.fsf@protesilaos.com][this bug
 report]].  Now, the relevant faces adapt to face used to fontify the
 current headline level.
 

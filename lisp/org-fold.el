@@ -398,7 +398,7 @@ When optional argument TYPE is a list of symbols among `blocks',
      ((memq 'drawers types)
       (save-excursion
         (goto-char (point-min))
-        (while (re-search-forward org-drawer-regexp nil t)
+        (while (and (< (point) end) (re-search-forward org-drawer-regexp end t))
           (let* ((pair (get-char-property-and-overlay (line-beginning-position)
                                                       'invisible))
                  (o (cdr-safe pair)))
@@ -903,7 +903,7 @@ go to the parent and show the entire tree."
 
 (defun org-fold--isearch-reveal (&rest _)
   "Reveal text at POS found by isearch."
-  (org-fold-show-set-visibility 'isearch))
+  (org-fold-show-context 'isearch))
 
 ;;; Handling changes in folded elements
 

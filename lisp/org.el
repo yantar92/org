@@ -5124,7 +5124,7 @@ Return nil before first heading."
       (let ((case-fold-search nil))
 	(org-looking-at-fontified org-complex-heading-regexp)
         ;; When using `org-fold-core--optimise-for-huge-buffers',
-        ;; returned text may be invisible.  Clear it up.
+        ;; returned text will be invisible.  Clear it up.
         (save-match-data
           (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0)))
         (let ((todo (and (not no-todo) (match-string 2)))
@@ -10684,7 +10684,7 @@ The tags are fontified when FONTIFY is non-nil."
         (and cached
              (or (not fontified)
                  cached-tags-fontified?))
-        ;; If we do explicitly copy the result, reference would
+        ;; If we do not explicitly copy the result, reference would
         ;; be returned and cache element might be modified directly.
         (mapcar #'copy-sequence cached-tags)
       ;; Parse tags manually.
@@ -15742,11 +15742,11 @@ this numeric value."
             (let ((next (org-fold-next-visibility-change beg end)))
 	      (setq result (concat result (buffer-substring beg next)))
 	      (setq beg next)))
-        (if (invisible-p beg)
-	    (setq beg (next-single-char-property-change beg 'invisible nil end))
-          (let ((next (next-single-char-property-change beg 'invisible nil end)))
-	    (setq result (concat result (buffer-substring beg next)))
-	    (setq beg next)))))
+        (when (invisible-p beg)
+	  (setq beg (next-single-char-property-change beg 'invisible nil end)))
+        (let ((next (next-single-char-property-change beg 'invisible nil end)))
+	  (setq result (concat result (buffer-substring beg next)))
+	  (setq beg next))))
     (setq deactivate-mark t)
     (kill-new result)
     (message "Visible strings have been copied to the kill ring.")))

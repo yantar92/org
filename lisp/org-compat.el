@@ -492,6 +492,9 @@ Counting starts at 1."
 (define-obsolete-variable-alias 'org-show-context-detail
   'org-fold-show-context-detail "9.6")
 
+(define-obsolete-variable-alias 'org-show-context-detail
+  'org-fold-show-context-detail "9.6")
+
 (define-obsolete-variable-alias 'org-catch-invisible-edits
   'org-fold-catch-invisible-edits "9.6")
 
