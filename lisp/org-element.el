@@ -4175,14 +4175,17 @@ element it has to parse."
                            (setq element (org-element-property :parent element)))
                          element))
          (old-element element)
-         (element (when
-                      (pcase (org-element-property :granularity element)
-                        (`nil t)
-                        (`object t)
-                        (`element (not (memq granularity '(nil object))))
-                        (`greater-element (not (memq granularity '(nil object element))))
-                        (`headline (eq granularity 'headline)))
-                    element)))
+         (element (if (or (eq (org-element-property :granularity element) granularity)
+                          (and (memq granularity '(nil object))
+                               (memq (org-element-property :granularity element) '(nil object))))
+                      element
+                    (let ((cached (org-element-cache-get-key
+                                   element
+                                   (list 'org-element--current-element (or granularity 'object)))))
+                      (when cached
+                        (org-element-put-property
+                         cached :parent
+                         (org-element-property :parent element)))))))
     (if element
         element
       (save-excursion
@@ -4347,9 +4350,14 @@ element it has to parse."
                      (not org-element--cache-sync-requests)
                      add-to-cache)
             (if (not old-element)
-                (setq result (org-element--cache-put result))
-              (org-element-set-element old-element result)
-              (setq result old-element)))
+                ;; Only 'element granularity is directly allowed in
+                ;; the cache.
+                (setq result (if (eq granularity 'element)
+                                 (org-element--cache-put result)
+                               result))
+              (org-element-cache-store-key
+               old-element
+               (list 'org-element--current-element (or granularity 'object)) result)))
           result)))))
 
 
