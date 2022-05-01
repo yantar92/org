@@ -4487,8 +4487,7 @@ that inner element, and so on."
           result)
      (unless visible-only
        (setq result (org-element-cache-get-key element key)))
-     (if result
-         result
+     (unless result
        (setq result
              (car
               (org-element--parse-elements
@@ -4497,7 +4496,9 @@ that inner element, and so on."
                (org-element-property :mode element)
                (org-element-property :structure element)
                granularity visible-only nil first-only)))
-       (org-element-cache-store-key element key result)))))
+       (unless visible-only
+         (org-element-cache-store-key element key result)))
+     result)))
 
 (defun org-element-parse-buffer (&optional granularity visible-only)
   "Recursively parse the buffer and return structure.
