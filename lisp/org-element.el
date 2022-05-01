@@ -4475,17 +4475,29 @@ FIRST-ONLY controls parsing of elements inside.  When its value is
 non-nil, don't parse beyond first inner element, first inner element of
 that inner element, and so on."
   (org-with-wide-buffer
-   (let ((element (pcase pos-or-element
-                    (`nil (org-element-at-point))
-                    ((pred number-or-marker-p)
-                     (org-element-at-point pos-or-element))
-                    (_ pos-or-element))))
-     (org-element--parse-elements
-      (org-element-property :begin element)
-      (org-element-property :end element)
-      (org-element-property :mode element)
-      (org-element-property :structure element)
-      granularity visible-only nil first-only))))
+   (let* ((element (pcase pos-or-element
+                     (`nil (org-element-at-point))
+                     ((pred number-or-marker-p)
+                      (org-element-at-point pos-or-element))
+                     (_ pos-or-element)))
+          (key (pcase first-only
+                 (`no-recursion (list 'org-element-parse-element (or granularity 'object) 'no-recursion))
+                 (`nil (list 'org-element-parse-element (or granularity 'object)))
+                 (_ (list 'org-element-parse-element (or granularity 'object) 'first-only))))
+          result)
+     (unless visible-only
+       (setq result (org-element-cache-get-key element key)))
+     (if result
+         result
+       (setq result
+             (car
+              (org-element--parse-elements
+               (org-element-property :begin element)
+               (org-element-property :end element)
+               (org-element-property :mode element)
+               (org-element-property :structure element)
+               granularity visible-only nil first-only)))
+       (org-element-cache-store-key element key result)))))
 
 (defun org-element-parse-buffer (&optional granularity visible-only)
   "Recursively parse the buffer and return structure.
