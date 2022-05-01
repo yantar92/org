@@ -761,10 +761,11 @@ CURRENT-ELEMENT, when non-nil contains element at point."
           (org-with-wide-buffer
            (while (< (point) bound)
              (org-element-map
-                 (org-element-parse-element
-                  element
-                  (if match-object? 'object 'element)
-                  nil 'first)
+                 (save-match-data
+                   (org-element-parse-element
+                    element
+                    (if match-object? 'object 'element)
+                    nil 'first))
                  org-element-match--all-types
                (lambda (el)
                  (when (and (>= (org-element-property :begin el) beg)
@@ -791,6 +792,7 @@ CURRENT-ELEMENT, when non-nil contains element at point."
                  (setq elp (org-element-at-point)))
                (setq element elp)))
            ;; Nothing found.
+           (set-match-data nil)
            nil))
       (goto-char next))))
 
