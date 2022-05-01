@@ -197,15 +197,14 @@ DATUM is a parse tree."
              beg end
              (org-element-parse-element
               element 'object nil 'no-recursion))
-          (goto-char (max beg (1+ (or (org-element-property :contents-begin element)
-                                      (org-element-property :begin element)))))
+          (goto-char (max beg (1+ (org-element-property :begin element))))
           (org-element-match-forward
            (append org-element-all-elements
                    org-element-greater-elements)
            end
            element)
           (if (org-element-match-data)
-              (goto-char (org-element-match-beginning))
+              (goto-char (1+ (org-element-match-beginning)))
             ;; No other element before end.  element is completely
             ;; fontified.  Move to its end.
             (goto-char (min end (org-element-property :end element))))))
