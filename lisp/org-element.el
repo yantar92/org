@@ -4455,7 +4455,9 @@ When PARSE is non-nil, values from keywords belonging to
 ;; resulting values.  In an export situation, it also skips unneeded
 ;; parts of the parse tree.
 
-(defun org-element-parse-element (&optional pos-or-element granularity visible-only first-only)
+(defun org-element-parse-element (&optional pos-or-element granularity
+                                 visible-only first-only
+                                 cached-only)
   "Parse element at POS-OR-ELEMENT or point in current buffer.
 When POS-OR-ELEMENT is nil, parse element at point.  When position,
 parse element at that position.  When element, parse the provided
@@ -4467,8 +4469,8 @@ info on the return value.
 When VISIBLE-ONLY is non-nil, don't parse contents of hidden
 elements.
 
-When VISIBLE-ONLY is non-nil, don't parse contents of hidden
-elements.
+When CACHED-ONLY is non-nil, try to retrieve cached value and return nil
+if such value is not available.
 
 FIRST-ONLY controls parsing of elements inside.  When its value is
 `no-recursion', do not parse inner elements.  Otherwise, when it is
@@ -4487,7 +4489,7 @@ that inner element, and so on."
           result)
      (unless visible-only
        (setq result (org-element-cache-get-key element key)))
-     (unless result
+     (unless (or result cached-only)
        (setq result
              (car
               (org-element--parse-elements
