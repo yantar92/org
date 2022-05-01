@@ -196,18 +196,19 @@ DATUM is a parse tree."
             (org-font-lock--fontify-objects
              beg end
              (org-element-parse-element
-              element 'object nil 'no-recursion)))
-        (goto-char (max beg (1+ (org-element-property :begin element))))
-        (org-element-match-forward
-         (append org-element-all-elements
-                 org-element-greater-elements)
-         end
-         element)
-        (if (org-element-match-data)
-            (goto-char (org-element-match-beginning))
-          ;; No other element before end.  element is completely
-          ;; fontified.  Move to its end.
-          (goto-char (min end (org-element-property :end element)))))
+              element 'object nil 'no-recursion))
+          (goto-char (max beg (1+ (or (org-element-property :contents-begin element)
+                                      (org-element-property :begin element)))))
+          (org-element-match-forward
+           (append org-element-all-elements
+                   org-element-greater-elements)
+           end
+           element)
+          (if (org-element-match-data)
+              (goto-char (org-element-match-beginning))
+            ;; No other element before end.  element is completely
+            ;; fontified.  Move to its end.
+            (goto-char (min end (org-element-property :end element))))))
       (when (and element org-font-lock-verbose)
         (message "Fontified %S(%S:+%S) up to +%S"
                  (org-element-type element)
