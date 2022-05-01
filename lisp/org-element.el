@@ -649,7 +649,8 @@ Parse tree is modified by side effect."
     (org-element-put-property element :parent parent)))
 
 (defconst org-element--cache-element-properties '(:cached
-                                       :org-element--cache-sync-key)
+                                       :org-element--cache-sync-key
+                                       :fragile-cache)
   "List of element properties used internally by cache.")
 
 (defun org-element-set-element (old new)
@@ -6207,6 +6208,7 @@ completing the request."
                                      (> (org-element-property :begin up)
                                         (org-element-property :begin cached-before))))
                        (when (> (org-element-property :end up) future-change)
+                         (org-element-put-property up :fragile-cache nil)
                          ;; Offset future cache request.
                          (org-element--cache-shift-positions
                           up (- offset)
@@ -6277,6 +6279,7 @@ completing the request."
                 (setf (org-element--request-parent request) parent)
                 (throw 'org-element--cache-interrupt nil))
 	      ;; Shift element.
+              (org-element-put-property data :fragile-cache nil)
 	      (unless (zerop offset)
                 (when (>= org-element--cache-diagnostics-level 3)
                   (org-element--cache-log-message "Shifting positions (𝝙%S) in %S::%S"
@@ -6850,6 +6853,7 @@ known element in cache (it may start after END)."
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
               (progn
+                (org-element-put-property up :fragile-cache nil)
 	        (org-element--cache-shift-positions
                  up offset
                  (if (and (org-element-property :robust-begin up)
@@ -7229,6 +7233,34 @@ buffers."
     (org-element--cache-sync (current-buffer) pos)
     (org-element--cache-submit-request pos pos 0)
     (org-element--cache-set-timer (current-buffer))))
+
+;;;###autoload
+(defun org-element-cache-store-key (pos-or-element key value)
+  "Store KEY with VALUE associated with POS-OR-ELEMENT.
+The key can be retrieved as long as the element (provided or at point)
+contents is not modified."
+  (let ((element (pcase pos-or-element
+                   ((pred number-or-marker-p)
+                    (org-element-at-point pos-or-element))
+                   (_ pos-or-element))))
+    (let ((key-store (org-element-property :fragile-cache element)))
+      (unless (hash-table-p key-store)
+        (setq key-store (make-hash-table :test #'equal))
+        (org-element-put-property element :fragile-cache key-store))
+      (puthash key value key-store))))
+
+;;;###autoload
+(defun org-element-cache-get-key (pos-or-element key)
+  "Get KEY associated with POS-OR-ELEMENT.
+The key can be retrieved as long as the element (provided or at point)
+contents is not modified."
+  (let ((element (pcase pos-or-element
+                   ((pred number-or-marker-p)
+                    (org-element-at-point pos-or-element))
+                   (_ pos-or-element))))
+    (let ((key-store (org-element-property :fragile-cache element)))
+      (when (hash-table-p key-store)
+        (gethash key key-store)))))
 
 (defvar warning-minimum-log-level) ; Defined in warning.el
 
