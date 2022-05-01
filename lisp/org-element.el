@@ -4804,10 +4804,11 @@ Elements are accumulated into ACC."
                            ;; `:parent' property of the element and
                            ;; may interfere with cache
                            ;; synchronisation if parent element is not
-                           ;; yet in cache.  Moreover, the returned
-                           ;; structure may be altered by caller code
-                           ;; arbitrarily.  Hence, we return a copy of
-                           ;; the potentially cached element to make
+                           ;; yet in cache or when ACC is nil.
+                           ;; Moreover, the returned structure may be
+                           ;; altered by caller code arbitrarily.
+                           ;; Hence, we return a copy of the
+                           ;; potentially cached element to make
                            ;; potential modifications safe for element
                            ;; cache.
                            (org-element--current-element
