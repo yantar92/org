@@ -7961,50 +7961,86 @@ Providing it allows for quicker computation."
        (goto-char (point-min))
        (let ((restriction (org-element-restriction type))
 	     (parent element)
+             (cached (or (org-element-parse-element element 'object nil nil 'cached)
+                         (org-element-parse-element element 'object nil 'no-recursion 'cached)
+                         (org-element-parse-element element 'object nil 'first-only 'cached)))
 	     last)
-	 (catch 'exit
-	   (while t
-	     (let ((next (org-element--object-lex restriction)))
-	       (when next (org-element-put-property next :parent parent))
-	       ;; Process NEXT, if any, in order to know if we need to
-	       ;; skip it, return it or move into it.
-	       (if (or (not next) (> (org-element-property :begin next) pos))
-		   (throw 'exit (or last parent))
-		 (let ((end (org-element-property :end next))
-		       (cbeg (org-element-property :contents-begin next))
-		       (cend (org-element-property :contents-end next)))
-		   (cond
-		    ;; Skip objects ending before point.  Also skip
-		    ;; objects ending at point unless it is also the
-		    ;; end of buffer, since we want to return the
-		    ;; innermost object.
-		    ((and (<= end pos) (/= (point-max) end))
-		     (goto-char end)
-		     ;; For convenience, when object ends at POS,
-		     ;; without any space, store it in LAST, as we
-		     ;; will return it if no object starts here.
-		     (when (and (= end pos)
-				(not (memq (char-before) '(?\s ?\t))))
-		       (setq last next)))
-		    ;; If POS is within a container object, move into
-		    ;; that object.
-		    ((and cbeg cend
-			  (>= pos cbeg)
-			  (or (< pos cend)
-			      ;; At contents' end, if there is no
-			      ;; space before point, also move into
-			      ;; object, for consistency with
-			      ;; convenience feature above.
-			      (and (= pos cend)
-				   (or (= (point-max) pos)
-				       (not (memq (char-before pos)
+         (if cached
+             (let ((last-obj
+                    (org-element-map cached org-element-all-objects
+                      (lambda (obj)
+                        (if (> (org-element-property :begin obj) pos)
+                            (or last parent)
+                          ;; Skip objects outside current context.
+                          (unless (< (org-element-property :begin obj) (point-min))
+                            (setq last obj))
+                          ;; Continue.
+                          nil))
+                      nil 'first-match nil 'affiliated)))
+               (setq last-obj (or last-obj last parent))
+               ;; Reassign parent.
+               (unless (eq last-obj parent)
+                 (let ((obj-parent last-obj))
+                   (while obj-parent
+                     (when (or (eq cached (org-element-property :parent obj-parent))
+                               ;; e.g. affiliated keywords.
+                               (and (org-element-property :parent obj-parent)
+                                    (not (org-element-type (org-element-property :parent obj-parent)))))
+                       (org-element-put-property obj-parent :parent parent))
+                     (setq obj-parent (org-element-property :parent obj-parent)))))
+               ;; If POS is after LAST-OBJ, return the outermost
+               ;; object ending before point, unless we are at
+               ;; point-max.  At point-max, return the innermost
+               ;; containing object.
+               (while (and (org-element-property :parent last-obj)
+                           (>= pos (org-element-property :end (org-element-property :parent last-obj)))
+                           (not (and (eq pos (point-max))
+                                   (= pos (org-element-property :end last-obj)))))
+                 (setq last-obj (org-element-property :parent last-obj)))
+               last-obj)
+	   (catch 'exit
+	     (while t
+	       (let ((next (org-element--object-lex restriction)))
+	         (when next (org-element-put-property next :parent parent))
+	         ;; Process NEXT, if any, in order to know if we need to
+	         ;; skip it, return it or move into it.
+	         (if (or (not next) (> (org-element-property :begin next) pos))
+		     (throw 'exit (or last parent))
+		   (let ((end (org-element-property :end next))
+		         (cbeg (org-element-property :contents-begin next))
+		         (cend (org-element-property :contents-end next)))
+		     (cond
+		      ;; Skip objects ending before point.  Also skip
+		      ;; objects ending at point unless it is also the
+		      ;; end of buffer, since we want to return the
+		      ;; innermost object.
+		      ((and (<= end pos) (/= (point-max) end))
+		       (goto-char end)
+		       ;; For convenience, when object ends at POS,
+		       ;; without any space, store it in LAST, as we
+		       ;; will return it if no object starts here.
+		       (when (and (= end pos)
+				  (not (memq (char-before) '(?\s ?\t))))
+		         (setq last next)))
+		      ;; If POS is within a container object, move into
+		      ;; that object.
+		      ((and cbeg cend
+			    (>= pos cbeg)
+			    (or (< pos cend)
+			        ;; At contents' end, if there is no
+			        ;; space before point, also move into
+			        ;; object, for consistency with
+			        ;; convenience feature above.
+			        (and (= pos cend)
+				     (or (= (point-max) pos)
+				         (not (memq (char-before pos)
 						  '(?\s ?\t)))))))
-		     (goto-char cbeg)
-		     (narrow-to-region (point) cend)
-		     (setq parent next)
-		     (setq restriction (org-element-restriction next)))
-		    ;; Otherwise, return NEXT.
-		    (t (throw 'exit next)))))))))))))
+		       (goto-char cbeg)
+		       (narrow-to-region (point) cend)
+		       (setq parent next)
+		       (setq restriction (org-element-restriction next)))
+		      ;; Otherwise, return NEXT.
+		      (t (throw 'exit next))))))))))))))
 
 (defun org-element-lineage (datum &optional types with-self)
   "List all ancestors of a given element or object.

@@ -2035,7 +2035,7 @@ Also refresh fontification if needed."
 	    (while (re-search-forward org-radio-target-regexp nil t)
 	      ;; Make sure point is really within the object.
 	      (backward-char)
-	      (let ((obj (org-element-context)))
+	      (let ((obj (org-element-with-disabled-cache (org-element-context))))
 		(when (eq (org-element-type obj) 'radio-target)
 		  (cl-pushnew (org-element-property :value obj) rtn
 			      :test #'equal))))
