@@ -730,7 +730,8 @@ at point."
 TYPES can be an element type, object type, or a list of such.
 BOUND, when non-nil, limits the search.
 
-CURRENT-ELEMENT, when non-nil contains element at point."
+CURRENT-ELEMENT, when non-nil contains element at point.
+Never match CURRENT-ELEMENT if it is provided."
   (setq types (org-element-match--resolve-types types))
   (setq org-element-match--data nil org-element-match--element nil)
   ;; `org-element-at-point' returns nil within blank lines at bob.
@@ -769,6 +770,10 @@ CURRENT-ELEMENT, when non-nil contains element at point."
                  org-element-match--all-types
                (lambda (el)
                  (when (and (>= (org-element-property :begin el) beg)
+                            (not (and (eq (org-element-property :begin el)
+                                        (org-element-property :begin current-element))
+                                    (eq (org-element-type el)
+                                        (org-element-type current-element))))
                             (org-element-match types el 'inner))
                    (setq next (min bound (org-element-property :end el)))
                    (throw :found (org-element-copy el)))
