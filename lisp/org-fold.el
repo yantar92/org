@@ -301,27 +301,28 @@ means that the buffer should stay alive during the operation,
 because otherwise all these markers will point to nowhere."
   (declare (debug (form body)) (indent 1))
   (org-with-gensyms (data specs markers?)
-    `(let* ((,specs ',(org-fold-core-folding-spec-list))
+    `(let* ((,specs (org-fold-core-folding-spec-list))
 	    (,markers? ,use-markers)
 	    (,data
              (org-with-wide-buffer
-              (let ((pos (point-min))
-		    data-val)
-		(while (< pos (point-max))
-                  (dolist (spec (org-fold-get-folding-spec 'all pos))
-                    (let ((region (org-fold-get-region-at-point spec pos)))
-		      (if ,markers?
-			  (push (list (copy-marker (car region))
-				      (copy-marker (cdr region) t)
-                                      spec)
-                                data-val)
-                        (push (list (car region) (cdr region) spec)
-			      data-val))))
-                  (setq pos (org-fold-next-folding-state-change nil pos)))))))
+              (let (data-val)
+                (dolist (spec ,specs)
+                  (let ((pos (point-min)))
+		    (while (< pos (point-max))
+                      (when (org-fold-get-folding-spec spec pos)
+                        (let ((region (org-fold-get-region-at-point spec pos)))
+		          (if ,markers?
+			      (push (list (copy-marker (car region))
+				          (copy-marker (cdr region) t)
+                                          spec)
+                                    data-val)
+                            (push (list (car region) (cdr region) spec)
+			          data-val))))
+                      (setq pos (org-fold-next-folding-state-change spec pos)))))
+                data-val))))
        (unwind-protect (progn ,@body)
 	 (org-with-wide-buffer
-	  (dolist (spec ,specs)
-	    (org-fold-region (point-min) (point-max) nil spec))
+	  (org-fold-region (point-min) (point-max) nil)
 	  (pcase-dolist (`(,beg ,end ,spec) (delq nil ,data))
 	    (org-fold-region beg end t spec)
 	    (when ,markers?
@@ -334,8 +335,8 @@ means that the buffer may change while running BODY, but it also
 means that the buffer should stay alive during the operation,
 because otherwise all these markers will point to nowhere."
   (declare (debug (form body)) (indent 1))
-  `(when (eq org-fold-core-style 'text-properties)
-     (org-fold-save-outline-visibility--text-properties ,use-markers ,@body)
+  `(if (eq org-fold-core-style 'text-properties)
+       (org-fold-save-outline-visibility--text-properties ,use-markers ,@body)
      (org-fold-save-outline-visibility--overlays ,use-markers ,@body)))
 
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
@@ -1127,16 +1128,18 @@ The detailed reaction depends on the user option
 	     (and (not invisible-at-point) invisible-before-point
 		  (memq kind '(insert delete))))))
       (when (or invisible-at-point invisible-before-point)
-	(when (eq org-fold-catch-invisible-edits 'error)
+	(when (and (eq org-fold-catch-invisible-edits 'error)
+                   (not border-and-ok-direction))
 	  (user-error "Editing in invisible areas is prohibited, make them visible first"))
 	(if (and org-custom-properties-hidden-p
 		 (y-or-n-p "Display invisible properties in this buffer? "))
 	    (org-toggle-custom-properties-visibility)
 	  ;; Make the area visible
-          (save-excursion
-	    (org-fold-show-set-visibility 'local))
-          (when invisible-before-point
-            (org-with-point-at (1- (point)) (org-fold-show-set-visibility 'local)))
+          (unless (eq org-fold-catch-invisible-edits 'error)
+            (save-excursion
+	      (org-fold-show-set-visibility 'local))
+            (when invisible-before-point
+              (org-with-point-at (1- (point)) (org-fold-show-set-visibility 'local))))
 	  (cond
 	   ((eq org-fold-catch-invisible-edits 'show)
 	    ;; That's it, we do the edit after showing
@@ -1146,6 +1149,9 @@ The detailed reaction depends on the user option
 	   ((and (eq org-fold-catch-invisible-edits 'smart)
 		 border-and-ok-direction)
 	    (message "Unfolding invisible region around point before editing"))
+           (border-and-ok-direction
+            ;; Just continue editing.
+            nil)
 	   (t
 	    ;; Don't do the edit, make the user repeat it in full visibility
 	    (user-error "Edit in invisible region aborted, repeat to confirm with text visible"))))))))
