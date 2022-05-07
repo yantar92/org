@@ -219,34 +219,35 @@ smart            Make point visible, and do insertion/deletion if it is
   ;; this until there will be no need to convert text properties to
   ;; overlays for isearch.
   (setq-local org-fold-core--isearch-special-specs '(org-link))
-  (org-fold-core-initialize `((org-fold-outline
-                       (:ellipsis . ,ellipsis)
-                       (:fragile . ,#'org-fold--reveal-outline-maybe)
-                       (:isearch-open . t)
-                       ;; This is needed to make sure that inserting a
-                       ;; new planning line in folded heading is not
-                       ;; revealed.
-                       (:front-sticky . t)
-                       (:rear-sticky . t)
-                       (:font-lock-skip . t)
-                       (:alias . (headline heading outline inlinetask plain-list)))
-                      (org-fold-block
-                       (:ellipsis . ,ellipsis)
-                       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
-                       (:isearch-open . t)
-                       (:front-sticky . t)
-                       (:alias . ( block center-block comment-block
-                                   dynamic-block example-block export-block
-                                   quote-block special-block src-block
-                                   verse-block)))
-                      (org-fold-drawer
-                       (:ellipsis . ,ellipsis)
-                       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
-                       (:isearch-open . t)
-                       (:front-sticky . t)
-                       (:alias . (drawer property-drawer)))
-                      ,org-link--description-folding-spec
-                      ,org-link--link-folding-spec)))
+  (org-fold-core-initialize
+   `((org-fold-outline
+      (:ellipsis . ,ellipsis)
+      (:fragile . ,#'org-fold--reveal-outline-maybe)
+      (:isearch-open . t)
+      ;; This is needed to make sure that inserting a
+      ;; new planning line in folded heading is not
+      ;; revealed.
+      (:front-sticky . t)
+      (:rear-sticky . t)
+      (:font-lock-skip . t)
+      (:alias . (headline heading outline inlinetask plain-list)))
+     (org-fold-block
+      (:ellipsis . ,ellipsis)
+      (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
+      (:isearch-open . t)
+      (:front-sticky . t)
+      (:alias . ( block center-block comment-block
+                  dynamic-block example-block export-block
+                  quote-block special-block src-block
+                  verse-block)))
+     (org-fold-drawer
+      (:ellipsis . ,ellipsis)
+      (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
+      (:isearch-open . t)
+      (:front-sticky . t)
+      (:alias . (drawer property-drawer)))
+     ,org-link--description-folding-spec
+     ,org-link--link-folding-spec)))
 
 ;;;; Searching and examining folded text
 
@@ -465,10 +466,11 @@ When ENTRY is non-nil, show the entire entry."
 (defun org-fold-subtree (flag)
   (save-excursion
     (org-back-to-heading t)
-    (org-fold-region (line-end-position)
-	     (progn (org-end-of-subtree t) (point))
-	     flag
-	     'outline)))
+    (org-fold-region
+     (line-end-position)
+     (progn (org-end-of-subtree t) (point))
+     flag
+     'outline)))
 
 ;; Replaces `outline-hide-subtree'.
 (defun org-fold-hide-subtree ()
@@ -944,18 +946,19 @@ This function is intended to be used as :fragile property of
       (beginning-of-line)
       ;; Make sure that headline is not partially hidden
       (unless (org-fold-folded-p nil 'headline)
-        (org-fold-region (max (point-min) (1- (point)))
-                 (let ((endl (line-end-position)))
-                   (save-excursion
-                     (goto-char endl)
-                     (skip-chars-forward "\n\t\r ")
-                     ;; Unfold blank lines.
-                     (if (or (and (looking-at-p "\\*")
-                                  (> (point) (1+ endl)))
-                             (eq (point) (point-max)))
-                         (point)
-                       endl)))
-                 nil 'headline))
+        (org-fold-region
+         (max (point-min) (1- (point)))
+         (let ((endl (line-end-position)))
+           (save-excursion
+             (goto-char endl)
+             (skip-chars-forward "\n\t\r ")
+             ;; Unfold blank lines.
+             (if (or (and (looking-at-p "\\*")
+                          (> (point) (1+ endl)))
+                     (eq (point) (point-max)))
+                 (point)
+               endl)))
+         nil 'headline))
       ;; Never hide level 1 headlines
       (save-excursion
         (goto-char (line-end-position))
