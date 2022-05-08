@@ -285,11 +285,18 @@ matching a regular expression."
 		   (when make-dir
 		     (make-directory fnd 'parents))
                    (unless
-                       (let ((new-contents-hash (buffer-hash)))
-                         (with-temp-buffer
-                           (when (file-exists-p file-name)
-                             (insert-file-contents file-name))
-                           (equal (buffer-hash) new-contents-hash)))
+                       (when (file-exists-p file-name)
+                         (let ((tangle-buf (current-buffer)))
+                           (with-temp-buffer
+                             (insert-file-contents file-name)
+                             (and
+                              (equal (buffer-size)
+                                     (buffer-size tangle-buf))
+                              (= 0
+                                 (let (case-fold-search)
+                                   (compare-buffer-substrings
+                                    nil nil nil
+                                    tangle-buf nil nil)))))))
                      ;; erase previous file
                      (when (file-exists-p file-name)
                        (delete-file file-name))
