@@ -284,11 +284,17 @@ matching a regular expression."
 		    lspecs)
 		   (when make-dir
 		     (make-directory fnd 'parents))
-                   ;; erase previous file
-                   (when (file-exists-p file-name)
-                     (delete-file file-name))
-		   (write-region nil nil file-name)
-		   (mapc (lambda (mode) (set-file-modes file-name mode)) modes)
+                   (unless
+                       (let ((new-contents-hash (buffer-hash)))
+                         (with-temp-buffer
+                           (when (file-exists-p file-name)
+                             (insert-file-contents file-name))
+                           (equal (buffer-hash) new-contents-hash)))
+                     ;; erase previous file
+                     (when (file-exists-p file-name)
+                       (delete-file file-name))
+		     (write-region nil nil file-name)
+		     (mapc (lambda (mode) (set-file-modes file-name mode)) modes))
                    (push file-name path-collector))))))
 	 (if (equal arg '(4))
 	     (org-babel-tangle-single-block 1 t)
