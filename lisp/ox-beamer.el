@@ -861,6 +861,12 @@ holding export options."
      (let ((template (plist-get info :latex-hyperref-template)))
        (and (stringp template)
 	    (format-spec template (org-latex--format-spec info))))
+     ;; engrave-faces-latex preamble
+     (when (and (eq org-latex-src-block-backend 'engraved)
+                (org-element-map (plist-get info :parse-tree)
+                    '(src-block inline-src-block) #'identity
+                    info t))
+       (org-latex-generate-engraved-preamble info t))
      ;; Document start.
      "\\begin{document}\n\n"
      ;; Title command.
