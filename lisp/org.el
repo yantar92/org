@@ -265,7 +265,7 @@ byte-compiled before it is loaded."
     (if compile
 	(progn
 	  (byte-compile-file tangled-file)
-	  (load tangled-file)
+	  (load (byte-compile-dest-file tangled-file))
 	  (message "Compiled and loaded %s" tangled-file))
       (load-file tangled-file)
       (message "Loaded %s" tangled-file))))
@@ -7946,8 +7946,8 @@ When called through ELisp, arg is also interpreted in the following way:
               (insert-before-markers-and-inherit next)
               (unless (org-invisible-p (line-beginning-position))
                 (org-fold-region (line-beginning-position)
-                              (line-end-position)
-                              nil)))
+                                 (line-end-position)
+                                 nil)))
 	    (cond ((and org-state (equal this org-state))
 		   (message "TODO state was already %s" (org-trim next)))
 		  ((not (pos-visible-in-window-p hl-pos))
