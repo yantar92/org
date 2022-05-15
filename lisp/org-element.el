@@ -5443,6 +5443,19 @@ Each node of the tree contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-cache-map'.")
 
+;; See http://dx.doi.org/10.1016/0020-0190(90)90130-P
+;; Pugh [Information Processing Letters] (1990) Slow optimally
+;; balanced search strategies vs. cached fast uniformly balanced
+;; search strategies.
+(defconst org-element--cache-hash-size 16)
+(defvar-local org-element--cache-hash nil
+  "Cached elements from `org-element--cache' for fast O(1) lookup.")
+
+(defvar org-element--cache-hash-statistics '(0 . 0)
+  "Cons cell storing fraction of time Org makes use of `org-element--cache-hash'.
+The car is the number of successful uses and cdr is the total calls to
+`org-element--cache-find'.")
+
 (defvar-local org-element--cache-size 0
   "Size of the `org-element--cache'.
 
@@ -5774,54 +5787,67 @@ after POS.
 The function can only find elements in the synchronized part of
 the cache."
   (with-current-buffer (or (buffer-base-buffer) (current-buffer))
-    (let ((limit (and org-element--cache-sync-requests
-                      (org-element--request-key (car org-element--cache-sync-requests))))
-	  (node (org-element--cache-root))
-	  lower upper)
-      (while node
-        (let* ((element (avl-tree--node-data node))
-	       (begin (org-element-property :begin element)))
-	  (cond
-	   ((and limit
-	         (not (org-element--cache-key-less-p
-	             (org-element--cache-key element) limit)))
-	    (setq node (avl-tree--node-left node)))
-	   ((> begin pos)
-	    (setq upper element
-		  node (avl-tree--node-left node)))
-	   ((or (< begin pos)
-                ;; If the element is section or org-data, we also need
-                ;; to check the following element.
-                (memq (org-element-type element) '(section org-data)))
-	    (setq lower element
-		  node (avl-tree--node-right node)))
-	   ;; We found an element in cache starting at POS.  If `side'
-	   ;; is `both' we also want the next one in order to generate
-	   ;; a key in-between.
-	   ;;
-	   ;; If the element is the first row or item in a table or
-	   ;; a plain list, we always return the table or the plain
-	   ;; list.
-	   ;;
-	   ;; In any other case, we return the element found.
-	   ((eq side 'both)
-	    (setq lower element)
-	    (setq node (avl-tree--node-right node)))
-	   ((and (memq (org-element-type element) '(item table-row))
-	         (let ((parent (org-element-property :parent element)))
-		   (and (= (org-element-property :begin element)
-			   (org-element-property :contents-begin parent))
-		        (setq node nil
-			      lower parent
-			      upper parent)))))
-	   (t
-	    (setq node nil
-		  lower element
-		  upper element)))))
-      (pcase side
-        (`both (cons lower upper))
-        (`nil lower)
-        (_ upper)))))
+    (let* ((limit (and org-element--cache-sync-requests
+                       (org-element--request-key (car org-element--cache-sync-requests))))
+	   (node (org-element--cache-root))
+           (hash-pos (mod (org-knuth-hash pos) org-element--cache-hash-size))
+           (hashed (aref org-element--cache-hash hash-pos))
+	   lower upper)
+      (cl-incf (cdr org-element--cache-hash-statistics))
+      (if (and hashed (not side)
+               (or (not limit)
+                   ;; Limit can be a list key.
+                   (org-element--cache-key-less-p pos limit))
+               (= pos (org-element-property :begin hashed))
+               (org-element-property :cached hashed))
+          (progn
+            (cl-incf (car org-element--cache-hash-statistics))
+            hashed)
+        (while node
+          (let* ((element (avl-tree--node-data node))
+	         (begin (org-element-property :begin element)))
+	    (cond
+	     ((and limit
+	           (not (org-element--cache-key-less-p
+	               (org-element--cache-key element) limit)))
+	      (setq node (avl-tree--node-left node)))
+	     ((> begin pos)
+	      (setq upper element
+		    node (avl-tree--node-left node)))
+	     ((or (< begin pos)
+                  ;; If the element is section or org-data, we also need
+                  ;; to check the following element.
+                  (memq (org-element-type element) '(section org-data)))
+	      (setq lower element
+		    node (avl-tree--node-right node)))
+	     ;; We found an element in cache starting at POS.  If `side'
+	     ;; is `both' we also want the next one in order to generate
+	     ;; a key in-between.
+	     ;;
+	     ;; If the element is the first row or item in a table or
+	     ;; a plain list, we always return the table or the plain
+	     ;; list.
+	     ;;
+	     ;; In any other case, we return the element found.
+	     ((eq side 'both)
+	      (setq lower element)
+	      (setq node (avl-tree--node-right node)))
+	     ((and (memq (org-element-type element) '(item table-row))
+	           (let ((parent (org-element-property :parent element)))
+		     (and (= (org-element-property :begin element)
+			     (org-element-property :contents-begin parent))
+		          (setq node nil
+			        lower parent
+			        upper parent)))))
+	     (t
+	      (setq node nil
+		    lower element
+		    upper element)))))
+        (unless side (aset org-element--cache-hash hash-pos lower))
+        (pcase side
+          (`both (cons lower upper))
+          (`nil lower)
+          (_ upper))))))
 
 (defun org-element--cache-put (element)
   "Store ELEMENT in current buffer's cache, if allowed."
@@ -7283,6 +7309,7 @@ buffers."
 		    (avl-tree-create #'org-element--cache-compare))
         (setq-local org-element--headline-cache
 		    (avl-tree-create #'org-element--cache-compare))
+        (setq-local org-element--cache-hash (make-vector org-element--cache-hash-size nil))
         (setq-local org-element--cache-size 0)
         (setq-local org-element--headline-cache-size 0)
 	(setq-local org-element--cache-sync-keys-value 0)
