@@ -158,7 +158,7 @@
 (declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
 
-(defconst org-persist--storage-version "2.6"
+(defconst org-persist--storage-version "3.0"
   "Persistent storage layout version.")
 
 (defgroup org-persist nil
@@ -167,17 +167,17 @@
   :group 'org)
 
 (defcustom org-persist-directory (expand-file-name
-                                  (org-file-name-concat
-                                   (let ((cache-dir (when (fboundp 'xdg-cache-home)
-                                                      (xdg-cache-home))))
-                                     (if (or (seq-empty-p cache-dir)
-                                             (not (file-exists-p cache-dir))
-                                             (file-exists-p (org-file-name-concat
-                                                             user-emacs-directory
-                                                             "org-persist")))
-                                         user-emacs-directory
-                                       cache-dir))
-                                   "org-persist/"))
+                       (org-file-name-concat
+                        (let ((cache-dir (when (fboundp 'xdg-cache-home)
+                                           (xdg-cache-home))))
+                          (if (or (seq-empty-p cache-dir)
+                                  (not (file-exists-p cache-dir))
+                                  (file-exists-p (org-file-name-concat
+                                                  user-emacs-directory
+                                                  "org-persist")))
+                              user-emacs-directory
+                            cache-dir))
+                        "org-persist/"))
   "Directory where the data is stored."
   :type 'directory)
 
