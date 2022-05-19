@@ -7525,7 +7525,7 @@ the cache."
                                org-element--headline-cache org-element--cache))
                       (cache-walk-abort
                        ;; Abort tree traversal.
-                       () `(setq data nil))
+                       () `(setq tree-iter nil))
                       (element-match-at-point
                        ;; Returning the first element to match around point.
                        ;; For example, if point is inside headline and
@@ -7834,7 +7834,8 @@ the cache."
                           (org-element--parse-to (1+ start)))))
                   (setq data
                         (condition-case nil
-                            (iter-next tree-iter (and start (org-element-create 'dummy `(:begin ,start))))
+                            (when tree-iter
+                              (iter-next tree-iter (and start (org-element-create 'dummy `(:begin ,start)))))
                           ('iter-end-of-sequence nil))))))
             (when (and org-element--cache-map-statistics
                        (or (not org-element--cache-map-statistics-threshold)
