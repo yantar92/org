@@ -686,6 +686,14 @@ and subscripts."
              '((bold italic underline verbatim code strike-through)
                (:begin-marker (when org-hide-emphasis-markers '(face nil invisible t)))
                (:end-marker (when org-hide-emphasis-markers '(face nil invisible t)))))
+          ;; Entities.
+          (entity
+           (:full-no-blank
+            (compose-region
+             (org-element-match-beginning :full-no-blank)
+             (org-element-match-end :full-no-blank)
+             (org-element-match-property :utf-8) nil)
+            nil t))
           ))
   (let ((org-font-lock-extra-keywords
 	 (list
@@ -700,7 +708,6 @@ and subscripts."
 	    1 'org-list-dt prepend)
 	  ;; Specials
 	  '(org-do-latex-and-related)
-	  '(org-fontify-entities)
 	  '(org-raise-scripts)
 	  ;; Blocks and meta lines
 	  '(org-fontify-meta-lines-and-blocks)
