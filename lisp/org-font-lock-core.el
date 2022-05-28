@@ -113,9 +113,9 @@ SUBEXPs.
     result))
 
 (defun org-font-lock--element-matcher (_)
-  "Match element according to `org-font-lock--current-element-components'."
+  "Transfer `org-element-match' components into numeric match groups."
   ;; Go to the beginning of the current element.
-  (goto-char (org-element-match-property :begin))
+  (goto-char (org-element-match-beginning))
   (let* ((component-count (1- (length (org-element-match-data))))
          (re (mapconcat #'identity
                         (append
@@ -200,9 +200,10 @@ font-lock format.  Use `org-font-lock--current-element'."
 (defun org-font-lock--fontify-objects (beg end datum)
   "Fontify everything between BEG and END inside DATUM.
 DATUM is a parse tree."
-  (org-element-map datum (append org-element-all-objects
-                                 org-element-all-elements
-                                 org-element-greater-elements)
+  (org-element-map datum
+      (append org-element-all-objects
+              org-element-all-elements
+              org-element-greater-elements)
     `(lambda (el)
        (unless (or (<= ,end (org-element-property :begin el))
                    (> ,beg (org-element-property :end el)))
@@ -210,7 +211,7 @@ DATUM is a parse tree."
     nil nil nil 'with-affiliated))
 
 (defvar org-font-lock-verbose nil
-  "Whether to display fontification info in modeline.")
+  "Whether to display fontification info in the mode line.")
 (defun org-font-lock-matcher (limit)
   "Fontify first chunk down to LIMIT.  Move point as needed."
   (setq org-font-lock-element-keywords
@@ -223,7 +224,7 @@ DATUM is a parse tree."
       (setq beg (point)))
     (let ((element (org-element-match nil (org-element-at-point beg))))
       (when element
-        ;; Set match data.
+        ;; Set match data for font-lock.el.
         (org-font-lock--element-matcher nil)
         ;; Fontify the element and all the objects inside.
         ;; We do not modify match data to keep only current element
