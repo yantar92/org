@@ -258,11 +258,5 @@ DATUM is a parse tree."
         (goto-char limit)
         t))))
 
-(defmacro org-font-lock-cond (&rest forms)
-  "Fontify when FORMS return non-nil"
-  `(lambda (limit)
-     (when (progn ,@forms)
-       (org-font-lock--element-matcher limit))))
-
 (provide 'org-font-lock-core)
 ;;; org-font-lock-core.el ends here

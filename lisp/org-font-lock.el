@@ -930,11 +930,10 @@ and subscripts."
           ;; element.  This is needed when users types in a new
           ;; element and typing initially triggers flyspell error
           ;; inside the incomplete element.
-          (,(org-font-lock-cond
-             (org-with-point-at (org-element-match-property :end)
-               (when (memq (org-element-match-type)
-                           org-element-all-objects)
-                 (not (org-mode-flyspell-verify)))))
+          ((org-with-point-at (org-element-match-end)
+             (when (memq (org-element-match-type)
+                         org-element-all-objects)
+               (not (org-mode-flyspell-verify))))
            (:full-no-blank
             (prog1 nil
               (org-remove-flyspell-overlays-in
@@ -984,8 +983,7 @@ and subscripts."
              (org-element-match-property :priority))
             prepend))
           ;; Headline COMMENT
-          (headline
-           (:comment 'org-special-keyword t))
+          (headline (:comment 'org-special-keyword t))
           ;; Headline tags
           ,(when (memq 'tag org-highlight-links)
              '(headline (:tags `( face org-tag
@@ -1045,8 +1043,7 @@ and subscripts."
           (table-row (:line 'org-table append))
           ;; table.el table lines are not parsed.  Fall back to regexp
           ;; matching.
-          (,(org-font-lock-cond
-             (eq (org-element-match-property :type) 'table.el))
+          ((eq (org-element-match-property :type) 'table.el)
            ("^\\s-*\\(\\S-.*?\\)\\s-*$"
             ;; Search regex till :end.
             (progn
@@ -1075,13 +1072,13 @@ and subscripts."
             nil nil
             (1 'org-formula prepend)))
           ;; Drawers.
-          ,@(cl-loop for element-name in '(drawer property-drawer)
-                     collect `(,element-name
-                               (:begin-marker 'org-drawer t)
-                               (:end-marker 'org-drawer t)))
+          ((drawer property-drawer)
+           (:begin-marker 'org-drawer t)
+           (:end-marker 'org-drawer t))
           ;; Macro
-          (macro (:full-no-blank '(face org-macro org-macro t) t)
-                 (:full (org-font-lock-macro-fold) nil t))
+          (macro
+           (:full-no-blank '(face org-macro org-macro t) t)
+           (:full (org-font-lock-macro-fold) nil t))
           ;; Inline export snippets
           (export-snippet
            (:begin-marker 'font-lock-comment-face append)
@@ -1098,13 +1095,13 @@ and subscripts."
            (:full-no-blank (org-font-lock-link-fold) nil t)
            (:full-no-blank (org-font-lock-link-activate-func) nil t))
           ,(when (memq 'radio org-highlight-links)
-             `(,(org-font-lock-cond
-                 (string= "radio" (org-element-match-property :type)))
-               (:full-no-blank `( face nil ; face was set above.
-                                  mouse-face highlight
-			          keymap 'org-mouse-map
-			          help-echo "Radio target link"
-			          org-linked-text t))))
+             `((string= "radio" (org-element-match-property :type))
+               (:full-no-blank
+                `( face nil ; face was set above.
+                   mouse-face highlight
+		   keymap 'org-mouse-map
+		   help-echo "Radio target link"
+		   org-linked-text t))))
           ;; Timestamps
           ,(when (memq 'date org-highlight-links)
              '(timestamp
@@ -1125,18 +1122,16 @@ and subscripts."
                        for element-name in '(bold italic underline verbatim code strike-through)
                        collect `(,element-name (:full-no-blank ',fontspec prepend))))
           ;; `org-emphasis' text property.
-          ,@(when org-fontify-emphasized-text
-              (cl-loop for  element-name in '(bold italic underline verbatim code strike-through)
-                       ;; Note that we need "face nil" to trigger
-                       ;; applying rest of the properties.
-                       collect `(,element-name (:full-no-blank '(face nil org-emphasis t)))))
+          ,(when org-fontify-emphasized-text
+             '((bold italic underline verbatim code strike-through)
+               (:full-no-blank '(face nil org-emphasis t))))
           ;; `org-hide-emphasis-markers'. Note that it can be switched
           ;; without reloading.  Hence, we calculate fontification
           ;; dynamically.
-          ,@(when org-fontify-emphasized-text
-              (cl-loop for element-name in '(bold italic underline verbatim code strike-through)
-                       collect `(,element-name (:begin-marker (when org-hide-emphasis-markers '(face nil invisible t))))
-                       collect `(,element-name (:end-marker (when org-hide-emphasis-markers '(face nil invisible t))))))
+          ,(when org-fontify-emphasized-text
+             '((bold italic underline verbatim code strike-through)
+               (:begin-marker (when org-hide-emphasis-markers '(face nil invisible t)))
+               (:end-marker (when org-hide-emphasis-markers '(face nil invisible t)))))
           ))
   (let ((org-font-lock-extra-keywords
 	 (list
