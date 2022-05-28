@@ -57,8 +57,30 @@
 (defvar org-element-parsed-keywords)
 
 (defvar org-font-lock-element-keywords nil
-  "Like `font-lock-keywords', but also allows MATCHER to be element symbol
-and SUBEXP to be element component.")
+  "Like `font-lock-keywords', but also allows matching current Org element.
+
+In addition to the conventional `font-lock-keywords' MATCHER field, it
+can be an element symbol or a list of such symbols.  The keyword will
+be triggered when current element type is matching the symbol or an
+element in the list.
+
+The MATCHER can also take a form of (body).  Then, a matcher function
+executing body will be constructed when body returns non-nil.
+
+In addition, the current element match data will be available via
+`org-element-match-last', `org-element-match-type', and similar
+functions.
+
+SUBEXP can be a symbol provided by org-element-match library.
+
+Example:
+
+Fontify :key and :value parts of keyword element.
+`keyword' is the MATCHER for element type.  `:key' and `:value' and
+SUBEXPs.
+
+ (keyword (:key 'org-special-keyword t)
+          (:value 'org-property-value t))")
 
 (defun org-font-lock-create-glyph (string)
   "Transform STRING into glyph, displayed correctly."
@@ -129,22 +151,36 @@ and SUBEXP to be element component.")
     (nreverse new-highlights)))
 
 (defun org-font-lock--compile-keyword (keyword)
-  "Transform KEYWORD to original font-lock format.
-Use `org-font-lock--current-element'."
-  (if (and (car-safe keyword)
-           (or (member (car-safe keyword) org-element-all-elements)
-               (member (car-safe keyword) org-element-all-objects)
-               (member (car-safe keyword) org-element-greater-elements)))
-      ;; Filter out non-matching elements.
-      (when (eq (car-safe keyword) (org-element-match-type))
-        (cons 'org-font-lock--element-matcher
-              (org-font-lock--compile-highlight (cdr keyword))))
-    ;; Ordinary font-lock matcher.  Leave the matcher and compile
-    ;; highlight.
-    (if (car-safe keyword)
-        (cons (car-safe keyword)
-              (org-font-lock--compile-highlight (cdr keyword)))
-      keyword)))
+  "Transform KEYWORD to original font-lock format."
+  (let ((matcher (car-safe keyword)))
+    (when (and matcher (symbolp matcher))
+      (setq matcher (list matcher)))
+    (pcase matcher
+      ((and
+        (pred listp)
+        (pred
+         (cl-every
+          (lambda (type)
+            (memq type
+                  (append org-element-all-elements
+                          org-element-all-objects
+                          org-element-greater-elements))))))
+       ;; Filter out non-matching elements.
+       (when (cl-some (lambda (type) (eq type (org-element-match-type))) matcher)
+         (cons 'org-font-lock--element-matcher
+               (org-font-lock--compile-highlight (cdr keyword)))))
+      (`(,(pred (not (eq 'lambda))) . ,_)
+       (cons `(lambda (limit)
+                (when ,matcher
+                  (org-font-lock--element-matcher limit)))
+             (org-font-lock--compile-highlight (cdr keyword))))
+      (_
+       ;; Ordinary font-lock matcher.  Leave the matcher and compile
+       ;; highlight.
+       (if (car-safe keyword)
+           (cons (car-safe keyword)
+                 (org-font-lock--compile-highlight (cdr keyword)))
+         keyword)))))
 
 (defsubst org-font-lock--compile-keywords (keywords)
   "Transform KEYWORDS as defined in `org-font-lock-element-keywords' to original
