@@ -315,7 +315,7 @@ Return the following components:
           (org-element-property :begin element))
      ,(org-element-property :end element))
    `(:contents
-     ,(org-element-property :contents-beginning element)
+     ,(org-element-property :contents-begin element)
      ,(org-element-property :contents-end element))
    (if (and (org-element-property :contents-begin element)
             (> (org-element-property :contents-begin element)
