@@ -90,28 +90,6 @@ SUBEXPs.
       (push char composition)
       (push '(Br . Bl) composition))))
 
-(defun org-font-lock--group-keywords (keywords)
-  "Merge keywords for the same elements."
-  (let (matchers result)
-    (dolist (keyword keywords)
-      (when (eq (car-safe keyword) 'eval)
-        (setq keyword (eval (cdr keyword))))
-      (if (car-safe keyword)
-          (let ((highlights (cdr keyword)))
-            (dolist (highlight highlights)
-              (unless (car-safe highlight)
-                (setq highlight (cons :full highlight)))
-              (if (member (car-safe keyword) matchers)
-                  (push highlight (alist-get (car-safe keyword) result))
-                (push (car-safe keyword) matchers)
-                (push (list (car-safe keyword) highlight) result))))
-        (push keyword result)))
-    ;; Keep highlight order.
-    (dolist (keyword result)
-      (when (car-safe keyword)
-        (setcdr keyword (nreverse (cdr keyword)))))
-    result))
-
 (defun org-font-lock--element-matcher (_)
   "Transfer `org-element-match' components into numeric match groups."
   ;; Go to the beginning of the current element.
@@ -214,8 +192,6 @@ DATUM is a parse tree."
   "Whether to display fontification info in the mode line.")
 (defun org-font-lock-matcher (limit)
   "Fontify first chunk down to LIMIT.  Move point as needed."
-  (setq org-font-lock-element-keywords
-        (org-font-lock--group-keywords org-font-lock-element-keywords))
   (let ((beg (point)) (end limit))
     ;; `org-element-at-point' returns nil within blank lines at bob.
     ;; Skip it.
