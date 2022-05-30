@@ -1384,9 +1384,7 @@ Assume point is at beginning of the inline task."
            (contents-begin (if (eq contents-begin contents-end)
                                nil
                              contents-begin))
-           (contents-end (if (eq contents-begin contents-end)
-                             nil
-                           contents-end))
+           (contents-end (when contents-begin contents-end))
 	   (end (progn (when task-end (goto-char task-end))
 		       (forward-line)
 		       (skip-chars-forward " \r\t\n" limit)
