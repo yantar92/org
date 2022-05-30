@@ -508,7 +508,7 @@ and subscripts."
           ;; Diary sexp elements.
           (diary-sexp (:full-no-blank 'org-sexp-date t))
           ;; Headlines
-          (headline
+          ((headline inlinetask)
            (:title-line
             (if (org-element-match-property :archivedp)
                 'org-archived
@@ -522,37 +522,62 @@ and subscripts."
              (if org-fontify-whole-heading-line
                  '(headline (:title-line-whole (org-get-level-face) append))
                '(headline (:title-line (org-get-level-face) append))))
+          ,(when (featurep 'org-inlinetask)
+             (if org-fontify-whole-heading-line
+                 `(inlinetask
+                   (:title-line-whole 'org-inlinetask t)
+                   (:end-line-whole 'org-inlinetask t))
+               `(inlinetask
+                 (:title-line 'org-inlinetask t)
+                 (:end-line 'org-inlinetask t))))
+          ,(when (featurep 'org-inlinetask)
+             (let ((start-face
+                    ;; Virtual indentation will add the warning
+	            ;; face on the first star.  Thus, in that
+	            ;; case, only hide it.
+                    (if (or (not org-inlinetask-show-first-star)
+                            (and (bound-and-true-p org-indent-mode)
+			         (> org-indent-indentation-per-level 1)))
+			'org-hide
+		      'org-warning)))
+               `(inlinetask
+                 (:end-first-star ',start-face t)
+                 (:first-star ',start-face t))))
+          ,(when (featurep 'org-inlinetask)
+             `(inlinetask
+               (:end-mid-stars 'org-hide t)
+               (:mid-stars 'org-hide t)))
           ,(when org-hide-leading-stars
              '(headline (:leading-stars 'org-hide t)))
           ;; TODO keywords
-          (headline
+          ((headline inlinetask)
            (:todo
             (org-get-todo-face
              (org-element-match-property :todo-keyword))
             prepend))
           ;; Priority
-          (headline
+          ((headline inlinetask)
            (:priority
             (org-get-priority-face
              (org-element-match-property :priority))
             prepend))
           ;; Headline COMMENT
-          (headline (:comment 'org-special-keyword t))
+          ((headline inlinetask) (:comment 'org-special-keyword t))
           ;; Headline tags
           ,(when (memq 'tag org-highlight-links)
-             '(headline (:tags `( face org-tag
-                                  mouse-face highlight
-                                  keymap org-mouse-map
-                                  help-echo "Open tags agenda")
-                               prepend)))
+             '((headline inlinetask)
+               (:tags `( face org-tag
+                         mouse-face highlight
+                         keymap org-mouse-map
+                         help-echo "Open tags agenda")
+                      prepend)))
           ;; Special tag faces.
           ,(when org-tag-faces
-             `(headline
+             `((and (memq (org-element-match-type) '(headline inlinetask))
+                    (org-element-match-beginning :tags))
                (,org-tag-re
-                ;; When nil, no matching will be done.
-                (when (org-element-match-beginning :tags)
-                  (goto-char (org-element-match-beginning :tags)))
-                nil
+                (goto-char (org-element-match-beginning :tags))
+                (goto-char (org-element-match-end :tags))
                 (0
                  (let ((tg (org-get-tag-face 0)))
                    (unless (eq 'org-tag tg)
@@ -560,7 +585,8 @@ and subscripts."
                  prepend))))
           ;; Tags groups.
           ,(when (and org-group-tags org-tag-groups-alist)
-             `(headline
+             `((and (memq (org-element-match-type) '(headline inlinetask))
+                    (org-element-match-beginning :tags))
                ((lambda (limit)
                   (when (re-search-forward
                          (concat
@@ -570,9 +596,8 @@ and subscripts."
                          limit t)
                     (prog1 (point)
                       (backward-char 2))))
-                (when (org-element-match-beginning :tags)
-                  (goto-char (org-element-match-beginning :tags)))
-                nil
+                (goto-char (org-element-match-beginning :tags))
+                (goto-char (org-element-match-end :tags))
                 (0 'org-tag-group prepend))))
           ;; Planning
           (planning

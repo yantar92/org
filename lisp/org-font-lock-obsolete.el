@@ -491,5 +491,30 @@ highlighting was done, nil otherwise."
       t)))
 
 
+(defun org-inlinetask-fontify (limit)
+  "Fontify the inline tasks down to LIMIT."
+  (let* ((nstars (if org-odd-levels-only
+		     (1- (* 2 (or org-inlinetask-min-level 200)))
+		   (or org-inlinetask-min-level 200)))
+	 (re (concat "^\\(\\*\\)\\(\\*\\{"
+		     (format "%d" (- nstars 3))
+		     ",\\}\\)\\(\\*\\* .*\\)"))
+	 ;; Virtual indentation will add the warning face on the first
+	 ;; star.  Thus, in that case, only hide it.
+	 (start-face (if (and (bound-and-true-p org-indent-mode)
+			      (> org-indent-indentation-per-level 1))
+			 'org-hide
+		       'org-warning)))
+    (while (re-search-forward re limit t)
+      (if org-inlinetask-show-first-star
+	  (add-text-properties (match-beginning 1) (match-end 1)
+			       `(face ,start-face font-lock-fontified t)))
+      (add-text-properties (match-beginning
+			    (if org-inlinetask-show-first-star 2 1))
+			   (match-end 2)
+			   '(face org-hide font-lock-fontified t))
+      (add-text-properties (match-beginning 3) (match-end 3)
+			   '(face org-inlinetask font-lock-fontified t)))))
+
 (provide 'org-font-lock-obsolete)
 ;;; org-font-lock-obsolete.el ends here

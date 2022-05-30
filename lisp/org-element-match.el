@@ -658,6 +658,68 @@ Extra components are: `:stars', `:leading-stars', `:todo',
          `(:title-line ,beg ,line-end)
          `(:title-line-whole ,beg ,(min (1+ line-end) (org-element-property :end element)))))))))
 
+(defun org-element-match--inlinetask (element)
+  "Match inlinetask ELEMENT.
+Extra components are: `:stars', `:leading-stars', `:todo',
+`:priority', `:comment', `:tags', `:title', `:title-line',
+`:title-line-whole'."
+  (let* ((components (org-element-match--headline element))
+         (end-line-beg
+          (or (org-element-property :contents-end element)
+              (let ((case-fold-search t))
+                (org-with-point-at (org-element-match--end :title-line components)
+                  (org-skip-whitespace)
+                  (when (< (point) (org-element-property :end element))
+                    (point)))))))
+    (setq components
+          (nconc components
+                 `((:first-star
+                    ,(org-element-match--beginning :stars components)
+                    ,(1+ (org-element-match--beginning :stars components)))
+                   (:last-stars
+                    ,(- (org-element-match--end :stars components) 2)
+                    ,(org-element-match--end :stars components)))))
+    (push `(:mid-stars
+            ,(1+ (org-element-match--beginning :stars components))
+            ,(org-element-match--beginning :last-stars components))
+          components)
+    (unless end-line-beg
+      (setq components
+            (nconc components
+                   `((:end-line nil nil)
+                     (:end-line-whole nil nil)
+                     (:end-stars nil nil)
+                     (:end-first-star nil nil)
+                     (:end-last-stars nil nil)
+                     (:end-mid-stars nil nil)))))
+    (when end-line-beg
+      (push `(:end-line
+              ,end-line-beg
+              ,(org-element-match--end :full-no-blank components))
+            components)
+      (push `(:end-line-whole
+              ,end-line-beg
+              ,(min (1+ (org-element-match--end :full-no-blank components))
+                    (org-element-property :end element)))
+            components)
+      (push `(:end-stars
+              ,end-line-beg
+              ,(org-with-point-at end-line-beg
+                 (skip-chars-forward "*")
+                 (point)))
+            components)
+      (push `(:end-first-star ,end-line-beg ,(1+ end-line-beg))
+            components)
+      (push `(:end-last-stars
+              ,(- (org-element-match--end :end-stars components) 2)
+              ,(org-element-match--end :end-stars components))
+            components)
+      (push `(:end-mid-stars
+              ,(1+ end-line-beg)
+              ,(org-element-match--beginning :end-last-stars components))
+            components))
+    components))
+
 
 ;;;; API
 
