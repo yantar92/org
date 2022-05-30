@@ -5791,6 +5791,8 @@ the cache."
            (hash-pos (mod (org-knuth-hash pos) org-element--cache-hash-size))
            (hashed (aref org-element--cache-hash hash-pos))
 	   lower upper)
+      ;; `org-element--cache-key-less-p' does not accept markers.
+      (when (markerp pos) (setq pos (marker-position pos)))
       (cl-incf (cdr org-element--cache-hash-statistics))
       (if (and hashed (not side)
                (or (not limit)
