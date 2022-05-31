@@ -857,11 +857,13 @@ Never match CURRENT-ELEMENT if it is provided."
          (match-object? (cl-intersection
                          types org-element-all-objects)))
     ;; Check starting from outermost element starting at point.
-    (when (= (point) (org-element-property :begin element))
+    ;; We do not need to do it if CURRENT-ELEMENT is provided.
+    (when (and (not current-element)
+               (= (point) (org-element-property :begin element)))
       (while (and (org-element-property :parent element)
                   (not (eq 'org-data
-                           (org-element-type
-                            (org-element-property :parent element))))
+                         (org-element-type
+                          (org-element-property :parent element))))
                   (= (org-element-property :begin element)
                      (org-element-property
                       :begin
