@@ -4484,6 +4484,7 @@ that inner element, and so on."
                      ((pred number-or-marker-p)
                       (org-element-at-point pos-or-element))
                      (_ pos-or-element)))
+          (parent (org-element-property :parent element))
           (key (pcase first-only
                  (`no-recursion (list 'org-element-parse-element (or granularity 'object) 'no-recursion))
                  (`nil (list 'org-element-parse-element (or granularity 'object)))
@@ -4500,6 +4501,7 @@ that inner element, and so on."
                (org-element-property :mode element)
                (org-element-property :structure element)
                granularity visible-only nil first-only)))
+       (org-element-put-property result :parent parent)
        (unless visible-only
          (org-element-cache-store-key element key result)))
      result)))
