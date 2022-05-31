@@ -755,6 +755,20 @@ and subscripts."
                        (org-element-match-end :full-no-blank))
                       nil t)
                   `(:full-no-blank 'org-latex-and-related prepend))))
+          ;; Inline src blocks.
+          (inline-src-block
+           (:full-no-blank 'org-inline-src-block append)
+           (:language 'org-meta-line append)
+           (:src-marker 'shadow append)
+           (:value-end-marker 'shadow append)
+           (:value 'org-inline-src-block t)
+           ,(when org-src-fontify-natively
+              `(:value
+                (org-src-font-lock-fontify-block
+                 (org-element-match-property :language)
+                 (org-element-match-beginning :value)
+                 (org-element-match-end :value))
+                nil t)))
           ))
   (let ((org-font-lock-extra-keywords
 	 (list
@@ -772,7 +786,7 @@ and subscripts."
 	  '(org-raise-scripts)
 	  ;; Blocks and meta lines
 	  '(org-fontify-meta-lines-and-blocks)
-          '(org-fontify-inline-src-blocks)
+          ;; '(org-fontify-inline-src-blocks)
           ;; Citations.  When an activate processor is specified, if
           ;; specified, try loading it beforehand.
           (progn

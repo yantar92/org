@@ -555,6 +555,59 @@ Extra component is `:visible' containing visible part of the link."
     (nconc components
            (list `(:visible ,visible-beg ,visible-end)))))
 
+(defun org-element-match--inline-src-block (element)
+  "Match inline-src-block ELEMENT."
+  (let ((components (org-element-match--default element)))
+    (org-element-match--add :src-marker
+           (org-element-match--beginning :full-no-blank components)
+           ;; <src_
+           (+ 5 (org-element-match--beginning :full-no-blank components))
+           components)
+    (org-element-match--add :language
+           (org-element-match--end :src-marker components)
+           (+ (length (org-element-property :language element))
+              (org-element-match--end :src-marker components))
+           components)
+    (org-with-point-at (org-element-match--end :language components)
+      (org-element-match--add :parameters-begin-marker nil nil components)
+      (org-element-match--add :parameters-end-marker nil nil components)
+      (org-element-match--add :parameters-with-marker nil nil components)
+      (org-element-match--add :parameters-without-marker nil nil components)
+      (let ((parameters? (eq ?\[ (char-after))))
+        (when parameters?
+          (org-element-match--add :parameters-begin-marker (point) (1+ (point)) components))
+        (search-forward (org-element-property :value element))
+        (when parameters?
+          (org-element-match--add :parameters-with-marker
+                 (org-element-match--beginning :parameters-begin-marker components)
+                 (1- (match-beginning 0))
+                 components)
+          (org-element-match--add :parameters-without-marker
+                 (1+ (org-element-match--beginning :parameters-with-marker components))
+                 (1- (org-element-match--end :parameters-with-marker components))
+                 components)
+          (org-element-match--add :parameters-end-marker
+                 (1- (org-element-match--end :parameters-with-marker components))
+                 (org-element-match--end :parameters-with-marker components)
+                 components))
+        (org-element-match--add :value-begin-marker
+               (1- (match-beginning 0))
+               (match-beginning 0)
+               components)
+        (org-element-match--add :value
+               (match-beginning 0)
+               (match-end 0)
+               components)
+        (org-element-match--add :value-with-markers
+               (1- (match-beginning 0))
+               (1+ (match-end 0))
+               components)
+        (org-element-match--add :value-end-marker
+               (match-end 0)
+               (1+ (match-end 0))
+               components)))
+    components))
+
 (defun org-element-match--export-snippet (element)
   "Match export-snippet ELEMENT.
 Extra component is `:back-end'."
