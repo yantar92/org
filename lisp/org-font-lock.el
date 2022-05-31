@@ -719,6 +719,42 @@ and subscripts."
              (org-element-match-end :full-no-blank)
              (org-element-match-property :utf-8) nil)
             nil t))
+          ,(when (memq 'entities org-highlight-latex-and-related)
+             `(entity (:full-no-blank 'org-latex-and-related prepend)))
+          ;; Subscripts and superscripts.
+          ,(when (memq 'script org-highlight-latex-and-related)
+             `((and (memq (org-element-match-type) '(subscript superscript))
+                    (pcase org-use-sub-superscripts
+                      (`{} (org-element-match-property :use-brackets-p))
+                      (`nil nil)
+                      (_ t)))
+               (:full-no-blank 'org-latex-and-related prepend)))
+          ;; LaTeX fragments and LaTeX environments.
+          ,(when (or (memq 'latex org-highlight-latex-and-related)
+		     (memq 'native org-highlight-latex-and-related))
+             `((and (memq (org-element-match-type)
+                          '(latex-environment latex-fragment))
+                    (let ((matchers (plist-get org-format-latex-options :matchers)))
+                      (if (eq (org-element-match-type) 'latex-environment)
+                          (member "begin" matchers)
+                        (pcase (substring-no-properties
+                                (org-element-match-property :value)
+                                0 2)
+                          ("$$" (member "$$" matchers))
+                          ("\\(" (member "\\(" matchers))
+                          ("\\[" (member "\\[" matchers))
+                          (_
+                           (or (member "$" matchers)
+                               (and (member "$1" matchers)
+                                    (= 3 (length (org-element-match-property :value))))))))))
+               ,(if (memq 'native org-highlight-latex-and-related)
+                    `(:full-no-blank
+                      (org-src-font-lock-fontify-block
+                       "latex"
+                       (org-element-match-beginning :full-no-blank)
+                       (org-element-match-end :full-no-blank))
+                      nil t)
+                  `(:full-no-blank 'org-latex-and-related prepend))))
           ))
   (let ((org-font-lock-extra-keywords
 	 (list
@@ -732,7 +768,7 @@ and subscripts."
           '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
 	    1 'org-list-dt prepend)
 	  ;; Specials
-	  '(org-do-latex-and-related)
+	  ;; '(org-do-latex-and-related)
 	  '(org-raise-scripts)
 	  ;; Blocks and meta lines
 	  '(org-fontify-meta-lines-and-blocks)
