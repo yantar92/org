@@ -198,29 +198,57 @@ DATUM is a parse tree."
     (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
       (skip-chars-forward " \t\n\r")
       (setq beg (point)))
-    (let ((element (org-element-match nil (org-element-at-point beg))))
-      (when element
-        ;; Set match data for font-lock.el.
-        (org-font-lock--element-matcher nil)
-        ;; Fontify the element and all the objects inside.
-        ;; We do not modify match data to keep only current element
-        ;; match for font-lock.
-        (org-element-match-save-data
-            (org-font-lock--fontify-objects
-             beg end
-             (org-element-parse-element
-              element 'object nil 'no-recursion))
-          (goto-char beg)
-          (org-element-match-forward
-           (append org-element-all-elements
-                   org-element-greater-elements)
-           end
-           element)
-          (if (org-element-match-data)
-              (goto-char (1+ (org-element-match-beginning)))
-            ;; No other element before end.  element is completely
-            ;; fontified.  Move to its end.
-            (goto-char (min end (org-element-property :end element))))))
+    (let ((element (org-element-at-point beg)))
+      ;; Parent element might also start at BEG.  Start fontification
+      ;; from the outermost element starting at BEG.
+      (while (and (org-element-property :parent element)
+                  (not (eq 'org-data
+                         (org-element-type
+                          (org-element-property :parent element))))
+                  (eq (org-element-property :begin element)
+                      (org-element-property
+                       :begin
+                       (org-element-property :parent element))))
+        (setq element (org-element-property :parent element)))
+      (catch :next
+        (while element
+          ;; Set match data for font-lock.el.
+          (org-element-match nil element)
+          (org-font-lock--element-matcher nil)
+          ;; Fontify the element and all the objects inside.
+          ;; We do not modify match data to keep only current element
+          ;; match for font-lock.
+          (org-element-match-save-data
+              (org-font-lock--fontify-objects
+               beg end
+               (org-element-parse-element
+                element 'object nil 'no-recursion))
+            (goto-char beg)
+            (org-element-match-forward
+             (append org-element-all-elements
+                     org-element-greater-elements)
+             end
+             element)
+            (if (org-element-match-data)
+                (goto-char (org-element-match-beginning))
+              ;; No other element before end.  element is completely
+              ;; fontified.  Move to its end.
+              (goto-char (min end (org-element-property :end element))))
+            (if (and (org-element-match-data)
+                     (let ((next (org-element-at-point))
+                           (prev (org-element-at-point beg)))
+                       (and (eq (org-element-type prev)
+                                (org-element-type next))
+                            (eq (org-element-property :begin prev)
+                                (org-element-property :begin next)))))
+                ;; We cannot rely on `org-element-at-point' to return
+                ;; correct element in the next iteration.  Continue
+                ;; fontification within this call.
+                (setq element (org-element-match-last))
+              ;; Next element starts beyond beginning of current.  We
+              ;; are done here trusting font-lock to resume the
+              ;; fontification from the next point.
+              (throw :next t)))))
       (when (and element org-font-lock-verbose)
         (message "Fontified %S(%S:+%S) up to +%S"
                  (org-element-type element)
