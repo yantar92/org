@@ -671,55 +671,53 @@ Extra components are: `:stars', `:leading-stars', `:todo',
                   (org-skip-whitespace)
                   (when (< (point) (org-element-property :end element))
                     (point)))))))
-    (setq components
-          (nconc components
-                 `((:first-star
-                    ,(org-element-match--beginning :stars components)
-                    ,(1+ (org-element-match--beginning :stars components)))
-                   (:last-stars
-                    ,(- (org-element-match--end :stars components) 2)
-                    ,(org-element-match--end :stars components)))))
-    (push `(:mid-stars
-            ,(1+ (org-element-match--beginning :stars components))
-            ,(org-element-match--beginning :last-stars components))
-          components)
+    (org-element-match--add :first-star
+           (org-element-match--beginning :stars components)
+           (1+ (org-element-match--beginning :stars components))
+           components)
+    (org-element-match--add :last-stars
+           (- (org-element-match--end :stars components) 2)
+           (org-element-match--end :stars components)
+           components)
+    (org-element-match--add :mid-stars
+           (1+ (org-element-match--beginning :stars components))
+           (org-element-match--beginning :last-stars components)
+           components)
     (unless end-line-beg
-      (setq components
-            (nconc components
-                   `((:end-line nil nil)
-                     (:end-line-whole nil nil)
-                     (:end-stars nil nil)
-                     (:end-first-star nil nil)
-                     (:end-last-stars nil nil)
-                     (:end-mid-stars nil nil)))))
+      (org-element-match--add :end-line nil nil components)
+      (org-element-match--add :end-line-whole nil nil components)
+      (org-element-match--add :end-stars nil nil components)
+      (org-element-match--add :end-first-star nil nil components)
+      (org-element-match--add :end-last-stars nil nil components)
+      (org-element-match--add :end-mid-stars nil nil components))
     (when end-line-beg
-      (push `(:end-line
-              ,end-line-beg
-              ,(org-element-match--end :full-no-blank components))
-            components)
-      (push `(:end-line-whole
-              ,end-line-beg
-              ,(min (1+ (org-element-match--end :full-no-blank components))
-                    (org-element-property :end element)))
-            components)
-      (push `(:end-stars
-              ,end-line-beg
-              ,(org-with-point-at end-line-beg
-                 (skip-chars-forward "*")
-                 (point)))
-            components)
-      (push `(:end-first-star ,end-line-beg ,(1+ end-line-beg))
-            components)
-      (push `(:end-last-stars
-              ,(- (org-element-match--end :end-stars components) 2)
-              ,(org-element-match--end :end-stars components))
-            components)
-      (push `(:end-mid-stars
-              ,(1+ end-line-beg)
-              ,(org-element-match--beginning :end-last-stars components))
-            components))
+      (org-element-match--add :end-line
+             end-line-beg
+             (org-element-match--end :full-no-blank components)
+             components)
+      (org-element-match--add :end-line-whole
+             end-line-beg
+             (min (1+ (org-element-match--end :full-no-blank components))
+                  (org-element-property :end element))
+             components)
+      (org-element-match--add :end-stars
+             end-line-beg
+             (org-with-point-at end-line-beg
+               (skip-chars-forward "*")
+               (point))
+             components)
+      (org-element-match--add :end-first-star
+             end-line-beg (1+ end-line-beg)
+             components)
+      (org-element-match--add :end-last-stars
+             (- (org-element-match--end :end-stars components) 2)
+             (org-element-match--end :end-stars components)
+             components)
+      (org-element-match--add :end-mid-stars
+             (1+ end-line-beg)
+             (org-element-match--beginning :end-last-stars components)
+             components))
     components))
-
 
 ;;;; API
 
