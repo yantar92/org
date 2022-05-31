@@ -210,7 +210,7 @@ DATUM is a parse tree."
              beg end
              (org-element-parse-element
               element 'object nil 'no-recursion))
-          (goto-char (max beg (1+ (org-element-property :begin element))))
+          (goto-char beg)
           (org-element-match-forward
            (append org-element-all-elements
                    org-element-greater-elements)
