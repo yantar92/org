@@ -232,13 +232,13 @@
 ;;;; Internal functions
 
 (defmacro org-element-match--resolve-types (&optional types)
-  "Convert TYPES into list of element types or nil for everything."
+  "Convert TYPES into list of element types."
   `(pcase ,types
-     (`nil nil)
+     (`nil org-element-match--all-types)
      (`greater-element org-element-greater-elements)
      (`element (append org-element-greater-elements
                        org-element-all-elements))
-     (`object nil)
+     (`object org-element-all-objects)
      ((pred symbolp) (list ,types))
      ((pred listp) ,types)
      (_ (error "Uknown element type: %S" ,types))))
@@ -247,17 +247,16 @@
   "Get quick regexp to move to next element TYPES.
 Return nil when no such regexp can be constructed."
   (setq types (org-element-match--resolve-types types))
-  (when types
-    (let (re-list)
-      (catch :no-re
-        (dolist (type types)
-          (if (symbol-value (intern (format "org-element-match--quick-re-%s" type)))
-              (push `(regexp ,(symbol-value
-                               (intern
-                                (format "org-element-match--quick-re-%s" type))))
-                    re-list)
-            (throw :no-re nil)))
-        (rx-to-string `(or ,@re-list))))))
+  (let (re-list)
+    (catch :no-re
+      (dolist (type types)
+        (if (symbol-value (intern (format "org-element-match--quick-re-%s" type)))
+            (push `(regexp ,(symbol-value
+                             (intern
+                              (format "org-element-match--quick-re-%s" type))))
+                  re-list)
+          (throw :no-re nil)))
+      (rx-to-string `(or ,@re-list)))))
 
 (defun org-element-match--string (&optional component data)
   "Return `:full' or COMPONENT string from DATA."
@@ -823,11 +822,10 @@ at point."
   (setq org-element-match--element nil org-element-match--data nil)
   (setq type (org-element-match--resolve-types type))
   (let ((element (or element-or-object (org-element-context))))
-    (when type
-      (if inner?
-          (unless (memq (org-element-type element) type)
-            (setq element nil))
-        (setq element (org-element-lineage element type t))))
+    (if inner?
+        (unless (memq (org-element-type element) type)
+          (setq element nil))
+      (setq element (org-element-lineage element type t)))
     (when element
       (let ((matcher (intern-soft (format
                                    "org-element-match--%S"
@@ -856,9 +854,8 @@ Never match CURRENT-ELEMENT if it is provided."
          (bound (or bound (point-max)))
          (next bound)
          (element (or current-element (org-element-at-point)))
-         (match-object? (or (not types)
-                            (cl-intersection
-                             types org-element-all-objects))))
+         (match-object? (cl-intersection
+                         types org-element-all-objects)))
     ;; Check starting from outermost element starting at point.
     (when (= (point) (org-element-property :begin element))
       (while (and (org-element-property :parent element)
