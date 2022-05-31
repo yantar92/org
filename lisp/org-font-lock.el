@@ -729,6 +729,26 @@ and subscripts."
                       (`nil nil)
                       (_ t)))
                (:full-no-blank 'org-latex-and-related prepend)))
+          ,(when (and org-pretty-entities
+                      org-pretty-entities-include-sub-superscripts)
+             `((and (memq (org-element-match-type) '(subscript superscript))
+                    (pcase org-use-sub-superscripts
+                      (`{} (org-element-match-property :use-brackets-p))
+                      (`nil nil)
+                      (_ t)))
+               (:full-no-blank '(face nil org-emphasis t))
+               (:contents
+                `( face nil
+                   display
+                   ,(let ((tablep (org-element-lineage (org-element-match-property :parent) '(table))))
+                      (pcase (org-element-match-type)
+                        (`superscript
+                         (nth (if tablep 1 3) org-script-display))
+                        (`subscript
+                         (nth (if tablep 0 2) org-script-display))
+                        (_ (error "Fontification error: sub/superscript"))))))
+               (:begin-marker '(face nil invisible t))
+               (:end-marker '(face nil invisible t))))
           ;; LaTeX fragments and LaTeX environments.
           ,(when (or (memq 'latex org-highlight-latex-and-related)
 		     (memq 'native org-highlight-latex-and-related))
@@ -781,12 +801,8 @@ and subscripts."
 	  ;; Description list items
           '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
 	    1 'org-list-dt prepend)
-	  ;; Specials
-	  ;; '(org-do-latex-and-related)
-	  '(org-raise-scripts)
 	  ;; Blocks and meta lines
 	  '(org-fontify-meta-lines-and-blocks)
-          ;; '(org-fontify-inline-src-blocks)
           ;; Citations.  When an activate processor is specified, if
           ;; specified, try loading it beforehand.
           (progn
@@ -829,7 +845,8 @@ and subscripts."
 
 ;; FIXME: Empty drawers have no contents - matching is not correct.
 
-;; FIXME: inlinetasks are now handled separately from headlines. Add them.
+;; FIXME: Note the change in org-script-display handling: It appears
+;; to be swapped from the initial logic.
 
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here

@@ -913,5 +913,7 @@ Never match CURRENT-ELEMENT if it is provided."
            nil))
       (goto-char next))))
 
+;; FIXME: List the returned components in docstrings.
+
 (provide 'org-element-match)
 ;;; org-element-match.el ends here
