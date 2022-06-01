@@ -1469,13 +1469,13 @@ folded regions.")
             (`(jit-lock-bounds ,beg . ,end)
              (pcase font-lock-return-value
                (`(jit-lock-bounds ,oldbeg . ,oldend)
-                (put-text-property 'org-fold-core-fontified beg end t)
                 (setq font-lock-return-value
                       `(jit-lock-bounds
                         ,(min oldbeg beg)
                         ,(max oldend end))))
                (value (setq font-lock-return-value value))))))
         (put-text-property pos next 'fontified t)
+        (put-text-property pos next 'org-fold-core-fontified t)
         (setq pos next))
       (or font-lock-return-value `(jit-lock-bounds ,beg . ,end)))))
 
