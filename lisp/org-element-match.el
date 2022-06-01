@@ -325,6 +325,22 @@ Return the following components:
               (org-element-property :begin element))
          ,(org-element-property :contents-begin element))
      `(:begin-marker nil nil))
+   (if (and (org-element-property :contents-begin element)
+            (> (org-element-property :contents-begin element)
+               (or (org-element-property :post-affiliated element)
+                   (org-element-property :begin element)))
+            (org-with-point-at
+                (org-element-property :contents-begin element)
+              (bolp))
+            (org-with-point-at
+                (or (org-element-property :post-affiliated element)
+                    (org-element-property :begin element))
+              (bolp)))
+       `(:begin-marker-line
+         ,(or (org-element-property :post-affiliated element)
+              (org-element-property :begin element))
+         ,(1- (org-element-property :contents-begin element)))
+     `(:begin-marker-line nil nil))
    (if (and (org-element-property :contents-end element)
             (> (org-element-property :end element)
                (org-element-property :contents-end element)))
@@ -334,7 +350,23 @@ Return the following components:
            (goto-char (org-element-property :end element))
            (skip-chars-backward "\r\n\t ")
            (point)))
-     `(:end-marker nil nil))))
+     `(:end-marker nil nil))
+   (if (and (org-element-property :contents-end element)
+            (> (org-element-property :end element)
+               (org-element-property :contents-end element))
+            (org-with-point-at
+                (org-element-property :contents-end element)
+              (bolp))
+            (org-with-point-at
+                (org-element-property :end element)
+              (bolp)))
+       `(:end-marker-line
+         ,(org-element-property :contents-end element)
+         ,(org-with-wide-buffer
+           (goto-char (org-element-property :end element))
+           (skip-chars-backward "\r\n\t ")
+           (point)))
+     `(:end-marker-line nil nil))))
 
 (defun org-element-match--planning (element)
   "Match planning ELEMENT.
