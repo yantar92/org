@@ -738,7 +738,8 @@ future org buffers."
   (add-hook 'clone-indirect-buffer-hook #'org-fold-core-decouple-indirect-buffer-folds nil 'local)
   ;; Optimise buffer fontification to not fontify folded text.
   (when (eq font-lock-fontify-region-function #'font-lock-default-fontify-region)
-    (setq-local font-lock-fontify-region-function 'org-fold-core-fontify-region))
+    (setq-local font-lock-fontify-region-function 'org-fold-core-fontify-region)
+    (add-to-list 'font-lock-extra-managed-props 'org-fold-core-fontified))
   ;; Setup killing text
   (setq-local filter-buffer-substring-function #'org-fold-core--buffer-substring-filter)
   (if (and (boundp 'isearch-opened-regions)
@@ -1468,6 +1469,7 @@ folded regions.")
             (`(jit-lock-bounds ,beg . ,end)
              (pcase font-lock-return-value
                (`(jit-lock-bounds ,oldbeg . ,oldend)
+                (put-text-property 'org-fold-core-fontified beg end t)
                 (setq font-lock-return-value
                       `(jit-lock-bounds
                         ,(min oldbeg beg)

@@ -236,6 +236,7 @@ smart            Make point visible, and do insertion/deletion if it is
       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
       (:isearch-open . t)
       (:front-sticky . t)
+      (:font-lock-skip . t)
       (:alias . ( block center-block comment-block
                   dynamic-block example-block export-block
                   quote-block special-block src-block
@@ -245,6 +246,7 @@ smart            Make point visible, and do insertion/deletion if it is
       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
       (:isearch-open . t)
       (:front-sticky . t)
+      (:font-lock-skip . t)
       (:alias . (drawer property-drawer)))
      ,org-link--description-folding-spec
      ,org-link--link-folding-spec)))
