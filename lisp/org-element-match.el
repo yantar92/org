@@ -682,6 +682,23 @@ Extra component is `:line'."
           (skip-chars-backward "\r\n\t ")
           (point)))))))
 
+(defun org-element-match--table (element)
+  "Match table ELEMENT."
+  (let ((components (org-element-match--default element)))
+    (if (not (org-element-property :tblfm element))
+        (org-element-match--add :tblfm nil nil components)
+      (if (eq 'org (org-element-property :type element))
+          (org-element-match--add :tblfm
+                 (org-element-property :contents-end element)
+                 (1+ (org-element-match--end :full-no-blank components))
+                 components)
+        (org-element-match--add :tblfm
+               (+ (org-element-property :post-affiliated element)
+                  (length (org-element-property :value element)))
+               (1+ (org-element-match--end :full-no-blank components))
+               components)))
+    components))
+
 (defun org-element-match--headline (element)
   "Match headline ELEMENT.
 Extra components are: `:stars', `:leading-stars', `:todo',
@@ -802,6 +819,42 @@ Extra components are: `:stars', `:leading-stars', `:todo',
              (org-element-match--beginning :end-last-stars components)
              components))
     components))
+
+(defun org-element-match--src-block (element)
+  "Match src-block ELEMENT."
+  (let ((components (org-element-match--default element)))
+    (org-with-point-at (org-element-property :post-affiliated element)
+      (forward-line)
+      (org-element-match--add :begin-marker
+             (org-element-property :post-affiliated element)
+             (point)
+             components)
+      (org-element-match--add :begin-marker-line
+             (org-element-property :post-affiliated element)
+             (1- (point))
+             components)
+      (goto-char (org-element-match--end :full-no-blank components))
+      (beginning-of-line)
+      (org-element-match--add :contents
+             (org-element-match--end :begin-marker components)
+             (point)
+             components)
+      (org-element-match--add :end-marker
+             (point)
+             (line-beginning-position 2)
+             components)
+      (org-element-match--add :end-marker-line (point)
+             (line-end-position)
+             components))
+    components))
+(defalias 'org-element-match--export-block #'org-element-match--src-block)
+(defalias 'org-element-match--center-block #'org-element-match--src-block)
+(defalias 'org-element-match--comment-block #'org-element-match--src-block)
+(defalias 'org-element-match--dynamic-block #'org-element-match--src-block)
+(defalias 'org-element-match--example-block #'org-element-match--src-block)
+(defalias 'org-element-match--quote-block #'org-element-match--src-block)
+(defalias 'org-element-match--special-block #'org-element-match--src-block)
+(defalias 'org-element-match--verse-block #'org-element-match--src-block)
 
 ;;;; API
 
