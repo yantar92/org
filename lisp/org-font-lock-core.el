@@ -90,18 +90,27 @@ SUBEXPs.
       (push char composition)
       (push '(Br . Bl) composition))))
 
+(defvar org-font-lock-core--element-matcher-regexp-cache (make-hash-table)
+  "Hash table storing regexps for `org-font-lock--element-matcher'.
+This is more memory efficient then creating regexp strings every time.")
 (defun org-font-lock--element-matcher (_)
   "Transfer `org-element-match' components into numeric match groups."
   ;; Go to the beginning of the current element.
   (goto-char (org-element-match-beginning))
   (let* ((component-count (1- (length (org-element-match-data))))
-         (re (mapconcat #'identity
-                        (append
-                         (make-list component-count "\\(")
-                         '(".")
-                         (make-list component-count "\\)"))
-                        "" ;; Not optional in Emacs <29.
-                        )))
+         (re (or (gethash
+                  component-count
+                  org-font-lock-core--element-matcher-regexp-cache)
+                 (puthash
+                  component-count
+                  (mapconcat #'identity
+                             (append
+                              (make-list component-count "\\(")
+                              '(".")
+                              (make-list component-count "\\)"))
+                             "" ;; Not optional in Emacs <29.
+                             )
+                  org-font-lock-core--element-matcher-regexp-cache))))
     ;; Create match data with appropriate number of elements.
     (re-search-forward re)
     (let ((match-data (match-data)))
@@ -136,13 +145,7 @@ SUBEXPs.
     (pcase matcher
       ((and
         (pred listp)
-        (pred
-         (cl-every
-          (lambda (type)
-            (memq type
-                  (append org-element-all-elements
-                          org-element-all-objects
-                          org-element-greater-elements))))))
+        (pred (cl-every (lambda (type) (memq type org-element-match--all-types)))))
        ;; Filter out non-matching elements.
        (when (cl-some (lambda (type) (eq type (org-element-match-type))) matcher)
          (cons 'org-font-lock--element-matcher
@@ -179,13 +182,11 @@ font-lock format.  Use `org-font-lock--current-element'."
   "Fontify everything between BEG and END inside DATUM.
 DATUM is a parse tree."
   (org-element-map datum
-      (append org-element-all-objects
-              org-element-all-elements
-              org-element-greater-elements)
-    `(lambda (el)
-       (unless (or (<= ,end (org-element-property :begin el))
-                   (> ,beg (org-element-property :end el)))
-         (org-font-lock--fontify-object el)))
+      org-element-match--all-types
+    (lambda (el)
+      (unless (or (<= end (org-element-property :begin el))
+                  (> beg (org-element-property :end el)))
+        (org-font-lock--fontify-object el)))
     nil nil nil 'with-affiliated))
 
 (defvar org-font-lock-verbose nil
