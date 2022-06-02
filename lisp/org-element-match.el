@@ -243,7 +243,7 @@
      ((pred listp) ,types)
      (_ (error "Uknown element type: %S" ,types))))
 
-(defvar org-element-match--quick-re-cache (make-hash-table)
+(defvar org-element-match--quick-re-cache (make-hash-table :test #'equal)
   "Hash table caching return values of `org-element-match--quick-re'.")
 (defun org-element-match--quick-re (types)
   "Get quick regexp to move to next element TYPES.
