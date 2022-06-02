@@ -1467,6 +1467,7 @@ folded regions.")
           ;; Keep track of the actually fontified region.
           (pcase (font-lock-default-fontify-region pos next loudly)
             (`(jit-lock-bounds ,beg . ,end)
+             (put-text-property beg end 'org-fold-core-fontified t)
              (pcase font-lock-return-value
                (`(jit-lock-bounds ,oldbeg . ,oldend)
                 (setq font-lock-return-value
