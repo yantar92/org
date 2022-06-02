@@ -5448,13 +5448,20 @@ with `org-element--cache-compare'.  This cache is used in
 ;; balanced search strategies vs. cached fast uniformly balanced
 ;; search strategies.
 (defconst org-element--cache-hash-size 16)
-(defvar-local org-element--cache-hash nil
-  "Cached elements from `org-element--cache' for fast O(1) lookup.")
+(defvar-local org-element--cache-hash-left nil
+  "Cached elements from `org-element--cache' for fast O(1) lookup.
+When non-nil, it should be a vector representing POS arguments of
+`org-element--cache-find' called with nil SIDE argument.")
+(defvar-local org-element--cache-hash-right nil
+  "Cached elements from `org-element--cache' for fast O(1) lookup.
+When non-nil, it should be a vector representing POS arguments of
+`org-element--cache-find' called with non-nil, non-`both' SIDE argument.")
 
 (defvar org-element--cache-hash-statistics '(0 . 0)
   "Cons cell storing fraction of time Org makes use of `org-element--cache-hash'.
 The car is the number of successful uses and cdr is the total calls to
 `org-element--cache-find'.")
+(defvar org-element--cache-hash-nocache 0)
 
 (defvar-local org-element--cache-size 0
   "Size of the `org-element--cache'.
@@ -5790,12 +5797,18 @@ the cache."
     (let* ((limit (and org-element--cache-sync-requests
                        (org-element--request-key (car org-element--cache-sync-requests))))
 	   (node (org-element--cache-root))
-           (hash-pos (mod (org-knuth-hash pos) org-element--cache-hash-size))
-           (hashed (aref org-element--cache-hash hash-pos))
+           (hash-pos (unless (eq side 'both)
+                       (mod (org-knuth-hash pos)
+                            org-element--cache-hash-size)))
+           (hashed (if (not side)
+                       (aref org-element--cache-hash-left hash-pos)
+                     (unless (eq side 'both)
+                       (aref org-element--cache-hash-right hash-pos))))
 	   lower upper)
       ;; `org-element--cache-key-less-p' does not accept markers.
       (when (markerp pos) (setq pos (marker-position pos)))
       (cl-incf (cdr org-element--cache-hash-statistics))
+      (when (eq side 'both) (cl-incf org-element--cache-hash-nocache))
       (if (and hashed (not side)
                (or (not limit)
                    ;; Limit can be a list key.
@@ -5845,7 +5858,10 @@ the cache."
 	      (setq node nil
 		    lower element
 		    upper element)))))
-        (unless side (aset org-element--cache-hash hash-pos lower))
+        (if (not side)
+            (aset org-element--cache-hash-left hash-pos lower)
+          (unless (eq side 'both)
+            (aset org-element--cache-hash-right hash-pos lower)))
         (pcase side
           (`both (cons lower upper))
           (`nil lower)
@@ -7311,7 +7327,8 @@ buffers."
 		    (avl-tree-create #'org-element--cache-compare))
         (setq-local org-element--headline-cache
 		    (avl-tree-create #'org-element--cache-compare))
-        (setq-local org-element--cache-hash (make-vector org-element--cache-hash-size nil))
+        (setq-local org-element--cache-hash-left (make-vector org-element--cache-hash-size nil))
+        (setq-local org-element--cache-hash-right (make-vector org-element--cache-hash-size nil))
         (setq-local org-element--cache-size 0)
         (setq-local org-element--headline-cache-size 0)
 	(setq-local org-element--cache-sync-keys-value 0)
