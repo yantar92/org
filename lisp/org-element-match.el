@@ -924,8 +924,17 @@ at point."
                                    (org-element-type element)))))
         (unless (functionp matcher) (setq matcher 'org-element-match--default))
         (condition-case nil
-            (setq org-element-match--data (funcall matcher element)
-                  org-element-match--element element)
+            (progn
+              (setq org-element-match--data
+                    (or (org-element-cache-get-key
+                         element
+                         '(org-element-match match-data))
+                        (funcall matcher element)))
+              (org-element-cache-store-key
+               element
+               '(org-element-match match-data)
+               org-element-match--data)
+              (setq org-element-match--element element))
           (error (setq org-element-match--element nil org-element-match--data nil)))))))
 
 (defun org-element-match-forward (&optional types bound current-element)
