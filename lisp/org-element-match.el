@@ -966,7 +966,8 @@ at point."
               (org-element-cache-store-key
                element
                '(org-element-match match-data)
-               org-element-match--data)
+               org-element-match--data
+               'robust)
               (setq org-element-match--element element))
           (error (setq org-element-match--element nil org-element-match--data nil)))))))
 

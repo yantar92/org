@@ -650,8 +650,7 @@ Parse tree is modified by side effect."
 
 (defconst org-element--cache-element-properties
   '(:cached
-    :org-element--cache-sync-key
-    :fragile-cache)
+    :org-element--cache-sync-key)
   "List of element properties used internally by cache.")
 
 (defun org-element-set-element (old new)
@@ -4503,7 +4502,7 @@ that inner element, and so on."
                granularity visible-only nil first-only)))
        (org-element-put-property result :parent parent)
        (unless visible-only
-         (org-element-cache-store-key element key result)))
+         (org-element-cache-store-key element key result (eq 'no-recursion first-only))))
      result)))
 
 (defun org-element-parse-buffer (&optional granularity visible-only)
@@ -7349,18 +7348,23 @@ buffers."
     (org-element--cache-set-timer (current-buffer))))
 
 ;;;###autoload
-(defun org-element-cache-store-key (pos-or-element key value)
+(defun org-element-cache-store-key (pos-or-element key value &optional robust)
   "Store KEY with VALUE associated with POS-OR-ELEMENT.
 The key can be retrieved as long as the element (provided or at point)
-contents is not modified."
+contents is not modified.
+If optional argument ROBUST is non-nil, the key will be retained even
+when the contents (children) of current element are modified.  Only
+non-robust element modifications (affecting the element properties
+other then begin/end boundaries) will invalidate the key then."
   (let ((element (pcase pos-or-element
                    ((pred number-or-marker-p)
                     (org-element-at-point pos-or-element))
-                   (_ pos-or-element))))
-    (let ((key-store (org-element-property :fragile-cache element)))
+                   (_ pos-or-element)))
+        (property (if robust :robust-cache :fragile-cache)))
+    (let ((key-store (org-element-property property element)))
       (unless (hash-table-p key-store)
         (setq key-store (make-hash-table :test #'equal))
-        (org-element-put-property element :fragile-cache key-store))
+        (org-element-put-property element property key-store))
       (puthash key value key-store))))
 
 ;;;###autoload
@@ -7372,9 +7376,12 @@ contents is not modified."
                    ((pred number-or-marker-p)
                     (org-element-at-point pos-or-element))
                    (_ pos-or-element))))
-    (let ((key-store (org-element-property :fragile-cache element)))
-      (when (hash-table-p key-store)
-        (gethash key key-store)))))
+    (let ((key-store1 (org-element-property :fragile-cache element))
+          (key-store2 (org-element-property :robust-cache element)))
+      (or (when (hash-table-p key-store1)
+            (gethash key key-store1))
+          (when (hash-table-p key-store2)
+            (gethash key key-store2))))))
 
 (defvar warning-minimum-log-level) ; Defined in warning.el
 
