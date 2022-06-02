@@ -373,7 +373,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		  (format-time-string
 		   (substring tf 1 -1) (apply 'encode-time time))
 		  nil 'mouse-face 'highlight))
-    (compose-region beg end (org-font-lock-create-glyph str) 'decompose-region)))
+    (org-font-lock-compose str beg end)))
 
 (defun org-font-lock-activate-custom-time (limit)
   "Add custom time for dates."
@@ -779,10 +779,10 @@ and subscripts."
           ;; Entities.
           (entity
            (:full-no-blank
-            (compose-region
+            (org-font-lock-compose
+             (org-element-match-property :utf-8)
              (org-element-match-beginning :full-no-blank)
-             (org-element-match-end :full-no-blank)
-             (org-element-match-property :utf-8) nil)
+             (org-element-match-end :full-no-blank))
             nil t))
           ,(when (memq 'entities org-highlight-latex-and-related)
              `(entity (:full-no-blank 'org-latex-and-related prepend)))

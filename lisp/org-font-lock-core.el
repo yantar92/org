@@ -80,15 +80,32 @@ Fontify :key and :value parts of keyword element.
 SUBEXPs.
 
  (keyword (:key 'org-special-keyword t)
-          (:value 'org-property-value t))")
+          (:value 'org-property-value t))
 
-(defun org-font-lock-create-glyph (string)
-  "Transform STRING into glyph, displayed correctly."
-  (let ((composition nil))
-    (dolist (char (string-to-list string)
-		  (nreverse (cdr composition)))
-      (push char composition)
-      (push '(Br . Bl) composition))))
+Display all the entities inside tables as \"???\".
+
+ ((and (eq 'entity (org-element-match-type))
+      (not (org-element-lineage (org-element-match-last) '(table))))
+ (:full-no-blank
+  (org-font-lock-compose
+   \"???\"
+   (org-element-match-beginning :full-no-blank)
+   (org-element-match-end :full-no-blank))
+  nil t))")
+
+(defun org-font-lock-compose (string beg end)
+  "Compose region BEG..END using STRING.
+Return nil to make this function usable inside second element of a
+font-lock highlight."
+  (prog1 nil
+    (compose-region
+     beg end
+     (let ((composition nil))
+       (dolist (char (string-to-list string)
+		     (nreverse (cdr composition)))
+         (push char composition)
+         (push '(Br . Bl) composition)))
+     'decompose-region)))
 
 (defvar org-font-lock-core--element-matcher-regexp-cache (make-hash-table)
   "Hash table storing regexps for `org-font-lock--element-matcher'.
