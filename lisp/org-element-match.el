@@ -863,6 +863,39 @@ Extra components are: `:stars', `:leading-stars', `:todo',
 (defalias 'org-element-match--special-block #'org-element-match--src-block)
 (defalias 'org-element-match--verse-block #'org-element-match--src-block)
 
+(defun org-element-match--citation-reference (element)
+  "Match citation-reference ELEMENT."
+  (let ((components (org-element-match--default element)))
+    (org-with-point-at (org-element-property :begin element)
+      (re-search-forward
+       (concat "@" (org-element-property :key element))))
+    (org-element-match--add :key-full
+           (match-beginning 0)
+           (match-end 0)
+           components)
+    (org-element-match--add :key
+           ;; Skip "@".
+           (1+ (match-beginning 0))
+           (match-end 0)
+           components)
+    (org-element-match--add :prefix
+           (org-element-match--beginning :full-no-blank components)
+           (match-beginning 0)
+           components)
+    (org-element-match--add :suffix
+           (match-end 0)
+           (if (eq ?\; (char-before))
+               (1- (org-element-match--end :full-no-blank components))
+             (org-element-match--end :full-no-blank components))
+           components)
+    (org-element-match--add :separator
+           (when (eq ?\; (char-before))
+             (1- (org-element-match--end :full-no-blank components)))
+           (when (eq ?\; (char-before))
+             (org-element-match--end :full-no-blank components))
+           components)
+    components))
+
 ;;;; API
 
 (defmacro org-element-match-save-data (&rest body)

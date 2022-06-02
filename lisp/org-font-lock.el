@@ -478,6 +478,10 @@ and subscripts."
 
 (defun org-font-lock-set-defaults ()
   "Set font lock defaults for the current buffer."
+  ;; Citations.  When an activate processor is specified, if
+  ;; specified, try loading it beforehand.
+  (unless (null org-cite-activate-processor)
+    (org-cite-try-load-processor org-cite-activate-processor))
   (setq org-font-lock-element-keywords
         `(
           ;; Remove flyspell overlays if they are not allowed inside
@@ -854,7 +858,18 @@ and subscripts."
                  (org-element-match-beginning :value)
                  (org-element-match-end :value))
                 nil t)))
-          ))
+          ;; FIXME: There is currently no way to make use of the new
+          ;; font-lock keywords for oc backend.  May need to do
+          ;; something about it.
+          ,@(if (org-cite-activate-func)
+                `((citation
+                   (:full-no-blank
+                    (funcall
+                     (org-cite-activate-func)
+                     (org-element-match-last))
+                    nil t)))
+              `((citation (:full-no-blank 'org-cite prepend))
+                (citation-reference (:key-full 'org-cite-key prepend))))))
   (let ((org-font-lock-extra-keywords
 	 (list
 	  ;; Call the hook
@@ -866,12 +881,6 @@ and subscripts."
 	  ;; Description list items
           '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
 	    1 'org-list-dt prepend)
-          ;; Citations.  When an activate processor is specified, if
-          ;; specified, try loading it beforehand.
-          (progn
-            (unless (null org-cite-activate-processor)
-              (org-cite-try-load-processor org-cite-activate-processor))
-            '(org-cite-activate))
           )))
     (setq org-font-lock-extra-keywords (delq nil org-font-lock-extra-keywords))
     (run-hooks 'org-font-lock-set-keywords-hook)

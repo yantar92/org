@@ -1187,39 +1187,13 @@ and must return either a string, an object, or a secondary string."
 
 
 ;;; Internal interface with fontification (activate capability)
-(defun org-cite-fontify-default (cite)
-  "Fontify CITE with `org-cite' and `org-cite-key' faces.
-CITE is a citation object.  The function applies `org-cite' face
-on the whole citation, and `org-cite-key' face on each key."
-  (let ((beg (org-element-property :begin cite))
-        (end (org-with-point-at (org-element-property :end cite)
-               (skip-chars-backward " \t")
-               (point))))
-    (add-text-properties beg end '(font-lock-multiline t))
-    (add-face-text-property beg end 'org-cite)
-    (dolist (reference (org-cite-get-references cite))
-      (let ((boundaries (org-cite-key-boundaries reference)))
-        (add-face-text-property (car boundaries) (cdr boundaries)
-                                'org-cite-key)))))
-
-(defun org-cite-activate (limit)
-  "Activate citations from up to LIMIT buffer position.
-Each citation encountered is activated using the appropriate function
-from the processor set in `org-cite-activate-processor'."
-  (let* ((name org-cite-activate-processor)
-         (activate
-          (or (and name
-                   (org-cite-processor-has-capability-p name 'activate)
-                   (org-cite-processor-activate (org-cite-get-processor name)))
-              #'org-cite-fontify-default)))
-    (when (re-search-forward org-element-citation-prefix-re limit t)
-      (let ((cite (org-with-point-at (match-beginning 0)
-                    (org-element-citation-parser))))
-        (when cite
-          (funcall activate cite)
-          ;; Move after cite object and make sure to return
-          ;; a non-nil value.
-          (goto-char (org-element-property :end cite)))))))
+(defun org-cite-activate-func ()
+  "Get activate function from `org-cite-activate-processor'."
+  (when (and org-cite-activate-processor
+             (org-cite-processor-has-capability-p
+              org-cite-activate-processor 'activate))
+    (org-cite-processor-activate
+     (org-cite-get-processor org-cite-activate-processor))))
 
 
 ;;; Internal interface with Org Export library (export capability)
