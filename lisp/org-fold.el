@@ -236,7 +236,11 @@ smart            Make point visible, and do insertion/deletion if it is
       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
       (:isearch-open . t)
       (:front-sticky . t)
-      (:font-lock-skip . t)
+      ;; We do not use it here, because searching for next fontified
+      ;; region may become too slow when we need to cycle over each
+      ;; block/drawer.  At least, with current implementation of
+      ;; `org-fold-core-fontify-region'.
+      ;; (:font-lock-skip . t)
       (:alias . ( block center-block comment-block
                   dynamic-block example-block export-block
                   quote-block special-block src-block
@@ -246,7 +250,11 @@ smart            Make point visible, and do insertion/deletion if it is
       (:fragile . ,#'org-fold--reveal-drawer-or-block-maybe)
       (:isearch-open . t)
       (:front-sticky . t)
-      (:font-lock-skip . t)
+      ;; We do not use it here, because searching for next fontified
+      ;; region may become too slow when we need to cycle over each
+      ;; block/drawer.  At least, with current implementation of
+      ;; `org-fold-core-fontify-region'.
+      ;; (:font-lock-skip . t)
       (:alias . (drawer property-drawer)))
      ,org-link--description-folding-spec
      ,org-link--link-folding-spec)))
