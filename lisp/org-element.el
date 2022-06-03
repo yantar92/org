@@ -3910,7 +3910,9 @@ Assume point is at the beginning of the timestamp."
 	     (activep (eq (char-after) ?<))
 	     (raw-value
 	      (progn
-		(looking-at "\\([<[]\\(%%\\)?.*?\\)[]>]\\(?:--\\([<[].*?[]>]\\)\\)?")
+		(looking-at (concat "\\([<[]\\(%%\\)?.*?\\)[]>]\\(?:--\\("
+                                    org-ts-regexp-both
+                                    "\\)\\)?"))
 		(match-string-no-properties 0)))
 	     (date-start (match-string-no-properties 1))
 	     (date-end (match-string 3))
@@ -5442,25 +5444,33 @@ Each node of the tree contains an element.  Comparison is done
 with `org-element--cache-compare'.  This cache is used in
 `org-element-cache-map'.")
 
-;; See http://dx.doi.org/10.1016/0020-0190(90)90130-P
-;; Pugh [Information Processing Letters] (1990) Slow optimally
-;; balanced search strategies vs. cached fast uniformly balanced
-;; search strategies.
-(defconst org-element--cache-hash-size 16)
+(defconst org-element--cache-hash-size 16
+  "Cache size for recent cached calls to `org-element--cache-find'.
+
+This extra caching is based on the following paper:
+Pugh [Information Processing Letters] (1990) Slow optimally balanced
+ search strategies vs. cached fast uniformly balanced search
+ strategies.  http://dx.doi.org/10.1016/0020-0190(90)90130-P
+ 
+Also, see `org-element--cache-hash-left' and `org-element--cache-hash-right'.")
 (defvar-local org-element--cache-hash-left nil
   "Cached elements from `org-element--cache' for fast O(1) lookup.
 When non-nil, it should be a vector representing POS arguments of
-`org-element--cache-find' called with nil SIDE argument.")
+`org-element--cache-find' called with nil SIDE argument.
+Also, see `org-element--cache-hash-size'.")
 (defvar-local org-element--cache-hash-right nil
   "Cached elements from `org-element--cache' for fast O(1) lookup.
 When non-nil, it should be a vector representing POS arguments of
-`org-element--cache-find' called with non-nil, non-`both' SIDE argument.")
+`org-element--cache-find' called with non-nil, non-`both' SIDE argument.
+Also, see `org-element--cache-hash-size'.")
 
 (defvar org-element--cache-hash-statistics '(0 . 0)
-  "Cons cell storing fraction of time Org makes use of `org-element--cache-hash'.
+  "Cons cell storing how Org makes use of `org-element--cache-find' caching.
 The car is the number of successful uses and cdr is the total calls to
 `org-element--cache-find'.")
-(defvar org-element--cache-hash-nocache 0)
+(defvar org-element--cache-hash-nocache 0
+  "Number of calls to `org-element--cache-has' with `both' SIDE argument.
+These calls are not cached by hash.  See `org-element--cache-hash-size'.")
 
 (defvar-local org-element--cache-size 0
   "Size of the `org-element--cache'.
@@ -5788,7 +5798,7 @@ Pugh [Information Processing Letters] (1990) Slow optimally balanced
  search strategies vs. cached fast uniformly balanced search
  strategies.  http://dx.doi.org/10.1016/0020-0190(90)90130-P
  
-Also, see `org-element--cache-hash-left' and `org-element--cache-hash-right'."
+Also, see `org-element--cache-size'."
   (interactive)
   (message "%.2f%% of cache searches hashed, %.2f%% non-hashable."
 	   (* 100
