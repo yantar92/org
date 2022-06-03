@@ -4502,7 +4502,7 @@ that inner element, and so on."
                granularity visible-only nil first-only)))
        (org-element-put-property result :parent parent)
        (unless visible-only
-         (org-element-cache-store-key element key result (eq 'no-recursion first-only))))
+         (org-element-cache-store-key element key result)))
      result)))
 
 (defun org-element-parse-buffer (&optional granularity visible-only)
