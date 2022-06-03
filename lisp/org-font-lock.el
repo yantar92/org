@@ -861,15 +861,24 @@ and subscripts."
           ;; FIXME: There is currently no way to make use of the new
           ;; font-lock keywords for oc backend.  May need to do
           ;; something about it.
-          ,@(if (org-cite-activate-func)
-                `((citation
-                   (:full-no-blank
-                    (funcall
-                     (org-cite-activate-func)
-                     (org-element-match-last))
-                    nil t)))
-              `((citation (:full-no-blank 'org-cite prepend))
-                (citation-reference (:key-full 'org-cite-key prepend))))))
+          (eval
+           .
+           (when (org-cite-activate-func)
+             `(citation
+               (:full-no-blank
+                (funcall
+                 (org-cite-activate-func)
+                 (org-element-match-last))
+                nil t))))
+          (eval
+           .
+           (unless (org-cite-activate-func)
+             `(citation (:full-no-blank 'org-cite prepend))))
+          (eval
+           .
+           (unless (org-cite-activate-func)
+             `(citation-reference (:key-full 'org-cite-key prepend))))
+          ))
   (let ((org-font-lock-extra-keywords
 	 (list
 	  ;; Call the hook
