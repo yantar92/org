@@ -1430,6 +1430,8 @@ The arguments and return value are as specified for `filter-buffer-substring'."
 (defvar org-fold-core--force-fontification nil
   "Let-bind this variable to t in order to force fontification in
 folded regions.")
+(defvar org-fold-core-fontify-loudly nil
+  "When non-nil, print status messages during fontification.")
 (defun org-fold-core-fontify-region (beg end loudly &optional force)
   "Run `font-lock-default-fontify-region' in visible regions."
   (with-silent-modifications
@@ -1444,40 +1446,57 @@ folded regions.")
                              (org-fold-core-get-folding-spec-property spec :font-lock-skip))
                     (push spec result)))
                 result))))
-      ;; Move POS to first visible point within BEG..END.
-      (unless force
-        (while (and (catch :found
-                      (dolist (spec (org-fold-core-get-folding-spec 'all pos))
-                        (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
-                          (throw :found spec))))
-                    (< pos end))
-          (setq pos (org-fold-core-next-folding-state-change nil pos end))))
       (when force (setq pos beg next end))
       (while (< pos end)
+        ;; Move POS to first visible point within BEG..END.
         (unless force
-          (setq next (org-fold-core-next-folding-state-change skip-specs pos end))
+          (when org-fold-core-fontify-loudly
+            (message "Search first visible point from %S" pos))
+          (while (and (catch :found
+                        (dolist (spec (org-fold-core-get-folding-spec 'all pos))
+                          (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
+                            (throw :found spec))))
+                      (< pos end))
+            (setq pos (org-fold-core-next-folding-state-change nil pos end))
+            (when org-fold-core-fontify-loudly
+              (message "Invisible. Moving to %S" pos)))
+          (setq next (org-fold-core-next-folding-state-change nil pos end))
+          (when org-fold-core-fontify-loudly
+            (message "Searching the end of visible region. Candidate %S..%S" pos next))
           ;; Move to the end of the region to be fontified.
           (while (and (not (catch :found
                            (dolist (spec (org-fold-core-get-folding-spec 'all next))
                              (when (org-fold-core-get-folding-spec-property spec :font-lock-skip)
                                (throw :found spec)))))
                       (< next end))
-            (setq next (org-fold-core-next-folding-state-change nil next end))))
-        (save-excursion
-          ;; Keep track of the actually fontified region.
-          (pcase (font-lock-default-fontify-region pos next loudly)
-            (`(jit-lock-bounds ,beg . ,end)
-             (put-text-property beg end 'org-fold-core-fontified t)
-             (pcase font-lock-return-value
-               (`(jit-lock-bounds ,oldbeg . ,oldend)
-                (setq font-lock-return-value
-                      `(jit-lock-bounds
-                        ,(min oldbeg beg)
-                        ,(max oldend end))))
-               (value (setq font-lock-return-value value))))))
-        (put-text-property pos next 'fontified t)
-        (put-text-property pos next 'org-fold-core-fontified t)
-        (setq pos next))
+            (setq next (org-fold-core-next-folding-state-change nil next end))
+            (when org-fold-core-fontify-loudly
+              (message "Invisible. Extending to %S..%S" pos next))))
+        (when (< pos end)
+          (when org-fold-core-fontify-loudly
+            (if force
+                (message "Fontifying %S..%S..(limit)%S by force." pos next end)
+              (message "Fontifying unfolded region %S(%s)..%S(%s)..(limit)%S"
+                       pos
+                       (if (org-invisible-p pos) "invisible" "visible")
+                       next
+                       (if (org-invisible-p next) "invisible" "visible")
+                       end)))
+          (save-excursion
+            ;; Keep track of the actually fontified region.
+            (pcase (font-lock-default-fontify-region pos next loudly)
+              (`(jit-lock-bounds ,beg . ,end)
+               (put-text-property beg end 'org-fold-core-fontified t)
+               (pcase font-lock-return-value
+                 (`(jit-lock-bounds ,oldbeg . ,oldend)
+                  (setq font-lock-return-value
+                        `(jit-lock-bounds
+                          ,(min oldbeg beg)
+                          ,(max oldend end))))
+                 (value (setq font-lock-return-value value))))))
+          (put-text-property pos next 'org-fold-core-fontified t)
+          (put-text-property pos next 'fontified t)
+          (setq pos next)))
       (or font-lock-return-value `(jit-lock-bounds ,beg . ,end)))))
 
 (defun org-fold-core-update-optimisation (beg end)
