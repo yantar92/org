@@ -157,9 +157,12 @@ This is more memory efficient then creating regexp strings every time.")
 (defun org-font-lock--compile-keyword (keyword)
   "Transform KEYWORD to original font-lock format."
   (let ((matcher (car-safe keyword)))
-    (when (and matcher (symbolp matcher))
+    (when (and matcher (symbolp matcher)
+               (memq matcher org-element-match--all-types))
       (setq matcher (list matcher)))
     (pcase matcher
+      (`eval
+       (org-font-lock--compile-keyword (eval (cdr keyword))))
       ((and
         (pred listp)
         (pred (cl-every (lambda (type) (memq type org-element-match--all-types)))))
