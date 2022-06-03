@@ -248,22 +248,23 @@
 (defun org-element-match--quick-re (types)
   "Get quick regexp to move to next element TYPES.
 Return nil when no such regexp can be constructed."
-  (or (gethash types org-element-match--quick-re-cache)
-      (progn
-        (setq types (org-element-match--resolve-types types))
-        (puthash
-         types
-         (let (re-list)
-           (catch :no-re
-             (dolist (type types)
-               (if (symbol-value (intern (format "org-element-match--quick-re-%s" type)))
-                   (push `(regexp ,(symbol-value
-                                    (intern
-                                     (format "org-element-match--quick-re-%s" type))))
-                         re-list)
-                 (throw :no-re nil)))
-             (rx-to-string `(or ,@re-list))))
-         org-element-match--quick-re-cache))))
+  (let ((cached (gethash types org-element-match--quick-re-cache 'missing)))
+    (if (not (eq 'missing cached))
+        cached
+      (setq types (org-element-match--resolve-types types))
+      (puthash
+       types
+       (let (re-list)
+         (catch :no-re
+           (dolist (type types)
+             (if (symbol-value (intern (format "org-element-match--quick-re-%s" type)))
+                 (push `(regexp ,(symbol-value
+                                  (intern
+                                   (format "org-element-match--quick-re-%s" type))))
+                       re-list)
+               (throw :no-re nil)))
+           (rx-to-string `(or ,@re-list))))
+       org-element-match--quick-re-cache))))
 
 (defun org-element-match--string (&optional component data)
   "Return `:full' or COMPONENT string from DATA."
