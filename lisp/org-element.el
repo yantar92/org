@@ -5779,6 +5779,25 @@ This function assumes `org-element--headline-cache' is a valid AVL tree."
             (memq #'org-element--cache-after-change after-change-functions))
            (eq org-element--cache-change-tic (buffer-chars-modified-tick)))))
 
+;; FIXME: Remove after we establish that hashing app
+(defun org-element-cache-hash-show-statistics ()
+  "Display efficiency of O(1) query cache for `org-element--cache-find'.
+
+This extra caching is based on the following paper:
+Pugh [Information Processing Letters] (1990) Slow optimally balanced
+ search strategies vs. cached fast uniformly balanced search
+ strategies.  http://dx.doi.org/10.1016/0020-0190(90)90130-P
+ 
+Also, see `org-element--cache-hash-left' and `org-element--cache-hash-right'."
+  (interactive)
+  (message "%.2f%% of cache searches hashed, %.2f%% non-hashable."
+	   (* 100
+	      (/ (float (car org-element--cache-hash-statistics))
+		 (cdr org-element--cache-hash-statistics)))
+	   (* 100
+	      (/ (float org-element--cache-hash-nocache)
+		 (cdr org-element--cache-hash-statistics)))))
+
 (defun org-element--cache-find (pos &optional side)
   "Find element in cache starting at POS or before.
 
