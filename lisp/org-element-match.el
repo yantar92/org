@@ -1006,6 +1006,14 @@ at point."
                          element
                          '(org-element-match match-data))
                         (funcall matcher element)))
+              ;; Move `:full' component to `car' of the data.  This is
+              ;; required for consistency with Emacs `match-data'.  In
+              ;; particular, `org-font-lock--element-matcher' relies
+              ;; on this fact to translate `org-element-match--data' into original
+              ;; numbered `match-data'.
+              (let ((fullbeg (org-element-match-beginning :full))
+                    (fullend (org-element-match-end :full)))
+                (org-element-match--add :full fullbeg fullend org-element-match--data))
               (org-element-cache-store-key
                element
                '(org-element-match match-data)
