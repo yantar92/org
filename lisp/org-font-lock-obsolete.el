@@ -280,6 +280,14 @@ prompted for."
 			       '(font-lock-fontified t face org-meta-line))
 	  t))))))
 
+(defun org-fontify-drawers (limit)
+  "Fontify drawers."
+  (when (re-search-forward org-drawer-regexp limit t)
+    (add-text-properties (1- (match-beginning 1)) (1+ (match-end 1))
+			 '(font-lock-fontified t face org-drawer))
+    (org-remove-flyspell-overlays-in
+     (line-beginning-position) (line-beginning-position 2))
+    t))
 
 (defun org-fontify-macros (limit)
   "Fontify macros."
@@ -515,6 +523,205 @@ highlighting was done, nil otherwise."
 			   '(face org-hide font-lock-fontified t))
       (add-text-properties (match-beginning 3) (match-end 3)
 			   '(face org-inlinetask font-lock-fontified t)))))
+
+(defun org-activate-links--overlays (limit)
+  "Add link properties to links.
+This includes angle, plain, and bracket links."
+  (catch :exit
+    (while (re-search-forward org-link-any-re limit t)
+      (let* ((start (match-beginning 0))
+	     (end (match-end 0))
+	     (visible-start (or (match-beginning 3) (match-beginning 2)))
+	     (visible-end (or (match-end 3) (match-end 2)))
+	     (style (cond ((eq ?< (char-after start)) 'angle)
+			  ((eq ?\[ (char-after (1+ start))) 'bracket)
+			  (t 'plain))))
+	(when (and (memq style org-highlight-links)
+		   ;; Do not span over paragraph boundaries.
+		   (not (string-match-p org-element-paragraph-separate
+				      (match-string 0)))
+		   ;; Do not confuse plain links with tags.
+		   (not (and (eq style 'plain)
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
+	  (let* ((link-object (save-excursion
+				(goto-char start)
+				(save-match-data (org-element-link-parser))))
+		 (link (org-element-property :raw-link link-object))
+		 (type (org-element-property :type link-object))
+		 (path (org-element-property :path link-object))
+                 (face-property (pcase (org-link-get-parameter type :face)
+				  ((and (pred functionp) face) (funcall face path))
+				  ((and (pred facep) face) face)
+				  ((and (pred consp) face) face) ;anonymous
+				  (_ 'org-link)))
+		 (properties		;for link's visible part
+		  (list 'mouse-face (or (org-link-get-parameter type :mouse-face)
+					'highlight)
+			'keymap (or (org-link-get-parameter type :keymap)
+				    org-mouse-map)
+			'help-echo (pcase (org-link-get-parameter type :help-echo)
+				     ((and (pred stringp) echo) echo)
+				     ((and (pred functionp) echo) echo)
+				     (_ (concat "LINK: " link)))
+			'htmlize-link (pcase (org-link-get-parameter type
+								     :htmlize-link)
+					((and (pred functionp) f) (funcall f))
+					(_ `(:uri ,link)))
+			'font-lock-multiline t)))
+	    (org-remove-flyspell-overlays-in start end)
+	    (org-rear-nonsticky-at end)
+	    (if (not (eq 'bracket style))
+		(progn
+                  (add-face-text-property start end face-property)
+		  (add-text-properties start end properties))
+	      ;; Handle invisible parts in bracket links.
+	      (remove-text-properties start end '(invisible nil))
+	      (let ((hidden
+		     (append `(invisible
+			       ,(or (org-link-get-parameter type :display)
+				    'org-link))
+			     properties)))
+		(add-text-properties start visible-start hidden)
+                (add-face-text-property start end face-property)
+		(add-text-properties visible-start visible-end properties)
+		(add-text-properties visible-end end hidden)
+		(org-rear-nonsticky-at visible-start)
+		(org-rear-nonsticky-at visible-end)))
+	    (let ((f (org-link-get-parameter type :activate-func)))
+	      (when (functionp f)
+		(funcall f start end path (eq style 'bracket))))
+	    (throw :exit t)))))		;signal success
+    nil))
+(defun org-activate-links--text-properties (limit)
+  "Add link properties to links.
+This includes angle, plain, and bracket links."
+  (catch :exit
+    (while (re-search-forward org-link-any-re limit t)
+      (let* ((start (match-beginning 0))
+	     (end (match-end 0))
+	     (visible-start (or (match-beginning 3) (match-beginning 2)))
+	     (visible-end (or (match-end 3) (match-end 2)))
+	     (style (cond ((eq ?< (char-after start)) 'angle)
+			  ((eq ?\[ (char-after (1+ start))) 'bracket)
+			  (t 'plain))))
+	(when (and (memq style org-highlight-links)
+		   ;; Do not span over paragraph boundaries.
+		   (not (string-match-p org-element-paragraph-separate
+					(match-string 0)))
+		   ;; Do not confuse plain links with tags.
+		   (not (and (eq style 'plain)
+			     (let ((face (get-text-property
+					  (max (1- start) (point-min)) 'face)))
+			       (if (consp face) (memq 'org-tag face)
+				 (eq 'org-tag face))))))
+	  (let* ((link-object (save-excursion
+				(goto-char start)
+				(save-match-data (org-element-link-parser))))
+		 (link (org-element-property :raw-link link-object))
+		 (type (org-element-property :type link-object))
+		 (path (org-element-property :path link-object))
+                 (face-property (pcase (org-link-get-parameter type :face)
+				  ((and (pred functionp) face) (funcall face path))
+				  ((and (pred facep) face) face)
+				  ((and (pred consp) face) face) ;anonymous
+				  (_ 'org-link)))
+		 (properties		;for link's visible part
+		  (list 'mouse-face (or (org-link-get-parameter type :mouse-face)
+					'highlight)
+			'keymap (or (org-link-get-parameter type :keymap)
+				    org-mouse-map)
+			'help-echo (pcase (org-link-get-parameter type :help-echo)
+				     ((and (pred stringp) echo) echo)
+				     ((and (pred functionp) echo) echo)
+				     (_ (concat "LINK: " link)))
+			'htmlize-link (pcase (org-link-get-parameter type
+								     :htmlize-link)
+					((and (pred functionp) f) (funcall f))
+					(_ `(:uri ,link)))
+			'font-lock-multiline t)))
+	    (org-remove-flyspell-overlays-in start end)
+	    (org-rear-nonsticky-at end)
+	    (if (not (eq 'bracket style))
+		(progn
+                  (add-face-text-property start end face-property)
+		  (add-text-properties start end properties))
+              ;; Initialise folding when used ouside org-mode.
+              (unless (or (derived-mode-p 'org-mode)
+			  (and (org-fold-folding-spec-p 'org-link-description)
+                               (org-fold-folding-spec-p 'org-link)))
+                (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
+                                         "...")))
+	      ;; Handle invisible parts in bracket links.
+	      (let ((spec (or (org-link-get-parameter type :display)
+			      'org-link)))
+                (unless (org-fold-folding-spec-p spec)
+                  (org-fold-add-folding-spec spec
+                                             (cdr org-link--link-folding-spec)
+                                             nil
+                                             'append)
+                  (org-fold-core-set-folding-spec-property spec :visible t))
+                (org-fold-region start end nil 'org-link)
+                (org-fold-region start end nil 'org-link-description)
+                ;; We are folding the whole emphasised text with SPEC
+                ;; first.  It makes everything invisible (or whatever
+                ;; the user wants).
+                (org-fold-region start end t spec)
+                ;; The visible part of the text is folded using
+                ;; 'org-link-description, which is forcing this part of
+                ;; the text to be visible.
+                (org-fold-region visible-start visible-end t 'org-link-description)
+		(add-text-properties start end properties)
+                (add-face-text-property start end face-property)
+		(org-rear-nonsticky-at visible-start)
+		(org-rear-nonsticky-at visible-end)))
+	    (let ((f (org-link-get-parameter type :activate-func)))
+	      (when (functionp f)
+		(funcall f start end path (eq style 'bracket))))
+	    (throw :exit t)))))		;signal success
+    nil))
+(defsubst org-activate-links (limit)
+  "Add link properties to links.
+This includes angle, plain, and bracket links."
+  (if (eq org-fold-core-style 'text-properties)
+      (org-activate-links--text-properties limit)
+    (org-activate-links--overlays limit)))
+
+(defun org-activate-dates (limit)
+  "Add text properties for dates."
+  (when (and (re-search-forward org-tsr-regexp-both limit t)
+	     (not (equal (char-before (match-beginning 0)) 91)))
+    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+    (add-text-properties (match-beginning 0) (match-end 0)
+			 (list 'mouse-face 'highlight
+			       'keymap org-mouse-map))
+    (org-rear-nonsticky-at (match-end 0))
+    (when org-display-custom-times
+      ;; If it's a date range, activate custom time for second date.
+      (when (match-end 3)
+	(org-display-custom-time (match-beginning 3) (match-end 3)))
+      (org-display-custom-time (match-beginning 1) (match-end 1)))
+    t))
+
+(defun org-activate-target-links (limit)
+  "Add text properties for target matches."
+  (when org-target-link-regexp
+    (let ((case-fold-search t))
+      ;; `org-target-link-regexp' matches one character before the
+      ;; actual target.
+      (unless (bolp) (forward-char -1))
+      (when (re-search-forward org-target-link-regexp limit t)
+	(org-remove-flyspell-overlays-in (match-beginning 1) (match-end 1))
+	(add-text-properties (match-beginning 1) (match-end 1)
+			     (list 'mouse-face 'highlight
+				   'keymap org-mouse-map
+				   'help-echo "Radio target link"
+				   'org-linked-text t))
+	(org-rear-nonsticky-at (match-end 1))
+	t))))
+
 
 (provide 'org-font-lock-obsolete)
 ;;; org-font-lock-obsolete.el ends here
