@@ -858,6 +858,10 @@ and subscripts."
                  (org-element-match-beginning :value)
                  (org-element-match-end :value))
                 nil t)))
+          ;; List items.
+          (item (:checkbox 'org-checkbox prepend)
+                (:tag 'org-list-dt prepend)
+                (:tag-colons 'org-list-dt prepend))
           ;; FIXME: There is currently no way to make use of the new
           ;; font-lock keywords for oc backend.  May need to do
           ;; something about it.
@@ -883,14 +887,7 @@ and subscripts."
 	 (list
 	  ;; Call the hook
 	  '(org-font-lock-hook)
-          '(org-font-lock-matcher)
-	  ;; Checkboxes
-	  '("^[ \t]*\\(?:[-+*]\\|[0-9]+[.)]\\)[ \t]+\\(?:\\[@\\(?:start:\\)?[0-9]+\\][ \t]*\\)?\\(\\[[- X]\\]\\)"
-	    1 'org-checkbox prepend)
-	  ;; Description list items
-          '("\\(?:^[ \t]*[-+]\\|^[ \t]+[*]\\)[ \t]+\\(.*?[ \t]+::\\)\\([ \t]+\\|$\\)"
-	    1 'org-list-dt prepend)
-          )))
+          '(org-font-lock-matcher))))
     (setq org-font-lock-extra-keywords (delq nil org-font-lock-extra-keywords))
     (run-hooks 'org-font-lock-set-keywords-hook)
     ;; Now set the full font-lock-keywords
@@ -931,6 +928,10 @@ and subscripts."
 
 ;; FIXME: org-protecting-blocks implies that example blocks can have
 ;; language specification, unlike what parser does.
+
+;; FIXME: Allow custom per-element type fontification functions.
+;; Maybe it can be either a macro returning keywords or a function
+;; accepting element arg.
 
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here

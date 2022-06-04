@@ -767,6 +767,48 @@ Extra components are: `:stars', `:leading-stars', `:todo',
          `(:title-line ,beg ,line-end)
          `(:title-line-whole ,beg ,(min (1+ line-end) (org-element-property :end element)))))))))
 
+(defun org-element-match--item (element)
+  "Match item ELEMENT."
+  (let ((components (org-element-match--default element))
+        ;; See `org-list-struct'.
+        (struct (assoc (org-element-property :begin element)
+                       (org-element-property :structure element)))
+        (pos (org-element-property :begin element)))
+    (if (eq 0 (nth 1 struct))
+        (org-element-match--add :indent nil nil components)
+      (org-element-match--add :indent pos (+ pos (nth 1 struct)) components))
+    (setq pos (+ pos (nth 1 struct)))
+    (org-element-match--add :bullet pos (+ pos (length (nth 2 struct))) components)
+    (org-element-match--add :bullet-no-blank
+           pos (+ pos (length (string-trim-right (nth 2 struct))))
+           components)
+    (setq pos (+ pos (length (nth 2 struct))))
+    (if (not (nth 3 struct))
+        (org-element-match--add :counter nil nil components)
+      (org-element-match--add :counter
+             pos
+             (+ pos
+                ;; "5" -> "[@5]": +3.
+                (+ 3 (length (nth 3 struct))))
+             components)
+      (setq pos (+ pos (+ 3 (length (nth 3 struct))))))
+    (org-with-point-at pos
+      (if (not (nth 4 struct))
+          (org-element-match--add :checkbox nil nil components)
+        (search-forward (nth 4 struct))
+        (org-element-match--add :checkbox (match-beginning 0) (match-end 0) components))
+      (if (not (nth 5 struct))
+          (progn
+            (org-element-match--add :tag nil nil components)
+            (org-element-match--add :tag-colons nil nil components))
+        (search-forward (nth 5 struct))
+        (org-element-match--add :tag (match-beginning 0) (match-end 0) components)
+        (org-skip-whitespace)
+        (org-element-match--add :tag-colons (point) (+ 2 (point)) components))
+      (org-skip-whitespace)
+      (org-element-match--add :contents (point) (nth 6 struct) components))
+    components))
+
 (defun org-element-match--inlinetask (element)
   "Match inlinetask ELEMENT.
 Extra components are: `:stars', `:leading-stars', `:todo',
