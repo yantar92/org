@@ -1030,15 +1030,18 @@ CURRENT-ELEMENT, when non-nil contains element at point.
 Never match CURRENT-ELEMENT if it is provided."
   (setq types (org-element-match--resolve-types types))
   (setq org-element-match--data nil org-element-match--element nil)
-  ;; `org-element-at-point' returns nil within blank lines at bob.
-  ;; Skip it.
-  (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
-    (skip-chars-forward " \t\n\r"))
   (let* ((re (org-element-match--quick-re types))
          (beg (point))
          (bound (or bound (point-max)))
          (next bound)
-         (element (or current-element (org-element-at-point)))
+         (element (or current-element
+                      (org-element-at-point
+                       ;; `org-element-at-point' returns nil within blank lines at bob.
+                       ;; Skip it.
+                       (progn
+                         (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
+                           (skip-chars-forward " \t\n\r"))
+                         (point)))))
          (match-object? (cl-intersection
                          types org-element-all-objects)))
     ;; Check starting from outermost element starting at point.
