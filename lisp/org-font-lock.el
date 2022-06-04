@@ -783,10 +783,14 @@ and subscripts."
           ;; Entities.
           (entity
            (:full-no-blank
-            (org-font-lock-compose
-             (org-element-match-property :utf-8)
-             (org-element-match-beginning :full-no-blank)
-             (org-element-match-end :full-no-blank))
+	    ;; "\_ "-family is left out on purpose.  Only the first one,
+	    ;; i.e., "\_ ", could be fontified anyway, and it would be
+	    ;; confusing when adding a second white space character.
+            (unless (string-match-p " $"(org-element-match-property :name))
+              (org-font-lock-compose
+               (org-element-match-property :utf-8)
+               (org-element-match-beginning :full-no-blank)
+               (org-element-match-end :full-no-blank)))
             nil t))
           ,(when (memq 'entities org-highlight-latex-and-related)
              `(entity (:full-no-blank 'org-latex-and-related prepend)))
