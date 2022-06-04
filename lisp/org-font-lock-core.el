@@ -219,6 +219,8 @@ DATUM is a parse tree."
     (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
       (skip-chars-forward " \t\n\r")
       (setq beg (point)))
+    (when org-font-lock-verbose
+      (message "org-font-lock: About to fontify %S..%S" beg limit))
     (let ((element (org-element-at-point beg)))
       ;; Parent element might also start at BEG.  Start fontification
       ;; from the outermost element starting at BEG.
@@ -271,7 +273,7 @@ DATUM is a parse tree."
               ;; fontification from the next point.
               (throw :next t)))))
       (when (and element org-font-lock-verbose)
-        (message "Fontified %S(%S:+%S) up to +%S"
+        (message "org-font-lock: Fontified %S(%S:+%S) up to +%S"
                  (org-element-type element)
                  (org-element-property :begin element)
                  (- (org-element-property :end element)
