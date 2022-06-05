@@ -196,7 +196,12 @@ font-lock format.  Use `org-font-lock--current-element'."
           org-font-lock-element-keywords)))
     (font-lock-fontify-keywords-region
      (org-element-property :begin object)
-     (org-element-property :end object))))
+     (org-element-property :end object)))
+  (when org-font-lock-verbose
+    (message "org-font-lock: Fontified %S(%S..%S) completely."
+             (org-element-type object)
+             (org-element-property :begin object)
+             (org-element-property :end object))))
 
 (defun org-font-lock--fontify-objects (beg end datum)
   "Fontify everything between BEG and END inside DATUM.
