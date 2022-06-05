@@ -297,22 +297,24 @@ regions to detect broken structural changes."
   :group 'org-appearance
   :type 'number)
 
-(defun org-font-lock-flush (beg end)
+(defun org-font-lock-flush (beg end &optional buffer)
   "Re-fontify all the elements intersecting with BEG..END."
-  (org-with-wide-buffer
-   (let* ((beg-element (org-element-at-point beg))
-          (end-element (org-element-at-point end))
-          (beg (min beg
-                    (or (org-element-property :begin beg-element) beg)
-                    (or (org-element-property :begin end-element) beg)))
-          (end (min (point-max)
-                    (max end
-                         (or (org-element-property :end end-element) end)
-                         (or (org-element-property :end beg-element) end)))))
-     (when org-font-lock-verbose
-       (message "org-font-lock: Flusing %S..%S after %f idle"
-                beg end (float-time (current-idle-time))))
-     (font-lock-flush beg end))))
+  (when (or (not buffer) (buffer-live-p buffer))
+    (with-current-buffer (or buffer (current-buffer))
+      (org-with-wide-buffer
+       (let* ((beg-element (org-element-at-point beg))
+              (end-element (org-element-at-point end))
+              (beg (min beg
+                        (or (org-element-property :begin beg-element) beg)
+                        (or (org-element-property :begin end-element) beg)))
+              (end (min (point-max)
+                        (max end
+                             (or (org-element-property :end end-element) end)
+                             (or (org-element-property :end beg-element) end)))))
+         (when org-font-lock-verbose
+           (message "org-font-lock: Flusing %S..%S after %f idle"
+                    beg end (float-time (current-idle-time))))
+         (font-lock-flush beg end))))))
 
 (defun org-font-lock-flush-delayed (beg end &optional _)
   "Re-fontify BEG..END on idle according to `org-font-lock-timeout'."
@@ -320,7 +322,7 @@ regions to detect broken structural changes."
     (setq beg (car region) end (cdr region)))
   (run-with-idle-timer
    org-font-lock-timeout nil
-   #'org-font-lock-flush beg end))
+   #'org-font-lock-flush beg end (current-buffer)))
 
 (defun org-font-lock--extend-region (beg end _)
   "Extend changed BEG..END region to element boundaries, if cached."
