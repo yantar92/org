@@ -284,5 +284,37 @@ DATUM is a parse tree."
         (goto-char limit)
         t))))
 
+(defcustom org-font-lock-timeout 0.2
+  "Timeout in seconds between font-lock refresh runs.
+
+This variable is controlling how often org-font-lock re-parses edited
+regions to detect broken structural changes."
+  :group 'org-appearance
+  :type 'integer)
+
+(defun org-font-lock-flush (beg end)
+  "Re-fontify all the elements intersecting with BEG..END."
+  (let ((beg-element (org-element-at-point beg))
+        (end-element (org-element-at-point end)))
+    (font-lock-flush
+     (or (org-element-property :begin beg-element) beg)
+     (min (point-max)
+          (or (org-element-property :end end-element) end)))))
+
+(defun org-font-lock-flush-delayed (beg end &optional _)
+  "Re-fontify BEG..END on idle according to `org-font-lock-timeout'."
+  (let ((region (org-font-lock--extend-region beg end nil)))
+    (setq beg (car region) end (cdr region)))
+  (run-with-idle-timer
+   org-font-lock-timeout nil
+   #'org-font-lock-flush beg end))
+
+(defun org-font-lock--extend-region (beg end _)
+  "Extend changed BEG..END region to element boundaries, if cached."
+  (let ((beg-element (org-element-at-point beg 'cached))
+        (end-element (org-element-at-point end 'cached)))
+    (cons (or (org-element-property :begin beg-element) beg)
+          (or (org-element-property :end end-element) end))))
+
 (provide 'org-font-lock-core)
 ;;; org-font-lock-core.el ends here

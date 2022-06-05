@@ -30,9 +30,6 @@
 
 (require 'org-faces)
 (require 'org-font-lock-core)
-;; FIXME: This should be eventually moved to org-compat.el when I get
-;; rid of the remaining fontification staff.
-(require 'org-font-lock-obsolete)
 
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-link-parser "org-element" ())
@@ -898,8 +895,12 @@ and subscripts."
     (setq-local org-font-lock-keywords org-font-lock-extra-keywords)
     (setq-local font-lock-defaults
 		'(org-font-lock-keywords t nil nil backward-paragraph))
+    (add-hook 'before-change-functions #'org-font-lock-flush-delayed nil t)
+    (add-hook 'after-change-functions #'org-font-lock-flush-delayed nil t)
     (setq-local font-lock-extend-after-change-region-function
-		#'org-fontify-extend-region)
+		#'org-font-lock--extend-region)
+    (setq-local font-lock-unfontify-region-function
+                #'org-unfontify-region)
     (kill-local-variable 'font-lock-keywords)
     nil))
 
