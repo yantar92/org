@@ -290,16 +290,23 @@ DATUM is a parse tree."
 This variable is controlling how often org-font-lock re-parses edited
 regions to detect broken structural changes."
   :group 'org-appearance
-  :type 'integer)
+  :type 'number)
 
 (defun org-font-lock-flush (beg end)
   "Re-fontify all the elements intersecting with BEG..END."
-  (let ((beg-element (org-element-at-point beg))
-        (end-element (org-element-at-point end)))
-    (font-lock-flush
-     (or (org-element-property :begin beg-element) beg)
-     (min (point-max)
-          (or (org-element-property :end end-element) end)))))
+  (org-with-wide-buffer
+   (let ((beg-element (org-element-at-point beg))
+         (end-element (org-element-at-point end)))
+     (when org-font-lock-verbose
+       (message "org-font-lock: Flusing %S..%S after %f idle"
+                (or (org-element-property :begin beg-element) beg)
+                (min (point-max)
+                     (or (org-element-property :end end-element) end))
+                (float-time (current-idle-time))))
+     (font-lock-flush
+      (or (org-element-property :begin beg-element) beg)
+      (min (point-max)
+           (or (org-element-property :end end-element) end))))))
 
 (defun org-font-lock-flush-delayed (beg end &optional _)
   "Re-fontify BEG..END on idle according to `org-font-lock-timeout'."
