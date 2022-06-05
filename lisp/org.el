@@ -132,6 +132,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-agenda-entry-get-agenda-timestamp "org-agenda" (pom))
 (declare-function org-agenda-list "org-agenda" (&optional arg start-day span with-hour))
 (declare-function org-agenda-redo "org-agenda" (&optional all))
+(declare-function org-agenda-todo-yesterday "org-agenda" (&optional arg))
 (declare-function org-agenda-remove-restriction-lock "org-agenda" (&optional noupdate))
 (declare-function org-archive-subtree "org-archive" (&optional find-done))
 (declare-function org-archive-subtree-default "org-archive" ())
@@ -223,6 +224,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (defvar org-target-link-regexp)
 (defvar org-target-regexp)
 (defvar org-id-overriding-file-name)
+(defvar org-priority-regexp)
 
 ;; load languages based on value of `org-babel-load-languages'
 (defvar org-babel-load-languages)
@@ -12842,12 +12844,6 @@ The command returns the inserted time stamp."
   (if org-display-custom-times
       (message "Time stamps are overlaid with custom format")
     (message "Time stamp overlays removed")))
-
-(defun org-fix-decoded-time (time)
-  "Set 0 instead of nil for the first 6 elements of time.
-Don't touch the rest."
-  (let ((n 0))
-    (mapcar (lambda (x) (if (< (setq n (1+ n)) 7) (or x 0) x)) time)))
 
 (defun org-time-stamp-to-now (timestamp-string &optional seconds)
   "Difference between TIMESTAMP-STRING and now in days.

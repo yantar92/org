@@ -788,6 +788,12 @@ Return nil when PROP is not set at POS."
 	(setq end (next-single-property-change pos prop nil (point-max))))
       (cons beg end))))
 
+(defconst org-nonsticky-props
+  '(mouse-face highlight keymap invisible intangible help-echo org-linked-text htmlize-link))
+
+(defsubst org-rear-nonsticky-at (pos)
+  (add-text-properties (1- pos) pos (list 'rear-nonsticky org-nonsticky-props)))
+
 
 ;;; Regexp matching
 
@@ -1360,6 +1366,12 @@ move it back by one char before doing this check."
 
 
 ;;; Time
+
+(defun org-fix-decoded-time (time)
+  "Set 0 instead of nil for the first 6 elements of time.
+Don't touch the rest."
+  (let ((n 0))
+    (mapcar (lambda (x) (if (< (setq n (1+ n)) 7) (or x 0) x)) time)))
 
 (defun org-2ft (s)
   "Convert S to a floating point time.

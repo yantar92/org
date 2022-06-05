@@ -40,9 +40,14 @@
 (defvar org-latex-default-packages-alist)
 (defvar org-latex-packages-alist)
 (defvar orgtbl-exp-regexp)
+(defvar engrave-faces-current-preset-style)
+(defvar engrave-faces-latex-mathescape)
+(defvar engrave-faces-latex-output-style)
 
 (declare-function engrave-faces-latex-gen-preamble "ext:engrave-faces-latex")
 (declare-function engrave-faces-latex-buffer "ext:engrave-faces-latex")
+(declare-function engrave-faces-latex-gen-preamble-line "ext:engrave-faces-latex")
+(declare-function engrave-faces-get-theme "ext:engrave-faces")
 
 
 ;;; Define Back-End

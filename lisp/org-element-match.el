@@ -71,6 +71,9 @@
 (declare-function org-element-copy "org-element" (element))
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-lineage "org-element" (datum &optional types with-self))
+(declare-function org-element-at-point "org-element" (&optional pom cached-only))
+(declare-function org-element-cache-store-key "org-element" (pos-or-element key value &optional robust))
+(declare-function org-element-cache-get-key "org-element" (pos-or-element key))
 
 (defvar org-element-comment-string)
 (defvar org-clock-string)

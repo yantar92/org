@@ -30,6 +30,9 @@
 
 (require 'org-faces)
 (require 'org-font-lock-core)
+(require 'org-fold)
+(require 'org-keys)
+(require 'ol)
 
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-link-parser "org-element" ())
@@ -40,6 +43,15 @@
 (defvar org-element-parsed-keywords)
 (defvar org-indent-indentation-per-level)
 (defvar org-inlinetask-show-first-star)
+(defvar org-ellipsis)
+(defvar org-time-stamp-custom-formats)
+(defvar org-tsr-regexp-both)
+(defvar org-done-keywords)
+(defvar org-tag-re)
+(defvar org-group-tags)
+(defvar org-tag-groups-alist)
+(defvar org-list-automatic-rules)
+(defvar org-emphasis-alist)
 
 (defgroup org-appearance nil
   "Settings for Org mode appearance."
@@ -231,12 +243,6 @@ it is installed to be used by font lock.  This can be useful if something
 needs to be inserted at a specific position in the font-lock sequence.")
 
 (defvar org-emph-face nil)
-
-(defconst org-nonsticky-props
-  '(mouse-face highlight keymap invisible intangible help-echo org-linked-text htmlize-link))
-
-(defsubst org-rear-nonsticky-at (pos)
-  (add-text-properties (1- pos) pos (list 'rear-nonsticky org-nonsticky-props)))
 
 (defun org-font-lock-footnote-reference-get-properties (&optional element)
   "Get text property plist or ELEMENT footnote reference or definition."
