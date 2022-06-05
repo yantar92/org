@@ -504,47 +504,44 @@ and subscripts."
                (org-element-match-property :begin)
                (org-element-match-property :end)))
             nil t))
-          ;; Comments.
-          (comment (:full-no-blank 'font-lock-comment-face t))
-          ;; Affiliated keywords.
-          ((and (org-element-match-property :post-affiliated)
-                (> (org-element-match-property :post-affiliated)
-                   (org-element-match-property :begin)))
-           (:affiliated 'org-meta-line t)
-           (,(concat "[ \t]*#\\+" (regexp-opt org-element-parsed-keywords) ":\\(.+\\)")
-            (progn
-              (goto-char (org-element-match-beginning :affiliated))
-              ;; Search case-insensitively.
-              (setq case-fold-search t)
-              (org-element-match-end :affiliated))
-            ;; Restore case fold.
-            (setq case-fold-search font-lock-keywords-case-fold-search)
-            (1 'org-block t)))
-          ;; Node properties and keywords.
-          (keyword
-           (:key 'org-special-keyword t)
-           (:value 'org-property-value t))
-          ((and (eq 'keyword (org-element-match-type))
-                (member (org-element-match-property :key)
-                        ;; FIXME: Originally, just title, subtitle,
-                        ;; author, email, and date.
-                        org-options-keywords))
-           (:value 'org-document-info-keyword t))
-          ((and (eq 'keyword (org-element-match-type))
-                (string= (org-element-match-property :key) "TITLE"))
-           (:value 'org-document-title t))
-          ((and (eq 'keyword (org-element-match-type))
-                (member (intern (downcase (org-element-match-property :key)))
-                        org-hidden-keywords))
-           (:key '(face nil invisible t) t))
-          (node-property
-           (:key 'org-special-keyword t)
-           (:value 'org-property-value t))
-          ;; Targets and radio targets.
-          (target (:full-no-blank 'org-target t))
-          (radio-target (:full-no-blank 'org-target t))
-          ;; Diary sexp elements.
-          (diary-sexp (:full-no-blank 'org-sexp-date t))
+          ;; Drawers.
+          ((drawer property-drawer)
+           (:begin-marker 'org-drawer t)
+           (:end-marker 'org-drawer t))
+          ;; Blocks.
+          (( src-block center-block comment-block dynamic-block
+             example-block export-block quote-block special-block
+             verse-block)
+           (,(if org-fontify-whole-block-delimiter-line
+                 :begin-marker :begin-marker-line)
+            'org-block-begin-line t)
+           (,(if org-fontify-whole-block-delimiter-line
+                 :end-marker :end-marker-line)
+            'org-block-end-line t)
+           (:contents
+            `((t :inherit
+                 ,(let ((face-name
+		         (intern (format
+                                  "org-block-%s"
+                                  (or (org-element-match-property :language)
+                                      (org-element-match-property :type))))))
+		    (append
+                     (and (facep face-name) (list face-name))
+		     '(org-block)))))
+            append))
+          ,(when org-fontify-quote-and-verse-blocks
+             `(quote-block (:full-no-blank 'org-quote t)))
+          ,(when org-fontify-quote-and-verse-blocks
+             `(verse-block (:full-no-blank 'org-verse t)))
+          ,(when org-src-fontify-natively
+             `((src-block export-block)
+               (:contents
+                (org-src-font-lock-fontify-block
+                 (or (org-element-match-property :language)
+                     (org-element-match-property :type))
+                 (org-element-match-beginning :contents)
+                 (org-element-match-end :contents))
+                nil t)))
           ;; Headlines
           ((headline inlinetask)
            (:title-line
@@ -637,25 +634,6 @@ and subscripts."
                 (goto-char (org-element-match-beginning :tags))
                 (goto-char (org-element-match-end :tags))
                 (0 'org-tag-group prepend))))
-          ;; Planning
-          (planning
-           (:scheduled-keyword 'org-special-keyword t)
-           (:deadline-keyword 'org-special-keyword t)
-           (:closed-keyword 'org-special-keyword t))
-          ;; Clock
-          (clock
-           (:clock-keyword 'org-special-keyword t))
-          ;; Footnote reference and footnote definition
-          ,(when (memq 'footnote org-highlight-links)
-             '(footnote-reference
-               (:full-no-blank
-                (org-font-lock-footnote-reference-get-properties)
-                t)))
-          ,(when (memq 'footnote org-highlight-links)
-             '(footnote-definition
-               (:full-no-blank
-                (org-font-lock-footnote-reference-get-properties)
-                t)))
           ;; TBLFM lines.
           (table (:tblfm 'org-meta-line t))
           ;; Table lines
@@ -690,45 +668,66 @@ and subscripts."
            ("\\s-*\\(<[lrc]?[0-9]*>\\)"
             nil nil
             (1 'org-formula prepend)))
-          ;; Drawers.
-          ((drawer property-drawer)
-           (:begin-marker 'org-drawer t)
-           (:end-marker 'org-drawer t))
-          ;; Blocks.
-          (( src-block center-block comment-block dynamic-block
-             example-block export-block quote-block special-block
-             verse-block)
-           (,(if org-fontify-whole-block-delimiter-line
-                 :begin-marker :begin-marker-line)
-            'org-block-begin-line t)
-           (,(if org-fontify-whole-block-delimiter-line
-                 :end-marker :end-marker-line)
-            'org-block-end-line t)
-           (:contents
-            `(face
-              (:inherit
-               ,(let ((face-name
-		       (intern (format
-                                "org-block-%s"
-                                (or (org-element-match-property :language)
-                                    (org-element-match-property :type))))))
-		  (append
-                   (and (facep face-name) (list face-name))
-		   '(org-block)))))
-            t))
-          ,(when org-fontify-quote-and-verse-blocks
-             `(quote-block (:full-no-blank 'org-quote t)))
-          ,(when org-fontify-quote-and-verse-blocks
-             `(verse-block (:full-no-blank 'org-verse t)))
-          ,(when org-src-fontify-natively
-             `((src-block export-block)
-               (:contents
-                (org-src-font-lock-fontify-block
-                 (or (org-element-match-property :language)
-                     (org-element-match-property :type))
-                 (org-element-match-beginning :contents)
-                 (org-element-match-end :contents))
-                nil t)))
+          ;; Comments.
+          (comment (:full-no-blank 'font-lock-comment-face t))
+          ;; Affiliated keywords.
+          ((and (org-element-match-property :post-affiliated)
+                (> (org-element-match-property :post-affiliated)
+                   (org-element-match-property :begin)))
+           (:affiliated 'org-meta-line t)
+           (,(concat "[ \t]*#\\+" (regexp-opt org-element-parsed-keywords) ":\\(.+\\)")
+            (progn
+              (goto-char (org-element-match-beginning :affiliated))
+              ;; Search case-insensitively.
+              (setq case-fold-search t)
+              (org-element-match-end :affiliated))
+            ;; Restore case fold.
+            (setq case-fold-search font-lock-keywords-case-fold-search)
+            (1 'org-block t)))
+          ;; Node properties and keywords.
+          (keyword
+           (:key 'org-special-keyword t)
+           (:value 'org-property-value t))
+          ((and (eq 'keyword (org-element-match-type))
+                (member (org-element-match-property :key)
+                        ;; FIXME: Originally, just title, subtitle,
+                        ;; author, email, and date.
+                        org-options-keywords))
+           (:value 'org-document-info-keyword t))
+          ((and (eq 'keyword (org-element-match-type))
+                (string= (org-element-match-property :key) "TITLE"))
+           (:value 'org-document-title t))
+          ((and (eq 'keyword (org-element-match-type))
+                (member (intern (downcase (org-element-match-property :key)))
+                        org-hidden-keywords))
+           (:key '(face nil invisible t) t))
+          (node-property
+           (:key 'org-special-keyword t)
+           (:value 'org-property-value t))
+          ;; Targets and radio targets.
+          (target (:full-no-blank 'org-target t))
+          (radio-target (:full-no-blank 'org-target t))
+          ;; Diary sexp elements.
+          (diary-sexp (:full-no-blank 'org-sexp-date t))
+          ;; Planning
+          (planning
+           (:scheduled-keyword 'org-special-keyword t)
+           (:deadline-keyword 'org-special-keyword t)
+           (:closed-keyword 'org-special-keyword t))
+          ;; Clock
+          (clock
+           (:clock-keyword 'org-special-keyword t))
+          ;; Footnote reference and footnote definition
+          ,(when (memq 'footnote org-highlight-links)
+             '(footnote-reference
+               (:full-no-blank
+                (org-font-lock-footnote-reference-get-properties)
+                t)))
+          ,(when (memq 'footnote org-highlight-links)
+             '(footnote-definition
+               (:full-no-blank
+                (org-font-lock-footnote-reference-get-properties)
+                t)))
           ;; Macro
           (macro
            (:full-no-blank '(face org-macro org-macro t) t)
