@@ -7956,7 +7956,7 @@ element ending there."
                            (or (not org-element--cache-sync-requests)
                                (org-element--cache-key-less-p pom (org-element--request-key (car org-element--cache-sync-requests))))
                            (org-element--cache-find pom))
-                    (condition-case err
+                    (condition-case-unless-debug err
                         (org-element--parse-to pom)
                       (error
                        (org-element--cache-warn

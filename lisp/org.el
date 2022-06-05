@@ -708,7 +708,7 @@ defined in org-duration.el.")
       (dolist (ext org-modules)
         (when org-load-modules-statistics
           (setq time-before (current-time)))
-        (condition-case nil (require ext)
+        (condition-case-unless-debug nil (require ext)
 	  (error (message "Problems while trying to load feature `%s'" ext)))
         (when org-load-modules-statistics
           (message "Loaded `%s' in %f sec"
@@ -896,7 +896,7 @@ depends on, if any."
 
 (eval-after-load 'ox
   '(dolist (backend org-export-backends)
-     (condition-case nil (require (intern (format "ox-%s" backend)))
+     (condition-case-unless-debug nil (require (intern (format "ox-%s" backend)))
        (error (message "Problems while trying to load export back-end `%s'"
 		       backend)))))
 
@@ -7411,7 +7411,7 @@ If COMMAND is not given, use `org-update-dblock'."
       (while (re-search-forward org-dblock-start-re nil t)
 	(goto-char (match-beginning 0))
         (save-excursion
-          (condition-case nil
+          (condition-case-unless-debug nil
               (funcall cmd)
             (error (message "Error during update of dynamic block"))))
 	(unless (re-search-forward org-dblock-end-re nil t)
@@ -13173,7 +13173,7 @@ D may be an absolute day number, or a calendar-type list (month day year)."
          ;; FIXME: Do not use (eval ... t) in the following sexp as
          ;; diary vars are still using dynamic scope.
 	 (result (if calendar-debug-sexp (eval sexp)
-		   (condition-case nil
+		   (condition-case-unless-debug nil
 		       (eval sexp)
 		     (error
 		      (beep)

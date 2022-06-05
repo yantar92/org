@@ -3352,7 +3352,7 @@ Return a string of lines to be included in the format expected by
     (insert-file-contents file)
     (unless (eq major-mode 'org-mode)
       (let ((org-inhibit-startup t)) (org-mode)))
-    (condition-case err
+    (condition-case-unless-debug err
 	;; Enforce consistent search.
 	(let ((org-link-search-must-match-exact-headline nil))
 	  (org-link-search location))

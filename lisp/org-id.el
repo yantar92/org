@@ -585,7 +585,7 @@ If SILENT is non-nil, messages are suppressed."
   (setq org-id-locations nil)
   (when org-id-track-globally
     (with-temp-buffer
-      (condition-case nil
+      (condition-case-unless-debug nil
 	  (progn
 	    (insert-file-contents org-id-locations-file)
 	    (setq org-id-locations (read (current-buffer)))

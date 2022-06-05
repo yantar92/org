@@ -108,7 +108,7 @@
 Set `sql-product' in Org edit buffer according to the
 corresponding :engine source block header argument."
   (let ((product (cdr (assq :engine (nth 2 info)))))
-    (condition-case nil
+    (condition-case-unless-debug nil
         (sql-set-product product)
       (user-error "Cannot set `sql-product' in Org Src edit buffer"))))
 

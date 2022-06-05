@@ -203,7 +203,7 @@ prompted for."
 
 
 (defun org-fontify-meta-lines-and-blocks (limit)
-  (condition-case nil
+  (condition-case-unless-debug nil
       (org-fontify-meta-lines-and-blocks-1 limit)
     (error (message "Org mode fontification error in %S at %d"
 		    (current-buffer)

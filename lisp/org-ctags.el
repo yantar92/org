@@ -277,7 +277,7 @@ Return the list."
   "Visit or create a file called `NAME.org', and insert a new topic.
 The new topic will be titled NAME (or TITLE if supplied)."
   (interactive "sFile name: ")
-  (condition-case v
+  (condition-case-unless-debug v
       (progn
 	(org-open-file name t)
 	(message "Opened file OK")

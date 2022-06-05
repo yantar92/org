@@ -3071,7 +3071,7 @@ block but are passed literally to the \"example-block\"."
 			     (string-equal "\"" (substring str -1))))))
 	   (org-babel--script-escape-inner str))
 	  (t str))))
-    (condition-case nil (org-babel-read escaped) (error escaped))))
+    (condition-case-unless-debug nil (org-babel-read escaped) (error escaped))))
 
 (defun org-babel-read (cell &optional inhibit-lisp-eval)
   "Convert the string value of CELL to a number if appropriate.
@@ -3103,7 +3103,7 @@ Otherwise return nil."
 If the table is trivial, then return it as a scalar."
   (let ((result
 	 (with-temp-buffer
-	   (condition-case err
+	   (condition-case-unless-debug err
 	       (progn
 		 (insert-file-contents file-name)
 		 (delete-file file-name)
@@ -3214,7 +3214,7 @@ of `org-babel-temporary-directory'."
   (when (and (boundp 'org-babel-temporary-directory)
 	     (file-exists-p org-babel-temporary-directory))
     ;; taken from `delete-directory' in files.el
-    (condition-case nil
+    (condition-case-unless-debug nil
 	(progn
 	  (mapc (lambda (file)
 		  ;; This test is equivalent to

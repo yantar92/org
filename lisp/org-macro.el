@@ -109,7 +109,7 @@ previous one, unless VALUE is nil.  Return the updated list."
           ;; Pre-process the evaluation form for faster macro expansion.
           (let* ((args (org-macro--makeargs value))
                  (body
-                  (condition-case nil
+                  (condition-case-unless-debug nil
                       ;; `value' is of the form "(eval ...)" but we
                       ;; don't want this to mean to pass the result to
                       ;; `eval' (which would cause double evaluation),
@@ -328,7 +328,7 @@ PROPERTY is a string.  LOCATION is a search string, as expected
 by `org-link-search', or the empty string."
   (save-excursion
     (when (org-string-nw-p location)
-      (condition-case _
+      (condition-case-unless-debug _
 	  (let ((org-link-search-must-match-exact-headline t))
 	    (org-link-search location nil t))
         (error

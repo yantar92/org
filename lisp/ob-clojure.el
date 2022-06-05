@@ -242,7 +242,7 @@
 	    (ob-clojure-eval-with-slime expanded params))))
     (org-babel-result-cond result-params
       result
-      (condition-case nil (org-babel-script-escape result)
+      (condition-case-unless-debug nil (org-babel-script-escape result)
 	(error result)))))
 
 (defun org-babel-execute:clojurescript (body params)

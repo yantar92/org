@@ -2585,7 +2585,7 @@ location of point."
 	  (setq form (replace-match formrpl t t form)))
 
 	(if lispp
-	    (setq ev (condition-case nil
+	    (setq ev (condition-case-unless-debug nil
 			 (eval (eval (read form)))
 		       (error "#ERROR"))
 		  ev (if (numberp ev) (number-to-string ev) ev)
