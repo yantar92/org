@@ -4578,14 +4578,9 @@ If STRING is the empty string or nil, return nil."
   (cond
    ((not string) nil)
    ((equal string "") nil)
-   (t (let ((local-variables (buffer-local-variables)))
+   (t (let ((buf (current-buffer)))
 	(with-temp-buffer
-	  (dolist (v local-variables)
-	    (ignore-errors
-	      (if (symbolp v) (makunbound v)
-		;; Don't set file name to avoid mishandling hooks (bug#44524)
-		(unless (memq (car v) '(buffer-file-name buffer-file-truename))
-		  (set (make-local-variable (car v)) (cdr v))))))
+          (org-clone-local-variables buf "\\`org-")
 	  ;; Transferring local variables may put the temporary buffer
 	  ;; into a read-only state.  Make sure we can insert STRING.
 	  (let ((inhibit-read-only t)) (insert string))
