@@ -38,7 +38,7 @@
 (declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
 (declare-function org-element--parse-objects "org-element" (beg end acc restriction &optional parent))
 (declare-function org-element-parse-buffer "org-element" (&optional granularity visible-only))
-(declare-function org-element--current-element "org-element" (limit &optional granularity mode structure add-to-cache))
+(declare-function org-element-parse-element "org-element" (&optional pos-or-element granularity visible-only first-only cached-only))
 (declare-function org-element-set-element "org-element" (org new))
 (declare-function org-element-copy "org-element" (datum))
 (declare-function org-element-restriction "org-element" (element))

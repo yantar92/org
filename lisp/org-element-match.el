@@ -65,9 +65,10 @@
 
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-set-contents "org-element" (element &rest contents))
-(declare-function org-element--parse-elements "org-element" (beg end mode structure granularity visible-only acc &optional first-only))
+(declare-function org-element-parse-element "org-element" (&optional pos-or-element granularity visible-only first-only cached-only))
 (declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
 (declare-function org-element-type "org-element" (element))
+(declare-function org-element-copy "org-element" (element))
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-lineage "org-element" (datum &optional types with-self))
 

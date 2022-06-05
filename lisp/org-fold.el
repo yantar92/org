@@ -408,18 +408,7 @@ When optional argument TYPE is a list of symbols among `blocks',
       (org-fold-region (point-min) (point-max) nil 'outline)
       (org-cycle-hide-drawers 'all))
      ((memq 'drawers types)
-      (save-excursion
-        (goto-char (point-min))
-        (while (and (< (point) end) (re-search-forward org-drawer-regexp end t))
-          (let* ((pair (get-char-property-and-overlay (line-beginning-position)
-                                                      'invisible))
-                 (o (cdr-safe pair)))
-            (if (overlayp o) (goto-char (overlay-end o))
-              (pcase (get-char-property-and-overlay (point) 'invisible)
-                (`(outline . ,o)
-                 (goto-char (overlay-end o))
-                 (delete-overlay o))
-                (_ nil))))))))))
+      (org-fold-hide-drawer-all)))))
 (defsubst org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
 By default, the function expands headings, blocks and drawers.

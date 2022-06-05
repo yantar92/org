@@ -37,6 +37,9 @@
 
 (defvar org-element-all-objects)
 (defvar org-element-paragraph-separate)
+(defvar org-element-parsed-keywords)
+(defvar org-indent-indentation-per-level)
+(defvar org-inlinetask-show-first-star)
 
 (defgroup org-appearance nil
   "Settings for Org mode appearance."

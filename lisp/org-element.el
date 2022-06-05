@@ -4466,8 +4466,10 @@ When POS-OR-ELEMENT is nil, parse element at point.  When position,
 parse element at that position.  When element, parse the provided
 element assuming that it is located in current buffer.
 
-The parsing is done recursively.  See `org-element-parse-buffer' for the detailed
-info on the return value.
+The parsing is done recursively.  See `org-element-parse-buffer' for
+the detailed info on the return value.
+
+GRANULARITY has the same meaning as in `org-element-parse-buffer'.
 
 When VISIBLE-ONLY is non-nil, don't parse contents of hidden
 elements.
@@ -8032,7 +8034,6 @@ Providing it allows for quicker computation."
     (org-with-wide-buffer
      (let* ((pos (point))
 	    (element (or element (org-element-at-point)))
-	    (type (org-element-type element))
 	    (post (org-element-property :post-affiliated element)))
        ;; If point is inside an element containing objects or
        ;; a secondary string, narrow buffer to the container and
@@ -8062,8 +8063,7 @@ Providing it allows for quicker computation."
          (narrow-to-region
           (org-element-property :post-affiliated element)
           (org-element-property :end element))))
-       (let ((restriction (org-element-restriction type))
-	     (parent element)
+       (let ((parent element)
              (cached (or (org-element-parse-element element 'object nil nil 'cached)
                          (org-element-parse-element element 'object nil 'no-recursion 'cached)
                          (org-element-parse-element element 'object nil 'first-only 'cached)

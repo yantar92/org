@@ -31,6 +31,14 @@
 
 ;;; Code:
 
+(defvar org-element-paragraph-separate)
+(defvar org-inlinetask-min-level)
+(defvar org-indent-indentation-per-level)
+(defvar org-inlinetask-show-first-star)
+
+(declare-function org-element-property "org-element" (property element))
+(declare-function org-element-link-parser "org-element" ())
+
 (defun org-do-emphasis-faces (limit)
   "Run through the buffer and emphasize strings."
   (let ((quick-re (format "\\([%s]\\|^\\)\\([~=*/_+]\\)"

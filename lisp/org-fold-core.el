@@ -1437,15 +1437,7 @@ folded regions.")
   (with-silent-modifications
     (let* ((pos beg) next font-lock-return-value
            (force (or force org-fold-core--force-fontification))
-           (org-fold-core--fontifying t)
-           (skip-specs
-            (unless force
-              (let (result)
-                (dolist (spec (org-fold-core-folding-spec-list))
-                  (when (and (not (org-fold-core-get-folding-spec-property spec :visible))
-                             (org-fold-core-get-folding-spec-property spec :font-lock-skip))
-                    (push spec result)))
-                result))))
+           (org-fold-core--fontifying t))
       (when force (setq pos beg next end))
       (while (< pos end)
         ;; Move POS to first visible point within BEG..END.
