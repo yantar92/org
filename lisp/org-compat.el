@@ -76,6 +76,9 @@
 (defvar org-table1-hline-regexp)
 (defvar org-fold-core-style)
 
+;;; Obsolete font-lock staff.
+(require 'org-font-lock-obsolete)
+
 
 ;;; Emacs < 29 compatibility
 
