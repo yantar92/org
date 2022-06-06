@@ -10738,7 +10738,7 @@ When FONTIFY is non-nil, make sure that matches are fontified."
                (setq todo (org-element-property :todo-keyword el)
                      level (org-element-property :level el)
                      category (org-entry-get-with-inheritance "CATEGORY" nil el)
-                     tags-list (org-get-tags el)
+                     tags-list (org-get-tags el nil fontify)
                      org-scanner-tags tags-list)
                (when (eq action 'agenda)
                  (setq ts-date-pair (org-agenda-entry-get-agenda-timestamp (point))
@@ -11799,7 +11799,7 @@ The tags are fontified when FONTIFY is non-nil."
            (not cached-tags)
            ;; Fontification should never happen in the middle of
            ;; caching.
-           (get-text-property 0 'fontified (car cached-tags)))))
+           (cl-every (lambda (tag) (org-fontified-p nil nil tag)) cached-tags))))
     (if ;; Tags are cached and do not need to be re-fontified.
         (and cached
              (or (not fontified)
@@ -11813,7 +11813,7 @@ The tags are fontified when FONTIFY is non-nil."
                                (looking-at org-tag-line-re))
                              (split-string (match-string 2) ":" t))))
         ;; Update the cache.
-        (when cached (org-element-put-property cached :tags local-tags))
+        (when cached (org-element-put-property cached :tags (mapcar #'copy-sequence local-tags)))
         ;; Return parsed tags.
         local-tags))))
 
@@ -11850,6 +11850,10 @@ The tags are fontified when FONTIFY is non-nil."
                          (org-element-property :tags (org-element-lineage pos-or-element '(headline inlinetask) t))
                        (org--get-local-tags fontify)))
               itags)
+          (unless (cl-every (lambda (tag) (org-fontified-p nil nil tag)) ltags)
+            (setq ltags
+                  (org-with-point-at (org-element-property :begin (org-element-lineage pos-or-element '(headline inlinetask) t))
+                    (org--get-local-tags fontify))))
           (if (or local (not org-use-tag-inheritance)) ltags
             (let ((cached (and (org-element--cache-active-p)
                                (if (org-element-type pos-or-element)
@@ -11865,7 +11869,7 @@ The tags are fontified when FONTIFY is non-nil."
                                                         (not cached-tags)
                                                         ;; Fontification should never happen in the middle of
                                                         ;; caching.
-                                                        (get-text-property 0 'fontified (car cached-tags)))))
+                                                        (cl-every (lambda (tag) (org-fontified-p nil nil tag)) cached-tags))))
                                                  (if ;; Tags are cached and do not need to be re-fontified.
                                                      (or (not fontify)
                                                          cached-tags-fontified?)
@@ -11879,7 +11883,7 @@ The tags are fontified when FONTIFY is non-nil."
                                                                               (looking-at org-tag-line-re))
                                                                             (split-string (match-string 2) ":" t)))))
                                                      ;; Update the cache.
-                                                     (when cached (org-element-put-property cached :tags local-tags))
+                                                     (when cached (org-element-put-property cached :tags (mapcar #'copy-sequence local-tags)))
                                                      ;; Return parsed tags.
                                                      local-tags))))
                                        itags)))

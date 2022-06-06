@@ -1204,29 +1204,58 @@ so values can contain further %-escapes if they are define later in TABLE."
          ,@body)
      (setq org-fold-core--force-fontification nil)))
 
+(defun org-fontified-p (&optional beg end object)
+  "Return non-nil when text is fontified.
+
+When BEG and END are non-nil, only check test inside BEG..END region.
+If BEG is nil, start from the beginning.  If END is nil, check text all
+the way to the end.
+Test text inside current buffer or OBJECT."
+  (pcase object
+    ((or (pred bufferp) `nil)
+     (with-current-buffer (or object (current-buffer))
+       (org-with-wide-buffer
+        (and (not (text-property-not-all
+                 (or beg (point-min))
+                 (or end (point-max))
+                 'fontified t))
+             (or (not (eq 'org-fold-core-fontify-region
+                        font-lock-fontify-region-function))
+                 (not (text-property-not-all
+                     (or beg (point-min))
+                     (or end (point-max))
+                     'org-fold-core-fontified t)))))))
+    (string
+     (and (not (text-property-not-all
+              (or beg 0)
+              (or end (length string))
+              'fontified t string))
+          (or (not (eq 'org-fold-core-fontify-region
+                     font-lock-fontify-region-function))
+              (not (text-property-not-all
+                  (or beg 0)
+                  (or end (length string))
+                  'org-fold-core-fontified t string)))))))
+
 (defun org-buffer-substring-fontified (beg end)
   "Return fontified region between BEG and END."
-  (when (bound-and-true-p jit-lock-mode)
+  (when (and (bound-and-true-p jit-lock-mode)
+             (not (org-fontified-p beg end)))
     (org-with-forced-fontification
-        (when (or (text-property-not-all beg end 'org-fold-core-fontified t)
-                  (text-property-not-all beg end 'fontified t))
-          (save-match-data (font-lock-fontify-region beg end)))))
+        (save-match-data (font-lock-fontify-region beg end))))
   (buffer-substring beg end))
 
 (defun org-looking-at-fontified (re)
   "Call `looking-at' RE and make sure that the match is fontified."
   (prog1 (looking-at re)
-    (when (bound-and-true-p jit-lock-mode)
+    (when (and (bound-and-true-p jit-lock-mode)
+               (not (org-fontified-p
+                   (match-beginning 0)
+                   (match-end 0))))
       (org-with-forced-fontification
-          (when (or (text-property-not-all
-                     (match-beginning 0) (match-end 0)
-                     'org-fold-core-fontified t)
-                    (text-property-not-all
-                     (match-beginning 0) (match-end 0)
-                     'fontified t))
-            (save-match-data
-              (font-lock-fontify-region (match-beginning 0)
-                                (match-end 0))))))))
+          (save-match-data
+            (font-lock-fontify-region (match-beginning 0)
+                              (match-end 0)))))))
 
 (defsubst org-no-properties (s &optional restricted)
   "Remove all text properties from string S.
