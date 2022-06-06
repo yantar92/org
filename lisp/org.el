@@ -11850,7 +11850,8 @@ The tags are fontified when FONTIFY is non-nil."
                          (org-element-property :tags (org-element-lineage pos-or-element '(headline inlinetask) t))
                        (org--get-local-tags fontify)))
               itags)
-          (unless (cl-every (lambda (tag) (org-fontified-p nil nil tag)) ltags)
+          (unless (or (not fontify)
+                      (cl-every (lambda (tag) (org-fontified-p nil nil tag)) ltags))
             (setq ltags
                   (org-with-point-at (org-element-property :begin (org-element-lineage pos-or-element '(headline inlinetask) t))
                     (org--get-local-tags fontify))))
