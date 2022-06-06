@@ -381,16 +381,6 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		  nil 'mouse-face 'highlight))
     (org-font-lock-compose str beg end)))
 
-(defun org-font-lock-activate-custom-time (limit)
-  "Add custom time for dates."
-  (when (and (re-search-forward org-tsr-regexp-both limit t)
-	     (not (equal (char-before (match-beginning 0)) 91)))
-    ;; If it's a date range, activate custom time for second date.
-    (when (match-end 3)
-      (org-display-custom-time (match-beginning 3) (match-end 3)))
-    (org-display-custom-time (match-beginning 1) (match-end 1))
-    t))
-
 (defun org-fontify-like-in-org-mode (s &optional odd-levels)
   "Fontify string S like in Org mode."
   (with-temp-buffer
@@ -755,20 +745,6 @@ and subscripts."
 		   keymap 'org-mouse-map
 		   help-echo "Radio target link"
 		   org-linked-text t))))
-          ;; Timestamps
-          ,(when (memq 'date org-highlight-links)
-             '(timestamp
-               (:full-no-blank
-                '( face org-date
-                   mouse-face highlight
-	           keymap org-mouse-map
-                   help-echo "Open agenda for the date/range")
-                t)))
-          ,(when (and org-display-custom-times
-                      (memq 'date org-highlight-links))
-             '(timestamp
-               (org-font-lock-activate-custom-time
-                (goto-char (org-element-match-beginning)))))
           ;; Emphasis.
           ,@(when org-fontify-emphasized-text
               (cl-loop for (_ fontspec . _) in org-emphasis-alist
@@ -896,7 +872,47 @@ and subscripts."
 	 (list
 	  ;; Call the hook
 	  '(org-font-lock-hook)
-          '(org-font-lock-matcher))))
+          '(org-font-lock-matcher)
+          ;; Timestamps.
+          ;; FIXME: Timestamps are tricky.  In addition to proper
+          ;; timestamp objects, Org agenda accepts timestamps,
+          ;; e.g. inside node-properties.  Moreover, many Org
+          ;; functions allow working with arbitrarily located text
+          ;; looking like a timestamp.  See `org-at-timestamp-p' and
+          ;; its usage across Org with `lax' and `agenda' arguments.
+          ;; So, instead of fontifying timestamp objects, we are being
+          ;; more lax and just match a generic regexp with an extra
+          ;; check that we do not hit false positive like in:
+          ;; [[file:sample.org][2013-02-22 sample.org]].
+          ;; See commit 01748861d and its predecessors.
+          `((lambda (limit)
+              (catch :found
+                (while (re-search-forward org-tsr-regexp-both limit t)
+                  (let ((obj (org-element-context)))
+                    (unless (and (eq 'link (org-element-type obj))
+                                 (or (< (match-beginning 0) (org-element-property :contents-begin obj))
+                                     (> (match-end 0) (org-element-property :contents-end obj))))
+                      (throw :found (point)))))))
+            ;; `org-highlight-links' determines whether to fontify
+            ;; timestamps.  However, even if fontification is
+            ;; disabled, "opening" via mouse click must remain
+            ;; possible.
+            (0
+             '( face ,(when (memq 'date org-highlight-links) 'org-date)
+                mouse-face ,(when (memq 'date org-highlight-links) 'highlight)
+	        keymap org-mouse-map
+                help-echo "Open agenda for the date/range")
+             t)
+            (1
+             (when (and org-display-custom-times
+                        (memq 'date org-highlight-links))
+               (org-display-custom-time (match-beginning 1) (match-end 1)))
+             nil t)
+            (3
+             (when (and org-display-custom-times
+                        (memq 'date org-highlight-links))
+               (org-display-custom-time (match-beginning 3) (match-end 3)))
+             nil t)))))
     (setq org-font-lock-extra-keywords (delq nil org-font-lock-extra-keywords))
     (run-hooks 'org-font-lock-set-keywords-hook)
     ;; Now set the full font-lock-keywords
