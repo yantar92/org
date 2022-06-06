@@ -56,6 +56,9 @@
 (defvar org-element-paragraph-separate)
 (defvar org-element-parsed-keywords)
 
+(defvar org-font-lock-verbose nil
+  "Whether to display fontification info in the mode line.")
+
 (defvar org-font-lock-element-keywords nil
   "Like `font-lock-keywords', but also allows matching current Org element.
 
@@ -214,8 +217,6 @@ DATUM is a parse tree."
         (org-font-lock--fontify-object el)))
     nil nil nil 'with-affiliated))
 
-(defvar org-font-lock-verbose nil
-  "Whether to display fontification info in the mode line.")
 (defun org-font-lock-matcher (limit)
   "Fontify first chunk down to LIMIT.  Move point as needed."
   (let ((beg (point)) (end limit))
