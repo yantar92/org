@@ -4474,7 +4474,6 @@ The following commands are available:
 		      org-ellipsis)))
     (setq buffer-display-table org-display-table))
   (org-set-regexps-and-options)
-  (org-font-lock-set-defaults)
   (when (and org-tag-faces (not org-tags-special-faces-re))
     ;; tag faces set outside customize.... force initialization.
     (org-set-tag-faces 'org-tag-faces org-tag-faces))
@@ -4486,7 +4485,6 @@ The following commands are available:
   (modify-syntax-entry ?~ "_")
   (modify-syntax-entry ?< "(>")
   (modify-syntax-entry ?> ")<")
-  (setq-local font-lock-unfontify-region-function 'org-unfontify-region)
   ;; Activate before-change-function
   (setq-local org-table-may-need-update t)
   (add-hook 'before-change-functions 'org-before-change-function nil 'local)
@@ -4494,6 +4492,7 @@ The following commands are available:
   (add-hook 'kill-buffer-hook 'org-check-running-clock nil 'local)
   ;; Initialize cache.
   (org-element-cache-reset)
+  (org-font-lock-set-defaults)
   (when (and org-element-cache-persistent
              org-element-use-cache)
     (org-persist-load 'org-element--cache (current-buffer) t))
