@@ -1200,8 +1200,8 @@ Assume point is at beginning of the headline."
             ;; need to be careful about
             ;; robust beginning.
             (when contents-begin
-              (if (< (+ 2 contents-begin) contents-end)
-                  (+ 2 contents-begin) 0)))
+              (when (< (+ 2 contents-begin) contents-end)
+                (+ 2 contents-begin))))
            (robust-end (and robust-begin
                             (when (> (- contents-end 2) robust-begin)
                               (- contents-end 2)))))
