@@ -7364,8 +7364,10 @@ buffers."
 	(setq-local org-element--cache-sync-timer nil)
 	(add-hook 'before-change-functions
 		  #'org-element--cache-before-change nil t)
+        ;; Run `org-element--cache-after-change' early to handle cases
+        ;; when other `after-change-functions' require element cache.
 	(add-hook 'after-change-functions
-		  #'org-element--cache-after-change nil t)))))
+		  #'org-element--cache-after-change -1 t)))))
 
 ;;;###autoload
 (defun org-element-cache-refresh (pos)
