@@ -193,12 +193,13 @@ otherwise place the point at the beginning of the inserted text."
      (with-temp-buffer
        (org-mode)
        (let ((point (string-match "<point>" inside-text)))
-	 (if point
-	     (progn
-	       (insert (replace-match "" nil nil inside-text))
-	       (goto-char (1+ (match-beginning 0))))
-	   (insert inside-text)
-	   (goto-char (point-min))))
+         (org-fold-core-ignore-modifications
+	   (if point
+	       (progn
+	         (insert (replace-match "" nil nil inside-text))
+	         (goto-char (1+ (match-beginning 0))))
+	     (insert inside-text)
+	     (goto-char (point-min)))))
        (font-lock-ensure (point-min) (point-max))
        ,@body)))
 (def-edebug-spec org-test-with-temp-text (form body))
