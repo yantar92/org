@@ -15092,7 +15092,8 @@ overwritten, and the table is not marked as requiring realignment."
        t)
      (looking-at "[^|\n]*  |"))
     ;; There is room for insertion without re-aligning the table.
-    (self-insert-command N)
+    (org-fold-core-ignore-modifications
+      (self-insert-command N))
     (org-table-with-shrunk-field
      (save-excursion
        (skip-chars-forward "^|")
@@ -15102,7 +15103,8 @@ overwritten, and the table is not marked as requiring realignment."
        (delete-region (- (point) 2) (1- (point))))))
    (t
     (setq org-table-may-need-update t)
-    (self-insert-command N)
+    (org-fold-core-ignore-modifications
+      (self-insert-command N))
     (org-fix-tags-on-the-fly)
     (when org-self-insert-cluster-for-undo
       (if (not (eq last-command 'org-self-insert-command))
