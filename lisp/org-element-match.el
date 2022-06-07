@@ -65,7 +65,7 @@
 
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-set-contents "org-element" (element &rest contents))
-(declare-function org-element-parse-element "org-element" (&optional pos-or-element granularity visible-only first-only cached-only))
+(declare-function org-element-parse-element "org-element" (&optional pos-or-element granularity visible-only first-only cached-only no-copy))
 (declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
 (declare-function org-element-type "org-element" (element))
 (declare-function org-element-copy "org-element" (element))
@@ -1070,7 +1070,7 @@ Never match CURRENT-ELEMENT if it is provided."
                    (org-element-parse-element
                     element
                     (if match-object? 'object 'element)
-                    nil 'first))
+                    nil 'first nil 'no-copy))
                  org-element-match--all-types
                (lambda (el)
                  (when (and (>= (org-element-property :begin el) beg)
