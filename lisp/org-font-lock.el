@@ -381,6 +381,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		  nil 'mouse-face 'highlight))
     (org-font-lock-compose str beg end)))
 
+(defvar org-odd-levels-only)
 (defun org-fontify-like-in-org-mode (s &optional odd-levels)
   "Fontify string S like in Org mode."
   (with-temp-buffer

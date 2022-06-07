@@ -86,6 +86,7 @@
 (declare-function org-link-get-parameter "ol" (type key))
 (declare-function org-get-tag-face "org-font-lock" (tag))
 (declare-function org-get-priority-face "org-font-lock" (priority))
+(declare-function org-display-custom-time "org-font-lock" (beg end))
 (declare-function org-entity-get "org-entities" (name))
 (declare-function org-footnote-next-reference-or-definition "org-footnote" (limit))
 (declare-function org-src-font-lock-fontify-block "org-src" (lang start end))
