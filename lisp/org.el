@@ -10741,7 +10741,7 @@ The tags are fontified when FONTIFY is non-nil."
         ;; Update the cache.
         (when cached (org-element-put-property cached :tags (mapcar #'copy-sequence local-tags)))
         ;; Return parsed tags.
-        local-tags))))
+        (mapcar #'copy-sequence local-tags)))))
 
 (defun org-get-tags (&optional pos-or-element local fontify)
   "Get the list of tags specified in the current headline.
@@ -10812,7 +10812,7 @@ The tags are fontified when FONTIFY is non-nil."
                                                      ;; Update the cache.
                                                      (when cached (org-element-put-property cached :tags (mapcar #'copy-sequence local-tags)))
                                                      ;; Return parsed tags.
-                                                     local-tags))))
+                                                     (mapcar #'copy-sequence local-tags)))))
                                        itags)))
                 (while (org-up-heading-safe)
                   (setq itags (nconc (mapcar #'org-add-prop-inherited
