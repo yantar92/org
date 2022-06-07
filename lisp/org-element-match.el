@@ -914,7 +914,7 @@ Extra components are: `:stars', `:leading-stars', `:todo',
   "Match citation-reference ELEMENT."
   (let ((components (org-element-match--default element)))
     (org-with-point-at (org-element-property :begin element)
-      (re-search-forward
+      (search-forward
        (concat "@" (org-element-property :key element))))
     (org-element-match--add :key-full
            (match-beginning 0)
