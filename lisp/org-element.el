@@ -1194,7 +1194,13 @@ Assume point is at beginning of the headline."
 			      (progn (goto-char end)
 				     (skip-chars-backward " \r\t\n")
 				     (line-beginning-position 2))))
-           (robust-begin contents-begin)
+           (robust-begin
+            ;; If there is :pre-blank, we
+            ;; need to be careful about
+            ;; robust beginning.
+            (when contents-begin
+              (if (< (+ 2 contents-begin) contents-end)
+                  (+ 2 contents-begin) 0)))
            (robust-end (and robust-begin
                             (when (> (- contents-end 2) robust-begin)
                               (- contents-end 2)))))
