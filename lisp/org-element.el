@@ -4516,7 +4516,7 @@ When PARSE is non-nil, values from keywords belonging to
 (defun org-element-parse-element
     (&optional pos-or-element granularity
                visible-only first-only
-               cached-only no-copy)
+               cached-only)
   "Parse element at POS-OR-ELEMENT or point in current buffer.
 When POS-OR-ELEMENT is nil, parse element at point.  When position,
 parse element at that position.  When element, parse the provided
@@ -4532,10 +4532,6 @@ elements.
 
 When CACHED-ONLY is non-nil, try to retrieve cached value and return nil
 if such value is not available.
-
-When NO-COPY is non-nil, do not create copies of cached element objects.
-This will reduce the amount of memory allocation, but modifying the
-returned structure must not be done then.
 
 FIRST-ONLY controls parsing of elements inside.  When its value is
 `no-recursion', do not parse inner elements.  Otherwise, when it is
@@ -4563,7 +4559,7 @@ that inner element, and so on."
                (org-element-property :end element)
                (org-element-property :mode element)
                (org-element-property :structure element)
-               granularity visible-only nil first-only no-copy)))
+               granularity visible-only nil first-only)))
        (org-element-put-property result :parent parent)
        (unless visible-only
          (org-element-cache-store-key element key result)))
@@ -4849,8 +4845,7 @@ located inside the current one."
       ((and `top-comment (guard (eq type 'comment))) 'property-drawer))))
 
 (defun org-element--parse-elements
-    (beg end mode structure granularity visible-only acc
-         &optional first-only no-copy)
+    (beg end mode structure granularity visible-only acc &optional first-only)
   "Parse elements between BEG and END positions.
 
 MODE prioritizes some elements over the others.  It can be set to
@@ -4870,10 +4865,6 @@ When FIRST-ONLY is `no-recursion', do not parse elements inside.
 Otherwise, when FIRST-ONLY is non-nil, only parse the first inner
 elements in contents.
 
-When NO-COPY is non-nil, do not create copies of cached element objects.
-This will reduce the amount of memory allocation, but modifying the
-returned structure must not be done then.
-
 Elements are accumulated into ACC."
   (save-excursion
     (goto-char beg)
@@ -4891,27 +4882,21 @@ Elements are accumulated into ACC."
 	      (when (and (eolp) (not (eobp))) (forward-char)))
 	  ;; Find current element's type and parse it accordingly to
 	  ;; its category.
-	  (let* ((element (if no-copy
-                              (progn
-                                (org-element--parse-to end)
-                                (org-element--current-element
-			         end granularity mode
-                                 structure))
-                            (org-element-copy
-                             ;; `org-element--current-element' may return cached
-                             ;; elements.  Below code reassigns
-                             ;; `:parent' property of the element and
-                             ;; may interfere with cache
-                             ;; synchronisation if parent element is not
-                             ;; yet in cache or when ACC is nil.
-                             ;; Moreover, the returned structure may be
-                             ;; altered by caller code arbitrarily.
-                             ;; Hence, we return a copy of the
-                             ;; potentially cached element to make
-                             ;; potential modifications safe for element
-                             ;; cache.
-                             (org-element--current-element
-			      end granularity mode structure))))
+	  (let* ((element (org-element-copy
+                           ;; `org-element--current-element' may return cached
+                           ;; elements.  Below code reassigns
+                           ;; `:parent' property of the element and
+                           ;; may interfere with cache
+                           ;; synchronisation if parent element is not
+                           ;; yet in cache or when ACC is nil.
+                           ;; Moreover, the returned structure may be
+                           ;; altered by caller code arbitrarily.
+                           ;; Hence, we return a copy of the
+                           ;; potentially cached element to make
+                           ;; potential modifications safe for element
+                           ;; cache.
+                           (org-element--current-element
+			    end granularity mode structure)))
 		 (type (org-element-type element))
 		 (cbeg (org-element-property :contents-begin element)))
             (goto-char (org-element-property :end element))
@@ -4942,13 +4927,7 @@ Elements are accumulated into ACC."
 	      (org-element--parse-objects
 	       cbeg (org-element-property :contents-end element) element
 	       (org-element-restriction type))))
-            (when acc
-              (org-element-put-property element :parent acc)
-              ;; If we modified cached element, cache may not be valid
-              ;; anymore.
-              (when (and no-copy (org-element-property :cached element)) 
-                (org-element--cache-remove element)))
-	    (push element elements)
+	    (push (org-element-put-property element :parent acc) elements)
 	    ;; Update mode.
 	    (setq mode (org-element--next-mode mode type nil)))))
       ;; Return result.
