@@ -784,15 +784,5 @@ This includes angle, plain, and bracket links."
 	(org-rear-nonsticky-at (match-end 1))
 	t))))
 
-(defun org-font-lock-activate-custom-time (limit)
-  "Add custom time for dates."
-  (when (and (re-search-forward org-tsr-regexp-both limit t)
-	     (not (equal (char-before (match-beginning 0)) 91)))
-    ;; If it's a date range, activate custom time for second date.
-    (when (match-end 3)
-      (org-display-custom-time (match-beginning 3) (match-end 3)))
-    (org-display-custom-time (match-beginning 1) (match-end 1))
-    t))
-
 (provide 'org-font-lock-obsolete)
 ;;; org-font-lock-obsolete.el ends here
