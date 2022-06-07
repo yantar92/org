@@ -486,7 +486,7 @@ Extra components are: `:key', `:value'."
                    (org-element-property :year-start element)
                    (org-element-property :month-start element)
                    (org-element-property :day-start element))
-           ".+"
+           ".*"
            (if (and (org-element-property :hour-start element)
                     (org-element-property :minute-start element))
                (format "\\(%d\\):\\(%.2d\\)"
@@ -518,7 +518,7 @@ Extra components are: `:key', `:value'."
                      (org-element-property :year-end element)
                      (org-element-property :month-end element)
                      (org-element-property :day-end element))
-             ".+"
+             ".*"
              (if (and (org-element-property :hour-end element)
                       (org-element-property :minute-end element))
                  (format "\\(%d\\):\\(%.2d\\)"
