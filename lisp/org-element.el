@@ -7040,8 +7040,8 @@ BEG and END are buffer positions delimiting the minimal area
 where cache data should be removed.  OFFSET is the size of the
 change, as an integer."
   (org-element--cache-log-message
-   "Submitting new synchronization request for [%S..%S]𝝙%S"
-   beg end offset)
+   "Submitting new synchronization request for [%S..%S]𝝙%S (buffer boundaries: %S..%S)"
+   beg end offset (point-min) (point-max))
   (with-current-buffer (or (buffer-base-buffer (current-buffer))
                            (current-buffer))
     (let ((next (car org-element--cache-sync-requests))
@@ -7254,12 +7254,14 @@ The element is: %S\n The parent is: %S\n The real parent is: %S"
                          (string= (org-element-property :ID real-element) (org-element-property :ID element))))
           (org-element--cache-warn "(%S) Cached element is incorrect in %s. (Cache tic up to date: %S) Resetting.
 If this warning appears regularly, please report the warning text to Org mode mailing list (M-x org-submit-bug-report).
+Buffer boundaries: %S..%S
 The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
                                    this-command
                                    (buffer-name (current-buffer))
                                    (if (/= org-element--cache-change-tic
                                           (buffer-chars-modified-tick))
                                        "no" "yes")
+                                   (point-min) (point-max)
                                    (org-element--format-element element)
                                    (org-element--format-element real-element)
                                    (org-element--cache-find (1- (org-element-property :begin real-element)))
