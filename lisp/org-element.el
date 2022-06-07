@@ -7951,48 +7951,49 @@ element ending there."
   (when (and cached-only
              (memq this-command org-element--cache-non-modifying-commands))
     (setq cached-only nil))
-  (let (element)
-    (when (org-element--cache-active-p)
-      (if (not org-element--cache) (org-element-cache-reset)
-        (unless cached-only (org-element--cache-sync (current-buffer) pom))))
-    (setq element (if cached-only
-                      (and (org-element--cache-active-p)
-                           (or (not org-element--cache-sync-requests)
-                               (org-element--cache-key-less-p pom (org-element--request-key (car org-element--cache-sync-requests))))
-                           (org-element--cache-find pom))
-                    (condition-case-unless-debug err
-                        (org-element--parse-to pom)
-                      (error
-                       (org-element--cache-warn
-                        "Org parser error in %s::%S. Resetting.\n The error was: %S\n Backtrace:\n%S\n Please report this to Org mode mailing list (M-x org-submit-bug-report)."
-                        (buffer-name (current-buffer))
-                        pom
-                        err
-                        (when (and (fboundp 'backtrace-get-frames)
-                                   (fboundp 'backtrace-to-string))
-                          (backtrace-to-string (backtrace-get-frames 'backtrace))))
-                       (org-element-cache-reset)
-                       (org-element--parse-to pom)))))
-    (when (and (org-element--cache-active-p)
-               element
-               (org-element--cache-verify-element element))
-      (setq element (org-element--parse-to pom)))
-    (unless (eq 'org-data (org-element-type element))
-      (unless (and cached-only
-                   (not (and element
-                           (or (= pom (org-element-property :begin element))
-                               (and (not (memq (org-element-type element) org-element-greater-elements))
-                                    (>= pom (org-element-property :begin element))
-                                    (< pom (org-element-property :end element)))
-                               (and (org-element-property :contents-begin element)
-                                    (>= pom (org-element-property :begin element))
-                                    (< pom (org-element-property :contents-begin element)))
-                               (and (not (org-element-property :contents-end element))
-                                    (>= pom (org-element-property :begin element))
-                                    (< pom (org-element-property :end element)))))))
-        (if (not (eq (org-element-type element) 'section))
-            element
-          (org-element-at-point (1+ pom) cached-only))))))
+  (save-match-data
+    (let (element)
+      (when (org-element--cache-active-p)
+        (if (not org-element--cache) (org-element-cache-reset)
+          (unless cached-only (org-element--cache-sync (current-buffer) pom))))
+      (setq element (if cached-only
+                        (and (org-element--cache-active-p)
+                             (or (not org-element--cache-sync-requests)
+                                 (org-element--cache-key-less-p pom (org-element--request-key (car org-element--cache-sync-requests))))
+                             (org-element--cache-find pom))
+                      (condition-case-unless-debug err
+                          (org-element--parse-to pom)
+                        (error
+                         (org-element--cache-warn
+                          "Org parser error in %s::%S. Resetting.\n The error was: %S\n Backtrace:\n%S\n Please report this to Org mode mailing list (M-x org-submit-bug-report)."
+                          (buffer-name (current-buffer))
+                          pom
+                          err
+                          (when (and (fboundp 'backtrace-get-frames)
+                                     (fboundp 'backtrace-to-string))
+                            (backtrace-to-string (backtrace-get-frames 'backtrace))))
+                         (org-element-cache-reset)
+                         (org-element--parse-to pom)))))
+      (when (and (org-element--cache-active-p)
+                 element
+                 (org-element--cache-verify-element element))
+        (setq element (org-element--parse-to pom)))
+      (unless (eq 'org-data (org-element-type element))
+        (unless (and cached-only
+                     (not (and element
+                             (or (= pom (org-element-property :begin element))
+                                 (and (not (memq (org-element-type element) org-element-greater-elements))
+                                      (>= pom (org-element-property :begin element))
+                                      (< pom (org-element-property :end element)))
+                                 (and (org-element-property :contents-begin element)
+                                      (>= pom (org-element-property :begin element))
+                                      (< pom (org-element-property :contents-begin element)))
+                                 (and (not (org-element-property :contents-end element))
+                                      (>= pom (org-element-property :begin element))
+                                      (< pom (org-element-property :end element)))))))
+          (if (not (eq (org-element-type element) 'section))
+              element
+            (org-element-at-point (1+ pom) cached-only)))))))
 
 ;;;###autoload
 (defsubst org-element-at-point-no-context (&optional pom)
