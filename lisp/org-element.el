@@ -535,7 +535,8 @@ Return non-nil, when the property was actually resolved."
     (`nil
      (unless (or (eq :deferred property)
                  (and (not (stringp element))
-                      (plist-member (nth 1 element) property)))
+                      (and (symbolp (car element)) ; actual element.
+                           (plist-member (nth 1 element) property))))
        (when (org-element--resolve-deferred-property element)
          (org-element-property property element))))
     (val val)))
