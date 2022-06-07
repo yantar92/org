@@ -906,7 +906,8 @@ and subscripts."
             (1
              (when (and org-display-custom-times
                         (memq 'date org-highlight-links))
-               (org-display-custom-time (match-beginning 1) (match-end 1)))
+               (org-display-custom-time (match-beginning 1) (match-end 1))
+               nil)
              nil t)
             (3
              (when (and org-display-custom-times
