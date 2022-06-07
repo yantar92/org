@@ -4946,8 +4946,8 @@ Elements are accumulated into ACC."
               (org-element-put-property element :parent acc)
               ;; If we modified cached element, cache may not be valid
               ;; anymore.
-              (when no-copy
-                (org-element-cache-refresh (org-element-property :begin element))))
+              (when (and no-copy (org-element-property :cached element)) 
+                (org-element--cache-remove element)))
 	    (push element elements)
 	    ;; Update mode.
 	    (setq mode (org-element--next-mode mode type nil)))))
