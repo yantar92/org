@@ -10828,12 +10828,13 @@ The tags are fontified when FONTIFY is non-nil."
   (if (org-element--cache-active-p)
       ;; `org-element-cache-map' is about 2x faster compared to regexp
       ;; search.
-      (let ((tags (org-element-cache-map
-                   (lambda (el) (org-element-property :tags el)))))
-        (mapcar #'list (mapcar #'substring-no-properties
-                               (delete-dups
-                                (append org-file-tags
-                                        (apply #'append tags))))))
+      (let ((hashed (make-hash-table :test #'equal)))
+        (org-element-cache-map
+         (lambda (el)
+           (dolist (tag (org-element-property :tags el))
+             (puthash (list tag) t hashed))))
+        (dolist (tag org-file-tags) (puthash (list tag) t hashed))
+        (hash-table-keys hashed))
     (org-with-point-at 1
       (let (tags)
         (while (re-search-forward org-tag-line-re nil t)
