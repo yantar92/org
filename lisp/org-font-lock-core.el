@@ -290,7 +290,7 @@ DATUM is a parse tree."
         (goto-char limit)
         t))))
 
-(defcustom org-font-lock-timeout 0.2
+(defcustom org-font-lock-timeout 0.6
   "Timeout in seconds between font-lock refresh runs.
 
 This variable is controlling how often org-font-lock re-parses edited
