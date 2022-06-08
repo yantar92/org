@@ -306,15 +306,18 @@ See `org-font-lock-flush' and `org-font-lock-flush-delayed'.")
   (when (or (not buffer) (buffer-live-p buffer))
     (with-current-buffer (or buffer (current-buffer))
       (org-with-wide-buffer
-       (let ((regions (cons (cons beg end) org-font-lock--flush-queue))
+       (let ((regions (if (and beg end)
+                          (cons (cons beg end) org-font-lock--flush-queue)
+                        org-font-lock--flush-queue))
              region next-region)
          (setq org-font-lock--flush-queue nil)
-         (setq regions
-               (sort
-                regions
-                (lambda (a b) (or (< (car a) (car b))
-                             (and (= (car a) (car b))
-                                  (< (cdr a) (cdr b)))))))
+         (when regions
+           (setq regions
+                 (sort
+                  regions
+                  (lambda (a b) (or (< (car a) (car b))
+                               (and (= (car a) (car b))
+                                    (< (cdr a) (cdr b))))))))
          (while regions
            (setq region (pop regions))
            (setq next-region (car regions))
@@ -338,16 +341,23 @@ See `org-font-lock-flush' and `org-font-lock-flush-delayed'.")
                                    (or (org-element-property :end beg-element) end)))))
                (font-lock-flush beg end)))))))))
 
+(defvar org-font-lock--last-flush (current-time)
+  "Last time `org-font-lock-flush-delayed has been ran.")
 (defun org-font-lock-flush-delayed (beg end &optional _)
   "Re-fontify BEG..END on idle according to `org-font-lock-timeout'."
   (let ((region (org-font-lock--extend-region beg end nil)))
     (setq beg (car region) end (cdr region)))
-  (if org-font-lock--flush-queue
-      (push (cons beg end) org-font-lock--flush-queue)
-    (setq org-font-lock--flush-queue (list (cons beg end)))
-    (run-with-idle-timer
-     org-font-lock-timeout nil
-     #'org-font-lock-flush beg end (current-buffer))))
+  (if (<= (float-time (time-since org-font-lock--last-flush))
+         org-font-lock-timeout)
+      (progn
+        (push (cons beg end) org-font-lock--flush-queue)
+        ;; Update when user stops typing.
+        (unless noninteractive
+          (run-with-idle-timer
+           org-font-lock-timeout nil
+           #'org-font-lock-flush nil nil (current-buffer))))
+    (setq org-font-lock--last-flush (current-time))
+    (org-font-lock-flush beg end)))
 
 (defun org-font-lock--extend-region (beg end _)
   "Extend changed BEG..END region to element boundaries, if cached."
