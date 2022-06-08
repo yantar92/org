@@ -138,6 +138,10 @@
 	      (when verbatim?
 		(org-remove-flyspell-overlays-in
 		 (match-beginning 0) (match-end 0))
+                (when (and (org-fold-core-folding-spec-p 'org-link)
+                           (org-fold-core-folding-spec-p 'org-link-description))
+                  (org-fold-region beg end nil 'org-link)
+                  (org-fold-region beg end nil 'org-link-description))
 		(remove-text-properties (match-beginning 2) (match-end 2)
 					'(display t invisible t intangible t)))
 	      (add-text-properties (match-beginning 2) (match-end 2)
