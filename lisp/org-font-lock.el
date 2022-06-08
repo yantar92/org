@@ -451,8 +451,18 @@ If TAG is a number, get the corresponding match group."
     (org-fold-core-update-optimisation beg end)
     (org-remove-font-lock-display-properties beg end)))
 
-(defconst org-script-display  '(((raise -0.3) (height 0.7))
-				((raise 0.3)  (height 0.7))
+(defconst org-script-display  '(;; The values are tweaked to not
+                                ;; change the line height.
+                                ((raise -0.1)  (height 0.7))
+				((raise 0.25)  (height 0.7))
+                                ;; Alternative properties for tables.
+                                ;; See 0618aeafb3.
+                                ;; FIXME: We cannot change the text
+                                ;; height because it will alter the
+                                ;; symbol width and thus break the
+                                ;; table alignment (at least, until
+                                ;; org table are aligned via pixel
+                                ;; width).
 				((raise -0.5))
 				((raise 0.5)))
   "Display properties for showing superscripts and subscripts.")
@@ -797,10 +807,11 @@ and subscripts."
                    display
                    ,(let ((tablep (org-element-lineage (org-element-match-property :parent) '(table))))
                       (pcase (org-element-match-type)
+                        ;; FIXME: See comment in `org-script-display'.
                         (`superscript
-                         (nth (if tablep 1 3) org-script-display))
+                         (nth (if tablep 3 1) org-script-display))
                         (`subscript
-                         (nth (if tablep 0 2) org-script-display))
+                         (nth (if tablep 2 0) org-script-display))
                         (_ (error "Fontification error: sub/superscript"))))))
                (:begin-marker '(face nil invisible t))
                (:end-marker '(face nil invisible t))))
