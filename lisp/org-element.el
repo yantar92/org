@@ -1126,6 +1126,17 @@ Return value is a plist."
             (nth 1 element)
             (org-element--get-node-properties)))))
 
+(defvar org-element--headline-re-cache (make-hash-table :test #'eql)
+  "Hash table holding association between headline level regexp.")
+(defmacro org-element--headline-re (true-level)
+  "Generate headline regexp for TRUE-LEVEL."
+  `(or (gethash ,true-level org-element--headline-re-cache)
+       (puthash
+        ,true-level
+        (rx-to-string
+         `(seq line-start (** 1 ,,true-level "*") " "))
+        org-element--headline-re-cache)))
+
 (defun org-element-headline-parser (&optional _ raw-secondary-p)
   "Parse a headline.
 
@@ -1182,11 +1193,9 @@ Assume point is at beginning of the headline."
 				    (string= org-footnote-section raw-value)))
            (end
             (save-excursion
-              (let ((re (rx-to-string
-                         `(seq line-start (** 1 ,true-level "*") " "))))
-                (if (re-search-forward re nil t)
-                    (line-beginning-position)
-                  (point-max)))))
+              (if (re-search-forward (org-element--headline-re true-level) nil t)
+                  (line-beginning-position)
+                (point-max))))
 	   (contents-begin (save-excursion
 			     (forward-line)
 			     (skip-chars-forward " \r\t\n" end)
