@@ -5910,6 +5910,10 @@ the cache."
                     (org-element--cache-key hashed)
                     limit))
                (= pos (org-element-property :begin hashed))
+               ;; We cannot rely on element :begin for elements with
+               ;; children starting at the same pos.
+               (not (memq (org-element-type hashed)
+                        '(section org-data table)))
                (org-element-property :cached hashed))
           (progn
             (cl-incf (car org-element--cache-hash-statistics))
