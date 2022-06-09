@@ -3103,7 +3103,7 @@ Otherwise return nil."
 If the table is trivial, then return it as a scalar."
   (let ((result
 	 (with-temp-buffer
-	   (condition-case-unless-debug err
+	   (condition-case err
 	       (progn
 		 (insert-file-contents file-name)
 		 (delete-file file-name)
