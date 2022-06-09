@@ -76,7 +76,7 @@
 	(condition-case nil
 	    (Info-find-node filename nodename-or-index)
 	  (user-error (Info-find-node filename "Top")
-		      (condition-case-unless-debug nil
+		      (condition-case nil
 			  (Info-index nodename-or-index)
 			(user-error "Could not find '%s' node or index entry"
 				    nodename-or-index)))))

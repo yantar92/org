@@ -468,7 +468,7 @@ last statement in BODY, as elisp."
   "R-specific processing of return value.
 Insert hline if column names in output have been requested."
   (if column-names-p
-      (condition-case-unless-debug nil
+      (condition-case nil
 	  (cons (car result) (cons 'hline (cdr result)))
 	(error "Could not parse R result"))
     result))

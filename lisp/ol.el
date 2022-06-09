@@ -1962,7 +1962,7 @@ Use TAB to complete link prefixes, then RET for type-specific completion support
 	     (cond
 	      (description)
 	      ((not org-link-make-description-function) desc)
-	      (t (condition-case-unless-debug nil
+	      (t (condition-case nil
 		     (funcall org-link-make-description-function link desc)
 		   (error
 		    (message "Can't get link description from %S"

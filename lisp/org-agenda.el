@@ -7027,7 +7027,7 @@ scheduled items with an hour specification like [h]h:mm."
 	  (setq s1 (match-string 1)
 		s2 (match-string 2)
 		d1 (time-to-days
-		    (condition-case-unless-debug err
+		    (condition-case err
 			(org-time-string-to-time s1)
 		      (error
 		       (error
@@ -7037,7 +7037,7 @@ scheduled items with an hour specification like [h]h:mm."
 			(current-buffer)
 			(error-message-string err)))))
 		d2 (time-to-days
-		    (condition-case-unless-debug err
+		    (condition-case err
 			(org-time-string-to-time s2)
 		      (error
 		       (error

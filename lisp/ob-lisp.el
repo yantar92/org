@@ -108,7 +108,7 @@ a property list containing the parameters of the block."
                               (cdr (assq :package params)))))))
      (org-babel-result-cond (cdr (assq :result-params params))
        (org-strip-quotes result)
-       (condition-case-unless-debug nil
+       (condition-case nil
            (read (org-babel-lisp-vector-to-list result))
          (error result))))
    (org-babel-pick-name (cdr (assq :colname-names params))

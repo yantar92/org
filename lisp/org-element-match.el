@@ -1003,7 +1003,7 @@ at point."
                                    "org-element-match--%S"
                                    (org-element-type element)))))
         (unless (functionp matcher) (setq matcher 'org-element-match--default))
-        (condition-case-unless-debug nil
+        (condition-case nil
             (progn
               (setq org-element-match--data
                     (or (org-element-cache-get-key

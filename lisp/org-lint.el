@@ -1202,7 +1202,7 @@ Use \"export %s\" instead"
               (source (org-element-property :begin k)))
           (if (equal value "")
               (list source "Missing export processor name")
-            (condition-case-unless-debug _
+            (condition-case _
                 (pcase (org-cite-read-processor-declaration value)
                   (`(,(and (pred symbolp) name)
                      ,(pred string-or-null-p)

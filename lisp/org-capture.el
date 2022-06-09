@@ -706,7 +706,7 @@ of the day at point (if any) or the current HH:MM time."
 		  (org-capture-get :key)
 		  (error-message-string error))))
 	(when (and (derived-mode-p 'org-mode) (org-capture-get :clock-in))
-	  (condition-case-unless-debug nil
+	  (condition-case nil
 	      (progn
 		(when (org-clock-is-active)
 		  (org-capture-put :interrupted-clock
@@ -1351,7 +1351,7 @@ may have been stored before."
 	   (string-match "\\(I+\\)\\([-+][0-9]+\\)" table-line-pos))
       (goto-char (point-min))
       (let ((line
-	     (condition-case-unless-debug _
+	     (condition-case _
 		 (progn
 		   (save-match-data (org-table-analyze))
 		   (aref org-table-hlines

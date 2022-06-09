@@ -690,7 +690,7 @@ get an unnecessary O(N²) space complexity, so you're usually better off using
 
 (defun org-eval (form)
   "Eval FORM and return result."
-  (condition-case-unless-debug error
+  (condition-case error
       (eval form t)
     (error (format "%%![Error: %s]" error))))
 

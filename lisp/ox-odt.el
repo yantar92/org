@@ -1335,7 +1335,7 @@ original parsed data.  INFO is a plist holding export options."
 	  (pcase (plist-get info :odt-styles-file)
 	    (`nil (expand-file-name "OrgOdtStyles.xml" org-odt-styles-dir))
 	    ((and s (pred (string-match-p "\\`(.*)\\'")))
-	     (condition-case-unless-debug nil
+	     (condition-case nil
 		 (read s)
 	       (error (user-error "Invalid styles file specification: %S" s))))
 	    (filename (org-strip-quotes filename)))))

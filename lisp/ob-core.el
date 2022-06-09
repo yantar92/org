@@ -3071,7 +3071,7 @@ block but are passed literally to the \"example-block\"."
 			     (string-equal "\"" (substring str -1))))))
 	   (org-babel--script-escape-inner str))
 	  (t str))))
-    (condition-case-unless-debug nil (org-babel-read escaped) (error escaped))))
+    (condition-case nil (org-babel-read escaped) (error escaped))))
 
 (defun org-babel-read (cell &optional inhibit-lisp-eval)
   "Convert the string value of CELL to a number if appropriate.
@@ -3214,7 +3214,7 @@ of `org-babel-temporary-directory'."
   (when (and (boundp 'org-babel-temporary-directory)
 	     (file-exists-p org-babel-temporary-directory))
     ;; taken from `delete-directory' in files.el
-    (condition-case-unless-debug nil
+    (condition-case nil
 	(progn
 	  (mapc (lambda (file)
 		  ;; This test is equivalent to

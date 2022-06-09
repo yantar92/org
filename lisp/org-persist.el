@@ -805,7 +805,7 @@ The arguments have the same meaning as in `org-persist-read'."
       (when collection
         (cl-pushnew (plist-get collection :container) all-containers :test #'equal)))
     (dolist (container all-containers)
-      (condition-case-unless-debug err
+      (condition-case err
           (org-persist-load container associated t)
         (error
          (message "%s. Deleting bad index entry." err)
@@ -858,7 +858,7 @@ When ASSOCIATED is non-nil, only save the matching data."
       (if associated
           (when collection
             (cl-pushnew (plist-get collection :container) all-containers :test #'equal))
-        (condition-case-unless-debug err
+        (condition-case err
             (org-persist-write (plist-get collection :container) (plist-get collection :associated) t)
           (error
            (message "%s. Deleting bad index entry." err)
@@ -867,7 +867,7 @@ When ASSOCIATED is non-nil, only save the matching data."
     (dolist (container all-containers)
       (let ((collection (org-persist--find-index `(:container ,container :associated ,associated))))
         (when collection
-          (condition-case-unless-debug err
+          (condition-case err
               (org-persist-write container associated t)
             (error
              (message "%s. Deleting bad index entry." err)
