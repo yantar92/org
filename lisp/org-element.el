@@ -5987,8 +5987,9 @@ the cache."
          (cons org-element--cache-sync-keys-value new-key))))
     (when (>= org-element--cache-diagnostics-level 2)
       (org-element--cache-log-message
-       "Added new element with %S key: %S"
+       "Added new element with %S key (cache size=%S): %S"
        (org-element-property :org-element--cache-sync-key element)
+       org-element--cache-size
        (org-element--format-element element)))
     (org-element-put-property element :cached t)
     (when (memq (org-element-type element) '(headline inlinetask))
@@ -6591,6 +6592,8 @@ possible to provide TIME-LIMIT, which is a time value specifying
 when the parsing should stop.  The function throws
 `org-element--cache-interrupt' if the process stopped before finding
 the expected result."
+  (when (>= org-element--cache-diagnostics-level 3)
+    (org-element--cache-log-message "Parsing down to %S." pos))
   (catch 'exit
     (save-match-data
       (org-with-wide-buffer
@@ -6604,6 +6607,10 @@ the expected result."
 			   (org-element--cache-find pos nil)))
               (mode (org-element-property :mode cached))
               element next)
+         (when (>= org-element--cache-diagnostics-level 3)
+           (org-element--cache-log-message
+            "Last cached before %S: %S"
+            pos (org-element--format-element cached)))
          (cond
           ;; Nothing in cache before point: start parsing from first
           ;; element in buffer down to POS or from the beginning of the
@@ -8023,6 +8030,9 @@ instead of the first row.
 When point is at the end of the buffer, return the innermost
 element ending there."
   (setq pom (or pom (point)))
+  (when (>= org-element--cache-diagnostics-level 3)
+    (org-element--cache-log-message
+     "Requesting element at %S" pom))
   ;; Allow re-parsing when the command can benefit from it.
   (when (and cached-only
              (memq this-command org-element--cache-non-modifying-commands))
@@ -8038,9 +8048,10 @@ element ending there."
                                        (< pom
                                           (org-element--request-beg
                                            (car org-element--cache-sync-requests)))))
-                          (org-element--cache-log-message
-                           "Requesting cached element at %S. Next sync request: %S"
-                           pom (car org-element--cache-sync-requests))
+                          (when (>= org-element--cache-diagnostics-level 3)
+                            (org-element--cache-log-message
+                             "Requesting cached element at %S. Next sync request: %S"
+                             pom (car org-element--cache-sync-requests)))
                           (org-element--cache-find pom))
                       (condition-case-unless-debug err
                           (org-element--parse-to pom)
