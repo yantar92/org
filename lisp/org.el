@@ -13778,10 +13778,14 @@ user."
       (unless deltadef
 	(let ((now (decode-time)))
 	  (setq day (nth 3 now) month (nth 4 now) year (nth 5 now))))
-      (cond ((member deltaw '("d" "")) (setq day (+ day deltan)))
-	    ((equal deltaw "w") (setq day (+ day (* 7 deltan))))
-	    ((equal deltaw "m") (setq month (+ month deltan)))
-	    ((equal deltaw "y") (setq year (+ year deltan)))))
+      (cond ((member deltaw '("h" ""))
+             (when (boundp 'org-time-was-given)
+               (setq org-time-was-given t))
+             (setq hour (+ hour deltan)))
+            ((member deltaw '("d" "")) (setq day (+ day deltan)))
+            ((equal deltaw "w") (setq day (+ day (* 7 deltan))))
+            ((equal deltaw "m") (setq month (+ month deltan)))
+            ((equal deltaw "y") (setq year (+ year deltan)))))
      ((and wday (not (nth 3 tl)))
       ;; Weekday was given, but no day, so pick that day in the week
       ;; on or after the derived date.
@@ -15406,7 +15410,8 @@ BEG and END are buffer positions."
 If the cursor is on a LaTeX fragment, create the image and
 overlay it over the source code, if there is none.  Remove it
 otherwise.  If there is no fragment at point, display images for
-all fragments in the current section.
+all fragments in the current section.  With an active region,
+display images for all fragments in the region.
 
 With a `\\[universal-argument]' prefix argument ARG, clear images \
 for all fragments
@@ -15434,10 +15439,18 @@ fragments in the buffer."
    ;; Clear current section.
    ((equal arg '(4))
     (org-clear-latex-preview
-     (if (org-before-first-heading-p) (point-min)
-       (save-excursion
-	 (org-with-limited-levels (org-back-to-heading t) (point))))
-     (org-with-limited-levels (org-entry-end-position))))
+     (if (use-region-p)
+         (region-beginning)
+       (if (org-before-first-heading-p) (point-min)
+         (save-excursion
+	   (org-with-limited-levels (org-back-to-heading t) (point)))))
+     (if (use-region-p)
+         (region-end)
+       (org-with-limited-levels (org-entry-end-position)))))
+   ((use-region-p)
+    (message "Creating LaTeX previews in region...")
+    (org--latex-preview-region (region-beginning) (region-end))
+    (message "Creating LaTeX previews in region... done."))
    ;; Toggle preview on LaTeX code at point.
    ((let ((datum (org-element-context)))
       (and (memq (org-element-type datum) '(latex-environment latex-fragment))

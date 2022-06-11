@@ -306,7 +306,13 @@ b. Item 2<point>"
 - item
 - <point> ::"
         (org-indent-item)
-        (point)))))
+        (point))))
+  ;; Preserve space after point upon promoting level.
+  (org-test-with-temp-text "
+- item
+- <point> 	::"
+    (org-indent-item)
+    (should (looking-at-p " \t"))))
 
 (ert-deftest test-org-list/indent-item-tree ()
   "Test `org-indent-item-tree' specifications."
