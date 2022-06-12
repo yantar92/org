@@ -18808,14 +18808,15 @@ instead of back to heading."
 (defun org-before-first-heading-p ()
   "Before first heading?
 Respect narrowing."
-  (if (org-element--cache-active-p)
-      (let ((cached-headline (org-element-lineage (org-element-at-point) '(headline) t)))
-        (or (not cached-headline)
-            (< (org-element-property :begin cached-headline) (point-min))))
-    (org-with-limited-levels
-     (save-excursion
-       (end-of-line)
-       (null (re-search-backward org-outline-regexp-bol nil t))))))
+  (let ((cached (org-element-at-point nil 'cached)))
+    (if cached
+        (let ((cached-headline (org-element-lineage cached '(headline) t)))
+          (or (not cached-headline)
+              (< (org-element-property :begin cached-headline) (point-min))))
+      (org-with-limited-levels
+       (save-excursion
+         (end-of-line)
+         (null (re-search-backward org-outline-regexp-bol nil t)))))))
 
 (defun org-at-heading-p (&optional invisible-not-ok)
   "Return t if point is on a (possibly invisible) heading line.
@@ -18832,26 +18833,19 @@ unless optional argument NO-INHERITANCE is non-nil.
 
 Optional argument ELEMENT contains element at point."
   (save-match-data
-    (let ((el (or element (org-element-at-point nil 'cached))))
-      (if el
-          (catch :found
-            (setq el (org-element-lineage el '(headline inlinetask) 'include-self))
-            (if no-inheritance
-                (org-element-property :commentedp el)
-              (while el
-                (when (org-element-property :commentedp el)
-                  (throw :found t))
-                (setq el (org-element-property :parent el)))))
-        (cond
-         ((org-before-first-heading-p) nil)
-         ((let ((headline (nth 4 (org-heading-components))))
-            (and headline
-	         (let ((case-fold-search nil))
-	           (string-match-p (concat "^" org-comment-string "\\(?: \\|$\\)")
-			           headline)))))
-         (no-inheritance nil)
-         (t
-          (save-excursion (and (org-up-heading-safe) (org-in-commented-heading-p)))))))))
+    (let ((el (or element
+                  (org-element-at-point nil 'cached)
+                  (org-with-wide-buffer
+                   (org-back-to-heading-or-point-min t)
+                   (org-element-at-point)))))
+      (catch :found
+        (setq el (org-element-lineage el '(headline inlinetask) 'include-self))
+        (if no-inheritance
+            (org-element-property :commentedp el)
+          (while el
+            (when (org-element-property :commentedp el)
+              (throw :found t))
+            (setq el (org-element-property :parent el))))))))
 
 (defun org-in-archived-heading-p (&optional no-inheritance element)
   "Non-nil if point is under an archived heading.

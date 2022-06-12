@@ -3760,28 +3760,33 @@ definition can be found, raise an error."
     (if (not label) (org-element-contents footnote-reference)
       (let ((cache (or (plist-get info :footnote-definition-cache)
 		       (let ((hash (make-hash-table :test #'equal)))
+                         ;; Cache all the footnotes in document for
+                         ;; later search.
+                         (org-element-map (plist-get info :parse-tree)
+                             '(footnote-definition footnote-reference)
+                           (lambda (f)
+		             ;; Skip any standard footnote reference
+		             ;; since those cannot contain a
+		             ;; definition.
+                             (unless (eq (org-element-property :type f) 'standard)
+                               (puthash
+                                (cons :element (org-element-property :label f))
+                                f
+                                hash)))
+                           info)
 			 (plist-put info :footnote-definition-cache hash)
 			 hash))))
 	(or
 	 (gethash label cache)
 	 (puthash label
-		  (org-element-map (plist-get info :parse-tree)
-		      '(footnote-definition footnote-reference)
-		    (lambda (f)
-		      (cond
-		       ;; Skip any footnote with a different label.
-		       ;; Also skip any standard footnote reference
-		       ;; with the same label since those cannot
-		       ;; contain a definition.
-		       ((not (equal (org-element-property :label f) label)) nil)
-		       ((eq (org-element-property :type f) 'standard) nil)
-		       ((org-element-contents f))
-		       ;; Even if the contents are empty, we can not
-		       ;; return nil since that would eventually raise
-		       ;; the error.  Instead, return the equivalent
-		       ;; empty string.
-		       (t "")))
-		    info t)
+                  (let ((hashed (gethash (cons :element label) cache)))
+                    (when hashed
+                      (or (org-element-contents hashed)
+		          ;; Even if the contents are empty, we can not
+		          ;; return nil since that would eventually raise
+		          ;; the error.  Instead, return the equivalent
+		          ;; empty string.
+                          "")))
 		  cache)
 	 (error "Definition not found for footnote %s" label))))))
 
@@ -4353,17 +4358,27 @@ significant."
   (let* ((search-cells (org-export-string-to-search-cell
 			(org-element-property :path link)))
 	 (link-cache (or (plist-get info :resolve-fuzzy-link-cache)
-			 (let ((table (make-hash-table :test #'eq)))
+			 (let ((table (make-hash-table :test #'equal)))
+                           ;; Cache all the element search cells.
+                           (org-element-map (plist-get info :parse-tree)
+		               (append pseudo-types '(target) org-element-all-elements)
+	                     (lambda (datum)
+		               (dolist (cell (org-export-search-cells datum))
+		                 (if (gethash cell table)
+                                     (push datum (gethash cell table))
+                                   (puthash cell (list datum) table)))))
 			   (plist-put info :resolve-fuzzy-link-cache table)
 			   table)))
 	 (cached (gethash search-cells link-cache 'not-found)))
     (if (not (eq cached 'not-found)) cached
       (let ((matches
-	     (org-element-map (plist-get info :parse-tree)
-		 (append pseudo-types '(target) org-element-all-elements)
-	       (lambda (datum)
-		 (and (org-export-match-search-cell-p datum search-cells)
-		      datum)))))
+             (let (result)
+               (dolist (search-cell search-cells)
+                 (setq result
+                       (nconc
+                        result
+	                (gethash search-cell link-cache))))
+               (delq nil result))))
 	(unless matches
 	  (signal 'org-link-broken (list (org-element-property :path link))))
 	(puthash
@@ -4390,15 +4405,27 @@ tree or a file name.  Assume LINK type is either \"id\" or
 \"custom-id\".  Throw an error if no match is found."
   (let ((id (org-element-property :path link)))
     ;; First check if id is within the current parse tree.
-    (or (org-element-map (plist-get info :parse-tree) 'headline
-	  (lambda (headline)
-	    (when (or (equal (org-element-property :ID headline) id)
-		      (equal (org-element-property :CUSTOM_ID headline) id))
-	      headline))
-	  info 'first-match)
-	;; Otherwise, look for external files.
-	(cdr (assoc id (plist-get info :id-alist)))
-	(signal 'org-link-broken (list id)))))
+    (or (let ((local-ids (or (plist-get info :id-local-cache)
+                             (let ((table (make-hash-table :test #'equal)))
+                               (org-element-map
+                                   (plist-get info :parse-tree)
+                                   'headline
+                                 (lambda (headline)
+                                   (let ((id (org-element-property :ID headline))
+                                         (custom-id (org-element-property :CUSTOM_ID headline)))
+                                     (when id
+                                       (unless (gethash id table)
+                                         (puthash id headline table)))
+                                     (when custom-id
+                                       (unless (gethash custom-id table)
+                                         (puthash custom-id headline table)))))
+                                 info)
+                               (plist-put info :id-local-cache table)
+                               table))))
+          (gethash id local-ids))
+        ;; Otherwise, look for external files.
+        (cdr (assoc id (plist-get info :id-alist)))
+        (signal 'org-link-broken (list id)))))
 
 (defun org-export-resolve-radio-link (link info)
   "Return radio-target object referenced as LINK destination.
