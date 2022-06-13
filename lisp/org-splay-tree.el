@@ -34,7 +34,9 @@
                (:constructor org-splay-tree--create (&optional cmpfun))
                (:predicate org-splay-tree-p)
                (:copier nil))
+  "Splay binary tree."
   (root nil)
+  (hash (make-hash-table :test #'eq :weakness t))
   (cmpfun #'<)
   (size 0))
 
@@ -43,6 +45,7 @@
                (:constructor nil)
                (:constructor org-splay-tree--node-create (data))
                (:copier nil))
+  "Splay tree node."
   data (left nil) (right nil) (parent nil))
 
 (defmacro org-splay-tree--node-grandparent (node)
@@ -50,7 +53,13 @@
   `(org-splay-tree--node-parent (org-splay-tree--node-parent ,node)))
 
 (defun org-splay-tree--left-rotate (tree node)
-  "Perform left rotate operation on NODE in TREE."
+  "Perform left rotate operation on NODE in TREE.
+
+   N             R
+  / \\    ->     / \\
+ L   R         N   RR
+    / \\       / \\
+   RL  RR    L   RL"
   (let ((right-node (org-splay-tree--node-right node)))
     (when right-node
       (setf (org-splay-tree--node-right node) (org-splay-tree--node-left right-node))
@@ -67,7 +76,13 @@
     (setf (org-splay-tree--node-parent node) right-node)))
 
 (defun org-splay-tree--right-rotate (tree node)
-  "Perform right rotate operation on NODE in TREE."
+  "Perform right rotate operation on NODE in TREE.
+
+    N             L
+   / \\    ->     / \\
+  L   R         LL  N
+ / \\               / \\
+LL  LR            LR  R"
   (let ((left-node (org-splay-tree--node-left node)))
     (when left-node
       (setf (org-splay-tree--node-left node) (org-splay-tree--node-right left-node))
@@ -86,10 +101,10 @@
 (cl-defun org-splay-tree--splay (tree node &optional roots)
   "Perform splay operation on TREE up from NODE.
 Optional ROOTS argument contains the roots to splay to.
-When optional argument ROOTS is non-nil, terminate limit splaying.
-Every time splaying reaches an element of the ROOTS, it continues
-splaying parent of the reached root node and the reached root is
-removed from ROOTS.
+When optional argument ROOTS is non-nil, limit splaying.
+Every time splaying reaches an element contained in the ROOTS, it
+continues splaying from parent of the reached root node and the
+reached root is removed from ROOTS.
 Once ROOTS becomes empty, splaying process terminates.
 See http://dx.doi.org/10.1007/978-3-642-03367-4_18
 Jonathan C. Derryberry, Daniel D. Sleator [Springer Berlin Heidelberg]
