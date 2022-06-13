@@ -52,6 +52,18 @@
   "Get parent of the parent of NODE."
   `(org-splay-tree--node-parent (org-splay-tree--node-parent ,node)))
 
+(defmacro org-splay-tree--root-p (node)
+  "Return non-nil when NODE is the left child of its parent."
+  `(not (org-splay-tree--node-parent ,node)))
+
+(defmacro org-splay-tree--node-left-child-p (node)
+  "Return non-nil when NODE is the left child of its parent."
+  `(eq ,node (org-splay-tree--node-left (org-splay-tree--node-parent ,node))))
+
+(defmacro org-splay-tree--node-right-child-p (node)
+  "Return non-nil when NODE is the right child of its parent."
+  `(eq ,node (org-splay-tree--node-right (org-splay-tree--node-parent ,node))))
+
 (defun org-splay-tree--left-rotate (tree node)
   "Perform left rotate operation on NODE in TREE.
 
@@ -67,9 +79,9 @@
         (setf (org-splay-tree--node-parent (org-splay-tree--node-left right-node)) node))
       (setf (org-splay-tree--node-parent right-node) (org-splay-tree--node-parent node)))
     (cond
-     ((not (org-splay-tree--node-parent node))
+     ((org-splay-tree--root-p node)
       (setf (org-splay-tree--root tree) right-node))
-     ((eq node (org-splay-tree--node-left (org-splay-tree--node-parent node)))
+     ((org-splay-tree--node-left-child-p node)
       (setf (org-splay-tree--node-left (org-splay-tree--node-parent node)) right-node))
      (t (setf (org-splay-tree--node-right (org-splay-tree--node-parent node)) right-node)))
     (when right-node (setf (org-splay-tree--node-left right-node) node))
@@ -90,9 +102,9 @@ LL  LR            LR  R"
         (setf (org-splay-tree--node-parent (org-splay-tree--node-right left-node)) node))
       (setf (org-splay-tree--node-parent left-node) (org-splay-tree--node-parent node)))
     (cond
-     ((not (org-splay-tree--node-parent node))
+     ((org-splay-tree--root-p node)
       (setf (org-splay-tree--root tree) left-node))
-     ((eq node (org-splay-tree--node-left (org-splay-tree--node-parent node)))
+     ((org-splay-tree--node-left-child-p node)
       (setf (org-splay-tree--node-left (org-splay-tree--node-parent node)) left-node))
      (t (setf (org-splay-tree--node-right (org-splay-tree--node-parent node)) left-node)))
     (when left-node (setf (org-splay-tree--node-right left-node) node))
@@ -113,28 +125,27 @@ Model."
   (unless roots (setq roots (list (org-splay-tree--root tree))))
   (while (org-splay-tree--node-parent node)
     (cond
-     ((or (not (org-splay-tree--node-grandparent node))
-          (when (memq (org-splay-tree--node-parent node) roots)
-            (setq roots (delq (org-splay-tree--node-parent node) roots))
-            t))
-      (if (eq node (org-splay-tree--node-left (org-splay-tree--node-parent node)))
+     ((or (org-splay-tree--root-p (org-splay-tree--node-parent node))
+          (memq (org-splay-tree--node-parent node) roots))
+      (if (org-splay-tree--node-left-child-p node)
           (org-splay-tree--right-rotate tree (org-splay-tree--node-parent node))
         (org-splay-tree--left-rotate tree (org-splay-tree--node-parent node)))
-      ;; No more ROOTS. Terminate.
-      (unless roots (setq node (org-splay-tree--root tree))))
-     ((and (eq node (org-splay-tree--node-left (org-splay-tree--node-parent node)))
-           (eq (org-splay-tree--node-parent node)
-               (org-splay-tree--node-left (org-splay-tree--node-grandparent node))))
+      (if roots
+          (when (memq (org-splay-tree--node-parent node) roots)
+            (setq roots (delq (org-splay-tree--node-parent node) roots))
+            (setq node (org-splay-tree--node-parent node)))
+        ;; No more ROOTS. Terminate.
+        (setq node (org-splay-tree--root tree))))
+     ((and (org-splay-tree--node-left-child-p node)
+           (org-splay-tree--node-left-child-p (org-splay-tree--node-parent node)))
       (org-splay-tree--right-rotate tree (org-splay-tree--node-grandparent node))
       (org-splay-tree--right-rotate tree (org-splay-tree--node-parent node)))
-     ((and (eq node (org-splay-tree--node-right (org-splay-tree--node-parent node)))
-           (eq (org-splay-tree--node-parent node)
-               (org-splay-tree--node-right (org-splay-tree--node-grandparent node))))
+     ((and (org-splay-tree--node-right-child-p node)
+           (org-splay-tree--node-right-child-p (org-splay-tree--node-parent node)))
       (org-splay-tree--left-rotate tree (org-splay-tree--node-grandparent node))
       (org-splay-tree--left-rotate tree (org-splay-tree--node-parent node)))
-     ((and (eq node (org-splay-tree--node-left (org-splay-tree--node-parent node)))
-           (eq (org-splay-tree--node-parent node)
-               (org-splay-tree--node-right (org-splay-tree--node-grandparent node))))
+     ((and (org-splay-tree--node-left-child-p node)
+           (org-splay-tree--node-right-child-p (org-splay-tree--node-parent node)))
       (org-splay-tree--right-rotate tree (org-splay-tree--node-parent node))
       (org-splay-tree--left-rotate tree (org-splay-tree--node-parent node)))
      (t
@@ -144,9 +155,9 @@ Model."
 (defun org-splay-tree--replace (tree u v)
   "Replace node U with node V in TREE."
   (cond
-   ((not (org-splay-tree--node-parent u))
+   ((org-splay-tree--root-p u)
     (setf (org-splay-tree--root tree) v))
-   ((eq u (org-splay-tree--node-left (org-splay-tree--node-parent u)))
+   ((org-splay-tree--node-left-child-p u)
     (setf (org-splay-tree--node-left (org-splay-tree--node-parent u)) v))
    (t (setf (org-splay-tree--node-right (org-splay-tree--node-parent u)) v)))
   (when v (setf (org-splay-tree--node-parent v) (org-splay-tree--node-parent u))))
@@ -154,13 +165,15 @@ Model."
 (defun org-splay-tree--subtree-min (node)
   "Find minimum in subtree with NODE root."
   (when node
-    (while (org-splay-tree--node-left node) (setq node (org-splay-tree--node-left node))))
+    (while (org-splay-tree--node-left node)
+      (setq node (org-splay-tree--node-left node))))
   node)
 
 (defun org-splay-tree--subtree-max (node)
   "Find maximum in subtree with NODE root."
   (when node
-    (while (org-splay-tree--node-right node) (setq node (org-splay-tree--node-right node))))
+    (while (org-splay-tree--node-right node)
+      (setq node (org-splay-tree--node-right node))))
   node)
 
 (defun org-splay-tree-find (tree data &optional roots starting-node parentp)
@@ -204,7 +217,7 @@ Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
       (setq node (org-splay-tree--subtree-min (org-splay-tree--node-right node)))
     (while (and node
                 (org-splay-tree--node-parent node)
-                (eq node (org-splay-tree--node-right (org-splay-tree--node-parent node))))
+                (org-splay-tree--node-right-child-p node))
       (setq node (org-splay-tree--node-parent node)))
     (when node (setq node (org-splay-tree--node-parent node)))))
 
@@ -214,7 +227,7 @@ Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
       (setq node (org-splay-tree--subtree-max (org-splay-tree--node-left node)))
     (while (and node
                 (org-splay-tree--node-parent node)
-                (eq node (org-splay-tree--node-left (org-splay-tree--node-parent node))))
+                (org-splay-tree--node-left-child-p node))
       (setq node (org-splay-tree--node-parent node)))
     (when node (setq node (org-splay-tree--node-parent node)))))
 
@@ -301,15 +314,19 @@ subsequent element."
                (start-node)
                (t (org-splay-tree--subtree-min (org-splay-tree--root tree)))))
         (jump-to from))
-    (unless node (iter-yield nil))
     (while node
       (when (and jump-to
+                 ;; node < jump-to.
                  (funcall (org-splay-tree--cmpfun tree)
-                          (org-splay-tree--node-data node) jump-to))
+                          (org-splay-tree--node-data node)
+                          jump-to))
         (setq node (org-splay-tree-find tree jump-to nil node 'parent)))
       (unless (and jump-to
+                   ;; Still node < jump-to.
+                   ;; Node got updated compared to the above.
                    (funcall (org-splay-tree--cmpfun tree)
-                            (org-splay-tree--node-data node) jump-to))
+                            (org-splay-tree--node-data node)
+                            jump-to))
         (setq jump-to (iter-yield (org-splay-tree--node-data node))))
       (if (and (not (org-splay-tree--node-parent node))
                (not (org-splay-tree--node-left node))
