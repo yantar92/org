@@ -187,29 +187,35 @@ Accumulate power 2 level nodes into ROOTS.
 See http://dx.doi.org/10.1007/978-3-642-03367-4_18 Jonathan
 C. Derryberry, Daniel D. Sleator [Springer Berlin Heidelberg] \(2009)
 Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
-  (let ((node (or starting-node (org-splay-tree--root tree)))
-        (level 0) (pow2 1) parent)
-    (when node
-      (catch :found
-        (when (and (org-splay-tree--node-parent node)
-                   (eq node (org-splay-tree--node-left (org-splay-tree--node-parent node)))
-                   (funcall (org-splay-tree--cmpfun tree)
-                            (org-splay-tree--node-data (org-splay-tree--node-parent node)) data))
-          (setq parent (org-splay-tree--node-parent node))
-          (setq node nil))
-        (while node
-          (setq parent node)
-          (cl-incf level)
-          (when (= level pow2)
-            (push node roots)
-            (setq pow2 (* 2 pow2)))
-          (cond
-           ((funcall (org-splay-tree--cmpfun tree) (org-splay-tree--node-data node) data)
-            (setf node (org-splay-tree--node-right node)))
-           ((funcall (org-splay-tree--cmpfun tree) data (org-splay-tree--node-data node))
-            (setf node (org-splay-tree--node-left node)))
-           (t (throw :found node))))
-        (when parentp parent)))))
+  (or (and (not starting-node) (gethash data (org-splay-tree--hash tree)))
+      (let ((node (or starting-node (org-splay-tree--root tree)))
+            (level 0) (pow2 1) parent)
+        (when node
+          (catch :found
+            (when (and (org-splay-tree--node-parent node)
+                       (org-splay-tree--node-left-child-p node)
+                       ;; parent < data.
+                       (funcall (org-splay-tree--cmpfun tree)
+                                (org-splay-tree--node-data (org-splay-tree--node-parent node))
+                                data))
+              (setq parent (org-splay-tree--node-parent node))
+              (setq node nil))
+            (while node
+              (setq parent node)
+              (cl-incf level)
+              (when (= level pow2)
+                (push node roots)
+                (setq pow2 (* 2 pow2)))
+              (cond
+               ;; node < data
+               ((funcall (org-splay-tree--cmpfun tree) (org-splay-tree--node-data node) data)
+                (setf node (org-splay-tree--node-right node)))
+               ;; data < node.
+               ((funcall (org-splay-tree--cmpfun tree) data (org-splay-tree--node-data node))
+                (setf node (org-splay-tree--node-left node)))
+               ;; data = node.
+               (t (throw :found node))))
+            (when parentp parent))))))
 
 (defun org-splay-tree-next-node (node)
   "Find the TREE node right after NODE."
@@ -233,17 +239,9 @@ Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
 
 (defun org-splay-tree-enter (tree data)
   "Put DATA into splay TREE."
-  (let ((node (org-splay-tree--root tree)) parent (level 0) (pow2 1) roots)
-    (while node
-      (setf parent node)
-      (cl-incf level)
-      (when (= level pow2)
-        (push node roots)
-        (setq pow2 (* 2 pow2)))
-      (if (funcall (org-splay-tree--cmpfun tree) (org-splay-tree--node-data node) data)
-          (setf node (org-splay-tree--node-right node))
-        (setf node (org-splay-tree--node-left node))))
-    (setf node (org-splay-tree--node-create data))
+  (let* ((node (org-splay-tree--node-create data))
+         (roots nil)
+         (parent (org-splay-tree-find tree data roots nil 'parent)))
     (setf (org-splay-tree--node-parent node) parent)
     (cond
      ((not parent) (setf (org-splay-tree--root tree) node))
@@ -251,11 +249,14 @@ Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
       (setf (org-splay-tree--node-right parent) node))
      (t (setf (org-splay-tree--node-left parent) node)))
     (org-splay-tree--splay tree node roots)
-    (cl-incf (org-splay-tree--size tree))))
+    (cl-incf (org-splay-tree--size tree))
+    (unless (gethash data (org-splay-tree--hash tree))
+      (puthash data node (org-splay-tree--hash tree)))))
 
 (defun org-splay-tree-delete (tree node)
   "Remove NODE from TREE."
-  (let* ((roots nil) (node (org-splay-tree-find tree node roots)))
+  (let* ((roots nil)
+         (node (org-splay-tree-find tree node roots)))
     (when node
       (org-splay-tree--splay tree node roots)
       (cond
@@ -272,6 +273,8 @@ Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
           (org-splay-tree--replace tree node nxt)
           (setf (org-splay-tree--node-left nxt) (org-splay-tree--node-left node))
           (setf (org-splay-tree--node-parent (org-splay-tree--node-left nxt)) nxt))))
+      (when (eq node (gethash (org-splay-tree--node-data node) (org-splay-tree--hash tree)))
+        (remhash (org-splay-tree--node-data node) (org-splay-tree--hash tree)))
       ;; Clear the node to signal, e.g. that iter is gone.
       (setf (org-splay-tree--node-parent node) nil)
       (setf (org-splay-tree--node-left node) nil)
