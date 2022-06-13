@@ -5824,9 +5824,7 @@ position."
 
 (defun org-element--cache-compare (a b)
   "Non-nil when element A is located before element B."
-  (org-element--cache-key-less-p
-   (if (numberp a) a (org-element--cache-key a))
-   (if (numberp b) b (org-element--cache-key b))))
+  (org-element--cache-key-less-p (org-element--cache-key a) (org-element--cache-key b)))
 
 ;;;; Tools
 
@@ -5916,11 +5914,11 @@ the cache."
           (progn
             (cl-incf (car org-element--cache-hash-statistics))
             hashed)
-	;; Find an element close to POS, but before. Accounting for
-	;; cache key vs. actual pos.
         (setq lower (org-splay-tree-find
                      org-element--cache
-                     (- pos 3) ; cache keys can be down to -3 from :begin
+                     (org-element-create
+                      'dummy
+                      `(:begin ,(- pos 3)))
                      nil nil 'parent))
         ;; Move to last element in cache starting before POS.
         ;; Note that if POS = 1, we might be already at an element
@@ -5948,7 +5946,9 @@ the cache."
         (when limit
           (unless (and lower (org-element--cache-key-less-p (org-element--cache-key (org-splay-tree--node-data lower)) limit))
             (setq lower (org-splay-tree-find
-                         org-element--cache limit nil nil 'parent))
+                         org-element--cache
+                         (org-element-create 'dummy `(:begin ,limit))
+                         nil nil 'parent))
             (while (and lower
                         (not (org-element--cache-key-less-p (org-element--cache-key (org-splay-tree--node-data lower)) limit)))
               (setq lower (org-splay-tree-previous-node lower))))
@@ -6236,7 +6236,7 @@ completing the request."
       (catch 'org-element--cache-end-phase
         (let* ((request-key (org-element--request-key request))
 	       (end (org-element--request-end request))
-	       (iter-node (org-splay-tree-iter org-element--cache request-key))
+	       (iter-node (org-splay-tree-iter org-element--cache (org-element-create 'dummy `(:begin ,request-key))))
 	       data data-key)
           (while t
 	    (when (org-element--cache-interrupt-p time-limit)
@@ -6409,7 +6409,7 @@ completing the request."
       (when (and (not parent) (zerop offset))
         (org-element--cache-log-message "Empty offset. Request completed.")
         (throw 'org-element--cache-quit t))
-      (iter-do (data (org-splay-tree-iter org-element--cache start))
+      (iter-do (data (org-splay-tree-iter org-element--cache (and start (org-element-create 'dummy `(:begin ,start)))))
         (setq key (org-element--cache-key data))
         ;; Shift and re-parent when current node starts at or
         ;; after START, but before NEXT.
@@ -7734,7 +7734,7 @@ the cache."
                               before-time)))
                 (setf (alist-get granularity org-element--cache-gapless)
                       org-element--cache-change-tic))
-              (let ((tree-iter (org-splay-tree-iter (cache-tree) start))
+              (let ((tree-iter (org-splay-tree-iter (cache-tree) (and start (org-element-create 'dummy `(:begin ,start)))))
                     data)
                 (setq data
                       (condition-case nil
@@ -7846,7 +7846,7 @@ the cache."
                   (setq data
                         (condition-case nil
                             (when tree-iter
-                              (iter-next tree-iter start))
+                              (iter-next tree-iter (and start (org-element-create 'dummy `(:begin ,start)))))
                           ('iter-end-of-sequence nil))))))
             (when (and org-element--cache-map-statistics
                        (or (not org-element--cache-map-statistics-threshold)
