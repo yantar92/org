@@ -533,6 +533,7 @@ Return non-nil, when the property was actually resolved."
   (pcase (if (stringp element) (get-text-property 0 property element)
            (plist-get (nth 1 element) property))
     ;; Calculate deferred property on demand.
+    ((guard (not element)) nil)
     (`nil
      (unless (or (eq :deferred property)
                  (and (not (stringp element))
@@ -1243,6 +1244,9 @@ Assume point is at beginning of the headline."
 			 :archivedp archivedp
 			 :commentedp commentedp
 			 :post-affiliated begin
+                         ;; Avoid triggering deferred invocation.
+                         :parent nil
+                         :structure nil
                          :deferred (list (current-buffer) #'org-element-headline-parser--deferred)))))
 	(org-element-put-property
 	 headline :title
@@ -4414,7 +4418,9 @@ element it has to parse."
 	          (t (org-element-paragraph-parser limit affiliated)))))))
           (when result
             (org-element-put-property result :mode mode)
-            (org-element-put-property result :granularity granularity))
+            (org-element-put-property result :granularity granularity)
+            (org-element-put-property result :org-element--cache-sync-key nil)
+            (org-element-put-property result :cached nil))
           (when (and (not (buffer-narrowed-p))
                      (org-element--cache-active-p)
                      (not org-element--cache-sync-requests)
