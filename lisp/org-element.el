@@ -4247,17 +4247,18 @@ element it has to parse."
                            (setq element (org-element-property :parent element)))
                          element))
          (old-element element)
-         (element (if (or (eq (org-element-property :granularity element) granularity)
-                          (and (memq granularity '(nil object))
-                               (memq (org-element-property :granularity element) '(nil object))))
-                      element
-                    (let ((cached (org-element-cache-get-key
-                                   element
-                                   (list 'org-element--current-element (or granularity 'object)))))
-                      (when cached
-                        (org-element-put-property
-                         cached :parent
-                         (org-element-property :parent element)))))))
+         (element (when element
+                    (if (or (eq (org-element-property :granularity element) granularity)
+                            (and (memq granularity '(nil object))
+                                 (memq (org-element-property :granularity element) '(nil object))))
+                        element
+                      (let ((cached (org-element-cache-get-key
+                                     element
+                                     (list 'org-element--current-element (or granularity 'object)))))
+                        (when cached
+                          (org-element-put-property
+                           cached :parent
+                           (org-element-property :parent element))))))))
     (if element
         element
       (save-excursion
