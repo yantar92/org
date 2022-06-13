@@ -5879,7 +5879,7 @@ the cache."
   (with-current-buffer (or (buffer-base-buffer) (current-buffer))
     (let* ((limit (and org-element--cache-sync-requests
                        (org-element--request-key (car org-element--cache-sync-requests))))
-	   (node (org-element--cache-root))
+	   node
            (hash-pos (unless (eq side 'both)
                        (mod (org-knuth-hash pos)
                             org-element--cache-hash-size)))
@@ -5949,7 +5949,10 @@ the cache."
 	    (setq upper nil)))
         (when lower (setq lower (org-splay-tree--node-data lower)))
         (when upper (setq upper (org-splay-tree--node-data upper)))
-        (unless side (aset org-element--cache-hash hash-pos lower))
+        (if (not side)
+            (aset org-element--cache-hash-left hash-pos lower)
+          (unless (eq side 'both)
+            (aset org-element--cache-hash-right hash-pos lower)))
         (pcase side
           (`both (cons lower upper))
           (`nil lower)
@@ -7382,7 +7385,8 @@ buffers."
 		    (org-splay-tree--create #'org-element--cache-compare))
         (setq-local org-element--headline-cache
 		    (org-splay-tree--create #'org-element--cache-compare))
-        (setq-local org-element--cache-hash (make-vector org-element--cache-hash-size nil))
+        (setq-local org-element--cache-hash-left (make-vector org-element--cache-hash-size nil))
+        (setq-local org-element--cache-hash-right (make-vector org-element--cache-hash-size nil))
         (setq-local org-element--cache-size 0)
         (setq-local org-element--headline-cache-size 0)
 	(setq-local org-element--cache-sync-keys-value 0)
