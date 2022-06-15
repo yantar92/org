@@ -215,6 +215,16 @@ Skip-Splay: Toward Achieving the Unified Bound in the BST Model."
            (t (throw :found node))))
         (when parentp parent)))))
 
+(defun org-splay-tree-find-and-splay (tree data &optional starting-node parentp)
+  "Find exact DATA node in TREE and splay.
+
+Optional arguments STARTING-NODE and PARENTP are the same as in
+`org-splay-tree-find'."
+  (let (roots result)
+    (setq result (org-splay-tree-find tree data roots starting-node parentp))
+    (when result (org-splay-tree--splay tree result roots))
+    result))
+
 (defun org-splay-tree-next-node (node)
   "Find the TREE node right after NODE."
   (if (org-splay-tree--node-right node)

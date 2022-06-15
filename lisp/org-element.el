@@ -5914,12 +5914,12 @@ the cache."
           (progn
             (cl-incf (car org-element--cache-hash-statistics))
             hashed)
-        (setq lower (org-splay-tree-find
+        (setq lower (org-splay-tree-find-and-splay
                      org-element--cache
                      (org-element-create
                       'dummy
                       `(:begin ,(- pos 3)))
-                     nil nil 'parent))
+                     nil 'parent))
         ;; Move to last element in cache starting before POS.
         ;; Note that if POS = 1, we might be already at an element
         ;; starting at POS (if it is the first element in cache).
