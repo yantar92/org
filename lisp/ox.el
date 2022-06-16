@@ -1927,28 +1927,34 @@ Return a string."
 			      (and (not greaterp)
 				   (memq type org-element-recursive-objects)))
 			     (contents
-			      (mapconcat
-			       (lambda (element) (org-export-data element info))
-			       (org-element-contents
-				(if (or greaterp objectp) data
-				  ;; Elements directly containing
-				  ;; objects must have their indentation
-				  ;; normalized first.
-				  (org-element-normalize-contents
-				   data
-				   ;; When normalizing first paragraph
-				   ;; of an item or
-				   ;; a footnote-definition, ignore
-				   ;; first line's indentation.
-				   (and
-				    (eq type 'paragraph)
-				    (memq (org-element-type parent)
-					  '(footnote-definition item))
-				    (eq (car (org-element-contents parent))
-					data)
-				    (eq (org-element-property :pre-blank parent)
-					0)))))
-			       "")))
+                              (let ((export-buffer (current-buffer)))
+                                (with-temp-buffer
+                                  (dolist (element (org-element-contents
+				                    (if (or greaterp objectp) data
+				                      ;; Elements directly containing
+				                      ;; objects must have their indentation
+				                      ;; normalized first.
+				                      (org-element-normalize-contents
+				                       data
+				                       ;; When normalizing first paragraph
+				                       ;; of an item or
+				                       ;; a footnote-definition, ignore
+				                       ;; first line's indentation.
+				                       (and
+				                        (eq type 'paragraph)
+				                        (memq (org-element-type parent)
+					                      '(footnote-definition item))
+				                        (eq (car (org-element-contents parent))
+					                    data)
+				                        (eq (org-element-property :pre-blank parent)
+					                    0))))))
+                                    (insert
+                                     ;; Use right local variable
+                                     ;; environment if there are, for
+                                     ;; example, #+BIND variables.
+                                     (with-current-buffer export-buffer
+                                       (org-export-data element info))))
+                                  (buffer-string)))))
 			(broken-link-handler
 			 (funcall transcoder data
 				  (if (not greaterp) contents
@@ -2941,9 +2947,7 @@ still inferior to file-local settings.
 Return code as a string."
   (when (symbolp backend) (setq backend (org-export-get-backend backend)))
   (org-export-barf-if-invalid-backend backend)
-  ;; FIXME: Without disabling cache, export may fail for unknown
-  ;; reasons.
-  (let (org-element-use-cache)
+  (org-fold-core-ignore-modifications
     (save-excursion
       (save-restriction
         ;; Narrow buffer to an appropriate region or subtree for
@@ -2968,11 +2972,12 @@ Return code as a string."
 		      (mapcar (lambda (o) (and (eq (nth 4 o) 'parse) (nth 1 o)))
 			      (append (org-export-get-all-options backend)
 				      org-export-options-alist))))
-	       tree)
+	       tree modified-tick)
 	  ;; Update communication channel and get parse tree.  Buffer
 	  ;; isn't parsed directly.  Instead, all buffer modifications
 	  ;; and consequent parsing are undertaken in a temporary copy.
 	  (org-export-with-buffer-copy
+           (font-lock-mode -1)
 	   ;; Run first hook with current back-end's name as argument.
 	   (run-hook-with-args 'org-export-before-processing-hook
 			       (org-export-backend-name backend))
@@ -2984,6 +2989,7 @@ Return code as a string."
 	   ;; potentially invasive changes.
 	   (org-set-regexps-and-options)
 	   (org-update-radio-target-regexp)
+           (setq modified-tick (buffer-chars-modified-tick))
 	   ;;  Possibly execute Babel code.  Re-run a macro expansion
 	   ;;  specifically for {{{results}}} since inline source blocks
 	   ;;  may have generated some more.  Refresh buffer properties
@@ -2991,8 +2997,10 @@ Return code as a string."
 	   (when org-export-use-babel
 	     (org-babel-exp-process-buffer)
 	     (org-macro-replace-all '(("results" . "$1")) parsed-keywords)
-	     (org-set-regexps-and-options)
-	     (org-update-radio-target-regexp))
+             (unless (eq modified-tick (buffer-chars-modified-tick))
+	       (org-set-regexps-and-options)
+	       (org-update-radio-target-regexp))
+             (setq modified-tick (buffer-chars-modified-tick)))
 	   ;; Run last hook with current back-end's name as argument.
 	   ;; Update buffer properties and radio targets one last time
 	   ;; before parsing.
@@ -3000,8 +3008,10 @@ Return code as a string."
 	   (save-excursion
 	     (run-hook-with-args 'org-export-before-parsing-hook
 			         (org-export-backend-name backend)))
-	   (org-set-regexps-and-options)
-	   (org-update-radio-target-regexp)
+           (unless (eq modified-tick (buffer-chars-modified-tick))
+	     (org-set-regexps-and-options)
+	     (org-update-radio-target-regexp))
+           (setq modified-tick (buffer-chars-modified-tick))
 	   ;; Update communication channel with environment.
 	   (setq info
 	         (org-combine-plists
