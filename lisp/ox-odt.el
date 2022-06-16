@@ -32,9 +32,9 @@
 (require 'ox)
 (require 'table nil 'noerror)
 
+(declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
 (declare-function org-next-visible-heading "org" (arg))
-(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
 ;;; Define Back-End
 

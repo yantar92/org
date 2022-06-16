@@ -43,9 +43,9 @@
 (declare-function org-id-find-id-file "org-id" (id))
 (declare-function htmlize-region "ext:htmlize" (beg end))
 (declare-function mm-url-decode-entities "mm-url" ())
+(declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
 (declare-function org-next-visible-heading "org" (arg))
-(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
 (defvar htmlize-css-name-prefix)
 (defvar htmlize-output-type)

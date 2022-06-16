@@ -36,9 +36,9 @@
 (require 'org-agenda)
 (require 'ox-ascii)
 (declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
+(declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
 (declare-function org-next-visible-heading "org" (arg))
-(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
 
 
