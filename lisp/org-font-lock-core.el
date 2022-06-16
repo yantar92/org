@@ -303,44 +303,46 @@ regions to detect broken structural changes."
 See `org-font-lock-flush' and `org-font-lock-flush-delayed'.")
 (defun org-font-lock-flush (beg end &optional buffer)
   "Re-fontify all the elements in BUFFER intersecting with BEG..END."
-  (when (and font-lock-mode
-             (or (not buffer) (buffer-live-p buffer)))
+  (when (or (not buffer) (buffer-live-p buffer))
     (with-current-buffer (or buffer (current-buffer))
-      (org-with-wide-buffer
-       (let ((regions (if (and beg end)
-                          (cons (cons beg end) org-font-lock--flush-queue)
-                        org-font-lock--flush-queue))
-             region next-region)
-         (setq org-font-lock--flush-queue nil)
-         (when regions
-           (setq regions
-                 (sort
-                  regions
-                  (lambda (a b) (or (< (car a) (car b))
-                               (and (= (car a) (car b))
-                                    (< (cdr a) (cdr b))))))))
-         (while regions
-           (setq region (pop regions))
-           (setq next-region (car regions))
-           (if (and next-region
-                    ;; Regions intersect.
-                    (<= (car region) (car next-region) (cdr region)))
-               ;; Merge them.
-               (setcar (car regions) (car region))
-             (when org-font-lock-verbose
-               (message "org-font-lock: Flusing %S..%S after %f idle"
-                        beg end (float-time (current-idle-time))))
-             (setq beg (car region) end (cdr region))
-             (let* ((beg-element (org-element-at-point beg))
-                    (end-element (org-element-at-point end))
-                    (beg (min beg
-                              (or (org-element-property :begin beg-element) beg)
-                              (or (org-element-property :begin end-element) beg)))
-                    (end (min (point-max)
-                              (max end
-                                   (or (org-element-property :end end-element) end)
-                                   (or (org-element-property :end beg-element) end)))))
-               (font-lock-flush beg end)))))))))
+      (if (not font-lock-mode)
+          ;; Font-lock disabled.  Clear the queue.
+          (setq org-font-lock--flush-queue nil)
+        (org-with-wide-buffer
+         (let ((regions (if (and beg end)
+                            (cons (cons beg end) org-font-lock--flush-queue)
+                          org-font-lock--flush-queue))
+               region next-region)
+           (setq org-font-lock--flush-queue nil)
+           (when regions
+             (setq regions
+                   (sort
+                    regions
+                    (lambda (a b) (or (< (car a) (car b))
+                                 (and (= (car a) (car b))
+                                      (< (cdr a) (cdr b))))))))
+           (while regions
+             (setq region (pop regions))
+             (setq next-region (car regions))
+             (if (and next-region
+                      ;; Regions intersect.
+                      (<= (car region) (car next-region) (cdr region)))
+                 ;; Merge them.
+                 (setcar (car regions) (car region))
+               (when org-font-lock-verbose
+                 (message "org-font-lock: Flusing %S..%S after %f idle"
+                          beg end (float-time (current-idle-time))))
+               (setq beg (car region) end (cdr region))
+               (let* ((beg-element (org-element-at-point beg))
+                      (end-element (org-element-at-point end))
+                      (beg (min beg
+                                (or (org-element-property :begin beg-element) beg)
+                                (or (org-element-property :begin end-element) beg)))
+                      (end (min (point-max)
+                                (max end
+                                     (or (org-element-property :end end-element) end)
+                                     (or (org-element-property :end beg-element) end)))))
+                 (font-lock-flush beg end))))))))))
 
 (defvar org-font-lock--last-flush (current-time)
   "Last time `org-font-lock-flush-delayed has been ran.")
