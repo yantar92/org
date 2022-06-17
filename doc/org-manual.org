@@ -4488,7 +4488,7 @@ in the subtree (not just direct children), configure the variable
 include the word =recursive= into the value of the =COOKIE_DATA=
 property.
 
-#+begin_example org
+#+begin_example
 ,* Parent capturing statistics [2/20]
   :PROPERTIES:
   :COOKIE_DATA: todo recursive
@@ -15474,7 +15474,7 @@ make that easier the function ~org-texinfo-kbd-macro~ is provided,
 which is intended to be used like this:
 
 #+begin_example
-#+macro: kbd (eval (org-texinfo-kbd-macro $1))
+,#+macro: kbd (eval (org-texinfo-kbd-macro $1))
 
 Type {{{kbd(C-c SPC)}}}.
 #+end_example
