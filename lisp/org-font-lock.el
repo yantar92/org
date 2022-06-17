@@ -467,8 +467,8 @@ If TAG is a number, get the corresponding match group."
                                 ;; table alignment (at least, until
                                 ;; org table are aligned via pixel
                                 ;; width).
-				((raise -0.5))
-				((raise 0.5)))
+				((raise -0.35))
+				((raise 0.35)))
   "Display properties for showing superscripts and subscripts.")
 
 (defun org-remove-font-lock-display-properties (beg end)
