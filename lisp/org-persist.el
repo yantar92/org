@@ -303,7 +303,9 @@ FORMAT and ARGS are passed to `message'."
        ;; Remove problematic file.
        (unless (bufferp buffer-or-file) (delete-file buffer-or-file))
        ;; Do not report the known error to user.
-       (unless (string-match-p "Invalid read syntax" (error-message-string err))
+       (if (string-match-p "Invalid read syntax" (error-message-string err))
+           (message "Emacs reader failed to read data in %S. The error was: %S"
+                    buffer-or-file (error-message-string err))
          (warn "Emacs reader failed to read data in %S. The error was: %S"
                buffer-or-file (error-message-string err)))
        nil))))
@@ -345,7 +347,7 @@ FORMAT and ARGS are passed to `message'."
      (`never nil)
      ((pred numberp)
       (when (plist-get ,collection :last-access)
-        (<= (float-time) (+ (plist-get ,collection :last-access) (* ,cnd 24 60 60)))))
+        (> (float-time) (+ (plist-get ,collection :last-access) (* ,cnd 24 60 60)))))
      ((pred functionp)
       (funcall ,cnd ,collection))
      (_ (error "org-persist: Unsupported expiry type %S" ,cnd))))
@@ -747,6 +749,14 @@ When ASSOCIATED is `all', unregister CONTAINER everywhere."
                      (remove container (plist-get collection :container)))
           (org-persist--add-to-index collection))))))
 
+(defvar org-persist--read-cache (make-hash-table :test #'equal)
+  "Hash table storing as-read data object hashes.
+
+This data is used to avoid overwriting unchanged data.")
+(defvar org-persist--write-cache (make-hash-table :test #'equal)
+  "Hash table storing as-written data objects.
+
+This data is used to avoid reading the data multiple times.")
 (defun org-persist-read (container &optional associated hash-must-match load?)
   "Restore CONTAINER data for ASSOCIATED.
 When HASH-MUST-MATCH is non-nil, do not restore data if hash for
@@ -781,15 +791,18 @@ When LOAD? is non-nil, load the data instead of reading."
         (unless (seq-find (lambda (v)
                             (run-hook-with-args-until-success 'org-persist-before-read-hook v associated))
                           (plist-get collection :container))
-          (setq data (org-persist--read-elisp-file persist-file))
-          (cl-loop for container in (plist-get collection :container)
-                   with result = nil
-                   do
-                   (if load?
-                       (push (org-persist-load:generic container (alist-get container data nil nil #'equal) collection) result)
-                     (push (org-persist-read:generic container (alist-get container data nil nil #'equal) collection) result))
-                   (run-hook-with-args 'org-persist-after-read-hook container associated)
-                   finally return (if (= 1 (length result)) (car result) result)))))))
+          (setq data (or (gethash persist-file org-persist--write-cache)
+                         (org-persist--read-elisp-file persist-file)))
+          (puthash persist-file (sxhash-equal data) org-persist--read-cache)
+          (when data
+            (cl-loop for container in (plist-get collection :container)
+                     with result = nil
+                     do
+                     (if load?
+                         (push (org-persist-load:generic container (alist-get container data nil nil #'equal) collection) result)
+                       (push (org-persist-read:generic container (alist-get container data nil nil #'equal) collection) result))
+                     (run-hook-with-args 'org-persist-after-read-hook container associated)
+                     finally return (if (= 1 (length result)) (car result) result))))))))
 
 (defun org-persist-load (container &optional associated hash-must-match)
   "Load CONTAINER data for ASSOCIATED.
@@ -845,7 +858,9 @@ When IGNORE-RETURN is non-nil, just return t on success without calling
           (let ((file (org-file-name-concat org-persist-directory (plist-get collection :persist-file)))
                 (data (mapcar (lambda (c) (cons c (org-persist-write:generic c collection)))
                               (plist-get collection :container))))
-            (org-persist--write-elisp-file file data)
+            (puthash file data org-persist--write-cache)
+            (unless (equal (sxhash-equal data) (gethash file org-persist--read-cache))
+              (org-persist--write-elisp-file file data))
             (or ignore-return (org-persist-read container associated))))))))
 
 (defun org-persist-write-all (&optional associated)
