@@ -3667,8 +3667,6 @@ With prefix ARG, apply the new formulas to the table."
       (goto-char pos)
       (call-interactively 'lisp-indent-line))
      ((looking-at "[$&@0-9a-zA-Z]+ *= *[^ \t\n']") (goto-char pos))
-     ((not (fboundp 'pp-buffer))
-      (user-error "Cannot pretty-print.  Command `pp-buffer' is not available"))
      ((looking-at "[$&@0-9a-zA-Z]+ *= *'(")
       (goto-char (- (match-end 0) 2))
       (setq beg (point))
@@ -5223,15 +5221,13 @@ When LOCAL is non-nil, show references for the table at point."
 		    (concat orgtbl-line-start-regexp "\\|"
 			    auto-fill-inhibit-regexp)
 		  orgtbl-line-start-regexp))
-    (when (fboundp 'font-lock-add-keywords)
-      (font-lock-add-keywords nil orgtbl-extra-font-lock-keywords)
-      (org-restart-font-lock)))
+    (font-lock-add-keywords nil orgtbl-extra-font-lock-keywords)
+    (org-restart-font-lock))
    (t
     (setq auto-fill-inhibit-regexp org-old-auto-fill-inhibit-regexp)
     (remove-hook 'before-change-functions 'org-before-change-function t)
-    (when (fboundp 'font-lock-remove-keywords)
-      (font-lock-remove-keywords nil orgtbl-extra-font-lock-keywords)
-      (org-restart-font-lock))
+    (font-lock-remove-keywords nil orgtbl-extra-font-lock-keywords)
+    (org-restart-font-lock)
     (force-mode-line-update 'all))))
 
 (defun orgtbl-make-binding (fun n &rest keys)
@@ -5346,6 +5342,7 @@ to execute outside of tables."
       (org-remap orgtbl-mode-map
 		 'self-insert-command 'orgtbl-self-insert-command
 		 'delete-char 'org-delete-char
+                 'delete-forward-char 'org-delete-char
 		 'delete-backward-char 'org-delete-backward-char)
       (org-defkey orgtbl-mode-map "|" 'org-force-self-insert))
     t))
