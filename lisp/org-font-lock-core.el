@@ -342,7 +342,7 @@ See `org-font-lock-flush' and `org-font-lock-flush-delayed'.")
                                 (max end
                                      (or (org-element-property :end end-element) end)
                                      (or (org-element-property :end beg-element) end)))))
-                 (font-lock-flush beg end))))))))))
+                 (font-lock-flush (min beg end) (max beg end)))))))))))
 
 (defvar org-font-lock--last-flush (current-time)
   "Last time `org-font-lock-flush-delayed has been ran.")
