@@ -521,10 +521,15 @@ Return modified element."
 Return non-nil, when the property was actually resolved."
   (pcase (org-element-property :deferred element)
     (`nil nil)
-    (`(,buf ,fun)
+    ((and (pred functionp) fun)
      (org-element-put-property element :deferred nil)
-     (with-current-buffer buf
-       (funcall fun element))
+     (let ((filename
+            (org-element-property :path (org-element-lineage element '(org-data) t))))
+       (with-current-buffer
+           (if filename
+               (get-file-buffer filename)
+             (current-buffer))
+         (funcall fun element)))
      'resolved)))
 
 (defun org-element-property (property element)
@@ -719,7 +724,8 @@ is cleared and contents are removed in the process."
 	(`nil (copy-sequence datum))
 	(_
          ;; Evaluate all the deferred property values.
-         (org-element--resolve-deferred-property datum)
+         (org-element-map datum (append '(plain-text) org-element-all-objects org-element-all-elements)
+           #'org-element--resolve-deferred-property nil nil nil t)
          (let ((element-copy (list type (plist-put (copy-sequence (nth 1 datum)) :parent nil))))
            ;; We cannot simply return the copies property list.  When
            ;; DATUM is i.e. a headline, it's property list (`:title'
@@ -1246,7 +1252,7 @@ Assume point is at beginning of the headline."
                          ;; Avoid triggering deferred invocation.
                          :parent nil
                          :structure nil
-                         :deferred (list (current-buffer) #'org-element-headline-parser--deferred)))))
+                         :deferred #'org-element-headline-parser--deferred))))
 	(org-element-put-property
 	 headline :title
 	 (if raw-secondary-p raw-value
