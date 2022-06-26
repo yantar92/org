@@ -8819,7 +8819,16 @@ Negative selection means regexp must not match for selection of an entry."
   (set var (concat (symbol-value var) string)))
 
 (defun org-agenda-goto-date (date)
-  "Jump to DATE in agenda."
+  "Jump to DATE in the agenda buffer.
+
+When called interactively, prompt for the date.
+When called from Lisp, DATE should be a date as returned by
+`org-read-date'.
+
+See also:
+ `org-agenda-earlier'    (\\[org-agenda-earlier])
+ `org-agenda-later'      (\\[org-agenda-later])
+ `org-agenda-goto-today' (\\[org-agenda-goto-today])"
   (interactive
    (list
     (let ((org-read-date-prefer-future org-agenda-jump-prefer-future))
@@ -8851,7 +8860,12 @@ Negative selection means regexp must not match for selection of an entry."
 	    org-agenda-this-buffer-is-sticky org-agenda-sticky))))
 
 (defun org-agenda-goto-today ()
-  "Go to today."
+  "Go to today's date in the agenda buffer.
+
+See also:
+ `org-agenda-later'     (\\[org-agenda-later])
+ `org-agenda-earlier'   (\\[org-agenda-earlier])
+ `org-agenda-goto-date' (\\[org-agenda-goto-date])"
   (interactive)
   (org-agenda-check-type t 'agenda)
   (let* ((args (get-text-property (min (1- (point-max)) (point)) 'org-last-args))
@@ -8910,8 +8924,13 @@ When optional argument BACKWARD is set, go backward."
 	       (message "No %s block" (if backward "previous" "further")))))))
 
 (defun org-agenda-later (arg)
-  "Go forward in time by the current span.
-With prefix ARG, go forward that many times the current span."
+  "Go forward in time by the current span in the agenda buffer.
+With prefix ARG, go forward that many times the current span.
+
+See also:
+ `org-agenda-earlier'    (\\[org-agenda-earlier])
+ `org-agenda-goto-today' (\\[org-agenda-goto-today])
+ `org-agenda-goto-date'  (\\[org-agenda-goto-date])"
   (interactive "p")
   (org-agenda-check-type t 'agenda)
   (let* ((wstart (window-start))
@@ -8952,8 +8971,13 @@ With prefix ARG, go forward that many times the current span."
     (set-window-start nil wstart)))
 
 (defun org-agenda-earlier (arg)
-  "Go backward in time by the current span.
-With prefix ARG, go backward that many times the current span."
+  "Go backward in time by the current span in the agenda buffer.
+With prefix ARG, go backward that many times the current span.
+
+See also:
+ `org-agenda-later'      (\\[org-agenda-later])
+ `org-agenda-goto-today' (\\[org-agenda-goto-today])
+ `org-agenda-goto-date'  (\\[org-agenda-goto-date])"
   (interactive "p")
   (org-agenda-later (- arg)))
 

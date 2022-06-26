@@ -3844,6 +3844,8 @@ After a match, the following groups carry important information:
     ("noptag" org-tag-persistent-alist nil)
     ("hideblocks" org-hide-block-startup t)
     ("nohideblocks" org-hide-block-startup nil)
+    ("hidedrawers" org-hide-drawer-startup t)
+    ("nohidedrawers" org-hide-drawer-startup nil)
     ("beamer" org-startup-with-beamer-mode t)
     ("entitiespretty" org-pretty-entities t)
     ("entitiesplain" org-pretty-entities nil))
@@ -12361,6 +12363,9 @@ The function understands only English month and weekday abbreviations.
 While prompting, a calendar is popped up - you can also select the
 date with the mouse (button 1).  The calendar shows a period of three
 months.  To scroll it to other months, use the keys `>' and `<'.
+There are many other calendar navigation commands available, see
+Info node `(org) The date/time prompt' for a full list.
+
 If you don't like the calendar, turn it off with
        (setq org-read-date-popup-calendar nil)
 
