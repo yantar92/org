@@ -297,7 +297,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
     (when (eq 'bracket (org-element-property :format element))
       (if (eq org-fold-core-style 'text-properties)
           (progn
-            ;; Initialise folding when used ouside org-mode.
+            ;; Initialise folding when used outside org-mode.
             (unless (or (derived-mode-p 'org-mode)
 		        (and (org-fold-folding-spec-p 'org-link-description)
                              (org-fold-folding-spec-p 'org-link)))
