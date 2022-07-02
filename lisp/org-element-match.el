@@ -439,6 +439,7 @@ Extra components are: `:key', `:value'."
      (org-element-match--default element)
      (list
       `(:key ,beg-key ,end-key)
+      `(:key-with-blank ,beg-key ,beg-value)
       `(:value ,beg-value ,end-value)))))
 (defalias 'org-element-match--node-property #'org-element-match--keyword)
 

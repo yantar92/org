@@ -705,7 +705,7 @@ and subscripts."
           ((and (eq 'keyword (org-element-match-type))
                 (member (intern (downcase (org-element-match-property :key)))
                         org-hidden-keywords))
-           (:key '(face nil invisible t) t))
+           (:key-with-blank '(face nil invisible t) t))
           (node-property
            (:key 'org-special-keyword t)
            (:value 'org-property-value t))
