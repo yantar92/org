@@ -53,16 +53,133 @@
 (defvar org-list-automatic-rules)
 (defvar org-emphasis-alist)
 
+;;;; Hooks.
+
+(defvar org-font-lock-hook nil
+  "Functions to be called for special font lock stuff.")
+
+(defvar org-font-lock-set-keywords-hook nil
+  "Functions that can manipulate `org-font-lock-extra-keywords'.
+This is called after `org-font-lock-extra-keywords' is defined, but before
+it is installed to be used by font lock.  This can be useful if something
+needs to be inserted at a specific position in the font-lock sequence.")
+
+;;;; Customizations.
+
 (defgroup org-appearance nil
   "Settings for Org mode appearance."
   :tag "Org Appearance"
   :group 'org)
 
-(defvar org-font-lock-hook nil
-  "Functions to be called for special font lock stuff.")
+;;;;; Headline appearance.
+
+(defvaralias 'org-level-color-stars-only 'org-font-lock-level-color-stars-only)
+(defcustom org-font-lock-level-color-stars-only nil
+  "Non-nil means fontify only the stars in each headline.
+When nil, the entire headline is fontified.
+Changing it requires restart of `font-lock-mode' to become effective
+also in regions already fontified."
+  :group 'org-appearance
+  :type 'boolean)
+
+(defvaralias 'org-hide-leading-stars 'org-font-lock-hide-leading-stars)
+(defcustom org-font-lock-hide-leading-stars nil
+  "Non-nil means hide the first N-1 stars in a headline.
+This works by using the face `org-hide' for these stars.  This
+face is white for a light background, and black for a dark
+background.  You may have to customize the face `org-hide' to
+make this work.
+Changing it requires restart of `font-lock-mode' to become effective
+also in regions already fontified.
+You may also set this on a per-file basis by adding one of the following
+lines to the buffer:
+
+   #+STARTUP: hidestars
+   #+STARTUP: showstars"
+  :group 'org-appearance
+  :type 'boolean)
+
+(defvaralias 'org-fontify-todo-headline 'org-font-lock-fontify-todo-headline)
+(defcustom org-font-lock-fontify-todo-headline nil
+  "Non-nil means change the face of a headline if it is marked as TODO.
+Normally, only the TODO/DONE keyword indicates the state of a headline.
+When this is non-nil, the headline after the keyword is set to the
+`org-headline-todo' as an additional indication."
+  :group 'org-appearance
+  :package-version '(Org . "9.4")
+  :type 'boolean
+  :safe #'booleanp)
+
+(defvaralias 'org-fontify-done-headline 'org-font-lock-fontify-done-headline)
+(defcustom org-font-lock-fontify-done-headline t
+  "Non-nil means change the face of a headline if it is marked DONE.
+Normally, only the TODO/DONE keyword indicates the state of a headline.
+When this is non-nil, the headline after the keyword is set to the
+`org-headline-done' as an additional indication."
+  :group 'org-appearance
+  :package-version '(Org . "9.4")
+  :type 'boolean)
+
+(defvaralias 'org-fontify-whole-heading-line 'org-font-lock-fontify-whole-heading-line)
+(defcustom org-font-lock-fontify-whole-heading-line nil
+  "Non-nil means fontify the whole line for headings.
+This is useful when setting a background color for the
+org-level-* faces."
+  :group 'org-appearance
+  :type 'boolean)
+
+;;;;; Keywords appearance.
+
+(defvaralias 'org-hidden-keywords 'org-font-lock-hidden-keywords)
+(defcustom org-font-lock-hidden-keywords nil
+  "List of symbols corresponding to keywords to be hidden in the Org buffer.
+For example, a value \\='(title) for this list makes the document's title
+appear in the buffer without the initial \"#+TITLE:\" part."
+  :group 'org-appearance
+  :package-version '(Org . "9.5")
+  :type '(set (const :tag "#+AUTHOR" author)
+	      (const :tag "#+DATE" date)
+	      (const :tag "#+EMAIL" email)
+	      (const :tag "#+SUBTITLE" subtitle)
+	      (const :tag "#+TITLE" title)))
+
+;;;;; Emphasis, sub/super-scripts, entities, and markers.
+
+(defcustom org-fontify-emphasized-text t
+  "Non-nil means fontify *bold*, /italic/ and _underlined_ text.
+Changing this variable requires a restart of Emacs to take effect."
+  :group 'org-appearance
+  :type 'boolean)
+
+(defcustom org-hide-emphasis-markers nil
+  "Non-nil mean font-lock should hide the emphasis marker characters."
+  :group 'org-appearance
+  :type 'boolean
+  :safe #'booleanp)
+
+(defcustom org-hide-macro-markers nil
+  "Non-nil mean font-lock should hide the brackets marking macro calls."
+  :group 'org-appearance
+  :type 'boolean)
+
+(defcustom org-pretty-entities nil
+  "Non-nil means show entities as UTF8 characters.
+When nil, the \\name form remains in the buffer."
+  :group 'org-appearance
+  :version "24.1"
+  :type 'boolean)
+
+(defcustom org-pretty-entities-include-sub-superscripts t
+  "Non-nil means, pretty entity display includes formatting sub/superscripts."
+  :group 'org-appearance
+  :version "24.1"
+  :type 'boolean)
+
+;;;;; Links.
 
 (defvaralias 'org-activate-links 'org-highlight-links)
-(defcustom org-highlight-links '(bracket angle plain radio tag date footnote)
+(defvaralias 'org-highlight-links 'org-font-lock-highlight-links)
+(defcustom org-font-lock-highlight-links '(bracket angle plain radio tag date footnote)
   "Types of links that should be highlighted in Org files.
 
 This is a list of symbols, each one of them leading to the
@@ -95,73 +212,19 @@ in the Org buffer so that the change takes effect."
 	      (const :tag "Timestamps" date)
 	      (const :tag "Footnotes" footnote)))
 
-(defcustom org-level-color-stars-only nil
-  "Non-nil means fontify only the stars in each headline.
-When nil, the entire headline is fontified.
-Changing it requires restart of `font-lock-mode' to become effective
-also in regions already fontified."
-  :group 'org-appearance
-  :type 'boolean)
+;;;;; Timestamps.
 
-(defcustom org-hide-leading-stars nil
-  "Non-nil means hide the first N-1 stars in a headline.
-This works by using the face `org-hide' for these stars.  This
-face is white for a light background, and black for a dark
-background.  You may have to customize the face `org-hide' to
-make this work.
-Changing it requires restart of `font-lock-mode' to become effective
-also in regions already fontified.
-You may also set this on a per-file basis by adding one of the following
-lines to the buffer:
+(defcustom org-display-custom-times nil
+  "Non-nil means overlay custom formats over all time stamps.
+The formats are defined through the variable `org-time-stamp-custom-formats'.
+To turn this on on a per-file basis, insert anywhere in the file:
+   #+STARTUP: customtime"
+  :group 'org-time
+  :set 'set-default
+  :type 'sexp)
+(make-variable-buffer-local 'org-display-custom-times)
 
-   #+STARTUP: hidestars
-   #+STARTUP: showstars"
-  :group 'org-appearance
-  :type 'boolean)
-
-(defcustom org-hidden-keywords nil
-  "List of symbols corresponding to keywords to be hidden in the Org buffer.
-For example, a value \\='(title) for this list makes the document's title
-appear in the buffer without the initial \"#+TITLE:\" part."
-  :group 'org-appearance
-  :package-version '(Org . "9.5")
-  :type '(set (const :tag "#+AUTHOR" author)
-	      (const :tag "#+DATE" date)
-	      (const :tag "#+EMAIL" email)
-	      (const :tag "#+SUBTITLE" subtitle)
-	      (const :tag "#+TITLE" title)))
-
-(defcustom org-fontify-todo-headline nil
-  "Non-nil means change the face of a headline if it is marked as TODO.
-Normally, only the TODO/DONE keyword indicates the state of a headline.
-When this is non-nil, the headline after the keyword is set to the
-`org-headline-todo' as an additional indication."
-  :group 'org-appearance
-  :package-version '(Org . "9.4")
-  :type 'boolean
-  :safe #'booleanp)
-
-(defcustom org-fontify-done-headline t
-  "Non-nil means change the face of a headline if it is marked DONE.
-Normally, only the TODO/DONE keyword indicates the state of a headline.
-When this is non-nil, the headline after the keyword is set to the
-`org-headline-done' as an additional indication."
-  :group 'org-appearance
-  :package-version '(Org . "9.4")
-  :type 'boolean)
-
-(defcustom org-fontify-emphasized-text t
-  "Non-nil means fontify *bold*, /italic/ and _underlined_ text.
-Changing this variable requires a restart of Emacs to take effect."
-  :group 'org-appearance
-  :type 'boolean)
-
-(defcustom org-fontify-whole-heading-line nil
-  "Non-nil means fontify the whole line for headings.
-This is useful when setting a background color for the
-org-level-* faces."
-  :group 'org-appearance
-  :type 'boolean)
+;;;;; Blocks.
 
 (defcustom org-fontify-whole-block-delimiter-line t
   "Non-nil means fontify the whole line for begin/end lines of blocks.
@@ -169,6 +232,15 @@ This is useful when setting a background color for the
 org-block-begin-line and org-block-end-line faces."
   :group 'org-appearance
   :type 'boolean)
+
+(defcustom org-src-fontify-natively t
+  "When non-nil, fontify code in code blocks.
+See also the `org-block' face."
+  :type 'boolean
+  :version "26.1"
+  :package-version '(Org . "8.3")
+  :group 'org-appearance
+  :group 'org-babel)
 
 (defcustom org-highlight-latex-and-related nil
   "Non-nil means highlight LaTeX related syntax in the buffer.
@@ -189,59 +261,34 @@ following symbols:
 	       (const :tag "Subscript and superscript" script)
 	       (const :tag "Entities" entities))))
 
-(defcustom org-hide-emphasis-markers nil
-  "Non-nil mean font-lock should hide the emphasis marker characters."
-  :group 'org-appearance
-  :type 'boolean
-  :safe #'booleanp)
+;;;; Internal variables.
 
-(defcustom org-hide-macro-markers nil
-  "Non-nil mean font-lock should hide the brackets marking macro calls."
-  :group 'org-appearance
-  :type 'boolean)
+(defvar org-font-lock-keywords nil
+  "Font lock keywords in current buffer.")
 
-(defcustom org-pretty-entities nil
-  "Non-nil means show entities as UTF8 characters.
-When nil, the \\name form remains in the buffer."
-  :group 'org-appearance
-  :version "24.1"
-  :type 'boolean)
+;; Dynamically scoped.
+(defvar org-font-lock-extra-keywords nil
+  "Variable holding `org-font-lock-keywords' during font lock initialization.
+This variable is set by `org-font-lock-set-defaults' and can be
+manipulated in `org-font-lock-set-keywords-hook'.")
 
-(defcustom org-pretty-entities-include-sub-superscripts t
-  "Non-nil means, pretty entity display includes formatting sub/superscripts."
-  :group 'org-appearance
-  :version "24.1"
-  :type 'boolean)
+(defconst org-script-display  '(;; The values are tweaked to not
+                                ;; change the line height.
+                                ((raise -0.1)  (height 0.7))
+				((raise 0.25)  (height 0.7))
+                                ;; Alternative properties for tables.
+                                ;; See 0618aeafb3.
+                                ;; FIXME: We cannot change the text
+                                ;; height because it will alter the
+                                ;; symbol width and thus break the
+                                ;; table alignment (at least, until
+                                ;; org table are aligned via pixel
+                                ;; width).
+				((raise -0.35))
+				((raise 0.35)))
+  "Display properties for showing superscripts and subscripts.")
 
-(defcustom org-src-fontify-natively t
-  "When non-nil, fontify code in code blocks.
-See also the `org-block' face."
-  :type 'boolean
-  :version "26.1"
-  :package-version '(Org . "8.3")
-  :group 'org-appearance
-  :group 'org-babel)
-
-(defcustom org-display-custom-times nil
-  "Non-nil means overlay custom formats over all time stamps.
-The formats are defined through the variable `org-time-stamp-custom-formats'.
-To turn this on on a per-file basis, insert anywhere in the file:
-   #+STARTUP: customtime"
-  :group 'org-time
-  :set 'set-default
-  :type 'sexp)
-(make-variable-buffer-local 'org-display-custom-times)
-
-(defvar org-font-lock-keywords nil)
-(defvar org-font-lock-extra-keywords nil) ;Dynamically scoped.
-
-(defvar org-font-lock-set-keywords-hook nil
-  "Functions that can manipulate `org-font-lock-extra-keywords'.
-This is called after `org-font-lock-extra-keywords' is defined, but before
-it is installed to be used by font lock.  This can be useful if something
-needs to be inserted at a specific position in the font-lock sequence.")
-
-(defvar org-emph-face nil)
+;;;; Public commands and functions.
 
 (defun org-toggle-pretty-entities ()
   "Toggle the composition display of entities as UTF8 characters."
@@ -254,6 +301,71 @@ needs to be inserted at a specific position in the font-lock sequence.")
       (widen)
       (decompose-region (point-min) (point-max))
       (message "Entities are now displayed as plain text"))))
+
+(defvar org-odd-levels-only)
+(defun org-fontify-like-in-org-mode (s &optional odd-levels)
+  "Fontify string S like in Org mode."
+  (with-temp-buffer
+    (insert s)
+    (let ((org-odd-levels-only odd-levels))
+      (org-mode)
+      (font-lock-ensure)
+      (if org-link-descriptive
+          (org-link-display-format
+           (buffer-string))
+        (buffer-string)))))
+
+(defun org-font-lock-restart ()
+  "Restart `font-lock-mode', to force refontification."
+  (when font-lock-mode
+    (font-lock-mode -1)
+    (font-lock-mode 1)))
+(defalias 'org-restart-font-lock #'org-font-lock-restart)
+
+;;;; Internal functions.
+
+;;;;; Getting element faces/properties.
+
+(defun org-face-from-face-or-color (context inherit face-or-color)
+  "Create a face list that inherits INHERIT, but sets the foreground color.
+When FACE-OR-COLOR is not a string, just return it."
+  (if (stringp face-or-color)
+      (list :inherit inherit
+	    (cdr (assoc context org-faces-easy-properties))
+	    face-or-color)
+    face-or-color))
+
+(defun org-get-level-face ()
+  "Get the right face for the last matched element."
+  (let* ((level (org-element-match-property :level)))
+    (if org-cycle-level-faces
+	(nth (% (1- level) org-n-level-faces) org-level-faces)
+      (nth (1- (min level org-n-level-faces)) org-level-faces))))
+
+(defun org-get-todo-face (kwd)
+  "Get the right face for a TODO keyword KWD.
+If KWD is a number, get the corresponding match group."
+  (when (numberp kwd) (setq kwd (match-string kwd)))
+  (or (org-face-from-face-or-color
+       'todo 'org-todo (cdr (assoc kwd org-todo-keyword-faces)))
+      (and (member kwd org-done-keywords) 'org-done)
+      'org-todo))
+
+(defun org-get-priority-face (priority)
+  "Get the right face for PRIORITY.
+PRIORITY is a character."
+  (or (org-face-from-face-or-color
+       'priority 'org-priority (cdr (assq priority org-priority-faces)))
+      'org-priority))
+
+(defun org-get-tag-face (tag)
+  "Get the right face for TAG.
+If TAG is a number, get the corresponding match group."
+  (let ((tag (if (wholenump tag) (match-string tag) tag)))
+    (or (org-face-from-face-or-color
+	 'tag 'org-tag (cdr (assoc tag org-tag-faces)))
+	'org-tag)))
+
 
 (defun org-font-lock-footnote-reference-get-properties (&optional element)
   "Get text property plist or ELEMENT footnote reference or definition."
@@ -293,6 +405,8 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		     ((and (pred functionp) f) (funcall f))
 		     (_ `(:uri ,link)))
      'font-lock-multiline t)))
+
+;;;;; Folding elements (hiding parts of elements).
 
 (defun org-font-lock-link-fold (&optional element)
   "Fold hidden parts of the link ELEMENT."
@@ -340,6 +454,19 @@ needs to be inserted at a specific position in the font-lock sequence.")
   ;; Done with folding.  No need to pass anything to font-lock.
   nil)
 
+(defun org-font-lock-macro-fold ()
+  "Hide invisible parts of the last matched macro."
+  (when org-hide-macro-markers
+    (add-text-properties
+     (org-element-match-beginning :begin-marker)
+     (org-element-match-end :begin-marker)
+     '(invisible t))
+    (add-text-properties
+     (org-element-match-beginning :end-marker)
+     (org-element-match-end :end-marker)
+     '(invisible t)))
+  nil)
+
 (defun org-font-lock-link-activate-func ()
   "Run :activate-func for matched element."
   (let* ((f (org-link-get-parameter
@@ -361,19 +488,6 @@ needs to be inserted at a specific position in the font-lock sequence.")
            (eq (org-element-match-property :format) 'bracket))))))
   nil)
 
-(defun org-font-lock-macro-fold ()
-  "Hide invisible parts of the last matched macro."
-  (when org-hide-macro-markers
-    (add-text-properties
-     (org-element-match-beginning :begin-marker)
-     (org-element-match-end :begin-marker)
-     '(invisible t))
-    (add-text-properties
-     (org-element-match-beginning :end-marker)
-     (org-element-match-end :end-marker)
-     '(invisible t)))
-  nil)
-
 (defun org-display-custom-time (beg end)
   "Overlay modified time stamp format over timestamp between BEG and END."
   (let* ((ts (buffer-substring beg end))
@@ -392,60 +506,19 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		  nil 'mouse-face 'highlight))
     (org-font-lock-compose str beg end)))
 
-(defvar org-odd-levels-only)
-(defun org-fontify-like-in-org-mode (s &optional odd-levels)
-  "Fontify string S like in Org mode."
-  (with-temp-buffer
-    (insert s)
-    (let ((org-odd-levels-only odd-levels))
-      (org-mode)
-      (font-lock-ensure)
-      (if org-link-descriptive
-          (org-link-display-format
-           (buffer-string))
-        (buffer-string)))))
+;;;;; Base font-locking setup.
 
-(defun org-get-level-face ()
-  "Get the right face for the last matched element."
-  (let* ((level (org-element-match-property :level)))
-    (if org-cycle-level-faces
-	(nth (% (1- level) org-n-level-faces) org-level-faces)
-      (nth (1- (min level org-n-level-faces)) org-level-faces))))
-
-(defun org-face-from-face-or-color (context inherit face-or-color)
-  "Create a face list that inherits INHERIT, but sets the foreground color.
-When FACE-OR-COLOR is not a string, just return it."
-  (if (stringp face-or-color)
-      (list :inherit inherit
-	    (cdr (assoc context org-faces-easy-properties))
-	    face-or-color)
-    face-or-color))
-
-(defun org-get-todo-face (kwd)
-  "Get the right face for a TODO keyword KWD.
-If KWD is a number, get the corresponding match group."
-  (when (numberp kwd) (setq kwd (match-string kwd)))
-  (or (org-face-from-face-or-color
-       'todo 'org-todo (cdr (assoc kwd org-todo-keyword-faces)))
-      (and (member kwd org-done-keywords) 'org-done)
-      'org-todo))
-
-(defun org-get-priority-face (priority)
-  "Get the right face for PRIORITY.
-PRIORITY is a character."
-  (or (org-face-from-face-or-color
-       'priority 'org-priority (cdr (assq priority org-priority-faces)))
-      'org-priority))
-
-(defun org-get-tag-face (tag)
-  "Get the right face for TAG.
-If TAG is a number, get the corresponding match group."
-  (let ((tag (if (wholenump tag) (match-string tag) tag)))
-    (or (org-face-from-face-or-color
-	 'tag 'org-tag (cdr (assoc tag org-tag-faces)))
-	'org-tag)))
-
-(defvar org-priority-regexp) ; defined later in the file
+(defun org-remove-font-lock-display-properties (beg end)
+  "Remove specific display properties that have been added by font lock.
+The will remove the raise properties that are used to show superscripts
+and subscripts."
+  (let (next prop)
+    (while (< beg end)
+      (setq next (next-single-property-change beg 'display nil end)
+	    prop (get-text-property beg 'display))
+      (when (member prop org-script-display)
+	(put-text-property beg next 'display nil))
+      (setq beg next))))
 
 (defun org-unfontify-region (beg end &optional _maybe_loudly)
   "Remove fontification and activation overlays from links."
@@ -465,34 +538,6 @@ If TAG is a number, get the corresponding match group."
       (org-fold-region beg end nil 'org-link-description))
     (org-fold-core-update-optimisation beg end)
     (org-remove-font-lock-display-properties beg end)))
-
-(defconst org-script-display  '(;; The values are tweaked to not
-                                ;; change the line height.
-                                ((raise -0.1)  (height 0.7))
-				((raise 0.25)  (height 0.7))
-                                ;; Alternative properties for tables.
-                                ;; See 0618aeafb3.
-                                ;; FIXME: We cannot change the text
-                                ;; height because it will alter the
-                                ;; symbol width and thus break the
-                                ;; table alignment (at least, until
-                                ;; org table are aligned via pixel
-                                ;; width).
-				((raise -0.35))
-				((raise 0.35)))
-  "Display properties for showing superscripts and subscripts.")
-
-(defun org-remove-font-lock-display-properties (beg end)
-  "Remove specific display properties that have been added by font lock.
-The will remove the raise properties that are used to show superscripts
-and subscripts."
-  (let (next prop)
-    (while (< beg end)
-      (setq next (next-single-property-change beg 'display nil end)
-	    prop (get-text-property beg 'display))
-      (when (member prop org-script-display)
-	(put-text-property beg next 'display nil))
-      (setq beg next))))
 
 (defun org-font-lock-hook (limit)
   "Run `org-font-lock-hook' within LIMIT."
@@ -956,13 +1001,6 @@ and subscripts."
     (kill-local-variable 'font-lock-keywords)
     nil))
 
-(defun org-font-lock-restart ()
-  "Restart `font-lock-mode', to force refontification."
-  (when font-lock-mode
-    (font-lock-mode -1)
-    (font-lock-mode 1)))
-(defalias 'org-restart-font-lock #'org-font-lock-restart)
-
 ;; FIXME: Rewrite regexps using rx.
 
 ;; FIXME: Make sure that flyspell is not broken.  It should not, in
@@ -986,6 +1024,8 @@ and subscripts."
 ;; FIXME: Allow custom per-element type fontification functions.
 ;; Maybe it can be either a macro returning keywords or a function
 ;; accepting element arg.
+
+;; FIXME: Consider hiding some functions in private space.
 
 (provide 'org-font-lock)
 ;;; org-font-lock.el ends here
