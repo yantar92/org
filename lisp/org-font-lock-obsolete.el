@@ -45,7 +45,6 @@
 (defvar org-hide-emphasis-markers)
 (defvar org-emphasis-regexp-components)
 (defvar org-fontify-whole-block-delimiter-line)
-(defvar org-protecting-blocks)
 (defvar org-src-fontify-natively)
 (defvar org-fontify-quote-and-verse-blocks)
 (defvar org-hidden-keywords)
@@ -93,6 +92,10 @@
 (declare-function org-region-active-p "org-compat" ())
 (declare-function org-at-comment-p "org" ())
 (declare-function org-remove-flyspell-overlays-in "org-compat" (beg end))
+
+(defvar org-protecting-blocks '("src" "example" "export")
+  "Blocks that contain text that is quoted, i.e. not processed as Org syntax.
+This is needed for font-lock setup.")
 
 (defun org-do-emphasis-faces (limit)
   "Run through the buffer and emphasize strings."

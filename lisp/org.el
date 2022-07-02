@@ -3465,9 +3465,6 @@ You need to reload Org or to restart Emacs after customizing this."
 	    (plist :tag "Face property list"))
 	   (option (const verbatim)))))
 
-(defvar org-protecting-blocks '("src" "example" "export")
-  "Blocks that contain text that is quoted, i.e. not processed as Org syntax.
-This is needed for font-lock setup.")
 
 ;;; Functions and variables from their packages
 ;;  Declared here to avoid compiler warnings
@@ -4791,18 +4788,6 @@ There are four matching groups:
 3: PROPVAL without leading or trailing spaces,
 4: the indentation of the current line,
 5: trailing whitespace.")
-
-(defun org-toggle-pretty-entities ()
-  "Toggle the composition display of entities as UTF8 characters."
-  (interactive)
-  (setq-local org-pretty-entities (not org-pretty-entities))
-  (org-font-lock-restart)
-  (if org-pretty-entities
-      (message "Entities are now displayed as UTF8 characters")
-    (save-restriction
-      (widen)
-      (decompose-region (point-min) (point-max))
-      (message "Entities are now displayed as plain text"))))
 
 (defvar-local org-custom-properties-hidden-p nil
   "Non-nil when custom properties are hidden.")

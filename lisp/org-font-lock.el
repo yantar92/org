@@ -213,7 +213,6 @@ When nil, the \\name form remains in the buffer."
   :version "24.1"
   :type 'boolean)
 
-
 (defcustom org-src-fontify-natively t
   "When non-nil, fontify code in code blocks.
 See also the `org-block' face."
@@ -243,6 +242,18 @@ it is installed to be used by font lock.  This can be useful if something
 needs to be inserted at a specific position in the font-lock sequence.")
 
 (defvar org-emph-face nil)
+
+(defun org-toggle-pretty-entities ()
+  "Toggle the composition display of entities as UTF8 characters."
+  (interactive)
+  (setq-local org-pretty-entities (not org-pretty-entities))
+  (org-font-lock-restart)
+  (if org-pretty-entities
+      (message "Entities are now displayed as UTF8 characters")
+    (save-restriction
+      (widen)
+      (decompose-region (point-min) (point-max))
+      (message "Entities are now displayed as plain text"))))
 
 (defun org-font-lock-footnote-reference-get-properties (&optional element)
   "Get text property plist or ELEMENT footnote reference or definition."
@@ -971,9 +982,6 @@ and subscripts."
 
 ;; FIXME: Note the change in org-script-display handling: It appears
 ;; to be swapped from the initial logic.
-
-;; FIXME: org-protecting-blocks implies that example blocks can have
-;; language specification, unlike what parser does.
 
 ;; FIXME: Allow custom per-element type fontification functions.
 ;; Maybe it can be either a macro returning keywords or a function
