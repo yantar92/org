@@ -4819,10 +4819,10 @@ There are four matching groups:
   (interactive)
   (require 'org-macs)
   (org-fold-add-folding-spec 'org-hide-custom-property
-                          '((:ellipsis . nil)
-                            (:isearch-open . t))
-                          nil
-                          'append)
+                             '((:ellipsis . nil)
+                               (:isearch-open . t))
+                             nil
+                             'append)
   (if org-custom-properties-hidden-p
       (let (match)
 	(setq org-custom-properties-hidden-p nil)
@@ -4831,8 +4831,8 @@ There are four matching groups:
          (with-silent-modifications
            (while (setq match (org-fold-search-forward 'org-hide-custom-property))
              (org-fold-region (prop-match-beginning match)
-			   (prop-match-end match)
-			   nil 'org-hide-custom-property)))))
+			      (prop-match-end match)
+			      nil 'org-hide-custom-property)))))
     (when org-custom-properties
       (setq org-custom-properties-hidden-p t)
       (org-with-wide-buffer
@@ -13127,7 +13127,7 @@ days in order to avoid rounding problems."
   "Convert a timestamp string S into a number of seconds."
   (float-time (org-time-string-to-time s)))
 
-(org-define-error 'org-diary-sexp-no-match "Unable to match diary sexp")
+(define-error 'org-diary-sexp-no-match "Unable to match diary sexp")
 
 (defun org-time-string-to-absolute (s &optional daynr prefer buffer pos)
   "Convert time stamp S to an absolute day number.

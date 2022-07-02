@@ -388,7 +388,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
     (insert s)
     (let ((org-odd-levels-only odd-levels))
       (org-mode)
-      (org-font-lock-ensure)
+      (font-lock-ensure)
       (if org-link-descriptive
           (org-link-display-format
            (buffer-string))
