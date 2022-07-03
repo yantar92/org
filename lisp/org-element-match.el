@@ -605,7 +605,7 @@ Extra component is `:visible' containing visible part of the link."
     (org-element-match--add :src-marker
            (org-element-match--beginning :full-no-blank components)
            ;; <src_
-           (+ 5 (org-element-match--beginning :full-no-blank components))
+           (+ 4 (org-element-match--beginning :full-no-blank components))
            components)
     (org-element-match--add :language
            (org-element-match--end :src-marker components)
