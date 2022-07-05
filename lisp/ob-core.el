@@ -3212,7 +3212,8 @@ Emacs shutdown."))
 	     (expand-file-name
               "babel-stable"
               (temporary-file-directory)))
-          (t nil)))
+          ;; Fallback if things do not work.
+          (t org-babel-temporary-directory)))
     "Directory to hold temporary files created to execute code blocks.
 Used by `org-babel-temp-file'.  This directory will be removed on
 Emacs shutdown."))
