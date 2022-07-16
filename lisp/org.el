@@ -5174,6 +5174,15 @@ by a #."
   :version "24.1"
   :group 'org-appearance)
 
+(defcustom org-inline-src-prettify-results t
+  "Whether to use (ab)use prettify-symbols-mode on {{{results(...)}}}.
+Either t or a cons cell of strings which are used as substitutions
+for the start and end of inline results, respectively."
+  :type '(choice boolean (cons string string))
+  :package-version '(Org . "9.5")
+  :group 'org-appearance
+  :group 'org-babel)
+
 (defun org-fontify-meta-lines-and-blocks (limit)
   (condition-case-unless-debug nil
       (org-fontify-meta-lines-and-blocks-1 limit)

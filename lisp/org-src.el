@@ -803,8 +803,41 @@ as `org-src-fontify-natively' is non-nil."
                 (font-lock-append-text-property
                  (1+ pt) (1- (point)) 'face 'org-inline-src-block)))
             (add-face-text-property (1- (point)) (point) '(org-inline-src-block shadow))
-            (setq pt (point)))))
+            (setq pt (point)))
+          (when (and org-inline-src-prettify-results
+                     (re-search-forward "\\= {{{results(" limit t))
+            (font-lock-append-text-property pt (1+ pt) 'face 'org-inline-src-block)
+            (goto-char pt))))
       t)))
+
+(defun org-fontify-inline-src-results (limit)
+  "Apply prettify-symbols modifications to inline results blocks.
+Performed according to `org-inline-src-prettify-results'."
+  (when (and org-inline-src-prettify-results
+             (re-search-forward "{{{results(\\(.+?\\))}}}" limit t))
+    (remove-list-of-text-properties (match-beginning 0) (point)
+                                    '(composition
+                                      prettify-symbols-start
+                                      prettify-symbols-end))
+    (font-lock-append-text-property (match-beginning 0) (match-end 0)
+                                    'face 'org-block)
+    (let ((start (match-beginning 0)) (end (match-beginning 1)))
+      (with-silent-modifications
+        (compose-region start end (if (eq org-inline-src-prettify-results t)
+                                      "(" (car org-inline-src-prettify-results)))
+        (add-text-properties start end `(prettify-symbols-start ,start prettify-symbols-end ,end))))
+    (let ((start (match-end 1)) (end (point)))
+      (with-silent-modifications
+        (compose-region start end (if (eq org-inline-src-prettify-results t)
+                                      ")" (cdr org-inline-src-prettify-results)))
+        (add-text-properties start end `(prettify-symbols-start ,start prettify-symbols-end ,end))))
+    t))
+
+(defun org-toggle-inline-results-display ()
+  "Toggle the literal or contracted display of inline src blocks results."
+  (interactive)
+  (setq org-inline-src-prettify-results (not org-inline-src-prettify-results))
+  (org-restart-font-lock))
 
 
 ;;; Escape contents
