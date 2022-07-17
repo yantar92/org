@@ -1387,7 +1387,7 @@ nil, just return 0."
    ((numberp s) s)
    ((stringp s)
     (condition-case nil
-	(float-time (apply #'encode-time (org-parse-time-string s)))
+	(org-time-string-to-seconds s)
       (error 0)))
    (t 0)))
 
@@ -1421,6 +1421,41 @@ nil, just return 0."
 	(b (org-2ft b)))
     (and (> a 0) (> b 0) (\= a b))))
 
+(if (version< emacs-version "27.1")
+    (defmacro org-encode-time (&rest time)
+      (if (cdr time)
+          `(encode-time ,@time)
+        `(apply #'encode-time ,@time)))
+  (if (ignore-errors (with-no-warnings (encode-time '(0 0 0 1 1 1971))))
+      (defmacro org-encode-time (&rest time)
+        (pcase (length time) ; Emacs-29 since d75e2c12eb
+          (1 `(encode-time ,@time))
+          ((or 6 9) `(encode-time (list ,@time)))
+          (_ (error "`org-encode-time' may be called with 1, 6, or 9 arguments but %d given"
+                    (length time)))))
+    (defmacro org-encode-time (&rest time)
+      (pcase (length time)
+        (1 `(encode-time ,@time))
+        (6 `(encode-time (list ,@time nil -1 nil)))
+        (9 `(encode-time (list ,@time)))
+        (_ (error "`org-encode-time' may be called with 1, 6, or 9 arguments but %d given"
+                  (length time)))))))
+(put 'org-encode-time 'function-documentation
+     "Compatibility and convenience helper for `encode-time'.
+May be called with 9 components list (SECONDS ... YEAR IGNORED DST ZONE)
+as the recommended way since Emacs-27 or with 6 or 9 separate arguments
+similar to the only possible variant for Emacs-26 and earlier.
+6 elements list as the only argument causes wrong type argument till Emacs-29.
+
+Warning: use -1 for DST to guess the actual value, nil means no
+daylight saving time and may be wrong at particular time.
+
+DST value is ignored prior to Emacs-27.  Since Emacs-27 DST value matters
+even when multiple arguments is passed to this macro and such
+behavior is different from `encode-time'. See
+Info node `(elisp)Time Conversion' for details and caveats,
+preferably the latest version.")
+
 (defun org-parse-time-string (s &optional nodefault)
   "Parse Org time string S.
 
@@ -1444,7 +1479,7 @@ This should be a lot faster than the `parse-time-string'."
 	(string-to-number (match-string 4 s))
 	(string-to-number (match-string 3 s))
 	(string-to-number (match-string 2 s))
-	nil nil nil))
+	nil -1 nil))
 
 (defun org-matcher-time (s)
   "Interpret a time comparison value S as a floating point time.
@@ -1454,8 +1489,8 @@ following special strings: \"<now>\", \"<today>\",
 \"<tomorrow>\", and \"<yesterday>\".
 
 Return 0. if S is not recognized as a valid value."
-  (let ((today (float-time (apply #'encode-time
-				  (append '(0 0 0) (nthcdr 3 (decode-time)))))))
+  (let ((today (float-time (org-encode-time
+                            (append '(0 0 0) (nthcdr 3 (decode-time)))))))
     (save-match-data
       (cond
        ((string= s "<now>") (float-time))

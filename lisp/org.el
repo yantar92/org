@@ -1353,6 +1353,34 @@ For more examples, see the system specific constants
 			(string :tag "Command")
 			(function :tag "Function")))))
 
+(defcustom org-resource-download-policy 'prompt
+  "The policy applied to requests to obtain remote resources.
+
+This affects keywords like #+setupfile and #+incude on export,
+`org-persist-write:url',and `org-attach-url' in non-interactive
+Emacs sessions.
+
+This recognises four possible values:
+- t, remote resources should always be downloaded.
+- prompt, you will be prompted to download resources nt considered safe.
+- safe, only resources considered safe will be downloaded.
+- nil, never download remote resources.
+
+A resource is considered safe if it matches one of the patterns
+in `org-safe-remote-resources'."
+  :group 'org
+  :type '(choice (const :tag "Always download remote resources" t)
+                 (const :tag "Prompt before downloading an unsafe resource" prompt)
+                 (const :tag "Only download resources considered safe" safe)
+                 (const :tag "Never download any resources" nil)))
+
+(defcustom org-safe-remote-resources nil
+  "A list of regexp patterns matching safe URIs.
+URI regexps are applied to both URLs and Org files requesting
+remote resources."
+  :group 'org
+  :type '(list regexp))
+
 (defcustom org-open-non-existing-files nil
   "Non-nil means `org-open-file' opens non-existing files.
 
@@ -4468,21 +4496,25 @@ is available.  This option applies only if FILE is a URL."
     (cond
      (cache)
      (is-url
-      (with-current-buffer (url-retrieve-synchronously file)
-	(goto-char (point-min))
-	;; Move point to after the url-retrieve header.
-	(search-forward "\n\n" nil :move)
-	;; Search for the success code only in the url-retrieve header.
-	(if (save-excursion
-	      (re-search-backward "HTTP.*\\s-+200\\s-OK" nil :noerror))
-	    ;; Update the cache `org--file-cache' and return contents.
-	    (puthash file
-		     (buffer-substring-no-properties (point) (point-max))
-		     org--file-cache)
-	  (funcall (if noerror #'message #'user-error)
-		   "Unable to fetch file from %S"
-		   file)
-	  nil)))
+      (if (org--should-fetch-remote-resource-p file)
+          (with-current-buffer (url-retrieve-synchronously file)
+            (goto-char (point-min))
+            ;; Move point to after the url-retrieve header.
+            (search-forward "\n\n" nil :move)
+            ;; Search for the success code only in the url-retrieve header.
+            (if (save-excursion
+                  (re-search-backward "HTTP.*\\s-+200\\s-OK" nil :noerror))
+                ;; Update the cache `org--file-cache' and return contents.
+                (puthash file
+                         (buffer-substring-no-properties (point) (point-max))
+                         org--file-cache)
+              (funcall (if noerror #'message #'user-error)
+                       "Unable to fetch file from %S"
+                       file)
+              nil))
+        (funcall (if noerror #'message #'user-error)
+                 "The remote resource %S is considered unsafe, and will not be downloaded."
+                 file)))
      (t
       (with-temp-buffer
         (condition-case nil
@@ -4494,6 +4526,74 @@ is available.  This option applies only if FILE is a URL."
 		    "Unable to read file %S"
 		    file)
 	   nil)))))))
+
+(defun org--should-fetch-remote-resource-p (uri)
+  "Return non-nil if the URI should be fetched."
+  (or (eq org-resource-download-policy t)
+      (org--safe-remote-resource-p uri)
+      (and (eq org-resource-download-policy 'prompt)
+           (org--confirm-resource-safe uri))))
+
+(defun org--safe-remote-resource-p (uri)
+  "Return non-nil if URI is considered safe.
+This checks every pattern in `org-safe-remote-resources', and
+returns non-nil if any of them match."
+  (let ((uri-patterns org-safe-remote-resources)
+        (file-uri (and buffer-file-name
+                       (concat "file://" (file-truename buffer-file-name))))
+        match-p)
+    (while (and (not match-p) uri-patterns)
+      (setq match-p (or (string-match-p (car uri-patterns) uri)
+                        (and file-uri (string-match-p (car uri-patterns) file-uri)))
+            uri-patterns (cdr uri-patterns)))
+    match-p))
+
+(defun org--confirm-resource-safe (uri)
+  "Ask the user if URI should be considered safe, returning non-nil if so."
+  (unless noninteractive
+    (let ((current-file (and buffer-file-name (file-truename buffer-file-name)))
+          (buf (get-buffer-create "*Org Remote Resource*")))
+      ;; Set up the contents of the *Org Remote Resource* buffer.
+      (with-current-buffer buf
+        (erase-buffer)
+        (insert "An org-mode document would like to download "
+                (propertize uri 'face '(:inherit org-link :weight normal))
+                ", which is not considered safe.\n\n"
+                "Do you want to download this?  You can type\n "
+                (propertize "!" 'face 'success)
+                " to download this resource, and permanantly mark it as safe.\n "
+                (propertize "f" 'face 'success)
+                " to download this resource, and permanantly mark all resources in "
+                (propertize current-file 'face 'fixed-pitch-serif)
+                " as safe.\n "
+                (propertize "y" 'face 'warning)
+                " to download this resource, just this once.\n "
+                (propertize "n" 'face 'error)
+                " to skip this resource.\n")
+        (setq-local cursor-type nil)
+        (set-buffer-modified-p nil)
+        (goto-char (point-min)))
+      ;; Display the buffer and read a choice.
+      (save-window-excursion
+        (pop-to-buffer buf)
+        (let* ((exit-chars '(?y ?n ?! ?f ?\s))
+               (prompt (format "Please type y, n, f, or !%s: "
+                               (if (< (line-number-at-pos (point-max))
+                                      (window-body-height))
+                                   ""
+                                 ", or C-v/M-v to scroll")))
+               char)
+          (setq char (read-char-choice prompt exit-chars))
+          (when (memq char '(?! ?f))
+            (customize-push-and-save
+             'org-safe-remote-resources
+             (list (rx string-start
+                       (literal
+                        (if (and (= char ?f) current-file)
+                            (concat "file://" current-file) uri))
+                       string-end))))
+          (prog1 (memq char '(?! ?\s ?y ?f))
+            (quit-window t)))))))
 
 (defun org-extract-log-state-settings (x)
   "Extract the log state setting from a TODO keyword string.
@@ -4805,8 +4905,10 @@ the rounding returns a past time."
     (if (< r 1)
 	now
       (let* ((time (decode-time now))
-	     (res (apply #'encode-time 0 (* r (round (nth 1 time) r))
-			 (nthcdr 2 time))))
+	     (res (org-encode-time
+                   (apply #'list
+                          0 (* r (round (nth 1 time) r))
+                          (nthcdr 2 time)))))
 	(if (or (not past) (time-less-p res now))
 	    res
 	  (time-subtract res (* r 60)))))))
@@ -8863,7 +8965,7 @@ nil or a string to be used for the todo mark." )
 	   (org-use-last-clock-out-time-as-effective-time
 	    (or (org-clock-get-last-clock-out-time) ct))
 	   ((and org-use-effective-time (< (nth 2 dct) org-extend-today-until))
-	    (encode-time 0 59 23 (1- (nth 3 dct)) (nth 4 dct) (nth 5 dct)))
+	    (org-encode-time 0 59 23 (1- (nth 3 dct)) (nth 4 dct) (nth 5 dct)))
 	   (t ct))))
     ct1))
 
@@ -10022,9 +10124,9 @@ WHAT entry will also be removed."
 	      (if (stringp time)
 		  ;; This is a string (relative or absolute), set
 		  ;; proper date.
-		  (apply #'encode-time
-		         (org-read-date-analyze
-			  time default-time (decode-time default-time)))
+		  (org-encode-time
+		   (org-read-date-analyze
+		    time default-time (decode-time default-time)))
 	        ;; If necessary, get the time from the user
 	        (or time (org-read-date nil 'to-time nil
 				     (cl-case what
@@ -13475,7 +13577,7 @@ user."
     (when (< (nth 2 org-defdecode) org-extend-today-until)
       (setf (nth 2 org-defdecode) -1)
       (setf (nth 1 org-defdecode) 59)
-      (setq org-def (apply #'encode-time org-defdecode))
+      (setq org-def (org-encode-time org-defdecode))
       (setq org-defdecode (decode-time org-def)))
     (let* ((timestr (format-time-string
 		     (if org-with-time "%Y-%m-%d %H:%M" "%Y-%m-%d")
@@ -13548,7 +13650,7 @@ user."
 		 "range representable on this machine"))
       (ding))
 
-    (setq final (apply #'encode-time final))
+    (setq final (org-encode-time final))
 
     (setq org-read-date-final-answer ans)
 
@@ -13585,7 +13687,7 @@ user."
 			  (and (boundp 'org-time-was-given) org-time-was-given))
 		      (cdr fmts)
 		    (car fmts)))
-	     (txt (format-time-string fmt (apply #'encode-time f)))
+	     (txt (format-time-string fmt (org-encode-time f)))
 	     (txt (if org-read-date-inactive (concat "[" (substring txt 1 -1) "]") txt))
 	     (txt (concat "=> " txt)))
 	(when (and org-end-time-was-given
@@ -13807,7 +13909,7 @@ user."
      ((and wday (not (nth 3 tl)))
       ;; Weekday was given, but no day, so pick that day in the week
       ;; on or after the derived date.
-      (setq wday1 (nth 6 (decode-time (encode-time 0 0 0 day month year))))
+      (setq wday1 (nth 6 (decode-time (org-encode-time 0 0 0 day month year))))
       (unless (equal wday wday1)
 	(setq day (+ day (% (- wday wday1 -7) 7))))))
     (when (and (boundp 'org-time-was-given)
@@ -13822,12 +13924,12 @@ user."
 	  (when (> year 2037)
 	    (setq year 2037 org-read-date-analyze-forced-year t)))
       (condition-case nil
-	  (ignore (encode-time second minute hour day month year))
+	  (ignore (org-encode-time second minute hour day month year))
 	(error
 	 (setq year (nth 5 org-defdecode))
 	 (setq org-read-date-analyze-forced-year t))))
     (setq org-read-date-analyze-futurep futurep)
-    (list second minute hour day month year)))
+    (list second minute hour day month year nil -1 nil)))
 
 (defvar parse-time-weekdays)
 (defun org-read-date-get-relative (s today default)
@@ -13887,7 +13989,7 @@ Unless KEEPDATE is non-nil, update `org-ans2' to the cursor date."
     (eval form t)
     (when (and (not keepdate) (calendar-cursor-to-date))
       (let* ((date (calendar-cursor-to-date))
-	     (time (encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
+	     (time (org-encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
 	(setq org-ans2 (format-time-string "%Y-%m-%d" time))))
     (move-overlay org-date-ovl (1- (point)) (1+ (point)) (current-buffer))
     (select-window sw)
@@ -13899,7 +14001,7 @@ This is used by `org-read-date' in a temporary keymap for the calendar buffer."
   (interactive)
   (when (calendar-cursor-to-date)
     (let* ((date (calendar-cursor-to-date))
-	   (time (encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
+	   (time (org-encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
       (setq org-ans1 (format-time-string "%Y-%m-%d" time)))
     (when (active-minibuffer-window) (exit-minibuffer))))
 
@@ -13964,7 +14066,7 @@ The command returns the inserted time stamp."
 	  time (org-fix-decoded-time t1)
 	  str (org-add-props
 		  (format-time-string
-		   (substring tf 1 -1) (apply 'encode-time time))
+		   (substring tf 1 -1) (org-encode-time time))
 		  nil 'mouse-face 'highlight))
     (put-text-property beg end 'display str)))
 
@@ -14018,7 +14120,7 @@ This is used by `org-read-date' in a temporary keymap for the calendar buffer."
   (mouse-set-point ev)
   (when (calendar-cursor-to-date)
     (let* ((date (calendar-cursor-to-date))
-	   (time (encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
+	   (time (org-encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
       (setq org-ans1 (format-time-string "%Y-%m-%d" time)))
     (when (active-minibuffer-window) (exit-minibuffer))))
 
@@ -14219,7 +14321,7 @@ days in order to avoid rounding problems."
 
 (defun org-time-string-to-time (s)
   "Convert timestamp string S into internal time."
-  (apply #'encode-time (org-parse-time-string s)))
+  (org-encode-time (org-parse-time-string s)))
 
 (defun org-time-string-to-seconds (s)
   "Convert a timestamp string S into a number of seconds."
@@ -14282,7 +14384,7 @@ into a past one.  Any year larger than 99 is returned unchanged."
   "Return the time corresponding to date D.
 D may be an absolute day number, or a calendar-type list (month day year)."
   (when (numberp d) (setq d (calendar-gregorian-from-absolute d)))
-  (encode-time 0 0 0 (nth 1 d) (car d) (nth 2 d)))
+  (org-encode-time 0 0 0 (nth 1 d) (car d) (nth 2 d)))
 
 (defvar org-agenda-current-date)
 (defun org-calendar-holiday ()
@@ -14636,14 +14738,15 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 	  (setcar (cdr time0) (+ (nth 1 time0)
 				 (if (> n 0) (- rem) (- dm rem))))))
       (setq time
-	    (apply #'encode-time
-		   (or (car time0) 0)
-		   (+ (if (eq timestamp? 'minute) n 0) (nth 1 time0))
-		   (+ (if (eq timestamp? 'hour) n 0)   (nth 2 time0))
-		   (+ (if (eq timestamp? 'day) n 0)    (nth 3 time0))
-		   (+ (if (eq timestamp? 'month) n 0)  (nth 4 time0))
-		   (+ (if (eq timestamp? 'year) n 0)   (nth 5 time0))
-		   (nthcdr 6 time0)))
+	    (org-encode-time
+             (apply #'list
+                    (or (car time0) 0)
+                    (+ (if (eq timestamp? 'minute) n 0) (nth 1 time0))
+                    (+ (if (eq timestamp? 'hour) n 0)   (nth 2 time0))
+                    (+ (if (eq timestamp? 'day) n 0)    (nth 3 time0))
+                    (+ (if (eq timestamp? 'month) n 0)  (nth 4 time0))
+                    (+ (if (eq timestamp? 'year) n 0)   (nth 5 time0))
+                    (nthcdr 6 time0))))
       (when (and (memq timestamp? '(hour minute))
 		 extra
 		 (string-match "-\\([012][0-9]\\):\\([0-5][0-9]\\)" extra))
@@ -14661,7 +14764,7 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 	  (setcar time0 (or (car time0) 0))
 	  (setcar (nthcdr 1 time0) (or (nth 1 time0) 0))
 	  (setcar (nthcdr 2 time0) (or (nth 2 time0) 0))
-	  (setq time (apply 'encode-time time0))))
+	  (setq time (org-encode-time time0))))
       ;; Insert the new time-stamp, and ensure point stays in the same
       ;; category as before (i.e. not after the last position in that
       ;; category).
@@ -14807,7 +14910,7 @@ If there is already a time stamp at the cursor position, update it."
       (org-timestamp-change 0 'calendar)
     (let ((cal-date (org-get-date-from-calendar)))
       (org-insert-time-stamp
-       (encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
+       (org-encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
 
 (defcustom org-image-actual-width t
   "When non-nil, use the actual width of images when inlining them.
@@ -18387,14 +18490,14 @@ earliest time on the cursor date that Org treats as that date
     (cond
      ((eq major-mode 'calendar-mode)
       (setq date (calendar-cursor-to-date)
-	    defd (encode-time 0 (or mod 0) (or hod org-extend-today-until)
-			      (nth 1 date) (nth 0 date) (nth 2 date))))
+	    defd (org-encode-time 0 (or mod 0) (or hod org-extend-today-until)
+                                  (nth 1 date) (nth 0 date) (nth 2 date))))
      ((eq major-mode 'org-agenda-mode)
       (setq day (get-text-property (point) 'day))
       (when day
 	(setq date (calendar-gregorian-from-absolute day)
-	      defd (encode-time 0 (or mod 0) (or hod org-extend-today-until)
-				(nth 1 date) (nth 0 date) (nth 2 date))))))
+	      defd (org-encode-time 0 (or mod 0) (or hod org-extend-today-until)
+                                    (nth 1 date) (nth 0 date) (nth 2 date))))))
     (or defd (current-time))))
 
 (defun org-mark-subtree (&optional up)
@@ -19467,12 +19570,14 @@ return an active timestamp."
   "Convert TIMESTAMP object into an Emacs internal time value.
 Use end of date range or time range when END is non-nil.
 Otherwise, use its start."
-  (apply #'encode-time 0
-	 (mapcar
-	  (lambda (prop) (or (org-element-property prop timestamp) 0))
-	  (if end '(:minute-end :hour-end :day-end :month-end :year-end)
-	    '(:minute-start :hour-start :day-start :month-start
-			    :year-start)))))
+  (org-encode-time
+   (append '(0)
+           (mapcar
+            (lambda (prop) (or (org-element-property prop timestamp) 0))
+            (if end '(:minute-end :hour-end :day-end :month-end :year-end)
+              '(:minute-start :hour-start :day-start :month-start
+                              :year-start)))
+           '(nil -1 nil))))
 
 (defun org-timestamp-has-time-p (timestamp)
   "Non-nil when TIMESTAMP has a time specified."
