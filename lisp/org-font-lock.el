@@ -502,7 +502,7 @@ If TAG is a number, get the corresponding match group."
 	  time (org-fix-decoded-time t1)
 	  str (org-add-props
 		  (format-time-string
-		   (substring tf 1 -1) (apply 'encode-time time))
+		   (substring tf 1 -1) (org-encode-time time))
 		  nil 'mouse-face 'highlight))
     (org-font-lock-compose str beg end)))
 

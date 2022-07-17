@@ -25,6 +25,20 @@
 (eval-and-compile (require 'cl-lib))
 
 
+;;; Helpers
+
+(defmacro org-test-with-timezone (tz &rest body)
+  "Evaluate BODY with TZ environment temporary set to the passed value."
+  (declare (indent 1))
+  (org-with-gensyms (tz-saved)
+    `(let ((,tz-saved (getenv "TZ")))
+       (unwind-protect
+           (progn
+             (setenv "TZ" ,tz)
+             ,@body)
+             (setenv "TZ" ,tz-saved)))))
+
+
 ;;; Comments
 
 (ert-deftest test-org/toggle-comment ()
@@ -179,6 +193,83 @@
 
 ;;; Date and time analysis
 
+(ert-deftest test-org/org-encode-time ()
+  "Test various ways to call `org-encode-time'"
+  (org-test-with-timezone "UTC"
+    ;; list as the sole argument
+    (should (string-equal
+             "2022-03-24 23:30:01"
+             (format-time-string
+              "%F %T"
+              (org-encode-time '(1 30 23 24 3 2022 nil -1 nil)))))
+    ;; SECOND...YEAR
+    (should (string-equal
+             "2022-03-24 23:30:02"
+             (format-time-string
+              "%F %T"
+              (org-encode-time 2 30 23 24 3 2022))))
+    ;; SECOND...YEAR IGNORED DST ZONE
+    (should (string-equal
+             "2022-03-24 23:30:03"
+             (format-time-string
+              "%F %T"
+              (org-encode-time 3 30 23 24 3 2022 nil -1 nil))))
+    ;; function call
+    (should (string-equal
+             "2022-03-24 23:30:04"
+             (format-time-string
+              "%F %T"
+              (org-encode-time (apply #'list 4 30 23 '(24 3 2022 nil -1 nil))))))
+    ;; wrong number of arguments
+    (if (not (version< emacs-version "27.1"))
+        (should-error (string-equal
+                       "2022-03-24 23:30:05"
+                       (format-time-string
+                        "%F %T"
+                        (org-encode-time 5 30 23 24 3 2022 nil))))))
+  ;; daylight saving time
+  (if (not (version< emacs-version "27.1"))
+      ;; DST value is not ignored for multiple arguments unlike for `encode-time'
+      (should (string-equal
+               "2022-04-01 00:30:06 +0200 CEST"
+               (format-time-string
+                "%F %T %z %Z"
+                (org-encode-time 6 30 23 31 3 2022 nil nil "Europe/Madrid")
+                "Europe/Madrid")))
+    (should (string-equal
+             "2022-03-31 23:30:07 +0200 CEST"
+             (format-time-string
+              "%F %T %z %Z"
+              (org-encode-time 7 30 23 31 3 2022 nil t "Europe/Madrid")
+              "Europe/Madrid"))))
+  (org-test-with-timezone "Europe/Madrid"
+    ;; Standard time is not forced when DST is not specified
+    (should (string-equal
+             "2022-03-31 23:30:08"
+             (format-time-string
+              "%F %T"
+              (org-encode-time 8 30 23 31 3 2022))))))
+
+(ert-deftest test-org/org-time-string-to-time ()
+  "Test `org-time-string-to-time' around DST transition."
+  (org-test-with-timezone "UTC"
+    (should (string-equal
+             "2022-03-31 23:31:00"
+             (format-time-string
+              "%F %T"
+              (org-time-string-to-time "2022-03-31 23:31")))))
+  (org-test-with-timezone "Europe/Madrid"
+    (should (string-equal
+             "2022-03-24 23:32:00 +0100 CET"
+             (format-time-string
+              "%F %T %z %Z"
+              (org-time-string-to-time "2022-03-24 23:32"))))
+    (should (string-equal
+             "2022-03-31 23:33:00 +0200 CEST"
+             (format-time-string
+              "%F %T %z %Z"
+              (org-time-string-to-time "2022-03-31 23:33"))))))
+
 (ert-deftest test-org/org-read-date ()
   "Test `org-read-date' specifications."
   ;; Parse ISO date with abbreviated year and month.
@@ -201,14 +292,14 @@
     (org-test-at-time "2014-03-04"
       (org-read-date
        t nil "+1y" nil
-       (apply #'encode-time (org-parse-time-string "2012-03-29"))))))
+       (org-time-string-to-time "2012-03-29")))))
   (should
    (equal
     "2013-03-29"
     (org-test-at-time "2014-03-04"
       (org-read-date
        t nil "++1y" nil
-       (apply #'encode-time (org-parse-time-string "2012-03-29"))))))
+       (org-time-string-to-time "2012-03-29")))))
   ;; When `org-read-date-prefer-future' is non-nil, prefer future
   ;; dates (relatively to now) when incomplete.  Otherwise, use
   ;; default date.
@@ -255,7 +346,7 @@
       (let ((org-read-date-prefer-future t))
 	(org-read-date
 	 t nil "1" nil
-	 (apply #'encode-time (org-parse-time-string "2012-03-29")))))))
+	 (org-time-string-to-time "2012-03-29"))))))
   (should
    (equal
     "2014-03-25"
@@ -263,20 +354,20 @@
       (let ((org-read-date-prefer-future t))
 	(org-read-date
 	 t nil "25" nil
-	 (apply #'encode-time (org-parse-time-string "2012-03-29"))))))))
+	 (org-time-string-to-time "2012-03-29")))))))
 
 (ert-deftest test-org/org-parse-time-string ()
   "Test `org-parse-time-string'."
   (should (equal (org-parse-time-string "2012-03-29 16:40")
-		 '(0 40 16 29 3 2012 nil nil nil)))
+		 '(0 40 16 29 3 2012 nil -1 nil)))
   (should (equal (org-parse-time-string "[2012-03-29 16:40]")
-		 '(0 40 16 29 3 2012 nil nil nil)))
+		 '(0 40 16 29 3 2012 nil -1 nil)))
   (should (equal (org-parse-time-string "<2012-03-29 16:40>")
-		 '(0 40 16 29 3 2012 nil nil nil)))
+		 '(0 40 16 29 3 2012 nil -1 nil)))
   (should (equal (org-parse-time-string "<2012-03-29>")
-		 '(0 0 0 29 3 2012 nil nil nil)))
+		 '(0 0 0 29 3 2012 nil -1 nil)))
   (should (equal (org-parse-time-string "<2012-03-29>" t)
-		 '(0 nil nil 29 3 2012 nil nil nil))))
+		 '(0 nil nil 29 3 2012 nil -1 nil))))
 
 (ert-deftest test-org/closest-date ()
   "Test `org-closest-date' specifications."
@@ -5540,8 +5631,7 @@ Paragraph<point>"
    (equal "* H\nDEADLINE: <2012-03-29 -705d>"
 	  (cl-letf (((symbol-function 'org-read-date)
 		     (lambda (&rest args)
-		       (apply #'encode-time
-			      (org-parse-time-string "2014-03-04")))))
+		       (org-time-string-to-time "2014-03-04"))))
 	    (org-test-with-temp-text "* H\nDEADLINE: <2012-03-29>"
 	      (let ((org-adapt-indentation nil)
 		    (org-last-inserted-timestamp nil))
@@ -5550,8 +5640,7 @@ Paragraph<point>"
   (should-error
    (cl-letf (((symbol-function 'org-read-date)
 	      (lambda (&rest args)
-		(apply #'encode-time
-		       (org-parse-time-string "2014-03-04")))))
+		(org-time-string-to-time "2014-03-04"))))
      (org-test-with-temp-text "* H"
        (let ((org-adapt-indentation nil)
 	     (org-last-inserted-timestamp nil))
@@ -5654,8 +5743,7 @@ Paragraph<point>"
    (equal "* H\nSCHEDULED: <2012-03-29 -705d>"
 	  (cl-letf (((symbol-function 'org-read-date)
 		     (lambda (&rest args)
-		       (apply #'encode-time
-			      (org-parse-time-string "2014-03-04")))))
+		       (org-time-string-to-time "2014-03-04"))))
 	    (org-test-with-temp-text "* H\nSCHEDULED: <2012-03-29>"
 	      (let ((org-adapt-indentation nil)
 		    (org-last-inserted-timestamp nil))
@@ -5664,8 +5752,7 @@ Paragraph<point>"
   (should-error
    (cl-letf (((symbol-function 'org-read-date)
 	      (lambda (&rest args)
-		(apply #'encode-time
-		       (org-parse-time-string "2014-03-04")))))
+		(org-time-string-to-time "2014-03-04"))))
      (org-test-with-temp-text "* H"
        (let ((org-adapt-indentation nil)
 	     (org-last-inserted-timestamp nil))
@@ -7931,7 +8018,7 @@ CLOSED: %s
     (org-test-with-temp-text "Te<point>xt"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time (org-parse-time-string "2014-03-04")))))
+		   (org-time-string-to-time "2014-03-04"))))
 	(org-time-stamp nil)
 	(buffer-string)))))
   ;; With a prefix argument, also insert time.
@@ -7941,8 +8028,7 @@ CLOSED: %s
     (org-test-with-temp-text "Te<point>xt"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time
-			  (org-parse-time-string "2014-03-04 00:41")))))
+		   (org-time-string-to-time "2014-03-04 00:41"))))
 	(org-time-stamp '(4))
 	(buffer-string)))))
   ;; With two universal prefix arguments, insert an active timestamp
@@ -7961,7 +8047,7 @@ CLOSED: %s
     (org-test-with-temp-text "Te<point>xt"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time (org-parse-time-string "2014-03-04")))))
+		   (org-time-string-to-time "2014-03-04"))))
 	(org-time-stamp nil t)
 	(buffer-string)))))
   ;; When called from a timestamp, replace existing one.
@@ -7971,7 +8057,7 @@ CLOSED: %s
     (org-test-with-temp-text "<2012-03-29<point> thu.>"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time (org-parse-time-string "2014-03-04")))))
+		   (org-time-string-to-time "2014-03-04"))))
 	(org-time-stamp nil)
 	(buffer-string)))))
   (should
@@ -7980,7 +8066,7 @@ CLOSED: %s
     (org-test-with-temp-text "<2012-03-29<point> thu.>--<2014-03-04 tue.>"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time (org-parse-time-string "2014-03-04")))))
+		   (org-time-string-to-time "2014-03-04"))))
 	(org-time-stamp nil)
 	(buffer-string)))))
   ;; When replacing a timestamp, preserve repeater, if any.
@@ -7990,7 +8076,7 @@ CLOSED: %s
     (org-test-with-temp-text "<2012-03-29<point> thu. +2y>"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time (org-parse-time-string "2014-03-04")))))
+		   (org-time-string-to-time "2014-03-04"))))
 	(org-time-stamp nil)
 	(buffer-string)))))
   ;; When called twice in a raw, build a date range.
@@ -8000,7 +8086,7 @@ CLOSED: %s
     (org-test-with-temp-text "<2012-03-29 thu.><point>"
       (cl-letf (((symbol-function 'org-read-date)
 		 (lambda (&rest args)
-		   (apply #'encode-time (org-parse-time-string "2014-03-04")))))
+		   (org-time-string-to-time "2014-03-04"))))
 	(let ((last-command 'org-time-stamp)
 	      (this-command 'org-time-stamp))
 	  (org-time-stamp nil))
@@ -8175,8 +8261,7 @@ CLOSED: %s
     "<2012-03-29 .+>"
     (org-element-interpret-data
      (org-timestamp-from-time
-      (apply #'encode-time
-	     (org-parse-time-string "<2012-03-29 Thu 16:40>"))))))
+      (org-time-string-to-time "<2012-03-29 Thu 16:40>")))))
   ;; When optional argument WITH-TIME is non-nil, provide time
   ;; information.
   (should
@@ -8184,8 +8269,7 @@ CLOSED: %s
     "<2012-03-29 .+ 16:40>"
     (org-element-interpret-data
      (org-timestamp-from-time
-      (apply #'encode-time
-	     (org-parse-time-string "<2012-03-29 Thu 16:40>"))
+      (org-time-string-to-time "<2012-03-29 Thu 16:40>")
       t))))
   ;; When optional argument INACTIVE is non-nil, return an inactive
   ;; timestamp.
@@ -8194,8 +8278,7 @@ CLOSED: %s
     "[2012-03-29 .+]"
     (org-element-interpret-data
      (org-timestamp-from-time
-      (apply #'encode-time
-	     (org-parse-time-string "<2012-03-29 Thu 16:40>"))
+      (org-time-string-to-time "<2012-03-29 Thu 16:40>")
       nil t)))))
 
 (ert-deftest test-org/timestamp-to-time ()
