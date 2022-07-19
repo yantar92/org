@@ -8231,7 +8231,9 @@ a link at point.  If they don't find anything interesting at point,
 they must return nil.")
 
 (defun org-open-at-point (&optional arg)
-  "Open link, timestamp, footnote or tags at point.
+  "Open thing at point.
+The thing can be a link, citation, timestamp, footnote, src-block or
+tags.
 
 When point is on a link, follow it.  Normally, files will be
 opened by an appropriate application.  If the optional prefix
@@ -8245,6 +8247,10 @@ specified.
 When point is a footnote definition, move to the first reference
 found.  If it is on a reference, move to the associated
 definition.
+
+When point is on a src-block of inline src-block, open its result.
+
+When point is on a citation, follow it.
 
 When point is on a headline, display a list of every link in the
 entry, so it is possible to pick one, or all, of them.  If point
@@ -8364,7 +8370,10 @@ there is one, return it."
 	 (org-back-to-heading t)
 	 (setq end (save-excursion (outline-next-heading) (point)))
 	 (while (re-search-forward org-link-any-re end t)
-	   (push (match-string 0) links))
+           ;; Only consider valid links or links openable via
+           ;; `org-open-at-point'.
+           (when (memq (org-element-type (org-element-context)) '(link comment comment-block node-property keyword))
+	     (push (match-string 0) links)))
 	 (setq links (org-uniquify (reverse links))))
        (cond
 	((null links)
@@ -18555,9 +18564,9 @@ ELEMENT."
 	(org-element-property :parent element) t))
       ;; At first line: indent according to previous sibling, if any,
       ;; ignoring footnote definitions and inline tasks, or parent's
-      ;; contents.
-      ((and ( = (line-beginning-position) start)
-	    (eq org-adapt-indentation t))
+      ;; contents.  If `org-adapt-indentation' is `headline-data', ignore
+      ;; previous headline data siblings.
+      ((= (line-beginning-position) start)
        (catch 'exit
 	 (while t
 	   (if (= (point-min) start) (throw 'exit 0)
@@ -18574,6 +18583,21 @@ ELEMENT."
 		((memq (org-element-type previous)
 		       '(footnote-definition inlinetask))
 		 (setq start (org-element-property :begin previous)))
+                ;; Do not indent like previous when the previous
+                ;; element is headline data and `org-adapt-indentation'
+                ;; is set to `headline-data'.
+                ((save-excursion
+                   (goto-char start)
+                   (and
+                    (eq org-adapt-indentation 'headline-data)
+                    (not (or (org-at-clock-log-p)
+                           (org-at-planning-p)))
+                    (progn
+                      (beginning-of-line 1)
+                      (skip-chars-backward "\n")
+                      (or (org-at-heading-p)
+                          (looking-back ":END:.*" (point-at-bol))))))
+                 (throw 'exit 0))
 		(t (goto-char (org-element-property :begin previous))
 		   (throw 'exit
 			  (if (bolp) (current-indentation)
