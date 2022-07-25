@@ -1051,7 +1051,7 @@ mode."
 
 (cl-defstruct (org-export-backend (:constructor org-export-create-backend)
 				  (:copier nil))
-  name parent transcoders options filters blocks menu)
+  name parent transcoders options filters blocks menu feature-conditions feature-implementations)
 
 ;;;###autoload
 (defun org-export-get-backend (name)
@@ -1156,6 +1156,62 @@ returns filters inherited from parent backends, if any."
 	(setq backend (if (symbolp parent) (org-export-get-backend parent) parent))
 	(setq filters (append filters (org-export-backend-filters backend))))
       filters)))
+
+(defvar org-export-conditional-features)
+
+(defun org-export-get-all-feature-conditions (backend)
+  "Return full feature condition alist for BACKEND.
+
+BACKEND is an export back-end, as return by, e.g,,
+`org-export-create-backend'.  Return value is an alist where keys
+are feature conditions, and values are feature symbols.
+
+Unlike `org-export-backend-feature-conditions', this function
+also returns conditions inherited from parent back-ends, if any."
+  (when (symbolp backend) (setq backend (org-export-get-backend backend)))
+  (and backend
+       (let ((conditions (org-export-backend-feature-conditions backend))
+             parent)
+         (while (setq parent (org-export-backend-parent backend))
+           (setq backend (org-export-get-backend parent))
+           (dolist (condition (org-export-backend-feature-conditions backend))
+             (push condition conditions)))
+         (dolist (condition org-export-conditional-features)
+           (unless (assq (car condition) conditions)
+             (push condition conditions)))
+         conditions)))
+
+(defun org-export-get-all-feature-implementations (backend)
+  "Return full feature implementation alist for BACKEND.
+
+BACKEND is an export back-end, as return by, e.g,,
+`org-export-create-backend'.  Return value is an alist where keys
+are feature symbols, and values are an implementation
+specification plist.
+
+Unlike `org-export-backend-feature-implementations', this function
+also returns implementations inherited from parent back-ends, if any."
+  (when (symbolp backend) (setq backend (org-export-get-backend backend)))
+  (and backend
+       (let ((implementations (org-export-backend-feature-implementations backend))
+             parent)
+         (while (setq parent (org-export-backend-parent backend))
+           (setq backend (org-export-get-backend parent))
+           (dolist (implementation (org-export-backend-feature-implementations backend))
+             (unless (assq (car implementation) implementations)
+               (push implementation implementations))))
+         implementations)))
+
+(defun org-export-install-features (info)
+  "Install feature conditions and implementations in the communication channel.
+INFO is a plist containing the current communication channel.
+Return the updated communication channel."
+  (plist-put info :feature-conditions
+             (org-export-get-all-feature-conditions
+              (plist-get info :back-end)))
+  (plist-put info :feature-implementations
+             (org-export-get-all-feature-implementations
+              (plist-get info :back-end))))
 
 (defun org-export-define-backend (backend transcoders &rest body)
   "Define a new backend BACKEND.
@@ -1268,20 +1324,24 @@ keywords are understood:
     `org-export-options-alist' for more information about
     structure of the values."
   (declare (indent 1))
-  (let (filters menu-entry options)
+  (let (filters menu-entry options feature-conditions feature-implementations)
     (while (keywordp (car body))
       (let ((keyword (pop body)))
 	(pcase keyword
 	  (:filters-alist (setq filters (pop body)))
 	  (:menu-entry (setq menu-entry (pop body)))
 	  (:options-alist (setq options (pop body)))
+	  (:feature-conditions-alist (setq feature-conditions (pop body)))
+	  (:feature-implementations-alist (setq feature-implementations (pop body)))
 	  (_ (error "Unknown keyword: %s" keyword)))))
     (org-export-register-backend
      (org-export-create-backend :name backend
 				:transcoders transcoders
 				:options options
 				:filters filters
-				:menu menu-entry))))
+				:menu menu-entry
+                                :feature-conditions feature-conditions
+                                :feature-implementations feature-implementations))))
 
 (defun org-export-define-derived-backend (child parent &rest body)
   "Create a new backend as a variant of an existing one.
@@ -1328,7 +1388,7 @@ The backend could then be called with, for example:
 
   (org-export-to-buffer \\='my-latex \"*Test my-latex*\")"
   (declare (indent 2))
-  (let (filters menu-entry options transcoders)
+  (let (filters menu-entry options transcoders feature-conditions feature-implementations)
     (while (keywordp (car body))
       (let ((keyword (pop body)))
 	(pcase keyword
@@ -1336,6 +1396,8 @@ The backend could then be called with, for example:
 	  (:menu-entry (setq menu-entry (pop body)))
 	  (:options-alist (setq options (pop body)))
 	  (:translate-alist (setq transcoders (pop body)))
+	  (:feature-conditions-alist (setq feature-conditions (pop body)))
+	  (:feature-implementations-alist (setq feature-implementations (pop body)))
 	  (_ (error "Unknown keyword: %s" keyword)))))
     (org-export-register-backend
      (org-export-create-backend :name child
@@ -1343,7 +1405,9 @@ The backend could then be called with, for example:
 				:transcoders transcoders
 				:options options
 				:filters filters
-				:menu menu-entry))))
+				:menu menu-entry
+                                :feature-conditions feature-conditions
+                                :feature-implementations feature-implementations))))
 
 
 
@@ -2073,6 +2137,550 @@ keywords before output."
 	    (funcall (intern (format "org-element-%s-interpreter" type))
 		     blob contents))))
 
+
+;;; Conditional/Generated Features
+;;
+;; Many formats have some version of a preamble, whether it be HTML's
+;; <head>...</head> or the content before LaTeX's \begin{document}.
+;; Depending on the particular features in the Org document being
+;; exported, different setup snippets will be needed.  There's the
+;; "everything and the kitchen sink" approach of adding absolutely
+;; everything that might be needed, and the post-translation editing
+;; with filters approach, but neither really solve this problem nicely.
+;;
+;; The conditional/generated preamble defines mechanisms of detecting
+;; which "export features" are used in a document, handles
+;; interactions between features, and provides/generates content to
+;; support the features.
+;;
+;; Each export feature condition takes the form of a
+;; (CONDITION . FEATURES) cons cell (see `org-export-detect-features'),
+;; and each implementation takes the form of a (FEATURE . (:KEY VALUE ...))
+;; associated plist (see `org-export-resolve-feature-implementations'
+;; and `org-export-expand-feature-snippets').
+;;
+;; This functionality is applied during export as follows:
+;; 1. The export feature conditions and implementations are installed
+;;    into the INFO plist with `org-export-install-features'.
+;;    This simply applies `org-export-get-all-feature-conditions' and
+;;    `org-export-get-all-feature-implementations', which merges the
+;;    backend's conditions/implementations with all of it's parents and
+;;    finally the global condition list
+;;    `org-export-conditional-features'.
+;; 2. The "export features" used in a document are detected with
+;;    `org-export-detect-features'.
+;; 3. The interaction between different feature implementations is
+;;    resolved with `org-export-resolve-feature-implementations',
+;;    producing an ordered list of implementations to be actually used
+;;    in an export.
+;; 4. The feature implementation's snippets are transformed into strings
+;;    to be inserted with `org-export-expand-feature-snippets'.
+
+(defcustom org-export-conditional-features
+  `(("^[ \t]*#\\+print_bibliography:" bibliography)
+    (,(lambda (info)
+       (org-element-map (plist-get info :parse-tree)
+           'link
+         (lambda (link)
+           (and (member (org-element-property :type link)
+                        '("http" "https" "ftp" "file"))
+                (file-name-extension (org-element-property :path link))
+                (member (downcase (file-name-extension
+                                   (org-element-property :path link)))
+                        image-file-name-extensions)))
+         info t))
+     image)
+    (,(lambda (info)
+       (org-element-map (plist-get info :parse-tree)
+           'table #'identity info t))
+     table)
+    (,(lambda (info)
+       (org-element-map (plist-get info :parse-tree)
+           '(src-block inline-src-block) #'identity info t))
+     code))
+  "Org feature tests and associated feature flags.
+
+Alist where the car is a test for the presense of the feature,
+and the CDR is either a single feature symbol or a list of
+feature symbols.
+
+See `org-export-detect-features' for how this is processed."
+  :group 'org-export-general
+  :type '(alist :key-type
+                (choice (regexp :tag "Feature test regexp")
+                        (variable :tag "Feature variable")
+                        (function :tag "Feature test function"))
+                :value-type
+                (repeat symbol :tag "Feature symbols")))
+
+(defun org-export-detect-features (info)
+  "Detect features from `org-export-conditional-features' in INFO.
+
+More specifically, for each (CONDITION . FEATURES) cons cell of
+the :feature-conditions list in INFO, the CONDITION is evaluated
+in two phases.
+
+In phase one, CONDITION is transformed like so:
+- If a variable symbol, the value is fetched
+- If a function symbol, the function is called with INFO as the
+  sole argument
+- If a string, passed on unmodified
+
+In phase two, if the CONDITION result is a string, it is used as
+a case-sensitive regexp search in the buffer.  The regexp
+matching is taken as confirmation of the existance of FEATURES.
+Any other non-nil value indicates the existance of FEATURES.
+
+A list of all detected feature symbols is returned.
+
+This function should be run in the processed export Org buffer,
+after includes have been expanded and commented trees removed."
+  (delete-dups
+   (cl-loop
+    for (condition . features) in (plist-get info :feature-conditions)
+    for matcher =
+    (cond
+     ((stringp condition) condition)
+     ((functionp condition) (funcall condition info))
+     ((symbolp condition) (symbol-value condition))
+     (t (error "org-export: Feature condition %s (for %s) unable to be used"
+               condition features)))
+    for active-features =
+    (and (if (stringp matcher)
+             (save-excursion
+               (goto-char (point-min))
+               (re-search-forward matcher nil t))
+           matcher)
+         (copy-sequence features))
+    when active-features
+    nconc active-features)))
+
+(define-error 'org-missing-feature-dependency
+  "A feature was asked for, but is not availible")
+
+(define-error 'org-circular-feature-dependency
+  "There was a circular dependency between some features")
+
+(defun org-export-resolve-feature-implementations (info &optional features implementations)
+  "Resolve the IMPLEMENTATIONS of FEATURES, of INFO.
+
+FEATURES should be a list of all feature symbols to be resolved,
+and defaults to (plist-get info :features).  IMPLEMENTATIONS
+should be an alist of feature symbols and specification plists,
+and defaults to (plist-get info :feature-implementations).
+
+The following keys of the each implementation plist are recognised:
+- :snippet, which is either,
+  - A string, which should be included in the preamble verbatim.
+  - A variable, the value of which should be included in the preamble.
+  - A function, which is called with two arguments — the export info,
+    and the list of feature flags.  The returned value is included in
+    the preamble.
+- :requires, a feature or list of features this feature will enable.
+- :when, a feature or list of features which are required for this
+  feature to be active.
+- :prevents, a feature or list of features that should be masked.
+- :order, for when inclusion order matters.  Feature implementations
+  with a lower order appear first.  The default is 0.
+- :after, a feature or list of features that must be preceding.
+- :before, a feature or list of features that must be succeeding.
+
+This function processes :requires, :when, and :prevents in turn,
+sorting according by :order both before processing :requires and
+after processing :prevents.  The final implementation list is
+returned."
+  (let* ((explicit-features (or features (plist-get info :features)))
+         (implementations (or implementations
+                              (plist-get info :feature-implementations)))
+         (current-implementations
+          (sort (cl-loop for feat in explicit-features
+                         collect (assq feat implementations))
+                (lambda (a b)
+                  (< (or (plist-get (cdr a) :order) 0)
+                     (or (plist-get (cdr b) :order) 0)))))
+         ;; require-records serves to record /why/ a particular implementation
+         ;; is used.  It takes the form of an alist with feature symbols as the
+         ;; keys, and a list of features that ask for that feature as values.
+         ;; A t value is used to indicate the feature has been explicitly
+         ;; required.
+         (require-records
+          (cl-loop for feat in explicit-features
+                   collect (list feat t))))
+    ;; * Process ~:requires~
+    ;; Here we temporarily treat current-implementations as a queue of
+    ;; unproceesed implementations, and for each implemention move
+    ;; it to processed-implementations if not already present.
+    ;; :requires are processed by being added to the current-implementations
+    ;; stack as they are seen.  Along the way require-records is built for
+    ;; the sake of the subsequent :prevents processing.
+    (let ((impl-queue-last (last current-implementations))
+          processed-implementations impl)
+      (while current-implementations
+        (setq impl (pop current-implementations))
+        (unless (memq impl processed-implementations)
+          (push impl processed-implementations)
+          (dolist (req (org-ensure-list
+                        (plist-get (cdar processed-implementations) :requires)))
+            (unless (assq req processed-implementations)
+              (let ((required-impl (assq req implementations)))
+                (unless required-impl
+                  (signal 'org-missing-feature-dependency
+                          (format "The feature `%s' was asked for but could not be found"
+                                  req)))
+                (setq impl-queue-last
+                      (if current-implementations
+                          (setcdr impl-queue-last (list required-impl))
+                        (setq current-implementations (list required-impl))))
+                (push (car impl) (alist-get req require-records)))))))
+      (setq current-implementations
+            (nreverse (delq nil processed-implementations))))
+    ;; * Process ~:when~
+    ;; More specifically, remove features with unfulfilled :when conditions.
+    ;; To correctly resolve all the various :when conditions,
+    ;; do not make any assumptions about which features are active.
+    ;; Initially only consider non-:when implementations to be
+    ;; active, then run through the list of unconfirmed :when
+    ;; implementations and check their conditions against the list
+    ;; of confirmed features.  Continue doing this until no more
+    ;; features are confirmed.
+    (let ((processing t)
+          (confirmed-features
+           (cl-remove-if ; Count unimplemented features as present.
+            (lambda (feat) (assq feat current-implementations))
+            explicit-features))
+          conditional-implementations when)
+      ;; Sort all features by the presense of :when.
+      (dolist (impl current-implementations)
+        (if (plist-get (cdr impl) :when)
+            (push impl conditional-implementations)
+          (push (car impl) confirmed-features)))
+      (while processing
+        (setq processing nil)
+        ;; Check for implementations which have satisfied :when
+        ;; contions.
+        (dolist (impl conditional-implementations)
+          (setq when (plist-get (cdr impl) :when))
+          (when (cond
+                 ((symbolp when)
+                  (memq when confirmed-features))
+                 ((consp when)
+                  (not (cl-set-difference when confirmed-features))))
+            (push (car impl) confirmed-features)
+            (setq conditional-implementations
+                  (delq impl conditional-implementations)
+                  processing t))))
+      ;; Now all that remains is implementations with unsatisfiable
+      ;; :when conditions.
+      (dolist (impl conditional-implementations)
+        (setq current-implementations
+              (delq impl current-implementations))))
+    ;; * Process ~:prevents~
+    ;; Go through every implementation and for prevented features
+    ;; 1. Remove them from current-implementations
+    ;; 2. Go through require-records and remove them from the cdrs.
+    ;; By modifying require-records in this way, features that are
+    ;; only present due to a now-prevented feature will have a
+    ;; nil cdr.  We can then (recursively) check for these features
+    ;; with `rassq' and remove them.
+    ;; Since we used a queue rather than a stack when processing
+    ;; :requires, we know that second order requires (i.e. :requires
+    ;; of :requires) will come after after first order requires.
+    ;; This means that should a n-th order require be prevented by
+    ;; (n-1)-th order require, it will be removed before being
+    ;; processed, and hence handled correctly.
+    (let (feats-to-remove removed null-require)
+      (dolist (impl current-implementations)
+        (setq feats-to-remove (org-ensure-list (plist-get (cdr impl) :prevents)))
+        (while feats-to-remove
+          ;; Remove each of feats-to-remove.
+          (dolist (feat feats-to-remove)
+            (unless (memq feat removed)
+              (push feat removed)
+              (setq current-implementations
+                    (delq (assq feat current-implementations)
+                          current-implementations))
+              (when (assq feat require-records)
+                (setq require-records
+                      (delq (assq feat require-records) require-records)))))
+          (dolist (rec require-records)
+            (setcdr rec (cl-set-difference (cdr rec) feats-to-remove)))
+          ;; The features have now been removed.
+          (setq feats-to-remove nil)
+          ;; Look for orphan requires.
+          (when (setq null-require (rassq nil require-records))
+            (push (car null-require) feats-to-remove)))))
+    ;; Re-sort by ~:order~, to position reqirued features correctly.
+    (setq current-implementations
+          (sort current-implementations
+                (lambda (a b)
+                  (< (or (plist-get (cdr a) :order) 0)
+                     (or (plist-get (cdr b) :order) 0)))))
+    ;; * Processing ~:before~ and ~:after~
+    ;; To resolve dependency order, we will now perform a stable topological
+    ;; sort on any DAGs that exist within current-implementations.
+    (org-export--feature-implementation-toposort
+     current-implementations)))
+
+(defun org-export--feature-implementation-toposort (implementations)
+  "Perform a stable topological sort of IMPLEMENTATIONS.
+The sort is performed based on the :before and :after properties.
+
+See <https://en.wikipedia.org/wiki/Topological_sorting> for more information
+on what this entails."
+  (let ((feature-indicies
+         (cl-loop
+          for elt in implementations
+          and index from 0
+          collect (cons (car elt) index)))
+        resolved-implementations
+        adj-list node-stack)
+    ;; Build an adjacency list from :before and :after.
+    (dolist (impl implementations)
+      (push (list (car impl)) adj-list))
+    (dolist (impl implementations)
+      (let ((before (org-ensure-list (plist-get (cdr impl) :before)))
+            (after (org-ensure-list (plist-get (cdr impl) :after))))
+        (dolist (child before)
+          (push (car impl) (cdr (assq child adj-list))))
+        (when after
+          (setcdr (assq (car impl) adj-list)
+                  (nconc (cdr (assq (car impl) adj-list))
+                         after)))))
+    ;; Initialise the node stack with the first implementation.
+    (setq node-stack (list (car implementations))
+          ;; Make the order of adj-list match implementations.
+          adj-list
+          (mapcar
+           (lambda (entry)
+             (cons (car entry)
+                   ;; Sort edges according to feature order, to do
+                   ;; the DFS in order and make the result stable.
+                   (sort (cdr entry)
+                         (lambda (a b)
+                           (< (or (alist-get a feature-indicies)
+                                  most-positive-fixnum)
+                              (or (alist-get b feature-indicies)
+                                  most-positive-fixnum))))))
+           (nreverse adj-list)))
+    (while adj-list
+      (let ((deps (alist-get (caar node-stack) adj-list))
+            new-dep-found)
+        ;; Look for any unresolved dependencies.
+        (while (and deps (not new-dep-found))
+          (if (not (assq (car deps) adj-list))
+              (setq deps (cdr deps))
+            ;; Check the unresolved dependency is not part of a cycle.
+            (when (assq (car deps) node-stack)
+              (signal 'org-circular-feature-dependency
+                      (format "Found a cycle in the feature dependency graph: %S"
+                              (cons (car deps)
+                                    (nreverse (memq (car deps)
+                                                    (nreverse
+                                                     (mapcar #'car node-stack))))))))
+            ;; Push the unresolved dependency to the top of the stack.
+            (push (assq (car deps) implementations)
+                  node-stack)
+            (setq new-dep-found t)))
+        (unless new-dep-found
+          ;; The top item of the stack has no unresolved dependencies.
+          ;; Move it to the resolved list, and remove its entry from
+          ;; adj-list to both mark it as such and ensure that
+          ;; node-stack will not be incremented to it when/if the
+          ;; stack is emptied.
+          (push (car node-stack) resolved-implementations)
+          (setq adj-list
+                (delq (assq (caar node-stack) adj-list) adj-list)
+                node-stack
+                (or (cdr node-stack)
+                    (list (assq (caar adj-list) implementations)))))))
+    (nreverse resolved-implementations)))
+
+(defun org-export-expand-feature-snippets (info &rest feature-implementations)
+  "Expand each of the feature :snippet keys in FEATURE-IMPLEMENTATIONS.
+FEATURE-IMPLEMENTATIONS is expected to be a list of implementation
+plists, if not provided explicitly it is extracted from the
+:feature-implementations key of INFO.  Note that an explicitly
+provided nil FEATURE-IMPLEMENTATIONS is interpreted as no features.
+
+Each implementation plist's :snippet value is expanded in order, in
+the following manner:
+- nil values are ignored
+- functions are called with INFO, and must produce a string or nil
+- variable symbols use the value, which must be a string or nil
+- strings are included verbatim
+- all other values throw an `error'.
+
+\(fn INFO &optional FEATURE-IMPLEMENTATIONS)"
+  (let ((feat-impls
+         (cond
+          ((not feature-implementations)
+           (plist-get info :feature-implementations))
+          ((= (length feature-implementations) 1)
+           (car feature-implementations))
+          (t (signal 'wrong-number-of-arguments
+                     `(org-export-expand-feature-snippets
+                       ,(1+ (length feature-implementations)))))))
+        expanded-snippets snippet value)
+    (dolist (impl feat-impls)
+      (setq snippet (plist-get (cdr impl) :snippet)
+            value (cond
+                   ((null snippet) nil)
+                   ((functionp snippet) (funcall snippet info))
+                   ((symbolp snippet) (symbol-value snippet))
+                   ((stringp snippet) snippet)
+                   (t (error "org-export: The %s feature snippet %S is invalid (must be either nil, a function/variable symbol, or a string)"
+                             (car impl) snippet))))
+      (cond
+       ((stringp value)
+        (push value expanded-snippets))
+       (value ; Non-string value, could come from function or variable.
+        (error "org-export: The %s feature snippet %s must give nil or a string, but instead gave %S"
+               (car impl)
+               (cond
+                ((and (functionp snippet) (symbolp snippet))
+                 (format "function (`%s')" snippet))
+                ((functionp snippet) "anonymous function")
+                (t (format "variable (`%s')" snippet)))
+               value))))
+    (nreverse expanded-snippets)))
+
+(defun org-export-process-features (info)
+  "Install feature conditions/implementations in INFO, and resolve them.
+See `org-export-detect-features' and `org-export-resolve-feature-implementations' for
+more information on what this entails."
+  (org-export-install-features info)
+  (let* ((exp-features (org-export-detect-features info))
+         (resolved-implementations
+          (org-export-resolve-feature-implementations info exp-features)))
+    (plist-put info :feature-implementations resolved-implementations)
+    (plist-put info :features (mapcar #'car resolved-implementations))))
+
+;;;###autoload
+(defmacro org-export-update-features (backend &rest feature-property-value-lists)
+  "For BACKEND's export spec, set each FEATURE's :PROPERTY to VALUE.
+
+The behaviour of this macro is best behaved with an example.
+For instance, to add some preamble content from the variable
+\"my-org-beamer-metropolis-tweaks\" when using the metropolis theme
+with beamer export:
+
+  (org-export-update-features \\='beamer
+    (beamer-metropolis
+     :condition (string-match-p \"metropolis$\" (plist-get info :beamer-theme))
+     :snippet my-org-beamer-metropolis-tweaks
+     :order 3))
+
+The modifies the beamer backend, either creating or updating the
+\"beamer-metropolis\" feature.  The :condition property adds a
+condition which detects the feature, and all other properties are
+applied to the feature's implementation plist.  Setting
+:condition to t means the feature will always be enabled, and
+conversely setting :condition to nil means the feature will never
+be enabled.
+
+When setting the :condition and :snippet properties, any sexp is
+is implicitly converted to,
+  (lambda (info) SEXPR)
+
+Each (FEATURE . (:PROPERTY VALUE)) form that is processed is
+taken from the single &rest argument
+FEATURE-PROPERTY-VALUE-LISTS.
+
+\(fn BACKEND &rest (FEATURE . (:PROPERTY VALUE)...)...)"
+  (declare (indent 1))
+  (org-with-gensyms (backend-struct the-entry the-condition the-feat-impl cond-feat)
+    (let ((backend-expr
+           (if (and (eq (car-safe backend) 'quote)
+                    (symbolp (cadr backend))
+                    (not (cddr backend)))
+               `(org-export-get-backend ',(cadr backend))
+             `(if (symbolp ,backend)
+                  (org-export-get-backend ,backend)
+                backend)))
+          (backend-impls
+           (list 'aref backend-struct
+                 (cl-struct-slot-offset 'org-export-backend 'feature-implementations)))
+          (backend-conds
+           (list 'aref backend-struct
+                 (cl-struct-slot-offset 'org-export-backend 'feature-conditions)))
+          body condition-set-p implementation-set-p)
+      (dolist (feature-property-value-set feature-property-value-lists)
+        (when (eq (car feature-property-value-set) 'quote)
+          (pop feature-property-value-set))
+        (let ((features (car feature-property-value-set))
+              (property-value-pairs (cdr feature-property-value-set))
+              let-body property value)
+          (while property-value-pairs
+            (setq property (pop property-value-pairs)
+                  value (pop property-value-pairs))
+            (cond
+             ((consp value)
+              (unless (memq (car value) '(function quote))
+                (if (and (memq property '(:condition :snippet))
+                         (not (functionp value)))
+                    (setq value `(lambda (info) ,value))
+                  (setq value (list 'quote value)))))
+             ((memq value '(nil t))) ; Leave unmodified.
+             ((symbolp value)
+              (setq value (list 'quote value))))
+            (if (eq property :condition)
+                (progn
+                  (unless condition-set-p
+                    (setq condition-set-p t))
+                  (push
+                   (if value
+                       (let ((the-features (org-ensure-list features)))
+                         `(let* ((,the-condition ,value)
+                                 (,the-entry (assoc ,the-condition ,backend-conds)))
+                            (if ,the-entry
+                                (setcdr ,the-entry
+                                        (append ',the-features (cdr ,the-entry)))
+                              (push (cons ,the-condition ',the-features)
+                                    ,backend-conds))))
+                     (let ((single-feature
+                            (if (consp features)
+                                (intern (string-join (mapcar #'symbol-name features)
+                                                     "-and-"))
+                              features)))
+                       `(dolist (,cond-feat ,backend-conds)
+                          (cond
+                           ((equal (cdr ,cond-feat) (list ',single-feature))
+                            (setf ,backend-conds (delq ,cond-feat ,backend-conds)))
+                           ((memq ',single-feature (cdr ,cond-feat))
+                            (setcdr ,cond-feat
+                                    (delq ',single-feature (cdr ,cond-feat))))))))
+                   body))
+              (unless implementation-set-p
+                (setq implementation-set-p t))
+              (push
+               (if let-body
+                   `(plist-put (cdr ,the-feat-impl) ,property ,value)
+                 `(setcdr ,the-feat-impl
+                   (plist-put (cdr ,the-feat-impl) ,property ,value)))
+               let-body)))
+          (when let-body
+            (let ((the-feature
+                   (if (consp features)
+                       (intern (string-join (mapcar #'symbol-name features)
+                                            "-and-"))
+                     features)))
+              (when (consp features)
+                (push
+                 `(plist-put (cdr ,the-feat-impl) :when ',features)
+                 let-body))
+              (push
+               `(let ((,the-feat-impl
+                       (or (assoc ',the-feature ,backend-impls)
+                           (car (push (list ',the-feature ,property nil)
+                                      ,backend-impls)))))
+                  ,@(nreverse let-body))
+               body)))))
+      `(let ((,backend-struct ,backend-expr))
+         ,@(and (not (org-export-backend-p backend-expr))
+                `((unless (org-export-backend-p ,backend-struct)
+                    (error "`%s' is not a loaded export backend" ,backend))))
+         ,@(nreverse body)
+         nil))))
 
 
 ;;; The Filter System
@@ -3137,6 +3745,8 @@ still inferior to file-local settings."
     (when (plist-get info :with-cite-processors)
       (org-cite-process-citations info)
       (org-cite-process-bibliography info))
+    ;; Install all the feature conditions and implementations.
+    (org-export-process-features info)
     info))
 
 ;;;###autoload

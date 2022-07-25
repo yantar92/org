@@ -171,7 +171,83 @@
     (:latex-toc-command nil nil org-latex-toc-command)
     (:latex-compiler "LATEX_COMPILER" nil org-latex-compiler)
     ;; Redefine regular options.
-    (:date "DATE" nil "\\today" parse)))
+    (:date "DATE" nil "\\today" parse))
+  :feature-conditions-alist
+  `((t !announce-start !announce-end
+     !guess-pollyglossia !guess-babel !guess-inputenc)
+    (,(lambda (info)
+        ;; Since amsmath is added unconditionally when using
+        ;; xelatex/lualatex (see `org-latex-default-packages-alist'),
+        ;; and amssymb is not needed, we need not bother when using
+        ;; thoese compilers.
+        (and (not (member (plist-get info :latex-compiler) '("xelatex" "lualatex")))
+             (org-element-map (plist-get info :parse-tree)
+                 '(latex-fragment latex-environment) #'identity info t)))
+     maths)
+    (,(lambda (info)
+        (org-element-map (plist-get info :parse-tree)
+            'underline #'identity info t))
+     underline)
+    ("\\\\uu?line\\|\\\\uwave\\|\\\\sout\\|\\\\xout\\|\\\\dashuline\\|\\dotuline\\|\\markoverwith"
+     underline)
+    (,(lambda (info)
+        (org-element-map (plist-get info :parse-tree)
+            'link
+          (lambda (link)
+            (and (member (org-element-property :type link)
+                         '("http" "https" "ftp" "file"))
+                 (file-name-extension (org-element-property :path link))
+                 (equal (downcase (file-name-extension
+                                   (org-element-property :path link)))
+                        "svg")))
+          info t))
+     svg)
+    (org-latex-tables-booktabs booktabs)
+    (,(lambda (info)
+        (equal (plist-get info :latex-default-table-environment)
+               "longtable"))
+     longtable)
+    ("^[ \t]*\\+attr_latex: .*:environment +longtable"
+     longtable)
+    (,(lambda (info)
+        (eq (plist-get info :latex-src-block-backend) 'engraved))
+     engraved-code)
+    ("^[ \t]*#\\+attr_latex: .*:float +wrap"
+     float-wrap)
+    ("^[ \t]*#\\+attr_latex: .*:float +sideways"
+     rotate)
+    ("^[ \t]*#\\+caption\\(?:\\[.*\\]\\)?:\\|\\\\caption{" caption))
+  :feature-implementations-alist
+  `((!announce-start
+     :snippet ,(lambda (info)
+                 (with-temp-buffer
+                   (setq-local left-margin 2)
+                   (insert (string-join
+                            (mapcar #'symbol-name
+                                    (plist-get info :features))
+                            ", ")
+                           ".")
+                   (fill-region-as-paragraph (point-min) (point-max))
+                   (goto-char (point-min))
+                   (insert "%% ox-latex features:\n% ")
+                   (while (search-forward "\n" nil t)
+                     (insert "%"))
+                   (buffer-string)))
+     :order -100)
+    (maths :snippet "\\usepackage{amsmath}\n\\usepackage{amssymb}" :order 0.2)
+    (underline :snippet "\\usepackage[normalem]{ulem}" :order 0.5)
+    (image :snippet "\\usepackage{graphicx}" :order 2)
+    (svg :snippet "\\usepackage[inkscapelatex=false]{svg}" :order 2 :when image)
+    (longtable :snippet "\\usepackage{longtable}" :when table :order 2)
+    (booktabs :snippet "\\usepackage{booktabs}" :when table :order 2)
+    (float-wrap :snippet "\\usepackage{wrapfig}" :order 2)
+    (rotate :snippet "\\usepackage{rotating}" :order 2)
+    (caption :snippet "\\usepackage{capt-of}")
+    (engraved-code :when code :snippet org-latex-generate-engraved-preamble)
+    (!guess-pollyglossia :snippet org-latex-guess-polyglossia-language)
+    (!guess-babel :snippet org-latex-guess-babel-language)
+    (!guess-inputenc :snippet org-latex-guess-inputenc)
+    (!announce-end :snippet "%% end ox-latex features\n" :order 100)))
 
 
 
@@ -1364,7 +1440,7 @@ default values of which are given by `org-latex-engraved-preamble' and
              t t
              engraved-preamble)))
     (concat
-     "\n% Setup for code blocks [1/2]\n\n"
+     "% Setup for code blocks [1/2]\n\n"
      engraved-preamble
      "\n\n% Setup for code blocks [2/2]: syntax highlighting colors\n\n"
      (if (require 'engrave-faces-latex nil t)
@@ -1642,29 +1718,29 @@ For non-floats, see `org-latex--wrap-label'."
 	      (org-trim label)
 	      (org-export-data main info))))))
 
-(defun org-latex-guess-inputenc (header)
+(defun org-latex-guess-inputenc (info)
   "Set the coding system in inputenc to what the buffer is.
 
-HEADER is the LaTeX header string.  This function only applies
-when specified inputenc option is \"AUTO\".
+INFO is the plist used as a communication channel.
+This function only applies when specified inputenc option is \"AUTO\".
 
 Return the new header, as a string."
-  (let* ((cs (or (ignore-errors
-		   (latexenc-coding-system-to-inputenc
-		    (or org-export-coding-system buffer-file-coding-system)))
-		 "utf8")))
-    (if (not cs) header
+  (let ((header (plist-get info :latex-full-header))
+        (cs (or (ignore-errors
+                  (latexenc-coding-system-to-inputenc
+                   (or org-export-coding-system buffer-file-coding-system)))
+                "utf8")))
+    (when (and cs (string-match "\\\\usepackage\\[\\(AUTO\\)\\]{inputenc}" header))
       ;; First translate if that is requested.
       (setq cs (or (cdr (assoc cs org-latex-inputenc-alist)) cs))
-      ;; Then find the \usepackage statement and replace the option.
-      (replace-regexp-in-string "\\\\usepackage\\[\\(AUTO\\)\\]{inputenc}"
-				cs header t nil 1))))
+      (plist-put info :latex-full-header
+                 (replace-match cs t t header 1))))
+  nil)
 
-(defun org-latex-guess-babel-language (header info)
+(defun org-latex-guess-babel-language (info)
   "Set Babel's language according to LANGUAGE keyword.
 
-HEADER is the LaTeX header string.  INFO is the plist used as
-a communication channel.
+INFO is the plist used as a communication channel.
 
 Insertion of guessed language only happens when Babel package has
 explicitly been loaded.  Then it is added to the rest of
@@ -1678,52 +1754,48 @@ already loaded.
 
 Return the new header."
   (let* ((language-code (plist-get info :language))
-	 (plist (cdr
-		 (assoc language-code org-latex-language-alist)))
-	 (language (plist-get plist :babel))
-	 (language-ini-only (plist-get plist :babel-ini-only))
+         (plist (cdr (assoc language-code org-latex-language-alist)))
+         (language (plist-get plist :babel))
+         (header (plist-get info :latex-full-header))
+         (language-ini-only (plist-get plist :babel-ini-only))
          (language-ini-alt (plist-get plist :babel-ini-alt))
-	 ;; If no language is set, or Babel package is not loaded, or
-	 ;; LANGUAGE keyword value is a language served by Babel
-	 ;; exclusively through ini files, return HEADER as-is.
-	 (header (if (or language-ini-only
-			 (not (stringp language-code))
-			 (not (string-match "\\\\usepackage\\[\\(.*\\)\\]{babel}" header)))
-		     header
-		   (let ((options (save-match-data
-				    (org-split-string (match-string 1 header) ",[ \t]*"))))
-		     ;; If LANGUAGE is already loaded, return header
-		     ;; without AUTO.  Otherwise, replace AUTO with language or
-		     ;; append language if AUTO is not present.  Languages that are
-		     ;; served in Babel exclusively through ini files are not added
-		     ;; to the babel argument, and must be loaded using
-		     ;; `\babelprovide'.
-		     (replace-match
-		      (mapconcat (lambda (option) (if (equal "AUTO" option) language option))
-				 (cond ((member language options) (delete "AUTO" options))
-				       ((member "AUTO" options) options)
-				       (t (append options (list language))))
-				 ", ")
-		      t nil header 1)))))
+         (babel-header-options
+          ;; If no language is set, or Babel package is not loaded, or
+          ;; LANGUAGE keyword value is a language served by Babel
+          ;; exclusively through ini files, return HEADER as-is.
+          (and (not language-ini-only)
+               (stringp language-code)
+               (string-match "\\\\usepackage\\[\\(.*\\)\\]{babel}" header)
+               (let ((options (save-match-data
+                                (org-split-string (match-string 1 header) ",[ \t]*"))))
+                 (cond ((member language options) (delete "AUTO" options))
+                       ((member "AUTO" options) options)
+                       (t (append options (list language))))))))
+    (when babel-header-options
+      ;; If AUTO is present in the header options, replace it with `language'.
+      (setq header
+            (replace-match
+             (mapconcat (lambda (option) (if (equal "AUTO" option) language option))
+                        babel-header-options
+                        ", ")
+             t nil header 1)))
     ;; If `\babelprovide[args]{AUTO}' is present, AUTO is
     ;; replaced by LANGUAGE.
-    (if (not (string-match "\\\\babelprovide\\[.*\\]{\\(.+\\)}" header))
-	header
-      (let ((prov (match-string 1 header)))
-	(if (equal "AUTO" prov)
-	    (replace-regexp-in-string (format
-				       "\\(\\\\babelprovide\\[.*\\]\\)\\({\\)%s}" prov)
-				      (format "\\1\\2%s}"
-					      (if language-ini-alt language-ini-alt
-                                                (or language language-ini-only)))
-				      header t)
-	  header)))))
+    (when (string-match "\\\\babelprovide\\[.*\\]{AUTO}" header)
+      (setq header
+            (replace-regexp-in-string
+             (format
+              "\\(\\\\babelprovide\\[.*\\]\\)\\({\\)%s}" babel-header-options)
+             (format "\\1\\2%s}" (if language-ini-alt language-ini-alt
+                                   (or language language-ini-only)))
+             header t)))
+    (plist-put info :latex-full-header header))
+  nil)
 
-(defun org-latex-guess-polyglossia-language (header info)
+(defun org-latex-guess-polyglossia-language (info)
   "Set the Polyglossia language according to the LANGUAGE keyword.
 
-HEADER is the LaTeX header string.  INFO is the plist used as
-a communication channel.
+INFO is the plist used as a communication channel.
 
 Insertion of guessed language only happens when the Polyglossia
 package has been explicitly loaded.
@@ -1734,48 +1806,50 @@ replaced with the language of the document or
 using \setdefaultlanguage and not as an option to the package.
 
 Return the new header."
-  (let* ((language (plist-get info :language)))
+  (let ((header (plist-get info :latex-full-header))
+        (language (plist-get info :language)))
     ;; If no language is set or Polyglossia is not loaded, return
     ;; HEADER as-is.
-    (if (or (not (stringp language))
-	    (not (string-match
-		  "\\\\usepackage\\(?:\\[\\([^]]+?\\)\\]\\){polyglossia}\n"
-		  header)))
-	header
+    (when (and (stringp language)
+               (string-match
+                "\\\\usepackage\\(?:\\[\\([^]]+?\\)\\]\\){polyglossia}\n"
+                header))
       (let* ((options (org-string-nw-p (match-string 1 header)))
-	     (languages (and options
-			     ;; Reverse as the last loaded language is
-			     ;; the main language.
-			     (nreverse
-			      (delete-dups
-			       (save-match-data
-				 (org-split-string
-				  (replace-regexp-in-string
-				   "AUTO" language options t)
-				  ",[ \t]*"))))))
-	     (main-language-set
-	      (string-match-p "\\\\setmainlanguage{.*?}" header)))
-	(replace-match
-	 (concat "\\usepackage{polyglossia}\n"
-		 (mapconcat
-		  (lambda (l)
-		    (let* ((plist (cdr
-				   (assoc language org-latex-language-alist)))
-			   (polyglossia-variant (plist-get plist :polyglossia-variant))
-			   (polyglossia-lang (plist-get plist :polyglossia))
-			   (l (if (equal l language)
-				  polyglossia-lang
-				l)))
-		      (format (if main-language-set (format "\\setotherlanguage{%s}\n" l)
-				(setq main-language-set t)
-				"\\setmainlanguage%s{%s}\n")
-			      (if polyglossia-variant
-				  (format "[variant=%s]" polyglossia-variant)
-				"")
-			      l)))
-		  languages
-		  ""))
-	 t t header 0)))))
+             (languages (and options
+                             ;; Reverse as the last loaded language is
+                             ;; the main language.
+                             (nreverse
+                              (delete-dups
+                               (save-match-data
+                                 (org-split-string
+                                  (replace-regexp-in-string
+                                   "AUTO" language options t)
+                                  ",[ \t]*"))))))
+             (main-language-set
+              (string-match-p "\\\\setmainlanguage{.*?}" header))
+             (polyglossia-modified-header
+              (replace-match
+               (concat "\\usepackage{polyglossia}\n"
+                       (mapconcat
+                        (lambda (l)
+                          (let* ((plist (cdr (assoc language org-latex-language-alist)))
+                                 (polyglossia-variant (plist-get plist :polyglossia-variant))
+                                 (polyglossia-lang (plist-get plist :polyglossia))
+                                 (l (if (equal l language)
+                                        polyglossia-lang
+                                      l)))
+                            (format (if main-language-set (format "\\setotherlanguage{%s}\n" l)
+                                      (setq main-language-set t)
+                                      "\\setmainlanguage%s{%s}\n")
+                                    (if polyglossia-variant
+                                        (format "[variant=%s]" polyglossia-variant)
+                                      "")
+                                    l)))
+                        languages
+                        ""))
+               t t header 0)))
+        (plist-put info :latex-full-header polyglossia-modified-header))))
+  nil)
 
 (defun org-latex--remove-packages (pkg-alist info)
   "Remove packages based on the current LaTeX compiler.
@@ -1980,32 +2054,50 @@ non-nil, only includes packages relevant to image generation, as
 specified in `org-latex-default-packages-alist' or
 `org-latex-packages-alist'."
   (let* ((class (plist-get info :latex-class))
-	 (class-template
-	  (or template
-	      (let* ((class-options (plist-get info :latex-class-options))
-		     (header (nth 1 (assoc class (plist-get info :latex-classes)))))
-		(and (stringp header)
-		     (if (not class-options) header
-		       (replace-regexp-in-string
-			"^[ \t]*\\\\documentclass\\(\\(\\[[^]]*\\]\\)?\\)"
-			class-options header t nil 1))))
-	      (user-error "Unknown LaTeX class `%s'" class))))
-    (org-latex-guess-polyglossia-language
-     (org-latex-guess-babel-language
-      (org-latex-guess-inputenc
-       (org-element-normalize-string
-	(org-splice-latex-header
-	 class-template
-	 (org-latex--remove-packages org-latex-default-packages-alist info)
-	 (org-latex--remove-packages org-latex-packages-alist info)
-	 snippet?
-	 (mapconcat #'org-element-normalize-string
-		    (list (plist-get info :latex-header)
-			  (and (not snippet?)
-			       (plist-get info :latex-header-extra)))
-		    ""))))
-      info)
-     info)))
+         (class-template
+          (or template
+              (let* ((class-options (plist-get info :latex-class-options))
+                     (header (nth 1 (assoc class (plist-get info :latex-classes)))))
+                (and (stringp header)
+                     (if (not class-options) header
+                       (replace-regexp-in-string
+                        "^[ \t]*\\\\documentclass\\(\\(\\[[^]]*\\]\\)?\\)"
+                        class-options header t nil 1))))
+              (user-error "Unknown LaTeX class `%s'" class)))
+         generated-preamble)
+    (plist-put info :latex-full-header
+               (org-element-normalize-string
+                (org-splice-latex-header
+                 class-template
+                 (org-latex--remove-packages org-latex-default-packages-alist info)
+                 (org-latex--remove-packages org-latex-packages-alist info)
+                 snippet?
+                 (mapconcat #'org-element-normalize-string
+                            (list (plist-get info :latex-header)
+                                  (and (not snippet?)
+                                       (plist-get info :latex-header-extra)))
+                            ""))))
+    (setq generated-preamble
+          (if snippet?
+              (progn
+                (org-latex-guess-inputenc info)
+                (org-latex-guess-babel-language info)
+                (org-latex-guess-polyglossia-language info)
+                "\n% Generated preamble omitted for snippets.")
+            (concat
+             "\n"
+             (string-join
+              (org-export-expand-feature-snippets info)
+              "\n\n")
+             "\n")))
+    (concat
+     ;; Time-stamp.
+     (and (plist-get info :time-stamp-file)
+          (format-time-string "%% Created %Y-%m-%d %a %H:%M\n"))
+     ;; LaTeX compiler.
+     (org-latex--insert-compiler info)
+     (plist-get info :latex-full-header)
+     generated-preamble)))
 
 (defun org-latex-template (contents info)
   "Return complete document string after LaTeX conversion.
@@ -2014,12 +2106,7 @@ holding export options."
   (let ((title (org-export-data (plist-get info :title) info))
 	(spec (org-latex--format-spec info)))
     (concat
-     ;; Timestamp.
-     (and (plist-get info :time-stamp-file)
-	  (format-time-string "%% Created %Y-%m-%d %a %H:%M\n"))
-     ;; LaTeX compiler.
-     (org-latex--insert-compiler info)
-     ;; Document class and packages.
+     ;; Timestamp, compiler statement, document class and packages.
      (org-latex-make-preamble info)
      ;; Possibly limit depth for headline numbering.
      (let ((sec-num (plist-get info :section-numbers)))
@@ -2056,12 +2143,6 @@ holding export options."
      (let ((template (plist-get info :latex-hyperref-template)))
        (and (stringp template)
             (format-spec template spec)))
-     ;; engrave-faces-latex preamble
-     (when (and (eq (plist-get info :latex-src-block-backend) 'engraved)
-                (org-element-map (plist-get info :parse-tree)
-                    '(src-block inline-src-block) #'identity
-                    info t))
-       (org-latex-generate-engraved-preamble info))
      ;; Document start.
      "\\begin{document}\n\n"
      ;; Title command.
