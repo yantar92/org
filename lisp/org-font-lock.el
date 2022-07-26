@@ -133,7 +133,7 @@ org-level-* faces."
 (defvaralias 'org-hidden-keywords 'org-font-lock-hidden-keywords)
 (defcustom org-font-lock-hidden-keywords nil
   "List of symbols corresponding to keywords to be hidden in the Org buffer.
-For example, a value \\='(title) for this list makes the document's title
+For example, a value (title) for this list makes the document's title
 appear in the buffer without the initial \"#+TITLE:\" part."
   :group 'org-appearance
   :package-version '(Org . "9.5")
