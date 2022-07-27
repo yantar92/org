@@ -5700,6 +5700,10 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	  ;; Emphasis
           ;; `org-do-emphasis-faces' prepends faces
 	  (when org-fontify-emphasized-text '(org-do-emphasis-faces))
+          ;; Semantic seperator
+          (when org-fontify-semantic-seperator
+            `("\u200b"
+              (0 '(face shadow display ,org-semantic-seperator-displayed))))
 	  ;; Checkboxes
 	  `(,org-list-full-item-re 3 'org-checkbox prepend lax)
 	  (when (cdr (assq 'checkbox org-list-automatic-rules))
@@ -5828,6 +5832,23 @@ needs to be inserted at a specific position in the font-lock sequence.")
 	      (backward-char 1)
 	      (throw 'match t))))
 	nil))))
+
+(defcustom org-fontify-semantic-seperator t
+  "Whether to prettify the semantic seperator.
+When non-nil, `org-semantic-seperator-displayed' will be displayed in place of the semantic seperator."
+  :type 'boolean)
+
+(defcustom org-semantic-seperator-displayed
+  #("┃" 0 1 (display ((raise -0.3) (height 0.3))))
+  "String that should be displayed in place of the semantic seperator.
+This is only relevant when `org-fontify-semantic-seperator' is non-nil."
+  :type 'string)
+
+(defun org-toggle-semantic-seperator-display ()
+  "Toggle display of the semantic seperator."
+  (interactive)
+  (cl-callf not org-fontify-semantic-seperator)
+  (user-error "TODO make this work better"))
 
 (defun org-fontify-like-in-org-mode (s &optional odd-levels)
   "Fontify string S like in Org mode."
