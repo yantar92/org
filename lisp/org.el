@@ -4439,7 +4439,7 @@ returns non-nil if any of them match."
             (customize-push-and-save
              'org-safe-remote-resources
              (list (concat "\\`"
-                           (regexp-opt
+                           (regexp-quote
                             (if (and (= char ?f) current-file)
                                 (concat "file://" current-file) uri))
                            "\\'"))))
@@ -16993,7 +16993,7 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
   (require 'loadhist)
   (let* ((org-dir     (org-find-library-dir "org"))
 	 (contrib-dir (or (org-find-library-dir "org-contribdir") org-dir))
-	 (feature-re "^\\(org\\|ob\\|ox\\)\\(-.*\\)?")
+	 (feature-re "^\\(org\\|ob\\|ox\\|ol\\|oc\\)\\(-.*\\)?")
 	 (remove-re (format "\\`%s\\'"
 			    (regexp-opt '("org" "org-loaddefs" "org-version"))))
 	 (feats (delete-dups
@@ -17016,14 +17016,14 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 	 (load-suffixes (if uncompiled (reverse load-suffixes) load-suffixes))
 	 load-uncore load-misses)
     (setq load-misses
-	  (delq 't
+	  (delq t
 		(mapcar (lambda (f)
 			  (or (org-load-noerror-mustsuffix (concat org-dir f))
 			      (and (string= org-dir contrib-dir)
 				   (org-load-noerror-mustsuffix (concat contrib-dir f)))
 			      (and (org-load-noerror-mustsuffix (concat (org-find-library-dir f) f))
 				   (push f load-uncore)
-				   't)
+				   t)
 			      f))
 			lfeat)))
     (when load-uncore
