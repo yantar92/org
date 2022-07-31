@@ -481,7 +481,6 @@ Try to use an Org header, otherwise use the buffer name."
 	(with-current-buffer (marker-buffer marker)
 	  (org-with-wide-buffer
 	   (goto-char hdmarker)
-	   (org-fold-show-entry)
 	   (or (ignore-errors (org-get-heading))
 	       (buffer-name (buffer-base-buffer))))))))
    ((derived-mode-p 'org-mode)

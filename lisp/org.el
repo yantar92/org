@@ -6942,7 +6942,7 @@ case."
      (move-marker ins-point nil)
      (if folded
 	 (org-fold-subtree t)
-       (org-fold-show-entry)
+       (org-fold-show-entry 'hide-drawers)
        (org-fold-show-children))
      (org-clean-visibility-after-subtree-move)
      ;; move back to the initial column we were at
@@ -7085,7 +7085,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
        ;; is inserted and then promoted.
        (combine-change-calls beg beg
          (when (fboundp 'org-id-paste-tracker) (org-id-paste-tracker txt))
-         (insert-before-markers txt)
+         (insert txt)
          (unless (string-suffix-p "\n" txt) (insert "\n"))
          (setq newend (point))
          (org-reinstall-markers-in-region beg)
@@ -10428,8 +10428,9 @@ EXTRA is additional text that will be inserted into the notes buffer."
 	   (let ((ind (org-list-item-body-column (line-beginning-position))))
 	     (dolist (line lines)
 	       (insert-and-inherit "\n")
-	       (indent-line-to ind)
-	       (insert-and-inherit line)))
+               (unless (string-empty-p line)
+	         (indent-line-to ind)
+	         (insert-and-inherit line))))
 	   (message "Note stored")
 	   (org-back-to-heading t))))))
   ;; Don't add undo information when called from `org-agenda-todo'.
@@ -17541,7 +17542,7 @@ object (e.g., within a comment).  In these case, you need to use
 	 (org-auto-align-tags (org-align-tags))
 	 (t (org--align-tags-here tags-column))) ;preserve tags column
 	(end-of-line)
-	(org-fold-show-entry)
+	(org-fold-show-entry 'hide-drawers)
 	(org--newline indent arg interactive)
 	(when string (save-excursion (insert (org-trim string))))))
      ;; In a list, make sure indenting keeps trailing text within.
