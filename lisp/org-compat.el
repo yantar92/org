@@ -1550,7 +1550,7 @@ key."
               (if (not (org-fold-folded-p (line-end-position)))
                   (org-fold-hide-subtree)
                 (org-fold-show-children)
-                (org-fold-show-entry))))
+                (org-fold-show-entry 'hide-drawers))))
     ad-do-it))
 
 ;; TODO: outline-headers-as-kill
