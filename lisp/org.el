@@ -4708,6 +4708,10 @@ The following commands are available:
 
 \\{org-mode-map}"
   (setq-local org-mode-loading t)
+  ;; Apply file-local and directory-local variables, so that Org
+  ;; startup respects them.  See
+  ;; https://list.orgmode.org/587be554-906c-5370-2cf2-f08b14fa58ff@gmail.com/T/#u
+  (hack-local-variables 'ignore-mode-settings)
   (org-load-modules-maybe)
   (org-install-agenda-files-menu)
   (when (and org-link-descriptive
@@ -16587,6 +16591,10 @@ Calls `org-promote-subtree', `org-outdent-item-tree', or
 individual commands for more information."
   (interactive)
   (cond
+   ((and (eq system-type 'darwin)
+         (or (eq org-support-shift-select 'always)
+             (and org-support-shift-select (org-region-active-p))))
+    (org-call-for-shift-select 'backward-char))
    ((run-hook-with-args-until-success 'org-shiftmetaleft-hook))
    ((org-at-table-p) (call-interactively 'org-table-delete-column))
    ((org-at-heading-p) (call-interactively 'org-promote-subtree))
@@ -16603,6 +16611,10 @@ Calls `org-demote-subtree', `org-indent-item-tree', or
 individual commands for more information."
   (interactive)
   (cond
+   ((and (eq system-type 'darwin)
+         (or (eq org-support-shift-select 'always)
+             (and org-support-shift-select (org-region-active-p))))
+    (org-call-for-shift-select 'forward-char))
    ((run-hook-with-args-until-success 'org-shiftmetaright-hook))
    ((org-at-table-p) (call-interactively 'org-table-insert-column))
    ((org-at-heading-p) (call-interactively 'org-demote-subtree))
