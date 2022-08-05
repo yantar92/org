@@ -4414,9 +4414,12 @@ returns non-nil if any of them match."
                 (propertize "!" 'face 'success)
                 " to download this resource, and permanantly mark it as safe.\n "
                 (propertize "f" 'face 'success)
-                " to download this resource, and permanantly mark all resources in "
-                (propertize current-file 'face 'fixed-pitch-serif)
-                " as safe.\n "
+                (if current-file
+                    (concat
+                     " to download this resource, and permanantly mark all resources in "
+                     (propertize current-file 'face 'fixed-pitch-serif)
+                     " as safe.\n ")
+                  "")
                 (propertize "y" 'face 'warning)
                 " to download this resource, just this once.\n "
                 (propertize "n" 'face 'error)
@@ -4427,8 +4430,9 @@ returns non-nil if any of them match."
       ;; Display the buffer and read a choice.
       (save-window-excursion
         (pop-to-buffer buf)
-        (let* ((exit-chars '(?y ?n ?! ?f ?\s))
-               (prompt (format "Please type y, n, f, or !%s: "
+        (let* ((exit-chars (append '(?y ?n ?! ?\s) (and current-file '(?f))))
+               (prompt (format "Please type y, n%s, or !%s: "
+                               (if current-file ", f" "")
                                (if (< (line-number-at-pos (point-max))
                                       (window-body-height))
                                    ""
@@ -4559,10 +4563,6 @@ The following commands are available:
 
 \\{org-mode-map}"
   (setq-local org-mode-loading t)
-  ;; Apply file-local and directory-local variables, so that Org
-  ;; startup respects them.  See
-  ;; https://list.orgmode.org/587be554-906c-5370-2cf2-f08b14fa58ff@gmail.com/T/#u
-  (hack-local-variables 'ignore-mode-settings)
   (org-load-modules-maybe)
   (org-install-agenda-files-menu)
   (when (and org-link-descriptive
