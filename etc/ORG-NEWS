@@ -343,6 +343,13 @@ files that are exported to Texinfo.
 
 =org-at-heading-p= now returns t by default on headings inside folds.
 Passing optional argument will produce the old behaviour.
+
+*** =org-babel-execute:plantuml= can output ASCII graphs in the buffer
+
+Previously, executing PlantUML src blocks always exported to a file.  Now, if
+:results is set to a value which does not include "file", no file will be
+exported and an ASCII graph will be inserted below the src block.
+
 ** Removed or renamed functions and variables
 *** =org-plantump-executable-args= is renamed and applies to jar as well
 
@@ -399,6 +406,13 @@ purpose of the variable.  The replacement variable
 ~org-latex-src-block-backend~ acts in exactly the same way, however it
 accepts =listings= and =verbatim= in place of =t= and =nil= (which
 still work, but are no longer listed as valid options).
+
+*** ~org-link-parameters~ has a new ~:insert-description~ parameter
+
+The value of ~:insert-description~ is used as the initial input when
+prompting for a link description.  It can be a string (used as-is) or
+a function (called with the same arguments as
+~org-make-link-description-function~ to return a string to use).
 
 * Version 9.5
 
