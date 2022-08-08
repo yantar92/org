@@ -384,7 +384,7 @@ where BEG and END are buffer positions and CONTENTS is a string."
        (let ((beg (org-element-property :contents-begin datum))
 	     (end (org-element-property :contents-end datum)))
 	 (list beg end (buffer-substring-no-properties beg end))))
-      ((memq type '(example-block export-block src-block))
+      ((memq type '(example-block export-block src-block comment-block))
        (list (progn (goto-char (org-element-property :post-affiliated datum))
 		    (line-beginning-position 2))
 	     (progn (goto-char (org-element-property :end datum))
@@ -651,9 +651,43 @@ as `org-src-fontify-natively' is non-nil."
 	      (dolist (prop (append '(font-lock-face face) font-lock-extra-managed-props))
 		(let ((new-prop (get-text-property pos prop)))
                   (when new-prop
-		    (put-text-property
-		     (+ start (1- pos)) (1- (+ start next)) prop new-prop
-		     org-buffer))))
+                    (if (not (eq prop 'invisible))
+		        (put-text-property
+		         (+ start (1- pos)) (1- (+ start next)) prop new-prop
+		         org-buffer)
+                      ;; Special case.  `invisible' text property may
+                      ;; clash with Org folding.  Do not assign
+                      ;; `invisible' text property directly.  Use
+                      ;; property alias instead.
+                      (let ((invisibility-spec
+                             (or
+                              ;; ATOM spec.
+                              (and (memq new-prop buffer-invisibility-spec)
+                                   new-prop)
+                              ;; (ATOM . ELLIPSIS) spec.
+                              (assq new-prop buffer-invisibility-spec))))
+                        (with-current-buffer org-buffer
+                          ;; Add new property alias.
+                          (unless (memq 'org-src-invisible
+                                        (cdr (assq 'invisible char-property-alias-alist)))
+                            (setq-local
+                             char-property-alias-alist
+                             (cons (cons 'invisible
+			                 (nconc (cdr (assq 'invisible char-property-alias-alist))
+                                                '(org-src-invisible)))
+		                   (remove (assq 'invisible char-property-alias-alist)
+			                   char-property-alias-alist))))
+                          ;; Carry over the invisibility spec, unless
+                          ;; already present.  Note that there might
+                          ;; be conflicting invisibility specs from
+                          ;; different major modes.  We cannot do much
+                          ;; about this then.
+                          (when invisibility-spec
+                            (add-to-invisibility-spec invisibility-spec))
+                          (put-text-property
+		           (+ start (1- pos)) (1- (+ start next))
+                           'org-src-invisible new-prop
+		           org-buffer)))))))
 	      (setq pos next)))
           (set-buffer-modified-p nil))
 	;; Add Org faces.
@@ -1159,6 +1193,29 @@ Throw an error when not at an export block."
        (org-src--construct-edit-buffer-name (buffer-name) type)
        mode
        (lambda () (org-escape-code-in-region (point-min) (point-max)))))
+    t))
+
+(defun org-edit-comment-block ()
+  "Edit comment block at point.
+\\<org-src-mode-map>
+A new buffer is created and the block is copied into it, and the
+buffer is switched into Org mode.
+
+When done, exit with `\\[org-edit-src-exit]'.  The edited text \
+will then replace the area in the Org mode buffer.
+
+Throw an error when not at a comment block."
+  (interactive)
+  (let ((element (org-element-at-point)))
+    (unless (and (eq (org-element-type element) 'comment-block)
+		 (org-src--on-datum-p element))
+      (user-error "Not in a comment block"))
+    (org-src--edit-element
+     element
+     (org-src--construct-edit-buffer-name (buffer-name) "org")
+     'org-mode
+     (lambda () (org-escape-code-in-region (point-min) (point-max)))
+     (org-unescape-code-in-string (org-element-property :value element)))
     t))
 
 (defun org-edit-src-code (&optional code edit-buffer-name)
