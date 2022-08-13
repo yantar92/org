@@ -61,11 +61,16 @@
 ;; - noauthor (na), including bare (b), caps (c) and bare-caps (bc) variants,
 ;; - nocite (n),
 ;; - year (y), including a bare (b) variant,
-;; - text (t). including caps (c), full (f), and caps-full (cf) variants,
+;; - text (t), including caps (c), full (f), and caps-full (cf) variants,
+;; - title (ti), including a bare (b) variant,
+;; - locators (l), including a bare (b) variant,
+;; - bibentry (b), including a bare (b) variant,
 ;; - default style, including bare (b), caps (c) and bare-caps (bc) variants.
 ;;
-;; Using "*" as a key in a nocite citation includes all available items in
-;; the printed bibliography.
+;; Using "*" as a key in a nocite citation includes all available
+;; items in the printed bibliography.  The "bibentry" citation style,
+;; similarly to biblatex's \fullcite, creates a citation which is
+;; similar to the bibliography entry.
 
 ;; CSL styles recognize "locator" in citation references' suffix.  For example,
 ;; in the citation
@@ -123,6 +128,7 @@
 (declare-function citeproc-render-citations "ext:citeproc")
 (declare-function citeproc-render-bib "ext:citeproc")
 (declare-function citeproc-hash-itemgetter-from-any "ext:citeproc")
+(declare-function citeproc-add-subbib-filters "ext:citeproc")
 
 (declare-function org-element-interpret-data "org-element" (data))
 (declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
@@ -349,6 +355,21 @@ a property list."
        (pcase variant
 	 ((or "bare" "b") '(:mode year-only :suppress-affixes t))
 	 (_ '(:mode year-only))))
+      ;; "bibentry" style.
+      (`(,(or "bibentry" "b") . ,variant)
+       (pcase variant
+	 ((or "bare" "b") '(:mode bib-entry :suppress-affixes t))
+	 (_ '(:mode bib-entry))))
+      ;; "locators" style.
+      (`(,(or "locators" "l") . ,variant)
+       (pcase variant
+	 ((or "bare" "b") '(:mode locator-only :suppress-affixes t))
+	 (_ '(:mode locator-only))))
+      ;; "title" style.
+      (`(,(or "title" "ti") . ,variant)
+       (pcase variant
+	 ((or "bare" "b") '(:mode title-only :suppress-affixes t))
+	 (_ '(:mode title-only))))
       ;; "text" style.
       (`(,(or "text" "t") . ,variant)
        (pcase variant
@@ -730,7 +751,10 @@ property list."
     (("year" "y") ("bare" "b"))
     (("text" "t") ("caps" "c") ("full" "f") ("caps-full" "cf"))
     (("nil") ("bare" "b") ("caps" "c") ("bare-caps" "bc"))
-    (("nocite" "n"))))
+    (("nocite" "n"))
+    (("title" "ti") ("bare" "b"))
+    (("bibentry" "b") ("bare" "b"))
+    (("locators" "l") ("bare" "b"))))
 
 (provide 'oc-csl)
 ;;; oc-csl.el ends here
