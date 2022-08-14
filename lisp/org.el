@@ -15290,8 +15290,8 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
 		 (append org-todo-keyword-alist-for-agenda org-todo-key-alist))
 	   (setq org-tag-alist-for-agenda
 		 (org--tag-add-to-alist
-		  org-tag-alist-for-agenda
-		  org-current-tag-alist))
+		  org-current-tag-alist
+                  org-tag-alist-for-agenda))
 	   ;; Merge current file's tag groups into global
 	   ;; `org-tag-groups-alist-for-agenda'.
 	   (when org-group-tags
@@ -17066,7 +17066,10 @@ this numeric value."
         (let ((next (next-single-char-property-change beg 'invisible nil end)))
 	  (setq result (concat result (buffer-substring beg next)))
 	  (setq beg next))))
-    (setq deactivate-mark t)
+    ;; Prevent Emacs from adding full selected text to `kill-ring'
+    ;; when `select-enable-primary' is non-nil.  This special value of
+    ;; `deactivate-mark' only works since Emacs 29.
+    (setq deactivate-mark 'dont-save)
     (kill-new result)
     (message "Visible strings have been copied to the kill ring.")))
 
