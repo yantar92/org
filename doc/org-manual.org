@@ -2148,7 +2148,7 @@ Operations]]).  For example
   required to not convert empty fields to 0.  =f-1= is an optional
   Calc format string similar to =%.1f= but leaves empty results empty.
 
-- =if(typeof(vmean($1..$7)) =​= 12, string(""), vmean($1..$7); E= ::
+- =if(typeof(vmean($1..$7)) =​= 12, string(""), vmean($1..$7)); E= ::
 
   Mean value of a range unless there is any empty field.  Every field
   in the range that is empty is replaced by =nan= which lets =vmean=
@@ -6800,6 +6800,10 @@ using the =:formatter= parameter.
 
   Indent each headline field according to its level.
 
+- =:filetitle= ::
+
+  Show title in the file column if the file has a =#+title=.
+ 
 - =:hidefiles= ::
 
   Hide the file column when multiple files are used to produce the
@@ -13373,15 +13377,23 @@ general options (see [[*Export Settings]]).
 - =LANGUAGE= ::
   #+cindex: @samp{LANGUAGE}, keyword
   #+vindex: org-latex-packages-alist
+  #+vindex: org-latex-language-alist
+  
+  Language code of the primary document language.
+
+  The list of language codes supported by Org is stored in the
+  variable ~org-latex-language-alist~.
+
   In order to be effective, the =babel= or =polyglossia=
   packages---according to the LaTeX compiler used---must be loaded
   with the appropriate language as argument.  This can be accomplished
   by modifying the ~org-latex-packages-alist~ variable, e.g., with the
-  following snippet:
+  following snippet (note that =polyglossia= does not work with
+  pdfLaTeX):
 
   #+begin_src emacs-lisp
   (add-to-list 'org-latex-packages-alist
-               '("AUTO" "babel" t ("pdflatex")))
+               '("AUTO" "babel" t ("pdflatex" "xelatex" "lualatex")))
   (add-to-list 'org-latex-packages-alist
                '("AUTO" "polyglossia" t ("xelatex" "lualatex")))
   #+end_src
@@ -13509,6 +13521,54 @@ A sample Org file with the above headers:
   some text
 ,* Headline 2
   some more text
+#+end_example
+
+#+cindex: @samp{LANGUAGE}, keyword
+#+vindex: org-export-default-language
+LaTeX packages =babel= or =polyglossia= can also be loaded in a
+document.  The "AUTO" string will be replaced in both cases by the
+appropiate value for the =LANGUAGE= keyword, if present in the
+document, or by the value of ~org-export-default-language~.  Let's see
+some examples in one or another case.
+
+=Babel= accepts the classic syntax and (in addition) the new syntax
+with the =\babelprovide= command to load the languages using the new
+=INI= files procedure.  Keep in mind that there are a number of
+languages that are only served in babel using =INI= files, so they
+cannot be declared using the classic syntax, but only using the
+=\babelprovide= command (see
+https://mirrors.ctan.org/macros/latex/required/babel/base/babel.pdf).
+Valid usage examples could be:
+
+#+begin_example
+,#+LATEX_HEADER: \usepackage[french,italian,AUTO]{babel}
+#+end_example
+
+where "AUTO" is the main language.  But it can also be loaded using
+the =\babelprovide= command:
+
+#+begin_example
+,#+LATEX_HEADER: \usepackage[french,italian]{babel}
+,#+LATEX_HEADER: \babelprovide[import, main]{AUTO}
+#+end_example
+
+=Polyglossia=, for this procedure to be effective, must be loaded
+using the same =babel= classic syntax (but note that /this is not/
+the actual polyglossia syntax).  For example, suppose a document
+declares Polytonic Greek as the primary language, and French as the
+secondary language.  In this case, it would be expressed as:
+
+#+begin_example
+,#+LANGUAGE: el-polyton
+,#+LATEX_HEADER: \usepackage[french,AUTO]{polyglossia}
+#+end_example
+
+This would produce in LaTeX (with the actual =polyglossia= syntax):
+
+#+begin_example
+\usepackage{polyglossia}
+\setmainlanguage[variant=polytonic]{greek}
+\setotherlanguage{french}
 #+end_example
 
 *** Quoting LaTeX code
@@ -17087,7 +17147,30 @@ following values:
 :exports    => "code"
 :cache      => "no"
 :noweb      => "no"
+:hlines     => "no"
+:tangle     => "no"
 #+end_example
+
+#+vindex: org-babel-default-inline-header-args
+Inline source blocks (see [[*Structure of Code Blocks]]) use slightly
+different default header arguments defined in
+~org-babel-default-inline-header-args~:
+
+#+begin_example
+:session    => "none"
+:results    => "replace"
+:exports    => "results"
+:hlines     => "yes"
+#+end_example
+
+The most notable difference between default header arguments for
+inline and normal source blocks is =:exports= argument.  For inline
+source blocks, results of evaluation are exported by default; not the
+code.
+
+Unlike the default values, header arguments set using Org mode
+properties (see [[*Header arguments in Org mode properties]]) do apply to
+both the normal source blocks and inline source blocks.
 
 The example below sets =:noweb= header arguments to =yes=, which makes
 Org expand =:noweb= references by default.
@@ -18285,6 +18368,36 @@ file is exported to, say, HTML or LaTeX formats.
   Neither the code nor the results of evaluation is included in the
   exported file.  Whether the code is evaluated at all depends on
   other options.  Example: =:exports none=.
+
+If a source block is named using =NAME= keyword, the same name will be
+assigned to the results of evaluation.  This way, fuzzy links pointing
+to the named source blocks exported using =:exports results= will
+remain valid and point to the results of evaluation.
+
+Results of evaluation of a named block can also be explicitly named
+using a separate =NAME= keyword.  The name value set via =NAME=
+keyword will be preferred over the parent source block.
+
+: #+NAME: code name
+: #+BEGIN_SRC emacs-lisp :exports both value
+: (+ 1 2)
+: #+END_SRC
+:
+: #+NAME: results name
+: #+RESULTS: code name
+: 3
+:
+: This [[code name][link]] will point to the code block.
+: Another [[results name][link]] will point to the results.
+
+Explicit setting of the result name may be necessary when a named code
+block is exported using =:exports both=.  Links to such block may
+arbitrarily point either to the code block or to its results when
+results do not have a distinct name.
+
+Note that all the links pointing to a source block exported using
+=:exports none= will be broken.  This will make export process fail,
+unless broken links are allowed during export (see [[*Export Settings]]). 
 
 #+vindex: org-export-use-babel
 To stop Org from evaluating code blocks to speed exports, use the
@@ -22419,9 +22532,9 @@ semantic relevance.
 
 [fn:130] Please note that exported formulas are part of an HTML
 document, and that signs such as =<=, =>=, or =&= have special
-meanings.  See [[http://docs.mathjax.org/en/latest/tex.html#tex-and-latex-in-html-documents][MathJax TeX and LaTeX support]].
+meanings.  See [[http://docs.mathjax.org/en/latest/input/tex/html.html#tex-and-latex-in-html-documents][MathJax TeX and LaTeX in HTML documents]].
 
-[fn:131] See [[http://docs.mathjax.org/en/latest/tex.html#tex-extensions][TeX and LaTeX extensions]] in the [[http://docs.mathjax.org][MathJax manual]] to learn
+[fn:131] See [[http://docs.mathjax.org/en/latest/input/tex/extensions.html#tex-and-latex-extensions][TeX and LaTeX extensions]] in the [[http://docs.mathjax.org][MathJax manual]] to learn
 about extensions.
 
 [fn:132] If the classes on TODO keywords and tags lead to conflicts,
