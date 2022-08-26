@@ -4426,6 +4426,8 @@ element it has to parse."
             (org-element-put-property result :mode mode)
             (org-element-put-property result :granularity granularity)
             (org-element-put-property result :org-element--cache-sync-key nil)
+            (org-element-put-property result :fragile-cache nil)
+            (org-element-put-property result :robust-cache nil)
             (org-element-put-property result :cached nil))
           (when (and (not (buffer-narrowed-p))
                      (org-element--cache-active-p)
