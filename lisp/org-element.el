@@ -4570,6 +4570,7 @@ that inner element, and so on."
                       (org-element-at-point pos-or-element))
                      (_ pos-or-element)))
           (parent (org-element-property :parent element))
+          ;; Cache key.
           (key (pcase first-only
                  (`no-recursion (list 'org-element-parse-element (or granularity 'object) 'no-recursion))
                  (`nil (list 'org-element-parse-element (or granularity 'object)))
@@ -4589,6 +4590,16 @@ that inner element, and so on."
        (org-element-put-property result :parent parent)
        (unless visible-only
          (org-element-cache-store-key element key result)))
+     ;; Shift cached boundaries when necessary.
+     (when (and result
+                (not (eq (org-element-property :begin result)
+                       (org-element-property :begin element))))
+       (org-element-map result org-element-match--all-types
+         `(lambda (obj)
+            (org-element--cache-shift-positions
+             obj
+             ,(- (org-element-property :begin element)
+                 (org-element-property :begin result))))))
      result)))
 
 (defun org-element-parse-buffer (&optional granularity visible-only)
@@ -6071,6 +6082,8 @@ optional argument PROPS is a list of keywords, only shift
 properties provided in that list.
 
 Properties are modified by side-effect."
+  ;; Shifting the whole element.  Nothing is actually modified.
+  (when props (org-element-put-property element :fragile-cache nil))
   (let ((properties (nth 1 element)))
     ;; Shift `:structure' property for the first plain list only: it
     ;; is the only one that really matters and it prevents from
@@ -6384,7 +6397,6 @@ completing the request."
                                      (> (org-element-property :begin up)
                                         (org-element-property :begin cached-before))))
                        (when (> (org-element-property :end up) future-change)
-                         (org-element-put-property up :fragile-cache nil)
                          ;; Offset future cache request.
                          (org-element--cache-shift-positions
                           up (- offset)
@@ -6456,7 +6468,6 @@ completing the request."
                 (setf (org-element--request-parent request) parent)
                 (throw 'org-element--cache-interrupt nil))
 	      ;; Shift element.
-              (org-element-put-property data :fragile-cache nil)
 	      (unless (zerop offset)
                 (when (>= org-element--cache-diagnostics-level 3)
                   (org-element--cache-log-message "Shifting positions (𝝙%S) in %S::%S"
@@ -7053,7 +7064,6 @@ known element in cache (it may start after END)."
 	      ;; UP is a robust greater element containing changes.
 	      ;; We only need to extend its ending boundaries.
               (progn
-                (org-element-put-property up :fragile-cache nil)
 	        (org-element--cache-shift-positions
                  up offset
                  (if (and (org-element-property :robust-begin up)

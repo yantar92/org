@@ -1005,24 +1005,39 @@ at point."
                                    (org-element-type element)))))
         (unless (functionp matcher) (setq matcher 'org-element-match--default))
         (condition-case nil
-            (progn
+            (let ((cached-data
+                   (copy-tree
+                    (org-element-cache-get-key
+                     element
+                     '(org-element-match match-data)))))
+              ;; Update cached value after possible element shift.
+              (when cached-data
+                (let ((beg (org-element-property :begin element)))
+                  (dolist (el cached-data)
+                    (when (cadr el)
+                      (setf (cadr el) (+ (cadr el) beg))
+                      (setf (caddr el) (+ (caddr el) beg))))))
               (setq org-element-match--data
-                    (or (org-element-cache-get-key
-                         element
-                         '(org-element-match match-data))
-                        (funcall matcher element)))
+                    (or cached-data (funcall matcher element)))
               ;; Move `:full' component to `car' of the data.  This is
               ;; required for consistency with Emacs `match-data'.  In
               ;; particular, `org-font-lock--element-matcher' relies
               ;; on this fact to translate `org-element-match--data' into original
               ;; numbered `match-data'.
-              (let ((fullbeg (org-element-match-beginning :full))
-                    (fullend (org-element-match-end :full)))
-                (org-element-match--add :full fullbeg fullend org-element-match--data))
-              (org-element-cache-store-key
-               element
-               '(org-element-match match-data)
-               org-element-match--data)
+              (unless cached-data
+                (let ((fullbeg (org-element-match-beginning :full))
+                      (fullend (org-element-match-end :full)))
+                  (org-element-match--add :full fullbeg fullend org-element-match--data))
+                (org-element-cache-store-key
+                 element
+                 '(org-element-match match-data)
+                 (let* ((relative-data (copy-tree org-element-match--data))
+                        (beg (org-element-property :begin element)))
+                   (dolist (el relative-data)
+                     (when (cadr el)
+                       (setf (cadr el) (- (cadr el) beg))
+                       (setf (caddr el) (- (caddr el) beg))))
+                   relative-data)))
               (setq org-element-match--element element))
           (error (setq org-element-match--element nil org-element-match--data nil)))))))
 
