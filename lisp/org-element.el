@@ -5438,6 +5438,22 @@ indentation removed from its contents."
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
+(defvar org-element-cache-add-functions nil
+  "Abnormal hook running after an element is added to cache.
+Each function in the hook is called with a single argument---the added
+element.")
+
+(defvar org-element-cache-remove-functions nil
+  "Abnormal hook running every before an element is removed from cache.
+Each function in the hook is called with a single argument---the
+removed element.  The argument can also be nil when the whole cache is
+cleared.")
+
+(defvar org-element-cache-update-functions nil
+  "Abnormal hook running every time a cached element is updated.
+Each function in the hook is called with a single argument---the
+updated element.")
+
 (defvar org-element-cache-sync-idle-time 0.6
   "Length, in seconds, of idle time before syncing cache.")
 
@@ -5992,11 +6008,13 @@ the cache."
       (cl-incf org-element--headline-cache-size)
       (avl-tree-enter org-element--headline-cache element))
     (cl-incf org-element--cache-size)
-    (avl-tree-enter org-element--cache element)))
+    (prog1 (avl-tree-enter org-element--cache element)
+      (run-hook-with-args org-element-cache-add-functions element))))
 
 (defsubst org-element--cache-remove (element)
   "Remove ELEMENT from cache.
 Assume ELEMENT belongs to cache and that a cache is active."
+  (run-hook-with-args org-element-cache-remove-functions element)
   (org-element-put-property element :cached nil)
   (cl-decf org-element--cache-size)
   ;; Invalidate contents of parent.
@@ -6065,7 +6083,8 @@ Properties are modified by side-effect."
                     :post-affiliated :robust-begin :robust-end))
       (let ((value (and (or (not props) (memq key props))
 			(plist-get properties key))))
-	(and value (plist-put properties key (+ offset value)))))))
+	(and value (plist-put properties key (+ offset value)))))
+    (run-hook-with-args org-element-cache-update-functions element)))
 
 (defvar org-element--cache-interrupt-C-g t
   "When non-nil, allow the user to abort `org-element--cache-sync'.
@@ -7065,6 +7084,7 @@ known element in cache (it may start after END)."
                                "Found non-robust headline that can be updated individually: %S"
                                (org-element--format-element current))
                               (org-element-set-element up current)
+                              (run-hook-with-args org-element-cache-update-functions current)
                               t)))
                      ;; If UP is org-data, the situation is similar to
                      ;; headline case.  We just need to re-parse the
@@ -7073,7 +7093,9 @@ known element in cache (it may start after END)."
                      ;; potentially alter first-section).
                      (when (and (eq 'org-data (org-element-type up))
                                 (>= beg (org-element-property :contents-begin up)))
-                       (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)))
+                       (let ((current (org-with-point-at 1 (org-element-org-data-parser))))
+                         (org-element-set-element up current)
+                         (run-hook-with-args org-element-cache-update-functions current))
                        (org-element--cache-log-message
                         "Found non-robust change invalidating org-data. Re-parsing: %S"
                         (org-element--format-element up))
@@ -7370,6 +7392,8 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
                      (derived-mode-p 'org-mode)
                      (equal (secure-hash 'md5 (current-buffer))
                             (plist-get associated :hash)))
+          ;; Signal that cache is cleared.
+          (run-hook-with-args org-element-cache-remove-functions)
           'forbid)))))
 
 (defun org-element--cache-persist-after-read (container &optional associated)
@@ -7412,6 +7436,8 @@ buffers."
           (org-persist-register 'org-element--headline-cache
                                 (current-buffer)
                                 :inherit 'org-element--cache))
+        (when org-element--cache
+          (run-hook-with-args org-element-cache-remove-functions))
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
         (setq-local org-element--cache-last-buffer-size (buffer-size))
         (setq-local org-element--cache-gapless nil)
