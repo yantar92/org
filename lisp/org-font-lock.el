@@ -545,6 +545,9 @@ and subscripts."
 
 (defun org-font-lock-set-defaults ()
   "Set font lock defaults for the current buffer."
+  ;; Reduce the default chunk size to avoid excessive fontification of
+  ;; folded text.  See bug#57447.
+  (setq-local jit-lock-chunk-size 150)
   ;; Citations.  When an activate processor is specified, if
   ;; specified, try loading it beforehand.
   (unless (null org-cite-activate-processor)
