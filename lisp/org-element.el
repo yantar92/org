@@ -1252,6 +1252,9 @@ Assume point is at beginning of the headline."
                          ;; Avoid triggering deferred invocation.
                          :parent nil
                          :structure nil
+                         :org-element--cache-sync-key nil
+                         :fragile-cache nil
+                         :robust-cache nil
                          :deferred #'org-element-headline-parser--deferred))))
 	(org-element-put-property
 	 headline :title
