@@ -1217,20 +1217,22 @@ Test text inside current buffer or OBJECT."
 
 (defun org-buffer-substring-fontified (beg end)
   "Return fontified region between BEG and END."
-  (when (and (bound-and-true-p jit-lock-mode)
-             (not (org-fontified-p beg end)))
-    (save-match-data (font-lock-fontify-region beg end)))
+  (when (bound-and-true-p jit-lock-mode)
+    (when (text-property-not-all beg end 'fontified t)
+      (save-excursion (save-match-data (font-lock-fontify-region beg end)))))
   (buffer-substring beg end))
 
 (defun org-looking-at-fontified (re)
   "Call `looking-at' RE and make sure that the match is fontified."
   (prog1 (looking-at re)
-    (when (and (bound-and-true-p jit-lock-mode)
-               (not (org-fontified-p
-                   (match-beginning 0)
-                   (match-end 0))))
-      (save-match-data
-        (font-lock-fontify-region (match-beginning 0) (match-end 0))))))
+    (when (bound-and-true-p jit-lock-mode)
+      (when (text-property-not-all
+             (match-beginning 0) (match-end 0)
+             'fontified t)
+        (save-excursion
+          (save-match-data
+            (font-lock-fontify-region (match-beginning 0)
+                              (match-end 0))))))))
 
 (defsubst org-no-properties (s &optional restricted)
   "Remove all text properties from string S.
