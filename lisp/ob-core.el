@@ -2178,7 +2178,7 @@ Return nil if ELEMENT cannot be read."
 	(or (org-babel--string-to-number v) v)))
      (`table (org-babel-read-table))
      (`plain-list (org-babel-read-list))
-     (`example-block
+     ((or `example-block `src-block)
       (let ((v (org-element-property :value element)))
 	(if (or org-src-preserve-indentation
 		(org-element-property :preserve-indent element))
@@ -2351,8 +2351,8 @@ INFO may provide the values of these header arguments (in the
       (when inline
 	(let ((warning
 	       (or (and (member "table" result-params) "`:results table'")
-		   (and (listp result) "list result")
-		   (and (string-match-p "\n." result) "multiline result")
+		   (and result (listp result) "list result")
+		   (and result (string-match-p "\n." result) "multiline result")
 		   (and (member "list" result-params) "`:results list'"))))
 	  (when warning
 	    (user-error "Inline error: %s cannot be used" warning))))
