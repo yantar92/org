@@ -25,6 +25,9 @@
 
 ;;; Code:
 
+(require 'org-macs)
+(org-assert-version)
+
 (require 'ox)
 (declare-function htmlize-buffer "ext:htmlize" (&optional buffer))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
