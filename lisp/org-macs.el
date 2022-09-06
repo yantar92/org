@@ -1068,7 +1068,8 @@ Return width in pixels when PIXELS is non-nil."
                     current-char-property-alias-alist)
         (let (pixel-width symbol-width)
           (with-silent-modifications
-            (setf (buffer-string) string)
+            (erase-buffer)
+            (insert string)
             (setq pixel-width
                   (if (get-buffer-window (current-buffer))
                       (car (window-text-pixel-size
@@ -1077,7 +1078,8 @@ Return width in pixels when PIXELS is non-nil."
                     (car (window-text-pixel-size
                           nil (line-beginning-position) (point-max)))))
             (unless pixels
-              (setf (buffer-string) "a")
+              (erase-buffer)
+              (insert "a")
               (setq symbol-width
                     (if (get-buffer-window (current-buffer))
                         (car (window-text-pixel-size
@@ -1107,7 +1109,8 @@ removed.  Return the new string.  If STRING is nil, return nil."
   (and string
        (if (and (string-prefix-p pre string)
 		(string-suffix-p post string))
-	   (substring string (length pre) (- (length post)))
+	   (substring string (length pre)
+                      (and (not (string-equal "" post)) (- (length post))))
 	 string)))
 
 (defun org-strip-quotes (string)
@@ -1303,11 +1306,11 @@ the value in cadr."
 
 (defsubst org-get-at-bol (property)
   "Get text property PROPERTY at the beginning of line."
-  (get-text-property (point-at-bol) property))
+  (get-text-property (line-beginning-position) property))
 
 (defun org-get-at-eol (property n)
   "Get text property PROPERTY at the end of line less N characters."
-  (get-text-property (- (point-at-eol) n) property))
+  (get-text-property (- (line-end-position) n) property))
 
 (defun org-find-text-property-in-string (prop s)
   "Return the first non-nil value of property PROP in string S."

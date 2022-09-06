@@ -544,7 +544,7 @@ highlighting was done, nil otherwise."
 	   (emph-p (get-text-property mpos 'org-emphasis))
 	   (link-p (get-text-property mpos 'mouse-face))
 	   (keyw-p (eq 'org-special-keyword (get-text-property mpos 'face))))
-      (goto-char (point-at-bol))
+      (goto-char (line-beginning-position))
       (setq table-p (looking-at-p org-table-dataline-regexp)
 	    comment-p (looking-at-p "^[ \t]*#[ +]"))
       (goto-char pos)
