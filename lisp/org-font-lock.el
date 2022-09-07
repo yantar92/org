@@ -546,7 +546,10 @@ and subscripts."
 (defun org-font-lock-set-defaults ()
   "Set font lock defaults for the current buffer."
   ;; Reduce the default chunk size to avoid excessive fontification of
-  ;; folded text.  See bug#57447.
+  ;; folded text. See bug#57447. The bug report has been resolved and
+  ;; latest Emacs should now avoid fontifying invisible text. However
+  ;; we do need to keep this for older Emacs versions (Emacs 28 and
+  ;; older).
   (setq-local jit-lock-chunk-size 150)
   ;; Citations.  When an activate processor is specified, if
   ;; specified, try loading it beforehand.
