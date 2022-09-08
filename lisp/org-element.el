@@ -730,6 +730,12 @@ is cleared and contents are removed in the process."
          (org-element-map datum (append '(plain-text) org-element-all-objects org-element-all-elements)
            #'org-element--resolve-deferred-property nil nil nil t)
          (let ((element-copy (list type (plist-put (copy-sequence (nth 1 datum)) :parent nil))))
+           ;; Copy :structure property separately as it is not handled
+           ;; by shallow `copy-sequence'.
+           (when (org-element-property :structure element-copy)
+             (org-element-put-property
+              element-copy :structure
+              (copy-tree (org-element-property :structure element-copy))))
            ;; We cannot simply return the copies property list.  When
            ;; DATUM is i.e. a headline, it's property list (`:title'
            ;; in case of headline) can contain parsed objects.  The
