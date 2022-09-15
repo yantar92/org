@@ -1567,10 +1567,8 @@ non-nil."
 		  t))))
 	(setq link (plist-get org-store-link-plist :link))
         ;; If store function actually set `:description' property, use
-        ;; it, even if it is nil.  Otherwise, fallback to link value.
-	(setq desc (if (plist-member org-store-link-plist :description)
-                       (plist-get org-store-link-plist :description)
-		     link)))
+        ;; it, even if it is nil.  Otherwise, fallback to nil (ask user).
+	(setq desc (plist-get org-store-link-plist :description)))
 
        ;; Store a link from a remote editing buffer.
        ((org-src-edit-buffer-p)
@@ -1659,24 +1657,23 @@ non-nil."
 
        ((and (buffer-file-name (buffer-base-buffer)) (derived-mode-p 'org-mode))
 	(org-with-limited-levels
-         (cond
-	  ;; Store a link using the target at point.
+	 (setq custom-id (org-entry-get nil "CUSTOM_ID"))
+	 (cond
+	  ;; Store a link using the target at point
 	  ((org-in-regexp "[^<]<<\\([^<>]+\\)>>[^>]" 1)
-	   (setq cpltxt
+	   (setq link
 		 (concat "file:"
 			 (abbreviate-file-name
 			  (buffer-file-name (buffer-base-buffer)))
 			 "::" (match-string 1))
-		 link cpltxt))
-          ;; Store a link using the CUSTOM_ID property.
-          ((setq custom-id (org-entry-get nil "CUSTOM_ID"))
-           (setq cpltxt
-		 (concat "file:"
-			 (abbreviate-file-name
-			  (buffer-file-name (buffer-base-buffer)))
-			 "::#" custom-id)
-		 link cpltxt))
-          ;; Store a link using (and perhaps creating) the ID property.
+                 ;; Target may be shortened when link is inserted.
+                 ;; Avoid [[target][file:~/org/test.org::target]]
+                 ;; links.  Maybe the case of identical target and
+                 ;; description should be handled by `org-insert-link'.
+                 cpltxt nil
+                 desc nil
+                 ;; Do not append #CUSTOM_ID link below.
+                 custom-id nil))
 	  ((and (featurep 'org-id)
 		(or (eq org-id-link-to-org-use-id t)
 		    (and interactive?
@@ -1685,13 +1682,12 @@ non-nil."
 				      'create-if-interactive-and-no-custom-id)
 				  (not custom-id))))
 		    (and org-id-link-to-org-use-id (org-entry-get nil "ID"))))
+	   ;; Store a link using the ID at point
 	   (setq link (condition-case nil
 			  (prog1 (org-id-store-link)
-			    (setq desc (or (plist-get org-store-link-plist
-						      :description)
-					   "")))
+			    (setq desc (plist-get org-store-link-plist :description)))
 			(error
-			 ;; Probably before first headline, link only to file.
+			 ;; Probably before first headline, link only to file
 			 (concat "file:"
 				 (abbreviate-file-name
 				  (buffer-file-name (buffer-base-buffer))))))))
@@ -1751,8 +1747,7 @@ non-nil."
 
       ;; We're done setting link and desc, clean up
       (when (consp link) (setq cpltxt (car link) link (cdr link)))
-      (setq link (or link cpltxt)
-	    desc (or desc cpltxt))
+      (setq link (or link cpltxt))
       (cond ((not desc))
 	    ((equal desc "NONE") (setq desc nil))
 	    (t (setq desc (org-link-display-format desc))))
