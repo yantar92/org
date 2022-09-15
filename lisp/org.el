@@ -10327,12 +10327,16 @@ narrowing."
 		 (throw 'exit nil))))
 	   ;; No drawer found.  Create one, if permitted.
 	   (when create
+             ;; Unless current heading is the last heading in buffer
+             ;; and does not have a newline, `org-end-of-meta-data'
+             ;; should move us somewhere below the heading.
              ;; Avoid situation when we insert drawer right before
              ;; first "*".  Otherwise, if the previous heading is
              ;; folded, we are inserting after visible newline at
              ;; the end of the fold, thus breaking the fold
              ;; continuity.
-             (when (org-at-heading-p) (backward-char))
+             (unless (eobp)
+               (when (org-at-heading-p) (backward-char)))
              (org-fold-core-ignore-modifications
 	       (unless (bolp) (insert-and-inherit "\n"))
 	       (let ((beg (point)))
@@ -10342,12 +10346,17 @@ narrowing."
 	   (end-of-line -1))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
-       (skip-chars-forward " \t\n")
-       (beginning-of-line)
-       (unless org-log-states-order-reversed
-	 (org-skip-over-state-notes)
-	 (skip-chars-backward " \t\n")
-	 (beginning-of-line 2)))))
+       (let ((endpos (point)))
+         (skip-chars-forward " \t\n")
+         (beginning-of-line)
+         (unless org-log-states-order-reversed
+	   (org-skip-over-state-notes)
+	   (skip-chars-backward " \t\n")
+	   (beginning-of-line 2))
+         ;; When current headline is at the end of buffer and does not
+         ;; end with trailing newline the above can move to the
+         ;; beginning of the headline.
+         (when (< (point) endpos)) (goto-char endpos)))))
    (if (bolp) (point) (line-beginning-position 2))))
 
 (defun org-add-log-setup (&optional purpose state prev-state how extra)
@@ -20133,28 +20142,47 @@ interactive command with similar behavior."
   "Go back to beginning of heading."
   (beginning-of-line)
   (or (org-at-heading-p (not invisible-ok))
-      (let (found)
-	(save-excursion
-          ;; At inlinetask end.  Move to bol, so that the following
-          ;; search goes to the beginning of the inlinetask.
-          (when (and (featurep 'org-inlinetask)
-                     (fboundp 'org-inlinetask-end-p)
-                     (org-inlinetask-end-p))
-            (goto-char (line-beginning-position)))
-	  (while (not found)
-	    (or (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
-				    nil t)
-                (user-error "Before first headline at position %d in buffer %s"
-		            (point) (current-buffer)))
-            ;; Skip inlinetask end.
-            (if (and (featurep 'org-inlinetask)
-                     (fboundp 'org-inlinetask-end-p)
-                     (org-inlinetask-end-p))
-                (org-inlinetask-goto-beginning)
-	      (setq found (and (or invisible-ok (not (org-fold-folded-p)))
-			       (point))))))
-	(goto-char found)
-	found)))
+      (if (org-element--cache-active-p)
+          (let ((heading (org-element-lineage (org-element-at-point)
+                                           '(headline inlinetask)
+                                           'include-self)))
+            (when heading
+              (goto-char (org-element-property :begin heading)))
+            (while (and (not invisible-ok)
+                        heading
+                        (org-fold-folded-p))
+              (goto-char (org-fold-core-previous-visibility-change))
+              (setq heading (org-element-lineage (org-element-at-point)
+                                              '(headline inlinetask)
+                                              'include-self))
+              (when heading
+                (goto-char (org-element-property :begin heading))))
+            (unless heading
+              (user-error "Before first headline at position %d in buffer %s"
+		          (point) (current-buffer)))
+            (point))
+        (let (found)
+	  (save-excursion
+            ;; At inlinetask end.  Move to bol, so that the following
+            ;; search goes to the beginning of the inlinetask.
+            (when (and (featurep 'org-inlinetask)
+                       (fboundp 'org-inlinetask-end-p)
+                       (org-inlinetask-end-p))
+              (goto-char (line-beginning-position)))
+	    (while (not found)
+	      (or (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
+				      nil t)
+                  (user-error "Before first headline at position %d in buffer %s"
+		              (point) (current-buffer)))
+              ;; Skip inlinetask end.
+              (if (and (featurep 'org-inlinetask)
+                       (fboundp 'org-inlinetask-end-p)
+                       (org-inlinetask-end-p))
+                  (org-inlinetask-goto-beginning)
+	        (setq found (and (or invisible-ok (not (org-fold-folded-p)))
+			         (point))))))
+	  (goto-char found)
+	  found))))
 
 (defun org-back-to-heading-or-point-min (&optional invisible-ok)
   "Go back to heading or first point in buffer.
@@ -20287,7 +20315,7 @@ make a significant difference in outlines with very many siblings."
   (let ((element (and (org-element--cache-active-p)
                       (org-element-at-point nil t))))
     (if element
-        (let* ((current-heading (org-element-lineage element '(headline) 'with-self))
+        (let* ((current-heading (org-element-lineage element '(headline inlinetask) 'with-self))
                (parent (org-element-lineage current-heading '(headline))))
           (if (and parent
                    (<= (point-min) (org-element-property :begin parent)))
