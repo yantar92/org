@@ -20,6 +20,8 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'ol)
+(require 'org-id)
 
 
 ;;; Decode and Encode Links

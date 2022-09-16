@@ -9271,7 +9271,7 @@ narrowing."
          ;; When current headline is at the end of buffer and does not
          ;; end with trailing newline the above can move to the
          ;; beginning of the headline.
-         (when (< (point) endpos)) (goto-char endpos)))))
+         (when (< (point) endpos) (goto-char endpos))))))
    (if (bolp) (point) (line-beginning-position 2))))
 
 (defun org-add-log-setup (&optional purpose state prev-state how extra)
@@ -13416,9 +13416,11 @@ D may be an absolute day number, or a calendar-type list (month day year)."
     (cond ((stringp result) (split-string result "; "))
 	  ((and (consp result)
 		(not (consp (cdr result)))
-		(stringp (cdr result))) (cdr result))
+		(stringp (cdr result)))
+	   (cdr result))
 	  ((and (consp result)
-		(stringp (car result))) result)
+		(stringp (car result)))
+	   result)
 	  (result entry))))
 
 (defun org-diary-to-ical-string (frombuf)
