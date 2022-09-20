@@ -3015,7 +3015,8 @@ block but are passed literally to the \"example-block\"."
 		      ;; run.  Yet, ID is not in cache (see the above
 		      ;; condition).  Process missing reference in
 		      ;; `expand-references'.
-		      ((hash-table-p org-babel-expand-noweb-references--cache)
+		      ((and (hash-table-p org-babel-expand-noweb-references--cache)
+                            (gethash 'buffer-processed org-babel-expand-noweb-references--cache))
 		       (expand-references id))
 		      ;; Though luck.  We go into the long process of
 		      ;; checking each source block and expand those
@@ -3031,6 +3032,7 @@ block but are passed literally to the \"example-block\"."
 			    (let* ((info (org-babel-get-src-block-info t))
 				   (ref (cdr (assq :noweb-ref (nth 2 info)))))
 			      (push info (gethash ref org-babel-expand-noweb-references--cache))))))
+                       (puthash 'buffer-processed t org-babel-expand-noweb-references--cache)
 		       (expand-references id)))))
 	       ;; Interpose PREFIX between every line.
                (if noweb-prefix
