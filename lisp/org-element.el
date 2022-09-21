@@ -5869,12 +5869,12 @@ This function assumes `org-element--headline-cache' is a valid AVL tree."
 
 ;;;; Tools
 
-(defun org-element--cache-active-p (&optional called-from-cache-change-func-p)
+(defsubst org-element--cache-active-p (&optional called-from-cache-change-func-p)
   "Non-nil when cache is active in current buffer."
   (and org-element-use-cache
        org-element--cache
-       (derived-mode-p 'org-mode)
        (or called-from-cache-change-func-p
+           (eq org-element--cache-change-tic (buffer-chars-modified-tick))
            (and
             ;; org-num-mode calls some Org structure analysis functions
             ;; that can trigger cache update in the middle of changes.  See
@@ -5889,8 +5889,7 @@ This function assumes `org-element--headline-cache' is a valid AVL tree."
             ;; `combine-change-calls' because the buffer is potentially
             ;; changed without notice (the change will be registered
             ;; after exiting the `combine-change-calls' body though).
-            (memq #'org-element--cache-after-change after-change-functions))
-           (eq org-element--cache-change-tic (buffer-chars-modified-tick)))))
+            (memq #'org-element--cache-after-change after-change-functions)))))
 
 ;; FIXME: Remove after we establish that hashing is effective.
 (defun org-element-cache-hash-show-statistics ()
@@ -7311,11 +7310,6 @@ change, as an integer."
   "Verify correctness of ELEMENT when `org-element--cache-self-verify' is non-nil.
 
 Return non-nil when verification failed."
-  ;; Verify correct parent for the element.
-  (unless (or (org-element-property :parent element)
-              (eq 'org-data (org-element-type element)))
-    (org-element--cache-warn "Got element without parent (cache active?: %S). Please report it to Org mode mailing list (M-x org-submit-bug-report).\n%S" (org-element--cache-active-p)  element)
-    (org-element-cache-reset))
   (let ((org-element--cache-self-verify
          (or org-element--cache-self-verify
              (and (boundp 'org-batch-test) org-batch-test)))
@@ -7323,10 +7317,14 @@ Return non-nil when verification failed."
          (if (and (boundp 'org-batch-test) org-batch-test)
              1
            org-element--cache-self-verify-frequency)))
+    ;; Verify correct parent for the element.
+    (unless (or (not org-element--cache-self-verify)
+                (org-element-property :parent element)
+                (eq 'org-data (org-element-type element)))
+      (org-element--cache-warn "Got element without parent (cache active?: %S). Please report it to Org mode mailing list (M-x org-submit-bug-report).\n%S" (org-element--cache-active-p)  element)
+      (org-element-cache-reset))
     (when (and org-element--cache-self-verify
                (org-element--cache-active-p)
-               (derived-mode-p 'org-mode)
-               (org-element-property :parent element)
                (eq 'headline (org-element-type element))
                ;; Avoid too much slowdown
                (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
