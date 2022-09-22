@@ -4212,22 +4212,25 @@ Also moves point to the end of the skipped region, so that search can
 continue from there.
 
 Optional argument ELEMENT contains element at point."
-  (let ((p (line-beginning-position)) to)
-    (when (or
-	   (save-excursion (goto-char p) (looking-at comment-start-skip))
-	   (and org-agenda-skip-archived-trees (not org-agenda-archives-mode)
-		(or (and (save-match-data (org-in-archived-heading-p nil element))
-		         (org-end-of-subtree t element))
-		    (and (member org-archive-tag org-file-tags)
-			 (goto-char (point-max)))))
-	   (and org-agenda-skip-comment-trees
-                (org-in-commented-heading-p nil element)
-		(org-end-of-subtree t element))
-	   (and (setq to (or (org-agenda-skip-eval org-agenda-skip-function-global)
-			     (org-agenda-skip-eval org-agenda-skip-function)))
-		(goto-char to))
-	   (org-in-src-block-p t element))
-      (throw :skip t))))
+  (when (or
+         (if element
+             (eq (org-element-type element) 'comment)
+	   (save-excursion
+             (goto-char (line-beginning-position))
+             (looking-at comment-start-skip)))
+	 (and org-agenda-skip-archived-trees (not org-agenda-archives-mode)
+	      (or (and (save-match-data (org-in-archived-heading-p nil element))
+		       (org-end-of-subtree t element))
+		  (and (member org-archive-tag org-file-tags)
+		       (goto-char (point-max)))))
+	 (and org-agenda-skip-comment-trees
+              (org-in-commented-heading-p nil element)
+	      (org-end-of-subtree t element))
+         (let ((to (or (org-agenda-skip-eval org-agenda-skip-function-global)
+		       (org-agenda-skip-eval org-agenda-skip-function))))
+           (and to (goto-char to)))
+	 (org-in-src-block-p t element))
+    (throw :skip t)))
 
 (defun org-agenda-skip-eval (form)
   "If FORM is a function or a list, call (or eval) it and return the result.
@@ -5807,7 +5810,7 @@ displayed in agenda view."
 			 (org-at-clock-log-p))
                     (not (org-at-timestamp-p 'agenda)))
 	    (throw :skip nil))
-	  (org-agenda-skip))
+	  (org-agenda-skip (org-element-at-point)))
 	(let* ((pos (match-beginning 0))
 	       (repeat (match-string 1))
 	       (sexp-entry (match-string 3))
@@ -5933,7 +5936,12 @@ displayed in agenda view."
 	(forward-sexp 1)
 	(setq sexp (buffer-substring b (point)))
 	(setq sexp-entry (if (org-looking-at-fontified "[ \t]*\\(\\S-.*\\)")
-			     (org-trim (match-string 1))
+                             (buffer-substring
+                              (match-beginning 1)
+                              (save-excursion
+                                (goto-char (match-end 1))
+                                (skip-chars-backward "[:blank:]")
+                                (point)))
 			   ""))
 	(setq result (org-diary-sexp-entry sexp sexp-entry date))
 	(when result
