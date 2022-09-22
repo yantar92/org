@@ -492,8 +492,7 @@ MISC, if non-nil will be appended to the collection."
                                 (fboundp 'file-attribute-inode-number))
                        (file-attribute-inode-number
                         (file-attributes file))))
-         ;; Use binary argument for slight speedup.
-         (setq hash (secure-hash 'md5 associated nil nil 'binary))
+         (setq hash (secure-hash 'md5 associated))
          (puthash associated
                   (list (buffer-modified-tick associated)
                         file inode hash)
