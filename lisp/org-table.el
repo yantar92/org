@@ -4330,28 +4330,9 @@ FIELD is a string.  WIDTH is a number.  ALIGN is either \"c\",
   (let* ((spaces (- width (org-string-width field)))
 	 (prefix (pcase align
 		   ("l" "")
-		   ("r" (concat (make-string right-spaces ?\s)
-                                ;; Align to non-fixed width.
-                                (if (zerop right-pixels) ""
-                                  (propertize " "
-                                              'org-table-display
-                                              `(space . (:width (,right-pixels)))
-                                              ))))
-		   ("c" (concat (make-string centered-spaces ?\s)
-                                ;; Align to non-fixed width.
-                                (if (zerop centered-pixels) ""
-                                  (propertize " "
-                                              'org-table-display
-                                              `(space . (:width (,centered-pixels)))
-                                              ))))))
-         (suffix-spaces (/ (- spaces (org-string-width prefix 'pixel)) symbol-width))
-         (suffix-pixels (- (- spaces (org-string-width prefix 'pixel)) (* symbol-width suffix-spaces)))
-	 (suffix (concat (make-string suffix-spaces ?\s)
-                         ;; Align to non-fixed width.
-                         (if (zerop suffix-pixels) ""
-                           (propertize " "
-                                       'org-table-display
-                                       `(space . (:width (,suffix-pixels))))))))
+		   ("r" (make-string spaces ?\s))
+		   ("c" (make-string (/ spaces 2) ?\s))))
+	 (suffix (make-string (- spaces (length prefix)) ?\s)))
     (concat org-table--separator-space-pre
 	    prefix
 	    field
