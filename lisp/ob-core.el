@@ -715,7 +715,7 @@ a list with the following pattern:
                 ; and `org-babel-read'
 
 ;;;###autoload
-(defun org-babel-execute-src-block (&optional arg info params)
+(defun org-babel-execute-src-block (&optional arg info params executor-type)
   "Execute the current source code block and return the result.
 Insert the results of execution into the buffer.  Source code
 execution and the collection and formatting of results can be
@@ -729,13 +729,29 @@ Optionally supply a value for INFO in the form returned by
 
 Optionally supply a value for PARAMS which will be merged with
 the header arguments specified at the front of the source code
-block."
+block.
+
+EXECUTOR-TYPE is the type of the org element responsible for the
+execution of the source block.  If not provided then informed
+guess will be made."
   (interactive)
   (let* ((org-babel-current-src-block-location
-	  (or org-babel-current-src-block-location
-	      (nth 5 info)
-	      (org-babel-where-is-src-block-head)))
-	 (info (if info (copy-tree info) (org-babel-get-src-block-info))))
+          (or org-babel-current-src-block-location
+              (nth 5 info)
+              (org-babel-where-is-src-block-head)))
+         (info (if info (copy-tree info) (org-babel-get-src-block-info)))
+         (executor-type
+          (or executor-type
+              ;; If `executor-type' is unset, then we will make an
+              ;; informed guess.
+              (pcase (char-after org-babel-current-src-block-location)
+                (?s 'inline-src-block)
+                (?c 'inline-babel-call)
+                (?# (pcase (char-after (+ 2 org-babel-current-src-block-location))
+                      (?b 'src-block)
+                      (?c 'call-block)
+                      (_ 'unknown)))
+                (_ 'unknown)))))
     ;; Merge PARAMS with INFO before considering source block
     ;; evaluation since both could disagree.
     (cl-callf org-babel-merge-params (nth 2 info) params)
@@ -773,14 +789,23 @@ block."
 		       (make-directory d 'parents)
 		       d))))
 		 (cmd (intern (concat "org-babel-execute:" lang)))
-		 result)
+		 result exec-start-time)
 	    (unless (fboundp cmd)
 	      (error "No org-babel-execute function for %s!" lang))
-	    (message "executing %s code block%s..."
+	    (message "executing %s %s %s..."
 		     (capitalize lang)
+                     (pcase executor-type
+                       ('src-block "code block")
+                       ('inline-src-block "inline code block")
+                       ('babel-call "call")
+                       ('inline-babel-call "inline call")
+                       (e (symbol-name e)))
 		     (let ((name (nth 4 info)))
-		       (if name (format " (%s)" name) "")))
-	    (setq result
+		       (if name
+                           (format "(%s)" name)
+                         (format "at position %d" (nth 5 info)))))
+	    (setq exec-start-time (current-time)
+                  result
 		  (let ((r (funcall cmd body params)))
 		    (if (and (eq (cdr (assq :result-type params)) 'value)
 			     (or (member "vector" result-params)
@@ -823,7 +848,8 @@ block."
 	      (if (member "none" result-params)
 		  (message "result silenced")
 	        (org-babel-insert-result
-	         result result-params info new-hash lang)))
+	         result result-params info new-hash lang
+                 (time-subtract (current-time) exec-start-time))))
 	    (run-hooks 'org-babel-after-execute-hook)
 	    result)))))))
 
@@ -2256,7 +2282,7 @@ If the path of the link is a file path it is expanded using
       ;; scalar result
       (funcall echo-res result))))
 
-(defun org-babel-insert-result (result &optional result-params info hash lang)
+(defun org-babel-insert-result (result &optional result-params info hash lang exec-time)
   "Insert RESULT into the current buffer.
 
 By default RESULT is inserted after the end of the current source
@@ -2264,7 +2290,8 @@ block.  The RESULT of an inline source block usually will be
 wrapped inside a `results' macro and placed on the same line as
 the inline source block.  The macro is stripped upon export.
 Multiline and non-scalar RESULTS from inline source blocks are
-not allowed.  With optional argument RESULT-PARAMS controls
+not allowed.  When EXEC-TIME is provided it may be included in a
+generated message.  With optional argument RESULT-PARAMS controls
 insertion of results in the Org mode file.  RESULT-PARAMS can
 take the following values:
 
@@ -2569,11 +2596,18 @@ INFO may provide the values of these header arguments (in the
 			   (not (and (listp result)
 				     (member "append" result-params))))
 		  (indent-rigidly beg end indent))
-		(if (null result)
-		    (if (member "value" result-params)
-			(message "Code block returned no value.")
-		      (message "Code block produced no output."))
-		  (message "Code block evaluation complete.")))
+                (let ((time-info
+                       ;; Only show the time when something other than
+                       ;; 0s will be shown, i.e. check if the time is at
+                       ;; least half of the displayed precision.
+                       (if (and exec-time (> (float-time exec-time) 0.05))
+                           (format " (took %.1fs)" (float-time exec-time))
+                         "")))
+                  (if (null result)
+                      (if (member "value" result-params)
+                          (message "Code block returned no value%s." time-info)
+                        (message "Code block produced no output%s." time-info))
+                    (message "Code block evaluation complete%s." time-info))))
 	    (set-marker end nil)
 	    (when outside-scope (narrow-to-region visible-beg visible-end))
 	    (set-marker visible-beg nil)
