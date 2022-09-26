@@ -217,7 +217,7 @@
     ("xhtml-frameset" . "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Frameset//EN\"
 \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd\">")
     ("xhtml-11" . "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\"
-\"http://www.w3.org/TR/xhtml1/DTD/xhtml11.dtd\">")
+\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">")
 
     ("html5" . "<!DOCTYPE html>")
     ("xhtml5" . "<!DOCTYPE html>"))
@@ -838,6 +838,8 @@ When Org mode is exporting an Org file to HTML, links to non-HTML files
 are directly put into a \"href\" tag in HTML.  However, links to other Org files
 (recognized by the extension \".org\") should become links to the corresponding
 HTML file, assuming that the linked Org file will also be converted to HTML.
+
+Links to \"file.org.gpg\" are also converted.
 
 When nil, the links still point to the plain \".org\" file."
   :group 'org-export-html
@@ -3066,12 +3068,13 @@ INFO is a plist holding contextual information.  See
 	  (lambda (raw-path info)
 	    ;; Treat links to `file.org' as links to `file.html', if
 	    ;; needed.  See `org-html-link-org-files-as-html'.
-	    (cond
-	     ((and (plist-get info :html-link-org-files-as-html)
-		   (string= ".org"
-			    (downcase (file-name-extension raw-path "."))))
-	      (concat (file-name-sans-extension raw-path) dot html-ext))
-	     (t raw-path))))
+            (save-match-data
+	      (cond
+	       ((and (plist-get info :html-link-org-files-as-html)
+                     (let ((case-fold-search t))
+                       (string-match "\\(.+\\)\\.org\\(?:\\.gpg\\)?$" raw-path)))
+	        (concat (match-string 1 raw-path) dot html-ext))
+	       (t raw-path)))))
 	 (type (org-element-property :type link))
 	 (raw-path (org-element-property :path link))
 	 ;; Ensure DESC really exists, or set it to nil.
