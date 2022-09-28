@@ -59,6 +59,7 @@
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-type "org-element" (element))
 (declare-function org-element-update-syntax "org-element" ())
+(declare-function org-element--cache-active-p "org-element" (&optional called-from-cache-change-func-p))
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 (declare-function org-find-property "org" (property &optional value))
 (declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
