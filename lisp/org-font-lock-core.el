@@ -173,7 +173,7 @@ This is more memory efficient then creating regexp strings every time.")
        (when (cl-some (lambda (type) (eq type (org-element-match-type))) matcher)
          (cons 'org-font-lock--element-matcher
                (org-font-lock--compile-highlight (cdr keyword)))))
-      (`(,(pred (not (eq 'lambda))) . ,_)
+      ((guard (not (eq 'lambda (car matcher))))
        (cons `(lambda (limit)
                 (when ,matcher
                   (org-font-lock--element-matcher limit)))
