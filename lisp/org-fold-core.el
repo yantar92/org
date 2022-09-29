@@ -461,7 +461,9 @@ If GLOBAL is non-nil, do not make the property unique in the BUFFER."
                     ;; Using buffer-name is safe, since the only place where
                     ;; buffer-local text property actually matters is an indirect
                     ;; buffer, where the name cannot be same anyway.
-                    (if global 'global
+                    (if (or global
+                            (memql 'ignore-indirect org-fold-core--optimise-for-huge-buffers))
+                        'global
                       (sxhash (buffer-name (or buffer (current-buffer)))))))))
 
 (defsubst org-fold-core-get-folding-spec-from-folding-prop (folding-prop)
@@ -623,9 +625,11 @@ unless RETURN-ONLY is non-nil."
 
 (defun org-fold-core-decouple-indirect-buffer-folds ()
   "Copy and decouple folding state in a newly created indirect buffer.
-This function is mostly indented to be used in `clone-indirect-buffer-hook'."
+This function is mostly intended to be used in
+`clone-indirect-buffer-hook'."
   (when (and (buffer-base-buffer)
-             (eq org-fold-core-style 'text-properties))
+             (eq org-fold-core-style 'text-properties)
+             (not (memql 'ignore-indirect org-fold-core--optimise-for-huge-buffers)))
     (org-fold-core--property-symbol-get-create (car (org-fold-core-folding-spec-list)))))
 
 ;;; API
