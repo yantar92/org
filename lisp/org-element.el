@@ -1616,7 +1616,7 @@ CONTENTS is the contents of the element."
 	   ;; At a new item: end previous sibling.
 	   ((looking-at item-re)
 	    (let ((ind (save-excursion (skip-chars-forward " \t")
-				       (current-column))))
+				       (org-current-text-column))))
 	      (setq top-ind (min top-ind ind))
 	      (while (and items (<= ind (nth 1 (car items))))
 		(let ((item (pop items)))
@@ -1650,7 +1650,7 @@ CONTENTS is the contents of the element."
 	   (t
 	    (let ((ind (save-excursion
 			 (skip-chars-forward " \t")
-			 (current-column)))
+			 (org-current-text-column)))
 		  (end (save-excursion
 			 (skip-chars-backward " \r\t\n")
 			 (line-beginning-position 2))))
@@ -2952,8 +2952,8 @@ CONTENTS is verse block contents."
   "Parse emphasis object at point, if any.
 
 MARK is the delimiter string used.  TYPE is a symbol among
-‘bold’, ‘code’, ‘italic’, ‘strike-through’, ‘underline’, and
-‘verbatim’.
+`bold', `code', `italic', `strike-through', `underline', and
+`verbatim'.
 
 Assume point is at first MARK."
   (save-excursion
@@ -5359,7 +5359,7 @@ This extra caching is based on the following paper:
 Pugh [Information Processing Letters] (1990) Slow optimally balanced
  search strategies vs. cached fast uniformly balanced search
  strategies.  http://dx.doi.org/10.1016/0020-0190(90)90130-P
- 
+
 Also, see `org-element--cache-hash-left' and `org-element--cache-hash-right'.")
 (defvar-local org-element--cache-hash-left nil
   "Cached elements from `org-element--cache' for fast O(1) lookup.
@@ -5716,7 +5716,7 @@ This extra caching is based on the following paper:
 Pugh [Information Processing Letters] (1990) Slow optimally balanced
  search strategies vs. cached fast uniformly balanced search
  strategies.  http://dx.doi.org/10.1016/0020-0190(90)90130-P
- 
+
 Also, see `org-element--cache-size'."
   (interactive)
   (message "%.2f%% of cache searches hashed, %.2f%% non-hashable."
@@ -6309,7 +6309,7 @@ completing the request."
                       ;; Consider scenario when DATA lays within
                       ;; sensitive lines of PARENT that was found
                       ;; during phase 2.  For example:
-                      ;; 
+                      ;;
                       ;; #+ begin_quote
                       ;; Paragraph
                       ;; #+end_quote
@@ -7606,7 +7606,7 @@ the cache."
                             (move-start-to-next-match
                              (if last-match next-re fail-re)))
                           (when (and (or (not start) (eq (org-element-property :begin data) start))
-                                     (< (org-element-property :begin data) to-pos)) 
+                                     (< (org-element-property :begin data) to-pos))
                             ;; Calculate where next possible element
                             ;; starts and update START if needed.
 		            (setq start (next-element-start))
@@ -7627,7 +7627,7 @@ the cache."
                             (when (or (not restrict-elements)
                                       (memq (org-element-type data) restrict-elements))
                               ;; DATA matches restriction.  FUNC may
-                              ;; 
+                              ;;
                               ;; Call FUNC.  FUNC may move point.
                               (setq org-element-cache-map-continue-from nil)
                               (if org-element--cache-map-statistics
