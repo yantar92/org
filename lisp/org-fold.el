@@ -339,9 +339,9 @@ When ENTRY is non-nil, show the entire entry."
        (line-end-position 0)
        (save-excursion
          (if (re-search-forward
- 	      (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
+              (concat "[\r\n]" (org-get-limited-outline-regexp)) nil t)
              (line-end-position 0)
- 	   (point-max)))
+           (point-max)))
        t
        'outline))))
 
@@ -412,9 +412,9 @@ Show the heading too, if it is currently invisible."
      (line-end-position 0)
      (save-excursion
        (if (re-search-forward
- 	    (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
- 	   (match-beginning 1)
- 	 (point-max)))
+            (concat "[\r\n]\\(" (org-get-limited-outline-regexp) "\\)") nil t)
+           (match-beginning 1)
+         (point-max)))
      nil
      'outline)
     (when hide-drawers (org-cycle-hide-drawers 'children))))

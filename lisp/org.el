@@ -4572,6 +4572,10 @@ This is for getting out of special buffers like capture.")
 (defvar org-element-use-cache); Defined in org-element.el
 (defvar org-mode-loading nil
   "Non-nil during Org mode initialisation.")
+
+(defvar org-agenda-file-menu-enabled t
+  "When non-nil, refresh Agenda files in Org menu when loading Org.")
+
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias
@@ -6896,8 +6900,8 @@ the whole buffer."
                    (put-text-property
                     (save-excursion (org-back-to-heading-or-point-min t))
                     (save-excursion (if (org-before-first-heading-p)
-        			        (point-max)
-        			      (org-end-of-subtree t t)))
+                                        (point-max)
+                                      (org-end-of-subtree t t)))
                     'org-category
                     value)))))))))))
 
@@ -17108,9 +17112,6 @@ Your bug report will be posted to the Org mailing list.
       (when (re-search-backward "^\\(Subject: \\)Org mode version \\(.*?\\);[ \t]*\\(.*\\)" nil t)
 	(replace-match "\\1[BUG] \\3 [\\2]")))))
 
-(defvar org-agenda-file-menu-enabled t
-  "When non-nil, refresh Agenda files in Org menu when loading Org.")
-
 (defun org-install-agenda-files-menu ()
   "Install agenda file menu."
   (let ((bl (buffer-list)))
@@ -17819,13 +17820,13 @@ Also align node properties according to `org-property-format'."
                (let ((element (org-element-at-point))
                      block-content-ind some-ind)
                  (org-with-point-at (org-element-property :begin element)
-                   (setq block-content-ind (+ (current-indentation)
+                   (setq block-content-ind (+ (org-current-text-indentation)
                                               org-edit-src-content-indentation))
                    (forward-line)
 		   (save-match-data (re-search-forward "^[ \t]*\\S-" nil t))
                    (backward-char)
                    (setq some-ind (if (looking-at-p "#\\+end_src")
-                                      block-content-ind (current-indentation))))
+                                      block-content-ind (org-current-text-indentation))))
                  (indent-line-to (min block-content-ind some-ind))))
 	     (org-babel-do-key-sequence-in-edit-buffer (kbd "TAB")))
 	    (t
@@ -17934,7 +17935,7 @@ assumed to be significant there."
 		;; might break the list as a whole.  On the other
 		;; hand, when at a plain list, indent it as a whole.
 		(cond ((eq type 'plain-list)
-		       (let ((offset (- ind (current-indentation))))
+		       (let ((offset (- ind (org-current-text-indentation))))
 			 (unless (zerop offset)
 			   (indent-rigidly (org-element-property :begin element)
 					   (org-element-property :end element)
@@ -18297,12 +18298,18 @@ filling the current element."
   "Break line at point and indent, continuing comment if within one.
 The inserted newline is marked hard if variable
 `use-hard-newlines' is true, unless optional argument SOFT is
-non-nil."
-  (if soft (insert-and-inherit ?\n) (newline 1))
-  (save-excursion (forward-char -1) (delete-horizontal-space))
-  (delete-horizontal-space)
-  (indent-to-left-margin)
-  (insert-before-markers-and-inherit fill-prefix))
+non-nil.
+
+This function is a simplified version of `comment-indent-new-line'
+that bypasses the complex Emacs machinery dealing with comments.
+We instead rely on Org parser, utilizing `org-adaptive-fill-function'"
+  (let ((fill-prefix (org-adaptive-fill-function)))
+    (if soft (insert-and-inherit ?\n) (newline 1))
+    (save-excursion (forward-char -1) (delete-horizontal-space))
+    (delete-horizontal-space)
+    (indent-to-left-margin)
+    (when fill-prefix
+      (insert-before-markers-and-inherit fill-prefix))))
 
 
 ;;; Fixed Width Areas
@@ -18394,7 +18401,7 @@ region only contains such lines."
               (catch 'zerop
                 (while (< (point) end)
                   (unless (looking-at-p "[ \t]*$")
-                    (let ((ind (current-indentation)))
+                    (let ((ind (org-current-text-indentation)))
                       (setq min-ind (min min-ind ind))
                       (when (zerop ind) (throw 'zerop t))))
                   (forward-line)))))
@@ -18602,7 +18609,7 @@ strictly within a source block, use appropriate comment syntax."
 	      (goto-char (point-min))
 	      (while (and (not (eobp)) (not (zerop min-indent)))
 		(unless (looking-at "[ \t]*$")
-		  (setq min-indent (min min-indent (current-indentation))))
+		  (setq min-indent (min min-indent (org-current-text-indentation))))
 		(forward-line)))
 	    ;; Then loop over all lines.
 	    (save-excursion
