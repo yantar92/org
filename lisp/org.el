@@ -84,8 +84,8 @@
 
 (condition-case nil
     (load (concat (file-name-directory load-file-name)
-		  "org-loaddefs.el")
-	  nil t t t)
+		  "org-loaddefs")
+	  nil t nil t)
   (error
    (message "WARNING: No org-loaddefs.el file could be found from where org.el is loaded.")
    (sit-for 3)
@@ -170,7 +170,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-element-at-point-no-context "org-element" (&optional pom))
 (declare-function org-element-cache-refresh "org-element" (pos))
-(declare-function org-element-cache-reset "org-element" (&optional all))
+(declare-function org-element-cache-reset "org-element" (&optional all no-persistence))
 (declare-function org-element-cache-map "org-element" (func &rest keys))
 (declare-function org-element-contents "org-element" (element))
 (declare-function org-element-context "org-element" (&optional element))
@@ -1321,7 +1321,7 @@ Possible values for the file identifier are:
                  name as a subcommand.
 
  `directory'   Matches a directory
- `remote'      Matches a remote file, accessible through tramp or efs.
+ `remote'      Matches a remote file, accessible through tramp.
                Remote files most likely should be visited through Emacs
                because external applications cannot handle such paths.
 `auto-mode'    Matches files that are matched by any entry in `auto-mode-alist',
@@ -1538,13 +1538,15 @@ This may also be a cons cell where the behavior for `C-a' and
 			(const :tag "reversed: after tags first" reversed)))))
 
 (defcustom org-special-ctrl-k nil
-  "Non-nil means `C-k' will behave specially in headlines.
-When nil, `C-k' will call the default `kill-line' command.
-When t, the following will happen while the cursor is in the headline:
+  "Non-nil means that \\<org-mode-map>\\[org-kill-line] \
+will behave specially in headlines.
 
-- When at the beginning of a headline, kill the entire subtree.
-- When in the middle of the headline text, kill the text up to the tags.
-- When after the headline text and before the tags, kill all the tags."
+When nil, \\[org-kill-line] will call the default `kill-line' command.
+Otherwise, the following will happen when point is in a headline:
+
+- At the beginning of a headline, kill the entire line.
+- In the middle of the headline text, kill the text up to the tags.
+- After the headline text and before the tags, kill all the tags."
   :group 'org-edit-structure
   :type 'boolean)
 
@@ -3523,10 +3525,6 @@ You need to reload Org or to restart Emacs after customizing this."
 (declare-function dired-get-filename
 		  "dired"
 		  (&optional localp no-error-if-not-filep))
-(declare-function iswitchb-read-buffer
-		  "iswitchb"
-		  (prompt &optional
-			  default require-match _predicate start matches-set))
 (declare-function org-agenda-change-all-lines
 		  "org-agenda"
 		  (newhead hdmarker &optional fixface just-this))
@@ -3560,7 +3558,6 @@ You need to reload Org or to restart Emacs after customizing this."
 (defvar calc-embedded-open-formula)
 (defvar calc-embedded-open-mode)
 (defvar font-lock-unfontify-region-function)
-(defvar iswitchb-temp-buflist)
 (defvar org-agenda-tags-todo-honor-ignore-options)
 (defvar remember-data-file)
 (defvar texmathp-why)
@@ -6652,7 +6649,7 @@ function is being called interactively."
 		    (org-time-string-to-seconds (match-string 1))
 		  (float-time now))))
 	     ((= dcst ?p)
-	      (if (re-search-forward org-priority-regexp (line-end-position) t)
+              (if (re-search-forward org-priority-regexp (line-end-position) t)
 		  (string-to-char (match-string 2))
 		org-priority-default))
 	     ((= dcst ?r)
@@ -7561,7 +7558,8 @@ If not found, stay at current position and return nil."
 (defun org-create-dblock (plist)
   "Create a dynamic block section, with parameters taken from PLIST.
 PLIST must contain a :name entry which is used as the name of the block."
-  (when (string-match "\\S-" (buffer-substring (line-beginning-position) (line-end-position)))
+  (when (string-match "\\S-" (buffer-substring (line-beginning-position)
+                                               (line-end-position)))
     (end-of-line 1)
     (newline))
   (let ((col (current-column))
@@ -7631,6 +7629,7 @@ TYPE is the dynamic block type, as a string."
   "List all defined dynamic block types."
   (mapcar #'car org-dynamic-block-alist))
 
+;;;###org-autoload
 (defun org-dynamic-block-define (type func)
   "Define dynamic block TYPE with FUNC.
 TYPE is a string.  FUNC is the function creating the dynamic
@@ -8247,7 +8246,8 @@ When called through ELisp, arg is also interpreted in the following way:
 	    (run-hooks 'org-after-todo-state-change-hook)
 	    (when (and arg (not (member org-state org-done-keywords)))
 	      (setq head (org-get-todo-sequence-head org-state)))
-	    (put-text-property (line-beginning-position) (line-end-position) 'org-todo-head head)
+            (put-text-property (line-beginning-position)
+                               (line-end-position) 'org-todo-head head)
 	    ;; Do we need to trigger a repeat?
 	    (when now-done-p
 	      (when (boundp 'org-agenda-headline-snapshot-before-repeat)
@@ -8460,7 +8460,7 @@ all statistics cookies in the buffer."
 	      (beginning-of-line 1)
 	      (while (re-search-forward
 		      "\\(\\(\\[[0-9]*%\\]\\)\\|\\(\\[[0-9]*/[0-9]*\\]\\)\\)"
-		      (line-end-position) t)
+                      (line-end-position) t)
 		(replace-match (if (match-end 2) "[100%]" "[0/0]") t t)))))
 	(goto-char pos)
 	(move-marker pos nil)))))
@@ -8507,7 +8507,7 @@ statistics everywhere."
 			   (downcase (or (org-entry-get nil "COOKIE_DATA")
 					 "")))))
 	    (throw 'exit nil))
-	  (while (re-search-forward box-re (line-end-position) t)
+          (while (re-search-forward box-re (line-end-position) t)
 	    (setq cnt-all 0 cnt-done 0 cookie-present t)
 	    (setq is-percent (match-end 2) checkbox-beg (match-beginning 0))
 	    (save-match-data
@@ -8618,8 +8618,9 @@ right sequence."
      ((not kwd)
       (or (get-text-property (line-beginning-position) 'org-todo-head)
 	  (progn
-	    (setq p (next-single-property-change (line-beginning-position) 'org-todo-head
-						 nil (line-end-position)))
+            (setq p (next-single-property-change (line-beginning-position)
+                                                 'org-todo-head
+                                                 nil (line-end-position)))
 	    (get-text-property p 'org-todo-head))))
      ((not (member kwd org-todo-keywords-1))
       (car org-todo-keywords-1))
@@ -9081,13 +9082,13 @@ nil."
       (outline-next-heading)
       (while (re-search-backward re beg t)
 	(replace-match "")
-	(if (and (string-match "\\S-" (buffer-substring (line-beginning-position) (point)))
+        (if (and (string-match "\\S-" (buffer-substring (line-beginning-position) (point)))
 		 (equal (char-before) ?\ ))
 	    (backward-delete-char 1)
 	  (when (string-match "^[ \t]*$" (buffer-substring
-					  (line-beginning-position) (line-end-position)))
-	    (delete-region (line-beginning-position)
-			   (min (point-max) (1+ (line-end-position))))))))))
+                                          (line-beginning-position) (line-end-position)))
+            (delete-region (line-beginning-position)
+                           (min (point-max) (1+ (line-end-position))))))))))
 
 (defvar org-time-was-given) ; dynamically scoped parameter
 (defvar org-end-time-was-given) ; dynamically scoped parameter
@@ -10765,7 +10766,7 @@ Returns the new tags string, or nil to not change the current settings."
 	  (setq ov-start (match-beginning 1)
 		ov-end (match-end 1)
 		ov-prefix "")
-	(setq ov-start (1- (line-end-position))
+        (setq ov-start (1- (line-end-position))
 	      ov-end (1+ ov-start))
 	(skip-chars-forward "^\n\r")
 	(setq ov-prefix
@@ -10932,7 +10933,7 @@ Returns the new tags string, or nil to not change the current settings."
 		  (when (eq exit-after-next 'now) (throw 'exit t))
 		  (goto-char (point-min))
 		  (beginning-of-line 2)
-		  (delete-region (point) (line-end-position))
+                  (delete-region (point) (line-end-position))
 		  (org-fast-tag-insert "Current" current c-face)
 		  (org-set-current-tags-overlay current ov-prefix)
 		  (let ((tag-re (concat "\\[.\\] \\(" org-tag-re "\\)")))
@@ -12729,7 +12730,8 @@ user."
 			    (max (point-min) (- (point) 4)) (point))
 			   "    "))
 	  (insert " ")))
-      (let* ((ans (concat (buffer-substring (line-beginning-position) (point-max))
+      (let* ((ans (concat (buffer-substring (line-beginning-position)
+                                            (point-max))
 			  " " (or org-ans1 org-ans2)))
 	     (org-end-time-was-given nil)
 	     (f (org-read-date-analyze ans org-def org-defdecode))
@@ -12751,7 +12753,7 @@ user."
 	(when org-read-date-analyze-futurep
 	  (setq txt (concat txt " (=>F)")))
 	(setq org-read-date-overlay
-	      (make-overlay (1- (line-end-position)) (line-end-position)))
+              (make-overlay (1- (line-end-position)) (line-end-position)))
 	(org-overlay-display org-read-date-overlay txt 'secondary-selection)))))
 
 (defun org-read-date-analyze (ans def defdecode)
@@ -15225,7 +15227,7 @@ buffer boundaries with possible narrowing."
 				(org-element-property :begin link)
 				'org-image-overlay)))
 		      (if (and (car-safe old) refresh)
-			  (image-flush (overlay-get (cdr old) 'display))
+                          (image-flush (overlay-get (cdr old) 'display))
 			(let ((image (org--create-inline-image file width)))
 			  (when image
 			    (let ((ov (make-overlay
@@ -15774,14 +15776,14 @@ this function returns t, nil otherwise."
     (save-excursion
       (catch 'exit
 	(unless (org-region-active-p)
-	  (setq beg (line-beginning-position))
+          (setq beg (line-beginning-position))
 	  (beginning-of-line 2)
 	  (while (and (not (eobp)) ;; this is like `next-line'
 		      (org-invisible-p (1- (point))))
 	    (beginning-of-line 2))
 	  (setq end (point))
 	  (goto-char beg)
-	  (goto-char (line-end-position))
+          (goto-char (line-end-position))
 	  (setq end (max end (point)))
 	  (while (re-search-forward re end t)
 	    (when (org-invisible-p (match-beginning 0))
@@ -16696,7 +16698,7 @@ number of stars to add."
 	     (goto-char pos)
 	     (while (org-at-comment-p) (forward-line))
 	     (skip-chars-forward " \r\t\n")
-	     (line-beginning-position))))
+             (line-beginning-position))))
 	beg end toggled)
     ;; Determine boundaries of changes.  If a universal prefix has
     ;; been given, put the list in a region.  If region ends at a bol,
@@ -16710,9 +16712,9 @@ number of stars to add."
 	(setq beg (funcall skip-blanks (region-beginning))
 	      end (copy-marker (save-excursion
 				 (goto-char (region-end))
-				 (if (bolp) (point) (line-end-position)))))
+                                 (if (bolp) (point) (line-end-position)))))
       (setq beg (funcall skip-blanks (line-beginning-position))
-	    end (copy-marker (line-end-position))))
+            end (copy-marker (line-end-position))))
     ;; Ensure inline tasks don't count as headings.
     (org-with-limited-levels
      (save-excursion
@@ -17322,7 +17324,9 @@ and :keyword."
     ;; First the large context
     (cond
      ((org-at-heading-p)
-      (push (list :headline (line-beginning-position) (line-end-position)) clist)
+      (push (list :headline (line-beginning-position)
+                  (line-end-position))
+            clist)
       (when (progn
 	      (beginning-of-line 1)
 	      (looking-at org-todo-line-tags-regexp))
@@ -18138,11 +18142,18 @@ a footnote definition, try to fill the first paragraph within."
       ;; the buffer.  In that case, ignore filling.
       (cl-case (org-element-type element)
 	;; Use major mode filling function is source blocks.
-	(src-block (org-babel-do-in-edit-buffer
-                    (push-mark (point-min))
-                    (goto-char (point-max))
-                    (setq mark-active t)
-                    (funcall-interactively #'fill-paragraph justify 'region)))
+        (src-block
+         (let ((regionp (region-active-p)))
+           (org-babel-do-in-edit-buffer
+            ;; `org-babel-do-in-edit-buffer' will preserve region if it
+            ;; is within src block contents.  Otherwise, the region
+            ;; crosses src block boundaries.  We re-fill the whole src
+            ;; block in such scenario.
+            (when (and regionp (not (region-active-p)))
+              (push-mark (point-min))
+              (goto-char (point-max))
+              (setq mark-active t))
+            (funcall-interactively #'fill-paragraph justify 'region))))
 	;; Align Org tables, leave table.el tables as-is.
 	(table-row (org-table-align) t)
 	(table
@@ -18965,7 +18976,11 @@ depending on context."
 	    (call-interactively #'forward-sentence)))))))
 
 (defun org-kill-line (&optional _arg)
-  "Kill line, to tags or end of line."
+  "Kill line, to tags or end of line.
+
+The behavior of this command depends on the user options
+`org-special-ctrl-k' and `org-ctrl-k-protect-subtree' (which
+see)."
   (interactive)
   (cond
    ((or (not org-special-ctrl-k)
@@ -19040,7 +19055,7 @@ interactive command with similar behavior."
 		    (and (looking-at "[ \t]*$")
 			 (string-match
 			  "\\`\\*+\\'"
-			  (buffer-substring (line-beginning-position) (point)))))))
+                          (buffer-substring (line-beginning-position) (point)))))))
 	  swallowp)
       (cond
        ((and subtreep org-yank-folded-subtrees)
@@ -19073,7 +19088,7 @@ interactive command with similar behavior."
 	  (beginning-of-line 1)
 	  (push-mark beg 'nomsg)))
        ((and subtreep org-yank-adjusted-subtrees)
-	(let ((beg (line-beginning-position)))
+        (let ((beg (line-beginning-position)))
 	  (org-paste-subtree nil nil 'for-yank)
 	  (push-mark beg 'nomsg)))
        (t
