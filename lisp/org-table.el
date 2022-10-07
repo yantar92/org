@@ -59,7 +59,7 @@
 (declare-function org-element-parse-buffer "org-element" (&optional granularity visible-only))
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-type "org-element" (element))
-(declare-function org-element-cache-reset "org-element" (&optional all))
+(declare-function org-element-cache-reset "org-element" (&optional all no-persistence))
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 (declare-function org-export-create-backend "ox" (&rest rest) t)
 (declare-function org-export-data-with-backend "ox" (data backend info))
@@ -841,7 +841,7 @@ SIZE is a string Columns x Rows like for example \"3x2\"."
 	 (line (concat (apply 'concat indent "|" (make-list columns "  |"))
 		       "\n")))
     (if (string-match "^[ \t]*$" (buffer-substring-no-properties
-				  (line-beginning-position) (point)))
+                                  (line-beginning-position) (point)))
 	(beginning-of-line 1)
       (newline))
     ;; (mapcar (lambda (x) (insert line)) (make-list rows t))
@@ -1175,7 +1175,7 @@ When ALIGN is set, also realign the table."
       (goto-char (org-table-begin))
       (while (and (re-search-forward org-table-dataline-regexp end t)
 		  (setq cnt (1+ cnt))
-		  (< (line-end-position) pos))))
+                  (< (line-end-position) pos))))
     cnt))
 
 (defun org-table-current-column ()
@@ -1338,7 +1338,7 @@ However, when FORCE is non-nil, create new columns if necessary."
   (beginning-of-line 1)
   (when (> n 0)
     (while (and (> (setq n (1- n)) -1)
-		(or (search-forward "|" (line-end-position) t)
+                (or (search-forward "|" (line-end-position) t)
 		    (and force
 			 (progn (end-of-line 1)
 				(skip-chars-backward "^|")
@@ -1355,6 +1355,9 @@ However, when FORCE is non-nil, create new columns if necessary."
   "Insert a new column into the table."
   (interactive)
   (unless (org-at-table-p) (user-error "Not at a table"))
+  (when (eobp) (save-excursion (insert "\n")))
+  (unless (string-match-p "|[ \t]*$" (org-current-line-string))
+    (org-table-align))
   (org-table-find-dataline)
   (let ((col (max 1 (org-table-current-column)))
 	(beg (org-table-begin))
@@ -1649,6 +1652,9 @@ Swap with anything in target cell."
 With prefix ARG, insert below the current line."
   (interactive "P")
   (unless (org-at-table-p) (user-error "Not at a table"))
+  (when (eobp) (save-excursion (insert "\n")))
+  (unless (string-match-p "|[ \t]*$" (org-current-line-string))
+    (org-table-align))
   (org-table-with-shrunk-columns
    (let* ((line (buffer-substring (line-beginning-position) (line-end-position)))
 	  (new (org-table-clean-line line)))
@@ -1679,7 +1685,7 @@ With prefix ABOVE, insert above the current line."
     (org-table-align))
   (org-table-with-shrunk-columns
    (let ((line (org-table-clean-line
-		(buffer-substring (line-beginning-position) (line-end-position))))
+                (buffer-substring (line-beginning-position) (line-end-position))))
 	 (col (current-column)))
      (while (string-match "|\\( +\\)|" line)
        (setq line (replace-match
@@ -1728,7 +1734,8 @@ In particular, this does handle wide and invisible characters."
 	(dline (and (not (org-match-line org-table-hline-regexp))
 		    (org-table-current-dline))))
     (org-table-with-shrunk-columns
-     (kill-region (line-beginning-position) (min (1+ (line-end-position)) (point-max)))
+     (kill-region (line-beginning-position)
+                  (min (1+ (line-end-position)) (point-max)))
      (if (not (org-at-table-p)) (beginning-of-line 0))
      (org-move-to-column col)
      (when (and dline
@@ -2269,14 +2276,15 @@ For all numbers larger than LIMIT, shift them by DELTA."
 		 (format "@%d\\$[0-9]+=.*?\\(::\\|$\\)" remove))))
 	    s n a)
 	(when remove
-	  (while (re-search-forward re2 (line-end-position) t)
-	    (unless (save-match-data (org-in-regexp "remote([^)]+?)"))
-	      (if (equal (char-before (match-beginning 0)) ?.)
-		  (user-error
-		   "Change makes TBLFM term %s invalid, use undo to recover"
-		   (match-string 0))
-		(replace-match "")))))
-	(while (re-search-forward re (line-end-position) t)
+          (save-excursion
+            (while (re-search-forward re2 (line-end-position) t)
+	      (unless (save-match-data (org-in-regexp "remote([^)]+?)"))
+	        (if (equal (char-before (match-beginning 0)) ?.)
+		    (user-error
+		     "Change makes TBLFM term %s invalid, use undo to recover"
+		     (match-string 0))
+		  (replace-match ""))))))
+        (while (re-search-forward re (line-end-position) t)
 	  (unless (save-match-data (org-in-regexp "remote([^)]+?)"))
 	    (setq s (match-string 1) n (string-to-number s))
 	    (cond
@@ -3802,8 +3810,9 @@ FACE, when non-nil, for the highlight."
     (let ((id 0) (ih 0) hline eol str ov)
       (goto-char (org-table-begin))
       (while (org-at-table-p)
-	(setq eol (line-end-position))
-	(setq ov (make-overlay (line-beginning-position) (1+ (line-beginning-position))))
+        (setq eol (line-end-position))
+        (setq ov (make-overlay (line-beginning-position)
+                               (1+ (line-beginning-position))))
 	(push ov org-table-coordinate-overlays)
 	(setq hline (looking-at org-table-hline-regexp))
 	(setq str (if hline (format "I*%-2d" (setq ih (1+ ih)))
