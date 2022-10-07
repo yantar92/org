@@ -4861,7 +4861,7 @@ is active."
                                     nil (not inherited-tags) t)
 			      txt (org-agenda-format-item
 				   ""
-				   (buffer-substring-fontified
+				   (org-buffer-substring-fontified
                                     beg1 (line-end-position))
 				   level category tags t))
 			(org-add-props txt props
