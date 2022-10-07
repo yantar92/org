@@ -2554,6 +2554,16 @@ Return the updated communication channel."
 The copy preserves Org buffer-local variables, visibility and
 narrowing.
 
+IMPORTANT: The buffer copy may also have `buffer-file-name' copied.
+To prevent Emacs overwriting the original buffer file,
+`write-contents-functions' is set to (always).  Do not alter this
+variable and do not do anything that might alter it (like calling a
+major mode) to prevent data corruption.  Also, do note that Emacs may
+jump into the created buffer if the original file buffer is closed and
+then re-opened.  Making edits in the buffer copy may also trigger
+Emacs save dialogue.  Prefer using `org-export-with-buffer-copy' macro
+when possible.
+
 When optional argument BUFFER is non-nil, copy into BUFFER.
 
 Optional arguments DROP-VISIBILITY, DROP-NARROWING, DROP-CONTENTS, and
@@ -2633,6 +2643,10 @@ The function assumes BUFFER's major mode is `org-mode'."
 		     (and (not (memq var org-export-ignored-local-variables))
 			  (or (memq var
 				    '(default-directory
+                                       ;; Required to convert file
+                                       ;; links in the #+INCLUDEd
+                                       ;; files.  See
+                                       ;; `org-export--prepare-file-contents'.
 				       buffer-file-name
 				       buffer-file-coding-system
                                        ;; Needed to preserve folding state
@@ -2658,9 +2672,6 @@ The function assumes BUFFER's major mode is `org-mode'."
 	       ov-set))))
       (lambda ()
 	(let ((inhibit-modification-hooks t))
-          ;; Never write the buffer copy to disk, despite
-          ;; `buffer-file-name' not being nil.
-          (set 'write-contents-functions (list #'always))
 	  ;; Set major mode. Ignore `org-mode-hook' and other hooks as
 	  ;; they have been run already in BUFFER.
           (unless (eq major-mode 'org-mode)
@@ -2682,7 +2693,10 @@ The function assumes BUFFER's major mode is `org-mode'."
 	  (goto-char pos)
 	  ;; Overlays with invisible property.
 	  (pcase-dolist (`(,start ,end ,invis) ols)
-	    (overlay-put (make-overlay start end) 'invisible invis)))))))
+	    (overlay-put (make-overlay start end) 'invisible invis))
+          ;; Never write the buffer copy to disk, despite
+          ;; `buffer-file-name' not being nil.
+          (setq write-contents-functions (list #'always)))))))
 
 (defun org-export--delete-comment-trees ()
   "Delete commented trees and commented inlinetasks in the buffer.
