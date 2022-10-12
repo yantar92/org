@@ -439,7 +439,7 @@ FULL is given."
 This one does not require the space after the date, so it can be used
 on a string that terminates immediately after the date.")
 
-(defconst org-ts-regexp1 "\\(\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\) *\\([^]+0-9>\r\n -]*\\)\\( \\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\)"
+(defconst org-ts-regexp1 "\\(\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)\\(?: *\\([^]+0-9>\r\n -]+\\)\\)?\\( \\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\)"
   "Regular expression matching time strings for analysis.")
 
 (defconst org-ts-regexp2 (concat "<" org-ts-regexp1 "[^>\n]\\{0,16\\}>")
@@ -11199,8 +11199,11 @@ a *different* entry, you cannot use these techniques."
 
 	  (if (not scope)
 	      (progn
-		(org-agenda-prepare-buffers
-		 (and buffer-file-name (list buffer-file-name)))
+                ;; Agenda expects a file buffer.  Skip over refreshing
+                ;; agenda cache for non-file buffers.
+                (when buffer-file-name
+		  (org-agenda-prepare-buffers
+		   (and buffer-file-name (list buffer-file-name))))
 		(setq res
 		      (org-scan-tags
 		       func matcher org--matcher-tags-todo-only start-level)))
@@ -15308,10 +15311,9 @@ buffer boundaries with possible narrowing."
 
 (defun org-display-inline-remove-overlay (ov after _beg _end &optional _len)
   "Remove inline-display overlay if a corresponding region is modified."
-  (let ((inhibit-modification-hooks t))
-    (when (and ov after)
-      (delete ov org-inline-image-overlays)
-      (delete-overlay ov))))
+  (when (and ov after)
+    (delete ov org-inline-image-overlays)
+    (delete-overlay ov)))
 
 (defun org-remove-inline-images ()
   "Remove inline display of images."
@@ -16298,7 +16300,12 @@ This command does many different things, depending on context:
 	((or `babel-call `inline-babel-call)
 	 (let ((info (org-babel-lob-get-info context)))
 	   (when info (org-babel-execute-src-block nil info nil type))))
-	(`clock (org-clock-update-time-maybe))
+	(`clock
+         (if (org-at-timestamp-p 'lax)
+             ;; Update the timestamp as well.  `org-timestamp-change'
+             ;; will call `org-clock-update-time-maybe'.
+             (org-timestamp-change 0 'day)
+           (org-clock-update-time-maybe)))
 	(`dynamic-block
 	 (save-excursion
 	   (goto-char (org-element-property :post-affiliated context))
@@ -16684,6 +16691,9 @@ In a region:
   universal prefix argument.
 
 - If it is a plain list item, turn all plain list items into headings.
+  The checkboxes are converted to appropriate TODO or DONE keywords
+  (using `car' or `org-done-keywords' and `org-not-done-keywords' when
+  available).
 
 When converting a line into a heading, the number of stars is chosen
 such that the lines become children of the current entry.  However,
@@ -16742,7 +16752,15 @@ number of stars to add."
 			  (org-list-to-lisp t)
 			  (pcase (org-current-level)
 			    (`nil 1)
-			    (l (1+ (org-reduced-level l)))))
+			    (l (1+ (org-reduced-level l))))
+                          ;; Keywords to replace checkboxes.
+                          (list
+                           ;; [X]
+                           :cbon (concat (or (car org-done-keywords) "DONE") " ")
+                           ;; [ ]
+                           :cboff (concat (or (car org-not-done-keywords) "TODO") " ")
+                           ;; [-]
+                           :cbtrans (concat (or (car org-not-done-keywords) "TODO") " ")))
 			 "\n")))
 	     (setq toggled t))
 	   (forward-line)))
