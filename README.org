@@ -1,9 +1,192 @@
-This is a distribution of Org Mode, a major mode for keeping notes,
+This is my private development branch of Org Mode, a major mode for keeping notes,
 authoring documents, computational notebooks, literate programming,
 maintaining to-do lists, planning projects, and more — in a fast and
 effective plain text system.
 
 Check the [[https://orgmode.org][Org Mode website]] for more.
+
+ *This is not an official Org distribution*.  You can use this branch
+  to test upcoming Org features I personally develop.
+
+* Updates
+
+- [2022-04-25 Mon] Merged to master
+
+- Progress towards merging to master
+  - [X] =org-fold-core=
+  - [X] Write detailed documentation about internals (in the =.el= file headers)
+  - [X] Implement user-level customisation between old and new folding implementations
+  - [X] Cherry-pick unrelated patches and push to master
+  - [X] Discuss and finalise folding API in the mailing list
+  - [X] Discuss and finalise the full patch
+  - [ ] Merge =isearch.el= patches to Emacs master
+  - [ ] Discuss =org-special-properties= rewrite
+  - [ ] Discuss and possibly merge other changes
+    - [ ] Getting actual Org buffer fontification to agenda (i.e. pretty-symbols support)
+    - [ ] Pixel table alignment
+    - [ ] Various other patches
+
+- [2022-02-03 Thu] I have separated all the folding-related changes and submitted a clean patch to Org ML (https://list.orgmode.org/87a6f84edg.fsf@localhost/T/#u). The patch will hopefully be merged in the coming weeks.
+
+- [2021-09-02 Thu] I finally fixed =org-element-cache=. At least, I am not seeing any more problems. The cache is re-enabled by default now and several more built-in functions are making use of it.
+
+  Just in case, I left some self-checking code enabled. The cache will verify itself from time to time and report a warning if something is not right. If anyone is seeing warnings, please file an issue.
+
+- [2021-05-23 Sun] Significant speed up of visibility cycling, setting properties, planning, and clocking-in/out. New customisation option for deeper (dangerous) levels of performance optimisation. The element cache is disabled for now until I figure out some annoying bugs.
+
+  Some of the earlier performance optimisation efforts on master came with a drawback of slowing down visibility cycling. On master, property drawers had to be re-folded upon unfolding the containing headline. That unfolding is slow in huge buffers and not needed anymore since outline and drawer folds are independent in this branch. Drawer's folding state is preserved automatically if the containing heading is folded/unfolded. Now, visibility cycling should be almost instant.
+
+  Another performance bottleneck exists by design only in this branch. It is related to the fact that non-interactive buffer edits do not inherit text properties by default. Hence, I had to implement manual tracking of buffer edits to re-hide text inserted inside folded regions. The tracking is fairly fast for trivial buffer modifications. Yet, doing something like agenda bulk commands could still slow down Emacs noticeably. I fixed the slowness by making sure that buffer edits done by common built-in functions do not need to trigger re-hiding.
+
+  Optimisations in this branch are generally reducing the load on Emacs display engine as text properties are handled much more efficiently. Yet, Emacs can sometimes be slow even with text properties for especially large buffers. There is not much I can do about it without side-effects. However, some more optimisation is still possible when side-effects can be acceptable trade-off. See the docstring of =org-fold-core--optimise-for-huge-buffers= for details.
+
+  On the org-element-cache effort, I ran into hard-to-track issues related to elusive bugs in cache on-the-fly update code. They can break things pretty badly, so I am disabling the element cache for now until I can understand the cache code better and resolve the bugs.
+
+- [2021-05-08 Sat] Extended org-element-cache to store headlines. The cache is enabled by default now.
+
+  While waiting for the feedback from maintainers, I have been playing with org-element-cache to speed up folding and agendas. This is already coming beyond the scope of the initial ideas of org-fold, but the speedup appears to be significant enough to share with others.
+
+  Previously, org-element-cache was only limited to headline contents. I have added headings to the cache and modified some built-in functions to use the cached heading. In particular, global cycling on very large files is slightly faster now and retrieval of inherited tags is *a lot* faster. The fast tag retrieval halved the agenda generation times on my machine.
+
+  The org-element-cache is enabled by default in the branch. Also, I believe that I fixed the known bug with random Emacs hangs related to the cache.
+
+- [2021-04-12 Mon] Original folding mechanism using overlays is now supported as a user customisation; Submitted =org-fold-core= to the mailing list.
+
+  According to earlier discussion in the mailing list, this branch will be available as non-default user option at first. Then, wider auditory can test the new folding mechanism without introducing unexpected breakages for majority of users. I finally back-ported the original folding mechanism. The folding style can be customised using =org-fold-core-style= variable.
+
+  Also, I submitted the =org-fold-core= library for review. It seems that most of the org maintainers have been busy recently, so I am still waiting for the feedback.
+
+- [2021-03-18 Thu] Major improvement in Org mode startup time.
+
+  I managed to track down the bottlenecks during startup in large files. The most time-consuming are font-locking and hiding drawers/blocks (when there are many of such). Font-lock is now postponed until the text to be fontified is unfolded (why does font-lock even fontify hidden text??). org-cycle code is optimised for faster drawer/block folding.
+
+- [2021-03-03 Wed] New default branch: =feature/org-fold-universal-core=
+
+  This is a major rework of the =org-fold= internals. I aimed to make things more modular and easier to maintain. Now, the core org-independent functionality is separated into =org-fold-core= library.
+  
+
+* Org-mode::org-fold branch
+
+This branch is a re-implementation of Org-mode folding mechanism. This should help with performance on large files.
+
+The old mechanism is using [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Overlays.html#Overlays][overlays]], which are implemented with O(n) complexity in Emacs. It means that any attempt to move through hidden text in large org file will require time scaling with the number of drawers/folded subtrees (the problem [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Overlays.html#Overlays][Emacs manual]] warns about). More details in my old [[https://lists.gnu.org/archive/html/bug-gnu-emacs/2019-04/msg01387.html][bug report]]. For curious, historical reasons why overlays are not efficient can be found [[https://www.jwz.org/doc/lemacs.html][here]].
+
+This branch is hiding text using [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Text-Properties.html#Text-Properties][text properties]] instead of overlays. Text properties are much faster (just O(logN)). The effect should be noticeable in org files with more than ~1000 hidden elements (drawers or high-level headlines). More details about this branch development can be found in the Org-mode mailing list discussion thread: https://orgmode.org/list/87h7x9e5jo.fsf@localhost/. If one wants to know even more details, I tried my best to document all the logic in the comments of [[file:./lisp/org-fold.el]].
+
+This repository is aiming to simplify testing of the branch. Feel free to open issues if you find bugs.
+
+ *Important*: I cannot accept all the pull requests to avoid copyright issues. Only people finished FSF copyright assignment can contribute to this branch. See [[https://orgmode.org/contribute.html][Org mode contribution instructions]] for details.
+* Testing the branch
+
+An example file demonstrating difference in performance can be found in https://lists.gnu.org/archive/html/bug-gnu-emacs/2019-04/txte6kQp35VOm.txt
+The difference is especially striking if one uses older versions of org. Note that the file on mailing list is saved with =txt= extension. One might need to run =M-x org-mode= to activate Org-mode in the downloaded file.
+
+The only visible impact when using the branch should be improved Emacs responsiveness. Everything else should be same with latest Org-mode master branch. If you encounter any anomalies, please report them.
+
+To test the branch with clean Emacs configuration, one can use the following command:
+
+#+begin_src bash
+cd /path/to/cloned/org/folder/
+emacs -Q -L ./lisp -l org
+#+end_src
+
+* Installation
+
+** Using [[https://github.com/hlissner/doom-emacs/][Doom Emacs]]
+
+Adopted from [[https://github.com/hlissner/doom-emacs/blob/develop/modules/lang/org/packages.el][lang/org/packages.el]]. Before doom commit [[https://github.com/hlissner/doom-emacs/commit/cfb8a866dc6181889b0c056abf4fdd3f34fb144b][c8bfbda]] use =:build= instead of =:pre-build=
+#+begin_src emacs-lisp
+;; ~/.doom.d/packages.el
+(package! org-mode
+  :recipe (:host github
+           :repo "yantar92/org"
+           :branch "feature/org-fold-universal-core"
+           :files ("*.el" "lisp/*.el")
+           :pre-build (with-temp-file (expand-file-name "org-version.el" (straight--repos-dir "org"))
+                        (insert "(fset 'org-release (lambda () \"9.5\"))\n"
+                                "(fset 'org-git-version #'ignore)\n"
+                                "(provide 'org-version)\n"))
+           :includes (org)))
+#+end_src
+
+** Using [[https://github.com/raxod502/straight.el/][Straight.el]]
+
+#+begin_src emacs-lisp
+;; Should be placed inside init.el before anything loading org-mode 
+(straight-use-package '(org :host github :repo "yantar92/org" :branch "feature/org-fold-universal-core"
+			    :files (:defaults "contrib/lisp/*.el")))
+#+end_src
+
+** Manual installation
+
+Quoting [[https://orgmode.org/org.html#Installation][original org-mode installation instructions]], but for this repo:
+
+You can clone Org’s repository and install Org like this:
+
+#+begin_src bash
+cd ~/src/
+git clone https://github.com/yantar92/org
+cd org/
+make autoloads
+#+end_src
+
+Note that in this case, ‘make autoloads’ is mandatory: it defines Org’s version in ‘org-version.el’ and Org’s autoloads in ‘org-loaddefs.el’.
+
+Make sure you set the load path correctly in your Emacs init file:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "~/path/to/orgdir/lisp")
+#+end_src
+
+The repository contains contributed libraries that are not included in Emacs. If you want to use them, add the ‘contrib/’ directory to your load path:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "~/path/to/orgdir/contrib/lisp" t)
+#+end_src
+
+You can also compile with ‘make’, generate the documentation with ‘make doc’, create a local configuration with ‘make config’ and install Org with ‘make install’. Please run ‘make help’ to get the list of compilation/installation options.
+
+For more detailed explanations on Org’s build system, please check the Org Build System page on [[https://orgmode.org/worg/dev/org-build-system.html][Worg]].
+
+** Manual installation on Windows (for people, who are not familiar with git)
+
+- Download the branch (Green "Code" button -> "download ZIP")
+
+- Unpack the downloaded ZIP file
+
+- Find "lisp" folder inside the unpacked "org" folder.  Note the path to the "lisp" folder
+
+- If you don't have init file, create/open it using =C-x C-f ~/.emacs= (or .emacs/init.el if you already have that)
+
+- Add =(setq load-path (append '("the/path/you/just/noted") load-path))= to your Emacs init file (on top of the file). Make sure that the path here has "lisp" folder at the end. Example:
+
+#+begin_src emacs-lisp
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/lisp") load-path))
+#+end_src
+
+- Find Find "cintrib/lisp" folder inside the unpacked "org" folder. Note the path.
+
+- Add =(setq load-path (append '("the/path/you/just/noted") load-path))= to your Emacs init file after the previously added line. Example:
+
+#+begin_src emacs-lisp
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/contrib/lisp") load-path))
+#+end_src
+
+- Add =(require 'org)= in the next line. At the end, you should have something similar to below:
+
+#+begin_src emacs-lisp
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/lisp") load-path))
+(setq load-path (append '("~/Software/emacs/org-feature-org-fold/contrib/lisp") load-path))
+(require 'org)
+#+end_src
+
+- Save the file =C-x C-s=.
+
+- Reload Emacs
+
+- Try to run `M-x org-version`. The message should contain the path to where you downloaded the org-fold branch. If it does not, feel free to open an issue on Github or drop me an email (see https://github.com/yantar92).
+
+
 
 * Install Org
 
