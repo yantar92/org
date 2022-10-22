@@ -257,22 +257,22 @@ optional prefix argument COMPILE, the tangled Emacs Lisp file is
 byte-compiled before it is loaded."
   (interactive "fFile to load: \nP")
   (let ((tangled-file (concat (file-name-sans-extension file) ".el")))
-    ;; Tangle only if the Org file is newer than the Elisp file.
-    (unless (org-file-newer-than-p
-	     tangled-file
-	     (file-attribute-modification-time
-	      (file-attributes (file-truename file))))
+    ;; Tangle only if the Elisp file is older than the Org file.
+    ;; Catch the case when the .el file exists while the .org file is missing.
+    (unless (file-exists-p file)
+      (error "File to tangle does not exist: %s" file))
+    (when (file-newer-than-file-p file tangled-file)
+      (org-babel-tangle-file file
+                             tangled-file
+                             (rx string-start
+                                 (or "emacs-lisp" "elisp")
+                                 string-end))
       ;; Make sure that tangled file modification time is
       ;; updated even when `org-babel-tangle-file' does not make changes.
       ;; This avoids re-tangling changed FILE where the changes did
       ;; not affect the tangled code.
       (when (file-exists-p tangled-file)
-        (set-file-times tangled-file))
-      (org-babel-tangle-file file
-                             tangled-file
-                             (rx string-start
-                                 (or "emacs-lisp" "elisp")
-                                 string-end)))
+        (set-file-times tangled-file)))
     (if compile
 	(progn
 	  (byte-compile-file tangled-file)
@@ -13000,12 +13000,14 @@ DEF-FLAG   is t when a double ++ or -- indicates shift relative to
            the DEFAULT date rather than TODAY."
   (require 'parse-time)
   (when (and
-	 (string-match
-	  (concat
-	   "\\`[ \t]*\\([-+]\\{0,2\\}\\)"
-	   "\\([0-9]+\\)?"
-	   "\\([hdwmy]\\|\\(" (mapconcat 'car parse-time-weekdays "\\|") "\\)\\)?"
-	   "\\([ \t]\\|$\\)") s)
+         ;; Force case-insensitive.
+         (let ((case-fold-search t))
+	   (string-match
+	    (concat
+	     "\\`[ \t]*\\([-+]\\{0,2\\}\\)"
+	     "\\([0-9]+\\)?"
+	     "\\([hdwmy]\\|\\(" (mapconcat 'car parse-time-weekdays "\\|") "\\)\\)?"
+	     "\\([ \t]\\|$\\)") s))
 	 (or (> (match-end 1) (match-beginning 1)) (match-end 4)))
     (let* ((dir (if (> (match-end 1) (match-beginning 1))
 		    (string-to-char (substring (match-string 1 s) -1))
@@ -14924,7 +14926,7 @@ a HTML file."
 				'(1.0 . 1.0)))
 	 (scale (* (if buffer (car image-size-adjust) (cdr image-size-adjust))
 		   (or (plist-get options (if buffer :scale :html-scale)) 1.0)))
-	 (dpi (* scale (if buffer (org--get-display-dpi) 140.0)))
+	 (dpi (* scale (if (and buffer (display-graphic-p)) (org--get-display-dpi) 140.0)))
 	 (fg (or (plist-get options (if buffer :foreground :html-foreground))
 		 "Black"))
 	 (bg (or (plist-get options (if buffer :background :html-background))

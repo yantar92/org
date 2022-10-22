@@ -1895,7 +1895,7 @@ INFO is a plist used as a communication channel."
       (?c . ,(plist-get info :creator))
       (?l . ,language)
       (?L . ,(capitalize language))
-      (?D . ,(org-export-get-date info)))))
+      (?D . ,(org-export-data (org-export-get-date info) info)))))
 
 (defun org-latex--insert-compiler (info)
   "Insert LaTeX_compiler info into the document.
@@ -4112,7 +4112,8 @@ contextual information."
 	      (replace-regexp-in-string
 	       "^[ \t]+" (lambda (m) (format "\\hspace*{%dem}" (length m)))
 	       (replace-regexp-in-string
-	        "^[ \t]*\\\\\\\\$" "\\vspace*{1em}"
+                (concat "^[ \t]*" (regexp-quote org-latex-line-break-safe) "$")
+	        "\\vspace*{1em}"
 	        (replace-regexp-in-string
 	         "\\([ \t]*\\\\\\\\\\)?[ \t]*\n"
                  (concat org-latex-line-break-safe "\n")

@@ -4282,8 +4282,8 @@ Marker is at point, or at POS if non-nil.  Org mode keeps a list
 of these markers and resets them when they are no longer in use."
   (let ((m (copy-marker (or pos (point)) t)))
     (setq org-agenda-last-marker-time (float-time))
-    (if org-agenda-buffer
-	(with-current-buffer org-agenda-buffer
+    (if (and org-agenda-buffer (buffer-live-p org-agenda-buffer))
+        (with-current-buffer org-agenda-buffer
 	  (push m org-agenda-markers))
       (push m org-agenda-markers))
     m))
@@ -9389,7 +9389,7 @@ When called with a prefix argument, include all archive files as well."
 	      			   (mapconcat
                                     #'identity
 	      			    (append
-	      			     (assoc-default 'category org-agenda-filters-preset)
+                                     (assoc-default 'category org-agenda-filters-preset)
 	      			     org-agenda-category-filter)
 	      			    "")
 				   "]")

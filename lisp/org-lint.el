@@ -1070,8 +1070,10 @@ Use \"export %s\" instead"
 	  (`keyword
 	   (when (string= (org-element-property :key datum) "PROPERTY")
 	     (let ((value (org-element-property :value datum)))
-	       (when (string-match "\\`header-args\\(?::\\(\\S-+\\)\\)?\\+? *"
-				   value)
+	       (when (or (string-match "\\`header-args\\(?::\\(\\S-+\\)\\)?\\+ *"
+				       value)
+                         (string-match "\\`header-args\\(?::\\(\\S-+\\)\\)? *"
+				       value))
 		 (funcall verify
 			  datum
 			  (match-string 1 value)
@@ -1080,8 +1082,10 @@ Use \"export %s\" instead"
 	  (`node-property
 	   (let ((key (org-element-property :key datum)))
 	     (when (let ((case-fold-search t))
-		     (string-match "\\`HEADER-ARGS\\(?::\\(\\S-+\\)\\)?\\+?"
-				   key))
+		     (or (string-match "\\`HEADER-ARGS\\(?::\\(\\S-+\\)\\)?\\+"
+				       key)
+                         (string-match "\\`HEADER-ARGS\\(?::\\(\\S-+\\)\\)?"
+				       key)))
 	       (funcall verify
 			datum
 			(match-string 1 key)
