@@ -2737,6 +2737,16 @@ INFO is a plist holding contextual information.  See
 	   (format "<text:a xlink:type=\"simple\" xlink:href=\"#%s\">%s</text:a>"
 		   (org-export-get-reference destination info)
 		   (or desc (org-export-get-ordinal destination info))))
+          ;; Link to a file, corresponding to string return value of
+          ;; `org-export-resolve-id-link'.  Export it is file link.
+          (plain-text
+           (let ((file-link (org-element-copy link)))
+             (org-element-put-property file-link :type "file")
+             (org-element-put-property file-link :path destination)
+             (org-element-put-property
+              file-link
+              :raw-link (format "file:%s" destination))
+             (org-odt-link file-link desc info)))
 	  ;; Fuzzy link points to some element (e.g., an inline image,
 	  ;; a math formula or a table).
 	  (otherwise
@@ -2903,9 +2913,20 @@ contextual information."
 	(setq output
 	      (replace-regexp-in-string (car pair) (cdr pair) output t nil))))
     ;; Handle break preservation if required.
-    (when (plist-get info :preserve-breaks)
-      (setq output (replace-regexp-in-string
-		    "\\(\\\\\\\\\\)?[ \t]*\n" "<text:line-break/>" output t)))
+    (if (plist-get info :preserve-breaks)
+        (setq output (replace-regexp-in-string
+		      "\\(\\\\\\\\\\)?[ \t]*\n" "<text:line-break/>" output t))
+      ;; OpenDocument schema recognizes newlines as spaces, which may
+      ;; not be desired in scripts that do not separate words with
+      ;; spaces (for example, Han script).  `fill-region' is able to
+      ;; handle such situations.
+      (setq output
+            (with-temp-buffer
+              (insert output)
+              ;; Unfill.
+              (let ((fill-column (point-max)))
+                (fill-region (point-min) (point-max)))
+              (buffer-string))))
     ;; Return value.
     output))
 
