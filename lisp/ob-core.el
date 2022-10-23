@@ -3181,7 +3181,10 @@ situations in which is it not appropriate."
 	      (or (memq (string-to-char cell) '(?\( ?' ?` ?\[))
 		  (string= cell "*this*")))
 	 (eval (read cell) t))
-	((eq (string-to-char cell) ?\") (read cell))
+	((save-match-data
+           (and (string-match "^[[:space:]]*\"\\(.*\\)\"[[:space:]]*$" cell)
+                (not (string-match "[^\\]\"" (match-string 1 cell)))))
+         (read cell))
 	(t (org-no-properties cell))))
 
 (defun org-babel--string-to-number (string)
@@ -3226,7 +3229,7 @@ If the table is trivial, then return it as a scalar."
 (defun org-babel-string-read (cell)
   "Strip nested \"s from around strings."
   (org-babel-read (or (and (stringp cell)
-                           (string-match "\"\\(.+\\)\"" cell)
+                           (string-match "^[[:space:]]*\"\\(.+\\)\"[[:space:]]*$" cell)
                            (match-string 1 cell))
                       cell) t))
 
@@ -3297,7 +3300,8 @@ Emacs shutdown.")
 (defmacro org-babel-temp-directory ()
   "Return temporary directory suitable for `default-directory'."
   `(if (file-remote-p default-directory)
-       org-babel-remote-temporary-directory
+       (concat (file-remote-p default-directory)
+	       org-babel-remote-temporary-directory)
      (or (and org-babel-temporary-directory
 	      (file-exists-p org-babel-temporary-directory)
 	      org-babel-temporary-directory)
@@ -3308,42 +3312,31 @@ Emacs shutdown.")
 Passes PREFIX and SUFFIX directly to `make-temp-file' with the
 value of `temporary-file-directory' temporarily set to the value
 of `org-babel-temporary-directory'."
-  (if (file-remote-p default-directory)
-      (let ((prefix
-             (concat (file-remote-p default-directory)
-                     (expand-file-name
-		      prefix org-babel-remote-temporary-directory))))
-        (make-temp-file prefix nil suffix))
-    (let ((temporary-file-directory
-	   (or (and org-babel-temporary-directory
-		    (file-exists-p org-babel-temporary-directory)
-		    org-babel-temporary-directory)
-	       temporary-file-directory)))
-      (make-temp-file prefix nil suffix))))
+  (make-temp-file
+   (concat (file-name-as-directory (org-babel-temp-directory)) prefix)
+   nil
+   suffix))
+
+(defmacro org-babel-temp-stable-directory ()
+  "Return temporary stable directory."
+  `(let ((org-babel-temporary-directory org-babel-temporary-stable-directory))
+     (org-babel-temp-directory)))
 
 (defun org-babel-temp-stable-file (data prefix &optional suffix)
   "Create a temporary file in the `org-babel-remove-temporary-stable-directory'.
 The file name is stable with respect to DATA.  The file name is
 constructed like the following: PREFIXDATAhashSUFFIX."
-  (if (file-remote-p default-directory)
-      (let* ((prefix
-              (concat (file-remote-p default-directory)
-                      (expand-file-name
-		       prefix org-babel-temporary-stable-directory)))
-             (path (concat prefix (format "%s" (sxhash data)) (or suffix ""))))
-        (with-temp-file path)
-        path)
-    (let* ((temporary-file-directory
-	    (or (and org-babel-temporary-stable-directory
-		     (file-exists-p org-babel-temporary-stable-directory)
-		     org-babel-temporary-stable-directory)
-	        temporary-file-directory))
-           (path (concat
-                  (expand-file-name
-		   prefix org-babel-temporary-stable-directory)
-                  (format "%s" (sxhash data)) (or suffix ""))))
-      (with-temp-file path)
-      path)))
+  (let ((path
+         (format
+          "%s%s%s%s"
+          (file-name-as-directory (org-babel-temp-stable-directory))
+          prefix
+          (sxhash data)
+          (or suffix ""))))
+    ;; Create file.
+    (with-temp-file path)
+    ;; Return it.
+    path))
 
 (defun org-babel-remove-temporary-directory ()
   "Remove `org-babel-temporary-directory' on Emacs shutdown."

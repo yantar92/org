@@ -39,7 +39,11 @@
   (let ((buf (get-buffer-create org-babel-error-buffer-name)))
     (with-current-buffer buf
       (goto-char (point-max))
-      (save-excursion (insert stderr)))
+      (save-excursion
+        (insert
+         (if (string-empty-p stderr)
+             (format "[ Babel evaluation exited with code %S ]" exit-code)
+           stderr))))
     (display-buffer buf))
   (message "Babel evaluation exited with code %S" exit-code))
 
@@ -67,7 +71,8 @@ its results, otherwise display STDERR with
 		    (compilation-mode))
 		  ;; Compilation-mode enforces read-only, but Babel expects the buffer modifiable.
 		  (setq buffer-read-only nil))))
-	    nil)
+            ;; Return output, if any.
+	    (buffer-string))
 	(buffer-string)))))
 
 (defun org-babel-eval-read-file (file)
