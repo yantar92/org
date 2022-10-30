@@ -25,21 +25,22 @@
 
 ;;; Commentary:
 
-;; Support for evaluating clojure code
+;; Support for evaluating Clojure code
 
 ;; Requirements:
 
-;; - clojure (at least 1.2.0)
+;; - Clojure (at least 1.2.0)
 ;; - clojure-mode
-;; - inf-clojure, cider or SLIME
+;; - inf-clojure, Cider, SLIME, babashka or nbb
 
 ;; For clojure-mode, see https://github.com/clojure-emacs/clojure-mode
-;; For cider, see https://github.com/clojure-emacs/cider
-;; For inf-clojure, see https://github.com/clojure-emacs/cider
+;; For inf-clojure, see https://github.com/clojure-emacs/inf-clojure
+;; For Cider, see https://github.com/clojure-emacs/cider
+;; For SLIME, see https://slime.common-lisp.dev
 ;; For babashka, see https://github.com/babashka/babashka
 ;; For nbb, see https://github.com/babashka/nbb
 
-;; For SLIME, the best way to install these components is by following
+;; For SLIME, the best way to install its components is by following
 ;; the directions as set out by Phil Hagelberg (Technomancy) on the
 ;; web page: https://technomancy.us/126
 
@@ -132,7 +133,7 @@ or set the `:backend' header argument"))))
 		   (format "(let [%s]\n%s)"
 			   (mapconcat
 			    (lambda (var)
-			      (format "%S %S" (car var) (cdr var)))
+			      (format "%S '%S" (car var) (cdr var)))
 			    vars
 			    "\n      ")
 			   body))))))
@@ -238,8 +239,10 @@ or set the `:backend' header argument"))))
 				"value")))
 		result0)))
       (ob-clojure-string-or-list
+       ;; Filter out s-expressions that return `nil' (string "nil"
+       ;; from nrepl eval) or comment forms (actual `nil' from nrepl)
        (reverse (delete "" (mapcar (lambda (r)
-				     (replace-regexp-in-string "nil" "" r))
+				     (replace-regexp-in-string "nil" "" (or r "")))
 				   result0)))))))
 
 (defun ob-clojure-eval-with-slime (expanded params)

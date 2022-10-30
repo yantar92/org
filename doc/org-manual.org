@@ -231,7 +231,8 @@ the mailing list moderators have to do.].  We ask you to read and
 respect the
 [[https://www.gnu.org/philosophy/kind-communication.html][GNU Kind
 Communications Guidelines]] when sending messages on this mailing
-list.
+list.  Please allow up to one month for the response and followup if
+no response is received on the bug report.
 
 #+findex: org-version
 #+findex: org-submit-bug-report
@@ -11488,6 +11489,12 @@ command:
     and fall back on that number if none is found.
   - When set to nil, try to get the width from an =#+ATTR.*= keyword
     and fall back on the original width if none is found.
+
+
+#+vindex: org-cycle-inline-images-display
+Inline images can also be displayed when cycling the folding state.
+When custom option ~org-cycle-inline-images-display~ is set, the
+visible inline images under subtree will be displayed automatically.
 
 ** Captions
 :PROPERTIES:

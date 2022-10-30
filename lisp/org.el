@@ -7454,10 +7454,26 @@ the default is \"/\"."
 	(setf (substring fpath (- width 2)) "..")))
     fpath))
 
-(defun org-display-outline-path (&optional file current separator just-return-string)
+(defun org-get-title (&optional buffer-or-file)
+  "Collect title from the provided `org-mode' BUFFER-OR-FILE.
+
+Returns nil if there are no #+TITLE property."
+  (let ((buffer (cond ((bufferp buffer-or-file) buffer-or-file)
+                      ((stringp buffer-or-file) (find-file-noselect
+                                                 buffer-or-file))
+                      (t (current-buffer)))))
+    (with-current-buffer buffer
+      (org-macro-initialize-templates)
+      (let ((title (assoc-default "title" org-macro-templates)))
+        (unless (string= "" title)
+          title)))))
+
+(defun org-display-outline-path (&optional file-or-title current separator just-return-string)
   "Display the current outline path in the echo area.
 
-If FILE is non-nil, prepend the output with the file name.
+If FILE-OR-TITLE is `title', prepend outline with file title.  If
+it is non-nil or title is not present in document, prepend
+outline path with the file name.
 If CURRENT is non-nil, append the current heading to the output.
 SEPARATOR is passed through to `org-format-outline-path'.  It separates
 the different parts of the path and defaults to \"/\".
@@ -7465,6 +7481,7 @@ If JUST-RETURN-STRING is non-nil, return a string, don't display a message."
   (interactive "P")
   (let* (case-fold-search
 	 (bfn (buffer-file-name (buffer-base-buffer)))
+         (title-prop (when (eq file-or-title 'title) (org-get-title)))
 	 (path (and (derived-mode-p 'org-mode) (org-get-outline-path)))
 	 res)
     (when current (setq path (append path
@@ -7476,7 +7493,10 @@ If JUST-RETURN-STRING is non-nil, return a string, don't display a message."
 	  (org-format-outline-path
 	   path
 	   (1- (frame-width))
-	   (and file bfn (concat (file-name-nondirectory bfn) separator))
+	   (and file-or-title bfn (concat (if (and (eq file-or-title 'title) title-prop)
+					      title-prop
+					    (file-name-nondirectory bfn))
+				 separator))
 	   separator))
     (add-face-text-property 0 (length res)
 			    `(:height ,(face-attribute 'default :height))
@@ -11365,7 +11385,7 @@ See also `org-scan-tags'."
 			     (pv (match-string 7 term))
 			     (regexp (eq (string-to-char pv) ?{))
 			     (strp (eq (string-to-char pv) ?\"))
-			     (timep (string-match-p "^\"[[<].*[]>]\"$" pv))
+			     (timep (string-match-p "^\"[[<][0-9]+.*[]>]\"$" pv))
 			     (po (org-op-to-function (match-string 6 term)
 						     (if timep 'time strp))))
 			(setq pv (if (or regexp strp) (substring pv 1 -1) pv))
@@ -11601,13 +11621,12 @@ in Lisp code use `org-set-tags' instead."
     (cond
      ((equal '(4) arg) (org-align-tags t))
      ((and (org-region-active-p) org-loop-over-headlines-in-active-region)
-      (let (org-loop-over-headlines-in-active-region) ;  hint: infinite recursion.
+      (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
+		    'region-start-level 'region))
+            org-loop-over-headlines-in-active-region) ;  hint: infinite recursion.
 	(org-map-entries
 	 #'org-set-tags-command
-	 nil
-	 (if (eq org-loop-over-headlines-in-active-region 'start-level)
-	     'region-start-level
-	   'region)
+	 nil cl
 	 (lambda () (when (org-invisible-p) (org-end-of-subtree nil t))))))
      (t
       (save-excursion
@@ -16173,16 +16192,16 @@ SNIPPETS-P indicates if this is run to create snippet images for HTML."
 
 (defvar-local org-inline-image-overlays nil)
 
-(defun org-toggle-inline-images (&optional include-linked)
+(defun org-toggle-inline-images (&optional include-linked beg end)
   "Toggle the display of inline images.
 INCLUDE-LINKED is passed to `org-display-inline-images'."
   (interactive "P")
   (if org-inline-image-overlays
       (progn
-	(org-remove-inline-images)
+	(org-remove-inline-images beg end)
 	(when (called-interactively-p 'interactive)
 	  (message "Inline image display turned off")))
-    (org-display-inline-images include-linked)
+    (org-display-inline-images include-linked nil beg end)
     (when (called-interactively-p 'interactive)
       (message (if org-inline-image-overlays
 		   (format "%d images displayed inline"
@@ -16272,8 +16291,8 @@ BEG and END define the considered part.  They default to the
 buffer boundaries with possible narrowing."
   (interactive "P")
   (when (display-graphic-p)
-    (unless refresh
-      (org-remove-inline-images)
+    (when refresh
+      (org-remove-inline-images beg end)
       (when (fboundp 'clear-image-cache) (clear-image-cache)))
     (let ((end (or end (point-max))))
       (org-with-point-at (or beg (point-min))
@@ -16423,11 +16442,16 @@ buffer boundaries with possible narrowing."
     (delete ov org-inline-image-overlays)
     (delete-overlay ov)))
 
-(defun org-remove-inline-images ()
+(defun org-remove-inline-images (&optional beg end)
   "Remove inline display of images."
   (interactive)
-  (mapc #'delete-overlay org-inline-image-overlays)
-  (setq org-inline-image-overlays nil))
+  (let* ((beg (or beg (point-min)))
+         (end (or end (point-max)))
+         (overlays (overlays-in beg end)))
+    (dolist (ov overlays)
+      (when (memq ov org-inline-image-overlays)
+        (setq org-inline-image-overlays (delq ov org-inline-image-overlays))
+        (delete-overlay ov)))))
 
 (defvar org-self-insert-command-undo-counter 0)
 (defvar org-speed-command nil)
