@@ -446,8 +446,8 @@ specifications than `frame-title-format', which see."
 you can do \"~$ sudo apt-get install xprintidle\" if you are using
 a Debian-based distribution.
 
-Alternatively, can find x11idle.c in the org-contrib repository at
-https://git.sr.ht/~bzg/org-contrib"
+Alternatively, can find x11idle.c in
+https://orgmode.org/worg/code/scripts/x11idle.c"
   :group 'org-clock
   :version "24.4"
   :package-version '(Org . "8.0")
@@ -1201,8 +1201,7 @@ If `only-dangling-p' is non-nil, only ask to resolve dangling
 
 (defvar org-x11idle-exists-p
   ;; Check that x11idle exists
-  (and (eq window-system 'x)
-       (eq 0 (call-process-shell-command
+  (and (eq 0 (call-process-shell-command
               (format "command -v %s" org-clock-x11idle-program-name)))
        ;; Check that x11idle can retrieve the idle time
        ;; FIXME: Why "..-shell-command" rather than just `call-process'?
@@ -2484,16 +2483,6 @@ the currently selected interval size."
 	  (org-update-dblock)
 	  t)))))
 
-(defun org-clock-get-file-title (file-name)
-  "Get the file title from FILE-NAME as a string.
-Return short FILE-NAME if #+title keyword is not found."
-  (with-current-buffer (find-file-noselect file-name)
-    (org-macro-initialize-templates)
-    (let ((title (assoc-default "title" org-macro-templates)))
-      (if (null title)
-          (file-name-nondirectory file-name)
-        title))))
-
 ;;;###autoload
 (defun org-dblock-write:clocktable (params)
   "Write the standard clocktable."
@@ -2750,7 +2739,8 @@ from the dynamic block definition."
 			     "\n")
 
                      (if filetitle
-                         (org-clock-get-file-title file-name)
+                         (or (org-get-title file-name)
+                             (file-name-nondirectory file-name))
                        (file-name-nondirectory file-name))
 		     (if level?    "| " "") ;level column, maybe
 		     (if timestamp "| " "") ;timestamp column, maybe

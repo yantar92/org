@@ -1068,9 +1068,15 @@ current item's tree, in an indirect buffer."
   :type 'boolean)
 
 (defcustom org-agenda-show-outline-path t
-  "Non-nil means show outline path in echo area after line motion."
+  "Non-nil means show outline path in echo area after line motion.
+
+If set to `title', show outline path with prepended document
+title.  Fallback to file name is no title is present."
   :group 'org-agenda-startup
-  :type 'boolean)
+  :type '(choice
+	  (const :tag "Don't show outline path in agenda view." nil)
+	  (const :tag "Show outline path with prepended file name." t)
+	  (const :tag "Show outline path with prepended document title." title)))
 
 (defcustom org-agenda-start-with-entry-text-mode nil
   "The initial value of entry-text-mode in a newly created agenda window."
@@ -5404,7 +5410,7 @@ of what a project is and how to check if it stuck, customize the variable
   "Hook run when the fancy diary buffer is cleaned up.")
 
 (defun org-agenda-cleanup-fancy-diary ()
-  "Remove unwanted stuff in buffer created by `fancy-diary-display'.
+  "Remove unwanted stuff in buffer created by `diary-fancy-display'.
 This gets rid of the date, the underline under the date, and the
 dummy entry installed by Org mode to ensure non-empty diary for
 each date.  It also removes lines that contain only whitespace."
@@ -9490,7 +9496,7 @@ When called with a prefix argument, include all archive files as well."
 	       (org-agenda-tree-to-indirect-buffer nil)
 	     (org-agenda-show)))
       (and org-agenda-show-outline-path
-	   (org-with-point-at m (org-display-outline-path t))))))
+	   (org-with-point-at m (org-display-outline-path org-agenda-show-outline-path))))))
 
 (defun org-agenda-show-tags ()
   "Show the tags applicable to the current item."

@@ -76,6 +76,7 @@
 (declare-function org-list-struct "org-list" ())
 (declare-function org-list-to-generic "org-list" (LIST PARAMS))
 (declare-function org-list-to-lisp "org-list" (&optional delete))
+(declare-function org-list-to-org "org-list" (list &optional params))
 (declare-function org-macro-escape-arguments "org-macro" (&rest args))
 (declare-function org-mark-ring-push "org" (&optional pos buffer))
 (declare-function org-narrow-to-subtree "org" (&optional element))
@@ -805,7 +806,7 @@ guess will be made."
                          (format "at position %d" (nth 5 info)))))
 	    (setq exec-start-time (current-time)
                   result
-		  (let ((r (funcall cmd body params)))
+		  (let ((r (save-current-buffer (funcall cmd body params))))
 		    (if (and (eq (cdr (assq :result-type params)) 'value)
 			     (or (member "vector" result-params)
 				 (member "table" result-params))
@@ -1835,7 +1836,8 @@ its current beginning instead.
 Return the point at the beginning of the current source block.
 Specifically at the beginning of the #+BEGIN_SRC line.  Also set
 match-data relatively to `org-babel-src-block-regexp', which see.
-If the point is not on a source block then return nil."
+If the point is not on a source block or within blank lines after an
+src block, then return nil."
   (let ((element (or src-block (org-element-at-point))))
     (when (eq (org-element-type element) 'src-block)
       (let ((end (org-element-property :end element)))
@@ -1987,17 +1989,21 @@ With optional prefix argument ARG, jump backward ARG many source blocks."
 When called from inside of a code block the current block is
 split.  When called from outside of a code block a new code block
 is created.  In both cases if the region is demarcated and if the
-region is not active then the point is demarcated."
+region is not active then the point is demarcated.
+
+When called within blank lines after a code block, create a new code
+block of the same language with the previous."
   (interactive "P")
   (let* ((info (org-babel-get-src-block-info 'no-eval))
 	 (start (org-babel-where-is-src-block-head))
+         ;; `start' will be nil when within space lines after src block.
 	 (block (and start (match-string 0)))
 	 (headers (and start (match-string 4)))
 	 (stars (concat (make-string (or (org-current-level) 1) ?*) " "))
 	 (upper-case-p (and block
 			    (let (case-fold-search)
 			      (string-match-p "#\\+BEGIN_SRC" block)))))
-    (if info
+    (if (and info start) ;; At src block, but not within blank lines after it.
         (mapc
          (lambda (place)
            (save-excursion
@@ -2009,26 +2015,27 @@ region is not active then the point is demarcated."
                                                      (line-end-position)))
                  (delete-region (line-beginning-position) (line-end-position)))
                (insert (concat
-			(if (looking-at "^") "" "\n")
-			indent (if upper-case-p "#+END_SRC\n" "#+end_src\n")
-			(if arg stars indent) "\n"
-			indent (if upper-case-p "#+BEGIN_SRC " "#+begin_src ")
-			lang
-			(if (> (length headers) 1)
+		        (if (looking-at "^") "" "\n")
+		        indent (if upper-case-p "#+END_SRC\n" "#+end_src\n")
+		        (if arg stars indent) "\n"
+		        indent (if upper-case-p "#+BEGIN_SRC " "#+begin_src ")
+		        lang
+		        (if (> (length headers) 1)
 			    (concat " " headers) headers)
-			(if (looking-at "[\n\r]")
+		        (if (looking-at "[\n\r]")
 			    ""
 			  (concat "\n" (make-string (current-column) ? )))))))
 	   (move-end-of-line 2))
          (sort (if (org-region-active-p) (list (mark) (point)) (list (point))) #'>))
       (let ((start (point))
-	    (lang (completing-read
-		   "Lang: "
-		   (mapcar #'symbol-name
-			   (delete-dups
-			    (append (mapcar #'car org-babel-load-languages)
-				    (mapcar (lambda (el) (intern (car el)))
-					    org-src-lang-modes))))))
+	    (lang (or (car info) ; Reuse language from previous block.
+                      (completing-read
+		       "Lang: "
+		       (mapcar #'symbol-name
+			       (delete-dups
+			        (append (mapcar #'car org-babel-load-languages)
+				        (mapcar (lambda (el) (intern (car el)))
+					        org-src-lang-modes)))))))
 	    (body (delete-and-extract-region
 		   (if (org-region-active-p) (mark) (point)) (point))))
 	(insert (concat (if (looking-at "^") "" "\n")
