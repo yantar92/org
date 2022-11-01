@@ -5983,7 +5983,7 @@ the inserted text when done.
 
 When REMOVE is non-nil, remove the subtree from the clipboard."
   (interactive "P")
-  (setq tree (or tree (and kill-ring (current-kill 0))))
+  (setq tree (or tree (current-kill 0)))
   (unless (org-kill-is-subtree-p tree)
     (user-error
      (substitute-command-keys
@@ -6058,8 +6058,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
        (when (or for-yank (called-interactively-p 'interactive))
          (message "Clipboard pasted as level %d subtree" new-level))
        (when (and (not for-yank) ; in this case, org-yank will decide about folding
-		  kill-ring
-		  (equal org-subtree-clip (current-kill 0))
+		  (equal org-subtree-clip tree)
 		  org-subtree-clip-folded)
          ;; The tree was folded before it was killed/copied
          (org-fold-subtree t))
@@ -6073,7 +6072,7 @@ headline level is not the largest headline level in the tree.
 So this will actually accept several entries of equal levels as well,
 which is OK for `org-paste-subtree'.
 If optional TXT is given, check this string instead of the current kill."
-  (let* ((kill (or txt (and kill-ring (current-kill 0)) ""))
+  (let* ((kill (or txt (ignore-errors (current-kill 0))))
 	 (re (org-get-limited-outline-regexp))
 	 (^re (concat "^" re))
 	 (start-level (and kill
