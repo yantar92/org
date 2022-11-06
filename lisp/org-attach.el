@@ -140,7 +140,10 @@ Selective means to respect the inheritance setting in
 	  (const :tag "Respect org-use-property-inheritance" selective)))
 
 (defcustom org-attach-store-link-p nil
-  "Non-nil means store a link to a file when attaching it."
+  "Non-nil means store a link to a file when attaching it.
+When t, store the link to original file location.
+When `file', store link to the attached file location.
+When `attached', store attach: link to the attached file."
   :group 'org-attach
   :version "24.1"
   :type '(choice
@@ -549,8 +552,8 @@ METHOD may be `cp', `mv', `ln', `lns' or `url' default taken from
 			 (file-name-nondirectory attach-file))
 		   org-stored-links))
             ((eq org-attach-store-link-p t)
-             (push (list (concat "file:" attach-file)
-			 (file-name-nondirectory attach-file))
+             (push (list (concat "file:" file)
+			 (file-name-nondirectory file))
 		   org-stored-links))
 	    ((eq org-attach-store-link-p 'file)
 	     (push (list (concat "file:" attach-file)
