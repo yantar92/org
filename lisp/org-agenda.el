@@ -5825,7 +5825,7 @@ displayed in agenda view."
 	   (regexp-quote
 	    (substring
 	     (format-time-string
-	      (car org-time-stamp-formats)
+	      (org-time-stamp-format)
 	      (org-encode-time	; DATE bound by calendar
 	       0 0 0 (nth 1 date) (car date) (nth 2 date)))
 	     1 11))
@@ -6108,7 +6108,7 @@ then those holidays will be skipped."
 		  (regexp-quote
 		   (substring
 		    (format-time-string
-		     (car org-time-stamp-formats)
+		     (org-time-stamp-format)
 		     (org-encode-time  ; DATE bound by calendar
 		      0 0 0 (nth 1 date) (car date) (nth 2 date)))
 		    1 11))))
