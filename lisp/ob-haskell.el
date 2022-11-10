@@ -136,7 +136,7 @@ a parameter, such as \"ghc -v\"."
 	 (comint-preoutput-filter-functions
 	  (cons 'ansi-color-filter-apply comint-preoutput-filter-functions))
          (raw (org-babel-comint-with-output
-		  (session org-babel-haskell-eoe t full-body)
+		  (session org-babel-haskell-eoe nil full-body)
                 (insert (org-trim full-body))
                 (comint-send-input nil t)
                 (insert org-babel-haskell-eoe)
@@ -150,7 +150,7 @@ a parameter, such as \"ghc -v\"."
               (`output (mapconcat #'identity (reverse results) "\n"))
               (`value (car results)))))
        (org-babel-result-cond (cdr (assq :result-params params))
-	 result (org-babel-script-escape result)))
+	 result (when result (org-babel-script-escape result))))
      (org-babel-pick-name (cdr (assq :colname-names params))
 			  (cdr (assq :colname-names params)))
      (org-babel-pick-name (cdr (assq :rowname-names params))

@@ -48,6 +48,7 @@
 (declare-function org-get-export-keywords "org" ())
 (declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
 (declare-function org-get-tags "org" (&optional pos local))
+(declare-function org-time-stamp-format "org" (&optional with-time inactive custom))
 (declare-function org-link-heading-search-string "ol" (&optional string))
 (declare-function org-tag-alist-to-string "org" (alist &optional skip-key))
 
@@ -70,7 +71,6 @@
 (defvar org-property-re)
 (defvar org-startup-options)
 (defvar org-tag-re)
-(defvar org-time-stamp-formats)
 (defvar org-todo-keywords-1)
 (defvar org-todo-line-regexp)
 
@@ -230,7 +230,7 @@ When completing for #+STARTUP, for example, this function returns
 
 (defun pcomplete/org-mode/file-option/date ()
   "Complete arguments for the #+DATE file option."
-  (pcomplete-here (list (format-time-string (car org-time-stamp-formats)))))
+  (pcomplete-here (list (format-time-string (org-time-stamp-format)))))
 
 (defun pcomplete/org-mode/file-option/email ()
   "Complete arguments for the #+EMAIL file option."

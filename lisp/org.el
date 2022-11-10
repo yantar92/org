@@ -471,8 +471,17 @@ The time stamps may be either active or inactive.")
   "Regular expression for specifying repeated events.
 After a match, group 1 contains the repeat expression.")
 
-(defconst org-time-stamp-formats '("<%Y-%m-%d %a>" . "<%Y-%m-%d %a %H:%M>")
-  "Formats for `format-time-string' which are used for time stamps.")
+(defconst org-time-stamp-formats '("%Y-%m-%d %a" . "%Y-%m-%d %a %H:%M")
+  "Formats for `format-time-string' which are used for time stamps.
+
+The value is a cons cell containing two strings.  The `car' and `cdr'
+of the cons cell are used to format time stamps that do not and do
+contain time, respectively.
+
+Leading \"<\"/\"[\" and trailing \">\"/\"]\" pair will be stripped
+from the format strings.
+
+Also, see `org-time-stamp-format'.")
 
 ;;;; Clock and Planning
 
@@ -2393,22 +2402,48 @@ To turn this on on a per-file basis, insert anywhere in the file:
 (make-variable-buffer-local 'org-display-custom-times)
 
 (defcustom org-time-stamp-custom-formats
-  '("<%m/%d/%y %a>" . "<%m/%d/%y %a %H:%M>") ; american
-  "Custom formats for time stamps.  See `format-time-string' for the syntax.
+  '("%m/%d/%y %a" . "%m/%d/%y %a %H:%M") ; american
+  "Custom formats for time stamps.
+
+See `format-time-string' for the syntax.
+
 These are overlaid over the default ISO format if the variable
 `org-display-custom-times' is set.  Time like %H:%M should be at the
 end of the second format.  The custom formats are also honored by export
-commands, if custom time display is turned on at the time of export."
-  :group 'org-time
-  :type 'sexp)
+commands, if custom time display is turned on at the time of export.
 
-(defun org-time-stamp-format (&optional long inactive)
-  "Get the right format for a time string."
-  (let ((f (if long (cdr org-time-stamp-formats)
-	     (car org-time-stamp-formats))))
-    (if inactive
-	(concat "[" (substring f 1 -1) "]")
-      f)))
+Leading \"<\" and trailing \">\" pair will be stripped from the format
+strings."
+  :group 'org-time
+  :type '(cons string string))
+
+(defun org-time-stamp-format (&optional with-time inactive custom)
+  "Get timestamp format for a time string.
+
+The format is based on `org-time-stamp-formats' (if CUSTOM is nil) or or
+`org-time-stamp-custom-formats' (if CUSTOM if non-nil).
+
+When optional argument WITH-TIME is non-nil, the timestamp will contain
+time.
+
+When optional argument INACTIVE is nil, format active timestamp.
+When `no-brackets', strip timestamp brackets.
+Otherwise, format inactive timestamp."
+  (let ((format (funcall
+                 (if with-time #'cdr #'car)
+                 (if custom
+                     org-time-stamp-custom-formats
+                   org-time-stamp-formats))))
+    ;; Strip brackets, if any.
+    (when (or (and (string-prefix-p "<" format)
+                   (string-suffix-p ">" format))
+              (and (string-prefix-p "[" format)
+                   (string-suffix-p "]" format)))
+      (setq format (substring format 1 -1)))
+    (pcase inactive
+      (`no-brackets format)
+      (`nil (concat "<" format ">"))
+      (_ (concat "[" format "]")))))
 
 (defcustom org-deadline-warning-days 14
   "Number of days before expiration during which a deadline becomes active.
@@ -5109,25 +5144,22 @@ frame is not changed."
     (run-hook-with-args 'org-cycle-hook 'all)
     (and (window-live-p cwin) (select-window cwin))))
 
-(defun org-get-indirect-buffer (&optional buffer heading)
-  (setq buffer (or buffer (current-buffer)))
-  (let ((n 1) (base (buffer-name buffer)) bname)
-    (while (buffer-live-p
-	    (get-buffer
-	     (setq bname
-		   (concat base "-"
-			   (if heading (concat heading "-" (number-to-string n))
-			     (number-to-string n))))))
-      (setq n (1+ n)))
-    (condition-case nil
-        (let ((indirect-buffer (make-indirect-buffer buffer bname 'clone)))
-          ;; Decouple folding state.  We need to do it manually since
-          ;; `make-indirect-buffer' does not run
-          ;; `clone-indirect-buffer-hook'.
-          (org-fold-core-decouple-indirect-buffer-folds)
-          ;; Return the buffer.
-          indirect-buffer)
-      (error (make-indirect-buffer buffer bname)))))
+(cl-defun org-get-indirect-buffer (&optional (buffer (current-buffer)) heading)
+  "Return an indirect buffer based on BUFFER.
+If HEADING, append it to the name of the new buffer."
+  (let* ((base-buffer (or (buffer-base-buffer buffer) buffer))
+         (buffer-name (generate-new-buffer-name
+                       (format "%s%s"
+                               (buffer-name base-buffer)
+                               (if heading
+                                   (concat "::" heading)
+                                 ""))))
+         (indirect-buffer (make-indirect-buffer base-buffer buffer-name 'clone)))
+    ;; Decouple folding state.  We need to do it manually since
+    ;; `make-indirect-buffer' does not run
+    ;; `clone-indirect-buffer-hook'.
+    (org-fold-core-decouple-indirect-buffer-folds)
+    indirect-buffer))
 
 (defun org-set-frame-title (title)
   "Set the title of the current frame to the string TITLE."
@@ -12748,23 +12780,20 @@ user."
       (save-excursion
 	(end-of-line 1)
 	(while (not (equal (buffer-substring
-			    (max (point-min) (- (point) 4)) (point))
-			   "    "))
+			  (max (point-min) (- (point) 4)) (point))
+			 "    "))
 	  (insert " ")))
       (let* ((ans (concat (buffer-substring (line-beginning-position)
                                             (point-max))
 			  " " (or org-ans1 org-ans2)))
 	     (org-end-time-was-given nil)
 	     (f (org-read-date-analyze ans org-def org-defdecode))
-	     (fmts (if org-display-custom-times
-		       org-time-stamp-custom-formats
-		     org-time-stamp-formats))
-	     (fmt (if (or org-with-time
-			  (and (boundp 'org-time-was-given) org-time-was-given))
-		      (cdr fmts)
-		    (car fmts)))
+	     (fmt (org-time-stamp-format
+                   (or org-with-time
+                       (and (boundp 'org-time-was-given) org-time-was-given))
+                   org-read-date-inactive
+                   org-display-custom-times))
 	     (txt (format-time-string fmt (org-encode-time f)))
-	     (txt (if org-read-date-inactive (concat "[" (substring txt 1 -1) "]") txt))
 	     (txt (concat "=> " txt)))
 	(when (and org-end-time-was-given
 		   (string-match org-plain-time-of-day-regexp txt))
@@ -13093,9 +13122,8 @@ PRE and POST are optional strings to be inserted before and after the
 stamp.
 The command returns the inserted time stamp."
   (org-fold-core-ignore-modifications
-    (let ((fmt (funcall (if with-hm 'cdr 'car) org-time-stamp-formats))
+    (let ((fmt (org-time-stamp-format with-hm inactive))
 	  stamp)
-      (when inactive (setq fmt (concat "[" (substring fmt 1 -1) "]")))
       (insert-before-markers-and-inherit (or pre ""))
       (when (listp extra)
         (setq extra (car extra))
@@ -17635,7 +17663,8 @@ Optional argument ELEMENT contains element at BEG."
   (org-with-wide-buffer
    (when beg (goto-char beg))
    (setq element (or element (org-element-at-point)))
-   (if (not (org-element-lineage element '(headline inlinetask)))
+   (if (or (eq (org-element-type element) 'headline)
+           (not (org-element-lineage element '(headline inlinetask))))
        nil ; Not inside heading.
      ;; Skip to top-level parent in section.
      (while (not (eq 'section (org-element-type (org-element-property :parent element))))
@@ -18739,7 +18768,7 @@ Otherwise, use its start."
   "Non-nil when TIMESTAMP has a time specified."
   (org-element-property :hour-start timestamp))
 
-(defun org-timestamp-format (timestamp format &optional end utc)
+(defun org-format-timestamp (timestamp format &optional end utc)
   "Format a TIMESTAMP object into a string.
 
 FORMAT is a format specifier to be passed to
@@ -18800,13 +18829,13 @@ it has a `diary' type."
   (let ((type (org-element-property :type timestamp)))
     (if (or (not org-display-custom-times) (eq type 'diary))
 	(org-element-interpret-data timestamp)
-      (let ((fmt (funcall (if (org-timestamp-has-time-p timestamp) #'cdr #'car)
-			  org-time-stamp-custom-formats)))
+      (let ((fmt (org-time-stamp-format
+                  (org-timestamp-has-time-p timestamp) nil 'custom)))
 	(if (and (not boundary) (memq type '(active-range inactive-range)))
-	    (concat (org-timestamp-format timestamp fmt)
+	    (concat (org-format-timestamp timestamp fmt)
 		    "--"
-		    (org-timestamp-format timestamp fmt t))
-	  (org-timestamp-format timestamp fmt (eq boundary 'end)))))))
+		    (org-format-timestamp timestamp fmt t))
+	  (org-format-timestamp timestamp fmt (eq boundary 'end)))))))
 
 ;;; Other stuff
 

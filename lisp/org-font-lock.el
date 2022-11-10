@@ -37,6 +37,7 @@
 (declare-function org-element-property "org-element" (property element))
 (declare-function org-element-link-parser "org-element" ())
 (declare-function org-element-type "org-element" (element))
+(declare-function org-time-stamp-format "org" (&optional with-time inactive custom))
 
 (defvar org-element-all-objects)
 (defvar org-element-paragraph-separate)
@@ -44,7 +45,6 @@
 (defvar org-indent-indentation-per-level)
 (defvar org-inlinetask-show-first-star)
 (defvar org-ellipsis)
-(defvar org-time-stamp-custom-formats)
 (defvar org-tsr-regexp-both)
 (defvar org-done-keywords)
 (defvar org-tag-re)
@@ -498,11 +498,10 @@ If TAG is a number, get the corresponding match group."
 	(setq off (- (match-end 0) (match-beginning 0)))))
     (setq end (- end off))
     (setq with-hm (and (nth 1 t1) (nth 2 t1))
-	  tf (funcall (if with-hm 'cdr 'car) org-time-stamp-custom-formats)
+	  tf (org-time-stamp-format with-hm 'no-brackets 'custom)
 	  time (org-fix-decoded-time t1)
 	  str (org-add-props
-		  (format-time-string
-		   (substring tf 1 -1) (org-encode-time time))
+		  (format-time-string tf (org-encode-time time))
 		  nil 'mouse-face 'highlight))
     (org-font-lock-compose str beg end)))
 

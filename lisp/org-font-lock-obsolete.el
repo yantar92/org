@@ -116,10 +116,10 @@ This is needed for font-lock setup.")
 		   ;; stars of a headline as closing marker for bold
 		   ;; markup either.
 		   (not (and (equal marker "*")
-			   (save-excursion
-			     (forward-char)
-			     (skip-chars-backward "*")
-			     (looking-at-p org-outline-regexp-bol))))
+			     (save-excursion
+			       (forward-char)
+			       (skip-chars-backward "*")
+			       (looking-at-p org-outline-regexp-bol))))
 		   ;; Match full emphasis markup regexp.
 		   (looking-at (if verbatim? org-verbatim-re org-emph-re))
 		   ;; Do not span over paragraph boundaries.
@@ -141,8 +141,8 @@ This is needed for font-lock setup.")
 	      (when verbatim?
 		(org-remove-flyspell-overlays-in
 		 (match-beginning 0) (match-end 0))
-                (when (and (org-fold-core-folding-spec-p 'org-link)
-                           (org-fold-core-folding-spec-p 'org-link-description))
+                (when (and (org-fold-folding-spec-p 'org-link)
+                           (org-fold-folding-spec-p 'org-link-description))
                   (org-fold-region (match-beginning 0) (match-end 0) nil 'org-link)
                   (org-fold-region (match-beginning 0) (match-end 0) nil 'org-link-description))
 		(remove-text-properties (match-beginning 2) (match-end 2)
