@@ -1444,7 +1444,7 @@ Alternatively, this may be a Lisp function that does the
 processing, so you could use this to apply the machinery of
 AUCTeX or the Emacs LaTeX mode.  This function should accept the
 file name as its single argument."
-  :group 'org-export-pdf
+  :group 'org-export-latex
   :type '(choice
 	  (repeat :tag "Shell command sequence"
 		  (string :tag "Shell command"))
@@ -1673,12 +1673,13 @@ Return the new header."
     (if (not (string-match "\\\\babelprovide\\[.*\\]{\\(.+\\)}" header))
 	header
       (let ((prov (match-string 1 header)))
-	(when (equal "AUTO" prov)
-	  (replace-regexp-in-string (format
-				     "\\(\\\\babelprovide\\[.*\\]\\)\\({\\)%s}" prov)
-				    (format "\\1\\2%s}"
-					    (or language language-ini-only))
-				    header t))))))
+	(if (equal "AUTO" prov)
+	    (replace-regexp-in-string (format
+				       "\\(\\\\babelprovide\\[.*\\]\\)\\({\\)%s}" prov)
+				      (format "\\1\\2%s}"
+					      (or language language-ini-only))
+				      header t)
+	  header)))))
 
 (defun org-latex-guess-polyglossia-language (header info)
   "Set the Polyglossia language according to the LANGUAGE keyword.
