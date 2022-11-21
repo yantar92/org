@@ -3652,7 +3652,10 @@ can define them in the file with
 #+begin_example
 ,#+LINK: bugzilla  https://10.1.2.9/bugzilla/show_bug.cgi?id=
 ,#+LINK: duckduckgo https://duckduckgo.com/?q=%s
+,#+LINK: "Nu Html Checker" https://validator.w3.org/nu/?doc=%h
 #+end_example
+
+The abbreviations containing spaces must be quoted.
 
 In-buffer completion (see [[*Completion]]) can be used after =[= to
 complete link abbreviations.  You may also define a Lisp function that
@@ -7479,7 +7482,7 @@ its location in the outline tree, but behaves in the following way:
   #+vindex: org-cycle-open-archived-trees
   It does not open when you attempt to do so with a visibility cycling
   command (see [[*Visibility Cycling]]).  You can force cycling archived
-  subtrees with {{{kbd(C-TAB)}}}, or by setting the option
+  subtrees with {{{kbd(C-c C-TAB)}}}, or by setting the option
   ~org-cycle-open-archived-trees~.  Also normal outline commands, like
   ~org-show-all~, open archived subtrees.
 
@@ -13027,17 +13030,17 @@ exporter insert the preamble.  See the variable
 ~org-html-preamble-format~ for the format string.
 
 Set ~org-html-preamble~ to a string to override the default format
-string.  If the string is a function, the HTML exporter expects the
-function to return a string upon execution.  The HTML exporter inserts
-this string in the preamble.  The HTML exporter does not insert
-a preamble if ~org-html-preamble~ is set ~nil~.
+string.  If set to a function, the HTML exporter expects the function
+to return a string upon execution.  The HTML exporter inserts this
+string in the preamble.  The HTML exporter does not insert a preamble
+if ~org-html-preamble~ is set ~nil~.
 
-The default value for ~org-html-postamble~ is ~auto~, which makes the
-HTML exporter build a postamble from looking up author's name, email
-address, creator's name, and date.  Set ~org-html-postamble~ to ~t~ to
-insert the postamble in the format specified in the
-~org-html-postamble-format~ variable.  The HTML exporter does not
-insert a postamble if ~org-html-postamble~ is set to ~nil~.
+The above also applies to ~org-html-postamble~ and
+~org-html-postamble-format~.  In addition, ~org-html-postamble~ can be
+set to ~auto~ (its default value), which makes the HTML exporter build
+a postamble from looking up author's name, email address, creator's
+name, and date.
+
 
 *** Quoting HTML tags
 :PROPERTIES:
@@ -18167,10 +18170,12 @@ The =cache= header argument can have one of two values: =yes= or =no=.
 In this example, both functions are cached.  But =caller= runs only if
 the result from =random= has changed since the last run.
 
+# +1 here is to work around Emacs bug#59293.
+# Otherwise, (1) is recognized as footnote reference by info.el.
 #+begin_example
 ,#+NAME: random
 ,#+BEGIN_SRC R :cache yes
-  runif(1)
+  runif(+1)
 ,#+END_SRC
 
 ,#+RESULTS[a2a72cd647ad44515fab62e144796432793d68e1]: random
@@ -18461,7 +18466,8 @@ value listed above.  E.g.,
 :UNNUMBERED: notoc
 :END:
 
-Handling options after collecting the results.
+Handling options after collecting the results.  Choose one of the
+options; they are mutually exclusive.
 
 - =replace= ::
 
@@ -18475,8 +18481,10 @@ Handling options after collecting the results.
 
 - =none= ::
 
-  Do not process results at all.  No inserting in the Org mode buffer
-  nor echo them in the minibuffer.  Usage example: =:results none=.
+  Compute results, but do not do anything with them.  No inserting in
+  the Org mode buffer nor echo them in the minibuffer.  The results
+  can still be used when referenced from another code block.
+  Usage example: =:results none=.
 
 - =append= ::
 
@@ -19774,9 +19782,10 @@ manual, but here is a consolidated list for easy reference.
 #+cindex: special keywords
 
 In-buffer settings start with =#+=, followed by a keyword, a colon,
-and then a word for each setting.  Org accepts multiple settings on
-the same line.  Org also accepts multiple lines for a keyword.  This
-manual describes these settings throughout.  A summary follows here.
+one or more spaces, and then a word for each setting.  Org accepts
+multiple settings on the same line.  Org also accepts multiple lines
+for a keyword.  This manual describes these settings throughout.  A
+summary follows here.
 
 #+cindex: refresh set-up
 {{{kbd(C-c C-c)}}} activates any changes to the in-buffer settings.

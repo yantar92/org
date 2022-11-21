@@ -51,6 +51,7 @@
 (declare-function org-time-stamp-format "org" (&optional with-time inactive custom))
 (declare-function org-link-heading-search-string "ol" (&optional string))
 (declare-function org-tag-alist-to-string "org" (alist &optional skip-key))
+(declare-function org-time-stamp-format "org" (&optional with-time inactive custom))
 
 (defvar org-babel-common-header-args-w-values)
 (defvar org-current-tag-alist)
