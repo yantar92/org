@@ -139,6 +139,44 @@ rely on the details of visibility state implementation in
 backend.  From now on, using =outline-*= functions is strongly
 discouraged when working with Org files.
 
+*** HTML export uses MathJax 3+ instead of MathJax 2
+
+Org now uses MathJax 3 by default instead of MathJax 2.  During HTML
+exports, Org automatically converts all legacy MathJax 2 options to
+the corresponding MathJax 3+ options, except for the ~path~ option in
+which now /must/ point to a file containing MathJax version 3 or
+later.  The new Org does /not/ work with the legacy MathJax 2.
+
+Further, if you need to use a non-default ~font~ or ~linebreaks~ (now
+~overflow~), then the ~path~ must point to MathJax 3 or later.
+
+See the updated ~org-html-mathjax-options~ for more details.
+
+MathJax 3, a ground-up rewrite of MathJax 2 came out in 2019.  The new
+version brings modularity, better and faster rendering, improved LaTeX
+support, and more.
+
+For more information about new features, see:
+
+https://docs.mathjax.org/en/latest/upgrading/whats-new-3.0.html
+https://docs.mathjax.org/en/latest/upgrading/whats-new-3.1.html
+https://docs.mathjax.org/en/latest/upgrading/whats-new-3.2.html
+
+MathJax 3 comes with useful extensions.  For instance, you can typeset
+calculus with the ~physics~ extension or chemistry with the ~mhchem~
+extension, like in LaTeX.
+
+Note that the Org manual does not discuss loading of MathJax
+extensions via ~+HTML_MATHJAX~ anymore.  It has never worked anyway.
+To actually load extensions, consult the official documentation:
+
+https://docs.mathjax.org/en/latest/input/tex/extensions.html
+
+Lastly, MathJax 3 changed the default JavaScript content delivery
+network (CDN) provider from CloudFlare to jsDelivr.  You can find the
+new terms of service, including the privacy policy, at
+https://www.jsdelivr.com/terms.
+
 ** New features
 *** Clock table can now produce quarterly reports
 
@@ -3501,7 +3539,7 @@ can pass the converted path to the =sqlcmd= tool.
 
 **** Improved support of header arguments for postgresql
 
-The postgresql engine in a sql code block supports now ~:dbport~ nd
+The postgresql engine in a sql code block now supports ~:dbport~ and
 ~:dbpassword~ as header arguments.
 
 **** Support for additional plantuml output formats
@@ -6417,7 +6455,7 @@ that Calc formulas can operate on them.
 **** org-ctags.el (Paul Sexton)
 
      Targets like =<<my target>>= can now be found by Emacs' etag
-     functionality, and Org-mode links can be used to to link to
+     functionality, and Org-mode links can be used to link to
      etags, also in non-Org-mode files.  For details, see the file
      /org-ctags.el/.
 
@@ -6774,7 +6812,7 @@ that Calc formulas can operate on them.
     code that is actually evaluated comprises the code block contents,
     augmented with the extra code which assigns the referenced data to
     variables. It is now possible to preview expanded contents, and
-    also to expand code during during tangling. This expansion takes
+    also to expand code during tangling. This expansion takes
     into account all header arguments, and variables.
 
     A new keybinding `C-c M-b p' bound to `org-babel-expand-src-block'
@@ -6889,7 +6927,7 @@ that Calc formulas can operate on them.
 
 **** Localized clock tables
 
-     Clock tables now support a new new =:lang= parameter, allowing
+     Clock tables now support a new =:lang= parameter, allowing
      the user to customize the localization of the table headers.  See
      the variable =org-clock-clocktable-language-setup= which controls
      available translated strings.
