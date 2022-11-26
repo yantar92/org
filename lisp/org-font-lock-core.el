@@ -223,7 +223,8 @@ DATUM is a parse tree."
     ;; `org-element-at-point' returns nil within blank lines at bob.
     ;; Skip it.
     (when (org-with-wide-buffer (skip-chars-backward " \t\n\r") (bobp))
-      (skip-chars-forward " \t\n\r"))
+      (skip-chars-forward " \t\n\r")
+      (setq beg (point)))
     (when org-font-lock-verbose
       (message "org-font-lock: About to fontify %S..%S" beg limit))
     (let ((element (org-element-at-point)))
