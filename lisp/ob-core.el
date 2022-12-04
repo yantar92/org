@@ -425,7 +425,7 @@ then run `org-babel-switch-to-session'."
     (prologue   . :any)
     (results	. ((file list vector table scalar verbatim)
 		   (raw html latex org code pp drawer link graphics)
-		   (replace silent none append prepend)
+		   (replace silent none discard append prepend)
 		   (output value)))
     (rownames	. ((no yes)))
     (sep	. :any)
@@ -1345,7 +1345,7 @@ CONTEXT specifies the context of evaluation.  It can be `:eval',
 		(lambda (a b) (string< (car a) (car b)))))
     (let* ((rm (lambda (lst)
 		 (dolist (p '("replace" "silent" "none"
-			      "append" "prepend"))
+			      "discard" "append" "prepend"))
 		   (setq lst (remove p lst)))
 		 lst))
 	   (norm (lambda (arg)
@@ -1353,8 +1353,8 @@ CONTEXT specifies the context of evaluation.  It can be `:eval',
 				(copy-sequence (cdr arg))
 			      (cdr arg))))
 		     (when (and v (not (and (sequencep v)
-					    (not (consp v))
-					    (= (length v) 0))))
+					  (not (consp v))
+					  (= (length v) 0))))
 		       (cond
 			((and (listp v) ; lists are sorted
 			      (member (car arg) '(:result-params)))
@@ -1382,10 +1382,10 @@ CONTEXT specifies the context of evaluation.  It can be `:eval',
                          (mapconcat
                           #'identity
                           (delq nil (mapcar (lambda (arg)
-                                              (let ((normalized (funcall norm arg)))
-                                                (when normalized
-                                                  (format "%S" normalized))))
-                                            (nth 2 info))) ":")
+                                            (let ((normalized (funcall norm arg)))
+                                              (when normalized
+                                                (format "%S" normalized))))
+                                          (nth 2 info))) ":")
                          expanded))
              (hash (sha1 it)))
         (when (called-interactively-p 'interactive) (message hash))
@@ -2261,8 +2261,15 @@ Return nil if ELEMENT cannot be read."
           (org-table-to-lisp)))
 
 (defun org-babel-read-list ()
-  "Read the list at point into emacs-lisp."
-  (mapcar (lambda (el) (org-babel-read el 'inhibit-lisp-eval))
+  "Read the list at point into emacs-lisp.
+
+Return the list of strings representing top level items:
+
+   (item1 item2 ...)
+
+Only consider top level items.  See Info node
+`(org)Environment of a Code Block'."
+  (mapcar (lambda (el) (org-babel-read (car el) 'inhibit-lisp-eval))
 	  (cdr (org-list-to-lisp))))
 
 (defvar org-link-types-re)
@@ -3303,19 +3310,20 @@ Emacs shutdown.")
   (declare (indent 1) (debug t))
   (org-with-gensyms (params)
     `(let ((,params ,result-params))
-       (if (or (member "scalar" ,params)
-	       (member "verbatim" ,params)
-	       (member "html" ,params)
-	       (member "code" ,params)
-	       (member "pp" ,params)
-	       (member "file" ,params)
-	       (and (or (member "output" ,params)
-			(member "raw"    ,params)
-			(member "org"    ,params)
-			(member "drawer" ,params))
-		    (not (member "table" ,params))))
-	   ,scalar-form
-	 ,@table-forms))))
+       (unless (member "discard" ,params)
+         (if (or (member "scalar" ,params)
+	         (member "verbatim" ,params)
+	         (member "html" ,params)
+	         (member "code" ,params)
+	         (member "pp" ,params)
+	         (member "file" ,params)
+	         (and (or (member "output" ,params)
+			  (member "raw"    ,params)
+			  (member "org"    ,params)
+			  (member "drawer" ,params))
+		      (not (member "table" ,params))))
+	     ,scalar-form
+	   ,@table-forms)))))
 
 (defmacro org-babel-temp-directory ()
   "Return temporary directory suitable for `default-directory'."

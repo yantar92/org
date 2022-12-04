@@ -9,7 +9,7 @@
 ;; URL: https://orgmode.org
 ;; Package-Requires: ((emacs "25.1"))
 
-;; Version: 9.6-pre
+;; Version: 9.6
 
 ;; This file is part of GNU Emacs.
 ;;
@@ -1394,13 +1394,13 @@ For more examples, see the system specific constants
 (defcustom org-resource-download-policy 'prompt
   "The policy applied to requests to obtain remote resources.
 
-This affects keywords like #+setupfile and #+incude on export,
+This affects keywords like #+setupfile and #+include on export,
 `org-persist-write:url',and `org-attach-url' in non-interactive
 Emacs sessions.
 
-This recognises four possible values:
+This recognizes four possible values:
 - t, remote resources should always be downloaded.
-- prompt, you will be prompted to download resources nt considered safe.
+- prompt, you will be prompted to download resources not considered safe.
 - safe, only resources considered safe will be downloaded.
 - nil, never download remote resources.
 
@@ -1419,7 +1419,7 @@ URI regexps are applied to both URLs and Org files requesting
 remote resources."
   :group 'org
   :package-version '(Org . "9.6")
-  :type '(list regexp))
+  :type '(repeat regexp))
 
 (defcustom org-open-non-existing-files nil
   "Non-nil means `org-open-file' opens non-existing files.
@@ -4476,7 +4476,7 @@ returns non-nil if any of them match."
                 ", which is not considered safe.\n\n"
                 "Do you want to download this?  You can type\n "
                 (propertize "!" 'face 'success)
-                " to download this resource, and permanantly mark it as safe.\n "
+                " to download this resource, and permanently mark it as safe.\n "
                 (if domain
                     (concat
                      (propertize "d" 'face 'success)
@@ -4487,7 +4487,7 @@ returns non-nil if any of them match."
                 (propertize "f" 'face 'success)
                 (if current-file
                     (concat
-                     " to download this resource, and permanantly mark all resources in "
+                     " to download this resource, and permanently mark all resources in "
                      (propertize current-file 'face 'underline)
                      " as safe.\n ")
                   "")
@@ -4615,7 +4615,7 @@ This is for getting out of special buffers like capture.")
 (defvar org-element-cache-persistent); Defined in org-element.el
 (defvar org-element-use-cache); Defined in org-element.el
 (defvar org-mode-loading nil
-  "Non-nil during Org mode initialisation.")
+  "Non-nil during Org mode initialization.")
 
 (defvar org-agenda-file-menu-enabled t
   "When non-nil, refresh Agenda files in Org menu when loading Org.")
@@ -5356,7 +5356,7 @@ Return nil before first heading."
 			    "" h))
 			  (h h)))
 	      (tags (and (not no-tags) (match-string 5))))
-          ;; Restore cleared optimisation.
+          ;; Restore cleared optimization.
           (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))
 	  (mapconcat #'identity
 		     (delq nil (list todo priority headline tags))

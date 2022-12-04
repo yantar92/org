@@ -1576,7 +1576,7 @@ key."
   "Run `org-fold-region' when in org-mode."
   (if (derived-mode-p 'org-mode)
       (org-fold-region (max from (point-min)) (min to (point-max)) flag 'headline)
-    ;; Apply EXTRA to avoid breakages if adviced function definition
+    ;; Apply EXTRA to avoid breakages if advised function definition
     ;; changes.
     (apply oldfun from to flag extra)))
 
@@ -1584,7 +1584,7 @@ key."
   "Run `org-next-visible-heading' when in org-mode."
   (if (derived-mode-p 'org-mode)
       (org-next-visible-heading arg)
-    ;; Apply EXTRA to avoid breakages if adviced function definition
+    ;; Apply EXTRA to avoid breakages if advised function definition
     ;; changes.
     (apply oldfun arg extra)))
 
@@ -1604,7 +1604,7 @@ key."
 			           (point)))))
 	      (goto-char found)
 	      found)))
-    ;; Apply EXTRA to avoid breakages if adviced function definition
+    ;; Apply EXTRA to avoid breakages if advised function definition
     ;; changes.
     (apply oldfun invisible-ok extra)))
 
@@ -1612,7 +1612,7 @@ key."
   "Run `org-at-heading-p' when in org-mode."
   (if (derived-mode-p 'org-mode)
       (org-at-heading-p (not invisible-ok))
-    ;; Apply EXTRA to avoid breakages if adviced function definition
+    ;; Apply EXTRA to avoid breakages if advised function definition
     ;; changes.
     (apply oldfun invisible-ok extra)))
 
@@ -1620,7 +1620,7 @@ key."
   "Run `org-fold-hide-sublevels' when in org-mode."
   (if (derived-mode-p 'org-mode)
       (org-fold-hide-sublevels levels)
-    ;; Apply EXTRA to avoid breakages if adviced function definition
+    ;; Apply EXTRA to avoid breakages if advised function definition
     ;; changes.
     (apply oldfun levels extra)))
 
@@ -1633,7 +1633,7 @@ key."
             (org-fold-hide-subtree)
           (org-fold-show-children)
           (org-fold-show-entry 'hide-drawers)))
-    ;; Apply EXTRA to avoid breakages if adviced function definition
+    ;; Apply EXTRA to avoid breakages if advised function definition
     ;; changes.
     (apply oldfun extra)))
 

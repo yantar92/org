@@ -11,9 +11,19 @@ See the end of the file for license conditions.
 
 Please send Org bug reports to mailto:emacs-orgmode@gnu.org.
 
-* Version 9.6 (not yet released)
+* Version 9.7 (not released yet)
+* Version 9.6
 
 ** Important announcements and breaking changes
+*** =python-mode.el (MELPA)= support in =ob-python.el= is deprecated
+
+We no longer aim to support third-party =python-mode.el= implementation of Python REPL.
+Only the built-in =python.el= will be supported from now on.
+
+We still keep the old, partially broken, code in =ob-python.el= for
+the time being.  It will be removed in the next release.
+
+See https://orgmode.org/list/87r0yk7bx8.fsf@localhost for more details.
 
 *** Element cache is enabled by default and work for headings
 
@@ -46,7 +56,7 @@ The old folding backend used in Org is poorly scalable when the file
 size increases beyond few Mbs.  The symptoms usually include slow
 cursor motion, especially in long-running Emacs sessions.
 
-A new optimised folding backend is now available, and enabled by
+A new optimized folding backend is now available, and enabled by
 default.  To disable it, put the following to the Emacs config *before*
 loading Org:
 
@@ -54,14 +64,14 @@ loading Org:
 (setq org-fold-core-style 'overlays)
 #+end_src
 
-Even more performance optimisation can be enabled by customising
+Even more performance optimization can be enabled by customizing
 =org-fold-core--optimise-for-huge-buffers=.  However, this option may
 be dangerous.  Please, read the variable docstring carefully to
 understand the possible consequences.
 
 When =org-fold-core-style= is set to =text-properties=, several new
 features will become available and several notable changes will happen
-to the Org behaviour.  The new features and changes are listed below.
+to the Org behavior.  The new features and changes are listed below.
 
 **** Hidden parts of the links can now be searched and revealed during isearch
 
@@ -69,7 +79,7 @@ In the past, hidden parts of the links could not be searched using
 isearch (=C-s=).  Now, they are searchable by default.  The hidden
 match is also revealed temporarily during isearch.
 
-To restore the old behaviour add the following core to your Emacs
+To restore the old behavior add the following core to your Emacs
 config:
 
 #+begin_src emacs-lisp
@@ -121,13 +131,13 @@ Now, it is not the case anymore.  The drawer folding state is
 preserved.  The initial folding state of all the drawers in buffer is
 set according to the startup visibility settings.
 
-To restore the old behaviour, add the following code to Emacs config:
+To restore the old behavior, add the following code to Emacs config:
 
 #+begin_src emacs-lisp
 (add-hook 'org-cycle-hook #'org-cycle-hide-drawers)
 #+end_src
 
-Note that old behaviour may cause performance issues when cycling
+Note that old behavior may cause performance issues when cycling
 headline visibility in large buffers.
 
 **** =outline-*= functions may no longer work correctly in Org mode
@@ -176,6 +186,40 @@ Lastly, MathJax 3 changed the default JavaScript content delivery
 network (CDN) provider from CloudFlare to jsDelivr.  You can find the
 new terms of service, including the privacy policy, at
 https://www.jsdelivr.com/terms.
+
+*** List references in source block variable assignments are now proper lists
+
+List representation of named lists is now converted to a simple list
+as promised by the manual section [[info:org#Environment of a Code Block][org#Environment of a Code Block]].
+Previously, it was converted to a list of lists.
+
+Before:
+
+#+begin_src org
+,#+NAME: example-list
+- simple
+  - not
+  - nested
+- list
+
+,#+BEGIN_SRC emacs-lisp :var x=example-list :results value
+(format "%S" x)
+,#+END_SRC
+
+,#+RESULTS:
+: (("simple" (unordered ("not") ("nested"))) ("list"))
+#+end_src
+
+After:
+
+#+begin_src org
+,#+BEGIN_SRC emacs-lisp :var x=example-list :results value
+(format "%S" x)
+,#+END_SRC
+
+,#+RESULTS:
+: ("simple" "list")
+#+end_src
 
 ** New features
 *** Clock table can now produce quarterly reports
@@ -295,7 +339,7 @@ This is done by adding =#+ATTR_LATEX: :mode tabbing= at the top
 of the table.
 The default column width is set to 1/n times the latex textwidth,
 where n is the number of columns.
-This behaviour can be changed by supplying a =:align= parameter.
+This behavior can be changed by supplying a =:align= parameter.
 
 The tabbing environment can be useful when generating simple tables which
 can be span multiple pages and when table cells are allowed to overflow.
@@ -373,6 +417,21 @@ value of ~org-babel-clojure-backend~. For example:
 (range 2)
 #+end_src
 
+*** New =:results discard= header argument
+
+Unlike =:results none=, the return value of code blocks called with
+=:results discard= header argument is always ~nil~.  Org does not
+attempt to analyze the results and simply returns nil.  This can be
+useful when the code block is used for side effects only but generates
+large outputs that may be slow to analyze for Org.
+
+*** Add Capture template hook properties
+
+Capture templates can now attach template specific hooks via the
+following properties: ~:hook~, ~:prepare-finalize~,
+~:before-finalize~, ~:after-finalize~.  These nullary functions run
+prior to their global counterparts for the selected template.
+
 ** New options
 *** A new option for custom setting ~org-refile-use-outline-path~ to show document title in refile targets
 
@@ -427,6 +486,13 @@ The new setting, when set to non-nil, makes Org create alarm at the
 event time when the alarm time is set to 0.  The default value is
 nil -- do not create alarms at the event time.
 
+*** New special value ~'attach~ for src block =:dir= option
+
+Passing the symbol ~attach~ or string ="'attach"= (with quotes) to the =:dir=
+option of a src block is now equivalent to =:dir (org-attach-dir) :mkdir yes=
+and any file results with a path descended from the attachment directory will
+use =attachment:= style links instead of the standard =file:= link type.
+
 ** New functions and changes in function arguments
 *** New function ~org-get-title~ to get =#+TITLE:= property from buffers
 
@@ -462,7 +528,7 @@ Diagnostic information about execution speed can be provided according
 to ~org-element--cache-map-statistics~ and
 ~org-element--cache-map-statistics-threshold~.
 
-~org-scan-tags~ and tag views in agenda utilise the new function.
+~org-scan-tags~ and tag views in agenda utilize the new function.
 *** New function ~org-element-at-point-no-context~
 
 This function is like ~org-element-at-point~, but it does not try to
@@ -487,10 +553,10 @@ argument.
 This function is intended for us in the definition of a ~kbd~ macro in
 files that are exported to Texinfo.
 
-*** =org-at-heading-p= now recognises optional argument. Its meaning is inverted.
+*** =org-at-heading-p= now recognizes optional argument. Its meaning is inverted.
 
 =org-at-heading-p= now returns t by default on headings inside folds.
-Passing optional argument will produce the old behaviour.
+Passing optional argument will produce the old behavior.
 
 *** =org-babel-execute:plantuml= can output ASCII graphs in the buffer
 
@@ -614,7 +680,7 @@ a function (called with the same arguments as
 
 An example of a such function for =info:= links is
 ~org-info-description-as-command~.  To access a manual section outside
-of Org, description may be pasted to shell prompt or evaluated withing
+of Org, description may be pasted to shell prompt or evaluated within
 Emacs using =M-:= (wrapped into parenthesis).  For example,
 description of the =info:org#Tags= link is =info "(org) Tags"=.  To
 restore earlier behavior add to your Emacs init file the following:
@@ -825,13 +891,6 @@ library.  For backward compatibility, it is loaded by default.
 When exiting capture mode via ~org-capture-refile~, the variable
 ~org-refile-targets~ will be temporarily bound to the value of this
 template option.
-
-*** Add Capture template hook properties
-
-Capture templates can now attach template specific hooks via the
-following properties: ~:hook~, ~:prepare-finalize~,
-~:before-finalize~, ~:after-finalize~.  These nullary functions run
-prior to their global counterparts for the selected template.
 
 *** New startup options =#+startup: show<n>levels=
 
@@ -1161,13 +1220,6 @@ contents of the current latex source block.
 Finally, the closures are only evaluated if they're not overridden for
 a source block. This improves efficiency in cases where the result of
 a compute-expensive closure would otherwise be discarded.
-
-*** New special value ~'attach~ for src block =:dir= option
-
-Passing the symbol ~attach~ or string ="'attach"= (with quotes) to the =:dir=
-option of a src block is now equivalent to =:dir (org-attach-dir) :mkdir yes=
-and any file results with a path descended from the attachment directory will
-use =attachment:= style links instead of the standard =file:= link type.
 
 ** Miscellaneous
 *** =org-bibtex= includes =doi= and =url= entries when exporting to BiBTeX
