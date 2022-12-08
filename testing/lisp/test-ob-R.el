@@ -246,7 +246,54 @@ log10(10)
                     (string= (concat src-block result)
                              (buffer-string)))))))
 
+; add test for :result output
+(ert-deftest ob-session-R-result-output ()
+  (let (ess-ask-for-ess-directory
+        ess-history-file
+        org-confirm-babel-evaluate
+        (org-babel-temporary-directory "/tmp")
+        (src-block "#+begin_src R :session R :results output \n  1:3\n#+end_src")
+        (result "\n\n#+RESULTS:\n: [1] 1 2 3\n" ))
+    (org-test-with-temp-text
+     src-block
+     (should (progn (org-babel-execute-src-block)
+                    (sleep-for 0 200)
+                    (string= (concat src-block result)
+                             (buffer-string)))))))
 
+
+;; test for printing of (nested) list
+(ert-deftest ob-R-nested-list ()
+  "List are printed as the first column of a table and nested lists are ignored"
+  (let (ess-ask-for-ess-directory
+        ess-history-file
+        org-confirm-babel-evaluate
+        (org-babel-temporary-directory "/tmp")
+        (text "
+#+NAME: example-list
+- simple
+  - not
+  - nested
+- list
+
+#+BEGIN_SRC R :var x=example-list
+x
+#+END_SRC
+")
+(result "
+#+RESULTS:
+| simple |
+| list   |
+"))
+(org-test-with-temp-text-in-file
+    text
+  (goto-char (point-min))
+  (org-babel-next-src-block)
+  (should (progn  
+            (org-babel-execute-src-block)
+            (sleep-for 0 200)
+            (string= (concat text result)
+                     (buffer-string)))))))
 
 
 (provide 'test-ob-R)

@@ -6169,7 +6169,8 @@ If yes, remember the marker and the distance to BEG."
   (setq org-markers-to-move nil))
 
 (defun org-narrow-to-subtree (&optional element)
-  "Narrow buffer to the current subtree."
+  "Narrow buffer to the current subtree.
+Use the command `\\[widen]' to see the whole buffer again."
   (interactive)
   (if (org-element--cache-active-p)
       (let* ((heading (org-element-lineage
@@ -6191,7 +6192,8 @@ If yes, remember the marker and the distance to BEG."
 	         (point))))))))
 
 (defun org-toggle-narrow-to-subtree ()
-  "Narrow to the subtree at point or widen a narrowed buffer."
+  "Narrow to the subtree at point or widen a narrowed buffer.
+Use the command `\\[widen]' to see the whole buffer again."
   (interactive)
   (if (buffer-narrowed-p)
       (progn (widen) (message "Buffer widen"))
@@ -6199,7 +6201,8 @@ If yes, remember the marker and the distance to BEG."
     (message "Buffer narrowed to current subtree")))
 
 (defun org-narrow-to-block ()
-  "Narrow buffer to the current block."
+  "Narrow buffer to the current block.
+Use the command `\\[widen]' to see the whole buffer again."
   (interactive)
   (let* ((case-fold-search t)
 	 (blockp (org-between-regexps-p "^[ \t]*#\\+begin_.*"
@@ -10346,7 +10349,7 @@ See also `org-scan-tags'."
 			     (pv (match-string 7 term))
 			     (regexp (eq (string-to-char pv) ?{))
 			     (strp (eq (string-to-char pv) ?\"))
-			     (timep (string-match-p "^\"[[<][0-9]+.*[]>]\"$" pv))
+			     (timep (string-match-p "^\"[[<]\\(?:[0-9]+\\|now\\|today\\|tomorrow\\|[+-][0-9]+[dmwy]\\).*[]>]\"$" pv))
 			     (po (org-op-to-function (match-string 6 term)
 						     (if timep 'time strp))))
 			(setq pv (if (or regexp strp) (substring pv 1 -1) pv))
@@ -20170,7 +20173,8 @@ ones already marked."
 	(goto-char (org-element-property :begin element))))))
 
 (defun org-narrow-to-element ()
-  "Narrow buffer to current element."
+  "Narrow buffer to current element.
+Use the command `\\[widen]' to see the whole buffer again."
   (interactive)
   (let ((elem (org-element-at-point)))
     (cond
