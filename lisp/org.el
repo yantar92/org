@@ -2420,6 +2420,8 @@ These are overlaid over the default ISO format if the variable
 end of the second format.  The custom formats are also honored by export
 commands, if custom time display is turned on at the time of export.
 
+This variable also affects how timestamps are exported.
+
 Leading \"<\" and trailing \">\" pair will be stripped from the format
 strings."
   :group 'org-time
@@ -7303,11 +7305,11 @@ they must return nil.")
 The thing can be a link, citation, timestamp, footnote, src-block or
 tags.
 
-When point is on a link, follow it.  Normally, files will be
-opened by an appropriate application.  If the optional prefix
-argument ARG is non-nil, Emacs will visit the file.  With
-a double prefix argument, try to open outside of Emacs, in the
-application the system uses for this file type.
+When point is on a link, follow it.  Normally, files will be opened by
+an appropriate application (see `org-file-apps').  If the optional prefix
+argument ARG is non-nil, Emacs will visit the file.  With a double
+prefix argument, try to open outside of Emacs, in the application the
+system uses for this file type.
 
 When point is on a timestamp, open the agenda at the day
 specified.
