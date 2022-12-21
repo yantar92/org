@@ -160,6 +160,7 @@
     (:latex-src-block-backend nil nil org-latex-src-block-backend)
     (:latex-listings-langs nil nil org-latex-listings-langs)
     (:latex-listings-options nil nil org-latex-listings-options)
+    (:latex-listings-src-omit-language nil nil org-latex-listings-src-omit-language)
     (:latex-minted-langs nil nil org-latex-minted-langs)
     (:latex-minted-options nil nil org-latex-minted-options)
     (:latex-prefer-user-labels nil nil org-latex-prefer-user-labels)
@@ -1024,6 +1025,23 @@ in this list - but it does not hurt if it is present."
 	  (list
 	   (symbol :tag "Major mode       ")
 	   (string :tag "Listings language"))))
+
+(defcustom org-latex-listings-src-omit-language nil
+  "Discard src block language parameter in listings.
+
+Set this option to t to omit the \"language=\" in the parameters to
+\"lstlisting\" environments when exporting an src block.
+
+This is necessary, for example, when the \"fancyvrb\" package is used
+instead of \"listings\":
+
+#+LATEX_HEADER: \\RequirePackage{fancyvrb}
+#+LATEX_HEADER: \\DefineVerbatimEnvironment{verbatim}{Verbatim}{...}
+#+LATEX_HEADER: \\DefineVerbatimEnvironment{lstlisting}{Verbatim}{...}"
+  :group 'org-export-latex
+  :package-version '(Org . "9.7")
+  :type 'boolean
+  :safe #'booleanp)
 
 (defcustom org-latex-listings-options nil
   "Association list of options for the latex listings package.
@@ -3597,12 +3615,16 @@ and FLOAT are extracted from SRC-BLOCK and INFO in `org-latex-src-block'."
           ((string= "multicolumn" float) '(("float" "*")))
           ((and float (not (assoc "float" lst-opt)))
            `(("float" ,(plist-get info :latex-default-figure-position)))))
-         `(("language" ,lst-lang))
-         (if label
-             `(("label" ,(org-latex--label src-block info)))
-           '(("label" " ")))
-         (if caption-str `(("caption" ,caption-str)) '(("caption" " ")))
-         `(("captionpos" ,(if caption-above-p "t" "b")))
+         (unless (plist-get info :latex-listings-src-omit-language)
+           `(("language" ,lst-lang)))
+         (when label
+           `(("label" ,(org-latex--label src-block info))))
+         (when caption-str
+           `(("caption" ,caption-str)))
+         (when caption-str
+           ;; caption-above-p means captionpos is t(op)
+           ;; else b(ottom)
+           `(("captionpos" ,(if caption-above-p "t" "b"))))
          (cond ((assoc "numbers" lst-opt) nil)
                ((not num-start) '(("numbers" "none")))
                (t `(("firstnumber" ,(number-to-string (1+ num-start)))
