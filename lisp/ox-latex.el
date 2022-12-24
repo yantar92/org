@@ -110,9 +110,9 @@
 	(?l "As LaTeX file" org-latex-export-to-latex)
 	(?p "As PDF file" org-latex-export-to-pdf)
 	(?o "As PDF file and open"
-	    (lambda (a s v b)
-	      (if a (org-latex-export-to-pdf t s v b)
-		(org-open-file (org-latex-export-to-pdf nil s v b)))))))
+	    (lambda (async subtreep visable-only body-only)
+	      (if async (org-latex-export-to-pdf t subtreep visable-only body-only)
+		(org-latex-export-to-pdf-and-open nil subtreep visable-only body-only))))))
   :filters-alist '((:filter-options . org-latex-math-block-options-filter)
 		   (:filter-paragraph . org-latex-clean-invalid-line-breaks)
 		   (:filter-parse-tree org-latex-math-block-tree-filter
@@ -4463,13 +4463,21 @@ Return PDF file's name."
       async subtreep visible-only body-only ext-plist
       #'org-latex-compile)))
 
-(defun org-latex-compile (texfile &optional snippet)
+(defun org-latex-export-to-pdf-and-open (&optional async subtreep visible-only body-only ext-plist)
+  (let ((outfile (org-export-output-file-name ".tex" subtreep)))
+    (org-export-to-file 'latex outfile
+      async subtreep visible-only body-only ext-plist
+      (lambda (f) (org-latex-compile f nil t)))))
+
+(defun org-latex-compile (texfile &optional snippet open-pdf)
   "Compile a TeX file.
 
 TEXFILE is the name of the file being compiled.  Processing is
 done through the command specified in `org-latex-pdf-process',
 which see.  Output is redirected to \"*Org PDF LaTeX Output*\"
-buffer.
+buffer.  When the process is a shell command (and not a
+function), it will be run asyncronously via `org-async-call',
+unless the current session is `noninteractive'.
 
 When optional argument SNIPPET is non-nil, TEXFILE is a temporary
 file used to preview a LaTeX snippet.  In this case, do not
@@ -4504,16 +4512,34 @@ produced."
                  (?L . ,(shell-quote-argument compiler))))
 	 (log-buf-name "*Org PDF LaTeX Output*")
          (log-buf (and (not snippet) (get-buffer-create log-buf-name)))
-         outfile)
-    ;; Erase compile buffer at the start.
+         (outfile (expand-file-name (concat (file-name-base texfile) ".pdf")
+                                    (file-name-directory texfile))))
     (with-current-buffer log-buf
       (erase-buffer))
-    (setq outfile
-          (org-compile-file
-           texfile process "pdf"
-	   (format "See %S for details" log-buf-name)
-	   log-buf spec))
-    (org-latex-compile--postprocess outfile log-buf snippet)
+    (if (or noninteractive (functionp process))
+        (progn
+          (org-compile-file texfile process "pdf"
+                            (format "See %S for details" log-buf-name)
+                            log-buf spec)
+          (and open-pdf (org-open-file outfile))
+          (org-latex-compile--postprocess outfile log-buf snippet))
+      (let ((failure-msg (format "File %S wasn't produced (exit code %%d).  See %%s for details."
+                                 outfile))
+            async-call-spec)
+        (dolist (cmd (reverse (org-compile-file-commands
+                               texfile process "pdf" spec)))
+          (setq async-call-spec
+                (list cmd
+                      :buffer log-buf
+                      :success
+                      (or async-call-spec
+                          (list (and open-pdf (lambda (_ _ _) (org-open-file outfile)))
+                                (lambda (_ buf _)
+                                  (org-latex-compile--postprocess outfile buf snippet))))
+                      :failure
+                      failure-msg)))
+        (message "Compiling %s..." texfile)
+        (apply #'org-async-call async-call-spec)))
     ;; Return output file name.
     outfile))
 
