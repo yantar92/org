@@ -373,6 +373,18 @@ fragments in the buffer."
       (org--latex-preview-region beg end)
       (message "Creating LaTeX previews in section... done.")))))
 
+(defun org-latex-collect-fragments (&optional beg end)
+  "Collect all LaTeX maths fragments/environments between BEG and END."
+  (let (fragments)
+    (save-excursion
+      (goto-char (or beg (point-min)))
+      (while (re-search-forward org-latex-tentative-math-re end t)
+        (let ((obj (org-element-context)))
+          (when (memq (org-element-type obj)
+                      '(latex-fragment latex-environment))
+            (push obj fragments)))))
+    (nreverse fragments)))
+
 (defun org-latex-replace-fragments (prefix processing-type &optional dir msg)
   "Replace all LaTeX fragments in the buffer with export appropriate forms.
 The way this is done is set by PROCESSING-TYPE, which can be either:
@@ -392,50 +404,47 @@ that PREFIX may itself contain a directory path component.
 When generating output files, MSG will be `message'd if given."
   (let* ((cnt 0))
     (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward org-latex-tentative-math-re nil t)
-        (let* ((context (org-element-context))
-               (type (org-element-type context)))
-          (when (memq type '(latex-environment latex-fragment))
-            (let ((block-type (eq type 'latex-environment))
-                  (value (org-element-property :value context))
-                  (beg (org-element-property :begin context))
-                  (end (save-excursion
-                         (goto-char (org-element-property :end context))
-                         (skip-chars-backward " \r\t\n")
-                         (point))))
-              (cond
-               ((eq processing-type 'verbatim)) ; Do nothing.
-               ((eq processing-type 'mathjax)
-                ;; Prepare for MathJax processing.
-                (if (not (string-match "\\`\\$\\$?" value))
-                    (goto-char end)
-                  (delete-region beg end)
-                  (if (string= (match-string 0 value) "$$")
-                      (insert "\\[" (substring value 2 -2) "\\]")
-                    (insert "\\(" (substring value 1 -1) "\\)"))))
-               ((eq processing-type 'html)
-                (goto-char beg)
-                (delete-region beg end)
-                (insert (org-format-latex-as-html value)))
-               ((eq processing-type 'mathml)
-                ;; Process to MathML.
-                (unless (org-format-latex-mathml-available-p)
-                  (user-error "LaTeX to MathML converter not configured"))
-                (cl-incf cnt)
-                (when msg (message msg cnt))
-                (goto-char beg)
-                (delete-region beg end)
-                (insert (org-format-latex-as-mathml
-                         value block-type prefix dir)))
-               ((assq processing-type org-preview-latex-process-alist)
-                (let ((image-dir (expand-file-name prefix dir)))
-                  (unless (file-exists-p image-dir)
-                    (make-directory image-dir t)))
-                (org-create-latex-export
-                 processing-type context prefix dir block-type))
-               (t (error "Unknown conversion process %s for LaTeX fragments"
-                         processing-type))))))))))
+      (dolist (element (org-latex-collect-fragments))
+        (let ((block-type (eq (org-element-type element)
+                              'latex-environment))
+              (value (org-element-property :value element))
+              (beg (org-element-property :begin element))
+              (end (save-excursion
+                     (goto-char (org-element-property :end element))
+                     (skip-chars-backward " \r\t\n")
+                     (point))))
+          (cond
+           ((eq processing-type 'verbatim)) ; Do nothing.
+           ((eq processing-type 'mathjax)
+            ;; Prepare for MathJax processing.
+            (if (not (string-match "\\`\\$\\$?" value))
+                (goto-char end)
+              (delete-region beg end)
+              (if (string= (match-string 0 value) "$$")
+                  (insert "\\[" (substring value 2 -2) "\\]")
+                (insert "\\(" (substring value 1 -1) "\\)"))))
+           ((eq processing-type 'html)
+            (goto-char beg)
+            (delete-region beg end)
+            (insert (org-format-latex-as-html value)))
+           ((eq processing-type 'mathml)
+            ;; Process to MathML.
+            (unless (org-format-latex-mathml-available-p)
+              (user-error "LaTeX to MathML converter not configured"))
+            (cl-incf cnt)
+            (when msg (message msg cnt))
+            (goto-char beg)
+            (delete-region beg end)
+            (insert (org-format-latex-as-mathml
+                     value block-type prefix dir)))
+           ((assq processing-type org-preview-latex-process-alist)
+            (let ((image-dir (expand-file-name prefix dir)))
+              (unless (file-exists-p image-dir)
+                (make-directory image-dir t)))
+            (org-create-latex-export
+             processing-type element prefix dir block-type))
+           (t (error "Unknown conversion process %s for LaTeX fragments"
+                     processing-type))))))))
 
 (defun org-latex-preview-fragments (processing-type &optional beg end dir)
   "Produce image overlays of LaTeX math fragments between BEG and END.
@@ -463,16 +472,11 @@ The previews are placed in
                       dir)))
       (unless (file-exists-p image-dir)
         (make-directory image-dir t)))
-    (save-excursion
-      (goto-char (or beg (point-min)))
-      (while (re-search-forward org-latex-tentative-math-re end t)
-        (let* ((context (org-element-context))
-               (type (org-element-type context)))
-          (when (memq type '(latex-environment latex-fragment))
-            (if (assq processing-type org-preview-latex-process-alist)
-                (org-create-latex-preview processing-type context dir)
-              (error "Unknown conversion process %s for previewing LaTeX fragments"
-                     processing-type))))))))
+    (if (assq processing-type org-preview-latex-process-alist)
+        (dolist (element (org-latex-collect-fragments beg end))
+          (org-create-latex-preview processing-type element dir))
+      (error "Unknown conversion process %s for previewing LaTeX fragments"
+             processing-type))))
 
 (defun org-format-latex
     (prefix &optional beg end dir overlays msg forbuffer processing-type)
