@@ -429,59 +429,9 @@ Some of the options can be changed using the variable
                  ((assq processing-type org-preview-latex-process-alist)
                   ;; Process to an image.
                   (cl-incf cnt)
-                  (goto-char beg)
-                  (let* ((processing-info
-                          (cdr (assq processing-type org-preview-latex-process-alist)))
-                         (face (face-at-point))
-                         ;; Get the colors from the face at point.
-                         (fg
-                          (let ((color (plist-get org-format-latex-options
-                                                  :foreground)))
-                            (if forbuffer
-                                (cond
-                                 ((eq color 'auto)
-                                  (face-attribute face :foreground nil 'default))
-                                 ((eq color 'default)
-                                  (face-attribute 'default :foreground nil))
-                                 (t color))
-                              color)))
-                         (bg
-                          (let ((color (plist-get org-format-latex-options
-                                                  :background)))
-                            (if forbuffer
-                                (cond
-                                 ((eq color 'auto)
-                                  (face-attribute face :background nil 'default))
-                                 ((eq color 'default)
-                                  (face-attribute 'default :background nil))
-                                 (t color))
-                              color)))
-                         (hash (sha1 (prin1-to-string
-                                      (list org-format-latex-header
-                                            org-latex-default-packages-alist
-                                            org-latex-packages-alist
-                                            org-format-latex-options
-                                            forbuffer value fg bg))))
-                         (imagetype (or (plist-get processing-info :image-output-type) "png"))
-                         (absprefix (expand-file-name prefix dir))
-                         (linkfile (format "%s_%s.%s" prefix hash imagetype))
-                         (movefile (format "%s_%s.%s" absprefix hash imagetype))
-                         (sep (and block-type "\n\n"))
-                         (link (concat sep "[[file:" linkfile "]]" sep))
-                         (options
-                          (org-combine-plists
-                           org-format-latex-options
-                           `(:foreground ,fg :background ,bg))))
-                    (when msg (message msg cnt))
-                    (unless checkdir-flag ; Ensure the directory exists.
-                      (setq checkdir-flag t)
-                      (let ((todir (file-name-directory absprefix)))
-                        (unless (file-directory-p todir)
-                          (make-directory todir t))))
-                    (unless (file-exists-p movefile)
-                      (org-create-formula-image
-                       value movefile options forbuffer processing-type))
-                    (org-place-formula-image link block-type beg end value overlays movefile imagetype)))
+                  (org-create-latex-preview
+                   prefix beg end dir overlays msg forbuffer processing-type
+                   value cnt block-type checkdir-flag))
                  ((eq processing-type 'mathml)
                   ;; Process to MathML.
                   (unless (org-format-latex-mathml-available-p)
@@ -495,6 +445,64 @@ Some of the options can be changed using the variable
                  (t
                   (error "Unknown conversion process %s for LaTeX fragments"
                          processing-type)))))))))))
+
+(defun org-create-latex-preview (prefix beg end dir overlays msg forbuffer processing-type
+                                        value cnt block-type checkdir-flag)
+  "The `org-preview-latex-process-alist' branch of `org-format-latex'."
+  (goto-char beg)
+  (let* ((processing-info
+          (cdr (assq processing-type org-preview-latex-process-alist)))
+         (face (face-at-point))
+         ;; Get the colors from the face at point.
+         (fg
+          (let ((color (plist-get org-format-latex-options
+                                  :foreground)))
+            (if forbuffer
+                (cond
+                 ((eq color 'auto)
+                  (face-attribute face :foreground nil 'default))
+                 ((eq color 'default)
+                  (face-attribute 'default :foreground nil))
+                 (t color))
+              color)))
+         (bg
+          (let ((color (plist-get org-format-latex-options
+                                  :background)))
+            (if forbuffer
+                (cond
+                 ((eq color 'auto)
+                  (face-attribute face :background nil 'default))
+                 ((eq color 'default)
+                  (face-attribute 'default :background nil))
+                 (t color))
+              color)))
+         (hash (sha1 (prin1-to-string
+                      (list org-format-latex-header
+                            org-latex-default-packages-alist
+                            org-latex-packages-alist
+                            org-format-latex-options
+                            forbuffer value fg bg))))
+         (imagetype (or (plist-get processing-info :image-output-type) "png"))
+         (absprefix (expand-file-name prefix dir))
+         (linkfile (format "%s_%s.%s" prefix hash imagetype))
+         (movefile (format "%s_%s.%s" absprefix hash imagetype))
+         (sep (and block-type "\n\n"))
+         (link (concat sep "[[file:" linkfile "]]" sep))
+         (options
+          (org-combine-plists
+           org-format-latex-options
+           `(:foreground ,fg :background ,bg))))
+    (when msg (message msg cnt))
+    (unless checkdir-flag ; Ensure the directory exists.
+      (setq checkdir-flag t)
+      (let ((todir (file-name-directory absprefix)))
+        (unless (file-directory-p todir)
+          (make-directory todir t))))
+    (unless (file-exists-p movefile)
+      (org-create-formula-image
+       value movefile options forbuffer processing-type))
+    (org-place-formula-image
+     link block-type beg end value overlays movefile imagetype)))
 
 (defun org-place-formula-image (link block-type beg end value overlays movefile imagetype)
   "Place an overlay from BEG to END showing MOVEFILE.
