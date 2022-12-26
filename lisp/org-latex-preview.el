@@ -501,27 +501,29 @@ Some of the options can be changed using the variable
     (unless (file-exists-p movefile)
       (org-create-formula-image
        value movefile options forbuffer processing-type))
-    (org-place-formula-image
-     link block-type beg end value overlays movefile imagetype)))
+    (if overlays
+        (org-place-latex-image beg end movefile imagetype)
+      (org-place-latex-image-link link block-type beg end value))))
 
-(defun org-place-formula-image (link block-type beg end value overlays movefile imagetype)
+(defun org-place-latex-image (beg end movefile imagetype)
   "Place an overlay from BEG to END showing MOVEFILE.
 The overlay will be above BEG if OVERLAYS is non-nil."
-  (if overlays
-      (progn
-        (dolist (o (overlays-in beg end))
-          (when (eq (overlay-get o 'org-overlay-type)
-                    'org-latex-overlay)
-            (delete-overlay o)))
-        (org--make-preview-overlay beg end movefile imagetype)
-        (goto-char end))
-    (delete-region beg end)
-    (insert
-     (org-add-props link
-         (list 'org-latex-src
-               (replace-regexp-in-string "\"" "" value)
-               'org-latex-src-embed-type
-               (if block-type 'paragraph 'character))))))
+  (dolist (o (overlays-in beg end))
+    (when (eq (overlay-get o 'org-overlay-type)
+              'org-latex-overlay)
+      (delete-overlay o)))
+  (org--make-preview-overlay beg end movefile imagetype)
+  (goto-char end))
+
+(defun org-place-latex-image-link (link block-type beg end value)
+  "Place then link LINK at BEG END."
+  (delete-region beg end)
+  (insert
+   (org-add-props link
+       (list 'org-latex-src
+             (replace-regexp-in-string "\"" "" value)
+             'org-latex-src-embed-type
+             (if block-type 'paragraph 'character)))))
 
 (defun org-create-math-formula (latex-frag &optional mathml-file)
   "Convert LATEX-FRAG to MathML and store it in MATHML-FILE.
