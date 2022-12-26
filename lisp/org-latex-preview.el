@@ -384,7 +384,7 @@ The way this is done is set by PROCESSING-TYPE, which can be either:
 - mathml, in which case the math fragment is replace by the result of
   `org-format-latex-as-mathml'.
 - an entry in `org-preview-latex-process-alist', in which case the
-  math fragment is replaced with `org-create-latex-preview'.
+  math fragment is replaced with `org-create-latex-export'.
 
 Generated image files are placed in DIR with the prefix PREFIX. Note
 that PREFIX may itself contain a directory path component.
@@ -429,9 +429,11 @@ When generating output files, MSG will be `message'd if given."
                 (insert (org-format-latex-as-mathml
                          value block-type prefix dir)))
                ((assq processing-type org-preview-latex-process-alist)
-                (org-create-latex-preview
-                 prefix beg end dir nil nil processing-type
-                 value block-type 'checkdir))
+                (let ((image-dir (expand-file-name prefix dir)))
+                  (unless (file-exists-p image-dir)
+                    (make-directory image-dir t)))
+                (org-create-latex-export
+                 processing-type context prefix dir block-type))
                (t (error "Unknown conversion process %s for LaTeX fragments"
                          processing-type))))))))))
 
@@ -456,25 +458,21 @@ The previews are placed in
     (overlay-recenter (or end (point-max))))
   (unless (eq (get-char-property (point) 'org-overlay-type)
               'org-latex-overlay)
+    (let ((image-dir (expand-file-name
+                      (concat org-preview-latex-image-directory "org-ltximg")
+                      dir)))
+      (unless (file-exists-p image-dir)
+        (make-directory image-dir t)))
     (save-excursion
       (goto-char (or beg (point-min)))
       (while (re-search-forward org-latex-tentative-math-re end t)
         (let* ((context (org-element-context))
                (type (org-element-type context)))
           (when (memq type '(latex-environment latex-fragment))
-            (let ((value (org-element-property :value context))
-                  (beg (org-element-property :begin context))
-                  (end (save-excursion
-                         (goto-char (org-element-property :end context))
-                         (skip-chars-backward " \r\t\n")
-                         (point))))
-              (if (assq processing-type org-preview-latex-process-alist)
-                  (org-create-latex-preview
-                   (concat org-preview-latex-image-directory "org-ltximg")
-                   beg end dir 'overlay 'forbuffer processing-type
-                   value nil 'checkdir)
-                (error "Unknown conversion process %s for previewing LaTeX fragments"
-                       processing-type)))))))))
+            (if (assq processing-type org-preview-latex-process-alist)
+                (org-create-latex-preview processing-type context dir)
+              (error "Unknown conversion process %s for previewing LaTeX fragments"
+                     processing-type))))))))
 
 (defun org-format-latex
     (prefix &optional beg end dir overlays msg forbuffer processing-type)
@@ -496,63 +494,85 @@ Some of the options can be changed using the variable
       (org-latex-preview-fragments processing-type beg end)
     (org-latex-replace-fragments prefix processing-type dir msg)))
 
-(defun org-create-latex-preview (prefix beg end dir overlays forbuffer processing-type
-                                     value block-type checkdir-flag)
-  "The `org-preview-latex-process-alist' branch of `org-format-latex'."
-  (goto-char beg)
+(defun org-create-latex-preview (processing-type element &optional dir)
+  "Create a preview of the LaTeX math fragment ELEMENT using PROCESSING-TYPE.
+
+The previews are placed in
+`org-preview-latex-image-directory'/\"org-ltximg\", relative to DIR."
   (let* ((processing-info
           (cdr (assq processing-type org-preview-latex-process-alist)))
-         (face (face-at-point))
-         ;; Get the colors from the face at point.
-         (fg
-          (let ((color (plist-get org-format-latex-options
-                                  :foreground)))
-            (if forbuffer
-                (cond
-                 ((eq color 'auto)
-                  (face-attribute face :foreground nil 'default))
-                 ((eq color 'default)
-                  (face-attribute 'default :foreground nil))
-                 (t color))
-              color)))
-         (bg
-          (let ((color (plist-get org-format-latex-options
-                                  :background)))
-            (if forbuffer
-                (cond
-                 ((eq color 'auto)
-                  (face-attribute face :background nil 'default))
-                 ((eq color 'default)
-                  (face-attribute 'default :background nil))
-                 (t color))
-              color)))
+         (beg (org-element-property :begin element))
+         (end (save-excursion
+                (goto-char (org-element-property :end element))
+                (skip-chars-backward " \r\t\n")
+                (point)))
+         (value (org-element-property :value element))
+         (face (save-excursion
+                 (goto-char beg)
+                 (face-at-point)))
+         (fg (pcase (plist-get org-format-latex-options :foreground)
+               ('auto (face-attribute face :foreground nil 'default))
+               ('default (face-attribute 'default :foreground nil))
+               (color color)))
+         (bg (pcase (plist-get org-format-latex-options :background)
+               ('auto (face-attribute face :background nil 'default))
+               ('default (face-attribute 'default :background nil))
+               (color color)))
          (hash (sha1 (prin1-to-string
                       (list org-format-latex-header
                             org-latex-default-packages-alist
                             org-latex-packages-alist
                             org-format-latex-options
-                            forbuffer value fg bg))))
+                            'preview value fg bg))))
+         (imagetype (or (plist-get processing-info :image-output-type) "png"))
+         (absprefix (expand-file-name
+                     (concat org-preview-latex-image-directory "org-ltximg")
+                     dir))
+         (movefile (format "%s_%s.%s" absprefix hash imagetype))
+         (options (org-combine-plists
+                   org-format-latex-options
+                   (list :foreground fg :background bg))))
+    (unless (file-exists-p movefile)
+      (org-create-formula-image
+       value movefile options 'forbuffer processing-type))
+    (org-place-latex-image beg end movefile imagetype)))
+
+(defun org-create-latex-export (processing-type element prefix dir &optional block-type)
+  "Create a export of the LaTeX math fragment ELEMENT using PROCESSING-TYPE.
+
+Generated image files are placed in DIR with the prefix PREFIX. Note
+that PREFIX may itself contain a directory path component.
+
+BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
+  (let* ((processing-info
+          (cdr (assq processing-type org-preview-latex-process-alist)))
+         (beg (org-element-property :begin element))
+         (end (save-excursion
+                (goto-char (org-element-property :end element))
+                (skip-chars-backward " \r\t\n")
+                (point)))
+         (value (org-element-property :value element))
+         (fg (plist-get org-format-latex-options :foreground))
+         (bg (plist-get org-format-latex-options :background))
+         (hash (sha1 (prin1-to-string
+                      (list org-format-latex-header
+                            org-latex-default-packages-alist
+                            org-latex-packages-alist
+                            org-format-latex-options
+                            'export value fg bg))))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
          (absprefix (expand-file-name prefix dir))
          (linkfile (format "%s_%s.%s" prefix hash imagetype))
          (movefile (format "%s_%s.%s" absprefix hash imagetype))
          (sep (and block-type "\n\n"))
          (link (concat sep "[[file:" linkfile "]]" sep))
-         (options
-          (org-combine-plists
-           org-format-latex-options
-           `(:foreground ,fg :background ,bg))))
-    (unless checkdir-flag ; Ensure the directory exists.
-      (setq checkdir-flag t)
-      (let ((todir (file-name-directory absprefix)))
-        (unless (file-directory-p todir)
-          (make-directory todir t))))
+         (options (org-combine-plists
+                   org-format-latex-options
+                   (list :foreground fg :background bg))))
     (unless (file-exists-p movefile)
       (org-create-formula-image
-       value movefile options forbuffer processing-type))
-    (if overlays
-        (org-place-latex-image beg end movefile imagetype)
-      (org-place-latex-image-link link block-type beg end value))))
+       value movefile options nil processing-type))
+    (org-place-latex-image-link link block-type beg end value)))
 
 (defun org-place-latex-image (beg end movefile imagetype)
   "Place an overlay from BEG to END showing MOVEFILE.
