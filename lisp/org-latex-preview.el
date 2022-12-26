@@ -135,19 +135,23 @@ All available processes and theirs documents can be found in
      :image-input-type "dvi"
      :image-output-type "png"
      :image-size-adjust (1.0 . 1.0)
-     :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :image-converter ("dvipng -D %D -T tight -o %O %f")
+     :latex-compiler ("latex -interaction nonstopmode -output-directory %o")
+     :image-converter ("dvipng --follow -D %D -T tight -o %B-%%09d.png %f")
      :transparent-image-converter
-     ("dvipng -D %D -T tight -bg Transparent -o %O %f"))
+     ("dvipng --follow -D %D -T tight -bg Transparent -o %B-%%09d.png %f"))
+    ;; :transparent-image-converter
+    ;; ("dvipng -D %D -T tight -bg Transparent -o %O %f"))
+    ;; :image-converter ("dvipng -D %D -T tight -o %O %f")
+    ;; :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
     (dvisvgm
      :programs ("latex" "dvisvgm")
      :description "dvi > svg"
      :message "you need to install the programs: latex and dvisvgm."
      :image-input-type "dvi"
      :image-output-type "svg"
-     :image-size-adjust (1.7 . 1.5)
-     :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :image-converter ("dvisvgm %f --no-fonts --exact-bbox --scale=%S --output=%O"))
+     :image-size-adjust (1.4 . 1.2)
+     :latex-compiler ("latex -interaction nonstopmode -output-directory %o")
+     :image-converter ("dvisvgm --page=1- --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
     (imagemagick
      :programs ("latex" "convert")
      :description "pdf > png"
@@ -446,7 +450,7 @@ When generating output files, MSG will be `message'd if given."
            (t (error "Unknown conversion process %s for LaTeX fragments"
                      processing-type))))))))
 
-(defun org-latex-preview-fragments (processing-type &optional beg end dir)
+(defun org-latex-preview-fragments (processing-type &optional beg end)
   "Produce image overlays of LaTeX math fragments between BEG and END.
 
 The LaTeX fragments are processed using PROCESSING-TYPE, a key of
@@ -456,10 +460,7 @@ If `point' is currently on an LaTeX overlay, then no overlays
 will be generated.  Since in practice `org-clear-latex-preview'
 should have been called immediately prior to this function, this
 situation should not occur in practice and mainly acts as
-protection against placing doubled up overlays.
-
-The previews are placed in
-`org-preview-latex-image-directory'/\"org-ltximg\", relative to DIR."
+protection against placing doubled up overlays."
   (when (fboundp 'clear-image-cache)
     (clear-image-cache))
   ;; Optimize overlay creation: (info "(elisp) Managing Overlays").
@@ -473,8 +474,8 @@ The previews are placed in
       (unless (file-exists-p image-dir)
         (make-directory image-dir t)))
     (if (assq processing-type org-preview-latex-process-alist)
-        (dolist (element (org-latex-collect-fragments beg end))
-          (org-create-latex-preview processing-type element dir))
+        (org-create-latex-preview
+         processing-type (org-latex-collect-fragments beg end))
       (error "Unknown conversion process %s for previewing LaTeX fragments"
              processing-type))))
 
@@ -498,48 +499,197 @@ Some of the options can be changed using the variable
       (org-latex-preview-fragments processing-type beg end)
     (org-latex-replace-fragments prefix processing-type dir msg)))
 
-(defun org-create-latex-preview (processing-type element &optional dir)
-  "Create a preview of the LaTeX math fragment ELEMENT using PROCESSING-TYPE.
-
-The previews are placed in
-`org-preview-latex-image-directory'/\"org-ltximg\", relative to DIR."
+(defun org-create-latex-preview (processing-type elements)
+  "Preview LaTeX math fragments ELEMENTS using PROCESSING-TYPE."
   (let* ((processing-info
           (cdr (assq processing-type org-preview-latex-process-alist)))
-         (beg (org-element-property :begin element))
-         (end (save-excursion
-                (goto-char (org-element-property :end element))
-                (skip-chars-backward " \r\t\n")
-                (point)))
-         (value (org-element-property :value element))
-         (face (save-excursion
-                 (goto-char beg)
-                 (face-at-point)))
-         (fg (pcase (plist-get org-format-latex-options :foreground)
-               ('auto (face-attribute face :foreground nil 'default))
-               ('default (face-attribute 'default :foreground nil))
-               (color color)))
-         (bg (pcase (plist-get org-format-latex-options :background)
-               ('auto (face-attribute face :background nil 'default))
-               ('default (face-attribute 'default :background nil))
-               (color color)))
-         (hash (sha1 (prin1-to-string
-                      (list org-format-latex-header
-                            org-latex-default-packages-alist
-                            org-latex-packages-alist
-                            org-format-latex-options
-                            'preview value fg bg))))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
-         (absprefix (expand-file-name
-                     (concat org-preview-latex-image-directory "org-ltximg")
-                     dir))
-         (movefile (format "%s_%s.%s" absprefix hash imagetype))
-         (options (org-combine-plists
-                   org-format-latex-options
-                   (list :foreground fg :background bg))))
-    (unless (file-exists-p movefile)
-      (org-create-formula-image
-       value movefile options 'forbuffer processing-type))
-    (org-place-latex-image beg end movefile imagetype)))
+         document-strings
+         locations
+         movefiles existfiles)
+    (save-excursion
+      (dolist (element elements)
+        (let* ((beg (org-element-property :begin element))
+               (end (save-excursion
+                      (goto-char (org-element-property :end element))
+                      (skip-chars-backward " \r\t\n")
+                      (point)))
+               (value (org-element-property :value element))
+               (face (save-excursion
+                       (goto-char beg)
+                       (face-at-point)))
+               (fg (pcase (plist-get org-format-latex-options :foreground)
+                     ('auto (face-attribute face :foreground nil 'default))
+                     ('default (face-attribute 'default :foreground nil))
+                     (color color)))
+               (bg (pcase (plist-get org-format-latex-options :background)
+                     ('auto (face-attribute face :background nil 'default))
+                     ('default (face-attribute 'default :background nil))
+                     (color color)))
+               (hash (sha1 (prin1-to-string
+                            (list org-format-latex-header
+                                  org-latex-default-packages-alist
+                                  org-latex-packages-alist
+                                  org-format-latex-options
+                                  value fg bg))))
+               (movefile (format "%s_%s.%s" absprefix hash imagetype))
+               (options (org-combine-plists
+                         org-format-latex-options
+                         (list :foreground fg :background bg))))
+          (if (file-exists-p movefile)
+              (org-place-latex-image beg end movefile imagetype)
+            (push (org-create-preview-string value options)
+                  document-strings)
+            (push (cons beg end) locations)
+            (push movefile movefiles)))))
+    (when movefiles
+      (org-create-formula-image-async
+       processing-type
+       (mapconcat #'identity (nreverse document-strings) "\n")
+       (nreverse locations)
+       (nreverse movefiles)))))
+
+(defun org-create-formula-image-async (processing-type string locations movefiles)
+  "Preview math fragments in STRING asynchronously with method PROCESSING-TYPE.
+
+LOCATIONS are buffer locations denoting the beginning and end of
+each snippet in STRING. Each entry is a cons cell.
+
+The previews are copied (in lexicographic order) to the files in
+MOVEFILES."
+  (interactive "P")
+  (let* ((processing-type (or processing-type
+                              org-preview-latex-default-process))
+         (processing-info
+          (cdr (assq processing-type org-preview-latex-process-alist)))
+         (programs (plist-get processing-info :programs))
+         (error-message (or (plist-get processing-info :message) ""))
+         (image-input-type (plist-get processing-info :image-input-type))
+         (image-output-type (plist-get processing-info :image-output-type))
+         (post-clean (or (plist-get processing-info :post-clean)
+                         '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
+                           ".svg" ".png" ".jpg" ".jpeg" ".out")))
+         (latex-header
+          (or (plist-get processing-info :latex-header)
+              (org-latex-make-preamble
+               (org-export-get-environment (org-export-get-backend 'latex))
+               org-format-latex-header
+               'snippet)))
+         (latex-compiler (plist-get processing-info :latex-compiler))
+         (tmpdir temporary-file-directory)
+         (texfilebase (make-temp-name
+                       (expand-file-name "orgtex" tmpdir)))
+         (texfile (concat texfilebase ".tex"))
+         (image-size-adjust (or (plist-get processing-info :image-size-adjust)
+                                '(1.0 . 1.0)))
+         (scale (* (car image-size-adjust)
+                   (or (plist-get org-format-latex-options :scale) 1.0)))
+         (dpi (* scale (if (display-graphic-p) (org--get-display-dpi) 140.0)))
+         (image-converter
+          (or (and (string= (plist-get org-format-latex-options :background)
+                            "Transparent")
+                   (plist-get processing-info :transparent-image-converter))
+              (plist-get processing-info :image-converter)))
+         (resize-mini-windows nil))
+    
+    (dolist (program programs)
+      (org-check-external-command program error-message))
+    
+    (if (string-suffix-p string "\n")
+        (aset string (1- (length string)) ?%)
+      (setq string (concat string "%")))
+
+    (with-temp-file texfile
+      (insert latex-header)
+      (insert "\n\\begin{document}\n"
+              string
+              "\n\\end{document}\n"))
+
+    (let* ((tex-process)
+           (image-process)
+           (basename (file-name-base texfilebase))
+           (out-dir (or (file-name-directory texfile) default-directory))
+           (spec `((?o . ,(shell-quote-argument out-dir))
+                   (?b . ,(shell-quote-argument basename))
+                   (?B . ,(shell-quote-argument texfilebase))))
+           (spec-tex `((?f . ,(shell-quote-argument texfile))))
+           (spec-img `((?D . ,(shell-quote-argument (format "%s" dpi)))
+                       (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
+                       (?f . ,(shell-quote-argument
+                               (expand-file-name
+                                (concat basename "." image-input-type) out-dir))))))
+      (setq tex-process
+            (make-process :name (format "Org-Preview-%s" (file-name-base texfile))
+                          :buffer (format "*Org Preview LaTeX Output*")
+                          :command (split-string-shell-command
+                                    (format-spec (car latex-compiler)
+                                                 (append spec spec-tex)))
+                          :sentinel (lambda (proc signal)
+                                      (unless (process-live-p proc)
+                                        (dolist (e (delete (concat "." image-input-type) post-clean))
+                                          (when (file-exists-p (concat texfilebase e))
+                                            (delete-file (concat texfilebase e))))))))
+      (process-send-string tex-process
+                           (format-spec
+                            "\\PassOptionsToPackage{noconfig,active,tightpage,auctex}{preview}\\AtBeginDocument{\\ifx\\ifPreview\\undefined\\RequirePackage[displaymath,floats,graphics,textmath,sections,footnotes]{preview}[2004/11/05]\\fi}\\input\\detokenize{%f}\n"
+                            spec-tex))
+      (when (equal processing-type 'dvisvgm)
+        (let (inhibit-quit)
+          (while (process-live-p tex-process)
+            (accept-process-output tex-process))))
+      (setq image-process
+            (make-process
+             :name (format "Org-Convert-%s-%s" (file-name-base texfile)
+                           (symbol-name processing-type))
+             :buffer (format "*Org Convert %s %s*"
+                             (file-name-base texfile)
+                             (symbol-name processing-type))
+             :command (split-string-shell-command
+                       (format-spec (car image-converter)
+                                    (append spec spec-img)))
+             :sentinel
+             (lambda (proc signal)
+               (when (string= signal "finished\n")
+                 (let ((images (file-expand-wildcards
+                                (concat texfilebase "*." image-output-type)
+                                'full)))
+                   (save-excursion
+                     (cl-loop
+                      for (block-beg . block-end) in locations
+                      for image-file in images
+                      for movefile in movefiles
+                      do (copy-file image-file movefile 'replace)
+                      do (org-place-latex-image block-beg block-end movefile image-output-type)))))
+               (unless (process-live-p proc)
+                 (mapc #'delete-file
+                       (file-expand-wildcards
+                        (concat texfilebase "*." image-output-type) 'full))
+                 (delete-file (concat texfilebase "." image-input-type)))))))))
+
+(defun org-create-preview-string (value options &optional export-p)
+  "Generate LaTeX string suitable for use with preview.sty.
+
+VALUE is the math fragment text to be previewed.
+
+OPTIONS is the plist `org-format-latex-options' with customized
+color information for this run.
+
+EXPORT-P, if true, uses colors required for HTML processing."
+  (let* ((fg (pcase (plist-get options (if export-p :html-foreground :foreground))
+               ('default (org-latex-color-format (org-latex-color :foreground)))
+               ((pred null) (org-latex-color-format "Black"))
+               (color (org-latex-color-format color))))
+         (bg (pcase (plist-get options (if export-p :html-background :background))
+               ('default (org-latex-color :background))
+               ("Transparent" nil)
+               (bg (org-latex-color-format bg)))))
+    (concat "\n\n\\definecolor{fg}{rgb}{" fg "}%\n"
+            (and bg (format "\\definecolor{bg}{rgb}{%s}%%\n" bg))
+            "\\begin{preview}"
+            (and bg "\\pagecolor{bg}%\n")
+            "{\\color{fg}\n"
+            value
+            "}\n\\end{preview}\n\n")))
 
 (defun org-create-latex-export (processing-type element prefix dir &optional block-type)
   "Create a export of the LaTeX math fragment ELEMENT using PROCESSING-TYPE.
