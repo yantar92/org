@@ -267,6 +267,16 @@ header, or they will be appended."
   :group 'org-latex
   :type 'string)
 
+(defcustom org-preview-use-precompilation t
+  "Use LaTeX header precompilation when previewing fragments.
+This causes a slight delay the first time `org-latex-pdf-process'
+is called in a buffer, but subsequent calls will be faster.
+
+This requires the LaTeX package \"mylatexformat\" to be installed."
+  :group 'org-latex
+  :package-version '(Org . "9.7")
+  :type 'boolean)
+
 (defconst org-latex-tentative-math-re
   "\\$\\|\\\\[([]\\|^[ \t]*\\\\begin{[A-Za-z0-9*]+}"
   "Regexp whith will match all instances of LaTeX math.
@@ -570,16 +580,19 @@ MOVEFILES."
                          '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
                            ".svg" ".png" ".jpg" ".jpeg" ".out")))
          (latex-header
-          (concat
-           (or (plist-get processing-info :latex-header)
-               (org-latex-make-preamble
-                (org-combine-plists
-                 (org-export-get-environment (org-export-get-backend 'latex))
-                 '(:time-stamp-file nil))
-                org-format-latex-header 'snippet))
-           "\n\\RequirePackage"
-           "[active,tightpage,auctex,displaymath,graphics,textmath,floats]"
-           "{preview}\n"))
+          (let ((header (concat
+                         (or (plist-get processing-info :latex-header)
+                             (org-latex-make-preamble
+                              (org-combine-plists
+                               (org-export-get-environment (org-export-get-backend 'latex))
+                               '(:time-stamp-file nil))
+                              org-format-latex-header 'snippet))
+                         "\n\\RequirePackage"
+                         "[active,tightpage,auctex,displaymath,graphics,textmath,floats]"
+                         "{preview}\n")))
+            (if org-preview-use-precompilation
+                (concat "%&" (org-preview-precompile header))
+              header)))
          (latex-compiler (plist-get processing-info :latex-compiler))
          (texfilebase
           (make-temp-name
@@ -667,6 +680,34 @@ MOVEFILES."
                        (file-expand-wildcards
                         (concat texfilebase "*." image-output-type) 'full))
                  (delete-file (concat texfilebase "." image-input-type)))))))))
+
+(defun org-preview-precompile (header)
+  "Precompile/dump LaTeX HEADER (preamble) text.
+
+This dump is named using its sha1 hash and placed in
+`temporary-file-directory', and the name is returned.  If a dump
+file with this name already exists, simply return the name.
+
+This is intended to speed up Org's LaTeX preview generation
+process."
+  ;; Note: the dump is created in the directory that LaTeX runs. TeX
+  ;; files cannot include dumps from other directories, so the dump
+  ;; must be created in (or moved to) the location of the TeX file.
+  (let* ((default-directory temporary-file-directory)
+         (header-hash (substring (sha1 header) 0 12))
+         (header-base-file
+          (expand-file-name header-hash temporary-file-directory))
+         (dump-file (concat header-base-file ".fmt"))
+         (header-file (concat header-base-file ".tex")))
+    (if (file-exists-p dump-file)
+        (file-name-base header-base-file)
+      (with-temp-file header-file
+        (insert header "\n\\endofdump\n"))
+      (file-name-base
+       (org-compile-file
+        header-file
+        '("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
+        "fmt")))))
 
 (defun org-create-preview-string (value options &optional export-p)
   "Generate LaTeX string suitable for use with preview.sty.
