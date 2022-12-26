@@ -3074,8 +3074,8 @@ INFO is a plist containing export properties."
      :drop-visibility t :drop-narrowing t :drop-contents t
      (erase-buffer)
      (insert latex-frag)
-     (org-format-latex cache-relpath nil nil cache-dir nil
-		       "Creating LaTeX Image..." nil processing-type)
+     (org-latex-replace-fragments
+      cache-relpath processing-type cache-dir "Creating LaTeX Image...")
      (buffer-string))))
 
 (defun org-html--wrap-latex-environment (contents _ &optional caption label)

@@ -263,6 +263,13 @@ header, or they will be appended."
   :group 'org-latex
   :type 'string)
 
+(defconst org-latex-tentative-math-re
+  "\\$\\|\\\\[([]\\|^[ \t]*\\\\begin{[A-Za-z0-9*]+}"
+  "Regexp whith will match all instances of LaTeX math.
+Note that this will also produce false postives, and
+`org-element-context' should be used to verify that matches are
+indeed LaTeX fragments/environments.")
+
 (defun org--make-preview-overlay (beg end image &optional imagetype)
   "Build an overlay between BEG and END using IMAGE file.
 Argument IMAGETYPE is the extension of the displayed image,
@@ -294,17 +301,9 @@ overlays were removed, nil otherwise."
 (defun org--latex-preview-region (beg end)
   "Preview LaTeX fragments between BEG and END.
 BEG and END are buffer positions."
-  (let ((file (buffer-file-name (buffer-base-buffer))))
-    (save-excursion
-      (org-format-latex
-       (concat org-preview-latex-image-directory "org-ltximg")
-       beg end
-       ;; Emacs cannot overlay images from remote hosts.  Create it in
-       ;; `temporary-file-directory' instead.
-       (if (or (not file) (file-remote-p file))
-           temporary-file-directory
-         default-directory)
-       'overlays nil 'forbuffer org-preview-latex-default-process))))
+  (org-latex-preview-fragments
+   org-preview-latex-default-process
+   beg end))
 
 (defun org-latex-preview (&optional arg)
   "Toggle preview of the LaTeX fragment at point.
@@ -374,6 +373,109 @@ fragments in the buffer."
       (org--latex-preview-region beg end)
       (message "Creating LaTeX previews in section... done.")))))
 
+(defun org-latex-replace-fragments (prefix processing-type &optional dir msg)
+  "Replace all LaTeX fragments in the buffer with export appropriate forms.
+The way this is done is set by PROCESSING-TYPE, which can be either:
+- verabtim, in which case nothing is done
+- mathjax, in which case the TeX-style delimeters are replaced with
+  LaTeX-style delimeters.
+- html, in which case the math fragment is replaced by the result of
+  `org-format-latex-as-html'.
+- mathml, in which case the math fragment is replace by the result of
+  `org-format-latex-as-mathml'.
+- an entry in `org-preview-latex-process-alist', in which case the
+  math fragment is replaced with `org-create-latex-preview'.
+
+Generated image files are placed in DIR with the prefix PREFIX. Note
+that PREFIX may itself contain a directory path component.
+
+When generating output files, MSG will be `message'd if given."
+  (let* ((cnt 0))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward org-latex-tentative-math-re nil t)
+        (let* ((context (org-element-context))
+               (type (org-element-type context)))
+          (when (memq type '(latex-environment latex-fragment))
+            (let ((block-type (eq type 'latex-environment))
+                  (value (org-element-property :value context))
+                  (beg (org-element-property :begin context))
+                  (end (save-excursion
+                         (goto-char (org-element-property :end context))
+                         (skip-chars-backward " \r\t\n")
+                         (point))))
+              (cond
+               ((eq processing-type 'verbatim)) ; Do nothing.
+               ((eq processing-type 'mathjax)
+                ;; Prepare for MathJax processing.
+                (if (not (string-match "\\`\\$\\$?" value))
+                    (goto-char end)
+                  (delete-region beg end)
+                  (if (string= (match-string 0 value) "$$")
+                      (insert "\\[" (substring value 2 -2) "\\]")
+                    (insert "\\(" (substring value 1 -1) "\\)"))))
+               ((eq processing-type 'html)
+                (goto-char beg)
+                (delete-region beg end)
+                (insert (org-format-latex-as-html value)))
+               ((eq processing-type 'mathml)
+                ;; Process to MathML.
+                (unless (org-format-latex-mathml-available-p)
+                  (user-error "LaTeX to MathML converter not configured"))
+                (cl-incf cnt)
+                (when msg (message msg cnt))
+                (goto-char beg)
+                (delete-region beg end)
+                (insert (org-format-latex-as-mathml
+                         value block-type prefix dir)))
+               ((assq processing-type org-preview-latex-process-alist)
+                (org-create-latex-preview
+                 prefix beg end dir nil nil processing-type
+                 value block-type 'checkdir))
+               (t (error "Unknown conversion process %s for LaTeX fragments"
+                         processing-type))))))))))
+
+(defun org-latex-preview-fragments (processing-type &optional beg end dir)
+  "Produce image overlays of LaTeX math fragments between BEG and END.
+
+The LaTeX fragments are processed using PROCESSING-TYPE, a key of
+`org-latex-preview-process-alist'.
+
+If `point' is currently on an LaTeX overlay, then no overlays
+will be generated.  Since in practice `org-clear-latex-preview'
+should have been called immediately prior to this function, this
+situation should not occur in practice and mainly acts as
+protection against placing doubled up overlays.
+
+The previews are placed in
+`org-preview-latex-image-directory'/\"org-ltximg\", relative to DIR."
+  (when (fboundp 'clear-image-cache)
+    (clear-image-cache))
+  ;; Optimize overlay creation: (info "(elisp) Managing Overlays").
+  (when (memq processing-type '(dvipng dvisvgm imagemagick))
+    (overlay-recenter (or end (point-max))))
+  (unless (eq (get-char-property (point) 'org-overlay-type)
+              'org-latex-overlay)
+    (save-excursion
+      (goto-char (or beg (point-min)))
+      (while (re-search-forward org-latex-tentative-math-re end t)
+        (let* ((context (org-element-context))
+               (type (org-element-type context)))
+          (when (memq type '(latex-environment latex-fragment))
+            (let ((value (org-element-property :value context))
+                  (beg (org-element-property :begin context))
+                  (end (save-excursion
+                         (goto-char (org-element-property :end context))
+                         (skip-chars-backward " \r\t\n")
+                         (point))))
+              (if (assq processing-type org-preview-latex-process-alist)
+                  (org-create-latex-preview
+                   (concat org-preview-latex-image-directory "org-ltximg")
+                   beg end dir 'overlay 'forbuffer processing-type
+                   value nil 'checkdir)
+                (error "Unknown conversion process %s for previewing LaTeX fragments"
+                       processing-type)))))))))
+
 (defun org-format-latex
     (prefix &optional beg end dir overlays msg forbuffer processing-type)
   "Replace LaTeX fragments with links to an image.
@@ -390,64 +492,12 @@ PROCESSING-TYPE is the conversion method to use, as a symbol.
 
 Some of the options can be changed using the variable
 `org-format-latex-options', which see."
-  (when (and overlays (fboundp 'clear-image-cache)) (clear-image-cache))
-  (unless (eq processing-type 'verbatim)
-    (let* ((math-regexp "\\$\\|\\\\[([]\\|^[ \t]*\\\\begin{[A-Za-z0-9*]+}")
-           (cnt 0)
-           checkdir-flag)
-      (goto-char (or beg (point-min)))
-      ;; Optimize overlay creation: (info "(elisp) Managing Overlays").
-      (when (and overlays (memq processing-type '(dvipng imagemagick)))
-        (overlay-recenter (or end (point-max))))
-      (while (re-search-forward math-regexp end t)
-        (unless (and overlays
-                     (eq (get-char-property (point) 'org-overlay-type)
-                         'org-latex-overlay))
-          (let* ((context (org-element-context))
-                 (type (org-element-type context)))
-            (when (memq type '(latex-environment latex-fragment))
-              (let ((block-type (eq type 'latex-environment))
-                    (value (org-element-property :value context))
-                    (beg (org-element-property :begin context))
-                    (end (save-excursion
-                           (goto-char (org-element-property :end context))
-                           (skip-chars-backward " \r\t\n")
-                           (point))))
-                (cond
-                 ((eq processing-type 'mathjax)
-                  ;; Prepare for MathJax processing.
-                  (if (not (string-match "\\`\\$\\$?" value))
-                      (goto-char end)
-                    (delete-region beg end)
-                    (if (string= (match-string 0 value) "$$")
-                        (insert "\\[" (substring value 2 -2) "\\]")
-                      (insert "\\(" (substring value 1 -1) "\\)"))))
-                 ((eq processing-type 'html)
-                  (goto-char beg)
-                  (delete-region beg end)
-                  (insert (org-format-latex-as-html value)))
-                 ((assq processing-type org-preview-latex-process-alist)
-                  ;; Process to an image.
-                  (cl-incf cnt)
-                  (org-create-latex-preview
-                   prefix beg end dir overlays msg forbuffer processing-type
-                   value cnt block-type checkdir-flag))
-                 ((eq processing-type 'mathml)
-                  ;; Process to MathML.
-                  (unless (org-format-latex-mathml-available-p)
-                    (user-error "LaTeX to MathML converter not configured"))
-                  (cl-incf cnt)
-                  (when msg (message msg cnt))
-                  (goto-char beg)
-                  (delete-region beg end)
-                  (insert (org-format-latex-as-mathml
-                           value block-type prefix dir)))
-                 (t
-                  (error "Unknown conversion process %s for LaTeX fragments"
-                         processing-type)))))))))))
+  (if (and overlays forbuffer)
+      (org-latex-preview-fragments processing-type beg end)
+    (org-latex-replace-fragments prefix processing-type dir msg)))
 
-(defun org-create-latex-preview (prefix beg end dir overlays msg forbuffer processing-type
-                                        value cnt block-type checkdir-flag)
+(defun org-create-latex-preview (prefix beg end dir overlays forbuffer processing-type
+                                     value block-type checkdir-flag)
   "The `org-preview-latex-process-alist' branch of `org-format-latex'."
   (goto-char beg)
   (let* ((processing-info
@@ -492,7 +542,6 @@ Some of the options can be changed using the variable
           (org-combine-plists
            org-format-latex-options
            `(:foreground ,fg :background ,bg))))
-    (when msg (message msg cnt))
     (unless checkdir-flag ; Ensure the directory exists.
       (setq checkdir-flag t)
       (let ((todir (file-name-directory absprefix)))

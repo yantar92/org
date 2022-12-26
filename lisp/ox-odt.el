@@ -3798,9 +3798,8 @@ contextual information."
 			  (insert "\n"
 				  (replace-regexp-in-string
 				   "^" "#+LATEX_HEADER: " h)))))
-		    (org-format-latex cache-subdir nil nil cache-dir
-				      nil display-msg nil
-				      processing-type)
+                    (org-latex-replace-fragments
+                     cache-subdir processing-type cache-dir display-msg)
 		    (goto-char (point-min))
 		    (skip-chars-forward " \t\n")
 		    (org-element-link-parser))))
