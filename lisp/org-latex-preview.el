@@ -135,7 +135,7 @@ All available processes and theirs documents can be found in
      :image-input-type "dvi"
      :image-output-type "png"
      :image-size-adjust (1.0 . 1.0)
-     :latex-compiler ("latex -interaction nonstopmode -output-directory %o")
+     :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
      :image-converter ("dvipng --follow -D %D -T tight -o %B-%%09d.png %f")
      :transparent-image-converter
      ("dvipng --follow -D %D -T tight -bg Transparent -o %B-%%09d.png %f"))
@@ -150,7 +150,7 @@ All available processes and theirs documents can be found in
      :image-input-type "dvi"
      :image-output-type "svg"
      :image-size-adjust (1.4 . 1.2)
-     :latex-compiler ("latex -interaction nonstopmode -output-directory %o")
+     :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
      :image-converter ("dvisvgm --page=1- --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
     (imagemagick
      :programs ("latex" "convert")
@@ -570,15 +570,20 @@ MOVEFILES."
                          '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
                            ".svg" ".png" ".jpg" ".jpeg" ".out")))
          (latex-header
-          (or (plist-get processing-info :latex-header)
-              (org-latex-make-preamble
-               (org-export-get-environment (org-export-get-backend 'latex))
-               org-format-latex-header
-               'snippet)))
+          (concat
+           (or (plist-get processing-info :latex-header)
+               (org-latex-make-preamble
+                (org-combine-plists
+                 (org-export-get-environment (org-export-get-backend 'latex))
+                 '(:time-stamp-file nil))
+                org-format-latex-header 'snippet))
+           "\n\\RequirePackage"
+           "[active,tightpage,auctex,displaymath,graphics,textmath,floats]"
+           "{preview}\n"))
          (latex-compiler (plist-get processing-info :latex-compiler))
-         (tmpdir temporary-file-directory)
-         (texfilebase (make-temp-name
-                       (expand-file-name "orgtex" tmpdir)))
+         (texfilebase
+          (make-temp-name
+           (expand-file-name "orgtex" temporary-file-directory)))
          (texfile (concat texfilebase ".tex"))
          (image-size-adjust (or (plist-get processing-info :image-size-adjust)
                                 '(1.0 . 1.0)))
@@ -605,7 +610,8 @@ MOVEFILES."
               string
               "\n\\end{document}\n"))
 
-    (let* ((tex-process)
+    (let* ((default-directory temporary-file-directory)
+           (tex-process)
            (image-process)
            (basename (file-name-base texfilebase))
            (out-dir (or (file-name-directory texfile) default-directory))
@@ -629,10 +635,6 @@ MOVEFILES."
                                         (dolist (e (delete (concat "." image-input-type) post-clean))
                                           (when (file-exists-p (concat texfilebase e))
                                             (delete-file (concat texfilebase e))))))))
-      (process-send-string tex-process
-                           (format-spec
-                            "\\PassOptionsToPackage{noconfig,active,tightpage,auctex}{preview}\\AtBeginDocument{\\ifx\\ifPreview\\undefined\\RequirePackage[displaymath,floats,graphics,textmath,sections,footnotes]{preview}[2004/11/05]\\fi}\\input\\detokenize{%f}\n"
-                            spec-tex))
       (when (equal processing-type 'dvisvgm)
         (let (inhibit-quit)
           (while (process-live-p tex-process)
