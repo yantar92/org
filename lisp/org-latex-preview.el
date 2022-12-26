@@ -515,9 +515,9 @@ Some of the options can be changed using the variable
                       (skip-chars-backward " \r\t\n")
                       (point)))
                (value (org-element-property :value element))
-               (face (save-excursion
-                       (goto-char beg)
-                       (face-at-point)))
+               (face (or (and (> beg 1)
+                              (get-text-property (1- beg) 'face))
+                         'default))
                (fg (pcase (plist-get org-format-latex-options :foreground)
                      ('auto (face-attribute face :foreground nil 'default))
                      ('default (face-attribute 'default :foreground nil))
