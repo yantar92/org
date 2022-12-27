@@ -584,8 +584,11 @@ MOVEFILES."
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
             (org-latex-preview--image-extract-async extended-info)))
-      (plist-put (cdr tex-compile-async) :success img-extract-async)
-      (plist-put (cdr tex-compile-async) :failure img-extract-async)
+      (if (and (eq processing-type 'dvipng)
+               (member "--follow" (car img-extract-async)))
+          (apply #'org-async-call img-extract-async)
+        (plist-put (cdr tex-compile-async) :success img-extract-async)
+        (plist-put (cdr tex-compile-async) :failure img-extract-async))
       (plist-put (cdr img-extract-async) :success
                  #'org-latex-preview--cleanup-callback)
       (apply #'org-async-call tex-compile-async))))
