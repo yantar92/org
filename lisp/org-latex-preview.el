@@ -412,8 +412,8 @@ The way this is done is set by PROCESSING-TYPE, which can be either:
 - an entry in `org-preview-latex-process-alist', in which case the
   math fragment is replaced with `org-create-latex-export'.
 
-Generated image files are placed in DIR with the prefix PREFIX. Note
-that PREFIX may itself contain a directory path component.
+Generated image files are placed in DIR with the prefix PREFIX.
+Note that PREFIX may itself contain a directory path component.
 
 When generating output files, MSG will be `message'd if given."
   (let* ((cnt 0))
@@ -515,8 +515,7 @@ Some of the options can be changed using the variable
           (cdr (assq processing-type org-preview-latex-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
          document-strings
-         locations
-         movefiles existfiles)
+         locations movefiles)
     (save-excursion
       (dolist (element elements)
         (let* ((beg (org-element-property :begin element))
@@ -548,138 +547,187 @@ Some of the options can be changed using the variable
                          (list :foreground fg :background bg))))
           (if (file-exists-p movefile)
               (org-place-latex-image beg end movefile imagetype)
-            (push (org-create-preview-string value options)
+            (push (org-preview-latex--tex-styled value options)
                   document-strings)
             (push (cons beg end) locations)
             (push movefile movefiles)))))
     (when movefiles
       (org-create-formula-image-async
        processing-type
-       (mapconcat #'identity (nreverse document-strings) "\n")
+       (nreverse document-strings)
        (nreverse locations)
        (nreverse movefiles)))))
 
-(defun org-create-formula-image-async (processing-type string locations movefiles)
-  "Preview math fragments in STRING asynchronously with method PROCESSING-TYPE.
+(defun org-create-formula-image-async (processing-type preview-strings locations movefiles)
+  "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
 LOCATIONS are buffer locations denoting the beginning and end of
-each snippet in STRING. Each entry is a cons cell.
+each snippet of PREVIEW-STRINGS.  Each entry is a cons cell.
 
 The previews are copied (in lexicographic order) to the files in
 MOVEFILES."
-  (interactive "P")
-  (let* ((processing-type (or processing-type
-                              org-preview-latex-default-process))
+  (let* ((processing-type
+          (or processing-type org-preview-latex-default-process))
          (processing-info
-          (cdr (assq processing-type org-preview-latex-process-alist)))
+          (alist-get processing-type org-preview-latex-process-alist))
          (programs (plist-get processing-info :programs))
-         (error-message (or (plist-get processing-info :message) ""))
-         (image-input-type (plist-get processing-info :image-input-type))
-         (image-output-type (plist-get processing-info :image-output-type))
-         (post-clean (or (plist-get processing-info :post-clean)
-                         '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
-                           ".svg" ".png" ".jpg" ".jpeg" ".out")))
-         (latex-header
-          (let ((header (concat
-                         (or (plist-get processing-info :latex-header)
-                             (org-latex-make-preamble
-                              (org-combine-plists
-                               (org-export-get-environment (org-export-get-backend 'latex))
-                               '(:time-stamp-file nil))
-                              org-format-latex-header 'snippet))
-                         "\n\\RequirePackage"
-                         "[active,tightpage,auctex,displaymath,graphics,textmath,floats]"
-                         "{preview}\n")))
-            (if org-preview-use-precompilation
-                (concat "%&" (org-preview-precompile header))
-              header)))
-         (latex-compiler (plist-get processing-info :latex-compiler))
-         (texfilebase
-          (make-temp-name
-           (expand-file-name "orgtex" temporary-file-directory)))
-         (texfile (concat texfilebase ".tex"))
-         (image-size-adjust (or (plist-get processing-info :image-size-adjust)
+         (error-message (or (plist-get processing-info :message) "")))
+    (dolist (program programs)
+      (org-check-external-command program error-message))
+    (let* ((extended-info
+            (append processing-info
+                    (list :locations locations
+                          :movefiles movefiles
+                          :texfile (org-preview-latex--create-tex-file
+                                    processing-info preview-strings))))
+           (tex-compile-async
+            (org-latex-preview--tex-compile-async extended-info))
+           (img-extract-async
+            (org-latex-preview--image-extract-async extended-info)))
+      (plist-put (cdr tex-compile-async) :success img-extract-async)
+      (plist-put (cdr tex-compile-async) :failure img-extract-async)
+      (plist-put (cdr img-extract-async) :success
+                 #'org-latex-preview--cleanup-callback)
+      (apply #'org-async-call tex-compile-async))))
+
+(defun org-preview-latex--create-tex-file (processing-info preview-strings)
+  "Create a LaTeX file based on PROCESSING-INFO and PREVIEW-STRINGS.
+
+More specifically, a preamble will be generated based on
+PROCESSING-INFO.  Then, if `org-preview-use-precompilation' is
+non-nil, a precompiled format file will be generated if needed
+and used.  Otherwise the preamble is used normally.
+
+Within the body of the created LaTeX file, each of
+PREVIEW-STRINGS will be placed in order, wrapped within a
+\"preview\" environment.
+
+The path of the created LaTeX file is returned."
+  (let ((tex-temp-name
+         (expand-file-name (concat (make-temp-name "org-tex-") ".tex")
+                           temporary-file-directory))
+        (header
+         (concat
+          (or (plist-get processing-info :latex-header)
+              (org-latex-make-preamble
+               (org-combine-plists
+                (org-export-get-environment (org-export-get-backend 'latex))
+                '(:time-stamp-file nil))
+               org-format-latex-header 'snippet))
+          "\n\\usepackage[active,tightpage,auctex]{preview}\n")))
+    (with-temp-file tex-temp-name
+      (insert (if org-preview-use-precompilation
+                  (concat "%&" (org-preview-precompile header))
+                header))
+      (insert "\n\\begin{document}\n")
+      (dolist (str preview-strings)
+        (insert
+         "\n\\begin{preview}\n"
+         str
+         "\n\\end{preview}\n"))
+      (insert "\n\\end{document}\n"))
+    tex-temp-name))
+
+(defun org-latex-preview--tex-compile-async (extended-info)
+  "Create an `org-async-call' spec to compile the texfile in EXTENDED-INFO."
+  (let* ((tex-process-buffer
+          (with-current-buffer
+              (get-buffer-create "*Org Preview LaTeX Output*")
+            (erase-buffer)
+            (current-buffer)))
+         (tex-compile-command
+          (pcase (plist-get extended-info :latex-compiler)
+            ((and (pred stringp) cmd) cmd)
+            ((and (pred consp) cmds)
+             (when (> (length cmds) 1)
+               (warn "Preview :latex-compiler must now be a single command.  %S will be ignored."
+                     (cdr cmds)))
+             (car cmds))))
+         (texfile (plist-get extended-info :texfile))
+         (tex-command-spec
+          `((?o . ,(shell-quote-argument (file-name-directory texfile)))
+            (?b . ,(shell-quote-argument (file-name-base texfile)))
+            (?B . ,(shell-quote-argument (file-name-sans-extension texfile)))
+            (?f . ,(shell-quote-argument texfile))))
+         (tex-formatted-command
+          (split-string-shell-command
+           (format-spec tex-compile-command tex-command-spec))))
+    (list ; `org-async-call' arguments
+     tex-formatted-command
+     :buffer tex-process-buffer
+     :dir temporary-file-directory
+     :info extended-info
+     :failure "LaTeX compilation for preview failed! (error code %d)")))
+
+(defun org-latex-preview--image-extract-async (extended-info)
+  "Create an `org-async-call' spec to extract images according to EXTENDED-INFO."
+  (let* ((img-process-buffer
+          (with-current-buffer
+              (get-buffer-create "*Org Preview Convert Output*")
+            (erase-buffer)
+            (current-buffer)))
+         (img-extract-command
+          (pcase
+              (or (and (string= (plist-get org-format-latex-options :background)
+                                "Transparent")
+                       (plist-get extended-info :transparent-image-converter))
+                  (plist-get extended-info :image-converter))
+            ((and (pred stringp) cmd) cmd)
+            ((and (pred consp) cmds)
+             (when (> (length cmds) 1)
+               (warn "Preview converter must now be a single command.  %S will be ignored."
+                     (cdr cmds)))
+             (car cmds))))
+         (image-size-adjust (or (plist-get extended-info :image-size-adjust)
                                 '(1.0 . 1.0)))
          (scale (* (car image-size-adjust)
                    (or (plist-get org-format-latex-options :scale) 1.0)))
          (dpi (* scale (if (display-graphic-p) (org--get-display-dpi) 140.0)))
-         (image-converter
-          (or (and (string= (plist-get org-format-latex-options :background)
-                            "Transparent")
-                   (plist-get processing-info :transparent-image-converter))
-              (plist-get processing-info :image-converter)))
-         (resize-mini-windows nil))
-    
-    (dolist (program programs)
-      (org-check-external-command program error-message))
-    
-    (if (string-suffix-p string "\n")
-        (aset string (1- (length string)) ?%)
-      (setq string (concat string "%")))
+         (texfile (plist-get extended-info :texfile))
+         (img-command-spec
+          `((?o . ,(shell-quote-argument (file-name-directory texfile)))
+            (?b . ,(shell-quote-argument (file-name-base texfile)))
+            (?B . ,(shell-quote-argument (file-name-sans-extension texfile)))
+            (?D . ,(shell-quote-argument (format "%s" dpi)))
+            (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
+            (?f . ,(shell-quote-argument
+                    (expand-file-name
+                     (concat (file-name-base texfile)
+                             "." (plist-get extended-info :image-input-type))
+                     (file-name-directory texfile))))))
+         (img-formatted-command
+          (split-string-shell-command
+           (format-spec img-extract-command img-command-spec))))
+    (list ; `org-async-call' arguments
+     img-formatted-command
+     :buffer img-process-buffer
+     :info extended-info
+     :failure "LaTeX preview image conversion failed! (error code %d)")))
 
-    (with-temp-file texfile
-      (insert latex-header)
-      (insert "\n\\begin{document}\n"
-              string
-              "\n\\end{document}\n"))
-
-    (let* ((default-directory temporary-file-directory)
-           (tex-process)
-           (image-process)
-           (basename (file-name-base texfilebase))
-           (out-dir (or (file-name-directory texfile) default-directory))
-           (spec `((?o . ,(shell-quote-argument out-dir))
-                   (?b . ,(shell-quote-argument basename))
-                   (?B . ,(shell-quote-argument texfilebase))))
-           (spec-tex `((?f . ,(shell-quote-argument texfile))))
-           (spec-img `((?D . ,(shell-quote-argument (format "%s" dpi)))
-                       (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
-                       (?f . ,(shell-quote-argument
-                               (expand-file-name
-                                (concat basename "." image-input-type) out-dir))))))
-      (setq tex-process
-            (make-process :name (format "Org-Preview-%s" (file-name-base texfile))
-                          :buffer (format "*Org Preview LaTeX Output*")
-                          :command (split-string-shell-command
-                                    (format-spec (car latex-compiler)
-                                                 (append spec spec-tex)))
-                          :sentinel (lambda (proc signal)
-                                      (unless (process-live-p proc)
-                                        (dolist (e (delete (concat "." image-input-type) post-clean))
-                                          (when (file-exists-p (concat texfilebase e))
-                                            (delete-file (concat texfilebase e))))))))
-      (when (equal processing-type 'dvisvgm)
-        (let (inhibit-quit)
-          (while (process-live-p tex-process)
-            (accept-process-output tex-process))))
-      (setq image-process
-            (make-process
-             :name (format "Org-Convert-%s-%s" (file-name-base texfile)
-                           (symbol-name processing-type))
-             :buffer (format "*Org Convert %s %s*"
-                             (file-name-base texfile)
-                             (symbol-name processing-type))
-             :command (split-string-shell-command
-                       (format-spec (car image-converter)
-                                    (append spec spec-img)))
-             :sentinel
-             (lambda (proc signal)
-               (when (string= signal "finished\n")
-                 (let ((images (file-expand-wildcards
-                                (concat texfilebase "*." image-output-type)
-                                'full)))
-                   (save-excursion
-                     (cl-loop
-                      for (block-beg . block-end) in locations
-                      for image-file in images
-                      for movefile in movefiles
-                      do (copy-file image-file movefile 'replace)
-                      do (org-place-latex-image block-beg block-end movefile image-output-type)))))
-               (unless (process-live-p proc)
-                 (mapc #'delete-file
-                       (file-expand-wildcards
-                        (concat texfilebase "*." image-output-type) 'full))
-                 (delete-file (concat texfilebase "." image-input-type)))))))))
+(defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
+  "Move and delete files after image creation, in accords with EXTENDED-INFO."
+  (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
+         (image-output-type (plist-get extended-info :image-output-type))
+         (images
+          (file-expand-wildcards
+           (concat basename "*." image-output-type)
+           'full))
+         (clean-exts
+          (or (plist-get extended-info :post-clean)
+              '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
+                ".svg" ".png" ".jpg" ".jpeg" ".out")))
+         (locations (plist-get extended-info :locations))
+         (movefiles (plist-get extended-info :movefiles)))
+    (save-excursion
+      (cl-loop
+       for (block-beg . block-end) in locations
+       for image-file in images
+       for movefile in movefiles
+       do (copy-file image-file movefile 'replace)
+       do (org-place-latex-image block-beg block-end movefile image-output-type)))
+    (dolist (ext clean-exts)
+      (when (file-exists-p (concat basename ext))
+        (delete-file (concat basename ext))))))
 
 (defun org-preview-precompile (header)
   "Precompile/dump LaTeX HEADER (preamble) text.
@@ -709,36 +757,32 @@ process."
         '("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
         "fmt")))))
 
-(defun org-create-preview-string (value options &optional export-p)
-  "Generate LaTeX string suitable for use with preview.sty.
+(defun org-preview-latex--tex-styled (value options &optional html-p)
+  "Apply LaTeX style commands to VALUE based on OPTIONS.
 
 VALUE is the math fragment text to be previewed.
 
 OPTIONS is the plist `org-format-latex-options' with customized
 color information for this run.
 
-EXPORT-P, if true, uses colors required for HTML processing."
-  (let* ((fg (pcase (plist-get options (if export-p :html-foreground :foreground))
+HTML-P, if true, uses colors required for HTML processing."
+  (let* ((fg (pcase (plist-get options (if html-p :html-foreground :foreground))
                ('default (org-latex-color-format (org-latex-color :foreground)))
                ((pred null) (org-latex-color-format "Black"))
                (color (org-latex-color-format color))))
-         (bg (pcase (plist-get options (if export-p :html-background :background))
+         (bg (pcase (plist-get options (if html-p :html-background :background))
                ('default (org-latex-color :background))
                ("Transparent" nil)
                (bg (org-latex-color-format bg)))))
-    (concat "\n\n\\definecolor{fg}{rgb}{" fg "}%\n"
-            (and bg (format "\\definecolor{bg}{rgb}{%s}%%\n" bg))
-            "\\begin{preview}"
-            (and bg "\\pagecolor{bg}%\n")
-            "{\\color{fg}\n"
-            value
-            "}\n\\end{preview}\n\n")))
+    (concat (and bg (format "\\pagecolor[rgb]{%s}%%\n" bg))
+            (and fg (format "\\color[rgb]{%s}%%\n" fg))
+            value)))
 
 (defun org-create-latex-export (processing-type element prefix dir &optional block-type)
   "Create a export of the LaTeX math fragment ELEMENT using PROCESSING-TYPE.
 
-Generated image files are placed in DIR with the prefix PREFIX. Note
-that PREFIX may itself contain a directory path component.
+Generated image files are placed in DIR with the prefix PREFIX.
+Note that PREFIX may itself contain a directory path component.
 
 BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
   (let* ((processing-info
