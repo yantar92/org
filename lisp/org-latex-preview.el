@@ -276,6 +276,17 @@ This requires the LaTeX package \"mylatexformat\" to be installed."
   :package-version '(Org . "9.7")
   :type 'boolean)
 
+(defcustom org-latex-preview-auto-generate t
+  "Whether `org-latex-preview-auto-mode' should apply to new fragments.
+
+When non-nil, newly inserted/typed LaTeX fragments and
+environments will be automatically previewed.  Otherwise, only
+existing LaTeX previews will be automatically hidden/shown on
+cursor movement and regenerated after edits."
+  :group 'org-latex
+  :package-version '(Org . "9.7")
+  :type 'boolean)
+
 (defconst org-latex-preview--tentative-math-re
   "\\$\\|\\\\[([]\\|^[ \t]*\\\\begin{[A-Za-z0-9*]+}"
   "Regexp whith will match all instances of LaTeX math.
@@ -309,8 +320,13 @@ extension of the displayed image, as a string.  It defaults to
                          (when after-p
                            (overlay-put o 'preview-state 'modified)
                            (overlay-put o 'display nil) ))))
+    (overlay-put ov 'insert-in-front-hooks
+                 (list #'org-latex-preview-auto--insert-front-handler))
+    (overlay-put ov 'insert-behind-hooks
+                 (list #'org-latex-preview-auto--insert-behind-handler))
     (when path-info
-      (overlay-put ov 'display image-display))
+      (overlay-put ov 'display image-display)
+      (overlay-put ov 'preview-image image-display))
     (if (eq (plist-get (cdr image-display) :type) 'svg)
         (let ((face (if (plist-get (cdr path-info) :errors)
                         'error
@@ -318,7 +334,246 @@ extension of the displayed image, as a string.  It defaults to
                                (get-text-property (1- beg) 'face))
                           'default))))
           (overlay-put ov 'face face))
-      (overlay-put ov 'face nil))))
+      (overlay-put ov 'face nil))
+    ov))
+
+;; Code for `org-latex-preview-auto-mode':
+;;
+;; The boundaries of latex preview image overlays are automatically
+;; extended to track changes in the underlying text by the functions
+;; `org-latex-preview-auto--insert-front-handler' and
+;; `org-latex-preview-auto--insert-behind-handler'.  These are placed in the
+;; `insert-in-front-hooks' and `insert-behind-hooks' properties of the
+;; iamge overlays. See (info "(elisp) Overlay Properties").
+;;
+;; This code examines the previous and current cursor
+;; positions after each command.  It uses the variables
+;; `org-latex-preview-auto--from-overlay' and `org-latex-preview-auto--marker' to track
+;; this.
+;;
+;; If the cursor has moved out of or into a latex preview overlay,
+;; the overlay is changed to display or hide its image respectively.
+;; The functions `org-latex-preview-auto--handle-pre-cursor' and
+;; `org-latex-preview-auto--handle-post-cursor' do this.  These are palced in
+;; `pre-command-hook' and `post-command-hook' respectively.
+;;
+;; When the cursor positions pre- and post-command are inside an
+;; overlay, it uses the overlay property `view-text' to check if the
+;; source and destination overlays are distinct.  If they are it shows
+;; and hides images as appropriate.
+;;
+;; If the latex fragment text for an existing overlay is modified, a
+;; new preview image will be generated automatically.  The
+;; modification state of the overlay is stored in the overlay property
+;; `preview-state', and the function
+;; `org-latex-preview-auto--close-previous-overlay' handles the recompilation.
+;;
+;; When the user option `org-latex-preview-auto-generate' is
+;; non-nil, previews are auto-generated for latex fragments as the
+;; user types them.  This work is handled by
+;; `org-latex-preview-auto--handle-insert', which is placed in
+;; `post-self-insert-hook'.  It does this by placing dummy overlays
+;; that don't display images, but are marked as having been modified.
+
+(defvar-local org-latex-preview-auto--from-overlay nil
+  "Whether the cursor if starting from within a preview overlay.")
+(defvar-local org-latex-preview-auto--marker (make-marker)
+  "Marker to keep track of the previous cursor position.
+This helps with tracking cursor movement into and out of preview overlays.")
+(defvar-local org-latex-preview-auto--inhibit nil
+  "Delay the state machine that decides to auto-generate preview fragments.")
+
+(defsubst org-latex-preview-auto--move-into (ov)
+  "Adjust column when moving into the overlay OV from below."
+  (when (> (marker-position org-latex-preview-auto--marker)
+           (line-end-position))
+    (goto-char (overlay-end ov))
+    (goto-char (max (line-beginning-position)
+                    (overlay-start ov)))))
+
+(defun org-latex-preview-auto--handle-pre-cursor ()
+  "Record the previous state of the cursor position.
+
+This keeps track of the cursor relative to the positions of
+Org latex preview overlays.
+
+This is intended to be placed in `pre-command-hook'."
+  (if org-latex-preview-auto--inhibit
+      (setq org-latex-preview-auto--inhibit nil)
+    (setq org-latex-preview-auto--from-overlay
+          (eq (get-char-property (point) 'org-overlay-type)
+              'org-latex-overlay))
+    (set-marker org-latex-preview-auto--marker (point))))
+
+(defun org-latex-preview-auto--handle-post-cursor ()
+  "Toggle or generate LaTeX previews based on cursor movement.
+
+If the cursor is moving into a preview overlay, \"open\" it to
+display the underlying latex fragment.  If the cursor is moving
+out of a preview overlay, show the image again or generate a new
+one as appropriate.
+
+See `org-latex-preview-auto-generate' to customize this behavior.
+
+This is intended to be placed in `post-command-hook'."
+  (let ((into-overlay-p (eq (get-char-property (point) 'org-overlay-type)
+                            'org-latex-overlay)))
+    (cond
+     ((and into-overlay-p org-latex-preview-auto--from-overlay)
+      (unless (get-char-property (point) 'view-text)
+        ;; Jumped from overlay to overlay
+        (org-latex-preview-auto--close-previous-overlay)
+        (org-latex-preview-auto--open-this-overlay)))
+     ((and into-overlay-p (not org-latex-preview-auto--from-overlay))
+      ;; Moved into overlay
+      (org-latex-preview-auto--open-this-overlay))
+     (org-latex-preview-auto--from-overlay
+      ;; Moved out of overlay
+      (org-latex-preview-auto--close-previous-overlay)))
+    (set-marker org-latex-preview-auto--marker (point))))
+
+(defun org-latex-preview-auto--open-this-overlay ()
+  "Open Org latex preview image overlays.
+
+If there is a latex preview image overlay at point, hide the
+image and display its text."
+  (dolist (ov (overlays-at (point)))
+    (when (eq (overlay-get ov 'org-overlay-type)
+              'org-latex-overlay)
+      (overlay-put ov 'display nil)
+      (overlay-put ov 'view-text t)
+      (when-let ((f (overlay-get ov 'face)))
+        (overlay-put ov 'hidden-face f)
+        (overlay-put ov 'face nil))
+      (org-latex-preview-auto--move-into ov)
+      (setq org-latex-preview-auto--from-overlay nil))))
+
+(defun org-latex-preview-auto--close-previous-overlay ()
+  "Close Org latex preview image overlays.
+
+If there is a latex preview image overlay at the previously
+recorded cursor position, hide its text and display the
+image.  The preview image is regenerated if necessary."
+  (dolist (ov (overlays-at (marker-position org-latex-preview-auto--marker)))
+    (when (eq (overlay-get ov 'org-overlay-type) 'org-latex-overlay)
+      (overlay-put ov 'view-text nil)
+      (if (eq (overlay-get ov 'preview-state) 'modified)
+          ;; It may seem odd to use an timer for this action, but by
+          ;; introducing a brief window for Emacs to deal with input
+          ;; events triggered during prior processing the perceptible
+          ;; delay is reduced.  Setting an 0.05s timer isn't
+          ;; necesarily the optimal duration, but from a little
+          ;; testing it appears to be fairly reasonable.
+          (run-at-time
+           0.05 nil
+           (lambda (buf ov)
+             (with-current-buffer buf
+               (org-latex-preview--create
+                org-latex-preview-default-process
+                (org-latex-preview-collect-fragments
+                 (overlay-start ov)
+                 (overlay-end ov)))))
+           (current-buffer)
+           ov)
+        (when-let (f (overlay-get ov 'hidden-face))
+          (overlay-put ov 'face f)
+          (overlay-put ov 'hidden-face nil))
+        (overlay-put ov 'display (overlay-get ov 'preview-image))))))
+
+(defun org-latex-preview-auto--handle-insert ()
+  "Set up a dummy overlay on the latex fragment around point.
+
+This is called when inserting text, provided there isn't already
+a preview overlay in place.  See
+`org-latex-preview-auto-generate' for details.  The dummy
+overlay is marked as modified, so that moving out of the fragment
+causes latex compilation (if required) and the preview image to
+be displayed.
+
+This function is intended to be added to `post-self-insert-hook'."
+  (when (and org-latex-preview-auto-generate
+             (> (point) (+ (point-min) 3)))
+    ;; Because we rely on font-lock information to detect
+    ;; LaTeX fragments, we need to check for two special cases
+    ;; where a LaTeX fragment may have just been formed,
+    ;; but font-lock may not have applied the faces we need yet
+    ;; (e.g. due to `jit-lock-mode').
+    (cond
+     ((save-excursion
+        ;; We use `re-search-forward', because under certain
+        ;; conditions `re-search-backward' can modify the buffer.
+        ;; Believe me, I am more confused that you are.
+        (goto-char (- (point) 2))
+        (re-search-forward "\\=\\\\[])]" (+ (point) 2) t))
+      (font-lock-ensure
+       (save-excursion
+         (re-search-backward "\\\\[[([]" nil t) (point))
+       (point)))
+     ((save-excursion
+        (goto-char (- (point) 3))
+        (re-search-forward "\\=\\\\[[([].\\\\[])]" (+ (point) 5) t))
+      (font-lock-ensure (- (point) 3) (+ (point) 2))))
+    (and-let* ((p (1- (point)))
+               ((not (eq (get-char-property p 'org-overlay-type) 'org-latex-overlay)))
+               (faces (get-text-property p 'face))
+               (face-list (if (listp faces) faces (list faces)))
+               ((memq 'font-latex-math-face face-list))
+               (element (org-element-context))
+               (beg (org-element-property :begin element))
+               (end (org-element-property :end element))
+               (ov (org-latex-preview--make-overlay beg end)))
+      (overlay-put ov 'preview-state 'modified)
+      (overlay-put ov 'view-text t)
+      (setq org-latex-preview-auto--inhibit t
+            org-latex-preview-auto--from-overlay t)
+      (set-marker org-latex-preview-auto--marker p))))
+
+(defun org-latex-preview-auto--insert-front-handler
+    (ov after-p _beg end &optional _length)
+  "Extend Org LaTeX preview text boundaries when editing previews.
+
+OV is the overlay displaying the preview.  For the meaning of
+AFTER-P, END and the other arguments, see the
+`modification-hooks' property of overlays in the Elisp
+manual: (elisp) Overlay Properties."
+  (when after-p
+    (unless undo-in-progress
+      (if (eq (overlay-get ov 'preview-state) 'active)
+          (move-overlay ov end (overlay-end ov))))))
+
+(defun org-latex-preview-auto--insert-behind-handler
+    (ov after-p beg _end &optional _length)
+  "Extend Org LaTeX preview text boundaries when editing previews.
+
+OV is the overlay displaying the preview.  For the meaning of
+AFTER-P, BEG and the other arguments, see the
+`modification-hooks' property of overlays in the Elisp
+manual: (elisp) Overlay Properties."
+  (when after-p
+    (unless undo-in-progress
+      (if (eq (overlay-get ov 'preview-state) 'active)
+          (move-overlay ov (overlay-end ov) beg)))))
+
+(define-minor-mode org-latex-preview-auto-mode
+  "Minor mode to automatically preview LaTeX fragments.
+
+When LaTeX preview auto mode is on, LaTeX fragments in Org buffers are
+automatically previewed after being inserted, and hidden when the
+cursor moves into them.  This allows one to seamlessly edit and
+preview LaTeX in Org buffers.
+
+To enable auto-toggling of the preview images without auto-generating
+them or vice-versa, customize the variable `org-latex-preview-auto-generate'."
+  :global nil
+  (if org-latex-preview-auto-mode
+      (progn
+        (add-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor nil 'local)
+        (org-latex-preview-auto--handle-pre-cursor) ; Invoke setup before the hook even fires.
+        (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local)
+        (add-hook 'post-self-insert-hook #'org-latex-preview-auto--handle-insert nil 'local))
+    (remove-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor 'local)
+    (remove-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor 'local)
+    (remove-hook 'post-self-insert-hook #'org-latex-preview-auto--handle-insert 'local)))
 
 (defun org-latex-preview-clear-overlays (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
