@@ -31,7 +31,7 @@
   :group 'org)
 
 (defcustom org-latex-preview-options
-  '(:foreground default :background default :scale 1.0
+  '(:foreground auto :background "Transparent" :scale 1.0
     :html-foreground "Black" :html-background "Transparent"
     :html-scale 1.0 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")
     :zoom 1.0)
@@ -57,6 +57,7 @@ This is a property list with the following properties:
 :zoom        when the image has associated font-relative height information,
              the display size is scaled by this factor."
   :group 'org-latex-preview
+  :package-version '(Org . "9.7")
   :type 'plist)
 
 (defcustom org-latex-to-mathml-jar-file nil
@@ -114,13 +115,13 @@ For example, this could be used with LaTeXML as
           (const :tag "None" nil)
           (string :tag "Shell command")))
 
-(defcustom org-latex-preview-default-process 'dvipng
+(defcustom org-latex-preview-default-process
+  (if (executable-find "dvisvgm") 'dvisvgm 'dvipng)
   "The default process to convert LaTeX fragments to image files.
 All available processes and theirs documents can be found in
 `org-latex-preview-process-alist', which see."
   :group 'org-latex-preview
-  :version "26.1"
-  :package-version '(Org . "9.0")
+  :package-version '(Org . "9.7")
   :type 'symbol)
 
 (defcustom org-latex-preview-process-alist
@@ -130,7 +131,7 @@ All available processes and theirs documents can be found in
      :message "you need to install the programs: latex and dvipng."
      :image-input-type "dvi"
      :image-output-type "png"
-     :image-size-adjust (1.0 . 1.0)
+     :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
      :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
@@ -145,7 +146,11 @@ All available processes and theirs documents can be found in
      :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
-     :image-converter ("dvisvgm --page=1- --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
+     ;; With dvisvgm the --bbox=preview flag is needed to emit the preview.sty-provided
+     ;; height+width+depth information. The --optimise, --clipjoin, and --relative flags
+     ;; cause dvisvgm do do some extra work to tidy up the SVG output, but barely add to
+     ;; the overall dvisvgm runtime (<1% increace, from testing).
+     :image-converter ("dvisvgm --page=1- --optimize --clipjoin --relative --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
     (imagemagick
      :programs ("pdflatex" "convert")
      :description "pdf > png"
@@ -208,7 +213,7 @@ Place-holders only used by `:image-converter':
   %S    the image size scale ratio, which is used to adjust image size by some
         processing commands."
   :group 'org-latex-preview
-  :package-version '(Org . "9.6")
+  :package-version '(Org . "9.7")
   :type '(alist :tag "LaTeX to image backends"
           :value-type (plist)))
 
