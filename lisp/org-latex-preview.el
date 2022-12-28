@@ -298,7 +298,13 @@ as a string.  It defaults to \"png\"."
                          (delete-overlay o))))
     (overlay-put ov
                  'display
-                 (list 'image :type imagetype :file image :ascent 'center))))
+                 (list 'image :type imagetype :file image :ascent 'center))
+    (if (eq imagetype 'svg)
+        (let ((face (or (and (> beg 1)
+                             (get-text-property (1- beg) 'face))
+                        'default)))
+          (overlay-put ov 'face face))
+      (overlay-put ov 'face nil))))
 
 (defun org-clear-latex-preview (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
@@ -540,7 +546,10 @@ Some of the options can be changed using the variable
                                   org-latex-default-packages-alist
                                   org-latex-packages-alist
                                   org-format-latex-options
-                                  value fg bg))))
+                                  value
+                                  (if (eq imagetype 'svg)
+                                      'svg fg)
+                                  bg))))
                (movefile (format "%s_%s.%s" absprefix hash imagetype))
                (options (org-combine-plists
                          org-format-latex-options
@@ -584,13 +593,16 @@ MOVEFILES."
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
             (org-latex-preview--image-extract-async extended-info)))
+      (if (eq processing-type 'dvisvgm)
+          (plist-put (cdr img-extract-async) :success
+                     #'org-latex-preview--dvisvgm-callback)
+        (plist-put (cdr img-extract-async) :success
+                   #'org-latex-preview--cleanup-callback))
       (if (and (eq processing-type 'dvipng)
                (member "--follow" (car img-extract-async)))
           (apply #'org-async-call img-extract-async)
         (plist-put (cdr tex-compile-async) :success img-extract-async)
         (plist-put (cdr tex-compile-async) :failure img-extract-async))
-      (plist-put (cdr img-extract-async) :success
-                 #'org-latex-preview--cleanup-callback)
       (apply #'org-async-call tex-compile-async))))
 
 (defun org-preview-latex--create-tex-file (processing-info preview-strings)
@@ -731,6 +743,24 @@ The path of the created LaTeX file is returned."
     (dolist (ext clean-exts)
       (when (file-exists-p (concat basename ext))
         (delete-file (concat basename ext))))))
+
+(defun org-latex-preview--dvisvgm-callback (_exit-code _stdout extended-info)
+  "TODO"
+  (let* ((basename (file-name-base (plist-get extended-info :texfile)))
+         (svg-images
+          (directory-files (file-name-directory (plist-get extended-info :texfile))
+                           t (rx (literal basename) (* anything) ".svg"))))
+    (dolist (svg-file svg-images)
+      (with-temp-buffer
+        (insert-file-contents svg-file)
+        (goto-char (point-min))
+        (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
+          (let* ((same-color (format "fill='\\(%s\\)'" (match-string 1))))
+            (replace-match "currentColor" t t nil 1)
+            (while (re-search-forward same-color nil t)
+              (replace-match "currentColor" t t nil 1)))
+          (write-region nil nil svg-file nil 0)))))
+  (org-latex-preview--cleanup-callback nil nil extended-info))
 
 (defun org-preview-precompile (header)
   "Precompile/dump LaTeX HEADER (preamble) text.
