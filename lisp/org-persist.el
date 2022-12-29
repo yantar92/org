@@ -27,24 +27,44 @@
 ;; implementation is not meant to be used to store important data -
 ;; all the caches should be safe to remove at any time.
 ;;
+;; Entry points are `org-persist-register', `org-persist-write',
+;; `org-persist-read', and `org-persist-load'.
+;;
+;; `org-persist-register' will mark the data to be stored.  By
+;; default, the data is written on disk before exiting Emacs session.
+;; Optionally, the data can be written immediately.
+;;
+;; `org-persist-write' will immediately write the data onto disk.
+;;
+;; `org-persist-read' will read the data and return its value or list
+;; of values for each requested container.
+;;
+;; `org-persist-load' will read the data with side effects.  For
+;; example, loading `elisp' container will assign the values to
+;; variables.
+;; 
 ;; Example usage:
 ;;
 ;; 1. Temporarily cache Elisp symbol value to disk.  Remove upon
 ;;    closing Emacs:
 ;;    (org-persist-write 'variable-symbol)
 ;;    (org-persist-read 'variable-symbol) ;; read the data later
+;;
 ;; 2. Temporarily cache a remote URL file to disk.  Remove upon
 ;;    closing Emacs:
 ;;    (org-persist-write 'url "https://static.fsf.org/common/img/logo-new.png")
 ;;    (org-persist-read 'url "https://static.fsf.org/common/img/logo-new.png")
 ;;    `org-persist-read' will return the cached file location or nil if cached file
 ;;    has been removed.
+;;
 ;; 3. Temporarily cache a file, including TRAMP path to disk:
 ;;    (org-persist-write 'file "/path/to/file")
+;;
 ;; 4. Cache file or URL while some other file exists.
 ;;    (org-persist-register '(url "https://static.fsf.org/common/img/logo-new.png") '(:file "/path to the other file") :expiry 'never :write-immediately t)
 ;;    or, if the other file is current buffer file
 ;;    (org-persist-register '(url "https://static.fsf.org/common/img/logo-new.png") (current-buffer) :expiry 'never :write-immediately t)
+;;
 ;; 5. Cache value of a Elisp variable to disk.  The value will be
 ;;    saved and restored automatically (except buffer-local
 ;;    variables).
@@ -58,11 +78,25 @@
 ;;    ;; Save buffer-local variable preserving circular links:
 ;;    (org-persist-register 'org-element--headline-cache (current-buffer)
 ;;               :inherit 'org-element--cache)
+;;
 ;; 6. Load variable by side effects assigning variable symbol:
 ;;    (org-persist-load 'variable-symbol (current-buffer))
+;;
 ;; 7. Version variable value:
 ;;    (org-persist-register '((elisp variable-symbol) (version "2.0")))
-;; 8. Cancel variable persistence:
+;;
+;; 8. Define a named container group:
+;;
+;;    (let ((info1 "test")
+;;          (info2 "test 2"))
+;;      (org-persist-register
+;;         `("Named data" (elisp info1 local) (elisp info2 local))
+;;         nil :write-immediately t))
+;;    (org-persist-read
+;;       "Named data"
+;;       nil nil nil :read-related t) ; => ("Named data" "test" "test2")
+;;
+;; 9. Cancel variable persistence:
 ;;    (org-persist-unregister 'variable-symbol 'all) ; in all buffers
 ;;    (org-persist-unregister 'variable-symbol) ;; global variable
 ;;    (org-persist-unregister 'variable-symbol (current-buffer)) ;; buffer-local
@@ -82,7 +116,8 @@
 ;;
 ;; The data collections can be versioned and removed upon expiry.
 ;;
-;; In the code below I will use the following naming conventions:
+;; In the code below, I will use the following naming conventions:
+;;
 ;; 1. Container :: a type of data to be stored
 ;;    Containers can store elisp variables, files, and version
 ;;    numbers.  Each container can be customized with container
@@ -90,14 +125,57 @@
 ;;    variable symbol.  (elisp variable) is a container storing
 ;;    Lisp variable value.  Similarly, (version "2.0") container
 ;;    will store version number.
+;;
+;;    Container can also refer to a list of simple containers:
+;;
+;;    ;; Three containers stored together.
+;;    '((elisp variable) (file "/path") (version "x.x"))
+;;
+;;    Providing a single container from the list to `org-persist-read'
+;;    is sufficient to retrieve all the containers.
+;;
+;;    Example:
+;;
+;;    (org-persist-register '((version "My data") (file "/path/to/file")) '(:key "key") :write-immediately t)
+;;    (org-persist-read '(version "My data") '(:key "key")) ;; => '("My data" "/path/to/file/copy")
+;;
+;;    Containers can also take a short form:
+;;
+;;    '("String" file '(quoted elisp "value") :keyword)
+;;    is the same as
+;;    '((elisp-data "String") (file nil)
+;;      (elisp-data '(quoted elisp "value")) (elisp-data :keyword))
+;;
+;;    Note that '(file "String" (elisp value)) would be interpreted as
+;;    `file' container with "String" path and extra options.
+;;
 ;; 2. Associated :: an object the container is associated with.  The
 ;;    object can be a buffer, file, inode number, file contents hash,
 ;;    a generic key, or multiple of them.  Associated can also be nil.
+;;
+;;    Example:
+;;
+;;    '(:file "/path/to/file" :inode number :hash buffer-hash :key arbitrary-key)
+;;
+;;    When several objects are associated with a single container, it
+;;    is not necessary to provide them all to access the container.
+;;    Just using a single :file/:inode/:hash/:key is sufficient.
+;;
 ;; 3. Data collection :: a list of containers linked to an associated
 ;;    object/objects.  Each data collection can also have auxiliary
 ;;    records.  Their only purpose is readability of the collection
 ;;    index.
+;;
+;;    Example:
+;;
+;;    (:container
+;;     ((index "2.7"))
+;;     :persist-file "ba/cef3b7-e31c-4791-813e-8bd0bf6c5f9c"
+;;     :associated nil :expiry never
+;;     :last-access 1672207741.6422956 :last-access-hr "2022-12-28T09:09:01+0300")
+;;
 ;; 4. Index file :: a file listing all the stored data collections.
+;;
 ;; 5. Persist file :: a file holding data values or references to
 ;;    actual data values for a single data collection.  This file
 ;;    contains an alist associating each data container in data
@@ -111,6 +189,7 @@
 ;;
 ;; Each collection is represented as a plist containing the following
 ;; properties:
+;;
 ;; - `:container'   : list of data continers to be stored in single
 ;;                    file;
 ;; - `:persist-file': data file name;
@@ -120,15 +199,30 @@
 ;; - all other keywords are ignored
 ;;
 ;; The available types of data containers are:
-;; 1. (file variable-symbol) or just variable-symbol :: Storing
-;;    elisp variable data.
+;; 1. (elisp variable-symbol scope) or just variable-symbol :: Storing
+;;    elisp variable data.  SCOPE can be
+;;
+;;    - `nil'    :: Use buffer-local value in associated :file or global
+;;                 value if no :file is associated.
+;;    - string :: Use buffer-local value in buffer named STRING or
+;;                with STRING `buffer-file-name'.
+;;    - `local' :: Use symbol value in current scope.
+;;                 Note: If `local' scope is used without writing the
+;;                 value immediately, the actual stored value is
+;;                 undefined.
+;;
 ;; 2. (file) :: Store a copy of the associated file preserving the
 ;;    extension.
+
 ;;    (file "/path/to/a/file") :: Store a copy of the file in path.
+;;
 ;; 3. (version "version number") :: Version the data collection.
 ;;     If the stored collection has different version than "version
 ;;     number", disregard it.
-;; 4. (url) :: Store a downloaded copy of URL object.
+;;
+;; 4. (url) :: Store a downloaded copy of URL object given by
+;;             associated :file.
+;;    (url "path") :: Use "path" instead of associated :file.
 ;;
 ;; The data collections can expire, in which case they will be removed
 ;; from the persistent storage at the end of Emacs session.  The
@@ -145,7 +239,8 @@
 ;; expiry is controlled by `org-persist-remote-files' instead.
 ;;
 ;; Data loading/writing can be more accurately controlled using
-;; `org-persist-before-write-hook', `org-persist-before-read-hook', and `org-persist-after-read-hook'.
+;; `org-persist-before-write-hook', `org-persist-before-read-hook',
+;; and `org-persist-after-read-hook'.
 
 ;;; Code:
 
@@ -161,7 +256,7 @@
 (declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 
 
-(defconst org-persist--storage-version "2.7"
+(defconst org-persist--storage-version "3.0"
   "Persistent storage layout version.")
 
 (defgroup org-persist nil
@@ -219,7 +314,7 @@ function will be called with a single argument - collection."
                  (number :tag "Keep N days")
                  (function :tag "Function")))
 
-(defconst org-persist-index-file "index"
+(defconst org-persist-index-file "index.eld"
   "File name used to store the data index.")
 
 (defvar org-persist--disable-when-emacs-Q t
@@ -337,6 +432,7 @@ FORMAT and ARGS are passed to `message'."
     (unless (file-exists-p (file-name-directory file))
       (make-directory (file-name-directory file) t))
     (with-temp-file file
+      (insert ";;   -*- mode: lisp-data; -*-\n")
       (if pp
           (pp data (current-buffer))
         (prin1 data (current-buffer))))
@@ -458,18 +554,22 @@ MISC, if non-nil will be appended to the collection."
 
 ;;;; Reading container data.
 
-(defun org-persist--normalize-container (container)
-  "Normalize CONTAINER representation into (type . settings)."
-  (if (and (listp container) (listp (car container)))
-      (mapcar #'org-persist--normalize-container container)
-    (pcase container
-      ((or `elisp `version `file `index `url)
-       (list container nil))
-      ((pred symbolp)
-       (list `elisp container))
-      (`(,(or `elisp `version `file `index `url) . ,_)
-       container)
-      (_ (error "org-persist: Unknown container type: %S" container)))))
+(defun org-persist--normalize-container (container &optional inner)
+  "Normalize CONTAINER representation into (type . settings).
+
+When INNER is non-nil, do not try to match as list of containers."
+  (pcase container
+    ((or `elisp `elisp-data `version `file `index `url)
+     `(,container nil))
+    ((or (pred keywordp) (pred stringp) `(quote . ,_))
+     `(elisp-data ,container))
+    ((pred symbolp)
+     `(elisp ,container))
+    (`(,(or `elisp `elisp-data `version `file `index `url) . ,_)
+     container)
+    ((and (pred listp) (guard (not inner)))
+     (mapcar (lambda (c) (org-persist--normalize-container c 'inner)) container))
+    (_ (error "org-persist: Unknown container type: %S" container))))
 
 (defvar org-persist--associated-buffer-cache (make-hash-table :weakness 'key)
   "Buffer hash cache.")
@@ -534,9 +634,11 @@ COLLECTION is the plist holding data collection."
   "Read elisp container and return LISP-VALUE."
   lisp-value)
 
-(defun org-persist-read:version (container _ __)
-  "Read version CONTAINER."
+(defun org-persist-read:elisp-data (container _ __)
+  "Read elisp-data CONTAINER."
   (cadr container))
+
+(defalias 'org-persist-read:version #'org-persist-read:elisp-data)
 
 (defun org-persist-read:file (_ path __)
   "Read file container from PATH."
@@ -589,6 +691,7 @@ COLLECTION is the plist holding data collection."
           (set lisp-symbol lisp-value))
       (set lisp-symbol lisp-value))))
 
+(defalias 'org-persist-load:elisp-data #'org-persist-read:elisp-data)
 (defalias 'org-persist-load:version #'org-persist-read:version)
 (defalias 'org-persist-load:file #'org-persist-read:file)
 
@@ -632,17 +735,31 @@ COLLECTION is the plist holding data collection."
 
 (defun org-persist-write:elisp (container collection)
   "Write elisp CONTAINER according to COLLECTION."
-  (if (and (plist-get (plist-get collection :associated) :file)
-           (get-file-buffer (plist-get (plist-get collection :associated) :file)))
-      (let ((buf (get-file-buffer (plist-get (plist-get collection :associated) :file))))
-        ;; FIXME: There is `buffer-local-boundp' introduced in Emacs 28.
-        ;; Not using it yet to keep backward compatibility.
-        (condition-case nil
-            (buffer-local-value (cadr container) buf)
-          (void-variable nil)))
-    (when (boundp (cadr container))
-      (symbol-value (cadr container)))))
+  (let ((scope (nth 2 container)))
+    (pcase scope
+      ((pred stringp)
+       (when-let ((buf (or (get-buffer scope)
+                           (get-file-buffer scope))))
+         ;; FIXME: There is `buffer-local-boundp' introduced in Emacs 28.
+         ;; Not using it yet to keep backward compatibility.
+         (condition-case nil
+             (buffer-local-value (cadr container) buf)
+           (void-variable nil))))
+      (`local
+       (when (boundp (cadr container))
+         (symbol-value (cadr container))))
+      (`nil
+       (if-let ((buf (and (plist-get (plist-get collection :associated) :file)
+                          (get-file-buffer (plist-get (plist-get collection :associated) :file)))))
+           ;; FIXME: There is `buffer-local-boundp' introduced in Emacs 28.
+           ;; Not using it yet to keep backward compatibility.
+           (condition-case nil
+               (buffer-local-value (cadr container) buf)
+             (void-variable nil))
+         (when (boundp (cadr container))
+           (symbol-value (cadr container))))))))
 
+(defalias 'org-persist-write:elisp-data #'ignore)
 (defalias 'org-persist-write:version #'ignore)
 
 (defun org-persist-write:file (c collection)
@@ -809,14 +926,27 @@ When ASSOCIATED is `all', unregister CONTAINER everywhere."
   "Hash table storing as-written data objects.
 
 This data is used to avoid reading the data multiple times.")
-(defun org-persist-read (container &optional associated hash-must-match load?)
+(cl-defun org-persist-read (container &optional associated hash-must-match load &key read-related)
   "Restore CONTAINER data for ASSOCIATED.
 When HASH-MUST-MATCH is non-nil, do not restore data if hash for
 ASSOCIATED file or buffer does not match.
+
 ASSOCIATED can be a plist, a buffer, or a string.
 A buffer is treated as (:buffer ASSOCIATED).
 A string is treated as (:file ASSOCIATED).
-When LOAD? is non-nil, load the data instead of reading."
+
+When LOAD is non-nil, load the data instead of reading.
+
+When READ-RELATED is non-nil, return the data stored alongside with
+CONTAINER as well.  For example:
+
+    (let ((info \"test\"))
+      (org-persist-register
+        \\=`(\"My data\" (elisp-data ,info))
+        nil :write-immediately t))
+    (org-persist-read \"My data\") ; => \"My data\"
+    (org-persist-read \"My data\" nil nil nil
+                      :read-related t) ; => (\"My data\" \"test\")"
   (unless org-persist--index (org-persist--load-index))
   (setq associated (org-persist--normalize-associated associated))
   (setq container (org-persist--normalize-container container))
@@ -828,33 +958,40 @@ When LOAD? is non-nil, load the data instead of reading."
              (plist-get collection :persist-file))))
          (data nil))
     (when (and collection
-               (file-exists-p persist-file)
                (or (not (plist-get collection :expiry)) ; current session
                    (not (org-persist--gc-expired-p
                        (plist-get collection :expiry) collection)))
                (or (not hash-must-match)
                    (and (plist-get associated :hash)
                         (equal (plist-get associated :hash)
-                               (plist-get (plist-get collection :associated) :hash)))))
+                               (plist-get (plist-get collection :associated) :hash))))
+               (or (file-exists-p persist-file)
+                   ;; Attempt to write data if it is not yet written.
+                   (progn
+                     (org-persist-write container associated 'no-read)
+                     (file-exists-p persist-file))))
       (unless (seq-find (lambda (v)
                           (run-hook-with-args-until-success 'org-persist-before-read-hook v associated))
                         (plist-get collection :container))
         (setq data (or (gethash persist-file org-persist--write-cache)
                        (org-persist--read-elisp-file persist-file)))
         (when data
-          (cl-loop for container in (plist-get collection :container)
+          (cl-loop for c in (plist-get collection :container)
                    with result = nil
                    do
-                   (if load?
-                       (push (org-persist-load:generic container (alist-get container data nil nil #'equal) collection) result)
-                     (push (org-persist-read:generic container (alist-get container data nil nil #'equal) collection) result))
-                   (run-hook-with-args 'org-persist-after-read-hook container associated)
-                   finally return (if (= 1 (length result)) (car result) result)))))))
+                   (when (or read-related
+                             (equal c container)
+                             (member c container))
+                     (if load
+                         (push (org-persist-load:generic c (alist-get c data nil nil #'equal) collection) result)
+                       (push (org-persist-read:generic c (alist-get c data nil nil #'equal) collection) result)))
+                   (run-hook-with-args 'org-persist-after-read-hook c associated)
+                   finally return (if (= 1 (length result)) (car result) (nreverse result))))))))
 
-(defun org-persist-load (container &optional associated hash-must-match)
+(cl-defun org-persist-load (container &optional associated hash-must-match &key read-related)
   "Load CONTAINER data for ASSOCIATED.
 The arguments have the same meaning as in `org-persist-read'."
-  (org-persist-read container associated hash-must-match t))
+  (org-persist-read container associated hash-must-match t :read-related read-related))
 
 (defun org-persist-load-all (&optional associated)
   "Restore all the persistent data associated with ASSOCIATED."
@@ -960,6 +1097,7 @@ Do nothing in an indirect buffer."
 
 (defalias 'org-persist-gc:elisp #'ignore)
 (defalias 'org-persist-gc:index #'ignore)
+(defalias 'org-persist-gc:elisp-data #'ignore)
 (defalias 'org-persist-gc:version #'ignore)
 (defalias 'org-persist-gc:file #'ignore)
 (defalias 'org-persist-gc:url #'ignore)
@@ -982,6 +1120,7 @@ Do nothing in an indirect buffer."
 
 (defalias 'org-persist-associated-files:elisp #'ignore)
 (defalias 'org-persist-associated-files:index #'ignore)
+(defalias 'org-persist-associated-files:elisp-data #'ignore)
 (defalias 'org-persist-associated-files:version #'ignore)
 
 (defun org-persist-associated-files:file (container collection)
