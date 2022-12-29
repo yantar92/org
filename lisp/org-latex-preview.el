@@ -594,16 +594,16 @@ MOVEFILES."
            (img-extract-async
             (org-latex-preview--image-extract-async extended-info)))
       (if (eq processing-type 'dvisvgm)
-          (plist-put (cdr img-extract-async) :success
+          (plist-put (cddr img-extract-async) :success
                      #'org-latex-preview--dvisvgm-callback)
-        (plist-put (cdr img-extract-async) :success
+        (plist-put (cddr img-extract-async) :success
                    #'org-latex-preview--cleanup-callback))
       (if (and (eq processing-type 'dvipng)
-               (member "--follow" (car img-extract-async)))
-          (apply #'org-async-call img-extract-async)
-        (plist-put (cdr tex-compile-async) :success img-extract-async)
-        (plist-put (cdr tex-compile-async) :failure img-extract-async))
-      (apply #'org-async-call tex-compile-async))))
+               (member "--follow" (cadr img-extract-async)))
+          (org-async-call img-extract-async)
+        (plist-put (cddr tex-compile-async) :success img-extract-async)
+        (plist-put (cddr tex-compile-async) :failure img-extract-async))
+      (org-async-call tex-compile-async))))
 
 (defun org-preview-latex--create-tex-file (processing-info preview-strings)
   "Create a LaTeX file based on PROCESSING-INFO and PREVIEW-STRINGS.
@@ -667,12 +667,12 @@ The path of the created LaTeX file is returned."
          (tex-formatted-command
           (split-string-shell-command
            (format-spec tex-compile-command tex-command-spec))))
-    (list ; `org-async-call' arguments
-     tex-formatted-command
-     :buffer tex-process-buffer
-     :dir temporary-file-directory
-     :info extended-info
-     :failure "LaTeX compilation for preview failed! (error code %d)")))
+    (list 'org-async-task
+          tex-formatted-command
+          :buffer tex-process-buffer
+          :dir temporary-file-directory
+          :info extended-info
+          :failure "LaTeX compilation for preview failed! (error code %d)")))
 
 (defun org-latex-preview--image-extract-async (extended-info)
   "Create an `org-async-call' spec to extract images according to EXTENDED-INFO."
@@ -713,11 +713,11 @@ The path of the created LaTeX file is returned."
          (img-formatted-command
           (split-string-shell-command
            (format-spec img-extract-command img-command-spec))))
-    (list ; `org-async-call' arguments
-     img-formatted-command
-     :buffer img-process-buffer
-     :info extended-info
-     :failure "LaTeX preview image conversion failed! (error code %d)")))
+    (list 'org-async-task
+          img-formatted-command
+          :buffer img-process-buffer
+          :info extended-info
+          :failure "LaTeX preview image conversion failed! (error code %d)")))
 
 (defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
   "Move and delete files after image creation, in accords with EXTENDED-INFO."

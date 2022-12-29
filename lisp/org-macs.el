@@ -398,6 +398,14 @@ run using `start-process' with the car as the command and the cdr
 as the arguments.  The process will be executed in DIR (if set)
 or `default-directory'.
 
+There is also a \"special form\" of PROC, namely a list where the
+first item is the symbol org-async-task, and the rest constitutes
+an argument list for `org-async-call'.  This form allows for easy
+specification of callbacks that are themselves async tasks, e.g.
+  \\=(org-async-call '(\"sleep 1\")
+                   :success '(org-async-task (\"notify-send\" \"done\")))
+When using this form, all other arguments are ignored.
+
 When BUFFER is provided, the output of PROC will be directed to it.
 Shoud BUFFER be t, then a temp buffer will be created and removed
 during `org-async--cleanup-process'.
@@ -417,37 +425,47 @@ runs for more than TIMEOUT seconds, the FAILURE callback will be run.
 
 When NOW is non-nil, the PROC is started immediately, regardless
 of `org-async-process-limit'."
-  (if (or now (< (length org-async--stack) org-async-process-limit))
-      (let ((proc
-             (let ((default-directory (or dir default-directory)))
-               (cond ((processp proc) proc)
-                     ((stringp proc)
-                      (start-process-shell-command
-                       (format "org-async-%d" (cl-incf org-async--counter))
-                       buffer proc))
-                     ((consp proc)
-                      (apply #'start-process
-                             (format "org-async-%s-%d"
-                                     (car proc) (cl-incf org-async--counter))
-                             buffer proc))
-                     (t (error "Asycnc process input %S not a recognised format"
-                               proc)))))
-            (timeout (or timeout org-async-timeout)))
-        (set-process-sentinel proc #'org-async--sentinel)
-        (when filter
-          (set-process-filter proc filter))
-        (push (list proc
-                    :success success
-                    :failure failure
-                    :timeout timeout
-                    :buffer (if (eq buffer t)
-                                (cons :temp (generate-new-buffer " *temp*" t))
-                              buffer)
-                    :info info
-                    :start-time (float-time))
-              org-async--stack)
-        (org-async--monitor t)
-        (car org-async--stack))
+  (cond
+   ;; Called with a task (as can be used with callbacks), so re-call
+   ;; with expanded arguments.
+   ((and (consp proc)
+         (eq (car proc) 'org-async-task))
+    (apply #'org-async-call (cdr proc)))
+   ;; Start the async process now.
+   ((or now (< (length org-async--stack) org-async-process-limit))
+    (let ((proc
+           (let ((default-directory (or dir default-directory)))
+             (cond ((processp proc) proc)
+                   ((stringp proc)
+                    (start-process-shell-command
+                     (format "org-async-%d" (cl-incf org-async--counter))
+                     buffer proc))
+                   ((consp proc)
+                    (apply #'start-process
+                           (format "org-async-%s-%d"
+                                   (car proc) (cl-incf org-async--counter))
+                           buffer proc))
+                   (t (error "Async process input %S not a recognised format"
+                             proc)))))
+          (timeout (or timeout org-async-timeout)))
+      (set-process-sentinel proc #'org-async--sentinel)
+      (when filter
+        (set-process-filter proc filter))
+      (push (list proc
+                  :success success
+                  :failure failure
+                  :filter filter
+                  :timeout timeout
+                  :buffer (if (eq buffer t)
+                              (cons :temp (generate-new-buffer " *temp*" t))
+                            buffer)
+                  :info info
+                  :start-time (float-time))
+            org-async--stack)
+      (org-async--monitor t)
+      (car org-async--stack)))
+   ;; Queue the task to be run later.
+   (t
     (setq org-async--wait-queue
           (append org-async--wait-queue
                   (list (list proc
@@ -458,7 +476,7 @@ of `org-async-process-limit'."
                               :buffer buffer
                               :timeout timeout
                               :filter filter))))
-    (last org-async--wait-queue)))
+    (last org-async--wait-queue))))
 
 (defun org-async--sentinel (process _signal)
   "Watch PROCESS for death, and cleanup accordingly.
@@ -506,7 +524,10 @@ CALLBACK can take one of four forms:
   PROCESS-BUFFER, and INFO as arguments.
 - A function, which is called with EXIT-CODE, PROCESS-BUFFER,
   and INFO as arguments.
-- A list, which is used as an argument list for a new `org-async-call' invocation.
+- A list, which is either:
+  - An (org-async-task ...) structure, which passed to an
+    `org-async-call' invocation.
+  - A list of callbacks, which are individually evaluated.
 - nil, which does nothing."
   (cond
    ((stringp callback)
@@ -514,7 +535,10 @@ CALLBACK can take one of four forms:
    ((functionp callback)
     (funcall callback exit-code process-buffer info))
    ((consp callback)
-    (apply #'org-async-call callback))
+    (if (eq (car callback) 'org-async-task)
+        (org-async-call callback)
+      (dolist (clbk callback)
+        (org-async--execute-callback clbk exit-code process-buffer info))))
    ((null callback)) ; Do nothing.
    (t (message "Ignoring invalid `org-async-call' callback: %S" callback))))
 
