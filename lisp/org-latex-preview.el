@@ -136,6 +136,7 @@ All available processes and theirs documents can be found in
      :image-output-type "png"
      :image-size-adjust (1.0 . 1.0)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
+     :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
      :image-converter ("dvipng --follow -D %D -T tight -o %B-%%09d.png %f")
      :transparent-image-converter
      ("dvipng --follow -D %D -T tight -bg Transparent -o %B-%%09d.png %f"))
@@ -151,6 +152,7 @@ All available processes and theirs documents can be found in
      :image-output-type "svg"
      :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
+     :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
      :image-converter ("dvisvgm --page=1- --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
     (imagemagick
      :programs ("latex" "convert")
@@ -160,8 +162,9 @@ All available processes and theirs documents can be found in
      :image-output-type "png"
      :image-size-adjust (1.0 . 1.0)
      :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
+     :latex-precompiler ("pdftex -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
      :image-converter
-     ("convert -density %D -trim -antialias %f -quality 100 %O")))
+     ("convert -density %D -trim -antialias %f -quality 100 %B-%%09d.png")))
   "Definitions of external processes for LaTeX previewing.
 Org mode can use some external commands to generate TeX snippet's images for
 previewing or inserting into HTML files, e.g., \"dvipng\".  This variable tells
@@ -632,7 +635,9 @@ The path of the created LaTeX file is returned."
           "\n\\usepackage[active,tightpage,auctex]{preview}\n")))
     (with-temp-file tex-temp-name
       (insert (if org-preview-use-precompilation
-                  (concat "%&" (org-preview-precompile header))
+                  (concat "%&"
+                          (org-preview-precompile
+                           processing-info header))
                 header))
       (insert "\n\\begin{document}\n")
       (dolist (str preview-strings)
@@ -762,7 +767,10 @@ The path of the created LaTeX file is returned."
           (write-region nil nil svg-file nil 0)))))
   (org-latex-preview--cleanup-callback nil nil extended-info))
 
-(defun org-preview-precompile (header)
+;; TODO: Switching processes from imagemagick to dvi* with an existing
+;; dump-file during a single Emacs session should trigger
+;; re-precompilation with the new precompile command.
+(defun org-preview-precompile (processing-info header)
   "Precompile/dump LaTeX HEADER (preamble) text.
 
 This dump is named using its sha1 hash and placed in
@@ -786,8 +794,7 @@ process."
         (insert header "\n\\endofdump\n"))
       (file-name-base
        (org-compile-file
-        header-file
-        '("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
+        header-file (plist-get processing-info :latex-precompiler)
         "fmt")))))
 
 (defun org-preview-latex--tex-styled (value options &optional html-p)
