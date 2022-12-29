@@ -402,8 +402,8 @@ There is also a \"special form\" of PROC, namely a list where the
 first item is the symbol org-async-task, and the rest constitutes
 an argument list for `org-async-call'.  This form allows for easy
 specification of callbacks that are themselves async tasks, e.g.
-  \\=(org-async-call '(\"sleep 1\")
-                   :success '(org-async-task (\"notify-send\" \"done\")))
+  (org-async-call \\='(\"sleep 1\")
+                   :success \\='(org-async-task (\"notify-send\" \"done\")))
 When using this form, all other arguments are ignored.
 
 When BUFFER is provided, the output of PROC will be directed to it.
@@ -418,6 +418,15 @@ namely:
   and INFO as arguments.
 - A list, which is used as an argument list for a new `org-async-call' invocation.
 - nil, which does nothing.
+
+A function FILTER can be provided, in which case it will be
+called in the same manner as a normal procecss filter, however
+the function FILTER will be called with INFO as a third argument.
+i.e. the call signature is (content new-content-string INFO)
+When BUFFER is non-nil, there are two other major differences:
+- The new content is silently inserted before FILTER is called
+  - Note that `point' is left alone and is not moved by this.
+- The process buffer is the current buffer when FILTER is called.
 
 When PROC succeeds by exiting with an exit code of zero, the SUCCESS
 callback will be run.  Should PROC fail, or be killed, or the process
@@ -450,7 +459,7 @@ of `org-async-process-limit'."
           (timeout (or timeout org-async-timeout)))
       (set-process-sentinel proc #'org-async--sentinel)
       (when filter
-        (set-process-filter proc filter))
+        (set-process-filter proc #'org-async--filter))
       (push (list proc
                   :success success
                   :failure failure
@@ -477,6 +486,21 @@ of `org-async-process-limit'."
                               :timeout timeout
                               :filter filter))))
     (last org-async--wait-queue))))
+
+(defun org-async--filter (process string)
+  "After PROCESS recieves STRING, call the async filter.
+This is implementated to satisfy the filter function documentation in
+`org-async-call'."
+  (when-let ((proc-info (alist-get process org-async--stack)))
+    (let ((filter (plist-get proc-info :filter))
+          (buffer (plist-get proc-info :buffer)))
+      (if buffer
+          (with-current-buffer buffer
+            (save-excursion
+              (goto-char (point-max))
+              (insert string))
+            (funcall filter process string (plist-get proc-info :info)))
+        (funcall filter process string (plist-get proc-info :info))))))
 
 (defun org-async--sentinel (process _signal)
   "Watch PROCESS for death, and cleanup accordingly.
