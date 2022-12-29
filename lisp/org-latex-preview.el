@@ -287,12 +287,13 @@ Note that this will also produce false postives, and
 `org-element-context' should be used to verify that matches are
 indeed LaTeX fragments/environments.")
 
-(defun org--make-preview-overlay (beg end image &optional imagetype)
-  "Build an overlay between BEG and END using IMAGE file.
-Argument IMAGETYPE is the extension of the displayed image,
-as a string.  It defaults to \"png\"."
-  (let ((ov (make-overlay beg end))
-        (imagetype (or (intern imagetype) 'png)))
+(defun org--make-preview-overlay (beg end &optional image imagetype)
+  "Build an overlay between BEG and END.
+
+If IMAGE file is specified, display it. Argument IMAGETYPE is the
+extension of the displayed image, as a string.  It defaults to
+\"png\"."
+  (let ((ov (make-overlay beg end)))
     (overlay-put ov 'org-overlay-type 'org-latex-overlay)
     (overlay-put ov 'evaporate t)
     (overlay-put ov
@@ -302,12 +303,13 @@ as a string.  It defaults to \"png\"."
     (overlay-put ov
                  'display
                  (list 'image :type imagetype :file image :ascent 'center))
-    (if (eq imagetype 'svg)
-        (let ((face (or (and (> beg 1)
-                             (get-text-property (1- beg) 'face))
-                        'default)))
-          (overlay-put ov 'face face))
-      (overlay-put ov 'face nil))))
+    (when image
+      (if (eq imagetype 'svg)
+          (let ((face (or (and (> beg 1)
+                               (get-text-property (1- beg) 'face))
+                          'default)))
+            (overlay-put ov 'face face))
+        (overlay-put ov 'face nil)))))
 
 (defun org-clear-latex-preview (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
