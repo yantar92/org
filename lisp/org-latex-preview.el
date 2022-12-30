@@ -531,6 +531,7 @@ Some of the options can be changed using the variable
           (cdr (assq processing-type org-preview-latex-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
          document-strings
+         fragment-info
          locations keys)
     (save-excursion
       (dolist (element elements)
@@ -568,22 +569,27 @@ Some of the options can be changed using the variable
               (org-place-latex-image beg end path-info)
             (push (org-preview-latex--tex-styled value options)
                   document-strings)
+            (push (list :buffer-location (cons beg end)
+                        :key hash)
+                  fragment-info)
             (push (cons beg end) locations)
             (push hash keys)))))
     (when locations
       (org-create-formula-image-async
        processing-type
        (nreverse document-strings)
-       (nreverse locations)
-       (nreverse keys)))))
+       (nreverse fragment-info)))))
 
-(defun org-create-formula-image-async (processing-type preview-strings locations keys)
+(defun org-create-formula-image-async (processing-type preview-strings fragment-info)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
-LOCATIONS are buffer locations denoting the beginning and end of
-each snippet of PREVIEW-STRINGS.  Each entry is a cons cell.
+FRAGMENT-INFO is a list of plists, where the Nth plist gives
+information on the Nth fragment of PREVIEW-STRINGS.  Each
+FRAGMENT-INFO plist should have the following structure:
+  (:buffer-location (begin-pos . end-pos) :key fragment-hash)
 
-The previews are cached with associated KEYS."
+It is worth noting the FRAGMENT-INFO plists will be modified
+during processing to hold more information on the fragments."
   (let* ((processing-type
           (or processing-type org-preview-latex-default-process))
          (processing-info
@@ -594,8 +600,7 @@ The previews are cached with associated KEYS."
       (org-check-external-command program error-message))
     (let* ((extended-info
             (append processing-info
-                    (list :locations locations
-                          :keys keys
+                    (list :fragments fragment-info
                           :texfile (org-preview-latex--create-tex-file
                                     processing-info preview-strings))))
            (tex-compile-async
@@ -736,26 +741,35 @@ The path of the created LaTeX file is returned."
          (image-output-type (intern (plist-get extended-info :image-output-type)))
          (images
           (file-expand-wildcards
-           (concat basename "*." (symbol-name image-output-type))
+           (concat basename "*." (plist-get extended-info :image-output-type))
            'full))
          (clean-exts
           (or (plist-get extended-info :post-clean)
               '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
-                ".svg" ".png" ".jpg" ".jpeg" ".out")))
-         (locations (plist-get extended-info :locations))
-         (keys (plist-get extended-info :keys)))
+                ".svg" ".png" ".jpg" ".jpeg" ".out"))))
     (save-excursion
       (cl-loop
-       for (beg . end) in locations
+       for fragment-info in (plist-get extended-info :fragments)
        for image-file in images
-       for key in keys
-       do (org-place-latex-image
-           beg end
-           (org-latex-preview--cache-image
-            key image-file (list :image-type image-output-type)))))
+       do
+       (org-place-latex-image
+        (car (plist-get fragment-info :buffer-location))
+        (cdr (plist-get fragment-info :buffer-location))
+        (org-latex-preview--cache-image
+         (plist-get fragment-info :key)
+         image-file
+         (org-latex-preview--display-info
+          extended-info fragment-info)))))
     (dolist (ext clean-exts)
       (when (file-exists-p (concat basename ext))
         (delete-file (concat basename ext))))))
+
+(defun org-latex-preview--display-info (extended-info fragment-info)
+  "From FRAGMENT-INFO and EXTENDED-INFO obtain display-relevant information."
+  (let ((image-type (intern (plist-get extended-info :image-output-type)))
+        info)
+    ;; FUTURE extract width/height/etc. info
+    (plist-put info :image-type image-type)))
 
 (defun org-latex-preview--dvisvgm-callback (_exit-code _stdout extended-info)
   "TODO"
