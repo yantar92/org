@@ -319,9 +319,11 @@ extension of the displayed image, as a string.  It defaults to
     (when path-info
       (overlay-put ov 'display image-display))
     (if (eq (plist-get (cdr image-display) :type) 'svg)
-        (let ((face (or (and (> beg 1)
-                             (get-text-property (1- beg) 'face))
-                        'default)))
+        (let ((face (if (plist-get (cdr path-info) :errors)
+                        'error
+                      (or (and (> beg 1)
+                               (get-text-property (1- beg) 'face))
+                          'default))))
           (overlay-put ov 'face face))
       (overlay-put ov 'face nil))))
 
@@ -702,6 +704,7 @@ The path of the created LaTeX file is returned."
           :buffer tex-process-buffer
           :dir temporary-file-directory
           :info extended-info
+          :filter #'org-latex-preview--latex-preview-filter
           :failure "LaTeX compilation for preview failed! (error code %d)")))
 
 (defun org-latex-preview--image-extract-async (extended-info)
@@ -806,7 +809,60 @@ The path of the created LaTeX file is returned."
     (dolist (key '(:width :height :depth))
       (when-let ((val (plist-get fragment-info key)))
         (plist-put info key (/ val fontsize dpi-factor))))
+    (plist-put info :errors (plist-get fragment-info :errors))
     info))
+
+(defun org-latex-preview--latex-preview-filter (_proc _string extended-info)
+  "Examine the stdout from LaTeX compilation with preview.sty.
+The detected fontsize is directly entered into EXTENDED-INFO, and
+fragment errors are put into the :errors slot of the relevant
+fragments in EXTENDED-INFO."
+  (unless (plist-get extended-info :fontsize)
+    (when (save-excursion
+            (re-search-forward "^Preview: Fontsize \\([0-9]+\\)pt$" nil t))
+      (plist-put extended-info :fontsize (string-to-number (match-string 1)))))
+  (let ((preview-start-re
+         "^! Preview: Snippet \\([0-9]+\\) started.\n<-><->\n *\nl\\.\\([0-9]+\\)[^\n]+\n")
+        (preview-end-re
+         "\\(?:^Preview: Tightpage.*$\\)?\n! Preview: Snippet [0-9]+ ended.")
+        (fragments (plist-get extended-info :fragments))
+        preview-marks)
+    (beginning-of-line)
+    (save-excursion
+      (while (re-search-forward preview-start-re nil t)
+        (push (list (match-beginning 0)
+                    (match-end 0)
+                    (string-to-number (match-string 1)) ; Preview index.
+                    (1+ (string-to-number (match-string 2)))) ; Base line number.
+              preview-marks)))
+    (setq preview-marks (nreverse preview-marks))
+    (while preview-marks
+      (goto-char (caar preview-marks))
+      (if (re-search-forward preview-end-re (or (caadr preview-marks) (point-max)) t)
+          (let ((fragment-info (nth (1- (nth 2 (car preview-marks))) fragments))
+                (errors-substring
+                 (string-trim
+                  (buffer-substring (cadar preview-marks)
+                                    (match-beginning 0))
+                  ;; In certain situations we can end up with non-error
+                  ;; logging informattion within the preview output.
+                  ;; To make sure this is not captured, we rely on the fact
+                  ;; that LaTeX error messages have a consistent format
+                  ;; and start with an exclamation mark "!".  Thus, we
+                  ;; can safely strip everything prior to the first "!"
+                  ;; from the output.
+                  "[^!]*")))
+            (plist-put fragment-info :errors
+                       (and (not (string-blank-p errors-substring))
+                            (replace-regexp-in-string
+                             "^l\\.[0-9]+"
+                             (lambda (linum)
+                               (format "l.%d"
+                                       (- (string-to-number (substring linum 2))
+                                          (nth 3 (car preview-marks)))))
+                             errors-substring))))
+        (goto-char (caar preview-marks)))
+      (setq preview-marks (cdr preview-marks)))))
 
 (defun org-latex-preview--dvisvgm-filter (_proc _string extended-info)
   "Look for newly created images in the dvisvgm stdout buffer.
@@ -963,8 +1019,9 @@ HTML-P, if true, uses colors required for HTML processing."
                ('default (org-latex-color :background))
                ("Transparent" nil)
                (bg (org-latex-color-format bg)))))
-    (concat (and bg (format "\\pagecolor[rgb]{%s}%%\n" bg))
-            (and fg (format "\\color[rgb]{%s}%%\n" fg))
+    (concat (and bg (format "\\pagecolor[rgb]{%s}" bg))
+            (and fg (format "\\color[rgb]{%s}" fg))
+            "%\n"
             value)))
 
 (defun org-create-latex-export (processing-type element prefix dir &optional block-type)
