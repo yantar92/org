@@ -287,29 +287,34 @@ Note that this will also produce false postives, and
 `org-element-context' should be used to verify that matches are
 indeed LaTeX fragments/environments.")
 
-(defun org--make-preview-overlay (beg end &optional image imagetype)
+(defun org--make-preview-overlay (beg end &optional path-info)
   "Build an overlay between BEG and END.
 
 If IMAGE file is specified, display it. Argument IMAGETYPE is the
 extension of the displayed image, as a string.  It defaults to
 \"png\"."
-  (let ((ov (make-overlay beg end)))
+  (let ((ov (make-overlay beg end))
+        (image-display
+         (and path-info
+              (list 'image
+                    :type (plist-get (cdr path-info) :image-type)
+                    :file (car path-info)
+                    :ascent 'center))))
     (overlay-put ov 'org-overlay-type 'org-latex-overlay)
     (overlay-put ov 'evaporate t)
-    (overlay-put ov
-                 'modification-hooks
-                 (list (lambda (o _flag _beg _end &optional _l)
-                         (delete-overlay o))))
-    (overlay-put ov
-                 'display
-                 (list 'image :type imagetype :file image :ascent 'center))
-    (when image
-      (if (eq imagetype 'svg)
-          (let ((face (or (and (> beg 1)
-                               (get-text-property (1- beg) 'face))
-                          'default)))
-            (overlay-put ov 'face face))
-        (overlay-put ov 'face nil)))))
+    (overlay-put ov 'modification-hooks
+                 (list (lambda (o after-p _beg _end &optional _l)
+                         (when after-p
+                           (overlay-put o 'preview-state 'modified)
+                           (overlay-put o 'display nil) ))))
+    (when path-info
+      (overlay-put ov 'display image-display))
+    (if (eq (plist-get (cdr image-display) :type) 'svg)
+        (let ((face (or (and (> beg 1)
+                             (get-text-property (1- beg) 'face))
+                        'default)))
+          (overlay-put ov 'face face))
+      (overlay-put ov 'face nil))))
 
 (defun org-clear-latex-preview (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
@@ -526,7 +531,7 @@ Some of the options can be changed using the variable
           (cdr (assq processing-type org-preview-latex-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
          document-strings
-         locations movefiles)
+         locations keys)
     (save-excursion
       (dolist (element elements)
         (let* ((beg (org-element-property :begin element))
@@ -547,39 +552,38 @@ Some of the options can be changed using the variable
                      ('default (face-attribute 'default :background nil))
                      (color color)))
                (hash (sha1 (prin1-to-string
-                            (list org-format-latex-header
+                            (list processing-type
+                                  org-format-latex-header
                                   org-latex-default-packages-alist
                                   org-latex-packages-alist
                                   org-format-latex-options
                                   value
-                                  (if (eq imagetype 'svg)
+                                  (if (equal imagetype "svg")
                                       'svg fg)
                                   bg))))
-               (movefile (format "%s_%s.%s" absprefix hash imagetype))
                (options (org-combine-plists
                          org-format-latex-options
                          (list :foreground fg :background bg))))
-          (if (file-exists-p movefile)
-              (org-place-latex-image beg end movefile imagetype)
+          (if-let ((path-info (org-latex-preview--get-cached hash)))
+              (org-place-latex-image beg end path-info)
             (push (org-preview-latex--tex-styled value options)
                   document-strings)
             (push (cons beg end) locations)
-            (push movefile movefiles)))))
-    (when movefiles
+            (push hash keys)))))
+    (when locations
       (org-create-formula-image-async
        processing-type
        (nreverse document-strings)
        (nreverse locations)
-       (nreverse movefiles)))))
+       (nreverse keys)))))
 
-(defun org-create-formula-image-async (processing-type preview-strings locations movefiles)
+(defun org-create-formula-image-async (processing-type preview-strings locations keys)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
 LOCATIONS are buffer locations denoting the beginning and end of
 each snippet of PREVIEW-STRINGS.  Each entry is a cons cell.
 
-The previews are copied (in lexicographic order) to the files in
-MOVEFILES."
+The previews are cached with associated KEYS."
   (let* ((processing-type
           (or processing-type org-preview-latex-default-process))
          (processing-info
@@ -591,7 +595,7 @@ MOVEFILES."
     (let* ((extended-info
             (append processing-info
                     (list :locations locations
-                          :movefiles movefiles
+                          :keys keys
                           :texfile (org-preview-latex--create-tex-file
                                     processing-info preview-strings))))
            (tex-compile-async
@@ -729,24 +733,26 @@ The path of the created LaTeX file is returned."
 (defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
   "Move and delete files after image creation, in accords with EXTENDED-INFO."
   (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
-         (image-output-type (plist-get extended-info :image-output-type))
+         (image-output-type (intern (plist-get extended-info :image-output-type)))
          (images
           (file-expand-wildcards
-           (concat basename "*." image-output-type)
+           (concat basename "*." (symbol-name image-output-type))
            'full))
          (clean-exts
           (or (plist-get extended-info :post-clean)
               '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
                 ".svg" ".png" ".jpg" ".jpeg" ".out")))
          (locations (plist-get extended-info :locations))
-         (movefiles (plist-get extended-info :movefiles)))
+         (keys (plist-get extended-info :keys)))
     (save-excursion
       (cl-loop
-       for (block-beg . block-end) in locations
+       for (beg . end) in locations
        for image-file in images
-       for movefile in movefiles
-       do (copy-file image-file movefile 'replace)
-       do (org-place-latex-image block-beg block-end movefile image-output-type)))
+       for key in keys
+       do (org-place-latex-image
+           beg end
+           (org-latex-preview--cache-image
+            key image-file (list :image-type image-output-type)))))
     (dolist (ext clean-exts)
       (when (file-exists-p (concat basename ext))
         (delete-file (concat basename ext))))))
@@ -768,6 +774,35 @@ The path of the created LaTeX file is returned."
               (replace-match "currentColor" t t nil 1)))
           (write-region nil nil svg-file nil 0)))))
   (org-latex-preview--cleanup-callback nil nil extended-info))
+
+(defun org-latex-preview--cache-image (key path info)
+  "Save the image at PATH with associated INFO in the cache indexed by KEY.
+Return (path . info)."
+  (let ((label-path-info
+         (org-persist-register `("LaTeX preview cached image data"
+                                 (file ,path)
+                                 (elisp-data ,info))
+                               (list :key key)
+                               :write-immediately t)))
+    (cons (cadr label-path-info) info)))
+
+(defun org-latex-preview--get-cached (key)
+  "Retrieve the image path and info associated with KEY.
+The result will be of the form (path . info).
+
+Example result:
+  (\"/path/.../to/.../image.svg\"
+   :type svg
+   :height 1.4
+   :width 7.6
+   :depth 0.2
+   :errors nil)"
+  (when-let ((label-path-info
+              (org-persist-read "LaTeX preview cached image data"
+                                (list :key key)
+                                nil nil :read-related t)))
+    (cons (cadr label-path-info)
+          (caddr label-path-info))))
 
 ;; TODO: Switching processes from imagemagick to dvi* with an existing
 ;; dump-file during a single Emacs session should trigger
@@ -838,7 +873,8 @@ BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
          (fg (plist-get org-format-latex-options :foreground))
          (bg (plist-get org-format-latex-options :background))
          (hash (sha1 (prin1-to-string
-                      (list org-format-latex-header
+                      (list processing-type
+                            org-format-latex-header
                             org-latex-default-packages-alist
                             org-latex-packages-alist
                             org-format-latex-options
@@ -857,14 +893,17 @@ BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
        value movefile options nil processing-type))
     (org-place-latex-image-link link block-type beg end value)))
 
-(defun org-place-latex-image (beg end movefile imagetype)
+;; TODO: Deleting an existing preview overlay over the same reagion is
+;; wasteful. It's simpler just to update the display property of the
+;; existing overlay.
+(defun org-place-latex-image (beg end path-info)
   "Place an overlay from BEG to END showing MOVEFILE.
 The overlay will be above BEG if OVERLAYS is non-nil."
   (dolist (o (overlays-in beg end))
     (when (eq (overlay-get o 'org-overlay-type)
               'org-latex-overlay)
       (delete-overlay o)))
-  (org--make-preview-overlay beg end movefile imagetype)
+  (org--make-preview-overlay beg end path-info)
   (goto-char end))
 
 (defun org-place-latex-image-link (link block-type beg end value)
