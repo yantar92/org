@@ -33,7 +33,8 @@
 (defcustom org-format-latex-options
   '(:foreground default :background default :scale 1.0
     :html-foreground "Black" :html-background "Transparent"
-    :html-scale 1.0 :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
+    :html-scale 1.0 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")
+    :zoom 1.0)
   "Options for creating images from LaTeX fragments.
 This is a property list with the following properties:
 :foreground  the foreground color for images embedded in Emacs, e.g. \"Black\".
@@ -52,7 +53,9 @@ This is a property list with the following properties:
              \"$\"     find math expressions surrounded by $...$
              \"$$\"    find math expressions surrounded by $$....$$
              \"\\(\"    find math expressions surrounded by \\(...\\)
-             \"\\=\\[\"    find math expressions surrounded by \\=\\[...\\]"
+             \"\\=\\[\"    find math expressions surrounded by \\=\\[...\\]
+:zoom        when the image has associated font-relative height information,
+             the display size is scaled by this factor."
   :group 'org-latex
   :type 'plist)
 
@@ -293,13 +296,19 @@ indeed LaTeX fragments/environments.")
 If IMAGE file is specified, display it. Argument IMAGETYPE is the
 extension of the displayed image, as a string.  It defaults to
 \"png\"."
-  (let ((ov (make-overlay beg end))
-        (image-display
-         (and path-info
-              (list 'image
-                    :type (plist-get (cdr path-info) :image-type)
-                    :file (car path-info)
-                    :ascent 'center))))
+  (let* ((ov (make-overlay beg end))
+         (zoom (or (plist-get org-format-latex-options :zoom) 1.0))
+         (height (plist-get (cdr path-info) :height))
+         (depth (plist-get (cdr path-info) :depth))
+         (image-display
+          (and path-info
+               (list 'image
+                     :type (plist-get (cdr path-info) :image-type)
+                     :file (car path-info)
+                     :height (and height (cons (* height zoom) 'em))
+                     :ascent (if (and depth height)
+                                 (ceiling (* 100 (- 1.0 (/ depth height))))
+                               'center)))))
     (overlay-put ov 'org-overlay-type 'org-latex-overlay)
     (overlay-put ov 'evaporate t)
     (overlay-put ov 'modification-hooks
@@ -601,17 +610,22 @@ during processing to hold more information on the fragments."
     (let* ((extended-info
             (append processing-info
                     (list :fragments fragment-info
+                          :org-buffer (current-buffer)
                           :texfile (org-preview-latex--create-tex-file
                                     processing-info preview-strings))))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
             (org-latex-preview--image-extract-async extended-info)))
-      (if (eq processing-type 'dvisvgm)
-          (plist-put (cddr img-extract-async) :success
-                     #'org-latex-preview--dvisvgm-callback)
-        (plist-put (cddr img-extract-async) :success
-                   #'org-latex-preview--cleanup-callback))
+      (plist-put (cddr img-extract-async) :success
+                 (list #'org-latex-preview--cleanup-callback))
+      (pcase processing-type
+        ('dvisvgm
+         (plist-put (cddr img-extract-async) :filter
+                    #'org-latex-preview--dvisvgm-filter))
+        (_
+         (plist-put (cddr img-extract-async) :success
+                    (list #'org-latex-preview--generic-callback))))
       (if (and (eq processing-type 'dvipng)
                (member "--follow" (cadr img-extract-async)))
           (org-async-call img-extract-async)
@@ -729,6 +743,7 @@ The path of the created LaTeX file is returned."
          (img-formatted-command
           (split-string-shell-command
            (format-spec img-extract-command img-command-spec))))
+    (plist-put extended-info :dpi-scale-factor (/ dpi 140.0))
     (list 'org-async-task
           img-formatted-command
           :buffer img-process-buffer
@@ -736,6 +751,24 @@ The path of the created LaTeX file is returned."
           :failure "LaTeX preview image conversion failed! (error code %d)")))
 
 (defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
+  "Delete files after image creation, in accord with EXTENDED-INFO."
+  (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
+         (images
+          (mapcar
+           (lambda (fragment-info)
+             (plist-get fragment-info :path))
+           (plist-get extended-info :fragments)))
+         (clean-exts
+          (or (plist-get extended-info :post-clean)
+              '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
+                ".svg" ".png" ".jpg" ".jpeg" ".out"))))
+    (dolist (img images)
+      (delete-file img))
+    (dolist (ext clean-exts)
+      (when (file-exists-p (concat basename ext))
+        (delete-file (concat basename ext))))))
+
+(defun org-latex-preview--generic-callback (_exit-code _stdout extended-info)
   "Move and delete files after image creation, in accords with EXTENDED-INFO."
   (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
          (image-output-type (intern (plist-get extended-info :image-output-type)))
@@ -751,15 +784,14 @@ The path of the created LaTeX file is returned."
       (cl-loop
        for fragment-info in (plist-get extended-info :fragments)
        for image-file in images
-       do
-       (org-place-latex-image
-        (car (plist-get fragment-info :buffer-location))
-        (cdr (plist-get fragment-info :buffer-location))
-        (org-latex-preview--cache-image
-         (plist-get fragment-info :key)
-         image-file
-         (org-latex-preview--display-info
-          extended-info fragment-info)))))
+       for (beg . end) = (plist-get fragment-info :buffer-location)
+       do (org-place-latex-image
+           beg end
+           (org-latex-preview--cache-image
+            (plist-get fragment-info :key)
+            image-file
+            (org-latex-preview--display-info
+             extended-info fragment-info)))))
     (dolist (ext clean-exts)
       (when (file-exists-p (concat basename ext))
         (delete-file (concat basename ext))))))
@@ -767,27 +799,93 @@ The path of the created LaTeX file is returned."
 (defun org-latex-preview--display-info (extended-info fragment-info)
   "From FRAGMENT-INFO and EXTENDED-INFO obtain display-relevant information."
   (let ((image-type (intern (plist-get extended-info :image-output-type)))
+        (fontsize (or (plist-get extended-info :fontsize) 10))
+        (dpi-factor (or (plist-get extended-info :dpi-scale-factor) 1.0))
         info)
-    ;; FUTURE extract width/height/etc. info
-    (plist-put info :image-type image-type)))
+    (setq info (plist-put info :image-type image-type))
+    (dolist (key '(:width :height :depth))
+      (when-let ((val (plist-get fragment-info key)))
+        (plist-put info key (/ val fontsize dpi-factor))))
+    info))
 
-(defun org-latex-preview--dvisvgm-callback (_exit-code _stdout extended-info)
-  "TODO"
-  (let* ((basename (file-name-base (plist-get extended-info :texfile)))
-         (svg-images
-          (directory-files (file-name-directory (plist-get extended-info :texfile))
-                           t (rx (literal basename) (* anything) ".svg"))))
-    (dolist (svg-file svg-images)
-      (with-temp-buffer
-        (insert-file-contents svg-file)
-        (goto-char (point-min))
-        (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
-          (let* ((same-color (format "fill='\\(%s\\)'" (match-string 1))))
-            (replace-match "currentColor" t t nil 1)
-            (while (re-search-forward same-color nil t)
-              (replace-match "currentColor" t t nil 1)))
-          (write-region nil nil svg-file nil 0)))))
-  (org-latex-preview--cleanup-callback nil nil extended-info))
+(defun org-latex-preview--dvisvgm-filter (_proc _string extended-info)
+  "Look for newly created images in the dvisvgm stdout buffer.
+Any matches found will be matched against the fragments recorded in
+EXTENDED-INFO, and displayed in the buffer."
+  (let ((dvisvgm-processing-re "^processing page \\([0-9]+\\)\n")
+        (dvisvgm-depth-re "depth=\\([0-9.]+\\)pt$")
+        (dvisvgm-size-re "^ *graphic size: \\([0-9.]+\\)pt x \\([0-9.]+\\)pt")
+        (fragments (plist-get extended-info :fragments))
+        page-marks fragments-to-show)
+    (beginning-of-line)
+    (save-excursion
+      (while (re-search-forward dvisvgm-processing-re nil t)
+        (push (cons (string-to-number (match-string 1))
+                    (match-beginning 0))
+              page-marks)))
+    (setq page-marks (nreverse page-marks))
+    (while page-marks
+      (let ((start (cdar page-marks))
+            (end (or (cdadr page-marks) (point-max)))
+            (page (caar page-marks))
+            fragment-info)
+        (goto-char start)
+        (when (save-excursion
+                (re-search-forward "output written to \\(.*.svg\\)$" end t))
+          (setq fragment-info (nth (1- page) fragments))
+          (plist-put fragment-info :path (expand-file-name (match-string 1) temporary-file-directory))
+          (when (save-excursion
+                  (re-search-forward dvisvgm-depth-re end t))
+            (plist-put fragment-info :depth (string-to-number (match-string 1))))
+          (when (save-excursion (re-search-forward dvisvgm-size-re end t))
+            (plist-put fragment-info :height (string-to-number (match-string 2)))
+            (plist-put fragment-info :width (string-to-number (match-string 1))))
+          (when (save-excursion
+                  (re-search-forward "^  page is empty" end t))
+            (unless (plist-get fragment-info :error)
+              (plist-put fragment-info :error "Image file not produced."))
+            (plist-put fragment-info :path nil))
+          (push fragment-info fragments-to-show)
+          (goto-char end)))
+      (setq page-marks (cdr page-marks)))
+    (when fragments-to-show
+      (setq fragments-to-show (nreverse fragments-to-show))
+      (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show)
+      (org-latex-preview--place-images extended-info fragments-to-show))))
+
+(defun org-latex-preview--svg-make-fg-currentColor (svg-fragment)
+  "Replace the foreground color in SVG-FRAGMENT's file with \"currentColor\".
+The foreground color is guessed to be the first specified <g>
+fill color, which appears to be a reliable heuristic from a few
+tests with the output of dvisvgm."
+  (with-temp-buffer
+    (insert-file-contents (plist-get svg-fragment :path))
+    (goto-char (point-min))
+    (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
+      (let* ((same-color (format "\\(?:fill\\|stroke\\)='\\(%s\\)'" (match-string 1))))
+        (replace-match "currentColor" t t nil 1)
+        (while (re-search-forward same-color nil t)
+          (replace-match "currentColor" t t nil 1)))
+      (write-region nil nil (plist-get svg-fragment :path) nil 0))))
+
+(defun org-latex-preview--place-images (extended-info &optional fragments)
+  "Place images for each of FRAGMENTS, according to their data and EXTENDED-INFO.
+Should FRAGMENTS not be explicitly provided, all of the fragments
+listed in EXTENDED-INFO will be used."
+  (let ((fragments (or fragments (plist-get extended-info :fragments))))
+    (with-current-buffer (plist-get extended-info :org-buffer)
+      (save-excursion
+        (cl-loop
+         for fragment-info in fragments
+         for image-file = (plist-get fragment-info :path)
+         for (beg . end) = (plist-get fragment-info :buffer-location)
+         do (org-place-latex-image
+             beg end
+             (org-latex-preview--cache-image
+              (plist-get fragment-info :key)
+              image-file
+              (org-latex-preview--display-info
+               extended-info fragment-info))))))))
 
 (defun org-latex-preview--cache-image (key path info)
   "Save the image at PATH with associated INFO in the cache indexed by KEY.
