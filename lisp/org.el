@@ -3327,7 +3327,7 @@ A string will be inserted as-is in the header of the document.
 Make sure that you only list packages here which:
 
   - you want in every file;
-  - do not conflict with the setup in `org-format-latex-header';
+  - do not conflict with the setup in `org-latex-preview-header';
   - do not conflict with the default packages in
     `org-latex-default-packages-alist'."
   :group 'org-latex
@@ -5446,7 +5446,7 @@ Result depends on variable `org-highlight-latex-and-related'."
 	(re-latex
 	 (when (or (memq 'latex org-highlight-latex-and-related)
 		   (memq 'native org-highlight-latex-and-related))
-	   (let ((matchers (plist-get org-format-latex-options :matchers)))
+	   (let ((matchers (plist-get org-latex-preview-options :matchers)))
 	     (delq nil
 		   (mapcar (lambda (x)
 			     (and (member (car x) matchers) (nth 1 x)))

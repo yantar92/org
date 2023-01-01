@@ -25,12 +25,12 @@
 
 ;;; Code:
 
-(defgroup org-latex nil
-  "Options for embedding LaTeX code into Org mode."
-  :tag "Org LaTeX"
+(defgroup org-latex-preview nil
+  "Options for generation of LaTeX previews in Org mode."
+  :tag "Org LaTeX Preview"
   :group 'org)
 
-(defcustom org-format-latex-options
+(defcustom org-latex-preview-options
   '(:foreground default :background default :scale 1.0
     :html-foreground "Black" :html-background "Transparent"
     :html-scale 1.0 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")
@@ -56,15 +56,8 @@ This is a property list with the following properties:
              \"\\=\\[\"    find math expressions surrounded by \\=\\[...\\]
 :zoom        when the image has associated font-relative height information,
              the display size is scaled by this factor."
-  :group 'org-latex
+  :group 'org-latex-preview
   :type 'plist)
-
-(defcustom org-format-latex-signal-error t
-  "Non-nil means signal an error when image creation of LaTeX snippets fails.
-When nil, just push out a message."
-  :group 'org-latex
-  :version "24.1"
-  :type 'boolean)
 
 (defcustom org-latex-to-mathml-jar-file nil
   "Value of\"%j\" in `org-latex-to-mathml-convert-command'.
@@ -121,16 +114,16 @@ For example, this could be used with LaTeXML as
           (const :tag "None" nil)
           (string :tag "Shell command")))
 
-(defcustom org-preview-latex-default-process 'dvipng
+(defcustom org-latex-preview-default-process 'dvipng
   "The default process to convert LaTeX fragments to image files.
 All available processes and theirs documents can be found in
-`org-preview-latex-process-alist', which see."
-  :group 'org-latex
+`org-latex-preview-process-alist', which see."
+  :group 'org-latex-preview
   :version "26.1"
   :package-version '(Org . "9.0")
   :type 'symbol)
 
-(defcustom org-preview-latex-process-alist
+(defcustom org-latex-preview-process-alist
   '((dvipng
      :programs ("latex" "dvipng")
      :description "dvi > png"
@@ -171,7 +164,7 @@ All available processes and theirs documents can be found in
   "Definitions of external processes for LaTeX previewing.
 Org mode can use some external commands to generate TeX snippet's images for
 previewing or inserting into HTML files, e.g., \"dvipng\".  This variable tells
-`org-create-formula-image' how to call them.
+`org-latex-preview-create-image' how to call them.
 
 The value is an alist with the pattern (NAME . PROPERTIES).  NAME is a symbol.
 PROPERTIES accepts the following attributes:
@@ -185,7 +178,7 @@ PROPERTIES accepts the following attributes:
                       image size showed in buffer and the cdr element is for
                       HTML file.  This option is only useful for process
                       developers, users should use variable
-                      `org-format-latex-options' instead.
+                      `org-latex-preview-options' instead.
   :post-clean         list of strings, files matched are to be cleaned up once
                       the image is generated.  When nil, the files with \".dvi\",
                       \".xdv\", \".pdf\", \".tex\", \".aux\", \".log\", \".svg\",
@@ -193,7 +186,7 @@ PROPERTIES accepts the following attributes:
                       be cleaned up.
   :latex-header       list of strings, the LaTeX header of the snippet file.
                       When nil, the fallback value is used instead, which is
-                      controlled by `org-format-latex-header',
+                      controlled by `org-latex-preview-preamble',
                       `org-latex-default-packages-alist' and
                       `org-latex-packages-alist', which see.
   :latex-compiler     list of LaTeX commands, as strings.  Each of them is given
@@ -218,7 +211,7 @@ Place-holders only used by `:image-converter':
   %D    dpi, which is used to adjust image size by some processing commands.
   %S    the image size scale ratio, which is used to adjust image size by some
         processing commands."
-  :group 'org-latex
+  :group 'org-latex-preview
   :package-version '(Org . "9.6")
   :type '(alist :tag "LaTeX to image backends"
           :value-type (plist)))
@@ -246,7 +239,7 @@ images at the same place."
               (file-readable-p org-latex-to-mathml-jar-file)
             t))))))
 
-(defcustom org-format-latex-header "\\documentclass{article}
+(defcustom org-latex-preview-preamble "\\documentclass{article}
 \\usepackage[usenames]{color}
 \[DEFAULT-PACKAGES]
 \[PACKAGES]
@@ -270,34 +263,34 @@ appears on the page.  The package defined in the variables
 `org-latex-default-packages-alist' and `org-latex-packages-alist'
 will either replace the placeholder \"[PACKAGES]\" in this
 header, or they will be appended."
-  :group 'org-latex
+  :group 'org-latex-preview
   :type 'string)
 
-(defcustom org-preview-use-precompilation t
+(defcustom org-latex-preview-use-precompilation t
   "Use LaTeX header precompilation when previewing fragments.
 This causes a slight delay the first time `org-latex-pdf-process'
 is called in a buffer, but subsequent calls will be faster.
 
 This requires the LaTeX package \"mylatexformat\" to be installed."
-  :group 'org-latex
+  :group 'org-latex-preview
   :package-version '(Org . "9.7")
   :type 'boolean)
 
-(defconst org-latex-tentative-math-re
+(defconst org-latex-preview--tentative-math-re
   "\\$\\|\\\\[([]\\|^[ \t]*\\\\begin{[A-Za-z0-9*]+}"
   "Regexp whith will match all instances of LaTeX math.
 Note that this will also produce false postives, and
 `org-element-context' should be used to verify that matches are
 indeed LaTeX fragments/environments.")
 
-(defun org--make-preview-overlay (beg end &optional path-info)
+(defun org-latex-preview--make-overlay (beg end &optional path-info)
   "Build an overlay between BEG and END.
 
 If IMAGE file is specified, display it. Argument IMAGETYPE is the
 extension of the displayed image, as a string.  It defaults to
 \"png\"."
   (let* ((ov (make-overlay beg end))
-         (zoom (or (plist-get org-format-latex-options :zoom) 1.0))
+         (zoom (or (plist-get org-latex-preview-options :zoom) 1.0))
          (height (plist-get (cdr path-info) :height))
          (depth (plist-get (cdr path-info) :depth))
          (image-display
@@ -327,7 +320,7 @@ extension of the displayed image, as a string.  It defaults to
           (overlay-put ov 'face face))
       (overlay-put ov 'face nil))))
 
-(defun org-clear-latex-preview (&optional beg end)
+(defun org-latex-preview-clear-overlays (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
 When optional arguments BEG and END are non-nil, remove all
 overlays between them instead.  Return a non-nil value when some
@@ -339,11 +332,11 @@ overlays were removed, nil otherwise."
     (mapc #'delete-overlay overlays)
     overlays))
 
-(defun org--latex-preview-region (beg end)
+(defun org-latex-preview--preview-region (beg end)
   "Preview LaTeX fragments between BEG and END.
 BEG and END are buffer positions."
   (org-latex-preview-fragments
-   org-preview-latex-default-process
+   org-latex-preview-default-process
    beg end))
 
 (defun org-latex-preview (&optional arg)
@@ -371,16 +364,16 @@ fragments in the buffer."
    ((not (display-graphic-p)) nil)
    ;; Clear whole buffer.
    ((equal arg '(64))
-    (org-clear-latex-preview (point-min) (point-max))
+    (org-latex-preview-clear-overlays (point-min) (point-max))
     (message "LaTeX previews removed from buffer"))
    ;; Preview whole buffer.
    ((equal arg '(16))
     (message "Creating LaTeX previews in buffer...")
-    (org--latex-preview-region (point-min) (point-max))
+    (org-latex-preview--preview-region (point-min) (point-max))
     (message "Creating LaTeX previews in buffer... done."))
    ;; Clear current section.
    ((equal arg '(4))
-    (org-clear-latex-preview
+    (org-latex-preview-clear-overlays
      (if (use-region-p)
          (region-beginning)
        (if (org-before-first-heading-p) (point-min)
@@ -391,17 +384,17 @@ fragments in the buffer."
        (org-with-limited-levels (org-entry-end-position)))))
    ((use-region-p)
     (message "Creating LaTeX previews in region...")
-    (org--latex-preview-region (region-beginning) (region-end))
+    (org-latex-preview--preview-region (region-beginning) (region-end))
     (message "Creating LaTeX previews in region... done."))
    ;; Toggle preview on LaTeX code at point.
    ((let ((datum (org-element-context)))
       (and (memq (org-element-type datum) '(latex-environment latex-fragment))
            (let ((beg (org-element-property :begin datum))
                  (end (org-element-property :end datum)))
-             (if (org-clear-latex-preview beg end)
+             (if (org-latex-preview-clear-overlays beg end)
                  (message "LaTeX preview removed")
                (message "Creating LaTeX preview...")
-               (org--latex-preview-region beg end)
+               (org-latex-preview--preview-region beg end)
                (message "Creating LaTeX preview... done."))
              t))))
    ;; Preview current section.
@@ -411,22 +404,22 @@ fragments in the buffer."
                    (org-with-limited-levels (org-back-to-heading t) (point)))))
           (end (org-with-limited-levels (org-entry-end-position))))
       (message "Creating LaTeX previews in section...")
-      (org--latex-preview-region beg end)
+      (org-latex-preview--preview-region beg end)
       (message "Creating LaTeX previews in section... done.")))))
 
-(defun org-latex-collect-fragments (&optional beg end)
+(defun org-latex-preview-collect-fragments (&optional beg end)
   "Collect all LaTeX maths fragments/environments between BEG and END."
   (let (fragments)
     (save-excursion
       (goto-char (or beg (point-min)))
-      (while (re-search-forward org-latex-tentative-math-re end t)
+      (while (re-search-forward org-latex-preview--tentative-math-re end t)
         (let ((obj (org-element-context)))
           (when (memq (org-element-type obj)
                       '(latex-fragment latex-environment))
             (push obj fragments)))))
     (nreverse fragments)))
 
-(defun org-latex-replace-fragments (prefix processing-type &optional dir msg)
+(defun org-latex-preview-replace-fragments (prefix processing-type &optional dir msg)
   "Replace all LaTeX fragments in the buffer with export appropriate forms.
 The way this is done is set by PROCESSING-TYPE, which can be either:
 - verabtim, in which case nothing is done
@@ -436,7 +429,7 @@ The way this is done is set by PROCESSING-TYPE, which can be either:
   `org-format-latex-as-html'.
 - mathml, in which case the math fragment is replace by the result of
   `org-format-latex-as-mathml'.
-- an entry in `org-preview-latex-process-alist', in which case the
+- an entry in `org-latex-preview-process-alist', in which case the
   math fragment is replaced with `org-create-latex-export'.
 
 Generated image files are placed in DIR with the prefix PREFIX.
@@ -445,7 +438,7 @@ Note that PREFIX may itself contain a directory path component.
 When generating output files, MSG will be `message'd if given."
   (let* ((cnt 0))
     (save-excursion
-      (dolist (element (org-latex-collect-fragments))
+      (dolist (element (org-latex-preview-collect-fragments))
         (let ((block-type (eq (org-element-type element)
                               'latex-environment))
               (value (org-element-property :value element))
@@ -478,7 +471,7 @@ When generating output files, MSG will be `message'd if given."
             (delete-region beg end)
             (insert (org-format-latex-as-mathml
                      value block-type prefix dir)))
-           ((assq processing-type org-preview-latex-process-alist)
+           ((assq processing-type org-latex-preview-process-alist)
             (let ((image-dir (expand-file-name prefix dir)))
               (unless (file-exists-p image-dir)
                 (make-directory image-dir t)))
@@ -494,7 +487,7 @@ The LaTeX fragments are processed using PROCESSING-TYPE, a key of
 `org-latex-preview-process-alist'.
 
 If `point' is currently on an LaTeX overlay, then no overlays
-will be generated.  Since in practice `org-clear-latex-preview'
+will be generated.  Since in practice `org-latex-preview-clear-overlays'
 should have been called immediately prior to this function, this
 situation should not occur in practice and mainly acts as
 protection against placing doubled up overlays."
@@ -510,9 +503,9 @@ protection against placing doubled up overlays."
                       dir)))
       (unless (file-exists-p image-dir)
         (make-directory image-dir t)))
-    (if (assq processing-type org-preview-latex-process-alist)
-        (org-create-latex-preview
-         processing-type (org-latex-collect-fragments beg end))
+    (if (assq processing-type org-latex-preview-process-alist)
+        (org-latex-preview--create
+         processing-type (org-latex-preview-collect-fragments beg end))
       (error "Unknown conversion process %s for previewing LaTeX fragments"
              processing-type))))
 
@@ -531,15 +524,15 @@ top of the fragment instead of replacing it.
 PROCESSING-TYPE is the conversion method to use, as a symbol.
 
 Some of the options can be changed using the variable
-`org-format-latex-options', which see."
+`org-latex-preview-options', which see."
   (if (and overlays forbuffer)
       (org-latex-preview-fragments processing-type beg end)
-    (org-latex-replace-fragments prefix processing-type dir msg)))
+    (org-latex-preview-replace-fragments prefix processing-type dir msg)))
 
-(defun org-create-latex-preview (processing-type elements)
+(defun org-latex-preview--create (processing-type elements)
   "Preview LaTeX math fragments ELEMENTS using PROCESSING-TYPE."
   (let* ((processing-info
-          (cdr (assq processing-type org-preview-latex-process-alist)))
+          (cdr (assq processing-type org-latex-preview-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
          document-strings
          fragment-info
@@ -555,30 +548,30 @@ Some of the options can be changed using the variable
                (face (or (and (> beg 1)
                               (get-text-property (1- beg) 'face))
                          'default))
-               (fg (pcase (plist-get org-format-latex-options :foreground)
+               (fg (pcase (plist-get org-latex-preview-options :foreground)
                      ('auto (face-attribute face :foreground nil 'default))
                      ('default (face-attribute 'default :foreground nil))
                      (color color)))
-               (bg (pcase (plist-get org-format-latex-options :background)
+               (bg (pcase (plist-get org-latex-preview-options :background)
                      ('auto (face-attribute face :background nil 'default))
                      ('default (face-attribute 'default :background nil))
                      (color color)))
                (hash (sha1 (prin1-to-string
                             (list processing-type
-                                  org-format-latex-header
+                                  org-latex-preview-preamble
                                   org-latex-default-packages-alist
                                   org-latex-packages-alist
-                                  org-format-latex-options
+                                  org-latex-preview-options
                                   value
                                   (if (equal imagetype "svg")
                                       'svg fg)
                                   bg))))
                (options (org-combine-plists
-                         org-format-latex-options
+                         org-latex-preview-options
                          (list :foreground fg :background bg))))
           (if-let ((path-info (org-latex-preview--get-cached hash)))
-              (org-place-latex-image beg end path-info)
-            (push (org-preview-latex--tex-styled value options)
+              (org-latex-preview-place-image beg end path-info)
+            (push (org-latex-preview--tex-styled value options)
                   document-strings)
             (push (list :buffer-location (cons beg end)
                         :key hash)
@@ -586,12 +579,12 @@ Some of the options can be changed using the variable
             (push (cons beg end) locations)
             (push hash keys)))))
     (when locations
-      (org-create-formula-image-async
+      (org-latex-preview-create-image-async
        processing-type
        (nreverse document-strings)
        (nreverse fragment-info)))))
 
-(defun org-create-formula-image-async (processing-type preview-strings fragment-info)
+(defun org-latex-preview-create-image-async (processing-type preview-strings fragment-info)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
 FRAGMENT-INFO is a list of plists, where the Nth plist gives
@@ -602,9 +595,9 @@ FRAGMENT-INFO plist should have the following structure:
 It is worth noting the FRAGMENT-INFO plists will be modified
 during processing to hold more information on the fragments."
   (let* ((processing-type
-          (or processing-type org-preview-latex-default-process))
+          (or processing-type org-latex-preview-default-process))
          (processing-info
-          (alist-get processing-type org-preview-latex-process-alist))
+          (alist-get processing-type org-latex-preview-process-alist))
          (programs (plist-get processing-info :programs))
          (error-message (or (plist-get processing-info :message) "")))
     (dolist (program programs)
@@ -613,7 +606,7 @@ during processing to hold more information on the fragments."
             (append processing-info
                     (list :fragments fragment-info
                           :org-buffer (current-buffer)
-                          :texfile (org-preview-latex--create-tex-file
+                          :texfile (org-latex-preview--create-tex-file
                                     processing-info preview-strings))))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
@@ -635,11 +628,11 @@ during processing to hold more information on the fragments."
         (plist-put (cddr tex-compile-async) :failure img-extract-async))
       (org-async-call tex-compile-async))))
 
-(defun org-preview-latex--create-tex-file (processing-info preview-strings)
+(defun org-latex-preview--create-tex-file (processing-info preview-strings)
   "Create a LaTeX file based on PROCESSING-INFO and PREVIEW-STRINGS.
 
 More specifically, a preamble will be generated based on
-PROCESSING-INFO.  Then, if `org-preview-use-precompilation' is
+PROCESSING-INFO.  Then, if `org-latex-preview-use-precompilation' is
 non-nil, a precompiled format file will be generated if needed
 and used.  Otherwise the preamble is used normally.
 
@@ -658,12 +651,12 @@ The path of the created LaTeX file is returned."
                (org-combine-plists
                 (org-export-get-environment (org-export-get-backend 'latex))
                 '(:time-stamp-file nil))
-               org-format-latex-header 'snippet))
+               org-latex-preview-preamble 'snippet))
           "\n\\usepackage[active,tightpage,auctex]{preview}\n")))
     (with-temp-file tex-temp-name
-      (insert (if org-preview-use-precompilation
+      (insert (if org-latex-preview-use-precompilation
                   (concat "%&"
-                          (org-preview-precompile
+                          (org-latex-preview-precompile
                            processing-info header))
                 header))
       (insert "\n\\begin{document}\n")
@@ -716,7 +709,7 @@ The path of the created LaTeX file is returned."
             (current-buffer)))
          (img-extract-command
           (pcase
-              (or (and (string= (plist-get org-format-latex-options :background)
+              (or (and (string= (plist-get org-latex-preview-options :background)
                                 "Transparent")
                        (plist-get extended-info :transparent-image-converter))
                   (plist-get extended-info :image-converter))
@@ -729,8 +722,8 @@ The path of the created LaTeX file is returned."
          (image-size-adjust (or (plist-get extended-info :image-size-adjust)
                                 '(1.0 . 1.0)))
          (scale (* (car image-size-adjust)
-                   (or (plist-get org-format-latex-options :scale) 1.0)))
-         (dpi (* scale (if (display-graphic-p) (org--get-display-dpi) 140.0)))
+                   (or (plist-get org-latex-preview-options :scale) 1.0)))
+         (dpi (* scale (if (display-graphic-p) (org-latex-preview--get-display-dpi) 140.0)))
          (texfile (plist-get extended-info :texfile))
          (img-command-spec
           `((?o . ,(shell-quote-argument (file-name-directory texfile)))
@@ -788,7 +781,7 @@ The path of the created LaTeX file is returned."
        for fragment-info in (plist-get extended-info :fragments)
        for image-file in images
        for (beg . end) = (plist-get fragment-info :buffer-location)
-       do (org-place-latex-image
+       do (org-latex-preview-place-image
            beg end
            (org-latex-preview--cache-image
             (plist-get fragment-info :key)
@@ -935,7 +928,7 @@ listed in EXTENDED-INFO will be used."
          for fragment-info in fragments
          for image-file = (plist-get fragment-info :path)
          for (beg . end) = (plist-get fragment-info :buffer-location)
-         do (org-place-latex-image
+         do (org-latex-preview-place-image
              beg end
              (org-latex-preview--cache-image
               (plist-get fragment-info :key)
@@ -975,7 +968,7 @@ Example result:
 ;; TODO: Switching processes from imagemagick to dvi* with an existing
 ;; dump-file during a single Emacs session should trigger
 ;; re-precompilation with the new precompile command.
-(defun org-preview-precompile (processing-info header)
+(defun org-latex-preview-precompile (processing-info header)
   "Precompile/dump LaTeX HEADER (preamble) text.
 
 This dump is named using its sha1 hash and placed in
@@ -1002,23 +995,23 @@ process."
         header-file (plist-get processing-info :latex-precompiler)
         "fmt")))))
 
-(defun org-preview-latex--tex-styled (value options &optional html-p)
+(defun org-latex-preview--tex-styled (value options &optional html-p)
   "Apply LaTeX style commands to VALUE based on OPTIONS.
 
 VALUE is the math fragment text to be previewed.
 
-OPTIONS is the plist `org-format-latex-options' with customized
+OPTIONS is the plist `org-latex-preview-options' with customized
 color information for this run.
 
 HTML-P, if true, uses colors required for HTML processing."
   (let* ((fg (pcase (plist-get options (if html-p :html-foreground :foreground))
-               ('default (org-latex-color-format (org-latex-color :foreground)))
-               ((pred null) (org-latex-color-format "Black"))
-               (color (org-latex-color-format color))))
+               ('default (org-latex-preview--format-color (org-latex-preview--attr-color :foreground)))
+               ((pred null) (org-latex-preview--format-color "Black"))
+               (color (org-latex-preview--format-color color))))
          (bg (pcase (plist-get options (if html-p :html-background :background))
-               ('default (org-latex-color :background))
+               ('default (org-latex-preview--attr-color :background))
                ("Transparent" nil)
-               (bg (org-latex-color-format bg)))))
+               (bg (org-latex-preview--format-color bg)))))
     (concat (and bg (format "\\pagecolor[rgb]{%s}" bg))
             (and fg (format "\\color[rgb]{%s}" fg))
             "%\n"
@@ -1032,21 +1025,21 @@ Note that PREFIX may itself contain a directory path component.
 
 BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
   (let* ((processing-info
-          (cdr (assq processing-type org-preview-latex-process-alist)))
+          (cdr (assq processing-type org-latex-preview-process-alist)))
          (beg (org-element-property :begin element))
          (end (save-excursion
                 (goto-char (org-element-property :end element))
                 (skip-chars-backward " \r\t\n")
                 (point)))
          (value (org-element-property :value element))
-         (fg (plist-get org-format-latex-options :foreground))
-         (bg (plist-get org-format-latex-options :background))
+         (fg (plist-get org-latex-preview-options :foreground))
+         (bg (plist-get org-latex-preview-options :background))
          (hash (sha1 (prin1-to-string
                       (list processing-type
-                            org-format-latex-header
+                            org-latex-preview-preamble
                             org-latex-default-packages-alist
                             org-latex-packages-alist
-                            org-format-latex-options
+                            org-latex-preview-options
                             'export value fg bg))))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
          (absprefix (expand-file-name prefix dir))
@@ -1055,27 +1048,27 @@ BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
          (sep (and block-type "\n\n"))
          (link (concat sep "[[file:" linkfile "]]" sep))
          (options (org-combine-plists
-                   org-format-latex-options
+                   org-latex-preview-options
                    (list :foreground fg :background bg))))
     (unless (file-exists-p movefile)
-      (org-create-formula-image
+      (org-latex-preview-create-image
        value movefile options nil processing-type))
-    (org-place-latex-image-link link block-type beg end value)))
+    (org-latex-preview-place-image-link link block-type beg end value)))
 
 ;; TODO: Deleting an existing preview overlay over the same reagion is
 ;; wasteful. It's simpler just to update the display property of the
 ;; existing overlay.
-(defun org-place-latex-image (beg end path-info)
+(defun org-latex-preview-place-image (beg end path-info)
   "Place an overlay from BEG to END showing MOVEFILE.
 The overlay will be above BEG if OVERLAYS is non-nil."
   (dolist (o (overlays-in beg end))
     (when (eq (overlay-get o 'org-overlay-type)
               'org-latex-overlay)
       (delete-overlay o)))
-  (org--make-preview-overlay beg end path-info)
+  (org-latex-preview--make-overlay beg end path-info)
   (goto-char end))
 
-(defun org-place-latex-image-link (link block-type beg end value)
+(defun org-latex-preview-place-image-link (link block-type beg end value)
   "Place then link LINK at BEG END."
   (delete-region beg end)
   (insert
@@ -1184,7 +1177,7 @@ This uses  `org-latex-to-html-convert-command', which see."
     (message "Running %s" cmd)
     (shell-command-to-string cmd)))
 
-(defun org--get-display-dpi ()
+(defun org-latex-preview--get-display-dpi ()
   "Get the DPI of the display.
 The function assumes that the display has the same pixel width in
 the horizontal and vertical directions."
@@ -1193,14 +1186,14 @@ the horizontal and vertical directions."
                 (/ (display-mm-height) 25.4)))
     (error "Attempt to calculate the dpi of a non-graphic display")))
 
-(defun org-create-formula-image
+(defun org-latex-preview-create-image
     (string tofile options buffer &optional processing-type)
   "Create an image from LaTeX source using external processes.
 
 The LaTeX STRING is saved to a temporary LaTeX file, then
 converted to an image file by process PROCESSING-TYPE defined in
-`org-preview-latex-process-alist'.  A nil value defaults to
-`org-preview-latex-default-process'.
+`org-latex-preview-process-alist'.  A nil value defaults to
+`org-latex-preview-default-process'.
 
 The generated image file is eventually moved to TOFILE.
 
@@ -1211,9 +1204,9 @@ When BUFFER non-nil, this function is used for LaTeX previewing.
 Otherwise, it is used to deal with LaTeX snippets showed in
 a HTML file."
   (let* ((processing-type (or processing-type
-                              org-preview-latex-default-process))
+                              org-latex-preview-default-process))
          (processing-info
-          (cdr (assq processing-type org-preview-latex-process-alist)))
+          (cdr (assq processing-type org-latex-preview-process-alist)))
          (programs (plist-get processing-info :programs))
          (error-message (or (plist-get processing-info :message) ""))
          (image-input-type (plist-get processing-info :image-input-type))
@@ -1225,7 +1218,7 @@ a HTML file."
           (or (plist-get processing-info :latex-header)
               (org-latex-make-preamble
                (org-export-get-environment (org-export-get-backend 'latex))
-               org-format-latex-header
+               org-latex-preview-preamble
                'snippet)))
          (latex-compiler (plist-get processing-info :latex-compiler))
          (tmpdir temporary-file-directory)
@@ -1236,7 +1229,7 @@ a HTML file."
                                 '(1.0 . 1.0)))
          (scale (* (if buffer (car image-size-adjust) (cdr image-size-adjust))
                    (or (plist-get options (if buffer :scale :html-scale)) 1.0)))
-         (dpi (* scale (if (and buffer (display-graphic-p)) (org--get-display-dpi) 140.0)))
+         (dpi (* scale (if (and buffer (display-graphic-p)) (org-latex-preview--get-display-dpi) 140.0)))
          (fg (or (plist-get options (if buffer :foreground :html-foreground))
                  "Black"))
          (bg (or (plist-get options (if buffer :background :html-background))
@@ -1250,12 +1243,12 @@ a HTML file."
     (dolist (program programs)
       (org-check-external-command program error-message))
     (if (eq fg 'default)
-        (setq fg (org-latex-color :foreground))
-      (setq fg (org-latex-color-format fg)))
+        (setq fg (org-latex-preview--attr-color :foreground))
+      (setq fg (org-latex-preview--format-color fg)))
     (setq bg (cond
-              ((eq bg 'default) (org-latex-color :background))
+              ((eq bg 'default) (org-latex-preview--attr-color :background))
               ((string= bg "Transparent") nil)
-              (t (org-latex-color-format bg))))
+              (t (org-latex-preview--format-color bg))))
     ;; Remove TeX \par at end of snippet to avoid trailing space.
     (if (string-suffix-p string "\n")
         (aset string (1- (length string)) ?%)
@@ -1273,7 +1266,7 @@ a HTML file."
               "\n}\n"
               "\n\\end{document}\n"))
     (let* ((err-msg (format "Please adjust `%s' part of \
-`org-preview-latex-process-alist'."
+`org-latex-preview-process-alist'."
                             processing-type))
            (image-input-file
             (org-compile-file
@@ -1289,27 +1282,17 @@ a HTML file."
           (delete-file (concat texfilebase e))))
       image-output-file)))
 
-(defun org-dvipng-color (attr)
-  "Return a RGB color specification for dvipng."
-  (org-dvipng-color-format (face-attribute 'default attr nil)))
-
-(defun org-dvipng-color-format (color-name)
-  "Convert COLOR-NAME to a RGB color value for dvipng."
-  (apply #'format "rgb %s %s %s"
-         (mapcar 'org-normalize-color
-                 (color-values color-name))))
-
-(defun org-latex-color (attr)
+(defun org-latex-preview--attr-color (attr)
   "Return a RGB color for the LaTeX color package."
-  (org-latex-color-format (face-attribute 'default attr nil)))
+  (org-latex-preview--format-color (face-attribute 'default attr nil)))
 
-(defun org-latex-color-format (color-name)
+(defun org-latex-preview--format-color (color-name)
   "Convert COLOR-NAME to a RGB color value."
   (apply #'format "%s,%s,%s"
-         (mapcar 'org-normalize-color
+         (mapcar 'org-latex-preview--normalize-color
                  (color-values color-name))))
 
-(defun org-normalize-color (value)
+(defun org-latex-preview--normalize-color (value)
   "Return string to be used as color value for an RGB component."
   (format "%g" (/ value 65535.0)))
 

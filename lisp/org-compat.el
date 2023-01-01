@@ -720,6 +720,47 @@ This constant, for example, makes the below code not err:
                "use `org-element' library"
                "9.0")
 
+(define-obsolete-variable-alias
+  'org-format-latex-options 'org-latex-preview-options "9.7")
+(make-obsolete-variable
+ 'org-format-latex-signal-error "no longer used" "9.7")
+(define-obsolete-variable-alias
+  'org-format-latex-header 'org-latex-preview-preamble "9.7")
+(define-obsolete-variable-alias
+  'org-preview-latex-default-process 'org-latex-preview-default-process "9.7")
+(define-obsolete-variable-alias
+  'org-preview-latex-process-alist 'org-latex-preview-process-alist "9.7")
+;; (make-obsolete-variable
+;;  'org-preview-latex-image-directory "replaced with org-persist" "9.7")
+(define-obsolete-function-alias
+  'org-clear-latex-preview 'org-latex-preview-clear-overlays "9.7")
+(make-obsolete
+ 'org-place-formula-image "replaced with org-latex-preview-place-image and org-latex-preview-place-image-link" "9.7")
+(define-obsolete-function-alias
+  'org-create-formula-image 'org-latex-preview-create-image "9.7")
+(define-obsolete-function-alias
+  'org-latex-color-format 'org-latex-preview--format-color "9.7")
+(define-obsolete-function-alias
+  'org-latex-color 'org-latex-preview--attr-color "9.7")
+(define-obsolete-function-alias
+  'org-normalize-color 'org-latex-preview--normalize-color "9.7")
+
+;; FIXME: Unused; obsoleted; to be removed.
+(defun org-dvipng-color (attr)
+  "Return a RGB color specification for dvipng."
+  (org-dvipng-color-format (face-attribute 'default attr nil)))
+
+;; FIXME: Unused; obsoleted; to be removed.
+(defun org-dvipng-color-format (color-name)
+  "Convert COLOR-NAME to a RGB color value for dvipng."
+  (apply #'format "rgb %s %s %s"
+         (mapcar 'org-latex-preview--normalize-color
+                 (color-values color-name))))
+(make-obsolete
+ 'org-dvipng-color "to be removed" "9.7")
+(make-obsolete
+ 'org-dvipng-color-format "to be removed" "9.7")
+
 ;; FIXME: Unused; obsoleted; to be removed.
 (defun org-let (list &rest body) ;FIXME: So many kittens are suffering here.
   (declare (indent 1) (obsolete cl-progv "2021"))

@@ -37,7 +37,7 @@
 (require 'ob)
 (require 'org-macs)
 
-(declare-function org-create-formula-image "org" (string tofile options buffer &optional type))
+(declare-function org-latex-preview-create-image "org-latex-preview" (string tofile options buffer &optional type))
 (declare-function org-latex-compile "ox-latex" (texfile &optional snippet))
 (declare-function org-latex-guess-inputenc "ox-latex" (header))
 (declare-function org-splice-latex-header "org" (tpl def-pkg pkg snippets-p &optional extra))
@@ -48,11 +48,10 @@
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("latex" . "tex"))
 
-(defvar org-format-latex-header)	  ; From org.el
-(defvar org-format-latex-options)	  ; From org.el
-(defvar org-latex-default-packages-alist) ; From org.el
-(defvar org-latex-packages-alist)	  ; From org.el
-(defvar org-preview-latex-process-alist)  ; From org.el
+(defvar org-latex-preview-header)	  ; From org-latex-preview.el
+(defvar org-latex-preview-options)	  ; From org-latex-preview.el
+(defvar org-latex-default-packages-alist) ; From org-latex-preview.el
+(defvar org-latex-packages-alist)	  ; From org-latex-preview.el
 
 (defvar org-babel-default-header-args:latex
   '((:results . "latex") (:exports . "results"))
@@ -192,12 +191,11 @@ This function is called by `org-babel-execute-src-block'."
 	      (append (cdr (assq :packages params)) org-latex-packages-alist)))
         (cond
          ((and (string-suffix-p ".png" out-file) (not imagemagick))
-          (let ((org-format-latex-header
-		 (concat org-format-latex-header "\n"
-			 (mapconcat #'identity headers "\n")))
-                (org-preview-latex-process-alist org-babel-latex-process-alist))
-	    (org-create-formula-image
-             body out-file org-format-latex-options in-buffer 'png)))
+          (let ((org-latex-preview-header
+		 (concat org-latex-preview-header "\n"
+			 (mapconcat #'identity headers "\n"))))
+	    (org-latex-preview-create-image
+             body out-file org-latex-preview-options in-buffer)))
 	 ((string= "svg" extension)
 	  (with-temp-file tex-file
 	    (insert (concat (funcall org-babel-latex-preamble params)
@@ -264,7 +262,7 @@ This function is called by `org-babel-execute-src-block'."
 	    (insert
 	     (org-latex-guess-inputenc
 	      (org-splice-latex-header
-	       org-format-latex-header
+	       org-latex-preview-header
 	       (delq
 		nil
 		(mapcar

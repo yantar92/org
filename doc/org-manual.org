@@ -11454,7 +11454,7 @@ pretty output for a number of export backends.
 :END:
 #+cindex: @LaTeX{} fragments
 
-#+vindex: org-format-latex-header
+#+vindex: org-latex-preview-header
 Org mode can contain LaTeX math fragments, and it supports ways to
 process these for several export backends.  When exporting to LaTeX,
 the code is left as it is.  When exporting to HTML, Org can use either
@@ -11511,17 +11511,17 @@ lines:
 :END:
 #+cindex: @LaTeX{} fragments, preview
 
-#+vindex: org-preview-latex-default-process
+#+vindex: org-latex-preview-default-process
 If you have a working LaTeX installation and =dvipng=, =dvisvgm= or
 =convert= installed[fn:39], LaTeX fragments can be processed to
 produce images of the typeset expressions to be used for inclusion
 while exporting to HTML (see [[*LaTeX fragments]]), or for inline
 previewing within Org mode.
 
-#+vindex: org-format-latex-options
-#+vindex: org-format-latex-header
-You can customize the variables ~org-format-latex-options~ and
-~org-format-latex-header~ to influence some aspects of the preview.
+#+vindex: org-latex-preview-options
+#+vindex: org-latex-preview-header
+You can customize the variables ~org-latex-preview-options~ and
+~org-latex-preview-header~ to influence some aspects of the preview.
 In particular, the ~:scale~ (and for HTML export, ~:html-scale~)
 property of the former can be used to adjust the size of the preview
 images.
@@ -23673,7 +23673,7 @@ used to create images, any LaTeX environment is handled.
 [fn:39] These are respectively available at
 [[https://sourceforge.net/projects/dvipng/]], [[http://dvisvgm.bplaced.net/]]
 and from the ImageMagick suite.  Choose the converter by setting the
-variable ~org-preview-latex-default-process~ accordingly.
+variable ~org-latex-preview-default-process~ accordingly.
 
 [fn:40] This works automatically for the HTML backend (it requires
 version 1.34 of the =htmlize.el= package, which you need to install).

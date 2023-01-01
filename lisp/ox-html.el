@@ -822,7 +822,7 @@ e.g. \"tex:mathjax\".  Allowed values are:
                 be loaded.
   `html'        Use `org-latex-to-html-convert-command' to convert
                 LaTeX fragments to HTML.
-  SYMBOL        Any symbol defined in `org-preview-latex-process-alist',
+  SYMBOL        Any symbol defined in `org-latex-preview-process-alist',
                 e.g., `dvipng'."
   :group 'org-export-html
   :version "24.4"
@@ -3043,7 +3043,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
   "Format a LaTeX fragment LATEX-FRAG into HTML.
 PROCESSING-TYPE designates the tool used for conversion.  It can
 be `mathjax', `verbatim', `html', nil, t or symbols in
-`org-preview-latex-process-alist', e.g., `dvipng', `dvisvgm' or
+`org-latex-preview-process-alist', e.g., `dvipng', `dvisvgm' or
 `imagemagick'.  See `org-html-with-latex' for more information.
 INFO is a plist containing export properties."
   (let ((cache-relpath "") (cache-dir ""))
@@ -3074,7 +3074,7 @@ INFO is a plist containing export properties."
      :drop-visibility t :drop-narrowing t :drop-contents t
      (erase-buffer)
      (insert latex-frag)
-     (org-latex-replace-fragments
+     (org-latex-preview-replace-fragments
       cache-relpath processing-type cache-dir "Creating LaTeX Image...")
      (buffer-string))))
 
@@ -3143,7 +3143,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 				     latex-frag)
 	 latex-frag)
        'mathjax info))
-     ((assq processing-type org-preview-latex-process-alist)
+     ((assq processing-type org-latex-preview-process-alist)
       (let ((formula-link
              (org-html-format-latex
               (org-html--unlabel-latex-environment latex-frag)
@@ -3168,7 +3168,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
       (org-html-format-latex latex-frag 'mathjax info))
      ((memq processing-type '(t html))
       (org-html-format-latex latex-frag 'html info))
-     ((assq processing-type org-preview-latex-process-alist)
+     ((assq processing-type org-latex-preview-process-alist)
       (let ((formula-link
 	     (org-html-format-latex latex-frag processing-type info)))
 	(when (and formula-link (string-match "file:\\([^]]*\\)" formula-link))

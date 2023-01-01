@@ -3798,7 +3798,7 @@ contextual information."
 			  (insert "\n"
 				  (replace-regexp-in-string
 				   "^" "#+LATEX_HEADER: " h)))))
-                    (org-latex-replace-fragments
+                    (org-latex-preview-replace-fragments
                      cache-subdir processing-type cache-dir display-msg)
 		    (goto-char (point-min))
 		    (skip-chars-forward " \t\n")
