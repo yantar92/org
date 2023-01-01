@@ -1162,15 +1162,16 @@ EXTENDED-INFO, and displayed in the buffer."
 The foreground color is guessed to be the first specified <g>
 fill color, which appears to be a reliable heuristic from a few
 tests with the output of dvisvgm."
-  (with-temp-buffer
-    (insert-file-contents (plist-get svg-fragment :path))
-    (goto-char (point-min))
-    (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
-      (let* ((same-color (format "\\(?:fill\\|stroke\\)='\\(%s\\)'" (match-string 1))))
-        (replace-match "currentColor" t t nil 1)
-        (while (re-search-forward same-color nil t)
-          (replace-match "currentColor" t t nil 1)))
-      (write-region nil nil (plist-get svg-fragment :path) nil 0))))
+  (let ((write-region-inhibit-fsync t))
+    (with-temp-buffer
+      (insert-file-contents (plist-get svg-fragment :path))
+      (goto-char (point-min))
+      (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
+        (let* ((same-color (format "\\(?:fill\\|stroke\\)='\\(%s\\)'" (match-string 1))))
+          (replace-match "currentColor" t t nil 1)
+          (while (re-search-forward same-color nil t)
+            (replace-match "currentColor" t t nil 1)))
+        (write-region nil nil (plist-get svg-fragment :path) nil 0)))))
 
 (defun org-latex-preview--place-images (extended-info &optional fragments)
   "Place images for each of FRAGMENTS, according to their data and EXTENDED-INFO.
