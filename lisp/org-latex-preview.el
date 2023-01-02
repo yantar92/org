@@ -226,6 +226,10 @@ images at the same place."
   :package-version '(Org . "9.0")
   :type 'string)
 
+(defface org-latex-preview-processing-face '((t :inherit shadow))
+  "Face applied to LaTeX fragments for which a preview is being generated."
+  :group 'org-faces)
+
 (defun org-format-latex-mathml-available-p ()
   "Return t if `org-latex-to-mathml-convert-command' is usable."
   (save-match-data
@@ -294,25 +298,13 @@ Note that this will also produce false postives, and
 `org-element-context' should be used to verify that matches are
 indeed LaTeX fragments/environments.")
 
-(defun org-latex-preview--make-overlay (beg end &optional path-info)
-  "Build an overlay between BEG and END.
-
-If IMAGE file is specified, display it. Argument IMAGETYPE is the
-extension of the displayed image, as a string.  It defaults to
-\"png\"."
-  (let* ((ov (make-overlay beg end))
-         (zoom (or (plist-get org-latex-preview-options :zoom) 1.0))
-         (height (plist-get (cdr path-info) :height))
-         (depth (plist-get (cdr path-info) :depth))
-         (image-display
-          (and path-info
-               (list 'image
-                     :type (plist-get (cdr path-info) :image-type)
-                     :file (car path-info)
-                     :height (and height (cons (* height zoom) 'em))
-                     :ascent (if (and depth height)
-                                 (ceiling (* 100 (- 1.0 (/ depth height))))
-                               'center)))))
+(defun org-latex-preview--make-overlay (beg end)
+  "Build an overlay between BEG and END."
+  (dolist (o (overlays-in beg end))
+    (when (eq (overlay-get o 'org-overlay-type)
+              'org-latex-overlay)
+      (delete-overlay o)))
+  (let ((ov (make-overlay beg end)))
     (overlay-put ov 'org-overlay-type 'org-latex-overlay)
     (overlay-put ov 'evaporate t)
     (overlay-put ov 'modification-hooks
@@ -324,18 +316,34 @@ extension of the displayed image, as a string.  It defaults to
                  (list #'org-latex-preview-auto--insert-front-handler))
     (overlay-put ov 'insert-behind-hooks
                  (list #'org-latex-preview-auto--insert-behind-handler))
-    (when path-info
-      (overlay-put ov 'display image-display)
-      (overlay-put ov 'preview-image image-display))
-    (if (eq (plist-get (cdr image-display) :type) 'svg)
-        (let ((face (if (plist-get (cdr path-info) :errors)
-                        'error
-                      (or (and (> beg 1)
-                               (get-text-property (1- beg) 'face))
-                          'default))))
-          (overlay-put ov 'face face))
-      (overlay-put ov 'face nil))
     ov))
+
+(defun org-latex-preview--update-overlay (ov path-info)
+  "Update the overlay OV to show the image specified by PATH-INFO."
+  (let* ((zoom (or (plist-get org-latex-preview-options :zoom) 1.0))
+         (height (plist-get (cdr path-info) :height))
+         (depth (plist-get (cdr path-info) :depth))
+         (image-display
+          (and path-info
+               (list 'image
+                     :type (plist-get (cdr path-info) :image-type)
+                     :file (car path-info)
+                     :height (and height (cons (* height zoom) 'em))
+                     :ascent (if (and depth height)
+                                 (ceiling (* 100 (- 1.0 (/ depth height))))
+                               'center)))))
+    (overlay-put ov 'display image-display)
+    (overlay-put ov 'preview-image image-display)
+    (overlay-put
+     ov 'face
+     (cond
+      ((plist-get (cdr path-info) :errors) 'error)
+      ((eq (plist-get (cdr image-display) :type) 'svg)
+       (or (and (> (overlay-start ov) (point-min))
+                (not (eq (char-before (overlay-start ov)) ?\n))
+                (get-text-property (1- (overlay-start ov)) 'face))
+           'default))
+      (t nil)))))
 
 ;; Code for `org-latex-preview-auto-mode':
 ;;
@@ -476,7 +484,8 @@ image.  The preview image is regenerated if necessary."
            (current-buffer)
            ov)
         (when-let (f (overlay-get ov 'hidden-face))
-          (overlay-put ov 'face f)
+          (unless (eq f 'org-latex-preview-processing-face)
+            (overlay-put ov 'face f))
           (overlay-put ov 'hidden-face nil))
         (overlay-put ov 'display (overlay-get ov 'preview-image))))))
 
@@ -792,9 +801,7 @@ Some of the options can be changed using the variable
   (let* ((processing-info
           (cdr (assq processing-type org-latex-preview-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
-         document-strings
-         fragment-info
-         locations keys)
+         fragment-info)
     (save-excursion
       (dolist (element elements)
         (let* ((beg (org-element-property :begin element))
@@ -828,29 +835,31 @@ Some of the options can be changed using the variable
                          org-latex-preview-options
                          (list :foreground fg :background bg))))
           (if-let ((path-info (org-latex-preview--get-cached hash)))
-              (org-latex-preview-place-image beg end path-info)
-            (push (org-latex-preview--tex-styled value options)
-                  document-strings)
-            (push (list :buffer-location (cons beg end)
+              (org-latex-preview--update-overlay
+               (org-latex-preview--make-overlay beg end)
+               path-info)
+            (push (list :string (org-latex-preview--tex-styled value options)
+                        :overlay (org-latex-preview--make-overlay beg end)
                         :key hash)
-                  fragment-info)
-            (push (cons beg end) locations)
-            (push hash keys)))))
-    (when locations
+                  fragment-info)))))
+    (when fragment-info
       (org-latex-preview-create-image-async
        processing-type
-       (nreverse document-strings)
        (nreverse fragment-info)))))
 
-(defun org-latex-preview-create-image-async (processing-type preview-strings fragment-info)
+(defun org-latex-preview-create-image-async (processing-type fragments-info)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
-FRAGMENT-INFO is a list of plists, where the Nth plist gives
-information on the Nth fragment of PREVIEW-STRINGS.  Each
-FRAGMENT-INFO plist should have the following structure:
-  (:buffer-location (begin-pos . end-pos) :key fragment-hash)
+FRAGMENTS-INFO is a list of plists, each of which provides
+information on an individual fragment and should have the
+following structure:
+  (:string fragment-string :overlay fragment-overlay :key fragment-hash)
+where
+- fragment-string is the literal content of the fragment
+- fragment-overlay is the overlay placed for the fragment
+- fragment-hash is a string that uniquely identifies the fragment
 
-It is worth noting the FRAGMENT-INFO plists will be modified
+It is worth noting the FRAGMENTS-INFO plists will be modified
 during processing to hold more information on the fragments."
   (let* ((processing-type
           (or processing-type org-latex-preview-default-process))
@@ -860,12 +869,15 @@ during processing to hold more information on the fragments."
          (error-message (or (plist-get processing-info :message) "")))
     (dolist (program programs)
       (org-check-external-command program error-message))
+    (dolist (fragment fragments-info)
+      (overlay-put (plist-get fragment :overlay)
+                   'face 'org-latex-preview-processing-face))
     (let* ((extended-info
             (append processing-info
-                    (list :fragments fragment-info
+                    (list :fragments fragments-info
                           :org-buffer (current-buffer)
                           :texfile (org-latex-preview--create-tex-file
-                                    processing-info preview-strings))))
+                                    processing-info fragments-info))))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
@@ -886,8 +898,8 @@ during processing to hold more information on the fragments."
         (plist-put (cddr tex-compile-async) :failure img-extract-async))
       (org-async-call tex-compile-async))))
 
-(defun org-latex-preview--create-tex-file (processing-info preview-strings)
-  "Create a LaTeX file based on PROCESSING-INFO and PREVIEW-STRINGS.
+(defun org-latex-preview--create-tex-file (processing-info fragments)
+  "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
 
 More specifically, a preamble will be generated based on
 PROCESSING-INFO.  Then, if `org-latex-preview-use-precompilation' is
@@ -895,7 +907,7 @@ non-nil, a precompiled format file will be generated if needed
 and used.  Otherwise the preamble is used normally.
 
 Within the body of the created LaTeX file, each of
-PREVIEW-STRINGS will be placed in order, wrapped within a
+FRAGMENTS will be placed in order, wrapped within a
 \"preview\" environment.
 
 The path of the created LaTeX file is returned."
@@ -918,10 +930,10 @@ The path of the created LaTeX file is returned."
                            processing-info header))
                 header))
       (insert "\n\\begin{document}\n")
-      (dolist (str preview-strings)
+      (dolist (fragment-info fragments)
         (insert
          "\n\\begin{preview}\n"
-         str
+         (plist-get fragment-info :string)
          "\n\\end{preview}\n"))
       (insert "\n\\end{document}\n"))
     tex-temp-name))
@@ -1038,9 +1050,9 @@ The path of the created LaTeX file is returned."
       (cl-loop
        for fragment-info in (plist-get extended-info :fragments)
        for image-file in images
-       for (beg . end) = (plist-get fragment-info :buffer-location)
-       do (org-latex-preview-place-image
-           beg end
+       for ov = (plist-get fragment-info :overlay)
+       do (org-latex-preview--update-overlay
+           ov
            (org-latex-preview--cache-image
             (plist-get fragment-info :key)
             image-file
@@ -1186,9 +1198,9 @@ listed in EXTENDED-INFO will be used."
         (cl-loop
          for fragment-info in fragments
          for image-file = (plist-get fragment-info :path)
-         for (beg . end) = (plist-get fragment-info :buffer-location)
-         do (org-latex-preview-place-image
-             beg end
+         for ov = (plist-get fragment-info :overlay)
+         do (org-latex-preview--update-overlay
+             ov
              (org-latex-preview--cache-image
               (plist-get fragment-info :key)
               image-file
@@ -1316,19 +1328,6 @@ BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
       (org-latex-preview-create-image
        value movefile options nil processing-type))
     (org-latex-preview-place-image-link link block-type beg end value)))
-
-;; TODO: Deleting an existing preview overlay over the same reagion is
-;; wasteful. It's simpler just to update the display property of the
-;; existing overlay.
-(defun org-latex-preview-place-image (beg end path-info)
-  "Place an overlay from BEG to END showing MOVEFILE.
-The overlay will be above BEG if OVERLAYS is non-nil."
-  (dolist (o (overlays-in beg end))
-    (when (eq (overlay-get o 'org-overlay-type)
-              'org-latex-overlay)
-      (delete-overlay o)))
-  (org-latex-preview--make-overlay beg end path-info)
-  (goto-char end))
 
 (defun org-latex-preview-place-image-link (link block-type beg end value)
   "Place then link LINK at BEG END."
