@@ -669,8 +669,12 @@ fragments in the buffer."
       (goto-char (or beg (point-min)))
       (while (re-search-forward org-latex-preview--tentative-math-re end t)
         (let ((obj (org-element-context)))
-          (when (memq (org-element-type obj)
-                      '(latex-fragment latex-environment))
+          (when (and (memq (org-element-type obj)
+                           '(latex-fragment latex-environment))
+                     ;; Avoid duplicating nested latex environments
+                     (not (and fragments
+                               (= (org-element-property :begin obj)
+                                  (org-element-property :begin (car fragments))))))
             (push obj fragments)))))
     (nreverse fragments)))
 
