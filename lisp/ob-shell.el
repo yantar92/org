@@ -1,8 +1,9 @@
 ;;; ob-shell.el --- Babel Functions for Shell Evaluation -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2009-2023 Free Software Foundation, Inc.
 
 ;; Author: Eric Schulte
+;; Maintainer: Matthew Trzcinski <matt@excalamus.com>
 ;; Keywords: literate programming, reproducible research
 ;; URL: https://orgmode.org
 

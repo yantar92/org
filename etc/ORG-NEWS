@@ -6,20 +6,48 @@ ORG NEWS -- history of user-visible changes.   -*- mode: org; coding: utf-8 -*-
 #+LINK: msg https://list.orgmode.org/%s/
 #+LINK: git https://git.savannah.gnu.org/cgit/emacs/org-mode.git/commit/?id=%s
 
-Copyright (C) 2012-2022 Free Software Foundation, Inc.
+Copyright (C) 2012-2023 Free Software Foundation, Inc.
 See the end of the file for license conditions.
 
 Please send Org bug reports to mailto:emacs-orgmode@gnu.org.
 
 * Version 9.7 (not released yet)
 ** New options
-*** New ~org-latex-listings-src-omit-language~ customization for LaTeX export
+*** New options for the "csl" citation export processor's LaTeX output
 
-The ~org-latex-listings-src-omit-language~ customization variable
-allows you to omit the =language= parameter in the exported
-=lstlisting= environment. This is necessary when the =listings=
-backend delegates listing generation to another package like
-=fancyvrb= using the following setup in the document header:
+The ~org-cite-csl-latex-label-separator~ and
+~org-cite-csl-latex-label-width-per-char~ options allow the user to
+control the indentation of entries for labeled bibliography styles
+when the "csl" citation processor is used for LaTeX export.  The
+indentation length is computed as the sum of
+~org-cite-csl-latex-label-separator~ and the maximal label width, for
+example:
+
+#+begin_example
+    indentation length
+<------------------------->
+max. label width  separator
+<---------------><-------->
+[Doe22]                    John Doe. A title...
+[DoeSmithJones19]          John Doe, Jane Smith and...
+[SmithDoe02]               Jane Smith and John Doe...
+#+end_example
+
+The maximal label width, in turn, is calculated as the product of
+~org-cite-csl-latex-label-width-per-char~ and the maximal label length
+measured in characters.
+
+The ~org-cite-csl-latex-preamble~ option makes it possible to
+customize the entire LaTeX fragment that the "csl" citation processor
+injects into the preamble.
+
+*** New ~org-latex-listings-src-omit-language~ option for LaTeX export
+
+The ~org-latex-listings-src-omit-language~ option allows omitting the
+=language= parameter in the exported =lstlisting= environment.  This
+is necessary when the =listings= backend delegates listing generation
+to another package like =fancyvrb= using the following setup in the
+document header:
 
 #+BEGIN_src org
 ,#+LATEX_HEADER: \RequirePackage{fancyvrb}
@@ -40,7 +68,7 @@ the time being.  It will be removed in the next release.
 
 See https://orgmode.org/list/87r0yk7bx8.fsf@localhost for more details.
 
-*** Element cache is enabled by default and work for headings
+*** Element cache is enabled by default and works for headings
 
 The old element cache code has been refactored.  Emacs does not hang
 anymore when the cache is enabled.
@@ -446,7 +474,6 @@ Capture templates can now attach template specific hooks via the
 following properties: ~:hook~, ~:prepare-finalize~,
 ~:before-finalize~, ~:after-finalize~.  These nullary functions run
 prior to their global counterparts for the selected template.
-
 
 ** New options
 *** A new option for custom setting ~org-refile-use-outline-path~ to show document title in refile targets

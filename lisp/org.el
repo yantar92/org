@@ -1,7 +1,7 @@
 ;;; org.el --- Outline-based notes management and organizer -*- lexical-binding: t; -*-
 
 ;; Carstens outline-mode for keeping track of everything.
-;; Copyright (C) 2004-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2004-2023 Free Software Foundation, Inc.
 ;;
 ;; Author: Carsten Dominik <carsten.dominik@gmail.com>
 ;; Maintainer: Bastien Guerry <bzg@gnu.org>
@@ -4900,16 +4900,20 @@ The following commands are available:
 	     (= (point-min) (point-max)))
     (insert "#    -*- mode: org -*-\n\n"))
   (unless org-inhibit-startup
+    (when (or org-startup-align-all-tables org-startup-shrink-all-tables)
+      (org-table-map-tables
+       (cond ((and org-startup-align-all-tables
+		   org-startup-shrink-all-tables)
+	      (lambda () (org-table-align) (org-table-shrink)))
+	     (org-startup-align-all-tables #'org-table-align)
+	     (t #'org-table-shrink))
+       t))
+    ;; Suppress modification hooks to speed up the startup.
+    ;; However, do it only when text properties/overlays, but not
+    ;; buffer text are actually modified.  We still need to track text
+    ;; modifications to make cache updates work reliably.
     (org-unmodified
      (when org-startup-with-beamer-mode (org-beamer-mode))
-     (when (or org-startup-align-all-tables org-startup-shrink-all-tables)
-       (org-table-map-tables
-	(cond ((and org-startup-align-all-tables
-		    org-startup-shrink-all-tables)
-	       (lambda () (org-table-align) (org-table-shrink)))
-	      (org-startup-align-all-tables #'org-table-align)
-	      (t #'org-table-shrink))
-	t))
      (when org-startup-with-inline-images (org-display-inline-images))
      (when org-startup-with-latex-preview (org-latex-preview '(16)))
      (unless org-inhibit-startup-visibility-stuff (org-cycle-set-startup-visibility))
@@ -8891,7 +8895,7 @@ keywords relative to each registered export back-end."
     "EXCLUDE_TAGS:" "FILETAGS:" "INCLUDE:" "INDEX:" "KEYWORDS:" "LANGUAGE:"
     "MACRO:" "OPTIONS:" "PROPERTY:" "PRINT_BIBLIOGRAPHY" "PRIORITIES:"
     "SELECT_TAGS:" "SEQ_TODO:" "SETUPFILE:" "STARTUP:" "TAGS:" "TITLE:" "TODO:"
-    "TYP_TODO:" "SELECT_TAGS:" "EXCLUDE_TAGS:"))
+    "TYP_TODO:" "SELECT_TAGS:" "EXCLUDE_TAGS:" "EXPORT_FILE_NAME:"))
 
 (defcustom org-structure-template-alist
   '(("a" . "export ascii")
@@ -18660,24 +18664,40 @@ block from point."
   (interactive "sOrg-files matching: ")
   (let* ((files (org-agenda-files))
 	 (tnames (mapcar #'file-truename files))
-	 (extra org-agenda-text-search-extra-files))
-    (when (eq (car extra) 'agenda-archives)
+	 (extra org-agenda-text-search-extra-files)
+         (narrows nil))
+    (when (and (eq (car extra) 'agenda-archives)
+               (not org-agenda-restrict))
       (setq extra (cdr extra))
       (setq files (org-add-archive-files files)))
-    (dolist (f extra)
-      (unless (member (file-truename f) tnames)
-	(unless (member f files) (setq files (append files (list f))))
-	(setq tnames (append tnames (list (file-truename f))))))
+    (unless org-agenda-restrict
+      (dolist (f extra)
+        (unless (member (file-truename f) tnames)
+	  (unless (member f files) (setq files (append files (list f))))
+	  (setq tnames (append tnames (list (file-truename f)))))))
     (multi-occur
      (mapcar (lambda (x)
 	       (with-current-buffer
 		   ;; FIXME: Why not just (find-file-noselect x)?
 		   ;; Is it to avoid the "revert buffer" prompt?
 		   (or (get-file-buffer x) (find-file-noselect x))
-		 (widen)
+                 (if (eq (current-buffer) org-agenda-restrict)
+		     (progn
+                       ;; Save the narrowing state.
+                       (push (list (current-buffer) (point-min) (point-max))
+                             narrows)
+                       (widen)
+                       (narrow-to-region org-agenda-restrict-begin
+				         org-agenda-restrict-end))
+		   (widen))
 		 (current-buffer)))
 	     files)
-     regexp)))
+     regexp)
+    ;; Restore the narrowing.
+    (dolist (narrow narrows)
+      (with-current-buffer (car narrow)
+        (widen)
+        (narrow-to-region (nth 1 narrow) (nth 2 narrow))))))
 
 (add-hook 'occur-mode-find-occurrence-hook
 	  (lambda () (when (derived-mode-p 'org-mode) (org-fold-reveal))))
