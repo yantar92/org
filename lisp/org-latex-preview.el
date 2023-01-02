@@ -1199,11 +1199,14 @@ listed in EXTENDED-INFO will be used."
   "Save the image at PATH with associated INFO in the cache indexed by KEY.
 Return (path . info)."
   (let ((label-path-info
-         (org-persist-register `("LaTeX preview cached image data"
-                                 (file ,path)
-                                 (elisp-data ,info))
+         (or (org-persist-read "LaTeX preview cached image data"
                                (list :key key)
-                               :write-immediately t)))
+                               nil nil :read-related t)
+             (org-persist-register `("LaTeX preview cached image data"
+                                     (file ,path)
+                                     (elisp-data ,info))
+                                   (list :key key)
+                                   :write-immediately t))))
     (cons (cadr label-path-info) info)))
 
 (defun org-latex-preview--get-cached (key)
