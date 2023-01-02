@@ -1,6 +1,6 @@
 ;;; ob-python.el --- Babel Functions for Python      -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009-2022 Free Software Foundation, Inc.
+;; Copyright (C) 2009-2023 Free Software Foundation, Inc.
 
 ;; Authors: Eric Schulte
 ;;	 Dan Davison
@@ -52,6 +52,7 @@
   :group 'org-babel
   :type 'string)
 
+;; FIXME: Remove third-party `python-mode' package support in the next release.
 (defcustom org-babel-python-mode
   (if (featurep 'python-mode) 'python-mode 'python)
   "Preferred python mode for use in running python interactively.

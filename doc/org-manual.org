@@ -18351,6 +18351,9 @@ described in the documentation for individual languages.  See
   from the =file-ext= header argument.  In that case, both the name
   and the extension are mandatory.
 
+  Result can also be interpreted as path to file.  See =:results
+  link=.
+
   #+begin_example
   ,#+name: circle
   ,#+BEGIN_SRC asymptote :results value file :file-ext pdf
@@ -18430,6 +18433,9 @@ follows from the type specified above.
   ,#+RESULTS:
   [[file:org-mode-unicorn.svg]]
   #+end_example
+
+  If =:file= header argument is omitted, interpret source block result
+  as the file path.
 
 - =org= ::
 
@@ -20490,6 +20496,7 @@ further based on their usage needs.  For example, the normal
 | {{{kbd(S-DOWN)}}}    | {{{kbd(C-c DOWN)}}}      |              |                      |
 | {{{kbd(C-S-LEFT)}}}  | {{{kbd(C-c C-x LEFT)}}}  |              |                      |
 | {{{kbd(C-S-RIGHT)}}} | {{{kbd(C-c C-x RIGHT)}}} |              |                      |
+| {{{kbd(C-c C-\,)}}}  | {{{kbd(C-c C-x s)}}}     |              |                      |
 
 ** Protocols for External Access
 :PROPERTIES:
@@ -22309,7 +22316,7 @@ that are mentioned in the manual.  For a more complete list, use
 
 This manual is for Org version {{{version}}}.
 
-Copyright \copy 2004--2022 Free Software Foundation, Inc.
+Copyright \copy 2004--2023 Free Software Foundation, Inc.
 
 #+begin_quote
 Permission is granted to copy, distribute and/or modify this document
