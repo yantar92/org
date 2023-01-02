@@ -757,16 +757,15 @@ protection against placing doubled up overlays."
     (overlay-recenter (or end (point-max))))
   (unless (eq (get-char-property (point) 'org-overlay-type)
               'org-latex-overlay)
-    (let ((image-dir (expand-file-name
-                      (concat org-preview-latex-image-directory "org-ltximg")
-                      dir)))
-      (unless (file-exists-p image-dir)
-        (make-directory image-dir t)))
-    (if (assq processing-type org-latex-preview-process-alist)
-        (org-latex-preview--create
-         processing-type (org-latex-preview-collect-fragments beg end))
-      (error "Unknown conversion process %s for previewing LaTeX fragments"
-             processing-type))))
+    (let ((ws (window-start)))
+      (if (assq processing-type org-latex-preview-process-alist)
+          (org-latex-preview--create
+           processing-type
+           (nconc (org-latex-preview-collect-fragments (max ws beg) end)
+                  (when (< beg ws)
+                    (org-latex-preview-collect-fragments beg (1- ws)))))
+        (error "Unknown conversion process %s for previewing LaTeX fragments"
+               processing-type)))))
 
 (defun org-format-latex
     (prefix &optional beg end dir overlays msg forbuffer processing-type)
