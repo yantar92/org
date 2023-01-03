@@ -320,7 +320,7 @@ indeed LaTeX fragments/environments.")
          (height (plist-get (cdr path-info) :height))
          (depth (plist-get (cdr path-info) :depth))
          (image-display
-          (and path-info
+          (and (car path-info)
                (list 'image
                      :type (plist-get (cdr path-info) :image-type)
                      :file (car path-info)
@@ -341,8 +341,9 @@ indeed LaTeX fragments/environments.")
                                  (round (* 100 (- 1 (/ (max 0.0 (- depth 0.02))
                                                        height))))
                                'center)))))
-    (overlay-put ov 'display image-display)
-    (overlay-put ov 'preview-image image-display)
+    (when image-display
+      (overlay-put ov 'display image-display)
+      (overlay-put ov 'preview-image image-display))
     (overlay-put
      ov 'face
      (cond
@@ -1041,7 +1042,7 @@ The path of the created LaTeX file is returned."
               '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
                 ".svg" ".png" ".jpg" ".jpeg" ".out"))))
     (dolist (img images)
-      (delete-file img))
+      (and img (delete-file img)))
     (dolist (ext clean-exts)
       (when (file-exists-p (concat basename ext))
         (delete-file (concat basename ext))))))
@@ -1196,16 +1197,24 @@ tests with the output of dvisvgm."
         (coding-system-for-write 'utf-8)
         ;; Prevent any file handlers (specifically
         ;; `image-file-handler') from being called.
-        (file-name-handler-alist nil))
-    (with-temp-buffer
-      (insert-file-contents (plist-get svg-fragment :path))
-      (goto-char (point-min))
-      (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
-        (let* ((same-color (format "\\(?:fill\\|stroke\\)='\\(%s\\)'" (match-string 1))))
-          (replace-match "currentColor" t t nil 1)
-          (while (re-search-forward same-color nil t)
-            (replace-match "currentColor" t t nil 1)))
-        (write-region nil nil (plist-get svg-fragment :path) nil 0)))))
+        (file-name-handler-alist nil)
+        (path (plist-get svg-fragment :path)))
+    (when path
+      (with-temp-buffer
+        (insert-file-contents path)
+        (goto-char (point-min))
+        (if (re-search-forward "<svg[^>]*>\n<g[^>]*>\n</svg>" nil t)
+            ;; We never want to show an empty SVG, instead it is better to delete
+            ;; it and leave the LaTeX fragment without an image overlay.
+            ;; This also works better with other parts of the system, such as
+            ;; the display of errors.
+            (delete-file path)
+          (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
+            (let* ((same-color (format "\\(?:fill\\|stroke\\)='\\(%s\\)'" (match-string 1))))
+              (replace-match "currentColor" t t nil 1)
+              (while (re-search-forward same-color nil t)
+                (replace-match "currentColor" t t nil 1)))
+            (write-region nil nil path nil 0)))))))
 
 (defconst org-latex-preview--dvipng-dpi-pt-factor 0.5144
   "Factor that converts dvipng reported depth at 140 DPI to pt.
