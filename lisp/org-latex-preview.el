@@ -900,7 +900,9 @@ during processing to hold more information on the fragments."
            (img-extract-async
             (org-latex-preview--image-extract-async extended-info)))
       (plist-put (cddr img-extract-async) :success
-                 (list #'org-latex-preview--cleanup-callback))
+                 (list ; The order is important here.
+                  #'org-latex-preview--check-all-fragments-produced
+                  #'org-latex-preview--cleanup-callback))
       (pcase processing-type
         ('dvipng
          (plist-put (cddr img-extract-async) :filter
@@ -1081,6 +1083,40 @@ The path of the created LaTeX file is returned."
     (dolist (ext clean-exts)
       (when (file-exists-p (concat basename ext))
         (delete-file (concat basename ext))))))
+
+(defun org-latex-preview--check-all-fragments-produced (_exit-code _stdout extended-info)
+  "Check each of the fragments in EXTENDED-INFO has a path.
+Should this not be the case, the fragment immediately before the first
+fragment without a path is marked as erronious, and the remaining
+fragments are regenerated."
+  (let ((fragments (cons nil (copy-sequence (plist-get extended-info :fragments)))))
+    (while (cdr fragments)
+      (if (or (plist-get (cadr fragments) :path)
+              (plist-get (cadr fragments) :error))
+          (setq fragments (cdr fragments))
+        ;; If output ends prematurely, this is most likely due to an issue with
+        ;; the last "succesfully" produced fragment, and so we mark it as erronious
+        ;; and attempt to re-generate the rest.
+        (let ((bad-fragment (car fragments))
+              (bad-fragment-err (plist-get (car fragments) :errors)))
+          (plist-put bad-fragment :errors
+                     (concat bad-fragment-err
+                             (and bad-fragment-err "\n\n")
+                             "Preview generation catastrophically failed after this fragment."))
+          (org-latex-preview--remove-cached
+           (plist-get bad-fragment :key))
+          (org-latex-preview--update-overlay
+           (plist-get bad-fragment :overlay)
+           (org-latex-preview--cache-image
+            (plist-get bad-fragment :key)
+            (plist-get bad-fragment :path)
+            (org-latex-preview--display-info
+             extended-info bad-fragment))))
+        ;; Re-generate the remaining fragments.
+        (org-latex-preview-create-image-async
+         (plist-get extended-info :processor)
+         (cdr fragments))
+        (setq fragments nil)))))
 
 (defun org-latex-preview--display-info (extended-info fragment-info)
   "From FRAGMENT-INFO and EXTENDED-INFO obtain display-relevant information."
@@ -1282,14 +1318,17 @@ listed in EXTENDED-INFO will be used."
               (org-latex-preview--display-info
                extended-info fragment-info))))))))
 
+(defconst org-latex-preview--cache-name "LaTeX preview cached image data"
+  "The name used for Org LaTeX Preview objects in the org-persist cache.")
+
 (defun org-latex-preview--cache-image (key path info)
   "Save the image at PATH with associated INFO in the cache indexed by KEY.
 Return (path . info)."
   (let ((label-path-info
-         (or (org-persist-read "LaTeX preview cached image data"
+         (or (org-persist-read org-latex-preview--cache-name
                                (list :key key)
                                nil nil :read-related t)
-             (org-persist-register `("LaTeX preview cached image data"
+             (org-persist-register `(,org-latex-preview--cache-name
                                      (file ,path)
                                      (elisp-data ,info))
                                    (list :key key)
@@ -1308,11 +1347,17 @@ Example result:
    :depth 0.2
    :errors nil)"
   (when-let ((label-path-info
-              (org-persist-read "LaTeX preview cached image data"
+              (org-persist-read org-latex-preview--cache-name
                                 (list :key key)
                                 nil nil :read-related t)))
     (cons (cadr label-path-info)
           (caddr label-path-info))))
+
+(defun org-latex-preview--remove-cached (key)
+  "Remove the fragment cache associated with KEY."
+  (org-persist-unregister org-latex-preview--cache-name
+                          (list :key key)
+                          :remove-related t))
 
 ;; TODO: Switching processes from imagemagick to dvi* with an existing
 ;; dump-file during a single Emacs session should trigger
