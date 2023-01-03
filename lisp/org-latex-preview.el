@@ -133,13 +133,9 @@ All available processes and theirs documents can be found in
      :image-size-adjust (1.0 . 1.0)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
-     :image-converter ("dvipng --follow -D %D -T tight -o %B-%%09d.png %f")
+     :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
      :transparent-image-converter
-     ("dvipng --follow -D %D -T tight -bg Transparent -o %B-%%09d.png %f"))
-    ;; :transparent-image-converter
-    ;; ("dvipng -D %D -T tight -bg Transparent -o %O %f"))
-    ;; :image-converter ("dvipng -D %D -T tight -o %O %f")
-    ;; :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
+     ("dvipng --follow -D %D -T tight -bg Transparent --depth --height -o %B-%%09d.png %f"))
     (dvisvgm
      :programs ("latex" "dvisvgm")
      :description "dvi > svg"
@@ -885,6 +881,9 @@ during processing to hold more information on the fragments."
       (plist-put (cddr img-extract-async) :success
                  (list #'org-latex-preview--cleanup-callback))
       (pcase processing-type
+        ('dvipng
+         (plist-put (cddr img-extract-async) :filter
+                    #'org-latex-preview--dvipng-filter))
         ('dvisvgm
          (plist-put (cddr img-extract-async) :filter
                     #'org-latex-preview--dvisvgm-filter))
@@ -1187,6 +1186,46 @@ tests with the output of dvisvgm."
           (while (re-search-forward same-color nil t)
             (replace-match "currentColor" t t nil 1)))
         (write-region nil nil (plist-get svg-fragment :path) nil 0)))))
+
+(defconst org-latex-preview--dvipng-dpi-pt-factor 0.5144
+  "Factor that converts dvipng reported depth at 140 DPI to pt.
+
+This value was obtained by observing linear scaling between the
+set DPI and reported height/depth, then calling dvipng with a DPI
+of 5600 and dividing the reported height + depth (692) by the dvisvgm
+reported values in pt (8.899pt).")
+
+(defun org-latex-preview--dvipng-filter (_proc _string extended-info)
+  "Look for newly created images in the dvipng stdout buffer.
+Any matches found will be matched against the fragments recorded in
+EXTENDED-INFO, and displayed in the buffer."
+  (let ((dvipng-depth-height-re "depth=\\([0-9]+\\) height=\\([0-9]+\\)")
+        (texfilebase (file-name-sans-extension
+                      (plist-get extended-info :texfile)))
+        (fragments (plist-get extended-info :fragments))
+        fragments-to-show page-info-end)
+    (while (search-forward "]" nil t)
+      (setq page-info-end (point))
+      (save-excursion
+        (backward-list)
+        (if (re-search-forward "\\=\\[\\([0-9]+\\) " page-info-end t)
+            (let* ((page (string-to-number (match-string 1)))
+                   (fragment-info (nth (1- page) fragments)))
+              (plist-put fragment-info :path
+                         (format "%s-%09d.png"
+                                 texfilebase
+                                 page))
+              (when (re-search-forward dvipng-depth-height-re page-info-end t)
+                (let ((depth (* (string-to-number (match-string 1))
+                                org-latex-preview--dvipng-dpi-pt-factor))
+                      (height (* (string-to-number (match-string 2))
+                                 org-latex-preview--dvipng-dpi-pt-factor)))
+                  (plist-put fragment-info :depth depth)
+                  (plist-put fragment-info :height (+ depth height))))
+              (push fragment-info fragments-to-show)))))
+    (when fragments-to-show
+      (setq fragments-to-show (nreverse fragments-to-show))
+      (org-latex-preview--place-images extended-info fragments-to-show))))
 
 (defun org-latex-preview--place-images (extended-info &optional fragments)
   "Place images for each of FRAGMENTS, according to their data and EXTENDED-INFO.
