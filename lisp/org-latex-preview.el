@@ -946,10 +946,10 @@ The path of the created LaTeX file is returned."
                org-latex-preview-preamble 'snippet))
           "\n\\usepackage[active,tightpage,auctex]{preview}\n")))
     (with-temp-file tex-temp-name
-      (insert (if org-latex-preview-use-precompilation
-                  (concat "%&"
-                          (org-latex-preview-precompile
-                           processing-info header))
+      (insert (if-let ((format-file
+                        (and org-latex-preview-use-precompilation
+                             (org-latex-preview-precompile processing-info header))))
+                  (concat "%&" format-file)
                 header))
       (insert "\n\\begin{document}\n")
       (dolist (fragment-info fragments)
@@ -1379,15 +1379,41 @@ process."
          (header-base-file
           (expand-file-name header-hash temporary-file-directory))
          (dump-file (concat header-base-file ".fmt"))
-         (header-file (concat header-base-file ".tex")))
+         (header-file (concat header-base-file ".tex"))
+         (precompile-buffer
+          (with-current-buffer
+              (get-buffer-create "*Org Preview Preamble Precompilation*")
+            (erase-buffer)
+            (current-buffer))))
     (if (file-exists-p dump-file)
         (file-name-base header-base-file)
       (with-temp-file header-file
         (insert header "\n\\endofdump\n"))
-      (file-name-base
-       (org-compile-file
-        header-file (plist-get processing-info :latex-precompiler)
-        "fmt")))))
+      (message "Precompiling Org LaTeX Preview preamble...")
+      (condition-case file
+          (file-name-base
+           (org-compile-file
+            header-file (plist-get processing-info :latex-precompiler)
+            "fmt" nil precompile-buffer))
+        (:success (kill-buffer precompile-buffer)
+                  file)
+        (error
+         (unless (= 0 (call-process "kpsewhich" nil nil nil "mylatexformat.ltx"))
+           (display-warning
+            '(org latex-preview preamble-precompilation)
+            "The LaTeX package \"mylatexformat\" is required for precompilation, but could not be found")
+           :warning)
+         (unless (= 0 (call-process "kpsewhich" nil nil nil "preview.sty"))
+           (display-warning
+            '(org latex-preview preamble-precompilation)
+            "The LaTeX package \"preview\" is required for precompilation, but could not be found")
+           :warning)
+         (display-warning
+          '(org latex-preview preamble-precompilation)
+          (format "Failed to precompile preamble, see the \"%s\" buffer."
+                  precompile-buffer)
+          :warning)
+         nil)))))
 
 (defun org-latex-preview--tex-styled (processing-type value options &optional html-p)
   "Apply LaTeX style commands to VALUE based on OPTIONS.
