@@ -326,7 +326,20 @@ indeed LaTeX fragments/environments.")
                      :file (car path-info)
                      :height (and height (cons (* height zoom) 'em))
                      :ascent (if (and depth height)
-                                 (ceiling (* 100 (- 1.0 (/ depth height))))
+                                 ;; The baseline seems to tend to sit slightly
+                                 ;; lower than it should be, and a very mild
+                                 ;; bias seems to improve the visual result.
+                                 ;; From testing with a collecting of LaTeX
+                                 ;; maths fonts (cm, cmbright, arev, pxfonts,
+                                 ;; notomath, nextxsf, eulervm) decreacing the
+                                 ;; depth measurement by 0.02pt in the baseline
+                                 ;; calculation seems to work well.
+                                 ;; I have yet to come across any situation
+                                 ;; where this results in a negative depth,
+                                 ;; however we may as well ensure that never
+                                 ;; occurs.
+                                 (round (* 100 (- 1 (/ (max 0.0 (- depth 0.02))
+                                                       height))))
                                'center)))))
     (overlay-put ov 'display image-display)
     (overlay-put ov 'preview-image image-display)
