@@ -811,7 +811,7 @@ Some of the options can be changed using the variable
   (let* ((processing-info
           (cdr (assq processing-type org-latex-preview-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
-         fragment-info)
+         fragment-info prev-fg prev-bg)
     (save-excursion
       (dolist (element elements)
         (let* ((beg (org-element-property :begin element))
@@ -843,15 +843,21 @@ Some of the options can be changed using the variable
                                   bg))))
                (options (org-combine-plists
                          org-latex-preview-options
-                         (list :foreground fg :background bg))))
+                         (list :foreground fg
+                               :background bg
+                               :continue-color
+                               (and (equal prev-bg bg)
+                                    (equal prev-fg fg))))))
           (if-let ((path-info (org-latex-preview--get-cached hash)))
               (org-latex-preview--update-overlay
                (org-latex-preview--make-overlay beg end)
                path-info)
-            (push (list :string (org-latex-preview--tex-styled value options)
+            (push (list :string (org-latex-preview--tex-styled
+                                 processing-type value options)
                         :overlay (org-latex-preview--make-overlay beg end)
                         :key hash)
-                  fragment-info)))))
+                  fragment-info))
+          (setq prev-fg fg prev-bg bg))))
     (when fragment-info
       (org-latex-preview-create-image-async
        processing-type
@@ -884,7 +890,8 @@ during processing to hold more information on the fragments."
                    'face 'org-latex-preview-processing-face))
     (let* ((extended-info
             (append processing-info
-                    (list :fragments fragments-info
+                    (list :processor processing-type
+                          :fragments fragments-info
                           :org-buffer (current-buffer)
                           :texfile (org-latex-preview--create-tex-file
                                     processing-info fragments-info))))
@@ -1337,8 +1344,11 @@ process."
         header-file (plist-get processing-info :latex-precompiler)
         "fmt")))))
 
-(defun org-latex-preview--tex-styled (value options &optional html-p)
+(defun org-latex-preview--tex-styled (processing-type value options &optional html-p)
   "Apply LaTeX style commands to VALUE based on OPTIONS.
+If PROCESSING-TYPE is dvipng, the colours are set with DVI
+\"\\special\" commands instead of \"\\color\" and
+\"\\pagecolor\".
 
 VALUE is the math fragment text to be previewed.
 
@@ -1354,8 +1364,17 @@ HTML-P, if true, uses colors required for HTML processing."
                ('default (org-latex-preview--attr-color :background))
                ("Transparent" nil)
                (bg (org-latex-preview--format-color bg)))))
-    (concat (and bg (format "\\pagecolor[rgb]{%s}" bg))
-            (and fg (format "\\color[rgb]{%s}" fg))
+    (concat (and (not (plist-get options :continue-color))
+                 (if (eq processing-type 'dvipng)
+                     (concat (and fg (format "\\special{color rgb %s}"
+                                             (subst-char-in-string
+                                              ?, ?\s fg)))
+                             (and bg (format "\\special{background rgb %s}"
+                                             (subst-char-in-string
+                                              ?, ?\s bg))))
+                   (concat
+                    (and bg (format "\\pagecolor[rgb]{%s}" bg))
+                    (and fg (format "\\color[rgb]{%s}" fg)))))
             "%\n"
             value)))
 
