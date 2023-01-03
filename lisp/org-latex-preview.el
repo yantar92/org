@@ -1189,7 +1189,14 @@ EXTENDED-INFO, and displayed in the buffer."
 The foreground color is guessed to be the first specified <g>
 fill color, which appears to be a reliable heuristic from a few
 tests with the output of dvisvgm."
-  (let ((write-region-inhibit-fsync t))
+  (let ((write-region-inhibit-fsync t)
+        ;; dvisvgm produces UTF-8 encoded files, so we might as well
+        ;; avoid calling `find-auto-coding'.
+        (coding-system-for-read 'utf-8)
+        (coding-system-for-write 'utf-8)
+        ;; Prevent any file handlers (specifically
+        ;; `image-file-handler') from being called.
+        (file-name-handler-alist nil))
     (with-temp-buffer
       (insert-file-contents (plist-get svg-fragment :path))
       (goto-char (point-min))
