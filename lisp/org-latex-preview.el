@@ -1606,11 +1606,20 @@ a HTML file."
   "Return a RGB color for the LaTeX color package."
   (org-latex-preview--format-color (face-attribute 'default attr nil)))
 
+(defvar org-latex-preview--format-color-cache nil
+  "Cache for `org-latex-preview--format-color'.
+Because `org-latex-preview--format-color' is called multiple
+times for every fragment, even though only few colors will be
+used it can be worth storing the results to avoid re-computing.")
+
 (defun org-latex-preview--format-color (color-name)
   "Convert COLOR-NAME to a RGB color value."
-  (apply #'format "%s,%s,%s"
-         (mapcar 'org-latex-preview--normalize-color
-                 (color-values color-name))))
+  (or (alist-get color-name org-latex-preview--format-color-cache nil nil #'equal)
+      (cdar (push (cons color-name
+                        (apply #'format "%s,%s,%s"
+                               (mapcar 'org-latex-preview--normalize-color
+                                       (color-values color-name))))
+                  org-latex-preview--format-color-cache))))
 
 (defun org-latex-preview--normalize-color (value)
   "Return string to be used as color value for an RGB component."
