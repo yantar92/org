@@ -615,22 +615,27 @@ MISC, if non-nil will be appended to the collection.  It must be a plist."
 
 ;;;; Reading container data.
 
+(defvar org-persist--inhibit-container-normalization nil
+  "Prevent `org-persist--normalize-container' from doing anything.")
+
 (defun org-persist--normalize-container (container &optional inner)
   "Normalize CONTAINER representation into (type . settings).
 
 When INNER is non-nil, do not try to match as list of containers."
-  (pcase container
-    ((or `elisp `elisp-data `version `file `index `url)
-     `(,container nil))
-    ((or (pred keywordp) (pred stringp) `(quote . ,_))
-     `(elisp-data ,container))
-    ((pred symbolp)
-     `(elisp ,container))
-    (`(,(or `elisp `elisp-data `version `file `index `url) . ,_)
-     container)
-    ((and (pred listp) (guard (not inner)))
-     (mapcar (lambda (c) (org-persist--normalize-container c 'inner)) container))
-    (_ (error "org-persist: Unknown container type: %S" container))))
+  (if org-persist--inhibit-container-normalization
+      container
+    (pcase container
+      ((or `elisp `elisp-data `version `file `index `url)
+       `(,container nil))
+      ((or (pred keywordp) (pred stringp) `(quote . ,_))
+       `(elisp-data ,container))
+      ((pred symbolp)
+       `(elisp ,container))
+      (`(,(or `elisp `elisp-data `version `file `index `url) . ,_)
+       container)
+      ((and (pred listp) (guard (not inner)))
+       (mapcar (lambda (c) (org-persist--normalize-container c 'inner)) container))
+      (_ (error "org-persist: Unknown container type: %S" container)))))
 
 (defvar org-persist--associated-buffer-cache (make-hash-table :weakness 'key)
   "Buffer hash cache.")
@@ -970,26 +975,27 @@ VALUE pairs.
 When WRITE-IMMEDIATELY is non-nil, the return value will be the same
 with `org-persist-write'."
   (unless org-persist--index (org-persist--load-index))
-  (setq container (org-persist--normalize-container container))
-  (when inherit
-    (setq inherit (org-persist--normalize-container inherit))
-    (let ((inherited-collection (org-persist--get-collection inherit associated))
-          new-collection)
-      (unless (member container (plist-get inherited-collection :container))
-        (setq new-collection
-              (plist-put (copy-sequence inherited-collection) :container
-                         (cons container (plist-get inherited-collection :container))))
-        (org-persist--remove-from-index inherited-collection)
-        (org-persist--add-to-index new-collection))))
-  (let ((collection (org-persist--get-collection container associated misc)))
-    (when (and expiry (not inherit))
-      (when expiry (plist-put collection :expiry expiry))))
-  (when (or (bufferp associated) (bufferp (plist-get associated :buffer)))
-    (with-current-buffer (if (bufferp associated)
-                             associated
-                           (plist-get associated :buffer))
-      (add-hook 'kill-buffer-hook #'org-persist-write-all-buffer nil 'local)))
-  (when write-immediately (org-persist-write container associated)))
+  (let ((container (org-persist--normalize-container container))
+        (inherit (and inherit (org-persist--normalize-container inherit)))
+        (org-persist--inhibit-container-normalization t))
+    (when inherit
+      (let ((inherited-collection (org-persist--get-collection inherit associated))
+            new-collection)
+        (unless (member container (plist-get inherited-collection :container))
+          (setq new-collection
+                (plist-put (copy-sequence inherited-collection) :container
+                           (cons container (plist-get inherited-collection :container))))
+          (org-persist--remove-from-index inherited-collection)
+          (org-persist--add-to-index new-collection))))
+    (let ((collection (org-persist--get-collection container associated misc)))
+      (when (and expiry (not inherit))
+        (when expiry (plist-put collection :expiry expiry))))
+    (when (or (bufferp associated) (bufferp (plist-get associated :buffer)))
+      (with-current-buffer (if (bufferp associated)
+                               associated
+                             (plist-get associated :buffer))
+        (add-hook 'kill-buffer-hook #'org-persist-write-all-buffer nil 'local)))
+    (when write-immediately (org-persist-write container associated))))
 
 (cl-defun org-persist-unregister (container &optional associated &key remove-related)
   "Unregister CONTAINER in ASSOCIATED to be persistent.
