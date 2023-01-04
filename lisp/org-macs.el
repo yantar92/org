@@ -372,10 +372,20 @@ If EXCLUDE-TMP is non-nil, ignore temporary buffers."
 ;;; Async stack
 
 (defvar org-async--stack nil
-  "List of (%PROCESS :start-time %FLOAT :success %FUN :failure %FUN :timeout %FLOAT :buffer %BUFFER) forms.")
+  "List of async currently running task forms.
+Each running task is represented by a list with the following structure:
+  (%PROCESS :success %FUN :failure %FUN
+            :filter %FUN :buffer %BUFFER
+            :timeout %FLOAT :start-time %FLOAT
+            :info %SEXP)")
 
 (defvar org-async--wait-queue nil
-   "List of (%PROCESS :success %FUN :failure %FUN :timeout %FLOAT :buffer %BUFFER) forms.")
+   "List of async queued task forms.
+Each queued task is represented by a list with the following structure:
+  (%PROCESS :success %FUN :failure %FUN
+            :filter %FUN :buffer %BUFFER
+            :info %SEXP :dir %STRING
+            :timeout %FLOAT :coding %SYMBOL)")
 
 (defvar org-async-process-limit 4
   "Maximum number of processes to run at once.")
@@ -389,7 +399,7 @@ If EXCLUDE-TMP is non-nil, ignore temporary buffers."
 (defvar org-async--counter 0)
 
 (cl-defun org-async-call (proc &key success failure filter buffer info timeout now
-                               (dir default-directory))
+                               (dir default-directory) (coding 'utf-8))
   "Start PROC and register it with callbacks SUCCESS and FAILURE.
 
 PROC can be a process, string, or list.  A string will be run as
@@ -416,8 +426,12 @@ namely:
   process-buffer, and INFO as arguments.
 - A function, which is called with exit-code, process-buffer,
   and INFO as arguments.
-- A list, which is used as an argument list for a new `org-async-call' invocation.
+- A list, which is used as an argument list for a new `org-async-call' call.
 - nil, which does nothing.
+
+When PROC succeeds by exiting with an exit code of zero, the SUCCESS
+callback will be run.  Should PROC fail, or be killed, or the process
+runs for more than TIMEOUT seconds, the FAILURE callback will be run.
 
 A function FILTER can be provided, in which case it will be
 called in the same manner as a normal procecss filter, however
@@ -428,9 +442,8 @@ When BUFFER is non-nil, there are two other major differences:
   - Note that `point' is left alone and is not moved by this.
 - The process buffer is the current buffer when FILTER is called.
 
-When PROC succeeds by exiting with an exit code of zero, the SUCCESS
-callback will be run.  Should PROC fail, or be killed, or the process
-runs for more than TIMEOUT seconds, the FAILURE callback will be run.
+When CODING is non-nil, both the process encode and decode system
+will be set to CODING.  If unset, UTF-8 is used.
 
 When NOW is non-nil, the PROC is started immediately, regardless
 of `org-async-process-limit'."
@@ -460,15 +473,17 @@ of `org-async-process-limit'."
       (set-process-sentinel proc #'org-async--sentinel)
       (when filter
         (set-process-filter proc #'org-async--filter))
+      (when coding
+        (set-process-coding-system proc coding coding))
       (push (list proc
                   :success success
                   :failure failure
                   :filter filter
-                  :timeout timeout
                   :buffer (if (eq buffer t)
                               (cons :temp (generate-new-buffer " *temp*" t))
                             buffer)
                   :info info
+                  :timeout timeout
                   :start-time (float-time))
             org-async--stack)
       (org-async--monitor t)
@@ -480,11 +495,12 @@ of `org-async-process-limit'."
                   (list (list proc
                               :success success
                               :failure failure
-                              :dir dir
-                              :info info
+                              :filter filter
                               :buffer buffer
+                              :info info
+                              :dir dir
                               :timeout timeout
-                              :filter filter))))
+                              :coding coding))))
     (last org-async--wait-queue))))
 
 (defun org-async--filter (process string)
