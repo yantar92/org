@@ -542,6 +542,9 @@ Otherwise, the failure callback is run."
            (proc-buf (if (consp buffer-val) (cdr buffer-val) buffer-val)))
       (setq org-async--stack
             (delq (assq process org-async--stack) org-async--stack))
+      ;; Ensure that any filter is called on the final output
+      ;; prior to the callbacks.
+      (while (accept-process-output process))
       (org-async--execute-callback
        (plist-get
         proc-info
