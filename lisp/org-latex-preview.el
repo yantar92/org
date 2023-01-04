@@ -814,40 +814,23 @@ Some of the options can be changed using the variable
          fragment-info prev-fg prev-bg)
     (save-excursion
       (dolist (element elements)
-        (let* ((beg (org-element-property :begin element))
-               (end (save-excursion
-                      (goto-char (org-element-property :end element))
-                      (skip-chars-backward " \r\t\n")
-                      (point)))
-               (value (org-element-property :value element))
-               (face (or (and (> beg 1)
-                              (get-text-property (1- beg) 'face))
-                         'default))
-               (fg (pcase (plist-get org-latex-preview-options :foreground)
-                     ('auto (face-attribute face :foreground nil 'default))
-                     ('default (face-attribute 'default :foreground nil))
-                     (color color)))
-               (bg (pcase (plist-get org-latex-preview-options :background)
-                     ('auto (face-attribute face :background nil 'default))
-                     ('default (face-attribute 'default :background nil))
-                     (color color)))
-               (hash (sha1 (prin1-to-string
-                            (list processing-type
-                                  org-latex-preview-preamble
-                                  org-latex-default-packages-alist
-                                  org-latex-packages-alist
-                                  org-latex-preview-options
-                                  value
-                                  (if (equal imagetype "svg")
-                                      'svg fg)
-                                  bg))))
-               (options (org-combine-plists
-                         org-latex-preview-options
-                         (list :foreground fg
-                               :background bg
-                               :continue-color
-                               (and (equal prev-bg bg)
-                                    (equal prev-fg fg))))))
+        (pcase-let* ((beg (org-element-property :begin element))
+                     (end (- (org-element-property :end element)
+                             (or (org-element-property :post-blank element) 0)
+                             (if (eq (char-before (org-element-property :end element))
+                                     ?\n)
+                                 1 0)))
+                     (value (org-element-property :value element))
+                     (`(,fg ,bg) (org-latex-preview--colors-at beg))
+                     (hash (org-latex-preview--hash
+                            processing-type value imagetype fg bg))
+                     (options (org-combine-plists
+                               org-latex-preview-options
+                               (list :foreground fg
+                                     :background bg
+                                     :continue-color
+                                     (and (equal prev-bg bg)
+                                          (equal prev-fg fg))))))
           (if-let ((path-info (org-latex-preview--get-cached hash)))
               (org-latex-preview--update-overlay
                (org-latex-preview--make-overlay beg end)
@@ -862,6 +845,51 @@ Some of the options can be changed using the variable
       (org-latex-preview-create-image-async
        processing-type
        (nreverse fragment-info)))))
+
+(defun org-latex-preview--colors-at (pos)
+  "Find colors for LaTeX previews to be inserted at POS."
+  (let* ((face (or (and (> pos 1)
+                        (get-text-property (1- pos) 'face))
+                   'default))
+         (faces (if (consp face)
+                    (append face '(default))
+                  (list face 'default)))
+         (fg (pcase (plist-get org-latex-preview-options :foreground)
+               ('auto (face-attribute (car faces) :foreground nil (cdr faces)))
+               ('default (face-attribute 'default :foreground nil))
+               (color color)))
+         (bg (pcase (plist-get org-latex-preview-options :background)
+               ('auto (face-attribute (car faces) :background nil (cdr faces)))
+               ('default (face-attribute 'default :background nil))
+               (color color))))
+    (list fg bg)))
+
+(defun org-latex-preview--hash (processing-type string imagetype fg bg)
+  "Return a SHA1 hash for referencing LaTeX fragments when previewing them.
+
+PROCESSING-TYPE is the type of process used to create the
+preview, see `org-latex-preview-default-process'.
+
+PREAMBLE is the LaTeX preamble used in the generated LaTeX document.
+
+STRING is the string to be hashed, typically the contents of a
+LaTeX fragment.
+
+IMAGETYPE is the type of image to be created, see
+`org-latex-preview-process-alist'.
+
+FG and BG are the foreground and background colors for the
+image."
+  (sha1 (prin1-to-string
+         (list processing-type
+               org-latex-preview-preamble
+               org-latex-default-packages-alist
+               org-latex-packages-alist
+               org-latex-preview-options
+               string
+               (if (equal imagetype "svg")
+                   'svg fg)
+               bg))))
 
 (defun org-latex-preview-create-image-async (processing-type fragments-info)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
