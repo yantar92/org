@@ -226,6 +226,13 @@ images at the same place."
   "Face applied to LaTeX fragments for which a preview is being generated."
   :group 'org-faces)
 
+(defconst org-latex-preview--image-log "*Org Preview Convert Output*"
+  "Buffer name for Preview image conversion output.")
+(defconst org-latex-preview--latex-log "*Org Preview LaTeX Output*"
+  "Buffer name for Preview LaTeX output.")
+(defconst org-latex-preview--precompile-log "*Org Preview Preamble Precompilation*"
+  "Buffer name for Preview LaTeX output.")
+
 (defun org-format-latex-mathml-available-p ()
   "Return t if `org-latex-to-mathml-convert-command' is usable."
   (save-match-data
@@ -643,8 +650,7 @@ fragments in the buffer."
    ;; Preview whole buffer.
    ((equal arg '(16))
     (message "Creating LaTeX previews in buffer...")
-    (org-latex-preview--preview-region (point-min) (point-max))
-    (message "Creating LaTeX previews in buffer... done."))
+    (org-latex-preview--preview-region (point-min) (point-max)))
    ;; Clear current section.
    ((equal arg '(4))
     (org-latex-preview-clear-overlays
@@ -658,8 +664,7 @@ fragments in the buffer."
        (org-with-limited-levels (org-entry-end-position)))))
    ((use-region-p)
     (message "Creating LaTeX previews in region...")
-    (org-latex-preview--preview-region (region-beginning) (region-end))
-    (message "Creating LaTeX previews in region... done."))
+    (org-latex-preview--preview-region (region-beginning) (region-end)))
    ;; Toggle preview on LaTeX code at point.
    ((let ((datum (org-element-context)))
       (and (memq (org-element-type datum) '(latex-environment latex-fragment))
@@ -668,8 +673,7 @@ fragments in the buffer."
              (if (org-latex-preview-clear-overlays beg end)
                  (message "LaTeX preview removed")
                (message "Creating LaTeX preview...")
-               (org-latex-preview--preview-region beg end)
-               (message "Creating LaTeX preview... done."))
+               (org-latex-preview--preview-region beg end))
              t))))
    ;; Preview current section.
    (t
@@ -678,8 +682,7 @@ fragments in the buffer."
                    (org-with-limited-levels (org-back-to-heading t) (point)))))
           (end (org-with-limited-levels (org-entry-end-position))))
       (message "Creating LaTeX previews in section...")
-      (org-latex-preview--preview-region beg end)
-      (message "Creating LaTeX previews in section... done.")))))
+      (org-latex-preview--preview-region beg end)))))
 
 (defun org-latex-preview-collect-fragments (&optional beg end)
   "Collect all LaTeX maths fragments/environments between BEG and END."
@@ -841,10 +844,11 @@ Some of the options can be changed using the variable
                         :key hash)
                   fragment-info))
           (setq prev-fg fg prev-bg bg))))
-    (when fragment-info
-      (org-latex-preview-create-image-async
-       processing-type
-       (nreverse fragment-info)))))
+    (if fragment-info
+        (org-latex-preview-create-image-async
+         processing-type
+         (nreverse fragment-info))
+      (message "Creating LaTeX previews... done."))))
 
 (defun org-latex-preview--colors-at (pos)
   "Find colors for LaTeX previews to be inserted at POS."
@@ -947,9 +951,13 @@ during processing to hold more information on the fragments."
       (plist-put (cddr img-extract-async) :success
                  (list ; The order is important here.
                   #'org-latex-preview--check-all-fragments-produced
-                  #'org-latex-preview--cleanup-callback))
+                  #'org-latex-preview--cleanup-callback
+                  "Creating LaTeX previews... done."))
       (plist-put (cddr img-extract-async) :failure
-                 #'org-latex-preview--failure-callback)
+                 (list
+                  #'org-latex-preview--failure-callback
+                  (format "Creating LaTeX previews... failed. Please see %s for details"
+                          (propertize org-latex-preview--image-log 'face 'warning))))
       (pcase processing-type
         ('dvipng
          (plist-put (cddr img-extract-async) :filter
@@ -1034,7 +1042,7 @@ The path of the created LaTeX file is returned."
   "Create an `org-async-call' spec to compile the texfile in EXTENDED-INFO."
   (let* ((tex-process-buffer
           (with-current-buffer
-              (get-buffer-create "*Org Preview LaTeX Output*")
+              (get-buffer-create org-latex-preview--latex-log)
             (erase-buffer)
             (current-buffer)))
          (tex-compile-command
@@ -1066,7 +1074,7 @@ The path of the created LaTeX file is returned."
   "Create an `org-async-call' spec to extract images according to EXTENDED-INFO."
   (let* ((img-process-buffer
           (with-current-buffer
-              (get-buffer-create "*Org Preview Convert Output*")
+              (get-buffer-create org-latex-preview--image-log)
             (erase-buffer)
             (current-buffer)))
          (img-extract-command
@@ -1505,7 +1513,7 @@ process."
          (header-file (concat header-base-file ".tex"))
          (precompile-buffer
           (with-current-buffer
-              (get-buffer-create "*Org Preview Preamble Precompilation*")
+              (get-buffer-create org-latex-preview--precompile-log)
             (erase-buffer)
             (current-buffer))))
     (if (file-exists-p dump-file)
@@ -1780,7 +1788,7 @@ a HTML file."
           (or (and (string= bg "Transparent")
                    (plist-get processing-info :transparent-image-converter))
               (plist-get processing-info :image-converter)))
-         (log-buf (get-buffer-create "*Org Preview LaTeX Output*"))
+         (log-buf (get-buffer-create org-latex-preview--latex-log))
          (resize-mini-windows nil)) ;Fix Emacs flicker when creating image.
     (dolist (program programs)
       (org-check-external-command program error-message))
