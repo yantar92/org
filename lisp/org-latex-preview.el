@@ -948,6 +948,8 @@ during processing to hold more information on the fragments."
                  (list ; The order is important here.
                   #'org-latex-preview--check-all-fragments-produced
                   #'org-latex-preview--cleanup-callback))
+      (plist-put (cddr img-extract-async) :failure
+                 #'org-latex-preview--failure-callback)
       (pcase processing-type
         ('dvipng
          (plist-put (cddr img-extract-async) :filter
@@ -964,6 +966,29 @@ during processing to hold more information on the fragments."
         (plist-put (cddr tex-compile-async) :success img-extract-async)
         (plist-put (cddr tex-compile-async) :failure img-extract-async))
       (org-async-call tex-compile-async))))
+
+(defun org-latex-preview--failure-callback (_exit _buf extended-info)
+  "Clear overlays corresponding to previews that failed to generate.
+
+EXTENDED-INFO contains the information needed to identify such
+previews."
+  (cl-loop for fragment in (plist-get extended-info :fragments)
+           for path = (plist-get fragment :path)
+           when (not path)
+           for ov = (plist-get fragment :overlay)
+           do
+           ;; ;TODO: Other options here include:
+           ;; ;Fringe marker
+           ;; (overlay-put ov 'before-string
+           ;;              (propertize "!" 'display
+           ;;                          `(left-fringe exclamation-mark
+           ;;                            warning)))
+           ;; ;Special face
+           ;; (unless (overlay-get ov 'face)
+           ;;   (overlay-put ov 'face 'org-latex-preview-processing-face))
+           ;;
+           ;; ;Note: ov has buffer extended-info, no need to set current-buffer
+           (delete-overlay ov)))
 
 (defun org-latex-preview--create-tex-file (processing-info fragments)
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
