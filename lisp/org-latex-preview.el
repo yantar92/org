@@ -147,7 +147,7 @@ All available processes and theirs documents can be found in
      :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
      :image-converter ("dvisvgm --page=1- --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
     (imagemagick
-     :programs ("latex" "convert")
+     :programs ("pdflatex" "convert")
      :description "pdf > png"
      :message "you need to install the programs: latex and imagemagick."
      :image-input-type "pdf"
@@ -1490,9 +1490,6 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
       (message "Cleared LaTeX preview cache for %s."
                (if (or beg end) "region" "buffer")))))
 
-;; TODO: Switching processes from imagemagick to dvi* with an existing
-;; dump-file during a single Emacs session should trigger
-;; re-precompilation with the new precompile command.
 (defun org-latex-preview-precompile (processing-info header)
   "Precompile/dump LaTeX HEADER (preamble) text.
 
@@ -1506,7 +1503,14 @@ process."
   ;; files cannot include dumps from other directories, so the dump
   ;; must be created in (or moved to) the location of the TeX file.
   (let* ((default-directory temporary-file-directory)
-         (header-hash (substring (sha1 header) 0 12))
+         (header-hash
+          (thread-first
+            header
+            (concat
+             (prin1-to-string
+              (car (plist-get processing-info :programs))))
+            (sha1)
+            (substring 0 12)))
          (header-base-file
           (expand-file-name header-hash temporary-file-directory))
          (dump-file (concat header-base-file ".fmt"))
