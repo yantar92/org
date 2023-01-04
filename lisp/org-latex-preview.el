@@ -1404,6 +1404,58 @@ Example result:
                           (list :key key)
                           :remove-related t))
 
+(defun org-latex-preview-clear-cache (&optional beg end clear-entire-cache)
+  "Clear LaTeX preview cache for fragments between BEG and END.
+
+Interactively, act on
+- the region if it is active,
+- the fragment at point if in a fragment,
+- the whole buffer otherwise.
+
+When CLEAR-ENTIRE-CACHE is non-nil (interactively set by \\[universal-argument]),
+the *entire* preview cache will be cleared, and `org-persist-gc' run."
+  (interactive
+   (if current-prefix-arg
+       '(nil nil t)
+     (let ((context (if (derived-mode-p 'org-mode)
+                        (org-element-context)
+                      (user-error "This command must be run in an org-mode buffer"))))
+       (cond
+        ((use-region-p)
+         (list (region-beginning) (region-end)))
+        ((memq (org-element-type context)
+               '(latex-fragment latex-environment))
+         (list (org-element-property :begin context)
+               (org-element-property :end context)))
+        (t (list (point-min) (point-max)))))))
+  (org-latex-preview-clear-overlays beg end)
+  (if clear-entire-cache
+      (let ((n 0))
+        (dolist (collection org-persist--index)
+          (when (equal (cadar (plist-get collection :container))
+                       org-latex-preview--cache-name)
+            (org-latex-preview--remove-cached
+             (plist-get (plist-get collection :associated) :key))
+            (cl-incf n)))
+        (if (= n 0)
+            (message "The Org LaTeX preview cache was already empty.")
+          (org-persist-gc)
+          (message "Cleared all %d entries fom the Org LaTeX preview cache." n)))
+    (let* ((imagetype (or (plist-get (alist-get org-latex-preview-default-process
+                                                org-latex-preview-process-alist)
+                                     :image-output-type)
+                          "png")))
+      (dolist (element (org-latex-preview-collect-fragments beg end))
+        (pcase-let* ((begin (org-element-property :begin element))
+                     (`(,fg ,bg) (org-latex-preview--colors-at begin))
+                     (value (org-element-property :value element)))
+          (org-latex-preview--remove-cached
+           (org-latex-preview--hash
+            org-latex-preview-default-process
+            value
+            imagetype
+            fg bg)))))))
+
 ;; TODO: Switching processes from imagemagick to dvi* with an existing
 ;; dump-file during a single Emacs session should trigger
 ;; re-precompilation with the new precompile command.
