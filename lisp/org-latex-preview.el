@@ -612,22 +612,26 @@ image.  The preview image is regenerated if necessary."
           ;; delay is reduced.  Setting an 0.05s timer isn't
           ;; necesarily the optimal duration, but from a little
           ;; testing it appears to be fairly reasonable.
-          (run-at-time
-           0.05 nil
-           (lambda (buf ov)
-             (with-current-buffer buf
-               (org-latex-preview--create
-                org-latex-preview-default-process
-                (org-latex-preview-collect-fragments
-                 (overlay-start ov)
-                 (overlay-end ov)))))
-           (current-buffer)
-           ov)
+          (run-at-time 0.05 nil #'org-latex-preview-auto--regenerate-overlay ov)
         (when-let (f (overlay-get ov 'hidden-face))
           (unless (eq f 'org-latex-preview-processing-face)
             (overlay-put ov 'face f))
           (overlay-put ov 'hidden-face nil))
         (overlay-put ov 'display (overlay-get ov 'preview-image))))))
+
+(defun org-latex-preview-auto--regenerate-overlay (ov)
+  "Regenerate the LaTeX fragment under overlay OV."
+  (with-current-buffer (overlay-buffer ov)
+    (let* ((fragment (save-excursion
+                       (goto-char (overlay-start ov))
+                       (org-element-context)))
+           (others (and org-latex-preview-numbered
+                        (eq (org-element-type fragment) 'latex-environment)
+                        (org-latex-preview--get-numbered-environments
+                         (overlay-end ov) nil))))
+      (org-latex-preview--create
+       org-latex-preview-default-process
+       (append (list fragment) others)))))
 
 (defun org-latex-preview-auto--insert-front-handler
     (ov after-p _beg end &optional _length)
