@@ -312,25 +312,44 @@ Note that this will also produce false postives, and
 `org-element-context' should be used to verify that matches are
 indeed LaTeX fragments/environments.")
 
-(defun org-latex-preview--make-overlay (beg end)
+(defun org-latex-preview--ensure-overlay (beg end)
   "Build an overlay between BEG and END."
-  (dolist (o (overlays-in beg end))
-    (when (eq (overlay-get o 'org-overlay-type)
-              'org-latex-overlay)
-      (delete-overlay o)))
-  (let ((ov (make-overlay beg end)))
-    (overlay-put ov 'org-overlay-type 'org-latex-overlay)
-    (overlay-put ov 'evaporate t)
-    (overlay-put ov 'modification-hooks
-                 (list (lambda (o after-p _beg _end &optional _l)
-                         (when after-p
-                           (overlay-put o 'preview-state 'modified)
-                           (overlay-put o 'display nil) ))))
-    (overlay-put ov 'insert-in-front-hooks
-                 (list #'org-latex-preview-auto--insert-front-handler))
-    (overlay-put ov 'insert-behind-hooks
-                 (list #'org-latex-preview-auto--insert-behind-handler))
+  (let (ov)
+    (dolist (o (overlays-in beg end))
+      (when (eq (overlay-get o 'org-overlay-type)
+                'org-latex-overlay)
+        (if (or ov (not (and (= beg (overlay-start o))
+                             (= end (overlay-end o)))))
+            (delete-overlay o)
+          (setq ov o)
+          ;; Reset all potentially modified properties.
+          (overlay-put ov 'face nil)
+          (overlay-put ov 'hidden-face nil)
+          ;; Do not set the display property of preview image
+          ;; overlays to nil when ensuring that an overlay exists.
+          ;; This causes flicker during regeneration as the the
+          ;; underlying text is shown and then replaced with the new
+          ;; image.
+          (overlay-put ov 'preview-image nil)
+          (overlay-put ov 'preview-state nil)
+          (overlay-put ov 'view-text nil))))
+    (unless ov
+      (setq ov (make-overlay beg end nil 'front-advance))
+      (overlay-put ov 'org-overlay-type 'org-latex-overlay)
+      (overlay-put ov 'evaporate t)
+      (overlay-put ov 'modification-hooks
+                   (list #'org-latex-preview-auto--mark-overlay-modified))
+      (overlay-put ov 'insert-in-front-hooks
+                   (list #'org-latex-preview-auto--insert-front-handler))
+      (overlay-put ov 'insert-behind-hooks
+                   (list #'org-latex-preview-auto--insert-behind-handler)))
     ov))
+
+(defun org-latex-preview-auto--mark-overlay-modified (ov after-p _beg _end &optional _l)
+  "When AFTER-P mark OV as modified and display nothing."
+  (when after-p
+    (overlay-put ov 'preview-state 'modified)
+    (overlay-put ov 'display nil)))
 
 (defun org-latex-preview--update-overlay (ov path-info)
   "Update the overlay OV to show the image specified by PATH-INFO."
@@ -378,9 +397,13 @@ indeed LaTeX fragments/environments.")
 ;; The boundaries of latex preview image overlays are automatically
 ;; extended to track changes in the underlying text by the functions
 ;; `org-latex-preview-auto--insert-front-handler' and
-;; `org-latex-preview-auto--insert-behind-handler'.  These are placed in the
-;; `insert-in-front-hooks' and `insert-behind-hooks' properties of the
-;; iamge overlays. See (info "(elisp) Overlay Properties").
+;; `org-latex-preview-auto--insert-behind-handler'.  These are placed in
+;; the `insert-in-front-hooks' and `insert-behind-hooks' properties of
+;; the iamge overlays. See (info "(elisp) Overlay Properties").
+;; Additionally, when an overlay's text is modified,
+;; `org-latex-preview-auto--mark-overlay-modified', placed in the overlay's
+;; modification hook, notes this in the overlay's `preview-state'
+;; property.
 ;;
 ;; This code examines the previous and current cursor
 ;; positions after each command.  It uses the variables
@@ -546,7 +569,7 @@ If an org-latex-overlay is already present, nothing is done."
                                 (if (eq (char-before (org-element-property :end element))
                                         ?\n)
                                     1 0)))
-                   (ov (org-latex-preview--make-overlay elem-beg elem-end)))
+                   (ov (org-latex-preview--ensure-overlay elem-beg elem-end)))
          (overlay-put ov 'preview-state 'modified)
          (if (<= elem-beg pos elem-end)
              (progn
@@ -888,11 +911,11 @@ Some of the options can be changed using the variable
                                           (equal prev-fg fg))))))
           (if-let ((path-info (org-latex-preview--get-cached hash)))
               (org-latex-preview--update-overlay
-               (org-latex-preview--make-overlay beg end)
+               (org-latex-preview--ensure-overlay beg end)
                path-info)
             (push (list :string (org-latex-preview--tex-styled
                                  processing-type value options)
-                        :overlay (org-latex-preview--make-overlay beg end)
+                        :overlay (org-latex-preview--ensure-overlay beg end)
                         :key hash)
                   fragment-info))
           (setq prev-fg fg prev-bg bg))))
@@ -1036,7 +1059,7 @@ previews."
            for path = (plist-get fragment :path)
            when (not path)
            for ov = (plist-get fragment :overlay)
-           do
+           when ov do
            ;; ;TODO: Other options here include:
            ;; ;Fringe marker
            ;; (overlay-put ov 'before-string
