@@ -405,10 +405,10 @@ indeed LaTeX fragments/environments.")
 ;; `org-latex-preview-auto--close-previous-overlay' handles the recompilation.
 ;;
 ;; When the user option `org-latex-preview-auto-generate' is
-;; non-nil, previews are auto-generated for latex fragments as the
-;; user types them.  This work is handled by
-;; `org-latex-preview-auto--handle-insert', which is placed in
-;; `post-self-insert-hook'.  It does this by placing dummy overlays
+;; non-nil, previews are auto-generated for latex fragments as they
+;; are inserted into the buffer.  This work is handled by
+;; `org-latex-preview-auto--detect-fragments-in-change', which is added to
+;; `after-change-functions'.  It does this by placing dummy overlays
 ;; that don't display images, but are marked as having been modified.
 
 (defvar-local org-latex-preview-auto--from-overlay nil
@@ -468,6 +468,95 @@ This is intended to be placed in `post-command-hook'."
       (org-latex-preview-auto--close-previous-overlay)))
     (set-marker org-latex-preview-auto--marker (point))))
 
+(defun org-latex-preview-auto--detect-fragments-in-change (beg end _)
+  "Examine the content between BEG and END, and preview LaTeX fragments found."
+  (let ((initial-point (point))
+        fragments)
+    (save-excursion
+      ;; Find every location in the changed region where a backslash
+      ;; is succeeded by a parenthesis or square bracket, and check
+      ;; for a LaTeX fragment.
+      (goto-char beg)
+      (unless (eobp)
+        (while (search-forward "\\" end t)
+          (and (memq (char-after) '(?\( ?\) ?\[ ?\]))
+               (push (org-latex-preview-auto--maybe-track-element-here
+                      'latex-fragment initial-point)
+                     fragments))))
+      ;; Find every location in the changed region where a parenthesis
+      ;; or square bracket is preceeded by a backslash, and check for
+      ;; a LaTeX fragment.
+      (goto-char beg)
+      (unless (bobp)
+        (while (re-search-forward "[][()]" end t)
+          (and (eq (char-before (1- (point))) ?\\)
+               (push (org-latex-preview-auto--maybe-track-element-here
+                      'latex-fragment initial-point)
+                     fragments))))
+      ;; Check for LaTeX environments on lines affected by the change.
+      ;; Start by finding all affected lines with at least four
+      ;; characters of content. Then we can check if the line starts
+      ;; with "\beg" or "\end", and if so check for a LaTeX environment.
+      (goto-char beg)
+      (beginning-of-line)
+      (skip-chars-forward " \t")
+      (when (< (point) end)
+        (let ((line-start-positions
+               (and (> (point-max) (+ 4 (point)))
+                    (list (point)))))
+          (while (and (< (point) end)
+                      (search-forward "\n" end t))
+            (skip-chars-forward " \t")
+            (when (> (point-max) (+ 4 (point)))
+              (push (point) line-start-positions)))
+          (dolist (line-start line-start-positions)
+            (goto-char line-start)
+            (and (eq (char-after) ?\\)
+                 (member (buffer-substring (point) (+ (point) 4))
+                         '("\\beg" "\\end"))
+                 (push (org-latex-preview-auto--maybe-track-element-here
+                        'latex-environment initial-point)
+                       fragments))))))
+    (when (setq fragments (delq nil fragments))
+      (when (and org-latex-preview-numbered
+                 (cl-some (lambda (datum)
+                            (eq (org-element-type datum) 'latex-environment))
+                          fragments))
+        (setq fragments
+              (append fragments
+                      (org-latex-preview--get-numbered-environments
+                       end nil))))
+      (org-latex-preview--create
+       org-latex-preview-default-process
+       fragments))))
+
+(defun org-latex-preview-auto--maybe-track-element-here (type pos)
+  "Check for an org element of TYPE at `point' and ensure an overlay exists.
+If POS lies within the element, nil is returned.  Otherwise the
+element is returned to be used to generate a preview.
+
+If an org-latex-overlay is already present, nothing is done."
+  (and (not (eq (get-char-property (point) 'org-overlay-type)
+                'org-latex-overlay))
+       (when-let* ((element (org-element-context))
+                   ((eq (org-element-type element) type))
+                   (elem-beg (org-element-property :begin element))
+                   (elem-end (- (org-element-property :end element)
+                                (or (org-element-property :post-blank element) 0)
+                                (if (eq (char-before (org-element-property :end element))
+                                        ?\n)
+                                    1 0)))
+                   (ov (org-latex-preview--make-overlay elem-beg elem-end)))
+         (overlay-put ov 'preview-state 'modified)
+         (if (<= elem-beg pos elem-end)
+             (progn
+               (overlay-put ov 'view-text t)
+               (set-marker org-latex-preview-auto--marker pos)
+               (setq org-latex-preview-auto--from-overlay t)
+               nil)
+           (setq org-latex-preview-auto--inhibit t)
+           element))))
+
 (defun org-latex-preview-auto--open-this-overlay ()
   "Open Org latex preview image overlays.
 
@@ -517,54 +606,6 @@ image.  The preview image is regenerated if necessary."
           (overlay-put ov 'hidden-face nil))
         (overlay-put ov 'display (overlay-get ov 'preview-image))))))
 
-(defun org-latex-preview-auto--handle-insert ()
-  "Set up a dummy overlay on the latex fragment around point.
-
-This is called when inserting text, provided there isn't already
-a preview overlay in place.  See
-`org-latex-preview-auto-generate' for details.  The dummy
-overlay is marked as modified, so that moving out of the fragment
-causes latex compilation (if required) and the preview image to
-be displayed.
-
-This function is intended to be added to `post-self-insert-hook'."
-  (when (and org-latex-preview-auto-generate
-             (> (point) (+ (point-min) 3)))
-    ;; Because we rely on font-lock information to detect
-    ;; LaTeX fragments, we need to check for two special cases
-    ;; where a LaTeX fragment may have just been formed,
-    ;; but font-lock may not have applied the faces we need yet
-    ;; (e.g. due to `jit-lock-mode').
-    (cond
-     ((save-excursion
-        ;; We use `re-search-forward', because under certain
-        ;; conditions `re-search-backward' can modify the buffer.
-        ;; Believe me, I am more confused that you are.
-        (goto-char (- (point) 2))
-        (re-search-forward "\\=\\\\[])]" (+ (point) 2) t))
-      (font-lock-ensure
-       (save-excursion
-         (re-search-backward "\\\\[[([]" nil t) (point))
-       (point)))
-     ((save-excursion
-        (goto-char (- (point) 3))
-        (re-search-forward "\\=\\\\[[([].\\\\[])]" (+ (point) 5) t))
-      (font-lock-ensure (- (point) 3) (+ (point) 2))))
-    (and-let* ((p (1- (point)))
-               ((not (eq (get-char-property p 'org-overlay-type) 'org-latex-overlay)))
-               (faces (get-text-property p 'face))
-               (face-list (if (listp faces) faces (list faces)))
-               ((memq 'font-latex-math-face face-list))
-               (element (org-element-context))
-               (beg (org-element-property :begin element))
-               (end (org-element-property :end element))
-               (ov (org-latex-preview--make-overlay beg end)))
-      (overlay-put ov 'preview-state 'modified)
-      (overlay-put ov 'view-text t)
-      (setq org-latex-preview-auto--inhibit t
-            org-latex-preview-auto--from-overlay t)
-      (set-marker org-latex-preview-auto--marker p))))
-
 (defun org-latex-preview-auto--insert-front-handler
     (ov after-p _beg end &optional _length)
   "Extend Org LaTeX preview text boundaries when editing previews.
@@ -607,10 +648,10 @@ them or vice-versa, customize the variable `org-latex-preview-auto-generate'."
         (add-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor nil 'local)
         (org-latex-preview-auto--handle-pre-cursor) ; Invoke setup before the hook even fires.
         (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local)
-        (add-hook 'post-self-insert-hook #'org-latex-preview-auto--handle-insert nil 'local))
+        (add-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change nil 'local))
     (remove-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor 'local)
     (remove-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor 'local)
-    (remove-hook 'post-self-insert-hook #'org-latex-preview-auto--handle-insert 'local)))
+    (remove-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change 'local)))
 
 (defun org-latex-preview-clear-overlays (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
