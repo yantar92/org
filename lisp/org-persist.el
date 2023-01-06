@@ -848,20 +848,23 @@ COLLECTION is the plist holding data collection."
 (defun org-persist-write:file (c collection)
   "Write file container C according to COLLECTION."
   (org-persist-collection-let collection
-    (when (or (and path (file-exists-p path))
-              (and (stringp (cadr c)) (file-exists-p (cadr c))))
-      (when (and (stringp (cadr c)) (file-exists-p (cadr c)))
-        (setq path (cadr c)))
-      (let* ((persist-file (plist-get collection :persist-file))
-             (ext (file-name-extension path))
-             (file-copy (org-file-name-concat
-                         org-persist-directory
-                         (format "%s-%s.%s" persist-file (md5 path) ext))))
-        (unless (file-exists-p file-copy)
-          (unless (file-exists-p (file-name-directory file-copy))
-            (make-directory (file-name-directory file-copy) t))
-          (copy-file path file-copy 'overwrite))
-        (format "%s-%s.%s" persist-file (md5 path) ext)))))
+    (if (or (and path (file-exists-p path))
+            (and (stringp (cadr c)) (file-exists-p (cadr c))))
+        (progn
+          (when (and (stringp (cadr c)) (file-exists-p (cadr c)))
+            (setq path (cadr c)))
+          (let* ((persist-file (plist-get collection :persist-file))
+                 (ext (file-name-extension path))
+                 (file-copy (org-file-name-concat
+                             org-persist-directory
+                             (format "%s-%s.%s" persist-file (md5 path) ext))))
+            (unless (file-exists-p file-copy)
+              (unless (file-exists-p (file-name-directory file-copy))
+                (make-directory (file-name-directory file-copy) t))
+              (copy-file path file-copy 'overwrite))
+            (format "%s-%s.%s" persist-file (md5 path) ext)))
+      (when-let ((file-copy (org-persist-read c associated)))
+        (file-relative-name file-copy org-persist-directory)))))
 
 (defun org-persist-write:url (c collection)
   "Write url container C according to COLLECTION."
