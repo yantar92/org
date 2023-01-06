@@ -1275,6 +1275,14 @@ The path of the created LaTeX file is returned."
           :failure "LaTeX preview image conversion failed! (error code %d)")))
 
 (defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
+  "Schedule cleanup with EXTENDED-INFO."
+  (message "Scheduling cleanup")
+  (run-with-idle-timer
+   1.0 nil
+   #'org-latex-preview--do-cleanup
+   extended-info))
+
+(defun org-latex-preview--do-cleanup (extended-info)
   "Delete files after image creation, in accord with EXTENDED-INFO."
   (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
          (images
@@ -1461,8 +1469,16 @@ EXTENDED-INFO, and displayed in the buffer."
       (setq page-marks (cdr page-marks)))
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
-      (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show)
-      (org-latex-preview--place-images extended-info fragments-to-show))))
+      ;; There seems to often be a slight delay between dvisvgm reporting
+      ;; to have written a file, and all the content actually being there.
+      ;; On my machine, an 0.002s delay is sufficient to eliminate this issue,
+      ;; to be a bit safer this we use 5x that here.
+      (run-at-time
+       0.01 nil
+       (lambda (frags)
+         (mapc #'org-latex-preview--svg-make-fg-currentColor frags)
+         (org-latex-preview--place-images extended-info frags))
+       fragments-to-show))))
 
 (defun org-latex-preview--svg-make-fg-currentColor (svg-fragment)
   "Replace the foreground color in SVG-FRAGMENT's file with \"currentColor\".
