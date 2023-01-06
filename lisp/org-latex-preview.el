@@ -851,18 +851,35 @@ Some of the options can be changed using the variable
   (let* ((face (or (and (> pos 1)
                         (get-text-property (1- pos) 'face))
                    'default))
-         (faces (if (consp face)
-                    (append face '(default))
-                  (list face 'default)))
          (fg (pcase (plist-get org-latex-preview-options :foreground)
-               ('auto (face-attribute (car faces) :foreground nil (cdr faces)))
+               ('auto
+                (org-latex-preview--resolved-faces-attr face :foreground))
                ('default (face-attribute 'default :foreground nil))
                (color color)))
          (bg (pcase (plist-get org-latex-preview-options :background)
-               ('auto (face-attribute (car faces) :background nil (cdr faces)))
+               ('auto
+                (org-latex-preview--resolved-faces-attr face :background))
                ('default (face-attribute 'default :background nil))
                (color color))))
     (list fg bg)))
+
+(defun org-latex-preview--resolved-faces-attr (face attr)
+  "Find ATTR of the FACE text property.
+This is surprisingly complicated given the various forms of output
+\\=(get-text-property pos \\='face) can produce."
+  (if (consp face) ; Spec is a list of face-specs.
+      (cond
+       ((keywordp (car face)) ; Spec like (:inherit org-block :extend t).
+        (or (plist-get face attr)
+            (face-attribute 'default attr)))
+       ((consp (car face)) ; Spec like ((:inherit default :extend t) org-block).
+        (or (plist-get (car face) attr)
+            (face-attribute (cadr face) attr nil
+                            (append (cddr face) '(default)))))
+       ((symbolp (car face)) ; Spec like (org-level-1 default).
+        (face-attribute (car face) attr nil (append (cdr face) '(default)))))
+    ;; A single-face spec, like org-level-1.
+    (face-attribute face attr nil 'default)))
 
 (defun org-latex-preview--hash (processing-type string imagetype fg bg)
   "Return a SHA1 hash for referencing LaTeX fragments when previewing them.
