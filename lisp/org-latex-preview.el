@@ -339,14 +339,16 @@ indeed LaTeX fragments/environments.")
           (setq ov o)
           ;; Reset all potentially modified properties.
           (overlay-put ov 'face nil)
-          (overlay-put ov 'hidden-face nil)
+          (overlay-put ov 'help-echo nil)     ;tooltip error display
+          (overlay-put ov 'before-string nil) ;error fringe marker
+          (overlay-put ov 'hidden-face nil)   ;(re)store svg face
           ;; Do not set the display property of preview image
           ;; overlays to nil when ensuring that an overlay exists.
           ;; This causes flicker during regeneration as the the
           ;; underlying text is shown and then replaced with the new
           ;; image.
-          (overlay-put ov 'preview-image nil)
-          (overlay-put ov 'preview-state nil)
+          (overlay-put ov 'preview-image nil) ;(re)store image spec
+          (overlay-put ov 'preview-state nil) ;is fragment modified?
           (overlay-put ov 'view-text nil))))
     (unless ov
       (setq ov (make-overlay beg end nil 'front-advance))
@@ -372,10 +374,11 @@ indeed LaTeX fragments/environments.")
          (height (plist-get (cdr path-info) :height))
          (depth (plist-get (cdr path-info) :depth))
          (errors (plist-get (cdr path-info) :errors))
+         (image-type (plist-get (cdr path-info) :image-type))
          (image-display
           (and (car path-info)
                (list 'image
-                     :type (plist-get (cdr path-info) :image-type)
+                     :type image-type
                      :file (car path-info)
                      :height (and height (cons (* height zoom) 'em))
                      :ascent (if (and depth height)
@@ -401,12 +404,12 @@ indeed LaTeX fragments/environments.")
     (when image-display
       (overlay-put ov 'display image-display)
       (overlay-put ov 'preview-image image-display))
-    (overlay-put
-     ov 'face
-     (cond
-      ((plist-get (cdr path-info) :errors) 'error)
-      ((eq (plist-get (cdr image-display) :type) 'svg)
-       (or (and (> (overlay-start ov) (point-min))
+    (cond
+     ((eq image-type 'svg)
+      (overlay-put
+       ov 'face
+       (or (and errors 'error)
+           (and (> (overlay-start ov) (point-min))
                 (not (eq (char-before (overlay-start ov)) ?\n))
                 (let ((face (get-text-property (1- (overlay-start ov)) 'face)))
                   (cond
@@ -414,8 +417,13 @@ indeed LaTeX fragments/environments.")
                     (cl-set-difference face org-latex-preview--ignored-faces))
                    ((not (memq face org-latex-preview--ignored-faces))
                     face))))
-           'default))
-      (t nil)))))
+           'default)))
+     (errors
+      (overlay-put
+       ov 'before-string
+       (propertize "!" 'display
+                   `(left-fringe exclamation-mark
+                     warning)))))))
 
 ;; Code for `org-latex-preview-auto-mode':
 ;;
