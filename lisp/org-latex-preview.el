@@ -371,6 +371,7 @@ indeed LaTeX fragments/environments.")
   (let* ((zoom (or (plist-get org-latex-preview-options :zoom) 1.0))
          (height (plist-get (cdr path-info) :height))
          (depth (plist-get (cdr path-info) :depth))
+         (errors (plist-get (cdr path-info) :errors))
          (image-display
           (and (car path-info)
                (list 'image
@@ -393,6 +394,10 @@ indeed LaTeX fragments/environments.")
                                  (round (* 100 (- 1 (/ (max 0.0 (- depth 0.02))
                                                        height))))
                                'center)))))
+    ;; This is a temporary measure until a more sophisticated
+    ;; interface for errors is available in Org.
+    (when (and errors tooltip-mode)
+      (overlay-put ov 'help-echo errors))
     (when image-display
       (overlay-put ov 'display image-display)
       (overlay-put ov 'preview-image image-display))
