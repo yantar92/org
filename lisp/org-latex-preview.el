@@ -1116,6 +1116,60 @@ during processing to hold more information on the fragments."
     (dolist (fragment fragments-info)
       (overlay-put (plist-get fragment :overlay)
                    'face 'org-latex-preview-processing-face))
+    ;; At this point we will basically construct a tree of async calls:
+    ;;
+    ;; dvisvgm case:
+    ;; └─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
+    ;;    └─ (success or failure)
+    ;;       └─Extact images ⟶ stdout to `org-latex-preview--dvisvgm-filter'
+    ;;         ├─ (success)
+    ;;         │  ├─ Call `org-latex-preview--check-all-fragments-produced',
+    ;;         │  │  which can rerun the async tree if needed.
+    ;;         │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback').
+    ;;         │  └─ Message "creating latex previews... done.".
+    ;;         └─ (failure)
+    ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
+    ;;            └─ Message "creating latex previews... failed. please see %s for details".
+    ;;
+    ;; dvipng case:
+    ;; ├─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
+    ;; └─ Extract images ("--follow" tex ouput) ⟶ stdout to `org-latex-preview--dvipng-filter'
+    ;;    ├─ (success)
+    ;;    │  ├─ Call `org-latex-preview--check-all-fragments-produced',
+    ;;    │  │  which can rerun the async tree if needed.
+    ;;    │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback')
+    ;;    │  └─ message "creating latex previews... done."
+    ;;    └─ (failure)
+    ;;       ├─ Run `org-latex-preview--failure-callback' (remove overlays).
+    ;;       └─ Message "creating latex previews... failed. please see %s for details".
+    ;;
+    ;; generic case:
+    ;; └─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
+    ;;    └─ (success or failure)
+    ;;       └─Extact images
+    ;;         ├─ (success)
+    ;;         │  └─ Call `org-latex-preview--generic-callback'.
+    ;;         └─ (failure)
+    ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
+    ;;            └─ Message "creating latex previews... failed. please see %s for details".
+    ;;
+    ;; With continuous, synchronous processing:
+    ;;
+    ;; ⟶ stdout to `org-latex-preview--latex-preview-filter'
+    ;;   ├─ read preview fontsize
+    ;;   └─ capture compilation errors
+    ;;
+    ;; ⟶ stdout to `org-latex-preview--dvisvgm-filter'
+    ;;   ├─ read preview image metadata
+    ;;   ├─ edit svgs and adjust colors
+    ;;   ├─ cache svgs with org-persist or in /tmp
+    ;;   └─ update overlays in buffer with svg images and metadata
+    ;;
+    ;; ⟶ stdout to `org-latex-preview--dvipng-filter'
+    ;;   ├─ read preview image metadata
+    ;;   ├─ cache pngs with org-persist or in /tmp
+    ;;   └─ update overlays in buffer with png images and metadata
+    ;;
     (let* ((extended-info
             (append processing-info
                     (list :processor processing-type
