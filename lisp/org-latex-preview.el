@@ -771,13 +771,7 @@ fragments in the buffer."
    ;; Toggle preview on LaTeX code at point.
    ((let ((datum (org-element-context)))
       (and (memq (org-element-type datum) '(latex-environment latex-fragment))
-           (let ((beg (org-element-property :begin datum))
-                 (end (org-element-property :end datum)))
-             (if (org-latex-preview-clear-overlays beg end)
-                 (message "LaTeX preview removed")
-               (message "Creating LaTeX preview...")
-               (org-latex-preview--preview-region beg end))
-             t))))
+           (org-latex-preview--auto-aware-toggle datum))))
    ;; Preview current section.
    (t
     (let ((beg (if (org-before-first-heading-p) (point-min)
@@ -786,6 +780,44 @@ fragments in the buffer."
           (end (org-with-limited-levels (org-entry-end-position))))
       (message "Creating LaTeX previews in section...")
       (org-latex-preview--preview-region beg end)))))
+
+(defun org-latex-preview--auto-aware-toggle (datum)
+  "Toggle the preview of the LaTeX fragment/environment DATUM.
+This is done with care to work nicely with `org-latex-preview-auto-mode',
+should it be enabled."
+  (let ((beg (org-element-property :begin datum))
+        (end (org-element-property :end datum)))
+    ;; If using auto-mode, an overlay will already exist but
+    ;; not be showing an image.  We can detect this
+    ;; situtation via the preview-state overlay property, and
+    ;; in such cases the most reasonable action is to just
+    ;; (re)generate the preview image.
+    (pcase (cl-some
+            (lambda (o)
+              (and (eq (overlay-get o 'org-overlay-type)
+                       'org-latex-overlay)
+                   o))
+            (overlays-at beg))
+      ;; When not using auto-mode, or there is no overlay.
+      ((or (pred not) (guard (not org-latex-preview-auto-mode)))
+       (if (org-latex-preview-clear-overlays beg end)
+           (message "LaTeX preview removed")
+         (message "Creating LaTeX preview...")
+         (org-latex-preview--preview-region beg end)))
+      ;; When on a just written/edited fragment that should be previewed.
+      ((and ov (guard (eq (overlay-get ov 'preview-state) 'modified)))
+       (org-latex-preview-auto--regenerate-overlay ov)
+       (overlay-put ov 'view-text t))
+      ;; When on an unmodified fragment that is currently showing an image,
+      ;; hide the image.
+      ((and ov (guard (overlay-get ov 'display)))
+       (org-latex-preview-auto--open-this-overlay))
+      ;; Since we're on an unmodified fragment but not showing an image,
+      ;; let's try to show the image if possible.
+      (ov
+       (overlay-put ov 'view-text t)
+       (overlay-put ov 'face (overlay-get ov 'hidden-face))
+       (overlay-put ov 'display (overlay-get ov 'preview-image))))))
 
 (defun org-latex-preview-collect-fragments (&optional beg end)
   "Collect all LaTeX maths fragments/environments between BEG and END."
