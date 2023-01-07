@@ -323,6 +323,10 @@ Note that this will also produce false postives, and
 `org-element-context' should be used to verify that matches are
 indeed LaTeX fragments/environments.")
 
+(defconst org-latex-preview--ignored-faces
+  '(org-indent)
+  "Faces that should not affect the color of preview overlays.")
+
 (defun org-latex-preview--ensure-overlay (beg end)
   "Build an overlay between BEG and END."
   (let (ov)
@@ -399,7 +403,12 @@ indeed LaTeX fragments/environments.")
       ((eq (plist-get (cdr image-display) :type) 'svg)
        (or (and (> (overlay-start ov) (point-min))
                 (not (eq (char-before (overlay-start ov)) ?\n))
-                (get-text-property (1- (overlay-start ov)) 'face))
+                (let ((face (get-text-property (1- (overlay-start ov)) 'face)))
+                  (cond
+                   ((consp face)
+                    (cl-set-difference face org-latex-preview--ignored-faces))
+                   ((not (memq face org-latex-preview--ignored-faces))
+                    face))))
            'default))
       (t nil)))))
 
@@ -967,20 +976,27 @@ Some of the options can be changed using the variable
 (defun org-latex-preview--resolved-faces-attr (face attr)
   "Find ATTR of the FACE text property.
 This is surprisingly complicated given the various forms of output
-\\=(get-text-property pos \\='face) can produce."
-  (if (consp face) ; Spec is a list of face-specs.
-      (cond
-       ((keywordp (car face)) ; Spec like (:inherit org-block :extend t).
-        (or (plist-get face attr)
-            (face-attribute 'default attr)))
-       ((consp (car face)) ; Spec like ((:inherit default :extend t) org-block).
-        (or (plist-get (car face) attr)
-            (face-attribute (cadr face) attr nil
-                            (append (cddr face) '(default)))))
-       ((symbolp (car face)) ; Spec like (org-level-1 default).
-        (face-attribute (car face) attr nil (append (cdr face) '(default)))))
-    ;; A single-face spec, like org-level-1.
-    (face-attribute face attr nil 'default)))
+\\=(get-text-property pos \\='face) can produce.
+
+Faces in `org-latex-preview--ignored-faces' are ignored."
+  (when (consp face)
+    (setq face (cl-set-difference face org-latex-preview--ignored-faces))
+    (when (= (length face) 1)
+      (setq face (car face))))
+  (cond
+   ((not face)
+    (face-attribute 'default attr))
+   ((not (consp face)) ; Spec like org-level-1.
+    (face-attribute face attr nil 'default))
+   ((keywordp (car face)) ; Spec like (:inherit org-block :extend t).
+    (or (plist-get face attr)
+        (face-attribute 'default attr)))
+   ((consp (car face)) ; Spec like ((:inherit default :extend t) org-block).
+    (or (plist-get (car face) attr)
+        (face-attribute (cadr face) attr nil
+                        (append (cddr face) '(default)))))
+   ((symbolp (car face)) ; Spec like (org-level-1 default).
+    (face-attribute (car face) attr nil (append (cdr face) '(default))))))
 
 (defun org-latex-preview--hash (processing-type string imagetype fg bg &optional number)
   "Return a SHA1 hash for referencing LaTeX fragments when previewing them.
