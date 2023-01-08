@@ -1286,7 +1286,7 @@ FRAGMENTS will be placed in order, wrapped within a
 The path of the created LaTeX file is returned."
   (let ((tex-temp-name
          (expand-file-name (concat (make-temp-name "org-tex-") ".tex")
-                           temporary-file-directory))
+                           default-directory))
         (header
          (concat
           (or (plist-get processing-info :latex-header)
@@ -1300,7 +1300,7 @@ The path of the created LaTeX file is returned."
       (insert (if-let ((format-file
                         (and org-latex-preview-use-precompilation
                              (org-latex-preview-precompile processing-info header))))
-                  (concat "%&" format-file)
+                  (concat "%& " format-file)
                 header))
       (insert "\n\\begin{document}\n")
       (dolist (fragment-info fragments)
@@ -1328,7 +1328,7 @@ The path of the created LaTeX file is returned."
              (car cmds))))
          (texfile (plist-get extended-info :texfile))
          (tex-command-spec
-          `((?o . ,(shell-quote-argument (file-name-directory texfile)))
+          `((?o . ,(shell-quote-argument temporary-file-directory))
             (?b . ,(shell-quote-argument (file-name-base texfile)))
             (?B . ,(shell-quote-argument (file-name-sans-extension texfile)))
             (?f . ,(shell-quote-argument texfile))))
@@ -1368,17 +1368,19 @@ The path of the created LaTeX file is returned."
                    (or (plist-get org-latex-preview-options :scale) 1.0)))
          (dpi (* scale (if (display-graphic-p) (org-latex-preview--get-display-dpi) 140.0)))
          (texfile (plist-get extended-info :texfile))
+         (texfilebase (file-name-base texfile))
          (img-command-spec
-          `((?o . ,(shell-quote-argument (file-name-directory texfile)))
+          `((?o . ,(shell-quote-argument temporary-file-directory))
             (?b . ,(shell-quote-argument (file-name-base texfile)))
-            (?B . ,(shell-quote-argument (file-name-sans-extension texfile)))
+            (?B . ,(shell-quote-argument (expand-file-name texfilebase
+                                          temporary-file-directory)))
             (?D . ,(shell-quote-argument (format "%s" dpi)))
             (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
             (?f . ,(shell-quote-argument
                     (expand-file-name
-                     (concat (file-name-base texfile)
+                     (concat texfilebase
                              "." (plist-get extended-info :image-input-type))
-                     (file-name-directory texfile))))))
+                     temporary-file-directory)))))
          (img-formatted-command
           (split-string-shell-command
            (format-spec img-extract-command img-command-spec))))
@@ -1399,7 +1401,9 @@ The path of the created LaTeX file is returned."
 
 (defun org-latex-preview--do-cleanup (extended-info)
   "Delete files after image creation, in accord with EXTENDED-INFO."
-  (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
+  (let* ((texfile (plist-get extended-info :texfile))
+         (basename (expand-file-name (file-name-base texfile)
+                                     temporary-file-directory))
          (images
           (mapcar
            (lambda (fragment-info)
@@ -1409,6 +1413,7 @@ The path of the created LaTeX file is returned."
           (or (plist-get extended-info :post-clean)
               '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
                 ".svg" ".png" ".jpg" ".jpeg" ".out"))))
+    (when (file-exists-p texfile) (delete-file texfile))
     (dolist (img images)
       (and img (delete-file img)))
     (dolist (ext clean-exts)
@@ -1827,16 +1832,15 @@ file with this name already exists, simply return the name.
 
 This is intended to speed up Org's LaTeX preview generation
 process."
-  ;; Note: the dump is created in the directory that LaTeX runs. TeX
-  ;; files cannot include dumps from other directories, so the dump
-  ;; must be created in (or moved to) the location of the TeX file.
-  (let* ((default-directory temporary-file-directory)
-         (header-hash
+  (let* ((header-hash
           (thread-first
             header
             (concat
              (prin1-to-string
-              (car (plist-get processing-info :programs))))
+              (car (plist-get processing-info :programs)))
+             (and (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)"
+                                  header)
+                  default-directory))
             (sha1)
             (substring 0 12)))
          (header-base-file
@@ -1849,17 +1853,17 @@ process."
             (erase-buffer)
             (current-buffer))))
     (if (file-exists-p dump-file)
-        (file-name-base header-base-file)
+        header-base-file
       (with-temp-file header-file
         (insert header "\n\\endofdump\n"))
       (message "Precompiling Org LaTeX Preview preamble...")
       (condition-case file
-          (file-name-base
+          (file-name-sans-extension
            (org-compile-file
             header-file (plist-get processing-info :latex-precompiler)
             "fmt" nil precompile-buffer))
         (:success (kill-buffer precompile-buffer)
-                  file)
+                  (expand-file-name file temporary-file-directory))
         (error
          (unless (= 0 (call-process "kpsewhich" nil nil nil "mylatexformat.ltx"))
            (display-warning
