@@ -1113,6 +1113,9 @@ have the same meaning as in `org-persist-read'."
   "Call `org-persist-load-all' in current buffer."
   (org-persist-load-all (current-buffer)))
 
+(defvar org-persist--inhibit-write nil
+  "Whether `org-persist-write' should be inhibited.")
+
 (defun org-persist-write (container &optional associated ignore-return)
   "Save CONTAINER according to ASSOCIATED.
 ASSOCIATED can be a plist, a buffer, or a string.
@@ -1122,31 +1125,33 @@ The return value is nil when writing fails and the written value (as
 returned by `org-persist-read') on success.
 When IGNORE-RETURN is non-nil, just return t on success without calling
 `org-persist-read'."
-  (setq associated (org-persist--normalize-associated associated))
-  ;; Update hash
-  (when (and (plist-get associated :file)
-             (plist-get associated :hash)
-             (get-file-buffer (plist-get associated :file)))
-    (setq associated (org-persist--normalize-associated (get-file-buffer (plist-get associated :file)))))
-  (let ((collection (org-persist--get-collection container associated)))
-    (setf collection (plist-put collection :associated associated))
-    (unless (or
-             ;; Prevent data leakage from encrypted files.
-             ;; We do it in somewhat paranoid manner and do not
-             ;; allow anything related to encrypted files to be
-             ;; written.
-             (and (plist-get associated :file)
-                  (string-match-p epa-file-name-regexp (plist-get associated :file)))
-             (seq-find (lambda (v)
-                         (run-hook-with-args-until-success 'org-persist-before-write-hook v associated))
-                       (plist-get collection :container)))
-      (when (or (file-exists-p org-persist-directory) (org-persist--save-index))
-        (let ((file (org-file-name-concat org-persist-directory (plist-get collection :persist-file)))
-              (data (mapcar (lambda (c) (cons c (org-persist-write:generic c collection)))
-                            (plist-get collection :container))))
-          (puthash file data org-persist--write-cache)
-          (org-persist--write-elisp-file file data)
-          (or ignore-return (org-persist-read container associated)))))))
+  (unless org-persist--inhibit-write
+    (setq associated (org-persist--normalize-associated associated))
+    ;; Update hash
+    (when (and (plist-get associated :file)
+               (plist-get associated :hash)
+               (get-file-buffer (plist-get associated :file)))
+      (setq associated (org-persist--normalize-associated (get-file-buffer (plist-get associated :file)))))
+    (let ((collection (org-persist--get-collection container associated))
+          (org-persist--inhibit-write t))
+      (setf collection (plist-put collection :associated associated))
+      (unless (or
+               ;; Prevent data leakage from encrypted files.
+               ;; We do it in somewhat paranoid manner and do not
+               ;; allow anything related to encrypted files to be
+               ;; written.
+               (and (plist-get associated :file)
+                    (string-match-p epa-file-name-regexp (plist-get associated :file)))
+               (cl-some (lambda (v)
+                          (run-hook-with-args-until-success 'org-persist-before-write-hook v associated))
+                        (plist-get collection :container)))
+        (when (or (file-exists-p org-persist-directory) (org-persist--save-index))
+          (let ((file (org-file-name-concat org-persist-directory (plist-get collection :persist-file)))
+                (data (mapcar (lambda (c) (cons c (org-persist-write:generic c collection)))
+                              (plist-get collection :container))))
+            (puthash file data org-persist--write-cache)
+            (org-persist--write-elisp-file file data)
+            (or ignore-return (org-persist-read container associated))))))))
 
 (defun org-persist-write-all (&optional associated)
   "Save all the persistent data.
