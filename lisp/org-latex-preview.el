@@ -133,7 +133,7 @@ All available processes and theirs documents can be found in
      :image-output-type "png"
      :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
+     :latex-precompiler ("latex -output-directory %o -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
      :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
      :transparent-image-converter
      ("dvipng --follow -D %D -T tight -bg Transparent --depth --height -o %B-%%09d.png %f"))
@@ -145,7 +145,7 @@ All available processes and theirs documents can be found in
      :image-output-type "svg"
      :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("latex -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
+     :latex-precompiler ("latex -output-directory %o -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
      ;; With dvisvgm the --bbox=preview flag is needed to emit the preview.sty-provided
      ;; height+width+depth information. The --optimise, --clipjoin, and --relative flags
      ;; cause dvisvgm do do some extra work to tidy up the SVG output, but barely add to
@@ -159,7 +159,7 @@ All available processes and theirs documents can be found in
      :image-output-type "png"
      :image-size-adjust (1.0 . 1.0)
      :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("pdftex -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
+     :latex-precompiler ("pdftex -output-directory %o -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
      :image-converter
      ("convert -density %D -trim -antialias %f -quality 100 %B-%%09d.png")))
   "Definitions of external processes for LaTeX previewing.
@@ -1843,27 +1843,28 @@ process."
                   default-directory))
             (sha1)
             (substring 0 12)))
-         (header-base-file
+         (header-no-ext
           (expand-file-name header-hash temporary-file-directory))
-         (dump-file (concat header-base-file ".fmt"))
-         (header-file (concat header-base-file ".tex"))
+         (dump-file (concat header-no-ext ".fmt"))
+         (header-file (concat header-no-ext ".tex"))
          (precompile-buffer
           (with-current-buffer
               (get-buffer-create org-latex-preview--precompile-log)
             (erase-buffer)
             (current-buffer))))
     (if (file-exists-p dump-file)
-        header-base-file
+        header-no-ext
       (with-temp-file header-file
         (insert header "\n\\endofdump\n"))
       (message "Precompiling Org LaTeX Preview preamble...")
       (condition-case file
-          (file-name-sans-extension
-           (org-compile-file
-            header-file (plist-get processing-info :latex-precompiler)
-            "fmt" nil precompile-buffer))
-        (:success (kill-buffer precompile-buffer)
-                  (expand-file-name file temporary-file-directory))
+          (org-compile-file
+           header-file (plist-get processing-info :latex-precompiler)
+           "fmt" nil precompile-buffer)
+        (:success
+         (kill-buffer precompile-buffer)
+         (delete-file header-file)
+         header-no-ext)
         (error
          (unless (= 0 (call-process "kpsewhich" nil nil nil "mylatexformat.ltx"))
            (display-warning
