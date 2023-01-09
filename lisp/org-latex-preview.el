@@ -1368,17 +1368,17 @@ The path of the created LaTeX file is returned."
                    (or (plist-get org-latex-preview-options :scale) 1.0)))
          (dpi (* scale (if (display-graphic-p) (org-latex-preview--get-display-dpi) 140.0)))
          (texfile (plist-get extended-info :texfile))
-         (texfilebase (file-name-base texfile))
+         (texfile-base (file-name-base texfile))
          (img-command-spec
           `((?o . ,(shell-quote-argument temporary-file-directory))
             (?b . ,(shell-quote-argument (file-name-base texfile)))
-            (?B . ,(shell-quote-argument (expand-file-name texfilebase
-                                          temporary-file-directory)))
+            (?B . ,(shell-quote-argument
+                    (expand-file-name texfile-base temporary-file-directory)))
             (?D . ,(shell-quote-argument (format "%s" dpi)))
             (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
             (?f . ,(shell-quote-argument
                     (expand-file-name
-                     (concat texfilebase
+                     (concat texfile-base
                              "." (plist-get extended-info :image-input-type))
                      temporary-file-directory)))))
          (img-formatted-command
@@ -1402,8 +1402,8 @@ The path of the created LaTeX file is returned."
 (defun org-latex-preview--do-cleanup (extended-info)
   "Delete files after image creation, in accord with EXTENDED-INFO."
   (let* ((texfile (plist-get extended-info :texfile))
-         (basename (expand-file-name (file-name-base texfile)
-                                     temporary-file-directory))
+         (outputs-no-ext (expand-file-name (file-name-base texfile)
+                                           temporary-file-directory))
          (images
           (mapcar
            (lambda (fragment-info)
@@ -1417,16 +1417,15 @@ The path of the created LaTeX file is returned."
     (dolist (img images)
       (and img (delete-file img)))
     (dolist (ext clean-exts)
-      (when (file-exists-p (concat basename ext))
-        (delete-file (concat basename ext))))))
+      (when (file-exists-p (concat outputs-no-ext ext))
+        (delete-file (concat outputs-no-ext ext))))))
 
 (defun org-latex-preview--generic-callback (_exit-code _stdout extended-info)
   "Move and delete files after image creation, in accords with EXTENDED-INFO."
   (let* ((basename (file-name-sans-extension (plist-get extended-info :texfile)))
-         (image-output-type (intern (plist-get extended-info :image-output-type)))
          (images
           (file-expand-wildcards
-           (concat basename "*." (plist-get extended-info :image-output-type))
+           (concat outputs-no-ext "*." (plist-get extended-info :image-output-type))
            'full))
          (clean-exts
           (or (plist-get extended-info :post-clean)
@@ -1444,9 +1443,11 @@ The path of the created LaTeX file is returned."
             image-file
             (org-latex-preview--display-info
              extended-info fragment-info)))))
+    (when (file-exists-p texfile) (delete-file texfile))
+    (mapc #'delete-file images)
     (dolist (ext clean-exts)
-      (when (file-exists-p (concat basename ext))
-        (delete-file (concat basename ext))))))
+      (when (file-exists-p (concat outputs-no-ext ext))
+        (delete-file (concat outputs-no-ext ext))))))
 
 (defun org-latex-preview--check-all-fragments-produced (_exit-code _stdout extended-info)
   "Check each of the fragments in EXTENDED-INFO has a path.
@@ -1644,8 +1645,8 @@ reported values in pt (8.899pt).")
 Any matches found will be matched against the fragments recorded in
 EXTENDED-INFO, and displayed in the buffer."
   (let ((dvipng-depth-height-re "depth=\\([0-9]+\\) height=\\([0-9]+\\)")
-        (texfilebase (file-name-sans-extension
-                      (plist-get extended-info :texfile)))
+        (texfile-no-ext (file-name-sans-extension
+                         (plist-get extended-info :texfile)))
         (fragments (plist-get extended-info :fragments))
         fragments-to-show page-info-end)
     (while (search-forward "]" nil t)
@@ -1657,7 +1658,7 @@ EXTENDED-INFO, and displayed in the buffer."
                    (fragment-info (nth (1- page) fragments)))
               (plist-put fragment-info :path
                          (format "%s-%09d.png"
-                                 texfilebase
+                                 texfile-no-ext
                                  page))
               (when (re-search-forward dvipng-depth-height-re page-info-end t)
                 (let ((depth (* (string-to-number (match-string 1))
@@ -2111,9 +2112,9 @@ a HTML file."
                'snippet)))
          (latex-compiler (plist-get processing-info :latex-compiler))
          (tmpdir temporary-file-directory)
-         (texfilebase (make-temp-name
-                       (expand-file-name "orgtex" tmpdir)))
-         (texfile (concat texfilebase ".tex"))
+         (texfile-base (make-temp-name
+                        (expand-file-name "orgtex" tmpdir)))
+         (texfile (concat texfile-base ".tex"))
          (image-size-adjust (or (plist-get processing-info :image-size-adjust)
                                 '(1.0 . 1.0)))
          (scale (* (if buffer (car image-size-adjust) (cdr image-size-adjust))
@@ -2167,8 +2168,8 @@ a HTML file."
                (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))))))
       (copy-file image-output-file tofile 'replace)
       (dolist (e post-clean)
-        (when (file-exists-p (concat texfilebase e))
-          (delete-file (concat texfilebase e))))
+        (when (file-exists-p (concat texfile-base e))
+          (delete-file (concat texfile-base e))))
       image-output-file)))
 
 (defun org-latex-preview--attr-color (attr)
