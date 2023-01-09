@@ -244,8 +244,29 @@ of the Emacs session."
   :package-version '(Org . "9.7")
   :type 'boolean)
 
+(defcustom org-latex-preview-processing-indicator 'fringe
+  "The style of visual indicator for LaTeX currently being processed.
+This sets the method used to indicated that a LaTeX fragment is
+currently being processed for display.
+
+There are three recognised value symbols:
+- nil, do not indicate fragment processing.
+- face, apply a special face to fragments that are being processed.
+  You can customize the face `org-latex-preview-processing-face' to
+  change how it appears.
+- fringe, apply a fringe marker to lines where fragments are being
+  processed."
+  :group 'org-latex
+  :package-version '(Org . "9.7")
+  :type '(choice
+          (const :tag "No indicator" nil)
+          (const :tag "Fringe marker" fringe)
+          (const :tag "Processing face" face)))
+
 (defface org-latex-preview-processing-face '((t :inherit shadow))
-  "Face applied to LaTeX fragments for which a preview is being generated."
+  "Face applied to LaTeX fragments for which a preview is being generated.
+
+See `org-latex-preview-processing-indicator'."
   :group 'org-faces)
 
 (defconst org-latex-preview--image-log "*Org Preview Convert Output*"
@@ -362,6 +383,24 @@ indeed LaTeX fragments/environments.")
                    (list #'org-latex-preview-auto--insert-behind-handler)))
     ov))
 
+(defun org-latex-preview--indicate-processing (ov &optional on)
+  "Modify OV to provide visual indication of LaTeX fragment preview generation.
+
+When `org-latex-preview-processing-indicator' is set to fringe, a
+triangle in the left fringe will be shown or hidden depending on ON.
+
+When `org-latex-preview-processing-indicator' is set to face, the
+overlay face is set to `org-latex-preview-processing-face'."
+  (pcase org-latex-preview-processing-indicator
+    ('fringe
+     (overlay-put
+      ov 'before-string
+      (and on (propertize "!" 'display
+                          `(left-fringe right-triangle
+                            fringe)))))
+    ('face
+     (overlay-put ov 'face (and on 'org-latex-preview-processing-face)))))
+
 (defun org-latex-preview-auto--mark-overlay-modified (ov after-p _beg _end &optional _l)
   "When AFTER-P mark OV as modified and display nothing."
   (when after-p
@@ -397,6 +436,8 @@ indeed LaTeX fragments/environments.")
                                  (round (* 100 (- 1 (/ (max 0.0 (- depth 0.02))
                                                        height))))
                                'center)))))
+    (when org-latex-preview-processing-indicator
+      (org-latex-preview--indicate-processing ov))
     ;; This is a temporary measure until a more sophisticated
     ;; interface for errors is available in Org.
     (when (and errors tooltip-mode)
@@ -422,8 +463,7 @@ indeed LaTeX fragments/environments.")
       (overlay-put
        ov 'before-string
        (propertize "!" 'display
-                   `(left-fringe exclamation-mark
-                     warning)))))))
+                   `(left-fringe exclamation-mark error)))))))
 
 ;; Code for `org-latex-preview-auto-mode':
 ;;
@@ -1153,9 +1193,10 @@ during processing to hold more information on the fragments."
          (error-message (or (plist-get processing-info :message) "")))
     (dolist (program programs)
       (org-check-external-command program error-message))
-    (dolist (fragment fragments-info)
-      (overlay-put (plist-get fragment :overlay)
-                   'face 'org-latex-preview-processing-face))
+    (when org-latex-preview-processing-indicator
+      (dolist (fragment fragments-info)
+        (org-latex-preview--indicate-processing
+         (plist-get fragment :overlay) 'on)))
     ;; At this point we will basically construct a tree of async calls:
     ;;
     ;; dvisvgm case:
