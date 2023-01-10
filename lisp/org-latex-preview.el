@@ -1658,8 +1658,21 @@ tests with the output of dvisvgm."
     (when path
       (with-temp-buffer
         (insert-file-contents path)
+        (unless ; When the svg is incomplete, wait for it to be completed.
+            (string= (buffer-substring (- (point-max) 6) (point-max))
+                     "</svg>")
+          (catch 'svg-complete
+            (dotimes (_ 1000) ; Check for complete svg over 1s.
+              (if (string= (buffer-substring (- (point-max) 6) (point-max))
+                           "</svg>")
+                  (throw 'svg-complete t)
+                (erase-buffer)
+                (sit-for 0.001)
+                (insert-file-contents path)))
+            (erase-buffer)))
         (goto-char (point-min))
-        (if (re-search-forward "<svg[^>]*>\n<g[^>]*>\n</svg>" nil t)
+        (if (or (= (buffer-size) 0)
+                (re-search-forward "<svg[^>]*>\n<g[^>]*>\n</svg>" nil t))
             ;; We never want to show an empty SVG, instead it is better to delete
             ;; it and leave the LaTeX fragment without an image overlay.
             ;; This also works better with other parts of the system, such as
