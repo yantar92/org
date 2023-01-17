@@ -290,23 +290,9 @@ See `org-latex-preview-processing-indicator'."
             t))))))
 
 (defcustom org-latex-preview-preamble "\\documentclass{article}
-\\usepackage[usenames]{color}
 \[DEFAULT-PACKAGES]
 \[PACKAGES]
-\\pagestyle{empty}             % do not remove
-% The settings below are copied from fullpage.sty
-\\setlength{\\textwidth}{\\paperwidth}
-\\addtolength{\\textwidth}{-3cm}
-\\setlength{\\oddsidemargin}{1.5cm}
-\\addtolength{\\oddsidemargin}{-2.54cm}
-\\setlength{\\evensidemargin}{\\oddsidemargin}
-\\setlength{\\textheight}{\\paperheight}
-\\addtolength{\\textheight}{-\\headheight}
-\\addtolength{\\textheight}{-\\headsep}
-\\addtolength{\\textheight}{-\\footskip}
-\\addtolength{\\textheight}{-3cm}
-\\setlength{\\topmargin}{1.5cm}
-\\addtolength{\\topmargin}{-2.54cm}"
+\\usepackage{xcolor}"
   "The document header used for processing LaTeX fragments.
 It is imperative that this header make sure that no page number
 appears on the page.  The package defined in the variables
@@ -315,6 +301,20 @@ will either replace the placeholder \"[PACKAGES]\" in this
 header, or they will be appended."
   :group 'org-latex-preview
   :type 'string)
+
+(defcustom org-latex-preview-width 0.6
+  "The text width when compiling LaTeX fragments.
+This can take a few forms, namely:
+- A string giving a LaTeX dimension (e.g. \"12cm\").
+- A floating point value between 0.0 and 1.0,
+  this sets the text width to this ratio of the page width.
+- nil, in which case the default text width is unmodified."
+  :group 'org-latex-preview
+  :package-version '(Org . "9.7")
+  :type '(choice
+          (string :tag "LaTeX width")
+          (float :tag "Proportional width")
+          (const :tag "Unset" nil)))
 
 (defcustom org-latex-preview-use-precompilation t
   "Use LaTeX header precompilation when previewing fragments.
@@ -1335,6 +1335,12 @@ The path of the created LaTeX file is returned."
                 (org-export-get-environment (org-export-get-backend 'latex))
                 '(:time-stamp-file nil))
                org-latex-preview-preamble 'snippet))
+          (let ((w org-latex-preview-width))
+            (cond
+             ((stringp w)
+              (format "\n\\setlength{\\textwidth}{%s}\n" w))
+             ((and (floatp w) (<= 0.0 w 1.0))
+              (format "\n\\setlength{\\textwidth}{%s\\paperwidth}\n" w))))
           "\n\\usepackage[active,tightpage,auctex]{preview}\n")))
     (with-temp-file tex-temp-name
       (insert (if-let ((format-file
