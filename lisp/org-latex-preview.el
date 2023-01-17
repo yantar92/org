@@ -238,6 +238,16 @@ of the Emacs session."
   :package-version '(Org . "9.7")
   :type 'boolean)
 
+(defcustom org-latex-preview-persist-expiry 7
+  "A homologue of `org-persist-default-expiry' for preview data.
+This is only relevant when `org-latex-preview-persist' is non-nil."
+  :group 'org-latex
+  :package-version '(Org . "9.7")
+  :type '(choice (const :tag "Never" never)
+          (const :tag "Always" nil)
+          (number :tag "Keep N days")
+          (function :tag "Function")))
+
 (defcustom org-latex-preview-numbered nil
   "Whether to calculate and apply correct equation numbering."
   :group 'org-latex
@@ -1774,6 +1784,7 @@ enabled, see `org-latex-preview-persist'."
                                          (file ,path)
                                          (elisp-data ,info))
                                        (list :key key)
+                                       :expiry org-latex-preview-persist-expiry
                                        :write-immediately t))))
         (cons (cadr label-path-info) info))
     (unless org-latex-preview--table
