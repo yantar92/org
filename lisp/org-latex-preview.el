@@ -132,8 +132,8 @@ All available processes and theirs documents can be found in
      :image-input-type "dvi"
      :image-output-type "png"
      :image-size-adjust (1.4 . 1.2)
-     :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("latex -output-directory %o -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
+     :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
+     :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
      :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
      :transparent-image-converter
      ("dvipng --follow -D %D -T tight -bg Transparent --depth --height -o %B-%%09d.png %f"))
@@ -144,8 +144,8 @@ All available processes and theirs documents can be found in
      :image-input-type "dvi"
      :image-output-type "svg"
      :image-size-adjust (1.4 . 1.2)
-     :latex-compiler ("latex -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("latex -output-directory %o -ini -jobname=%b \"&latex\" mylatexformat.ltx %f")
+     :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
+     :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
      ;; With dvisvgm the --bbox=preview flag is needed to emit the preview.sty-provided
      ;; height+width+depth information. The --optimise, --clipjoin, and --relative flags
      ;; cause dvisvgm do do some extra work to tidy up the SVG output, but barely add to
@@ -200,12 +200,18 @@ PROPERTIES accepts the following attributes:
 If set, :transparent-image-converter is used instead of :image-converter to
 convert an image when the background color is nil or \"Transparent\".
 
-Place-holders used by `:image-converter' and `:latex-compiler':
+Place-holders used by `:image-converter', `:latex-precompiler',
+and `:latex-compiler':
 
   %f    input file name
   %b    base name of input file
   %o    base directory of input file
   %O    absolute output file name
+
+Place-holders only used by `:latex-precompiler' and `:latex-compiler':
+
+  %l   LaTeX compiler command string
+  %L   LaTeX compiler command name
 
 Place-holders only used by `:image-converter':
 
@@ -216,6 +222,22 @@ Place-holders only used by `:image-converter':
   :package-version '(Org . "9.7")
   :type '(alist :tag "LaTeX to image backends"
           :value-type (plist)))
+
+(defcustom org-latex-preview-compiler-command-map
+  '(("pdflatex" . "latex")
+    ("xelatex" . "xelatex -no-pdf")
+    ("lualatex" . "dvilualatex"))
+  "An alist mapping from each of `org-latex-compilers' to command strings.
+Each key is a LaTeX compiler name, for each compiler in
+`org-latex-compilers', and the value the command that should be used
+when producing a preview (optionally including flags).
+
+This should only ever be changed in the event that PDF, not DVI output
+is required."
+  :group 'org-latex-preview
+  :package-version '(Org . "9.7")
+  :type '(alist :tag "Compiler"
+          :value-type (string :type "command")))
 
 (defcustom org-preview-latex-image-directory "ltximg/"
   "Path to store latex preview images.
@@ -1181,7 +1203,7 @@ NUMBER is the equation number that should be used, if applicable."
                       (goto-char (org-element-property :begin datum))
                       (org-element-context)))))))))
 
-(defun org-latex-preview-create-image-async (processing-type fragments-info)
+(defun org-latex-preview-create-image-async (processing-type fragments-info &optional latex-processor)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
 FRAGMENTS-INFO is a list of plists, each of which provides
@@ -1194,13 +1216,29 @@ where
 - fragment-hash is a string that uniquely identifies the fragment
 
 It is worth noting the FRAGMENTS-INFO plists will be modified
-during processing to hold more information on the fragments."
+during processing to hold more information on the fragments.
+
+LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset."
   (let* ((processing-type
           (or processing-type org-latex-preview-default-process))
+         (latex-processor
+          (or latex-processor
+              (and (derived-mode-p 'org-mode)
+                   (cdr (assoc "LATEX_COMPILER"
+                               (org-collect-keywords
+                                '("LATEX_COMPILER") '("LATEX_COMPILER")))))
+              org-latex-compiler))
          (processing-info
-          (alist-get processing-type org-latex-preview-process-alist))
+          (nconc (list :latex-processor latex-processor)
+                 (alist-get processing-type org-latex-preview-process-alist)))
          (programs (plist-get processing-info :programs))
          (error-message (or (plist-get processing-info :message) "")))
+    ;; xelatex produces .xdv (eXtended dvi) files, not .dvi, so as a special
+    ;; case we check for xelatex + dvi and if so switch the file extension to xdv.
+    (when (and (equal latex-processor "xelatex")
+               (equal (plist-get processing-info :image-input-type) "dvi"))
+      (setq processing-info
+            (plist-put (copy-sequence processing-info) :image-input-type "xdv")))
     (dolist (program programs)
       (org-check-external-command program error-message))
     (when org-latex-preview-processing-indicator
@@ -1374,7 +1412,7 @@ The path of the created LaTeX file is returned."
               (get-buffer-create org-latex-preview--latex-log)
             (erase-buffer)
             (current-buffer)))
-         (tex-compile-command
+         (tex-compile-command-fmt
           (pcase (plist-get extended-info :latex-compiler)
             ((and (pred stringp) cmd) cmd)
             ((and (pred consp) cmds)
@@ -1383,13 +1421,22 @@ The path of the created LaTeX file is returned."
                      (cdr cmds)))
              (car cmds))))
          (texfile (plist-get extended-info :texfile))
+         (org-tex-compiler
+          (cdr (assoc (plist-get extended-info :latex-processor)
+                      org-latex-preview-compiler-command-map)))
          (tex-command-spec
           `((?o . ,(shell-quote-argument temporary-file-directory))
             (?b . ,(shell-quote-argument (file-name-base texfile)))
-            (?f . ,(shell-quote-argument texfile))))
+            (?f . ,(shell-quote-argument texfile))
+            (?l . ,org-tex-compiler)
+            (?L . ,(car (split-string org-tex-compiler)))))
          (tex-formatted-command
           (split-string-shell-command
-           (format-spec tex-compile-command tex-command-spec))))
+           (format-spec tex-compile-command-fmt tex-command-spec))))
+    (unless org-tex-compiler
+      (user-error "No `org-latex-preview-compiler-command-map' entry found for LaTeX processor %S, it should be a member of `org-latex-compilers' %S"
+                  (plist-get extended-info :latex-processor)
+                  org-latex-compilers))
     (list 'org-async-task
           tex-formatted-command
           :buffer tex-process-buffer
@@ -1909,6 +1956,7 @@ process."
             (concat
              (prin1-to-string
               (car (plist-get processing-info :programs)))
+             (plist-get processing-info :latex-processor)
              (and (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)"
                                   header)
                   default-directory))
@@ -1931,7 +1979,12 @@ process."
       (condition-case file
           (org-compile-file
            header-file (plist-get processing-info :latex-precompiler)
-           "fmt" nil precompile-buffer)
+           "fmt" nil precompile-buffer
+           (let ((org-tex-compiler
+                  (cdr (assoc (plist-get processing-info :latex-processor)
+                              org-latex-preview-compiler-command-map))))
+             `((?l . ,org-tex-compiler)
+               (?L . ,(car (split-string org-tex-compiler))))))
         (:success
          (kill-buffer precompile-buffer)
          (delete-file header-file)
