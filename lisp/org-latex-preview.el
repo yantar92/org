@@ -679,7 +679,9 @@ If an org-latex-overlay is already present, nothing is done."
          (if (<= elem-beg pos elem-end)
              (progn
                (overlay-put ov 'view-text t)
-               (set-marker org-latex-preview-auto--marker pos)
+               ;; Record a position safely inside the created overlay
+               (set-marker org-latex-preview-auto--marker
+                           (min pos (1- elem-end)))
                (setq org-latex-preview-auto--from-overlay t)
                nil)
            (setq org-latex-preview-auto--inhibit t)
