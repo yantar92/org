@@ -598,64 +598,65 @@ This is intended to be placed in `post-command-hook'."
 
 (defun org-latex-preview-auto--detect-fragments-in-change (beg end _)
   "Examine the content between BEG and END, and preview LaTeX fragments found."
-  (let ((initial-point (point))
-        fragments)
-    (save-excursion
-      ;; Find every location in the changed region where a backslash
-      ;; is succeeded by a parenthesis or square bracket, and check
-      ;; for a LaTeX fragment.
-      (goto-char beg)
-      (unless (eobp)
-        (while (search-forward "\\" end t)
-          (and (memq (char-after) '(?\( ?\) ?\[ ?\]))
-               (push (org-latex-preview-auto--maybe-track-element-here
-                      'latex-fragment initial-point)
-                     fragments))))
-      ;; Find every location in the changed region where a parenthesis
-      ;; or square bracket is preceeded by a backslash, and check for
-      ;; a LaTeX fragment.
-      (goto-char beg)
-      (unless (bobp)
-        (while (re-search-forward "[][()]" end t)
-          (and (eq (char-before (1- (point))) ?\\)
-               (push (org-latex-preview-auto--maybe-track-element-here
-                      'latex-fragment initial-point)
-                     fragments))))
-      ;; Check for LaTeX environments on lines affected by the change.
-      ;; Start by finding all affected lines with at least four
-      ;; characters of content. Then we can check if the line starts
-      ;; with "\beg" or "\end", and if so check for a LaTeX environment.
-      (goto-char beg)
-      (beginning-of-line)
-      (skip-chars-forward " \t")
-      (when (< (point) end)
-        (let ((line-start-positions
-               (and (> (point-max) (+ 4 (point)))
-                    (list (point)))))
-          (while (and (< (point) end)
-                      (search-forward "\n" end t))
-            (skip-chars-forward " \t")
-            (when (> (point-max) (+ 4 (point)))
-              (push (point) line-start-positions)))
-          (dolist (line-start line-start-positions)
-            (goto-char line-start)
-            (and (eq (char-after) ?\\)
-                 (member (buffer-substring (point) (+ (point) 4))
-                         '("\\beg" "\\end"))
+  (when org-latex-preview-auto-generate
+    (let ((initial-point (point))
+          fragments)
+      (save-excursion
+        ;; Find every location in the changed region where a backslash
+        ;; is succeeded by a parenthesis or square bracket, and check
+        ;; for a LaTeX fragment.
+        (goto-char beg)
+        (unless (eobp)
+          (while (search-forward "\\" end t)
+            (and (memq (char-after) '(?\( ?\) ?\[ ?\]))
                  (push (org-latex-preview-auto--maybe-track-element-here
-                        'latex-environment initial-point)
-                       fragments))))))
-    (when (setq fragments (delq nil fragments))
-      (when (and org-latex-preview-numbered
-                 (cl-find 'latex-environment fragments
+                        'latex-fragment initial-point)
+                       fragments))))
+        ;; Find every location in the changed region where a parenthesis
+        ;; or square bracket is preceeded by a backslash, and check for
+         ;; a LaTeX fragment.
+        (goto-char beg)
+        (unless (bobp)
+          (while (re-search-forward "[][()]" end t)
+            (and (eq (char-before (1- (point))) ?\\)
+                 (push (org-latex-preview-auto--maybe-track-element-here
+                        'latex-fragment initial-point)
+                       fragments))))
+        ;; Check for LaTeX environments on lines affected by the change.
+        ;; Start by finding all affected lines with at least four
+        ;; characters of content. Then we can check if the line starts
+        ;; with "\beg" or "\end", and if so check for a LaTeX environment.
+        (goto-char beg)
+        (beginning-of-line)
+        (skip-chars-forward " \t")
+        (when (< (point) end)
+          (let ((line-start-positions
+                 (and (> (point-max) (+ 4 (point)))
+                      (list (point)))))
+            (while (and (< (point) end)
+                        (search-forward "\n" end t))
+              (skip-chars-forward " \t")
+              (when (> (point-max) (+ 4 (point)))
+                (push (point) line-start-positions)))
+            (dolist (line-start line-start-positions)
+              (goto-char line-start)
+              (and (eq (char-after) ?\\)
+                   (member (buffer-substring (point) (+ (point) 4))
+                           '("\\beg" "\\end"))
+                   (push (org-latex-preview-auto--maybe-track-element-here
+                          'latex-environment initial-point)
+                         fragments))))))
+      (when (setq fragments (delq nil fragments))
+        (when (and org-latex-preview-numbered
+                   (cl-find 'latex-environment fragments
                           :key #'org-element-type :test #'eq))
-        (setq fragments
-              (append fragments
-                      (org-latex-preview--get-numbered-environments
-                       end nil))))
-      (org-latex-preview--create
-       org-latex-preview-default-process
-       fragments))))
+          (setq fragments
+                (append fragments
+                        (org-latex-preview--get-numbered-environments
+                         end nil))))
+        (org-latex-preview--create
+         org-latex-preview-default-process
+         fragments)))))
 
 (defun org-latex-preview-auto--maybe-track-element-here (type pos)
   "Check for an org element of TYPE at `point' and ensure an overlay exists.
