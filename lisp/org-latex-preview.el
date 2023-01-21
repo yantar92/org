@@ -157,7 +157,7 @@ All available processes and theirs documents can be found in
      :message "you need to install the programs: latex and imagemagick."
      :image-input-type "pdf"
      :image-output-type "png"
-     :image-size-adjust (1.0 . 1.0)
+     :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("pdftex -output-directory %o -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
      :image-converter
@@ -1270,7 +1270,7 @@ LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset."
     ;;    │  ├─ Call `org-latex-preview--check-all-fragments-produced',
     ;;    │  │  which can rerun the async tree if needed.
     ;;    │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback')
-    ;;    │  └─ message "creating latex previews... done."
+    ;;    │  └─ Message "creating latex previews... done."
     ;;    └─ (failure)
     ;;       ├─ Run `org-latex-preview--failure-callback' (remove overlays).
     ;;       └─ Message "creating latex previews... failed. please see %s for details".
@@ -1280,7 +1280,11 @@ LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset."
     ;;    └─ (success or failure)
     ;;       └─Extact images
     ;;         ├─ (success)
-    ;;         │  └─ Call `org-latex-preview--generic-callback'.
+    ;;         │  ├─ Call `org-latex-preview--generic-callback'.
+    ;;         │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback')
+    ;;         │  ├─ Call `org-latex-preview--check-all-fragments-produced',
+    ;;         │  │  which can rerun the async tree if needed.
+    ;;         │  └─ Message "creating latex previews... done."
     ;;         └─ (failure)
     ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
     ;;            └─ Message "creating latex previews... failed. please see %s for details".
@@ -1332,7 +1336,11 @@ LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset."
                     #'org-latex-preview--dvisvgm-filter))
         (_
          (plist-put (cddr img-extract-async) :success
-                    (list #'org-latex-preview--generic-callback))))
+                    (list ; The order is important here.
+                     #'org-latex-preview--generic-callback
+                     #'org-latex-preview--cleanup-callback
+                     #'org-latex-preview--check-all-fragments-produced
+                     "Creating LaTeX previews... done."))))
       (if (and (eq processing-type 'dvipng)
                (member "--follow" (cadr img-extract-async)))
           (org-async-call img-extract-async)
@@ -1525,35 +1533,27 @@ The path of the created LaTeX file is returned."
         (delete-file (concat outputs-no-ext ext))))))
 
 (defun org-latex-preview--generic-callback (_exit-code _stdout extended-info)
-  "Move and delete files after image creation, in accords with EXTENDED-INFO."
+  "Place generated images, in accord with EXTENDED-INFO."
   (let* ((texfile (plist-get extended-info :texfile))
          (outputs-no-ext (expand-file-name (file-name-base texfile)
                                            temporary-file-directory))
          (images
           (file-expand-wildcards
            (concat outputs-no-ext "*." (plist-get extended-info :image-output-type))
-           'full))
-         (clean-exts
-          (or (plist-get extended-info :post-clean)
-              '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
-                ".svg" ".png" ".jpg" ".jpeg" ".out"))))
+           'full)))
     (save-excursion
       (cl-loop
        for fragment-info in (plist-get extended-info :fragments)
        for image-file in images
        for ov = (plist-get fragment-info :overlay)
-       do (org-latex-preview--update-overlay
-           ov
-           (org-latex-preview--cache-image
-            (plist-get fragment-info :key)
-            image-file
-            (org-latex-preview--display-info
-             extended-info fragment-info)))))
-    (when (file-exists-p texfile) (delete-file texfile))
-    (mapc #'delete-file images)
-    (dolist (ext clean-exts)
-      (when (file-exists-p (concat outputs-no-ext ext))
-        (delete-file (concat outputs-no-ext ext))))))
+       do (plist-put fragment-info :path image-file)
+       (org-latex-preview--update-overlay
+        ov
+        (org-latex-preview--cache-image
+         (plist-get fragment-info :key)
+         image-file
+         (org-latex-preview--display-info
+          extended-info fragment-info)))))))
 
 (defun org-latex-preview--check-all-fragments-produced (_exit-code _stdout extended-info)
   "Check each of the fragments in EXTENDED-INFO has a path.
