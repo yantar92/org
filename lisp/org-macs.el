@@ -503,6 +503,16 @@ of `org-async-process-limit'."
                               :coding coding))))
     (last org-async--wait-queue))))
 
+(defvar org-async--blocking-tasks nil
+  "List of async tasks currently being waited on.")
+
+(defun org-async-wait-for (&rest tasks)
+  "Block until every task of TASKS has finished (including callback tasks)."
+  (setq org-async--blocking-tasks tasks)
+  (while org-async--blocking-tasks
+    (dolist (task org-async--blocking-tasks)
+      (accept-process-output (car task)))))
+
 (defun org-async--filter (process string)
   "After PROCESS recieves STRING, call the async filter.
 This is implementated to satisfy the filter function documentation in
@@ -539,7 +549,8 @@ Otherwise, the failure callback is run."
   (when (assq process org-async--stack)
     (let* ((proc-info (cdr (assq process org-async--stack)))
            (buffer-val (plist-get proc-info :buffer))
-           (proc-buf (if (consp buffer-val) (cdr buffer-val) buffer-val)))
+           (proc-buf (if (consp buffer-val) (cdr buffer-val) buffer-val))
+           (blocking-p (cl-member process org-async--blocking-tasks :key #'car)))
       (setq org-async--stack
             (delq (assq process org-async--stack) org-async--stack))
       ;; Ensure that any filter is called on the final output
@@ -553,14 +564,18 @@ Otherwise, the failure callback is run."
             :success :failure))
        (process-exit-status process)
        proc-buf
-       (plist-get proc-info :info))
+       (plist-get proc-info :info)
+       blocking-p)
+      (when blocking-p
+        (setq org-async--blocking-tasks
+              (cl-delete process org-async--blocking-tasks :key #'car)))
       (when (and (consp buffer-val) (eq :temp (car buffer-val)))
         (kill-buffer proc-buf)))
     (when (and org-async--wait-queue
                (< org-async-process-limit (length org-async--stack)))
       (apply #'org-async-call (pop org-async--wait-queue)))))
 
-(defun org-async--execute-callback (callback exit-code process-buffer info)
+(defun org-async--execute-callback (callback exit-code process-buffer info &optional blocking)
   "Run CALLBACK with EXIT-CODE, PROCESS-BUFFER, and INFO.
 CALLBACK can take one of four forms:
 - A string, which is used a `message' string with EXIT-CODE,
@@ -571,7 +586,9 @@ CALLBACK can take one of four forms:
   - An (org-async-task ...) structure, which passed to an
     `org-async-call' invocation.
   - A list of callbacks, which are individually evaluated.
-- nil, which does nothing."
+- nil, which does nothing.
+
+When BLOCKING is set, all callback tasks are made blocking."
   (cond
    ((stringp callback)
     (message callback exit-code process-buffer info))
@@ -579,9 +596,11 @@ CALLBACK can take one of four forms:
     (funcall callback exit-code process-buffer info))
    ((consp callback)
     (if (eq (car callback) 'org-async-task)
-        (org-async-call callback)
+        (if blocking
+            (push (org-async-call callback) org-async--blocking-tasks)
+          (org-async-call callback))
       (dolist (clbk callback)
-        (org-async--execute-callback clbk exit-code process-buffer info))))
+        (org-async--execute-callback clbk exit-code process-buffer info blocking))))
    ((null callback)) ; Do nothing.
    (t (message "Ignoring invalid `org-async-call' callback: %S" callback))))
 
