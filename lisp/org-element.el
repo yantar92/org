@@ -5703,8 +5703,15 @@ better to remove the commands advised in such a way from this list.")
 (defmacro org-element--format-element (element)
   "Format ELEMENT for printing in diagnostics."
   `(let ((print-length 50)
-         (print-level 5))
-     (prin1-to-string ,element)))
+	 (print-level 5))
+     (let* ((printed-element (purecopy ,element))
+	    (props (nth 1 printed-element)))
+       (while props
+	 (when (memq (car props) '(:title :raw-value :value :tag))
+	   (when (stringp (cadr props))
+	     (setcar (cdr props) (md5 (cadr props)))))
+	 (setq props (cddr props)))
+       (prin1-to-string printed-element))))
 
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
@@ -6190,7 +6197,7 @@ It is a symbol among nil, t, or a number representing smallest level of
 modified headline.  The level considers headline levels both before
 and after the modification.")
 
-(defun org-element--cache-sync (buffer &optional threshold future-change offset)
+(defun org-element--cache-sync (buffer &optional threshold future-change offset force)
   "Synchronize cache with recent modification in BUFFER.
 
 When optional argument THRESHOLD is non-nil, do the
@@ -6203,13 +6210,18 @@ FUTURE-CHANGE, when non-nil, is a buffer position where changes
 not registered yet in the cache are going to happen.  OFFSET is the
 change offset.  It is used in `org-element--cache-submit-request',
 where cache is partially updated before current modification are
-actually submitted."
+actually submitted.
+
+FORCE, when non-nil will force the synchronization even when
+`org-element--cache-active-p' returns nil."
   (when (buffer-live-p buffer)
     (org-with-base-buffer buffer
       ;; Do not sync when, for example, in the middle of
       ;; `combine-change-calls'.  See the commentary inside
-      ;; `org-element--cache-active-p'.
-      (when (and org-element--cache-sync-requests (org-element--cache-active-p))
+      ;; `org-element--cache-active-p'.  Such situation may occur when
+      ;; sync timer triggers in the middle of `combine-change-calls'.
+      (when (and org-element--cache-sync-requests
+                 (or force (org-element--cache-active-p)))
         ;; Check if the buffer have been changed outside visibility of
         ;; `org-element--cache-before-change' and `org-element--cache-after-change'.
         (if (/= org-element--cache-last-buffer-size (buffer-size))
@@ -7233,7 +7245,7 @@ change, as an integer."
                                      (org-element--request-offset next)))
                   end)
 	       (<= (setq delete-from (org-element--request-beg next))
-                  end))
+                   end))
 	  ;; Current changes can be merged with first sync request: we
 	  ;; can save a partial cache synchronization.
 	  (progn
@@ -7297,15 +7309,15 @@ change, as an integer."
 			(max (org-element-property :end first)
                              (org-element--request-end next)))
                   (setf (org-element--request-parent next) (org-element-property :parent first))))))
-	;; Ensure cache is correct up to END.  Also make sure that NEXT,
-	;; if any, is no longer a 0-phase request, thus ensuring that
-	;; phases are properly ordered.  We need to provide OFFSET as
-	;; optional parameter since current modifications are not known
-	;; yet to the otherwise correct part of the cache (i.e, before
-	;; the first request).
-	(org-element--cache-log-message "Adding new phase 0 request")
-	(when next (org-element--cache-sync (current-buffer) end beg offset))
-	(let ((first (org-element--cache-for-removal beg end offset)))
+        ;; Ensure cache is correct up to END.  Also make sure that NEXT,
+        ;; if any, is no longer a 0-phase request, thus ensuring that
+        ;; phases are properly ordered.  We need to provide OFFSET as
+        ;; optional parameter since current modifications are not known
+        ;; yet to the otherwise correct part of the cache (i.e, before
+        ;; the first request).
+        (org-element--cache-log-message "Adding new phase 0 request")
+        (when next (org-element--cache-sync (current-buffer) end beg offset 'force))
+        (let ((first (org-element--cache-for-removal beg end offset)))
 	  (if first
 	      (push (let ((first-beg (org-element-property :begin first))
 			  (key (org-element--cache-key first)))
@@ -7442,9 +7454,9 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
                                    (point-min) (point-max)
                                    (org-element--format-element element)
                                    (org-element--format-element real-element)
-                                   (org-element--cache-find (1- (org-element-property :begin real-element)))
-                                   (car (org-element--cache-find (org-element-property :begin real-element) 'both))
-                                   (cdr (org-element--cache-find (org-element-property :begin real-element) 'both)))
+                                   (org-element--format-element (org-element--cache-find (1- (org-element-property :begin real-element))))
+                                   (org-element--format-element (car (org-element--cache-find (org-element-property :begin real-element) 'both)))
+                                   (org-element--format-element (cdr (org-element--cache-find (org-element-property :begin real-element) 'both))))
           (org-element-cache-reset))))))
 
 ;;; Cache persistence
