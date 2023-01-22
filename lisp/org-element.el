@@ -5516,15 +5516,8 @@ better to remove the commands advised in such a way from this list.")
 (defmacro org-element--format-element (element)
   "Format ELEMENT for printing in diagnostics."
   `(let ((print-length 50)
-	 (print-level 5))
-     (let* ((printed-element (purecopy ,element))
-	    (props (nth 1 printed-element)))
-       (while props
-	 (when (memq (car props) '(:title :raw-value :value :tag))
-	   (when (stringp (cadr props))
-	     (setcar (cdr props) (md5 (cadr props)))))
-	 (setq props (cddr props)))
-       (prin1-to-string printed-element))))
+         (print-level 5))
+     (prin1-to-string ,element)))
 
 (defmacro org-element--cache-log-message (format-string &rest args)
   "Add a new log message for org-element-cache."
