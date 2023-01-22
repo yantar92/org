@@ -7,7 +7,7 @@
 ;; Maintainer: Bastien Guerry <bzg@gnu.org>
 ;; Keywords: outlines, hypermedia, calendar, wp
 ;; URL: https://orgmode.org
-;; Package-Requires: ((emacs "25.1"))
+;; Package-Requires: ((emacs "26.1"))
 
 ;; Version: 9.6.1
 
@@ -7131,6 +7131,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
 	    (old-level (if (string-match org-outline-regexp-bol txt)
 			   (- (match-end 0) (match-beginning 0) 1)
 		         -1))
+            level-indicator?
 	    (force-level
 	     (cond
 	      (level (prefix-numeric-value level))
@@ -7138,7 +7139,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
 	      ;; headline, use the number of stars as the forced level.
 	      ((and (org-match-line "^\\*+[ \t]*$")
 		    (not (eq ?* (char-after))))
-	       (org-outline-level))
+	       (setq level-indicator? (org-outline-level)))
 	      ((looking-at-p org-outline-regexp-bol) (org-outline-level))))
 	    (previous-level
 	     (save-excursion
@@ -7160,8 +7161,8 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
 	    (org-odd-levels-only nil)
 	    beg end newend)
        ;; Remove the forced level indicator.
-       (when (and force-level (not level))
-         (delete-region (line-beginning-position) (point)))
+       (when level-indicator?
+         (delete-region (line-beginning-position) (line-beginning-position 2)))
        ;; Paste before the next visible heading or at end of buffer,
        ;; unless point is at the beginning of a headline.
        (unless (and (bolp) (org-at-heading-p))
@@ -8688,12 +8689,12 @@ or to another Org file, automatically push the old position onto the ring."
   "Check if the current file should receive notes in reversed order."
   (cond
    ((not org-reverse-note-order) nil)
-   ((eq t org-reverse-note-order) t)
-   ((not (listp org-reverse-note-order)) nil)
-   (t (catch 'exit
+   ((listp org-reverse-note-order)
+    (catch 'exit
         (dolist (entry org-reverse-note-order)
           (when (string-match (car entry) buffer-file-name)
-	    (throw 'exit (cdr entry))))))))
+	    (throw 'exit (cdr entry))))))
+   (t org-reverse-note-order)))
 
 (defvar org-agenda-new-buffers nil
   "Buffers created to visit agenda files.")
