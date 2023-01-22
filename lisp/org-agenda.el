@@ -54,6 +54,7 @@
 (require 'org)
 (require 'org-macs)
 (require 'org-refile)
+(require 'org-element)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))
@@ -80,11 +81,6 @@
 (declare-function org-columns-quit              "org-colview" ())
 (declare-function diary-date-display-form       "diary-lib"  (&optional type))
 (declare-function org-mobile-write-agenda-for-mobile "org-mobile" (file))
-(declare-function org-element-property "org-element" (property element))
-(declare-function org-element--cache-active-p "org-element"
-                  (&optional called-from-cache-change-func-p))
-(declare-function org-element-lineage "org-element"
-                  (datum &optional types with-self))
 (declare-function org-habit-insert-consistency-graphs
 		  "org-habit" (&optional line))
 (declare-function org-is-habit-p "org-habit" (&optional pom))
@@ -94,8 +90,6 @@
 (declare-function org-add-archive-files "org-archive" (files))
 (declare-function org-capture "org-capture" (&optional goto keys))
 (declare-function org-clock-modify-effort-estimate "org-clock" (&optional value))
-
-(declare-function org-element-type "org-element" (&optional element))
 
 (defvar calendar-mode-map)
 (defvar org-clock-current-task)
@@ -1184,7 +1178,9 @@ Custom commands can set this variable in the options section."
   "Non-nil means start the overview always on the specified weekday.
 0 denotes Sunday, 1 denotes Monday, etc.
 When nil, always start on the current day.
-Custom commands can set this variable in the options section."
+Custom commands can set this variable in the options section.
+
+This variable only applies when agenda spans either 7 or 14 days."
   :group 'org-agenda-daily/weekly
   :type '(choice (const :tag "Today" nil)
 		 (integer :tag "Weekday No.")))
@@ -4361,7 +4357,10 @@ This check for agenda markers in all agenda buffers currently active."
 Custom commands can set this variable in the options section.
 This is usually a string like \"2007-11-01\", \"+2d\" or any other
 input allowed when reading a date through the Org calendar.
-See the docstring of `org-read-date' for details.")
+See the docstring of `org-read-date' for details.
+
+This variable has no effect when `org-agenda-start-on-weekday' is set
+and agenda spans 7 or 14 days.")
 (defvar org-starting-day nil) ; local variable in the agenda buffer
 (defvar org-arg-loc nil) ; local variable
 
@@ -7081,8 +7080,7 @@ scheduled items with an hour specification like [h]h:mm."
 (defun org-agenda-get-blocks ()
   "Return the date-range information for agenda display."
   (with-no-warnings (defvar date))
-  (let* ((props (list 'face nil
-		      'org-not-done-regexp org-not-done-regexp
+  (let* ((props (list 'org-not-done-regexp org-not-done-regexp
 		      'org-todo-regexp org-todo-regexp
 		      'org-complex-heading-regexp org-complex-heading-regexp
 		      'mouse-face 'highlight
@@ -7091,9 +7089,9 @@ scheduled items with an hour specification like [h]h:mm."
 			      (abbreviate-file-name buffer-file-name))))
 	 (regexp org-tr-regexp)
 	 (d0 (calendar-absolute-from-gregorian date))
-	 marker hdmarker ee txt d1 d2 s1 s2 category
-	 level todo-state tags pos head donep inherited-tags
-         effort effort-minutes)
+         face marker hdmarker ee txt d1 d2 s1 s2 category level
+	 todo-state tags pos head donep inherited-tags effort
+	 effort-minutes)
     (goto-char (point-min))
     (while (re-search-forward regexp nil t)
       (catch :skip
@@ -7131,6 +7129,9 @@ scheduled items with an hour specification like [h]h:mm."
 	      (setq donep (member todo-state org-done-keywords))
 	      (when (and donep org-agenda-skip-timestamp-if-done)
 		(throw :skip t))
+              (setq face (if (= d1 d2)
+                             'org-agenda-calendar-event
+                           'org-agenda-calendar-daterange))
 	      (setq marker (org-agenda-new-marker (point))
 		    category (org-get-category))
               (setq effort (save-match-data (or (get-text-property (point) 'effort)
@@ -7167,21 +7168,16 @@ scheduled items with an hour specification like [h]h:mm."
                                'effort effort
                                'effort-minutes effort-minutes)
                              level category tags
-			     (save-match-data
-			       (let ((hhmm1 (and (string-match org-ts-regexp1 s1)
-						 (match-string 6 s1)))
-				     (hhmm2 (and (string-match org-ts-regexp1 s2)
-						 (match-string 6 s2))))
-				 (cond ((string= hhmm1 hhmm2)
-					(concat "<" start-time ">--<" end-time ">"))
-				       ((and (= d1 d0) (= d2 d0))
-					(concat "<" start-time ">--<" end-time ">"))
-                                       ((= d1 d0)
-					(concat "<" start-time ">"))
-				       ((= d2 d0)
-					(concat "<" end-time ">")))))
+			     (cond
+                              ((and (= d1 d0) (= d2 d0))
+			       (concat "<" start-time ">--<" end-time ">"))
+                              ((= d1 d0)
+			       (concat "<" start-time ">"))
+			      ((= d2 d0)
+			       (concat "<" end-time ">")))
 			     remove-re))))
 	      (org-add-props txt props
+                'face face
 		'org-marker marker 'org-hd-marker hdmarker
 		'type "block" 'date date
 		'level level
