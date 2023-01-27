@@ -12180,16 +12180,15 @@ example, to include your =.emacs= file, you could use:
 : #+INCLUDE: "~/.emacs" src emacs-lisp
 
 #+texinfo: @noindent
-The first parameter is the file name to include.  The optional second
-parameter specifies the block type: =example=, =export= or =src=.  The
-optional third parameter specifies the source code language to use for
-formatting the contents.  This is relevant to both =export= and =src=
-block types.
-
-If an included file is specified as having a markup language, Org
-neither checks for valid syntax nor changes the contents in any way.
-For example and source blocks, Org code-escapes the contents before
-inclusion.
+There are three positional arguments after the include keyword, they are:
+1. The file name, this is the sole mandatory argument.  Org neither
+   checks for correctness or validates the content in any way.
+2. The block name to wrap the file content in.  When this is
+   =example=, =export=, or =src= the content is escaped by
+   ~org-escape-code-in-string~.  Arbitrary block names may be given,
+   however block names starting with =:= must be quoted, i.e. =":name"=.
+3. The source code language to use for formatting the contents.  This is relevant
+   to both =export= and =src= block types.
 
 #+cindex: @samp{minlevel}, include
 If an included file is not specified as having any markup language,
@@ -17133,13 +17132,13 @@ The "biblatex" and "csl" export processors support bibliography
 options through a property list attached to the =PRINT_BIBLIOGRAPHY=
 keyword.  For example,
 
-: #print_bibliography: :keyword algebra :type book
+: #+print_bibliography: :keyword algebra :type book
 
 Values including spaces must be surrounded with double quotes.  If you
 need to use a key multiple times, you can separate its values with
 commas, but without any space in-between:
 
-: #print_bibliography: :keyword "algebraic logic" :nottype article,book
+: #+print_bibliography: :keyword "algebraic logic" :nottype article,book
 
 The "biblatex" export processor accepts all options supported by
 BibLaTeX's ~\printbibliography~ command, while the "csl" processor
@@ -17315,8 +17314,15 @@ or
 - =<language>= ::
 
   #+cindex: language, in code blocks
-  Mandatory.  It is the identifier of the source code language in the
+  Optional.  It is the identifier of the source code language in the
   block.  See [[*Languages]], for identifiers of supported languages.
+
+  When =<language>= identifier is omitted, the block also cannot
+  have =<switches>= and =<header arguments>=.
+
+  Language identifier is also used to fontify code blocks in Org
+  buffers, when ~org-src-fontify-natively~ is set to non-~nil~.  See
+  [[*Editing Source Code]].
 
 - =<switches>= ::
 
@@ -18953,6 +18959,9 @@ group ~org-edit-structure~.
   header line, then the edit buffer uses that major mode.  Use this
   variable to arbitrarily map language identifiers to major modes.
 
+  When language identifier is omitted in the src block, Org mode's
+  behavior is undefined.
+
 - ~org-src-window-setup~ ::
 
   #+vindex: org-src-window-setup
@@ -18978,10 +18987,13 @@ group ~org-edit-structure~.
 
 #+vindex: org-src-fontify-natively
 #+vindex: org-src-block-faces
-Set ~org-src-fontify-natively~ to non-~nil~ to turn on native code
-fontification in the /Org/ buffer.  Fontification of code blocks can
-give visual separation of text and code on the display page.  To
-further customize the appearance of ~org-block~ for specific
+Fontification of code blocks can give visual separation of text and
+code on the display page.  Set ~org-src-fontify-natively~ to non-~nil~
+to turn on native code fontification in the /Org/ buffer.  The
+fontification follows the major mode used to edit the code block (see
+~org-src-lang-modes~ above).
+
+To further customize the appearance of ~org-block~ for specific
 languages, customize ~org-src-block-faces~.  The following example
 shades the background of regular blocks, and colors source blocks only
 for Python and Emacs Lisp languages.
