@@ -668,7 +668,8 @@ If an org-latex-overlay is already present, nothing is done."
                 'org-latex-overlay))
        (when-let* ((element (org-element-context))
                    ((eq (org-element-type element) type))
-                   (elem-beg (org-element-property :begin element))
+                   (elem-beg (or (org-element-property :post-affiliated element)
+                                 (org-element-property :begin element)))
                    (elem-end (- (org-element-property :end element)
                                 (or (org-element-property :post-blank element) 0)
                                 (if (eq (char-before (org-element-property :end element))
@@ -1044,7 +1045,8 @@ Some of the options can be changed using the variable
          (entries
           (mapcar
            (lambda (element)
-             (list (org-element-property :begin element)
+             (list (or (org-element-property :post-affiliated element)
+                       (org-element-property :begin element))
                    (- (org-element-property :end element)
                       (or (org-element-property :post-blank element) 0)
                       (if (eq (char-before (org-element-property :end element))
@@ -1957,7 +1959,8 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
            (and org-latex-preview-numbered
                 (org-latex-preview--environment-numbering-table))))
       (dolist (element (org-latex-preview-collect-fragments beg end))
-        (pcase-let* ((begin (org-element-property :begin element))
+        (pcase-let* ((begin (or (org-element-property :post-affiliated element)
+                                (org-element-property :begin element)))
                      (`(,fg ,bg) (org-latex-preview--colors-at begin))
                      (value (org-element-property :value element))
                      (number (and numbering-table
