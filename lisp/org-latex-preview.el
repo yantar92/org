@@ -1436,7 +1436,13 @@ The path of the created LaTeX file is returned."
                              (org-latex-preview-precompile processing-info header))))
                   (concat "%& " format-file)
                 header))
-      (insert "\n\\begin{document}\n")
+      ;; The \abovedisplayskip length must be set after \begin{document} because
+      ;; it is usually set during the font size intialisation that occurs at
+      ;; \begin{document}.  We can either modify the \normalsize command to set
+      ;; the \abovedisplayskip length, or just set it after \begin{document}.
+      (insert "\n\\begin{document}\n\n"
+              "\\setlength\\abovedisplayskip{0pt}"
+              " % Remove padding before equation environments.\n\n")
       (dolist (fragment-info fragments)
         (insert
          "\n\\begin{preview}\n"
