@@ -1429,7 +1429,9 @@ The path of the created LaTeX file is returned."
               (format "\n\\setlength{\\textwidth}{%s}\n" w))
              ((and (floatp w) (<= 0.0 w 1.0))
               (format "\n\\setlength{\\textwidth}{%s\\paperwidth}\n" w))))
-          "\n\\usepackage[active,tightpage,auctex]{preview}\n")))
+          "\n\\usepackage[active,tightpage,auctex]{preview}\n"))
+        (write-region-inhibit-fsync t)
+        (coding-system-for-write buffer-file-coding-system))
     (with-temp-file tex-temp-name
       (insert (if-let ((format-file
                         (and org-latex-preview-use-precompilation
