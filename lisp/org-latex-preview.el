@@ -1400,6 +1400,44 @@ previews."
            ;; ;Note: ov has buffer extended-info, no need to set current-buffer
            (delete-overlay ov)))
 
+(defvar-local org-latex-preview--preamble-content nil
+  "Cache of the LaTeX preamble for snippet preview.")
+
+(defun org-latex-preview--clear-preamble-cache ()
+  "Set `org-latex-preview--preamble-content' to nil."
+  (setq org-latex-preview--preamble-content nil))
+
+(add-hook 'org-mode-hook #'org-latex-preview--clear-preamble-cache)
+
+(defun org-latex-preview--get-preamble (&optional buf)
+  "Obtain the LaTeX preview for snippet preview in BUF."
+  (with-current-buffer (or buf (current-buffer))
+    (org-fold-core-ignore-modifications
+      (let ((info (org-combine-plists
+                   (org-export--get-export-attributes
+                    (org-export-get-backend 'latex))
+                   (org-export--get-buffer-attributes)
+                   '(:time-stamp-file nil)))
+            org-export-use-babel
+            (org-latex-conditional-features
+             (cl-remove-if
+              (lambda (feat)
+                (plist-get (alist-get (cdr feat)
+                                      org-latex-feature-implementations)
+                           :not-preview))
+              org-latex-conditional-features)))
+        (org-export-with-buffer-copy
+         :drop-narrowing t
+         (font-lock-mode -1)
+         (setq info
+               (org-export--annotate-info (org-export-get-backend 'latex) info))
+         (org-latex-make-preamble
+          (org-combine-plists
+           (org-export-get-environment
+            (org-export-get-backend 'latex))
+           '(:time-stamp-file nil))
+          org-latex-preview-preamble 'snippet))))))
+
 (defun org-latex-preview--create-tex-file (processing-info fragments)
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
 
@@ -1418,11 +1456,9 @@ The path of the created LaTeX file is returned."
         (header
          (concat
           (or (plist-get processing-info :latex-header)
-              (org-latex-make-preamble
-               (org-combine-plists
-                (org-export-get-environment (org-export-get-backend 'latex))
-                '(:time-stamp-file nil))
-               org-latex-preview-preamble 'snippet))
+              org-latex-preview--preamble-content
+              (setq org-latex-preview--preamble-content
+                    (org-latex-preview--get-preamble)))
           (let ((w org-latex-preview-width))
             (cond
              ((stringp w)
