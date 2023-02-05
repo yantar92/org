@@ -168,32 +168,25 @@ state, as a property list."
           (org-cite-natbib--build-optional-arguments citation info)
           (org-cite-natbib--build-arguments citation)))
 
-(defun org-cite-natbib-use-package (output &rest _)
-  "Ensure output requires \"natbib\" package.
-OUTPUT is the final output of the export process."
-  (with-temp-buffer
-    (save-excursion (insert output))
-    (when (search-forward "\\begin{document}" nil t)
-      ;; Ensure there is a \usepackage{natbib} somewhere or add one.
-      (goto-char (match-beginning 0))
-      (let ((re (rx "\\usepackage" (opt "[" (*? nonl) "]") "{natbib}")))
-        (unless (re-search-backward re nil t)
-          (insert
-           (format "\\usepackage%s{natbib}\n"
-                   (if (null org-cite-natbib-options)
-                       ""
-                     (format "[%s]"
-                             (mapconcat #'symbol-name
-                                        org-cite-natbib-options
-                                        ","))))))))
-    (buffer-string)))
+(defun org-cite-natbib--generate-latex-preamble (info)
+  "Ensure that the \"natbib\" package is loaded.
+INFO is a plist used as a communication channel."
+  (and (not (string-match
+             (rx "\\usepackage" (opt "[" (*? nonl) "]") "{natbib}")
+             (plist-get info :latex-full-header)))
+       (format "\\usepackage%s{natbib}\n"
+               (if (null org-cite-natbib-options)
+                   ""
+                 (format "[%s]"
+                         (mapconcat #'symbol-name
+                                    org-cite-natbib-options
+                                    ","))))))
 
 
 ;;; Register `natbib' processor
 (org-cite-register-processor 'natbib
   :export-bibliography #'org-cite-natbib-export-bibliography
   :export-citation #'org-cite-natbib-export-citation
-  :export-finalizer #'org-cite-natbib-use-package
   :cite-styles
   '((("author" "a") ("caps" "a") ("full" "f"))
     (("noauthor" "na") ("bare" "b"))

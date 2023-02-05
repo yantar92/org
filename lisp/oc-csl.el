@@ -872,27 +872,11 @@ INFO is the export state, as a property list."
        ;; process.
        (org-cite-parse-elements output)))))
 
-(defun org-cite-csl-finalizer (output _keys _files _style _backend info)
-  "Add \"hanging\" package if missing from LaTeX output.
-OUTPUT is the export document, as a string.  INFO is the export state, as a
-property list."
-  (org-require-package 'citeproc)
-  (if (not (eq 'org-latex (org-cite-csl--output-format info)))
-      output
-    (with-temp-buffer
-      (save-excursion (insert output))
-      (when (search-forward "\\begin{document}" nil t)
-	(goto-char (match-beginning 0))
-	;; Insert the CSL-specific parts of the LaTeX preamble.
-	(insert (org-cite-csl--generate-latex-preamble info)))
-      (buffer-string))))
-
 
 ;;; Register `csl' processor
 (org-cite-register-processor 'csl
   :export-citation #'org-cite-csl-render-citation
   :export-bibliography #'org-cite-csl-render-bibliography
-  :export-finalizer #'org-cite-csl-finalizer
   :cite-styles
   '((("author" "a") ("bare" "b") ("caps" "c") ("full" "f") ("bare-caps" "bc") ("caps-full" "cf") ("bare-caps-full" "bcf"))
     (("noauthor" "na") ("bare" "b") ("caps" "c") ("bare-caps" "bc"))

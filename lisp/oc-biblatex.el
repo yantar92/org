@@ -379,61 +379,47 @@ INFO is the export state, as a property list."
        (other
         (user-error "Invalid entry %S in `org-cite-biblatex-styles'" other))))))
 
-(defun org-cite-biblatex-prepare-preamble (output _keys files style &rest _)
-  "Prepare document preamble for \"biblatex\" usage.
+(defun org-cite-biblatex--generate-latex-usepackage (info)
+  "Ensure that the biblatex package is loaded.
+This is performed by extracting relevant information from the
+INFO export plist, and modifying any existing
+\\usepackage{biblatex} statement in the LaTeX header."
+  (let ((style (org-cite-bibliography-style info))
+        (usepackage-rx (rx "\\usepackage"
+                           (opt (group "[" (*? anything) "]"))
+                           "{biblatex}")))
+    (concat
+     (if (string-match usepackage-rx (plist-get info :latex-full-header))
+         ;; "biblatex" package loaded, but with none (or different) options.
+         ;; Replace with style-including command.
+         (plist-put info :latex-full-header
+                    (replace-match
+                     (format "\\usepackage%s{biblatex}"
+                             (save-match-data
+                               (org-cite-biblatex--package-options nil style)))
+                     t t
+                     (plist-get info :latex-full-header)))
+       ;; No "biblatex" package loaded.  Insert "usepackage" command
+       ;; with appropriate options, including style.
+       (format "\\usepackage%s{biblatex}\n"
+               (org-cite-biblatex--package-options
+                org-cite-biblatex-options style))))))
 
-OUTPUT is the final output of the export process.  FILES is the list of file
-names used as the bibliography.
-
-This function ensures \"biblatex\" package is required.  It also adds resources
-to the document, and set styles."
-  (with-temp-buffer
-    (save-excursion (insert output))
-    (when (search-forward "\\begin{document}" nil t)
-      ;; Ensure there is a \usepackage{biblatex} somewhere or add one.
-      ;; Then set options.
-      (goto-char (match-beginning 0))
-      (let ((re (rx "\\usepackage"
-                    (opt (group "[" (*? anything) "]"))
-                    "{biblatex}")))
-        (cond
-         ;; No "biblatex" package loaded.  Insert "usepackage" command
-         ;; with appropriate options, including style.
-         ((not (re-search-backward re nil t))
-          (save-excursion
-            (insert
-             (format "\\usepackage%s{biblatex}\n"
-                     (org-cite-biblatex--package-options
-                      org-cite-biblatex-options style)))))
-         ;; "biblatex" package loaded, but without any option.
-         ;; Include style only.
-         ((not (match-beginning 1))
-          (search-forward "{" nil t)
-          (insert (org-cite-biblatex--package-options nil style)))
-         ;; "biblatex" package loaded with some options set.  Override
-         ;; style-related options with ours.
-         (t
-          (replace-match
-           (save-match-data
-             (org-cite-biblatex--package-options (match-string 1) style))
-           nil nil nil 1))))
-      ;; Insert resources below.
-      (forward-line)
-      (insert (mapconcat (lambda (f)
-                           (format "\\addbibresource%s{%s}"
-                                   (if (org-url-p f) "[location=remote]" "")
-                                   f))
-                         files
-                         "\n")
-              "\n"))
-    (buffer-string)))
+(defun org-cite-biblatex--generate-latex-bibresources (info)
+  "From INFO generate LaTeX that loads the relevant bibliography resource files."
+  (let ((files (plist-get info :bibliography)))
+    (mapconcat (lambda (f)
+                 (format "\\addbibresource%s{%s}"
+                         (if (org-url-p f) "[location=remote]" "")
+                         f))
+               files
+               "\n")))
 
 
 ;;; Register `biblatex' processor
 (org-cite-register-processor 'biblatex
   :export-bibliography #'org-cite-biblatex-export-bibliography
   :export-citation #'org-cite-biblatex-export-citation
-  :export-finalizer #'org-cite-biblatex-prepare-preamble
   :cite-styles #'org-cite-biblatex-list-styles)
 
 (provide 'oc-biblatex)
