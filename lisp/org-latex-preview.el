@@ -25,11 +25,22 @@
 
 ;;; Code:
 
+(require 'org-macs)
+(org-assert-version)
+
+(require 'org-compat)
+(require 'ox-latex)
+
+(declare-function org-persist-read "org-persist")
+(declare-function org-persist-register "org-persist")
+(declare-function org-persist-unregister "org-persist")
+
 (defgroup org-latex-preview nil
   "Options for generation of LaTeX previews in Org mode."
   :tag "Org LaTeX Preview"
   :group 'org)
 
+;;;###autoload
 (defcustom org-latex-preview-options
   '(:foreground auto :background "Transparent" :scale 1.0
     :html-foreground "Black" :html-background "Transparent"
@@ -124,6 +135,7 @@ All available processes and theirs documents can be found in
   :package-version '(Org . "9.7")
   :type 'symbol)
 
+;;;###autoload
 (defcustom org-latex-preview-process-alist
   '((dvipng
      :programs ("latex" "dvipng")
@@ -767,6 +779,7 @@ manual: (elisp) Overlay Properties."
       (if (eq (overlay-get ov 'preview-state) 'active)
           (move-overlay ov (overlay-end ov) beg)))))
 
+;;;###autoload
 (define-minor-mode org-latex-preview-auto-mode
   "Minor mode to automatically preview LaTeX fragments.
 
@@ -807,6 +820,7 @@ BEG and END are buffer positions."
    org-latex-preview-default-process
    beg end))
 
+;;;###autoload
 (defun org-latex-preview (&optional arg)
   "Toggle preview of the LaTeX fragment at point.
 
@@ -1056,6 +1070,7 @@ Some of the options can be changed using the variable
            elements)))
     (org-latex-preview-place processing-type entries numbering-offsets)))
 
+;;;###autoload
 (defun org-latex-preview-place (processing-type entries &optional numbering-offsets latex-preamble)
   "Preview LaTeX math fragments ENTRIES using PROCESSING-TYPE.
 Each entry of ENTRIES should be a list of 2-3 items, either

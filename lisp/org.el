@@ -15835,8 +15835,6 @@ environment remains unintended."
 
 ;;;; LaTeX fragments
 
-(require 'org-latex-preview)
-
 (defun org-inside-LaTeX-fragment-p (&optional element)
   "Test if point is inside a LaTeX fragment or environment.
 
