@@ -1424,13 +1424,14 @@ previews."
                    (org-export--get-buffer-attributes)
                    '(:time-stamp-file nil)))
             org-export-use-babel
-            (org-latex-conditional-features
-             (cl-remove-if
-              (lambda (feat)
-                (plist-get (alist-get (cdr feat)
-                                      org-latex-feature-implementations)
-                           :not-preview))
-              org-latex-conditional-features)))
+            ;; (org-latex-conditional-features
+            ;;  (cl-remove-if
+            ;;   (lambda (feat)
+            ;;     (plist-get (alist-get (cdr feat)
+            ;;                           org-latex-feature-implementations)
+            ;;                :not-preview))
+            ;;   org-latex-conditional-features))
+            )
         (org-export-with-buffer-copy
          :drop-narrowing t
          (font-lock-mode -1)
