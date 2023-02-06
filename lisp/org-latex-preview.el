@@ -850,7 +850,6 @@ fragments in the buffer."
     (message "LaTeX previews removed from buffer"))
    ;; Preview whole buffer.
    ((equal arg '(16))
-    (message "Creating LaTeX previews in buffer...")
     (org-latex-preview--preview-region (point-min) (point-max)))
    ;; Clear current section.
    ((equal arg '(4))
@@ -864,7 +863,6 @@ fragments in the buffer."
          (region-end)
        (org-with-limited-levels (org-entry-end-position)))))
    ((use-region-p)
-    (message "Creating LaTeX previews in region...")
     (org-latex-preview--preview-region (region-beginning) (region-end)))
    ;; Toggle preview on LaTeX code at point.
    ((let ((datum (org-element-context)))
@@ -876,7 +874,6 @@ fragments in the buffer."
                  (save-excursion
                    (org-with-limited-levels (org-back-to-heading t) (point)))))
           (end (org-with-limited-levels (org-entry-end-position))))
-      (message "Creating LaTeX previews in section...")
       (org-latex-preview--preview-region beg end)))))
 
 (defun org-latex-preview--auto-aware-toggle (datum)
@@ -900,7 +897,6 @@ should it be enabled."
       ((or (pred not) (guard (not org-latex-preview-auto-mode)))
        (if (org-latex-preview-clear-overlays beg end)
            (message "LaTeX preview removed")
-         (message "Creating LaTeX preview...")
          (org-latex-preview--preview-region beg end)))
       ;; When on a just written/edited fragment that should be previewed.
       ((and ov (guard (eq (overlay-get ov 'preview-state) 'modified)))
@@ -1110,12 +1106,11 @@ is either the substring between BEG and END or (when provided) VALUE."
                         :key hash)
                   fragment-info))
           (setq prev-fg fg prev-bg bg))))
-    (if fragment-info
-        (org-latex-preview--create-image-async
-         processing-type
-         (nreverse fragment-info)
-         latex-preamble)
-      (message "Creating LaTeX previews... done."))))
+    (when fragment-info
+      (org-latex-preview--create-image-async
+       processing-type
+       (nreverse fragment-info)
+       latex-preamble))))
 
 (defun org-latex-preview--colors-at (pos)
   "Find colors for LaTeX previews to be inserted at POS."
@@ -1301,8 +1296,7 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
     ;;         ├─ (success)
     ;;         │  ├─ Call `org-latex-preview--check-all-fragments-produced',
     ;;         │  │  which can rerun the async tree if needed.
-    ;;         │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback').
-    ;;         │  └─ Message "creating latex previews... done.".
+    ;;         │  └─ Delete tempfiles (`org-latex-preview--cleanup-callback').
     ;;         └─ (failure)
     ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
     ;;            └─ Message "creating latex previews... failed. please see %s for details".
@@ -1313,8 +1307,7 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
     ;;    ├─ (success)
     ;;    │  ├─ Call `org-latex-preview--check-all-fragments-produced',
     ;;    │  │  which can rerun the async tree if needed.
-    ;;    │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback')
-    ;;    │  └─ Message "creating latex previews... done."
+    ;;    │  └─ Delete tempfiles (`org-latex-preview--cleanup-callback')
     ;;    └─ (failure)
     ;;       ├─ Run `org-latex-preview--failure-callback' (remove overlays).
     ;;       └─ Message "creating latex previews... failed. please see %s for details".
@@ -1326,9 +1319,8 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
     ;;         ├─ (success)
     ;;         │  ├─ Call `org-latex-preview--generic-callback'.
     ;;         │  ├─ Delete tempfiles (`org-latex-preview--cleanup-callback')
-    ;;         │  ├─ Call `org-latex-preview--check-all-fragments-produced',
-    ;;         │  │  which can rerun the async tree if needed.
-    ;;         │  └─ Message "creating latex previews... done."
+    ;;         │  └─ Call `org-latex-preview--check-all-fragments-produced',
+    ;;         │     which can rerun the async tree if needed.
     ;;         └─ (failure)
     ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
     ;;            └─ Message "creating latex previews... failed. please see %s for details".
@@ -1364,8 +1356,7 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
       (plist-put (cddr img-extract-async) :success
                  (list ; The order is important here.
                   #'org-latex-preview--check-all-fragments-produced
-                  #'org-latex-preview--cleanup-callback
-                  "Creating LaTeX previews... done."))
+                  #'org-latex-preview--cleanup-callback))
       (plist-put (cddr img-extract-async) :failure
                  (list
                   #'org-latex-preview--failure-callback
@@ -1383,8 +1374,7 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
                     (list ; The order is important here.
                      #'org-latex-preview--generic-callback
                      #'org-latex-preview--cleanup-callback
-                     #'org-latex-preview--check-all-fragments-produced
-                     "Creating LaTeX previews... done."))))
+                     #'org-latex-preview--check-all-fragments-produced))))
       (if (and (eq processing-type 'dvipng)
                (member "--follow" (cadr img-extract-async)))
           (org-async-call img-extract-async)
@@ -1593,7 +1583,6 @@ The path of the created LaTeX file is returned."
 
 (defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
   "Schedule cleanup with EXTENDED-INFO."
-  (message "Scheduling cleanup")
   (run-with-idle-timer
    1.0 nil
    #'org-latex-preview--do-cleanup
