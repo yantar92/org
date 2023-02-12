@@ -1486,7 +1486,7 @@ The path of the created LaTeX file is returned."
       (insert (if-let ((format-file
                         (and org-latex-preview-use-precompilation
                              (org-latex-preview-precompile processing-info header))))
-                  (concat "%& " format-file)
+                  (concat "%& " (file-name-sans-extension format-file))
                 header))
       ;; The \abovedisplayskip length must be set after \begin{document} because
       ;; it is usually set during the font size intialisation that occurs at
@@ -2031,71 +2031,88 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
       (message "Cleared LaTeX preview cache for %s."
                (if (or beg end) "region" "buffer")))))
 
-(defun org-latex-preview-precompile (processing-info header)
-  "Precompile/dump LaTeX HEADER (preamble) text.
+(defun org-latex-preview-precompile (processing-info preamble)
+  "Precompile/dump LaTeX PREAMBLE text.
 
-This dump is named using its sha1 hash and placed in
-`temporary-file-directory', and the name is returned.  If a dump
-file with this name already exists, simply return the name.
+The path to the format file (.fmt) is returned.  If the format
+file could not be found in the persist cache, it is generated
+according to PROCESSING-INFO and stored.
 
 This is intended to speed up Org's LaTeX preview generation
 process."
-  (let* ((header-hash
-          (thread-first
-            header
-            (concat
-             (prin1-to-string
-              (car (plist-get processing-info :programs)))
-             (plist-get processing-info :latex-processor)
-             (and (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)"
-                                  header)
-                  default-directory))
-            (sha1)
-            (substring 0 12)))
-         (header-no-ext
-          (expand-file-name header-hash temporary-file-directory))
-         (dump-file (concat header-no-ext ".fmt"))
-         (header-file (concat header-no-ext ".tex"))
-         (precompile-buffer
-          (with-current-buffer
-              (get-buffer-create org-latex-preview--precompile-log)
-            (erase-buffer)
-            (current-buffer))))
-    (if (file-exists-p dump-file)
-        header-no-ext
-      (with-temp-file header-file
-        (insert header "\n\\endofdump\n"))
-      (message "Precompiling Org LaTeX Preview preamble...")
-      (condition-case file
-          (org-compile-file
-           header-file (plist-get processing-info :latex-precompiler)
-           "fmt" nil precompile-buffer
-           (let ((org-tex-compiler
-                  (cdr (assoc (plist-get processing-info :latex-processor)
-                              org-latex-preview-compiler-command-map))))
-             `((?l . ,org-tex-compiler)
-               (?L . ,(car (split-string org-tex-compiler))))))
-        (:success
-         (kill-buffer precompile-buffer)
-         (delete-file header-file)
-         header-no-ext)
-        (error
-         (unless (= 0 (call-process "kpsewhich" nil nil nil "mylatexformat.ltx"))
-           (display-warning
-            '(org latex-preview preamble-precompilation)
-            "The LaTeX package \"mylatexformat\" is required for precompilation, but could not be found")
-           :warning)
-         (unless (= 0 (call-process "kpsewhich" nil nil nil "preview.sty"))
-           (display-warning
-            '(org latex-preview preamble-precompilation)
-            "The LaTeX package \"preview\" is required for precompilation, but could not be found")
-           :warning)
+  (let ((preamble-hash
+         (thread-first
+           preamble
+           (concat
+            (prin1-to-string
+             (car (plist-get processing-info :programs)))
+            (plist-get processing-info :latex-processor)
+            (and (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)"
+                                 preamble)
+                 default-directory))
+           (sha1))))
+    (or (cadr
+         (org-persist-read "LaTeX format file cache"
+                           (list :key preamble-hash)
+                           nil nil :read-related t))
+        (when-let ((dump-file
+                    (org-latex-preview--precompile-preamble
+                     processing-info preamble
+                     (expand-file-name preamble-hash temporary-file-directory))))
+          (cadr
+           (org-persist-register `(,"LaTeX format file cache"
+                                   (file ,dump-file))
+                                 (list :key preamble-hash)
+                                 :write-immediately t))))))
+
+(defun org-latex-preview--precompile-preamble (processing-info preamble basepath)
+  "Precompile PREAMBLE with \"mylatexformat\".
+The PREAMBLE string is placed in BASEPATH.tex and compiled
+according to PROCESSING-INFO. If compilation and dumping
+succeeded, BASEPATH.fmt will be returned.
+
+Should any errors occur during compilation, nil will be returned,
+and appropriate warnings may be emitted."
+  (let ((dump-file (concat basepath ".fmt"))
+        (preamble-file (concat basepath ".tex"))
+        (precompile-buffer
+         (with-current-buffer
+             (get-buffer-create org-latex-preview--precompile-log)
+           (erase-buffer)
+           (current-buffer))))
+    (with-temp-file preamble-file
+      (insert preamble "\n\\endofdump\n"))
+    (message "Precompiling Org LaTeX Preview preamble...")
+    (condition-case nil
+        (org-compile-file
+         preamble-file (plist-get processing-info :latex-precompiler)
+         "fmt" nil precompile-buffer
+         (let ((org-tex-compiler
+                (cdr (assoc (plist-get processing-info :latex-processor)
+                            org-latex-preview-compiler-command-map))))
+           `((?l . ,org-tex-compiler)
+             (?L . ,(car (split-string org-tex-compiler))))))
+      (:success
+       (kill-buffer precompile-buffer)
+       (delete-file preamble-file)
+       dump-file)
+      (error
+       (unless (= 0 (call-process "kpsewhich" nil nil nil "mylatexformat.ltx"))
          (display-warning
           '(org latex-preview preamble-precompilation)
-          (format "Failed to precompile preamble, see the \"%s\" buffer."
-                  precompile-buffer)
-          :warning)
-         nil)))))
+          "The LaTeX package \"mylatexformat\" is required for precompilation, but could not be found")
+         :warning)
+       (unless (= 0 (call-process "kpsewhich" nil nil nil "preview.sty"))
+         (display-warning
+          '(org latex-preview preamble-precompilation)
+          "The LaTeX package \"preview\" is required for precompilation, but could not be found")
+         :warning)
+       (display-warning
+        '(org latex-preview preamble-precompilation)
+        (format "Failed to precompile preamble (%s), see the \"%s\" buffer."
+                preamble-file precompile-buffer)
+        :warning)
+       nil))))
 
 (defun org-latex-preview--tex-styled (processing-type value options &optional html-p)
   "Apply LaTeX style commands to VALUE based on OPTIONS.
