@@ -7412,118 +7412,122 @@ the cache."
         ;; Synchronize cache up to the end of mapped region.
         (org-element-at-point to-pos)
         (cl-macrolet ((cache-root
-                       ;; Use the most optimal version of cache available.
-                       () `(if (memq granularity '(headline headline+inlinetask))
-                               (org-element--headline-cache-root)
-                             (org-element--cache-root)))
+                        ;; Use the most optimal version of cache available.
+                        () `(org-with-base-buffer nil
+                              (if (memq granularity '(headline headline+inlinetask))
+                                  (org-element--headline-cache-root)
+                                (org-element--cache-root))))
                       (cache-size
-                       ;; Use the most optimal version of cache available.
-                       () `(if (memq granularity '(headline headline+inlinetask))
-                               org-element--headline-cache-size
-                             org-element--cache-size))
+                        ;; Use the most optimal version of cache available.
+                        () `(org-with-base-buffer nil
+                              (if (memq granularity '(headline headline+inlinetask))
+                                  org-element--headline-cache-size
+                                org-element--cache-size)))
                       (cache-walk-restart
-                       ;; Restart tree traversal after AVL tree re-balance.
-                       () `(when node
-                             (org-element-at-point (point-max))
-                             (setq node (cache-root)
-		                   stack (list nil)
-		                   leftp t
-		                   continue-flag t)))
+                        ;; Restart tree traversal after AVL tree re-balance.
+                        () `(when node
+                              (org-element-at-point (point-max))
+                              (setq node (cache-root)
+		                    stack (list nil)
+		                    leftp t
+		                    continue-flag t)))
                       (cache-walk-abort
-                       ;; Abort tree traversal.
-                       () `(setq continue-flag t
-                                 node nil))
+                        ;; Abort tree traversal.
+                        () `(setq continue-flag t
+                                  node nil))
                       (element-match-at-point
-                       ;; Returning the first element to match around point.
-                       ;; For example, if point is inside headline and
-                       ;; granularity is restricted to headlines only, skip
-                       ;; over all the child elements inside the headline
-                       ;; and return the first parent headline.
-                       ;; When we are inside a cache gap, calling
-                       ;; `org-element-at-point' also fills the cache gap down to
-                       ;; point.
-                       () `(progn
-                             ;; Parsing is one of the performance
-                             ;; bottlenecks.  Make sure to optimize it as
-                             ;; much as possible.
-                             ;;
-                             ;; Avoid extra staff like timer cancels et al
-                             ;; and only call `org-element--cache-sync-requests' when
-                             ;; there are pending requests.
-                             (when org-element--cache-sync-requests
-                               (org-element--cache-sync (current-buffer)))
-                             ;; Call `org-element--parse-to' directly avoiding any
-                             ;; kind of `org-element-at-point' overheads.
-                             (if restrict-elements
-                                 ;; Search directly instead of calling
-                                 ;; `org-element-lineage' to avoid funcall overheads
-                                 ;; and making sure that we do not go all
-                                 ;; the way to `org-data' as `org-element-lineage'
-                                 ;; does.
-                                 (progn
-                                   (setq tmpelement (org-element--parse-to (point)))
-                                   (while (and tmpelement (not (memq (org-element-type tmpelement) restrict-elements)))
-                                     (setq tmpelement (org-element-property :parent tmpelement)))
-                                   tmpelement)
-                               (org-element--parse-to (point)))))
+                        ;; Returning the first element to match around point.
+                        ;; For example, if point is inside headline and
+                        ;; granularity is restricted to headlines only, skip
+                        ;; over all the child elements inside the headline
+                        ;; and return the first parent headline.
+                        ;; When we are inside a cache gap, calling
+                        ;; `org-element-at-point' also fills the cache gap down to
+                        ;; point.
+                        () `(progn
+                              ;; Parsing is one of the performance
+                              ;; bottlenecks.  Make sure to optimize it as
+                              ;; much as possible.
+                              ;;
+                              ;; Avoid extra staff like timer cancels et al
+                              ;; and only call `org-element--cache-sync-requests' when
+                              ;; there are pending requests.
+                              (org-with-base-buffer nil
+                                (when org-element--cache-sync-requests
+                                  (org-element--cache-sync (current-buffer))))
+                              ;; Call `org-element--parse-to' directly avoiding any
+                              ;; kind of `org-element-at-point' overheads.
+                              (if restrict-elements
+                                  ;; Search directly instead of calling
+                                  ;; `org-element-lineage' to avoid funcall overheads
+                                  ;; and making sure that we do not go all
+                                  ;; the way to `org-data' as `org-element-lineage'
+                                  ;; does.
+                                  (progn
+                                    (setq tmpelement (org-element--parse-to (point)))
+                                    (while (and tmpelement (not (memq (org-element-type tmpelement) restrict-elements)))
+                                      (setq tmpelement (org-element-property :parent tmpelement)))
+                                    tmpelement)
+                                (org-element--parse-to (point)))))
                       ;; Starting from (point), search RE and move START to
                       ;; the next valid element to be matched according to
                       ;; restriction.  Abort cache walk if no next element
                       ;; can be found.  When RE is nil, just find element at
                       ;; point.
                       (move-start-to-next-match
-                       (re) `(save-match-data
-                               (if (or (not ,re)
-                                       (if org-element--cache-map-statistics
-                                           (progn
-                                             (setq before-time (float-time))
-                                             (re-search-forward (or (car-safe ,re) ,re) nil 'move)
-                                             (cl-incf re-search-time
-                                                      (- (float-time)
-                                                         before-time)))
-                                         (re-search-forward (or (car-safe ,re) ,re) nil 'move)))
-                                   (unless (or (< (point) (or start -1))
-                                               (and data
-                                                    (< (point) (org-element-property :begin data))))
-                                     (if (cdr-safe ,re)
-                                         ;; Avoid parsing when we are 100%
-                                         ;; sure that regexp is good enough
-                                         ;; to find new START.
-                                         (setq start (match-beginning 0))
-                                       (setq start (max (or start -1)
-                                                        (or (org-element-property :begin data) -1)
-                                                        (or (org-element-property :begin (element-match-at-point)) -1))))
-                                     (when (>= start to-pos) (cache-walk-abort))
-                                     (when (eq start -1) (setq start nil)))
-                                 (cache-walk-abort))))
+                        (re) `(save-match-data
+                                (if (or (not ,re)
+                                        (if org-element--cache-map-statistics
+                                            (progn
+                                              (setq before-time (float-time))
+                                              (re-search-forward (or (car-safe ,re) ,re) nil 'move)
+                                              (cl-incf re-search-time
+                                                       (- (float-time)
+                                                          before-time)))
+                                          (re-search-forward (or (car-safe ,re) ,re) nil 'move)))
+                                    (unless (or (< (point) (or start -1))
+                                                (and data
+                                                     (< (point) (org-element-property :begin data))))
+                                      (if (cdr-safe ,re)
+                                          ;; Avoid parsing when we are 100%
+                                          ;; sure that regexp is good enough
+                                          ;; to find new START.
+                                          (setq start (match-beginning 0))
+                                        (setq start (max (or start -1)
+                                                         (or (org-element-property :begin data) -1)
+                                                         (or (org-element-property :begin (element-match-at-point)) -1))))
+                                      (when (>= start to-pos) (cache-walk-abort))
+                                      (when (eq start -1) (setq start nil)))
+                                  (cache-walk-abort))))
                       ;; Find expected begin position of an element after
                       ;; DATA.
                       (next-element-start
-                       () `(progn
-                             (setq tmpnext-start nil)
-                             (if (memq granularity '(headline headline+inlinetask))
-                                 (setq tmpnext-start (or (when (memq (org-element-type data) '(headline org-data))
-                                                           (org-element-property :contents-begin data))
-                                                         (org-element-property :end data)))
-		               (setq tmpnext-start (or (when (memq (org-element-type data) org-element-greater-elements)
-                                                         (org-element-property :contents-begin data))
-                                                       (org-element-property :end data))))
-                             ;; DATA end may be the last element inside
-                             ;; i.e. source block.  Skip up to the end
-                             ;; of parent in such case.
-                             (setq tmpparent data)
-		             (catch :exit
-                               (when (eq tmpnext-start (org-element-property :contents-end tmpparent))
-			         (setq tmpnext-start (org-element-property :end tmpparent)))
-			       (while (setq tmpparent (org-element-property :parent tmpparent))
-			         (if (eq tmpnext-start (org-element-property :contents-end tmpparent))
-			             (setq tmpnext-start (org-element-property :end tmpparent))
-                                   (throw :exit t))))
-                             tmpnext-start))
+                        () `(progn
+                              (setq tmpnext-start nil)
+                              (if (memq granularity '(headline headline+inlinetask))
+                                  (setq tmpnext-start (or (when (memq (org-element-type data) '(headline org-data))
+                                                            (org-element-property :contents-begin data))
+                                                          (org-element-property :end data)))
+		                (setq tmpnext-start (or (when (memq (org-element-type data) org-element-greater-elements)
+                                                          (org-element-property :contents-begin data))
+                                                        (org-element-property :end data))))
+                              ;; DATA end may be the last element inside
+                              ;; i.e. source block.  Skip up to the end
+                              ;; of parent in such case.
+                              (setq tmpparent data)
+		              (catch :exit
+                                (when (eq tmpnext-start (org-element-property :contents-end tmpparent))
+			          (setq tmpnext-start (org-element-property :end tmpparent)))
+			        (while (setq tmpparent (org-element-property :parent tmpparent))
+			          (if (eq tmpnext-start (org-element-property :contents-end tmpparent))
+			              (setq tmpnext-start (org-element-property :end tmpparent))
+                                    (throw :exit t))))
+                              tmpnext-start))
                       ;; Check if cache does not have gaps.
                       (cache-gapless-p
-                       () `(eq org-element--cache-change-tic
-                               (alist-get granularity org-element--cache-gapless))))
+                        () `(org-with-base-buffer nil
+                              (eq org-element--cache-change-tic
+                                  (alist-get granularity org-element--cache-gapless)))))
           ;; The core algorithm is simple walk along binary tree.  However,
           ;; instead of checking all the tree elements from first to last
           ;; (like in `avl-tree-mapcar'), we begin from FROM-POS skipping
@@ -7565,15 +7569,15 @@ the cache."
                  ;; beginning.
                  (next-element-re (pcase granularity
                                     ((or `headline
-                                         (guard (eq '(headline)
-                                                    restrict-elements)))
+                                         (guard (equal '(headline)
+                                                       restrict-elements)))
                                      (cons
                                       (org-with-limited-levels
                                        org-element-headline-re)
                                       'match-beg))
                                     (`headline+inlinetask
                                      (cons
-                                      (if (eq '(inlinetask) restrict-elements)
+                                      (if (equal '(inlinetask) restrict-elements)
                                           (org-inlinetask-outline-regexp)
                                         org-element-headline-re)
                                       'match-beg))
@@ -7651,7 +7655,9 @@ the cache."
                         ;; In the process, we may alter the buffer,
                         ;; so also keep track of the cache state.
                         (progn
-                          (setq modified-tic org-element--cache-change-tic)
+                          (setq modified-tic
+                                (org-with-base-buffer nil
+                                  org-element--cache-change-tic))
                           (setq cache-size (cache-size))
                           ;; When NEXT-RE/FAIL-RE is provided, skip to
                           ;; next regexp match after :begin of the current
@@ -7685,7 +7691,7 @@ the cache."
                               ;;
                               ;; Call FUNC.  FUNC may move point.
                               (setq org-element-cache-map-continue-from nil)
-                              (if org-element--cache-map-statistics
+                              (if (org-with-base-buffer nil org-element--cache-map-statistics)
                                   (progn
                                     (setq before-time (float-time))
                                     (push (funcall func data) result)
@@ -7725,8 +7731,9 @@ the cache."
                                            start))
                               (setq start nil))
                             ;; Check if the buffer has been modified.
-                            (unless (and (eq modified-tic org-element--cache-change-tic)
-                                         (eq cache-size (cache-size)))
+                            (unless (org-with-base-buffer nil
+                                      (and (eq modified-tic org-element--cache-change-tic)
+                                           (eq cache-size (cache-size))))
                               ;; START may no longer be valid, update
                               ;; it to beginning of real element.
                               ;; Upon modification, START may lay

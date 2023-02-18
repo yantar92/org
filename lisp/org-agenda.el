@@ -3525,7 +3525,8 @@ This ensures the export commands can easily use it."
   (let ((cmds (org-agenda-normalize-custom-commands org-agenda-custom-commands))
         (pop-up-frames nil)
         (dir default-directory)
-        cmd thiscmdkey thiscmdcmd match files opts cmd-or-set bufname)
+        cmd thiscmdkey thiscmdcmd match files opts cmd-or-set
+        seriesp bufname)
     (save-window-excursion
       (while cmds
 	(setq cmd (pop cmds)
@@ -3537,9 +3538,12 @@ This ensures the export commands can easily use it."
 				   (format "*Org Agenda(%s:%s)*" thiscmdkey match))
 			      (format "*Org Agenda(%s)*" thiscmdkey))
 			org-agenda-buffer-name)
+              ;; series:     (0:key 1:desc 2:(cmd1 cmd2 ...) 3:general-settings 4:files)
+              ;; non-series: (0:key 1:desc 2:type 3:match    4:settings         5:files)
 	      cmd-or-set (nth 2 cmd)
-	      opts (nth (if (listp cmd-or-set) 3 4) cmd)
-	      files (nth (if (listp cmd-or-set) 4 5) cmd))
+	      seriesp (not (or (symbolp cmd-or-set) (functionp cmd-or-set)))
+	      opts (nth (if seriesp 3 4) cmd)
+	      files (nth (if seriesp 4 5) cmd))
 	(if (stringp files) (setq files (list files)))
 	(when files
 	  (let* ((opts (append org-agenda-exporter-settings opts))
@@ -3631,8 +3635,7 @@ the agenda to write."
 		(kill-buffer (current-buffer))
 		(message "Org file written to %s" file)))
 	     ((member extension '("html" "htm"))
-	      (or (require 'htmlize nil t)
-		  (error "Please install htmlize from https://github.com/hniksic/emacs-htmlize"))
+              (org-require-package 'htmlize)
 	      (declare-function htmlize-buffer "htmlize" (&optional buffer))
 	      (set-buffer (htmlize-buffer (current-buffer)))
 	      (when org-agenda-export-html-style
@@ -7348,7 +7351,7 @@ Any match of REMOVE-RE will be removed from TXT."
 			      (let ((s (org-format-outline-path (org-get-outline-path)
 								(1- (frame-width))
 								nil org-agenda-breadcrumbs-separator)))
-				(if (eq "" s) "" (concat s org-agenda-breadcrumbs-separator))))))
+				(if (equal "" s) "" (concat s org-agenda-breadcrumbs-separator))))))
 	(setq time (cond (s2 (concat
 			      (org-agenda-time-of-day-to-ampm-maybe s1)
 			      "-" (org-agenda-time-of-day-to-ampm-maybe s2)
@@ -8230,7 +8233,7 @@ filter."
   (if (and org-agenda-filtered-by-category
 	   org-agenda-category-filter)
       (org-agenda-filter-show-all-cat)
-    (let ((cat (org-no-properties (org-get-at-eol 'org-category 1))))
+    (let ((cat (org-no-properties (org-agenda-get-category))))
       (cond
        ((and cat strip)
         (org-agenda-filter-apply

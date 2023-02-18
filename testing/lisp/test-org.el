@@ -2741,6 +2741,7 @@ SCHEDULED: <2014-03-04 tue.>"
                          (org-element-property
                           :begin (org-element-at-point))))))
               (buffer-string))))
+  ;; Move point.
   (should
    (= 1
       (org-test-with-temp-text "* H1\n** H1.1\n** H1.2\n"
@@ -2760,7 +2761,20 @@ SCHEDULED: <2014-03-04 tue.>"
              (push (org-element-property :title (org-element-at-point)) acc)
              (setq org-map-continue-from
                    (line-end-position 2))))
-          (length acc))))))
+          (length acc)))))
+  ;; Modifications inside indirect buffer.
+  (should
+   (= 3
+      (org-test-with-temp-text "<point>* H1\n** H1.1\n** H1.2\n"
+        (with-current-buffer (org-get-indirect-buffer)
+          (let ((acc 0))
+            (org-map-entries
+             (lambda ()
+               (cl-incf acc)
+               (beginning-of-line 2)
+               (insert "test\n")
+               (beginning-of-line -1)))
+            acc))))))
 
 (ert-deftest test-org/edit-headline ()
   "Test `org-edit-headline' specifications."
@@ -5111,6 +5125,60 @@ Text.
 
 
 ;;; Outline structure
+
+(ert-deftest test-org/move-subtree ()
+  "Test `org-metaup' and `org-metadown' on headings."
+  (should
+   (equal "* H2\n* H1\n"
+          (org-test-with-temp-text "* H1<point>\n* H2\n"
+            (org-metadown)
+            (buffer-string))))
+  (should
+   (equal "* H2\n* H1\n"
+          (org-test-with-temp-text "* H1\n* H2<point>\n"
+            (org-metaup)
+            (buffer-string))))
+  (should-error
+   (org-test-with-temp-text "* H1\n* H2<point>\n"
+     (org-metadown)
+     (buffer-string)))
+  (should-error
+   (org-test-with-temp-text "* H1<point>\n* H2\n"
+     (org-metaup)
+     (buffer-string)))
+  (should-error
+   (org-test-with-temp-text "* H1\n** H1.2<point>\n* H2"
+     (org-metadown)
+     (buffer-string)))
+  (should-error
+   (org-test-with-temp-text "* H1\n** H1.2<point>\n"
+     (org-metaup)
+     (buffer-string)))
+  ;; With selection
+  (should
+   (equal "* T\n** H3\n** H1\n** H2\n"
+          (org-test-with-temp-text "* T\n** <point>H1\n** H2\n** H3\n"
+            (set-mark (point))
+            (search-forward "H2")
+            (org-metadown)
+            (buffer-string))))
+  (should
+   (equal "* T\n** H1\n** H2\n** H0\n** H3\n"
+          (org-test-with-temp-text "* T\n** H0\n** <point>H1\n** H2\n** H3\n"
+            (set-mark (point))
+            (search-forward "H2")
+            (org-metaup)
+            (buffer-string))))
+  (should-error
+   (org-test-with-temp-text "* T\n** <point>H1\n** H2\n* T2\n"
+     (set-mark (point))
+     (search-forward "H2")
+     (org-metadown)))
+  (should-error
+   (org-test-with-temp-text "* T\n** <point>H1\n** H2\n* T2\n"
+     (set-mark (point))
+     (search-forward "H2")
+     (org-metaup))))
 
 (ert-deftest test-org/demote ()
   "Test `org-demote' specifications."
