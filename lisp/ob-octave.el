@@ -154,8 +154,10 @@ create.  Return the initialized session."
   "Create an octave inferior process buffer.
 If there is not a current inferior-process-buffer in SESSION then
 create.  Return the initialized session."
-  (if matlabp (require 'matlab) (or (require 'octave-inf nil 'noerror)
-				    (require 'octave)))
+  (if matlabp
+      (org-require-package 'matlab "matlab-mode")
+    (or (require 'octave-inf nil 'noerror)
+	(require 'octave)))
   (unless (string= session "none")
     (let ((session (or session
 		       (if matlabp "*Inferior Matlab*" "*Inferior Octave*"))))
@@ -243,8 +245,8 @@ value of the last statement in BODY, as elisp."
       (`output
        (setq results
 	     (if matlabp
-		 (cdr (reverse (delq "" (mapcar #'org-strip-quotes
-						(mapcar #'org-trim raw)))))
+		 (cdr (reverse (delete "" (mapcar #'org-strip-quotes
+					          (mapcar #'org-trim raw)))))
 	       (cdr (member org-babel-octave-eoe-output
 			    (reverse (mapcar #'org-strip-quotes
 					     (mapcar #'org-trim raw)))))))

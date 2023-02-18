@@ -64,7 +64,8 @@ Writes QUERY into a temp-buffer that is processed with
   (let ((error-buffer (get-buffer-create " *Org-Babel Error*")) exit-code)
     (with-current-buffer error-buffer (erase-buffer))
     (with-temp-buffer
-      (insert query)
+      ;; Ensure trailing newline.  It is required for cmdproxy.exe.
+      (insert query "\n")
       (setq exit-code
             (org-babel--shell-command-on-region
              command error-buffer))

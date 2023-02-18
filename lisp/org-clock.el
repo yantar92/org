@@ -344,12 +344,12 @@ For more information, see `org-clocktable-write-default'."
   :version "24.1"
   :type 'function)
 
-;; FIXME: translate es and nl last string "Clock summary at"
 (defcustom org-clock-clocktable-language-setup
   '(("en" "File"     "L"  "Timestamp"  "Headline" "Time"  "ALL"   "Total time"   "File time" "Clock summary at")
-    ("es" "Archivo"  "N"  "Fecha y hora" "Tarea" "Tiempo" "TODO" "Tiempo total" "Tiempo archivo" "Clock summary at")
+    ("es" "Archivo"  "N"  "Fecha y hora" "Tarea" "Duración" "TODO" "Duración total" "Tiempo archivo" "Generado el")
     ("fr" "Fichier"  "N"  "Horodatage" "En-tête"  "Durée" "TOUT"  "Durée totale" "Durée fichier" "Horodatage sommaire à")
     ("nl" "Bestand"  "N"  "Tijdstip"   "Rubriek" "Duur"  "ALLES" "Totale duur"  "Bestandstijd" "Klok overzicht op")
+    ("nn" "Fil"      "N"  "Tidspunkt" "Overskrift" "Tid" "ALLE" "Total tid" "Filtid" "Tidsoversyn")
     ("de" "Datei"    "E"  "Zeitstempel" "Kopfzeile" "Dauer" "GESAMT" "Gesamtdauer"  "Dateizeit" "Erstellt am")
     ("pt-BR" "Arquivo" "N" "Data e hora" "Título" "Hora" "TODOS" "Hora total" "Hora do arquivo" "Resumo das horas em")
     ("sk" "Súbor" "L" "Časová značka" "Záhlavie" "Čas" "VŠETKO" "Celkový čas" "Čas súboru" "Časový súhrn pre"))
@@ -1932,17 +1932,30 @@ PROPNAME lets you set a custom text property instead of :org-clock-minutes."
       (save-excursion
 	(goto-char (point-max))
 	(while (re-search-backward re nil t)
-          (let ((element-type
-                 (org-element-type
-                  (save-match-data
-                    (org-element-at-point)))))
+          (let* ((element (save-match-data (org-element-at-point)))
+                 (element-type (org-element-type element)))
 	    (cond
 	     ((and (eq element-type 'clock) (match-end 2))
 	      ;; Two time stamps.
-	      (let* ((ss (match-string 2))
-		     (se (match-string 3))
-		     (ts (org-time-string-to-seconds ss))
-		     (te (org-time-string-to-seconds se))
+	      (let* ((timestamp (org-element-property :value element))
+		     (ts (float-time
+                          (org-encode-time
+                           (list 0
+                                 (org-element-property :minute-start timestamp)
+                                 (org-element-property :hour-start timestamp)
+                                 (org-element-property :day-start timestamp)
+                                 (org-element-property :month-start timestamp)
+                                 (org-element-property :year-start timestamp)
+                                 nil -1 nil))))
+		     (te (float-time
+                          (org-encode-time
+                           (list 0
+                                 (org-element-property :minute-end timestamp)
+                                 (org-element-property :hour-end timestamp)
+                                 (org-element-property :day-end timestamp)
+                                 (org-element-property :month-end timestamp)
+                                 (org-element-property :year-end timestamp)
+                                 nil -1 nil))))
 		     (dt (- (if tend (min te tend) te)
 			    (if tstart (max ts tstart) ts))))
 	        (when (> dt 0) (cl-incf t1 (floor dt 60)))))

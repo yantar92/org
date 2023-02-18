@@ -648,6 +648,9 @@ With a numeric prefix, show all headlines up to that level."
 		 (org-fold-show-hidden-entry)
 		 (org-fold-show-children))
 		("content"
+                 ;; Newline before heading will be outside the
+                 ;; narrowing.  Make sure that it is revealed.
+                 (org-fold-heading nil)
 		 (save-excursion
 		   (save-restriction
 		     (org-narrow-to-subtree)
@@ -655,7 +658,7 @@ With a numeric prefix, show all headlines up to that level."
 		((or "all" "showall")
 		 (org-fold-show-subtree))
 		(_ nil)))
-	    (org-end-of-subtree)))))))
+	    (org-end-of-subtree t)))))))
 
 (defun org-cycle-overview ()
   "Switch to overview mode, showing only top-level headlines."

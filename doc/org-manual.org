@@ -5295,7 +5295,7 @@ The following commands help to work with properties:
   Set a property in the current entry.  Both the property and the
   value can be inserted using completion.
 
-- {{{kbd(S-RIGHT)}}} (~org-property-next-allowed-values~),  {{{kbd(S-LEFT)}}} (~org-property-previous-allowed-value~) ::
+- {{{kbd(S-RIGHT)}}} (~org-property-next-allowed-value~),  {{{kbd(S-LEFT)}}} (~org-property-previous-allowed-value~) ::
 
   #+kindex: S-RIGHT
   #+kindex: S-LEFT
@@ -5915,12 +5915,12 @@ is used in a much wider sense.
 #+cindex: deadlines
 #+cindex: scheduling
 
-A timestamp is a specification of a date (possibly with a time or
-a range of times) in a special format, either =<2003-09-16 Tue>= or
-=<2003-09-16 Tue 09:39>= or =<2003-09-16 Tue 12:00-12:30>=[fn:19].
-A timestamp can appear anywhere in the headline or body of an Org tree
-entry.  Its presence causes entries to be shown on specific dates in
-the agenda (see [[*Weekly/daily agenda]]).  We distinguish:
+A timestamp is a specification of a date (possibly with a time) in a
+special format, either =<2003-09-16 Tue>= or
+=<2003-09-16 Tue 09:39>=[fn:19].  A timestamp can appear anywhere in
+the headline or body of an Org tree entry.  Its presence causes
+entries to be shown on specific dates in the agenda (see [[*Weekly/daily
+agenda]]).  We distinguish:
 
 - Plain timestamp; Event; Appointment ::
 
@@ -5935,7 +5935,7 @@ the agenda (see [[*Weekly/daily agenda]]).  We distinguish:
   ,* Meet Peter at the movies
     <2006-11-01 Wed 19:15>
   ,* Discussion on climate change
-    <2006-11-02 Thu 20:00-22:00>
+    <2006-11-02 Thu>
   #+end_example
 
 - Timestamp with repeater interval ::
@@ -5974,13 +5974,20 @@ the agenda (see [[*Weekly/daily agenda]]).  We distinguish:
 
   #+cindex: timerange
   #+cindex: date range
-  Two timestamps connected by =--= denote a range.  The headline is
-  shown on the first and last day of the range, and on any dates that
-  are displayed and fall in the range.  Here is an example:
+  Two timestamps connected by =--= denote a range.  In the agenda, the
+  headline is shown on the first and last day of the range, and on any
+  dates that are displayed and fall in the range.  Here is an example:
 
   #+begin_example
   ,** Meeting in Amsterdam
      <2004-08-23 Mon>--<2004-08-26 Thu>
+  #+end_example
+
+  Timerange is a timestamp consisting of two time units connected by =-=
+
+  #+begin_example
+  ,* Discussion on climate change
+     <2006-11-02 Thu 10:00-12:00>
   #+end_example
 
 - Inactive timestamp ::
@@ -6657,22 +6664,29 @@ about what to do with it.
 
   #+kindex: C-S-UP
   #+findex: org-clock-timestamps-up
+  #+findex: org-shiftcontrolup
   #+kindex: C-S-DOWN
   #+findex: org-clock-timestamps-down
+  #+findex: org-shiftcontroldown
   On CLOCK log lines, increase/decrease both timestamps so that the
   clock duration keeps the same value.
 
 - {{{kbd(S-M-UP)}}} (~org-timestamp-up~), {{{kbd(S-M-DOWN)}}} (~org-timestamp-down~) ::
 
   #+kindex: S-M-UP
-  #+findex: org-clock-timestamp-up
+  #+findex: org-timestamp-up
+  #+findex: org-shiftmetaup
   #+kindex: S-M-DOWN
-  #+findex: org-clock-timestamp-down
+  #+findex: org-timestamp-down
+  #+findex: org-shiftmetadown
   On =CLOCK= log lines, increase/decrease the timestamp at point and
   the one of the previous, or the next, clock timestamp by the same
   duration.  For example, if you hit {{{kbd(S-M-UP)}}} to increase
   a clocked-out timestamp by five minutes, then the clocked-in
   timestamp of the next clock is increased by five minutes.
+
+  Only =CLOCK= logs created during current Emacs session are
+  considered when adjusting next/previous timestamp.
 
 - {{{kbd(C-c C-t)}}} (~org-todo~) ::
 
@@ -10256,9 +10270,9 @@ the other commands, point needs to be in the desired line.
 
   Unmark entry for bulk action.
 
-- {{{kbd(U)}}} (~org-agenda-bulk-remove-all-marks~) ::
+- {{{kbd(U)}}} (~org-agenda-bulk-unmark-all~) ::
   #+kindex: U
-  #+findex: org-agenda-bulk-remove-all-marks
+  #+findex: org-agenda-bulk-unmark-all
 
   Unmark all marked entries for bulk action.
 
@@ -11696,9 +11710,9 @@ When the variable ~org-export-dispatch-use-expert-ui~ is set to
 a non-~nil~ value, Org prompts in the minibuffer.  To switch back to
 the hierarchical menu, press {{{kbd(?)}}}.
 
-- {{{kbd(C-c C-e)}}} (~org-export~) ::
+- {{{kbd(C-c C-e)}}} (~org-export-dispatch~) ::
   #+kindex: C-c C-e
-  #+findex: org-export
+  #+findex: org-export-dispatch
 
   Invokes the export dispatcher interface.  The options show default
   settings.  The {{{kbd(C-u)}}} prefix argument preserves options from
@@ -12235,7 +12249,7 @@ with the custom ID =theory=, you can use
 
 The following command allows navigating to the included document:
 
-- {{{kbd(C-c ')}}} (~org-edit~special~) ::
+- {{{kbd(C-c ')}}} (~org-edit-special~) ::
   #+kindex: C-c '
   #+findex: org-edit-special
 
@@ -14366,10 +14380,10 @@ executable.  Without it, export cannot finish.
 :DESCRIPTION: Invoking export.
 :END:
 
-- {{{kbd(C-c C-e o o)}}} (~org-export-to-odt~) ::
+- {{{kbd(C-c C-e o o)}}} (~org-odt-export-to-odt~) ::
 
   #+kindex: C-c C-e o o
-  #+findex: org-export-to-odt
+  #+findex: org-odt-export-to-odt
   Export as OpenDocument Text file.
 
   #+cindex: @samp{EXPORT_FILE_NAME}, property
@@ -17012,6 +17026,9 @@ more "bibliography" keywords.
 #+bibliography: /some/other/file.json
 #+bibliography: "/some/file/with spaces/in its name.bib"
 #+end_example
+
+Org mode uses all the local and global bibliographies combined to
+search for citation keys.
 
 #+kindex: C-c C-x @@
 #+findex: org-cite-insert

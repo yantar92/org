@@ -24,6 +24,12 @@ consider [[https://gitlab.com/jackkamm/ob-python-mode-mode][ob-python-mode-mode]
 has been ported to.
 
 ** New and changed options
+*** New escape in ~org-beamer-environments-extra~ for labels in Beamer export
+The escape =%l= in ~org-beamer-environments-extra~ inserts the label
+obtained from ~org-beamer--get-label~.  This is added to the default
+environments =theorem=, =definition=, =example=, and =exampleblock= in
+~org-beamer-environments-default~.
+
 *** ~org-clock-x11idle-program-name~ now defaults to =xprintidle=, when available
 
 When =xprintidle= executable is available at =org-clock= load time, it
@@ -81,6 +87,20 @@ a date range in the agenda.  It inherits from the default face in
 order to remain backward-compatible.
 
 ** New features
+*** ~org-metaup~ and ~org-metadown~ now act on headings in region
+
+When region is active and starts at a heading, ~org-metaup~ and
+~org-metadown~ will move all the selected subtrees.
+
+*** Many structure editing commands now do not deactivate region
+
+Moving, promoting, and demoting of headings and items in region now do
+not deactivate Transient mark mode.
+
+Users can thus conveniently select multiple headings/items and use,
+for example, =M-<down>=/=M-<up>= repeatedly without losing the
+selection.
+
 *** Datetree structure headlines can now be complex
 
 TODO state, priority, tags, statistics cookies, and COMMENT keywords

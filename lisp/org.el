@@ -734,6 +734,10 @@ defined in org-duration.el.")
   (set-default-toplevel-value var value)
   (when (featurep 'org)
     (org-load-modules-maybe 'force)
+    ;; FIXME: We can't have all the requires at top-level due to
+    ;; circular dependencies.  Yet, this function might sometimes be
+    ;; called when 'org-element is not loaded.
+    (require 'org-element)
     (org-element-cache-reset 'all)))
 
 (defcustom org-modules '(ol-doi ol-w3m ol-bbdb ol-bibtex ol-docview ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-eww)
@@ -5507,7 +5511,7 @@ See also `org-promote'."
   (interactive)
   (save-excursion
     (org-back-to-heading t)
-    (combine-change-calls (point) (save-excursion (org-end-of-subtree t))
+    (org-combine-change-calls (point) (save-excursion (org-end-of-subtree t))
       (org-with-limited-levels (org-map-tree 'org-promote))))
   (org-fix-position-after-promote))
 
@@ -5517,7 +5521,7 @@ See `org-demote' and `org-promote'."
   (interactive)
   (save-excursion
     (org-back-to-heading t)
-    (combine-change-calls (point) (save-excursion (org-end-of-subtree t))
+    (org-combine-change-calls (point) (save-excursion (org-end-of-subtree t))
       (org-with-limited-levels (org-map-tree 'org-demote))))
   (org-fix-position-after-promote))
 
@@ -5528,7 +5532,8 @@ headings in the region."
   (interactive)
   (save-excursion
     (if (org-region-active-p)
-	(org-map-region 'org-promote (region-beginning) (region-end))
+        (let ((deactivate-mark nil))
+          (org-map-region 'org-promote (region-beginning) (region-end)))
       (org-promote)))
   (org-fix-position-after-promote))
 
@@ -5539,7 +5544,8 @@ headings in the region."
   (interactive)
   (save-excursion
     (if (org-region-active-p)
-	(org-map-region 'org-demote (region-beginning) (region-end))
+        (let ((deactivate-mark nil))
+          (org-map-region 'org-demote (region-beginning) (region-end)))
       (org-demote)))
   (org-fix-position-after-promote))
 
@@ -6089,7 +6095,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
        (setq beg (point))
        ;; Avoid re-parsing cache elements when i.e. level 1 heading
        ;; is inserted and then promoted.
-       (combine-change-calls beg beg
+       (org-combine-change-calls beg beg
          (when (fboundp 'org-id-paste-tracker) (org-id-paste-tracker txt))
          (insert txt)
          (unless (string-suffix-p "\n" txt) (insert "\n"))
@@ -12195,7 +12201,11 @@ Optional argument DEFAULT provides a default value for PROPERTY."
 			 (if (org-string-nw-p current)
 			     (format " [%s]" current)
 			   "")))
-	 (set-function (org-set-property-function property)))
+	 (set-function (org-set-property-function property))
+         (default (cond
+                   ((not allowed) default)
+                   ((member default allowed) default)
+                   (t nil))))
     (org-trim
      (if allowed
 	 (funcall set-function
@@ -12207,7 +12217,7 @@ Optional argument DEFAULT provides a default value for PROPERTY."
 				  (and pom
 				       (org-with-point-at pom
 					 (org-property-values property)))))))
-	 (funcall set-function prompt all nil nil "" nil current))))))
+	 (funcall set-function prompt all nil nil default nil current))))))
 
 (defvar org-last-set-property nil)
 (defvar org-last-set-property-value nil)
@@ -14428,7 +14438,7 @@ in Org mode.
 \\{org-cdlatex-mode-map}"
   :lighter " OCDL"
   (when org-cdlatex-mode
-    (require 'cdlatex)
+    (org-require-package 'cdlatex)
     (run-hooks 'cdlatex-mode-hook)
     (cdlatex-compute-tables))
   (unless org-cdlatex-texmathp-advice-is-done
@@ -15882,23 +15892,51 @@ for more information."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metaup-hook))
+   ((and (org-region-active-p)
+         (org-with-limited-levels
+          (save-excursion
+            (goto-char (region-beginning))
+            (org-at-heading-p))))
+    (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
+    (let ((beg (region-beginning))
+          (end (region-end)))
+      (save-excursion
+        (goto-char end)
+        (setq end (point-marker))
+        (goto-char beg)
+        (let ((level (org-current-level)))
+          (when (or (and (> level 1) (re-search-forward (format "^\\*\\{1,%s\\} " (1- level)) end t))
+                    ;; Search previous subtree.
+                    (progn
+                      (goto-char beg)
+                      (beginning-of-line)
+                      (not (re-search-backward (format "^\\*\\{%s\\} " level) nil t))))
+            (user-error "Cannot move past superior level or buffer limit"))
+          ;; Drag first subtree above below the selected.
+          (while (< (point) end)
+            (let ((deactivate-mark nil))
+              (call-interactively 'org-move-subtree-down)))))))
    ((org-region-active-p)
     (let* ((a (save-excursion
-		(goto-char (region-beginning))
-		(line-beginning-position)))
-	   (b (save-excursion
-		(goto-char (region-end))
-		(if (bolp) (1- (point)) (line-end-position))))
-	   (c (save-excursion
-		(goto-char a)
-		(move-beginning-of-line 0)
-		(point)))
-	   (d (save-excursion
-		(goto-char a)
-		(move-end-of-line 0)
-		(point))))
+                (goto-char (region-beginning))
+                (line-beginning-position)))
+           (b (save-excursion
+                (goto-char (region-end))
+                (if (bolp) (1- (point)) (line-end-position))))
+           (c (save-excursion
+                (goto-char a)
+                (move-beginning-of-line 0)
+                (point)))
+           (d (save-excursion
+                (goto-char a)
+                (move-end-of-line 0)
+                (point)))
+           (deactivate-mark nil)
+           (swap? (< (point) (mark))))
       (transpose-regions a b c d)
-      (goto-char c)))
+      (set-mark c)
+      (goto-char (+ c (- b a)))
+      (when swap? (exchange-point-and-mark))))
    ((org-at-table-p) (org-call-with-arg 'org-table-move-row 'up))
    ((and (featurep 'org-inlinetask)
          (org-inlinetask-in-task-p))
@@ -15915,23 +15953,49 @@ commands for more information."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metadown-hook))
+   ((and (org-region-active-p)
+         (org-with-limited-levels
+          (save-excursion
+            (goto-char (region-beginning))
+            (org-at-heading-p))))
+    (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
+    (let ((beg (region-beginning))
+          (end (region-end)))
+      (save-excursion
+        (goto-char beg)
+        (setq beg (point-marker))
+        (let ((level (org-current-level)))
+          (when (or (and (> level 1) (re-search-forward (format "^\\*\\{1,%s\\} " (1- level)) end t))
+                    ;; Search next subtree.
+                    (progn
+                      (goto-char end)
+                      (not (re-search-forward (format "^\\*\\{%s\\} " level) nil t))))
+            (user-error "Cannot move past superior level or buffer limit"))
+          ;; Drag first subtree below above the selected.
+          (while (> (point) beg)
+            (let ((deactivate-mark nil))
+              (call-interactively 'org-move-subtree-up)))))))
    ((org-region-active-p)
     (let* ((a (save-excursion
-		(goto-char (region-beginning))
-		(line-beginning-position)))
+                (goto-char (region-beginning))
+                (line-beginning-position)))
 	   (b (save-excursion
-		(goto-char (region-end))
-		(if (bolp) (1- (point)) (line-end-position))))
+                (goto-char (region-end))
+                (if (bolp) (1- (point)) (line-end-position))))
 	   (c (save-excursion
-		(goto-char b)
-		(move-beginning-of-line (if (bolp) 1 2))
-		(point)))
+                (goto-char b)
+                (move-beginning-of-line (if (bolp) 1 2))
+                (point)))
 	   (d (save-excursion
-		(goto-char b)
-		(move-end-of-line (if (bolp) 1 2))
-		(point))))
+                (goto-char b)
+                (move-end-of-line (if (bolp) 1 2))
+                (point)))
+           (deactivate-mark nil)
+           (swap? (< (point) (mark))))
       (transpose-regions a b c d)
-      (goto-char d)))
+      (set-mark (+ 1 a (- d c)))
+      (goto-char (+ 1 a (- d c) (- b a)))
+      (when swap? (exchange-point-and-mark))))
    ((org-at-table-p) (call-interactively 'org-table-move-row))
    ((and (featurep 'org-inlinetask)
          (org-inlinetask-in-task-p))
@@ -17853,7 +17917,7 @@ Alignment is done according to `org-property-format', which see."
   (when (save-excursion
 	  (beginning-of-line)
 	  (looking-at org-property-re))
-    (combine-change-calls (match-beginning 0) (match-end 0)
+    (org-combine-change-calls (match-beginning 0) (match-end 0)
       (let ((newtext (concat (match-string 4)
 	                     (org-trim
 	                      (format org-property-format (match-string 1) (match-string 3))))))
