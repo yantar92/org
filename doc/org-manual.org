@@ -16886,6 +16886,378 @@ user-friendly improvements.  See
 <https://orgmode.org/worg/dev/org-export-reference.html> for more
 details.
 
+*** Export features
+**** The underlying idea
+
+Across export backends it is common to want to include certain chunks
+of content that are only relevant in particular situations.
+
+With static export templates, one is forced to choose between
+including everything that /might/ be wanted, or including very little
+by default and requiring common content to be manually added every
+time it is wanted.
+
+"Export features" allow for a third option, a much more sophisticated
+method of resolving this dilemma. At the start of the export process,
+the buffer being exported and the export communication plist (~info~)
+are scanned to determine which capabilities are relevant to the
+current export. During the construction of the final output this list
+of capabilities is used to produce snippets of content to be included.
+
+This can be thought of as the construction of a graph between conditions,
+features, and feature implementations. For example, say we have three conditions
+we want to support:
++ Say that images need some extra setup to be supported well, we can
+  just include it when image links are found in the buffer.
++ Say we can better support emojis by treating them as images in a
+  particular export backend. We could look for a signal in the buffer
+  that emojis should be handled as images, and then make use of some
+  "image support" and "emoji support" snippets.
++ Say that LaTeX maths requires some extra setup, we can just
+  do this when inline LaTeX fragments are found.
+This situation can be crudely drawn with the following graph:
+
+#+begin_example
+ condition            feature       implementation
+ =========            =======       ===============
+
+ [emoji] -----------> emoji ------> [emoji plist]
+         \
+          '---->----.
+                     \
+ [image link] ------> image ------> [image plist]
+
+ [inline LaTeX] ----> maths ------> [maths plist]
+
+ \____________________/   \__________________/
+        phase 1                 phase 2
+#+end_example
+
+In phase 1 "feature detection" the relevant features are determined, and in
+phase 2 "feature implementation" how those features can be provided is worked
+out.
+
+**** Feature detection
+
+After the expansion of =#+include= statements and the removal of
+comments, the export communication plist (~info~) is annotated. At the
+very end of the annotation process, ~org-export-detect-features~ is
+run to determine the list of capabilities relevant to the current export.
+
+This operates by merging the global feature condition alist
+(~org-export-conditional-features~) with the ~feature-conditions~ slot
+of the current backend and each of its parents. This produces the
+total feature conditions alist, which has the form:
+
+#+begin_example
+((condition . implied-features)
+ ...)
+#+end_example
+
+Where =condition= is a test that implies that =implied-features= are
+relevant. While =implied-features= is always a list of feature
+symbols, for convenience =condition= can take a number of forms,
+namely:
++ A regexp which is searched for in the export buffer.
++ A variable, if a string it is used as a regexp search, otherwise any
+  non-nil value is taken to imply =implied-features=.
++ A (unary) function, which is called with on the export communication
+  plist (~info~). A returned string is used as a regexp search,
+  otherwise any non-nil value is taken to imply =implied-features=.
+
+As an example, a feature conditions alist which checks whether any
+headings exist, and if the word "hello" appears could take the
+following form:
+
+#+begin_example
+(((lambda (info)
+   (org-element-map (plist-get info :parse-tree) 'heading
+    #'identity info t))
+  headlines)
+ ("hello" has-greeting))
+#+end_example
+
+Conditions are inherited from parent export backends and (for conditions general
+enough to apply across backends) the variable ~org-export-conditional-features~.
+
+#+begin_example
+                                                    ,--> beamer
+                                                   /
+  html <----.                      ,----> latex --'
+             \                    /
+        org-export-conditional-features
+             /                    \
+ ascii <----'                      '----> odt
+#+end_example
+
+**** Feature implementations
+
+The other half of the export feature system is of course producing
+snippets of content from the list of features. Export backends can do
+this at any point via ~org-export-expand-feature-snippets~. This
+operates on a /feature implementation alist/. The implementation alist
+is essentially a mirror of the condition alist, instead of =(condition
+. feature-list)= elements it takes =(feature . implementation-plist)=
+elements. This reversal of order may seem a bit odd, but it should
+help make the condition--feature--implementation graph more apparent.
+
+For example, considering this example condition alist and implementation alist
+would be represented as the earlier graph.
+
+#+begin_example
+;; The condition alist
+(([emoji predicate] emoji image)
+ ([image predicate] image)
+ ([inline LaTeX predicate] maths))
+;; The implementation alist
+((emoji [plist])
+ (image [plist])
+ (maths [plist])
+#+end_example
+
+The implementation plist recognises a number of keywords, but the
+primary keyword is ~:snippet~. The snippet value provides the snippet
+content used to provide the feature's capability. Much like
+~condition~, it accepts a number of forms for convenience, namely:
++ A string, which is passed on.
++ A variable symbol, the value of which must be a string.
++ A (unary) function, which is called on the export communication
+  plist (~info~), and must return a string.
+
+Note that no keys are mandatory in the implementation plist (not even
+~:snippet~).
+
+Like conditions, implementations are also inherited from parent backends, but
+there is no "root" global list of implementations, as they are always
+backend-specific.
+
+#+begin_example
+                                     ,--> beamer
+                                    /
+  html <---o         o---> latex --'
+
+ ascii <---o         o---> odt
+#+end_example
+
+**** Feature dependency and incompatibility
+
+While just connecting features with snippets satisfies most use cases,
+this system is designed to also allow for complex configurations of
+inter-dependent snippets.
+
+In slightly more complex examples, we may run across implementations
+which either (a) only make sense when another feature is active, or
+(b) require another implementation to be used in order to work. These
+two situations are covered by the ~:when~ and ~:requires~ keywords
+respectively. The accept either a single feature symbol or a list of
+feature symbols.
+
+For example, if an implementation contains ~:when featA~, it will only
+be used when =featA= is active. If the implementation contains ~:when
+(featA featB)~ it will require /both/ =featA= and =featB= to be
+active. The ~:requires~ keyword works in the same way, but
+unconditionally requires implementations instead of testing for them.
+
+Occasionally one implementation may be incompatible with another. For
+example, in LaTeX loading the same package with different options will
+often produce an "options clash" error. To ensure that incompatible
+implementations are not used, the ~:prevents~ keyword makes it as if
+the feature were never used in the first place.
+
+Circular ~:requires~ and ~:prevents~, or features that are
+simultaneously required and prevented result in undefined behaviour.
+Similarly, the behaviour of mutual ~:when~​s (e.g. ~(a :when b) (b
+:when a)~ is also undefined.
+
+**** Feature ordering
+
+In many scenarios it is not only /which/ snippets are included that
+matters, but the /order/ in which they are placed. A requirement for a
+certain snippet to appear before/after others can be specified through
+the ~:before~ and ~:after~ keywords. Like ~:when~, ~:requires~, and
+~:prevents~ they accept either a single feature symbol or a list of
+feature symbols.
+
+As an example, should an implementation plist contain ~:before featA
+:after (featB featC)~ it will be placed after =featA= but before
+=featB= and =featC=. It is possible to accidentally create circular
+dependencies, in which case an error will be raised.
+
+While ~:before~ and ~:after~ work well for specifying relative
+ordering, it can also be useful to specify the /absolute/ ordering,
+for instance to put something first or last. This can be controlled
+via the ~:order~ keyword. Each implementation has an ~:order~ of zero
+by default. Implementations with a higher ~:order~ come later.
+
+# REVIEW maybe give a convention on :order ranges?
+# Perhaps take inspiration from ~add-hook~.
+
+-----
+
+The overall ordering behaviour can be characterized as a ascending
+sort of ~:order~ followed by a stable [[https://en.wikipedia.org/wiki/Topological_sorting][topological sort]] based on
+~:before~ and ~:after~.
+
+**** Adding or editing export features
+
+The export features of a backend can be modified via the convenience
+macro ~org-export-update-features~. This is invoked with the following
+form:
+
+#+begin_example
+(org-export-update-features 'BACKEND
+ (FEATURE-NAME
+  :PROPERTY VALUE
+  ...)
+ ...)
+#+end_example
+
+For each feature mentioned, it sets the each =:PROPERTY= to =VALUE= in
+the implementation plist. The one exception to this is ~:condition~ in
+which case the backend's feature condition alist is modified so that
+the condition is taken to imply the feature.
+
+Setting ~:condition t~ will thus make the feature enabled by default. This is not
+a special case, but rather an instance of the general behaviour of obtaining the
+value of any non-function symbol provided, and as ~(symbol-value 't)~ is always
+non-nil, the associated features will always be considered active. Conversely
+setting ~:condition nil~ will make it so no conditions imply the feature. This is
+possible thanks to special behavior that removes the feature from all other
+conditions' associations when ~nil~ is given.
+
+Since having a anonymous function (lambda) is expected to be
+reasonably common with ~:condition~ and ~:snippet~, for those keywords
+and sexp given is implicitly wrapped with ~(lambda (info) SEXP)~.
+
+If the backend is not available at the time the feature update is run,
+an error will be raised.
+
+**** Custom export feature examples
+
+To make the usage of ~org-export-update-features~ and the capabilities
+of the export feature system clearer, here are a few examples
+~org-export-update-features~ invocations.
+
+Say you want to apply the [[https://ctan.org/pkg/chickenize][chickenize]] package to the word "wacky" when
+the title starts with "wacky". We can implement that by testing for
+the regexp =^#\\+title: Wacky= and including
+src_latex{\usepackage[chickenstring[1]='wacky']{chickenize}} when it is
+found.
+
+#+begin_example
+(org-export-update-features 'latex
+ (wacky-chicken
+  :condition "^#\\+title: Wacky"
+  :snippet "\\usepackage[chickenstring[1]='wacky']{chickenize}"))
+#+end_example
+
+However, if =#+title: Wacky= is placed inside an example block, this
+regexp will match even though the match isn't actually parsed as a
+keyword. To be more robust, we can inspect ~info~ instead.
+
+#+begin_example
+(org-export-update-features 'latex
+ (wacky-chicken
+  :condition (and (car (plist-get info :title))
+                  (string-match-p "^Wacky" (car (plist-get info :title))))
+  :snippet "\\usepackage[chickenstring[1]='wacky']{chickenize}"))
+#+end_example
+
+=chickenize= is a LuaLaTeX only package, and so trying to use this
+when compiling with pdfLaTeX or XeLaTeX will cause issues. This may
+well apply to other snippets too, so it could make sense to make a
+=lualatex= feature to indicate when LuaLaTeX is being used.
+
+#+begin_example
+(org-export-update-features 'latex
+ (lualatex
+  :condition (equal (plist-get info :latex-compiler) "lualatex")))
+#+end_example
+
+To only use the chickenize snippet with LuaLaTeX, we can now add
+=lualatex= as a ~:when~ clause.
+
+#+begin_example
+(org-export-update-features 'latex
+ (wacky-chicken
+  :when lualatex))
+#+end_example
+
+Hopefully this has given you an impression of how ~:condition~, ~:when~, and
+~:snippet~ can look in practice. To demonstrate ~:requires~, ~:prevents~, and
+~:after~ we will consider another LaTeX example.
+
+Say that you wanted a few named special blocks to automatically export nicely,
+such as =#+begin_warning=, =#+begin_info=, and =#+begin_note=. All three of
+these can be individually detected and handled appropriately. For the sake of
+simplicity, a crude regexp will be used here, however examining the parse tree
+would be a more robust solution.
+
+#+begin_example
+(org-export-update-features 'latex
+ (box-warning
+  :condition "^[ \t]*#\\+begin_warning"
+  :snippet "\\mysetupbox{warning}"
+  :requires mysetupbox
+  :after mysetupbox)
+ (box-info
+  :condition "^[ \t]*#\\+begin_info"
+  :snippet "\\mysetupbox{info}"
+  :requires mysetupbox
+  :after mysetupbox)
+ (box-note
+  :condition "^[ \t]*#\\+begin_note"
+  :snippet "\\mysetupbox{note}"
+  :requires mysetupbox
+  :after mysetupbox)
+ (mysetupbox
+  :snippet "\newcommand{\mysetupbox}...")
+#+end_example
+
+Here, all three box types make use of LaTeX command ~\mysetupbox~ which is
+provided by the =mysetupbox= feature implementation. By using a ~:requires~ for
+this, we can make sure it is availible that it is loaded once, and thanks to the
+~:after mysetupbox~ lines the specific box setup invocations will occur after
+the ~\newcommand{\mysetupbox}...~ definition.
+
+Say that when using beamer you use a package that defines its own
+warning/info/note environments and you'd like to use those. In that case one can
+make an on-by-default beamer feature that prevents the box features from being
+used.
+
+#+begin_example
+(org-export-update-features 'beamer
+ (no-custom-boxes
+  :condition t
+  :prevents (box-warning box-info box-note)))
+#+end_example
+
+**** Detailed explanation of the implementation resolution process
+
+The previous descriptions of the "export feature" behaviour should give a clear
+overview of how this feature works. In case more detail is wanted, or should
+there be any ambiguity, here is a more technical description of the overall
+feature implementation resolution process.
+
+1. The list of detected features is used to obtain all applicable corresponding
+   feature implementations. Detected feature symbols may have /no/ corresponding
+   implementation.
+2. The list of feature implementations is sorted according to ~:order~.
+3. Using a queue, all required features (~:requires~) are added to the list of feature
+ implementations, as are their requirements recursively. Should a feature that
+   has no implementation be required, an ~org-missing-feature-dependency~ error is raised.
+4. The implementations with a ~:when~ condition are scanned and marked as
+   confirmed when all of the ~:when~ conditions are known to be satisfied. This is
+   repeated until there is no change in the list of confirmed implementations,
+   at which point all non-confirmed implementations are removed.
+5. For each of the feature implementations in turn, prevented features
+   (~:prevents~) are removed from the list. Feature implementations that are only
+   present because of a feature that has now been removed are themselves
+   removed, recursively.
+6. The list of feature implementations is sorted according to ~:order~, again.
+7. A stable topological sort is performed using ~:before~ and ~:after~. Should any
+   circular dependencies be found, a ~org-circular-feature-dependency~ error is raised.
+
 ** Export Region
 :PROPERTIES:
 :DESCRIPTION: Author tables and lists in Org syntax.
