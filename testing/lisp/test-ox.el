@@ -2151,6 +2151,120 @@ Footnotes[fn:2], foot[fn:test] and [fn:inline:inline footnote]
 	(bold . (lambda (bold contents info) (concat contents "!")))))
      '(:with-emphasize t)))))
 
+
+;;; Export features
+
+(ert-deftest test-org-export/feature-resolution ()
+  "Test the behaviour of `org-export-resolve-feature-implementations'"
+  ;; Check implementations for listed features are given.
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a) (b) (c)))
+          '((a) (b) (c))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a)))
+          '((a))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a) '((a) (b) (c)))
+          '((a))))
+  ;; Check depencency resolution.
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a) '((a :requires b) (b) (c)))
+          '((a :requires b) (b))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a) '((a :requires (b c)) (b) (c)))
+          '((a :requires (b c)) (b) (c))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a) '((a :requires b) (b :requires c) (c)))
+          '((a :requires b) (b :requires c) (c))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :prevents b) (b) (c)))
+          '((a :prevents b) (c))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :prevents (b c)) (b) (c)))
+          '((a :prevents (b c)))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c d) '((a :requires (b c)) (b) (c) (d :prevents b)))
+          '((a :requires (b c)) (c) (d :prevents b))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c d) '((a :requires (b c)) (b) (c :prevents b)))
+          '((a :requires (b c)) (c :prevents b))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a d) '((a :requires b) (b :requires c) (c) (d :prevents a)))
+          '((d :prevents a))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c d) '((a :requires b) (b :requires c) (c) (d :prevents a)))
+          '((b :requires c) (c) (d :prevents a))))
+  (should-error
+   (org-export-resolve-feature-implementations
+    nil '(a) '((a :requires b)))
+   :type 'org-missing-feature-dependency)
+  ;; Check application of the :when condition.
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :when b) (b)))
+          '((a :when b) (b))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :when (b c)) (b) (c)))
+          '((a :when (b c)) (b) (c))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a) (b) (c :when (a b))))
+          '((a) (b) (c :when (a b)))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :when b) (b :when c) (c)))
+          '((a :when b) (b :when c) (c))))
+  ;; Check simple ordering.
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :order 3) (b :order 1) (c :order 2)))
+          '((b :order 1) (c :order 2) (a :order 3))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :order 1) (b) (c :order -1)))
+          '((c :order -1) (b) (a :order 1))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a) '((a :order 1 :requires b) (b :requires c) (c :order -1)))
+          '((c :order -1) (b :requires c) (a :order 1 :requires b))))
+  ;; Check before/after ordering.
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :after (b c)) (b) (c)))
+          '((b) (c) (a :after (b c)))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a :after b) (b :after c) (c)))
+          '((c) (b :after c) (a :after b))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a) (b) (c :before (a b))))
+          '((c :before (a b)) (a) (b))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a) (b :before a) (c :before b)))
+          '((c :before b) (b :before a) (a))))
+  (should
+   (equal (org-export-resolve-feature-implementations
+           nil '(a b c) '((a) (b :after c :before a) (c)))
+          '((c) (b :after c :before a) (a))))
+  (should-error ; Circular dependency
+   (org-export-resolve-feature-implementations
+    nil '(a b) '((a :after b) (b :after a)))
+   :type 'org-circular-feature-dependency))
 
 
 ;;; Comments
