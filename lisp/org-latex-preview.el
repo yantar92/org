@@ -143,7 +143,6 @@ All available processes and theirs documents can be found in
      :message "you need to install the programs: latex and dvipng."
      :image-input-type "dvi"
      :image-output-type "png"
-     :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
      :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
@@ -155,21 +154,18 @@ All available processes and theirs documents can be found in
      :message "you need to install the programs: latex and dvisvgm."
      :image-input-type "dvi"
      :image-output-type "svg"
-     :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
-     ;; With dvisvgm the --bbox=preview flag is needed to emit the preview.sty-provided
-     ;; height+width+depth information. The --optimise, --clipjoin, and --relative flags
-     ;; cause dvisvgm do do some extra work to tidy up the SVG output, but barely add to
+     ;; The --optimise, --clipjoin, and --relative flags cause dvisvgm to
+     ;; do some extra work to tidy up the SVG output, but barely add to
      ;; the overall dvisvgm runtime (<1% increace, from testing).
-     :image-converter ("dvisvgm --page=1- --optimize --clipjoin --relative --no-fonts --bbox=preview --scale=%S -o %B-%%9p.svg %f"))
+     :image-converter ("dvisvgm --page=1- --optimize --clipjoin --relative --no-fonts --bbox=preview -o %B-%%9p.svg %f"))
     (imagemagick
      :programs ("pdflatex" "convert")
      :description "pdf > png"
      :message "you need to install the programs: latex and imagemagick."
      :image-input-type "pdf"
      :image-output-type "png"
-     :image-size-adjust (1.4 . 1.2)
      :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
      :latex-precompiler ("pdftex -output-directory %o -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
      :image-converter
@@ -187,11 +183,6 @@ PROPERTIES accepts the following attributes:
   :message            string, message it when required programs cannot be found.
   :image-input-type   string, input file type of image converter (e.g., \"dvi\").
   :image-output-type  string, output file type of image converter (e.g., \"png\").
-  :image-size-adjust  cons of numbers, the car element is used to adjust LaTeX
-                      image size showed in buffer and the cdr element is for
-                      HTML file.  This option is only useful for process
-                      developers, users should use variable
-                      `org-latex-preview-options' instead.
   :post-clean         list of strings, files matched are to be cleaned up once
                       the image is generated.  When nil, the files with \".dvi\",
                       \".xdv\", \".pdf\", \".tex\", \".aux\", \".log\", \".svg\",
@@ -227,9 +218,7 @@ Place-holders only used by `:latex-precompiler' and `:latex-compiler':
 
 Place-holders only used by `:image-converter':
 
-  %D    dpi, which is used to adjust image size by some processing commands.
-  %S    the image size scale ratio, which is used to adjust image size by some
-        processing commands."
+  %D    dpi, which is used to adjust image size by some processing commands."
   :group 'org-latex-preview
   :package-version '(Org . "9.7")
   :type '(alist :tag "LaTeX to image backends"
@@ -1568,11 +1557,12 @@ The path of the created LaTeX file is returned."
                (warn "Preview converter must now be a single command.  %S will be ignored."
                      (cdr cmds)))
              (car cmds))))
-         (image-size-adjust (or (plist-get extended-info :image-size-adjust)
-                                '(1.0 . 1.0)))
-         (scale (* (car image-size-adjust)
-                   (or (plist-get org-latex-preview-options :scale) 1.0)))
-         (dpi (* scale (if (display-graphic-p) (org-latex-preview--get-display-dpi) 140.0)))
+         (dpi (* 1.4 ; This factor makes it so generated PNGs are not blury
+                     ; at the displayed resulution.
+                 (or (plist-get org-latex-preview-options :scale) 1.0)
+                 (if (display-graphic-p)
+                     (org-latex-preview--get-display-dpi)
+                   140.0)))
          (texfile (plist-get extended-info :texfile))
          (texfile-base (file-name-base texfile))
          (img-command-spec
@@ -1581,7 +1571,6 @@ The path of the created LaTeX file is returned."
             (?B . ,(shell-quote-argument
                     (expand-file-name texfile-base temporary-file-directory)))
             (?D . ,(shell-quote-argument (format "%s" dpi)))
-            (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
             (?f . ,(shell-quote-argument
                     (expand-file-name
                      (concat texfile-base
@@ -1590,7 +1579,6 @@ The path of the created LaTeX file is returned."
          (img-formatted-command
           (split-string-shell-command
            (format-spec img-extract-command img-command-spec))))
-    (plist-put extended-info :dpi-scale-factor (/ dpi 140.0))
     (list 'org-async-task
           img-formatted-command
           :buffer img-process-buffer
@@ -1688,20 +1676,44 @@ fragments are regenerated."
 (defun org-latex-preview--display-info (extended-info fragment-info)
   "From FRAGMENT-INFO and EXTENDED-INFO obtain display-relevant information."
   (let ((image-type (intern (plist-get extended-info :image-output-type)))
-        (fontsize (or (plist-get extended-info :fontsize) 10))
-        (dpi-factor (or (plist-get extended-info :dpi-scale-factor) 1.0))
         info)
     (setq info (plist-put info :image-type image-type))
     (dolist (key '(:width :height :depth))
       (when-let ((val (plist-get fragment-info key)))
-        (plist-put info key (/ val fontsize dpi-factor))))
+        (plist-put info key val)))
     (plist-put info :errors (plist-get fragment-info :errors))
     info))
 
+;; TODO: Figure out why this factor is needed.
+(defconst org-latex-preview--shameful-magic-tex-scaling-factor
+  1.01659593
+  "Extra factor for aligning preview image baselines.
+
+Sometimes a little sprinkling of pixie dust is needed to get
+things just right.  Even just 2.7% magic can suffice.
+
+This is the ratio of image sizes as reported by preview.sty and
+computed by dvisvgm.  The latter is correct.")
+
+(defconst org-latex-preview--tex-scale-divisor
+  (* 65781.76 org-latex-preview--shameful-magic-tex-scaling-factor)
+  "Base pt to point conversion for preview.sty output.
+
+This is the product of three scaling quantities:
+
+- Point to scaled point ratio: 1:65536
+- Base point to scaled point ratio: 72:72.27
+- The magic scaling factor
+  (see `org-latex-preview--shameful-magic-tex-scaling-factor').")
+
 (defun org-latex-preview--latex-preview-filter (_proc _string extended-info)
   "Examine the stdout from LaTeX compilation with preview.sty.
-The detected fontsize is directly entered into EXTENDED-INFO, and
-fragment errors are put into the :errors slot of the relevant
+
+- The detected fontsize is directly entered into EXTENDED-INFO.
+- The tightpage bounds information is captured and stored in EXTENDED-INFO.
+- Fragment geometry and alignment info is computed using the
+  tightpage info and page geometry reported by preview.sty.
+- Fragment errors are put into the :errors slot of the relevant
 fragments in EXTENDED-INFO."
   (unless (plist-get extended-info :fontsize)
     (when (save-excursion
@@ -1710,8 +1722,9 @@ fragments in EXTENDED-INFO."
   (let ((preview-start-re
          "^! Preview: Snippet \\([0-9]+\\) started.\n<-><->\n *\nl\\.\\([0-9]+\\)[^\n]+\n")
         (preview-end-re
-         "\\(?:^Preview: Tightpage.*$\\)?\n! Preview: Snippet [0-9]+ ended.")
+         "\\(?:^Preview: Tightpage.*$\\)?\n! Preview: Snippet [0-9]+ ended.(\\([0-9]+\\)\\+\\([0-9]+\\)x\\([0-9]+\\))")
         (fragments (plist-get extended-info :fragments))
+        (tightpage-info (plist-get extended-info :tightpage))
         preview-marks)
     (beginning-of-line)
     (save-excursion
@@ -1724,20 +1737,63 @@ fragments in EXTENDED-INFO."
     (setq preview-marks (nreverse preview-marks))
     (while preview-marks
       (goto-char (caar preview-marks))
+      ;; Check for tightpage-info
+      (unless tightpage-info
+        (save-excursion
+          (when (re-search-forward
+                 "^Preview: Tightpage \\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\)"
+                                   (or (caadr preview-marks) (point-max)) t)
+            (setq tightpage-info
+                  (mapcar #'string-to-number
+                          ;; left-margin bottom-margin
+                          ;; right-margin top-margin
+                          (list (match-string 1) (match-string 2)
+                                (match-string 3) (match-string 4))))
+            (plist-put extended-info :tightpage tightpage-info))))
+      ;; Check for processed fragment
       (if (re-search-forward preview-end-re (or (caadr preview-marks) (point-max)) t)
           (let ((fragment-info (nth (1- (nth 2 (car preview-marks))) fragments))
                 (errors-substring
-                 (string-trim
-                  (buffer-substring (cadar preview-marks)
-                                    (match-beginning 0))
-                  ;; In certain situations we can end up with non-error
-                  ;; logging informattion within the preview output.
-                  ;; To make sure this is not captured, we rely on the fact
-                  ;; that LaTeX error messages have a consistent format
-                  ;; and start with an exclamation mark "!".  Thus, we
-                  ;; can safely strip everything prior to the first "!"
-                  ;; from the output.
-                  "[^!]*")))
+                 (save-match-data
+                   (string-trim
+                    (buffer-substring (cadar preview-marks)
+                                      (match-beginning 0));; In certain situations we can end up with non-error
+                    ;; logging informattion within the preview output.
+                    ;; To make sure this is not captured, we rely on the fact
+                    ;; that LaTeX error messages have a consistent format
+                    ;; and start with an exclamation mark "!".  Thus, we
+                    ;; can safely strip everything prior to the first "!"
+                    ;; from the output.
+                    "[^!]*")))
+                depth)
+            ;; Gather geometry and alignment info
+            (if tightpage-info
+                (progn
+                  (setq depth
+                        (/ (- (string-to-number (match-string 2))
+                              (nth 1 tightpage-info))
+                           org-latex-preview--tex-scale-divisor
+                           (or (plist-get fragment-info :fontsize) 10)))
+                  (plist-put fragment-info :depth depth)
+                  (plist-put fragment-info :height
+                             (+ (or depth 0)
+                                (/ (+ (string-to-number (match-string 1))
+                                      (nth 3 tightpage-info))
+                                   org-latex-preview--tex-scale-divisor
+                                   (or (plist-get fragment-info :fontsize) 10))))
+                  (plist-put fragment-info :width
+                             (/ (+ (string-to-number (match-string 3))
+                                   (nth 2 tightpage-info)
+                                   (- (nth 1 tightpage-info)))
+                                org-latex-preview--tex-scale-divisor
+                                (or (plist-get fragment-info :fontsize) 10))))
+              (cl-loop for (geom . match-index)
+                       in '((:height . 1) (:depth . 2) (:width . 3))
+                       do
+                       (plist-put fragment-info geom
+                                  (/ (string-to-number (match-string match-index))
+                                     org-latex-preview--tex-scale-divisor
+                                     (or (plist-get fragment-info :fontsize) 10)))))
             (plist-put fragment-info :errors
                        (and (not (string-blank-p errors-substring))
                             (replace-regexp-in-string
@@ -1755,8 +1811,6 @@ fragments in EXTENDED-INFO."
 Any matches found will be matched against the fragments recorded in
 EXTENDED-INFO, and displayed in the buffer."
   (let ((dvisvgm-processing-re "^processing page \\([0-9]+\\)\n")
-        (dvisvgm-depth-re "depth=\\([0-9.]+\\)pt$")
-        (dvisvgm-size-re "^ *graphic size: \\([0-9.]+\\)pt x \\([0-9.]+\\)pt")
         (fragments (plist-get extended-info :fragments))
         page-marks fragments-to-show)
     (beginning-of-line)
@@ -1776,12 +1830,6 @@ EXTENDED-INFO, and displayed in the buffer."
                 (re-search-forward "output written to \\(.*.svg\\)$" end t))
           (setq fragment-info (nth (1- page) fragments))
           (plist-put fragment-info :path (expand-file-name (match-string 1) temporary-file-directory))
-          (when (save-excursion
-                  (re-search-forward dvisvgm-depth-re end t))
-            (plist-put fragment-info :depth (string-to-number (match-string 1))))
-          (when (save-excursion (re-search-forward dvisvgm-size-re end t))
-            (plist-put fragment-info :height (string-to-number (match-string 2)))
-            (plist-put fragment-info :width (string-to-number (match-string 1))))
           (when (save-excursion
                   (re-search-forward "^  page is empty" end t))
             (unless (plist-get fragment-info :error)
@@ -1856,20 +1904,11 @@ tests with the output of dvisvgm."
                 (replace-match "currentColor" t t nil 1)))
             (write-region nil nil path nil 0)))))))
 
-(defconst org-latex-preview--dvipng-dpi-pt-factor 0.5144
-  "Factor that converts dvipng reported depth at 140 DPI to pt.
-
-This value was obtained by observing linear scaling between the
-set DPI and reported height/depth, then calling dvipng with a DPI
-of 5600 and dividing the reported height + depth (692) by the dvisvgm
-reported values in pt (8.899pt).")
-
 (defun org-latex-preview--dvipng-filter (_proc _string extended-info)
   "Look for newly created images in the dvipng stdout buffer.
 Any matches found will be matched against the fragments recorded in
 EXTENDED-INFO, and displayed in the buffer."
-  (let ((dvipng-depth-height-re "depth=\\([0-9]+\\) height=\\([0-9]+\\)")
-        (outputs-no-ext (expand-file-name
+  (let ((outputs-no-ext (expand-file-name
                          (file-name-base
                           (plist-get extended-info :texfile))
                          temporary-file-directory))
@@ -1884,13 +1923,6 @@ EXTENDED-INFO, and displayed in the buffer."
                    (fragment-info (nth (1- page) fragments)))
               (plist-put fragment-info :path
                          (format "%s-%09d.png" outputs-no-ext page))
-              (when (re-search-forward dvipng-depth-height-re page-info-end t)
-                (let ((depth (* (string-to-number (match-string 1))
-                                org-latex-preview--dvipng-dpi-pt-factor))
-                      (height (* (string-to-number (match-string 2))
-                                 org-latex-preview--dvipng-dpi-pt-factor)))
-                  (plist-put fragment-info :depth depth)
-                  (plist-put fragment-info :height (+ depth height))))
               (push fragment-info fragments-to-show)))))
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
@@ -2314,9 +2346,7 @@ a HTML file."
          (texfile-base (make-temp-name
                         (expand-file-name "orgtex" tmpdir)))
          (texfile (concat texfile-base ".tex"))
-         (image-size-adjust (or (plist-get processing-info :image-size-adjust)
-                                '(1.0 . 1.0)))
-         (scale (* (if buffer (car image-size-adjust) (cdr image-size-adjust))
+         (scale (* (if buffer 1.4 1.2)
                    (or (plist-get options (if buffer :scale :html-scale)) 1.0)))
          (dpi (* scale (if (and buffer (display-graphic-p)) (org-latex-preview--get-display-dpi) 140.0)))
          (fg (or (plist-get options (if buffer :foreground :html-foreground))
