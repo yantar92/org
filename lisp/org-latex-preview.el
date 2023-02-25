@@ -1118,7 +1118,8 @@ is either the substring between BEG and END or (when provided) VALUE."
       (org-latex-preview--create-image-async
        processing-type
        (nreverse fragment-info)
-       latex-preamble))))
+       :latex-preamble latex-preamble
+       :place-preview-p t))))
 
 (defun org-latex-preview--colors-at (pos)
   "Find colors for LaTeX previews to be inserted at POS."
@@ -1250,7 +1251,7 @@ NUMBER is the equation number that should be used, if applicable."
                       (goto-char (org-element-property :begin datum))
                       (org-element-context)))))))))
 
-(defun org-latex-preview--create-image-async (processing-type fragments-info &optional latex-processor latex-preamble)
+(cl-defun org-latex-preview--create-image-async (processing-type fragments-info &key latex-processor latex-preamble place-preview-p)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
 FRAGMENTS-INFO is a list of plists, each of which provides
@@ -1264,6 +1265,10 @@ where
 
 It is worth noting the FRAGMENTS-INFO plists will be modified
 during processing to hold more information on the fragments.
+
+When PLACE-PREVIEW-P is true, it will be set in the extended info
+plist passed to filters, and is expected to result in the newly
+generated fragment image being placed in the buffer.
 
 LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset.
 
@@ -1356,7 +1361,8 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
                           :fragments fragments-info
                           :org-buffer (current-buffer)
                           :texfile (org-latex-preview--create-tex-file
-                                    processing-info fragments-info))))
+                                    processing-info fragments-info)
+                          :place-preview-p place-preview-p)))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
@@ -1633,14 +1639,16 @@ The path of the created LaTeX file is returned."
        for fragment-info in (plist-get extended-info :fragments)
        for image-file in images
        for ov = (plist-get fragment-info :overlay)
-       do (plist-put fragment-info :path image-file)
-       (org-latex-preview--update-overlay
-        ov
-        (org-latex-preview--cache-image
-         (plist-get fragment-info :key)
-         image-file
-         (org-latex-preview--display-info
-          extended-info fragment-info)))))))
+       for cached-img =
+       (org-latex-preview--cache-image
+        (plist-get fragment-info :key)
+        image-file
+        (org-latex-preview--display-info
+         extended-info fragment-info))
+       do
+       (plist-put fragment-info :path image-file)
+       (when (plist-get extended-info :place-preview-p)
+         (org-latex-preview--update-overlay ov cached-img))))))
 
 (defun org-latex-preview--check-all-fragments-produced (_exit-code _stdout extended-info)
   "Check each of the fragments in EXTENDED-INFO has a path.
@@ -1673,7 +1681,8 @@ fragments are regenerated."
         ;; Re-generate the remaining fragments.
         (org-latex-preview--create-image-async
          (plist-get extended-info :processor)
-         (cdr fragments))
+         (cdr fragments)
+         :place-preview-p t)
         (setq fragments nil)))))
 
 (defun org-latex-preview--display-info (extended-info fragment-info)
@@ -1789,9 +1798,18 @@ EXTENDED-INFO, and displayed in the buffer."
       ;; to be a bit safer this we use 5x that here.
       (run-at-time
        0.01 nil
-       (lambda (frags)
-         (mapc #'org-latex-preview--svg-make-fg-currentColor frags)
-         (org-latex-preview--place-images extended-info frags))
+       (if (plist-get extended-info :place-preview-p)
+           (lambda (fragments)
+             (mapc #'org-latex-preview--svg-make-fg-currentColor fragments)
+             (org-latex-preview--place-images extended-info fragments))
+         (lambda (fragments)
+           (mapc #'org-latex-preview--svg-make-fg-currentColor fragments)
+           (dolist (fragment-info fragments)
+             (org-latex-preview--cache-image
+              (plist-get fragment-info :key)
+              (plist-get fragment-info :path)
+              (org-latex-preview--display-info
+               extended-info fragment-info)))))
        fragments-to-show))))
 
 (defun org-latex-preview--svg-make-fg-currentColor (svg-fragment)
@@ -1876,7 +1894,14 @@ EXTENDED-INFO, and displayed in the buffer."
               (push fragment-info fragments-to-show)))))
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
-      (org-latex-preview--place-images extended-info fragments-to-show))))
+      (if (plist-get extended-info :place-preview-p)
+          (org-latex-preview--place-images extended-info fragments-to-show)
+        (dolist (fragment-info fragments-to-show)
+          (org-latex-preview--cache-image
+           (plist-get fragment-info :key)
+           (plist-get fragment-info :path)
+           (org-latex-preview--display-info
+            extended-info fragment-info)))))))
 
 (defun org-latex-preview--place-images (extended-info &optional fragments)
   "Place images for each of FRAGMENTS, according to their data and EXTENDED-INFO.
