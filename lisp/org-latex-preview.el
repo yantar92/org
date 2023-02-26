@@ -1160,13 +1160,18 @@ NUMBER is the equation number that should be used, if applicable."
     "empheq") ; empheq.sty
   "List of LaTeX environments which produce numbered equations.")
 
-(defun org-latex-preview--environment-numbering-table ()
-  "Creat a hash table from numbered equations to their initial index."
-  (let ((table (make-hash-table :test (if (org-element--cache-active-p)
+(defun org-latex-preview--environment-numbering-table (&optional parse-tree)
+  "Creat a hash table from numbered equations to their initial index.
+If the org-element cache is active or PARSE-TREE is provided, the
+hash table will use `eq' equality, otherwise `equal' will be
+used.  When PARSE-TREE is provided, it is passed onto
+`org-latex-preview--get-numbered-environments'."
+  (let ((table (make-hash-table :test (if (or parse-tree (org-element--cache-active-p))
                                           #'eq #'equal)))
         (counter 1))
     (save-match-data
-      (dolist (element (org-latex-preview--get-numbered-environments))
+      (dolist (element (org-latex-preview--get-numbered-environments
+                        nil nil parse-tree))
         (let ((content (org-element-property :value element)))
           (puthash element counter table)
           (if (string-match-p "\\`\\\\begin{[^}]*align" content)
@@ -1180,10 +1185,25 @@ NUMBER is the equation number that should be used, if applicable."
               (cl-incf counter))))))
     table))
 
-(defun org-latex-preview--get-numbered-environments (&optional beg end)
-  "Find all numbered environments between BEG and END."
-  (if (org-element--cache-active-p)
-      (org-element-cache-map
+(defun org-latex-preview--get-numbered-environments (&optional beg end parse-tree)
+  "Find all numbered environments between BEG and END.
+If PARSE-TREE is provided, it will be used insead of
+`org-element-cache-map' or `org-element-parse-buffer'."
+  (cond
+   (parse-tree
+    (org-element-map
+        parse-tree
+        '(latex-environment)
+      (lambda (datum)
+        (and (<= (or beg (point-min)) (org-element-property :begin datum)
+                 (org-element-property :end datum) (or end (point-max)))
+             (let* ((content (org-element-property :value datum))
+                    (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
+                              (match-string 1 content))))
+               (and (member env org-latex-preview--numbered-environments)
+                    datum))))))
+   ((org-element--cache-active-p)
+    (org-element-cache-map
        (lambda (datum)
          (and (<= (or beg (point-min)) (org-element-property :begin datum)
                   (org-element-property :end datum) (or end (point-max)))
@@ -1195,7 +1215,8 @@ NUMBER is the equation number that should be used, if applicable."
        :granularity 'element
        :restrict-elements '(latex-environment)
        :from-pos beg
-       :to-pos (or end (point-max-marker)))
+       :to-pos (or end (point-max-marker))))
+   (t
     (org-element-map
         (org-element-parse-buffer 'element)
         '(latex-environment)
@@ -1208,7 +1229,7 @@ NUMBER is the equation number that should be used, if applicable."
                (and (member env org-latex-preview--numbered-environments)
                     (save-excursion
                       (goto-char (org-element-property :begin datum))
-                      (org-element-context)))))))))
+                      (org-element-context))))))))))
 
 (cl-defun org-latex-preview--create-image-async (processing-type fragments-info &key latex-processor latex-preamble place-preview-p)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
