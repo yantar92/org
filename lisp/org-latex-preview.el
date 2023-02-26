@@ -1262,7 +1262,9 @@ generated fragment image being placed in the buffer.
 
 LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset.
 
-When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
+When provided, LATEX-PREAMBLE overrides the default LaTeX preamble.
+
+Returns a list of async tasks started."
   (let* ((processing-type
           (or processing-type org-latex-preview-default-process))
          (latex-processor
@@ -1381,10 +1383,11 @@ When provided, LATEX-PREAMBLE overrides the default LaTeX preamble."
                      #'org-latex-preview--check-all-fragments-produced))))
       (if (and (eq processing-type 'dvipng)
                (member "--follow" (cadr img-extract-async)))
-          (org-async-call img-extract-async)
+        (list (org-async-call tex-compile-async)
+              (org-async-call img-extract-async))
         (plist-put (cddr tex-compile-async) :success img-extract-async)
-        (plist-put (cddr tex-compile-async) :failure img-extract-async))
-      (org-async-call tex-compile-async))))
+        (plist-put (cddr tex-compile-async) :failure img-extract-async)
+        (list (org-async-call tex-compile-async))))))
 
 (defun org-latex-preview--failure-callback (_exit _buf extended-info)
   "Clear overlays corresponding to previews that failed to generate.
