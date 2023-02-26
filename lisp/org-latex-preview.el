@@ -1810,25 +1810,15 @@ EXTENDED-INFO, and displayed in the buffer."
       (setq page-marks (cdr page-marks)))
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
-      ;; There seems to often be a slight delay between dvisvgm reporting
-      ;; to have written a file, and all the content actually being there.
-      ;; On my machine, an 0.002s delay is sufficient to eliminate this issue,
-      ;; to be a bit safer this we use 5x that here.
-      (run-at-time
-       0.01 nil
-       (if (plist-get extended-info :place-preview-p)
-           (lambda (fragments)
-             (mapc #'org-latex-preview--svg-make-fg-currentColor fragments)
-             (org-latex-preview--place-images extended-info fragments))
-         (lambda (fragments)
-           (mapc #'org-latex-preview--svg-make-fg-currentColor fragments)
-           (dolist (fragment-info fragments)
-             (org-latex-preview--cache-image
-              (plist-get fragment-info :key)
-              (plist-get fragment-info :path)
-              (org-latex-preview--display-info
-               extended-info fragment-info)))))
-       fragments-to-show))))
+      (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show)
+      (if (plist-get extended-info :place-preview-p)
+          (org-latex-preview--place-images extended-info fragments-to-show)
+        (dolist (fragment-info fragments-to-show)
+          (org-latex-preview--cache-image
+           (plist-get fragment-info :key)
+           (plist-get fragment-info :path)
+           (org-latex-preview--display-info
+            extended-info fragment-info)))))))
 
 (defun org-latex-preview--svg-make-fg-currentColor (svg-fragment)
   "Replace the foreground color in SVG-FRAGMENT's file with \"currentColor\".
@@ -1844,19 +1834,24 @@ tests with the output of dvisvgm."
         ;; `image-file-handler') from being called.
         (file-name-handler-alist nil)
         (path (plist-get svg-fragment :path)))
+    (catch 'svg-exists
+      (dotimes (_ 1000) ; Check for svg existance over 1s.
+        (when (file-exists-p path)
+          (throw 'svg-exists t))
+        (sleep-for 0.001)))
     (when path
       (with-temp-buffer
         (insert-file-contents path)
         (unless ; When the svg is incomplete, wait for it to be completed.
-            (string= (buffer-substring (- (point-max) 6) (point-max))
+            (string= (buffer-substring (max 1 (- (point-max) 6)) (point-max))
                      "</svg>")
           (catch 'svg-complete
             (dotimes (_ 1000) ; Check for complete svg over 1s.
-              (if (string= (buffer-substring (- (point-max) 6) (point-max))
+              (if (string= (buffer-substring (max 1 (- (point-max) 6)) (point-max))
                            "</svg>")
                   (throw 'svg-complete t)
                 (erase-buffer)
-                (sit-for 0.001)
+                (sleep-for 0.001)
                 (insert-file-contents path)))
             (erase-buffer)))
         (goto-char (point-min))
