@@ -1005,12 +1005,16 @@ protection against placing doubled up overlays."
         (error "Unknown conversion process %s for previewing LaTeX fragments"
                processing-type)))))
 
-(defun org-latex-preview--place-from-elements (processing-type elements)
-  "Preview LaTeX math fragments ELEMENTS using PROCESSING-TYPE."
-  (let* ((numbering-table (and org-latex-preview-numbered
+(defun org-latex-preview--construct-entries
+    (elements &optional construct-numbering-p parse-tree)
+  "Constuct a well formatted list of entries and (optinally) numbering offsets.
+This operates by processing ELEMENTS.  When CONSTRUCT-NUMBERING-P is non-nil,
+the number offsets will also be calculated, using PARSE-TREE if given."
+  (let* ((numbering-table (and construct-numbering-p
                                (cl-find 'latex-environment elements
                                         :key #'org-element-type :test #'eq)
-                               (org-latex-preview--environment-numbering-table)))
+                               (org-latex-preview--environment-numbering-table
+                                parse-tree)))
          (numbering-offsets
           (and numbering-table
                (mapcar
@@ -1031,7 +1035,13 @@ protection against placing doubled up overlays."
                           1 0))
                    (org-element-property :value element)))
            elements)))
-    (org-latex-preview-place processing-type entries numbering-offsets)))
+    (list entries numbering-offsets)))
+
+(defun org-latex-preview--place-from-elements (processing-type elements)
+  "Preview LaTeX math fragments ELEMENTS using PROCESSING-TYPE."
+  (apply #'org-latex-preview-place processing-type
+         (org-latex-preview--construct-entries
+          elements org-latex-preview-numbered)))
 
 ;;;###autoload
 (defun org-latex-preview-place (processing-type entries &optional numbering-offsets latex-preamble)
