@@ -1968,18 +1968,26 @@ Return (path . info).
 
 The caching location depends on whether preview persistence is
 enabled, see `org-latex-preview-persist'."
-  (if org-latex-preview-persist
-      (let ((label-path-info
-             (or (org-persist-read org-latex-preview--cache-name
-                                   (list :key key)
-                                   nil nil :read-related t)
-                 (org-persist-register `(,org-latex-preview--cache-name
-                                         (file ,path)
-                                         (elisp-data ,info))
-                                       (list :key key)
-                                       :expiry org-latex-preview-persist-expiry
-                                       :write-immediately t))))
-        (cons (cadr label-path-info) info))
+  (cond
+   ((not path)
+    (ignore
+     (display-warning
+      '(org latex-preview put-cache)
+      (format "Tried to cache %S without a path, skipping. This should not happen, please report it as a bug to the Org mailing list (M-x org-submit-bug-report)." key)
+      :warning)))
+   (org-latex-preview-persist
+    (let ((label-path-info
+           (or (org-persist-read org-latex-preview--cache-name
+                                 (list :key key)
+                                 nil nil :read-related t)
+               (org-persist-register `(,org-latex-preview--cache-name
+                                       (file ,path)
+                                       (elisp-data ,info))
+                                     (list :key key)
+                                     :expiry org-latex-preview-persist-expiry
+                                     :write-immediately t))))
+      (cons (cadr label-path-info) info)))
+   (t
     (unless org-latex-preview--table
       (setq org-latex-preview--table (make-hash-table :test 'equal :size 240)))
     (when-let ((path)
@@ -1988,7 +1996,7 @@ enabled, see `org-latex-preview-persist'."
                           temporary-file-directory)))
       (copy-file path new-path 'replace)
       (puthash key (cons new-path info)
-               org-latex-preview--table))))
+               org-latex-preview--table)))))
 
 (defun org-latex-preview--get-cached (key)
   "Retrieve the image path and info associated with KEY.
