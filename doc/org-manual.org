@@ -11522,9 +11522,8 @@ previewing within Org mode.
 #+vindex: org-latex-preview-header
 You can customize the variables ~org-latex-preview-options~ and
 ~org-latex-preview-header~ to influence some aspects of the preview.
-In particular, the ~:scale~ (and for HTML export, ~:html-scale~)
-property of the former can be used to adjust the size of the preview
-images.
+In particular, the ~:scale~ and ~:zoom~ properties of the former can
+be used to adjust the size of the preview images.
 
 - {{{kbd(C-c C-x C-l)}}} (~org-latex-preview~) ::
   #+kindex: C-c C-x C-l
@@ -11548,6 +11547,24 @@ To disable it, simply use
 
 : #+STARTUP: nolatexpreview
 
+#+vindex: org-latex-preview-numbered
+When generating previews, Org mode can track equation numbers and keep
+them consistent by regenerating previews when necessary.  This
+behavior is controlled by the variable ~org-latex-preview-numbered~.
+
+Org mode can automatically preview LaTeX fragments as you type them,
+and hide and reveal preview images as the cursor moves into or out of
+them.  To enable this, turn on the minor mode
+~org-latex-preview-auto-mode~.
+
+
+- (~org-latex-preview-auto-mode~) ::
+  #+findex: org-latex-preview-auto-mode
+
+  Generate previews of LaTeX fragments as they are entered in the
+  buffer.  Previews will be generated when there is any change to the
+  buffer that includes the insertion of a LaTeX environment or
+  fragment.
 *** Using CDLaTeX to enter math
 :PROPERTIES:
 :DESCRIPTION: Speed up entering of formulas.
