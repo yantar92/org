@@ -371,6 +371,13 @@ indeed LaTeX fragments/environments.")
   '(org-indent)
   "Faces that should not affect the color of preview overlays.")
 
+(defconst org-latex-preview--svg-fg-standin "#000001"
+  "Hex color that is used as a stand-in for the current color.
+The entire purpose of this is to be replaced by \"currentColor\"
+in `org-latex-preview--svg-make-fg-currentColor', and so it
+should be a color that is extremely likely not otherwise found in
+the image.")
+
 (defun org-latex-preview--ensure-overlay (beg end)
   "Build an overlay between BEG and END."
   (let (ov)
@@ -1072,7 +1079,10 @@ is either the substring between BEG and END or (when provided) VALUE."
                                      :number number
                                      :continue-color
                                      (and (equal prev-bg bg)
-                                          (equal prev-fg fg))))))
+                                          (equal prev-fg fg)))
+                               (and (eq processing-type 'dvisvgm)
+                                    (list :foreground
+                                          org-latex-preview--svg-fg-standin)))))
           (if-let ((path-info (org-latex-preview--get-cached hash)))
               (org-latex-preview--update-overlay
                (org-latex-preview--ensure-overlay beg end)
@@ -1896,12 +1906,9 @@ tests with the output of dvisvgm."
             ;; This also works better with other parts of the system, such as
             ;; the display of errors.
             (delete-file path)
-          (when (re-search-forward "<g fill='\\(#[0-9a-f]\\{6\\}\\)'" nil t)
-            (let* ((same-color (format "\\(?:fill\\|stroke\\)='\\(%s\\)'" (match-string 1))))
-              (replace-match "currentColor" t t nil 1)
-              (while (re-search-forward same-color nil t)
-                (replace-match "currentColor" t t nil 1)))
-            (write-region nil nil path nil 0)))))))
+          (while (search-forward org-latex-preview--svg-fg-standin nil t)
+            (replace-match "currentColor" t t))
+          (write-region nil nil path nil 0))))))
 
 (defun org-latex-preview--dvipng-filter (_proc _string extended-info)
   "Look for newly created images in the dvipng stdout buffer.
