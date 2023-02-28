@@ -740,6 +740,43 @@ This constant, for example, makes the below code not err:
   'org-latex-color 'org-latex-preview--attr-color "9.7")
 (define-obsolete-function-alias
   'org-normalize-color 'org-latex-preview--normalize-color "9.7")
+;; MathML related functions from org-latex-preview.el
+(define-obsolete-variable-alias
+  'org-latex-to-mathml-jar-file 'org-mathml-converter-jar-file "9.7")
+(define-obsolete-variable-alias
+  'org-latex-to-mathml-convert-command 'org-mathml-convert-command "9.7")
+(define-obsolete-function-alias
+  'org-format-latex-mathml-available-p 'org-mathml-converter-available-p "9.7")
+(define-obsolete-function-alias
+  'org-create-math-formula 'org-mathml-convert-latex "9.7")
+
+;; FIXME: Unused; obsoleted; to be removed.
+(defun org-format-latex-as-mathml (latex-frag latex-frag-type
+                                              prefix &optional dir)
+  (let* ((absprefix (expand-file-name prefix dir))
+         (print-length nil) (print-level nil)
+         (formula-id (concat
+                      "formula-"
+                      (sha1
+                       (prin1-to-string
+                        (list latex-frag
+                              org-latex-to-mathml-convert-command)))))
+         (formula-cache (format "%s-%s.mathml" absprefix formula-id))
+         (formula-cache-dir (file-name-directory formula-cache)))
+    (unless (file-directory-p formula-cache-dir)
+      (make-directory formula-cache-dir t))
+    (unless (file-exists-p formula-cache)
+      (org-mathml-convert-latex latex-frag formula-cache))
+    (if (file-exists-p formula-cache)
+        ;; Successful conversion.  Return the link to MathML file.
+        (org-add-props
+            (format  "[[file:%s]]" (file-relative-name formula-cache dir))
+            (list 'org-latex-src (replace-regexp-in-string "\"" "" latex-frag)
+                  'org-latex-src-embed-type (if latex-frag-type
+                                                'paragraph 'character)))
+      ;; Failed conversion.  Return the LaTeX fragment verbatim
+      latex-frag)))
+(make-obsolete #'org-format-latex-as-mathml "to be removed" "9.7")
 
 ;; FIXME: Unused; obsoleted; to be removed.
 (defun org-dvipng-color (attr)
