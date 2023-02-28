@@ -43,8 +43,7 @@
 ;;;###autoload
 (defcustom org-latex-preview-options
   '(:foreground auto :background "Transparent" :scale 1.0
-    :html-foreground "Black" :html-background "Transparent"
-    :html-scale 1.0 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")
+    :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")
     :zoom 1.0)
   "Options for creating images from LaTeX fragments.
 This is a property list with the following properties:
@@ -55,8 +54,6 @@ This is a property list with the following properties:
              `default' means use the background of the default face.
              `auto' means use the background from the text face.
 :scale       a scaling factor for the size of the images, to get more pixels
-:html-foreground, :html-background, :html-scale
-             the same numbers for HTML export.
 :matchers    a list indicating which matchers should be used to
              find LaTeX fragments.  Valid members of this list are:
              \"begin\" find environments
@@ -70,24 +67,6 @@ This is a property list with the following properties:
   :group 'org-latex-preview
   :package-version '(Org . "9.7")
   :type 'plist)
-
-(defcustom org-latex-to-html-convert-command nil
-  "Shell command to convert LaTeX fragments to HTML.
-This command is very open-ended: the output of the command will
-directly replace the LaTeX fragment in the resulting HTML.
-Replace format-specifiers in the command as noted below and use
-`shell-command' to convert LaTeX to HTML.
-%i:     The LaTeX fragment to be converted (shell-escaped).
-        It must not be used inside a quoted argument, the result of %i
-        expansion inside a quoted argument is undefined.
-
-For example, this could be used with LaTeXML as
-\"latexmlc literal:%i --profile=math --preload=siunitx.sty 2>/dev/null\"."
-  :group 'org-latex
-  :package-version '(Org . "9.4")
-  :type '(choice
-          (const :tag "None" nil)
-          (string :tag "Shell command")))
 
 (defcustom org-latex-preview-default-process
   (if (executable-find "dvisvgm") 'dvisvgm 'dvipng)
@@ -889,67 +868,6 @@ should it be enabled."
                                   (org-element-property :begin (car fragments))))))
             (push obj fragments)))))
     (nreverse fragments)))
-
-(defun org-latex-preview-replace-fragments (prefix processing-type &optional dir msg)
-  "Replace all LaTeX fragments in the buffer with export appropriate forms.
-The way this is done is set by PROCESSING-TYPE, which can be either:
-- verabtim, in which case nothing is done
-- mathjax, in which case the TeX-style delimeters are replaced with
-  LaTeX-style delimeters.
-- html, in which case the math fragment is replaced by the result of
-  `org-format-latex-as-html'.
-- mathml, in which case the math fragment is replace by the result of
-  `org-format-latex-as-mathml'.
-- an entry in `org-latex-preview-process-alist', in which case the
-  math fragment is replaced with `org-create-latex-export'.
-
-Generated image files are placed in DIR with the prefix PREFIX.
-Note that PREFIX may itself contain a directory path component.
-
-When generating output files, MSG will be `message'd if given."
-  (let* ((cnt 0))
-    (save-excursion
-      (dolist (element (org-latex-preview-collect-fragments))
-        (let ((block-type (eq (org-element-type element)
-                              'latex-environment))
-              (value (org-element-property :value element))
-              (beg (org-element-property :begin element))
-              (end (save-excursion
-                     (goto-char (org-element-property :end element))
-                     (skip-chars-backward " \r\t\n")
-                     (point))))
-          (cond
-           ((eq processing-type 'verbatim)) ; Do nothing.
-           ((eq processing-type 'mathjax)
-            ;; Prepare for MathJax processing.
-            (if (not (string-match "\\`\\$\\$?" value))
-                (goto-char end)
-              (delete-region beg end)
-              (if (string= (match-string 0 value) "$$")
-                  (insert "\\[" (substring value 2 -2) "\\]")
-                (insert "\\(" (substring value 1 -1) "\\)"))))
-           ((eq processing-type 'html)
-            (goto-char beg)
-            (delete-region beg end)
-            (insert (org-format-latex-as-html value)))
-           ((eq processing-type 'mathml)
-            ;; Process to MathML.
-            (unless (org-format-latex-mathml-available-p)
-              (user-error "LaTeX to MathML converter not configured"))
-            (cl-incf cnt)
-            (when msg (message msg cnt))
-            (goto-char beg)
-            (delete-region beg end)
-            (insert (org-format-latex-as-mathml
-                     value block-type prefix dir)))
-           ((assq processing-type org-latex-preview-process-alist)
-            (let ((image-dir (expand-file-name prefix dir)))
-              (unless (file-exists-p image-dir)
-                (make-directory image-dir t)))
-            (org-create-latex-export
-             processing-type element prefix dir block-type))
-           (t (error "Unknown conversion process %s for LaTeX fragments"
-                     processing-type))))))))
 
 (defun org-latex-preview-fragments (processing-type &optional beg end)
   "Produce image overlays of LaTeX math fragments between BEG and END.
@@ -2135,7 +2053,7 @@ process."
    preamble
    tempfile-p))
 
-(defun org-latex-preview--tex-styled (processing-type value options &optional html-p)
+(defun org-latex-preview--tex-styled (processing-type value options)
   "Apply LaTeX style commands to VALUE based on OPTIONS.
 If PROCESSING-TYPE is dvipng, the colours are set with DVI
 \"\\special\" commands instead of \"\\color\" and
@@ -2144,14 +2062,12 @@ If PROCESSING-TYPE is dvipng, the colours are set with DVI
 VALUE is the math fragment text to be previewed.
 
 OPTIONS is the plist `org-latex-preview-options' with customized
-color information for this run.
-
-HTML-P, if true, uses colors required for HTML processing."
-  (let* ((fg (pcase (plist-get options (if html-p :html-foreground :foreground))
+color information for this run."
+  (let* ((fg (pcase (plist-get options :foreground)
                ('default (org-latex-preview--format-color (org-latex-preview--attr-color :foreground)))
                ((pred null) (org-latex-preview--format-color "Black"))
                (color (org-latex-preview--format-color color))))
-         (bg (pcase (plist-get options (if html-p :html-background :background))
+         (bg (pcase (plist-get options :background)
                ('default (org-latex-preview--attr-color :background))
                ("Transparent" nil)
                (bg (org-latex-preview--format-color bg))))
@@ -2170,62 +2086,6 @@ HTML-P, if true, uses colors required for HTML processing."
             (format "\\setcounter{equation}{%d}" (1- num))
             "%\n"
             value)))
-
-(defun org-create-latex-export (processing-type element prefix dir &optional block-type)
-  "Create a export of the LaTeX math fragment ELEMENT using PROCESSING-TYPE.
-
-Generated image files are placed in DIR with the prefix PREFIX.
-Note that PREFIX may itself contain a directory path component.
-
-BLOCK-TYPE determines whether the result is placed inline or as a paragraph."
-  (let* ((processing-info
-          (cdr (assq processing-type org-latex-preview-process-alist)))
-         (beg (org-element-property :begin element))
-         (end (save-excursion
-                (goto-char (org-element-property :end element))
-                (skip-chars-backward " \r\t\n")
-                (point)))
-         (value (org-element-property :value element))
-         (fg (plist-get org-latex-preview-options :foreground))
-         (bg (plist-get org-latex-preview-options :background))
-         (hash (sha1 (prin1-to-string
-                      (list processing-type
-                            org-latex-preview-preamble
-                            org-latex-default-packages-alist
-                            org-latex-packages-alist
-                            org-latex-preview-options
-                            'export value fg bg))))
-         (imagetype (or (plist-get processing-info :image-output-type) "png"))
-         (absprefix (expand-file-name prefix dir))
-         (linkfile (format "%s_%s.%s" prefix hash imagetype))
-         (movefile (format "%s_%s.%s" absprefix hash imagetype))
-         (sep (and block-type "\n\n"))
-         (link (concat sep "[[file:" linkfile "]]" sep))
-         (options (org-combine-plists
-                   org-latex-preview-options
-                   (list :foreground fg :background bg))))
-    (unless (file-exists-p movefile)
-      (org-latex-preview-create-image
-       value movefile options nil processing-type))
-    (org-latex-preview-place-image-link link block-type beg end value)))
-
-(defun org-latex-preview-place-image-link (link block-type beg end value)
-  "Place then link LINK at BEG END."
-  (delete-region beg end)
-  (insert
-   (org-add-props link
-       (list 'org-latex-src
-             (replace-regexp-in-string "\"" "" value)
-             'org-latex-src-embed-type
-             (if block-type 'paragraph 'character)))))
-
-(defun org-format-latex-as-html (latex-fragment)
-  "Convert LATEX-FRAGMENT to HTML.
-This uses  `org-latex-to-html-convert-command', which see."
-  (let ((cmd (format-spec org-latex-to-html-convert-command
-                          `((?i . ,latex-fragment)))))
-    (message "Running %s" cmd)
-    (shell-command-to-string cmd)))
 
 (defun org-latex-preview--get-display-dpi ()
   "Get the DPI of the display.

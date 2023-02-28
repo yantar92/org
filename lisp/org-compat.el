@@ -733,7 +733,7 @@ This constant, for example, makes the below code not err:
 (define-obsolete-function-alias
   'org-clear-latex-preview 'org-latex-preview-clear-overlays "9.7")
 (make-obsolete
- 'org-place-formula-image "replaced with org-latex-preview-place-image and org-latex-preview-place-image-link" "9.7")
+ 'org-place-formula-image "no longer used" "9.7")
 (define-obsolete-function-alias
   'org-latex-color-format 'org-latex-preview--format-color "9.7")
 (define-obsolete-function-alias
@@ -932,6 +932,37 @@ Some of the options can be changed using the variable
 			 processing-type)))))))))))
 
 ;; FIXME: Unused; obsoleted; to be removed.
+(defun org-place-formula-image (link block-type beg end value overlays movefile imagetype)
+  "Place an overlay from BEG to END showing MOVEFILE.
+The overlay will be above BEG if OVERLAYS is non-nil."
+  (if overlays
+      (progn
+        (dolist (o (overlays-in beg end))
+          (when (eq (overlay-get o 'org-overlay-type)
+                    'org-latex-overlay)
+            (delete-overlay o)))
+        (let ((ov (make-overlay beg end))
+              (imagetype (or (intern imagetype) 'png)))
+          (overlay-put ov 'org-overlay-type 'org-latex-overlay)
+          (overlay-put ov 'evaporate t)
+          (overlay-put ov
+                       'modification-hooks
+                       (list (lambda (o _flag _beg _end &optional _l)
+                               (delete-overlay o))))
+          (overlay-put ov
+                       'display
+                       (list 'image :type imagetype :file movefile :ascent 'center)))
+        (goto-char end))
+    (delete-region beg end)
+    (insert
+     (org-add-props link
+         (list 'org-latex-src
+               (replace-regexp-in-string "\"" "" value)
+               'org-latex-src-embed-type
+               (if block-type 'paragraph 'character))))))
+
+
+;; FIXME: Unused; obsoleted; to be removed.
 (defun org-create-formula-image
     (string tofile options buffer &optional processing-type)
   "Create an image from LaTeX source using external processes.
@@ -1028,8 +1059,49 @@ a HTML file."
 	  (delete-file (concat texfilebase e))))
       image-output-file)))
 
+;; FIXME: Unused; obsoleted; to be removed.
+(defun org-html-format-latex (latex-frag processing-type info)
+  "Format a LaTeX fragment LATEX-FRAG into HTML.
+PROCESSING-TYPE designates the tool used for conversion.  It can
+be `mathjax', `verbatim', `html', nil, t or symbols in
+`org-preview-latex-process-alist', e.g., `dvipng', `dvisvgm' or
+`imagemagick'.  See `org-html-with-latex' for more information.
+INFO is a plist containing export properties."
+  (let ((cache-relpath "") (cache-dir ""))
+    (unless (or (eq processing-type 'mathjax)
+                (eq processing-type 'html))
+      (let ((bfn (or (buffer-file-name)
+		     (make-temp-name
+		      (expand-file-name "latex" temporary-file-directory))))
+	    (latex-header
+	     (let ((header (plist-get info :latex-header)))
+	       (and header
+		    (concat (mapconcat
+			     (lambda (line) (concat "#+LATEX_HEADER: " line))
+			     (org-split-string header "\n")
+			     "\n")
+			    "\n")))))
+	(setq cache-relpath
+	      (concat (file-name-as-directory org-preview-latex-image-directory)
+		      (file-name-sans-extension
+		       (file-name-nondirectory bfn)))
+	      cache-dir (file-name-directory bfn))
+	;; Re-create LaTeX environment from original buffer in
+	;; temporary buffer so that dvipng/imagemagick can properly
+	;; turn the fragment into an image.
+	(setq latex-frag (concat latex-header latex-frag))))
+    (org-export-with-buffer-copy
+     :to-buffer (get-buffer-create " *Org HTML Export LaTeX*")
+     :drop-visibility t :drop-narrowing t :drop-contents t
+     (erase-buffer)
+     (insert latex-frag)
+     (org-format-latex cache-relpath nil nil cache-dir nil
+		       "Creating LaTeX Image..." nil processing-type)
+     (buffer-string))))
+
 (make-obsolete #'org-format-latex "to be removed" "9.7")
 (make-obsolete #'org-create-formula-image "to be removed" "9.7")
+(make-obsolete #'org-html-format-latex "to be removed" "9.7")
 
 ;; FIXME: Unused; obsoleted; to be removed.
 (defun org-let (list &rest body) ;FIXME: So many kittens are suffering here.

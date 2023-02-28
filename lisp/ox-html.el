@@ -39,6 +39,8 @@
 (require 'ox)
 (require 'ox-publish)
 (require 'table)
+(require 'org-latex-preview)
+(require 'ox-mathml)
 
 
 ;;; Function Declarations
@@ -107,7 +109,8 @@
     (verbatim . org-html-verbatim)
     (verse-block . org-html-verse-block))
   :filters-alist '((:filter-options . org-html-infojs-install-script)
-		   (:filter-parse-tree . org-html-image-link-filter)
+		   (:filter-parse-tree org-html-image-link-filter
+                                       org-html-prepare-latex-images)
 		   (:filter-final-output . org-html-final-function))
   :menu-entry
   '(?h "Export to HTML"
@@ -155,6 +158,7 @@
     (:html-infojs-template nil nil org-html-infojs-template)
     (:html-inline-image-rules nil nil org-html-inline-image-rules)
     (:html-link-org-files-as-html nil nil org-html-link-org-files-as-html)
+    (:html-latex-image-options nil nil org-html-latex-image-options)
     (:html-mathjax-options nil nil org-html-mathjax-options)
     (:html-mathjax-template nil nil org-html-mathjax-template)
     (:html-metadata-timestamp-format nil nil org-html-metadata-timestamp-format)
@@ -1168,6 +1172,14 @@ See `format-time-string' for more information on its components."
   :package-version '(Org . "8.0")
   :type 'string)
 
+(defcustom org-html-latex-image-options
+  '(:foreground "Black" :background "Transparent" :scale 1.0)
+  "LaTeX preview options that apply to generated images.
+This is a HTML-specific counterpart to `org-latex-preview-options', which see."
+  :group 'org-export-html
+  :package-version '(Org . "9.7")
+  :type 'plist)
+
 ;;;; Template :: Mathjax
 
 (defcustom org-html-mathjax-options
@@ -1656,6 +1668,33 @@ https://developer.mozilla.org/en-US/docs/Mozilla/Mobile/Viewport_meta_tag"
   :package-version '(Org . "9.1")
   :type 'string)
 
+;;;; LaTeX Fragments
+
+(defcustom org-latex-to-html-convert-command nil
+  "Shell command to convert LaTeX fragments to HTML.
+This command is very open-ended: the output of the command will
+directly replace the LaTeX fragment in the resulting HTML.
+Replace format-specifiers in the command as noted below and use
+`shell-command' to convert LaTeX to HTML.
+%i:     The LaTeX fragment to be converted (shell-escaped).
+        It must not be used inside a quoted argument, the result of %i
+        expansion inside a quoted argument is undefined.
+
+For example, this could be used with LaTeXML as
+\"latexmlc literal:%i --profile=math --preload=siunitx.sty 2>/dev/null\"."
+  :group 'org-latex
+  :package-version '(Org . "9.4")
+  :type '(choice
+          (const :tag "None" nil)
+          (string :tag "Shell command")))
+
+(defun org-format-latex-as-html (latex-fragment)
+  "Convert LATEX-FRAGMENT to HTML.
+This uses  `org-latex-to-html-convert-command', which see."
+  (let ((cmd (format-spec org-latex-to-html-convert-command
+                          `((?i . ,latex-fragment)))))
+    (message "Running %s" cmd)
+    (shell-command-to-string cmd)))
 
 ;;;; Todos
 
@@ -1780,11 +1819,7 @@ a communication channel."
    (org-html--make-attribute-string
     (org-combine-plists
      (list :src source
-           :alt (if (string-match-p
-                     (concat "^" org-preview-latex-image-directory) source)
-                    (org-html-encode-plain-text
-                     (org-find-text-property-in-string 'org-latex-src source))
-                  (file-name-nondirectory source)))
+           :alt (file-name-nondirectory source))
      (if (string= "svg" (file-name-extension source))
          (org-combine-plists '(:class "org-svg") attributes '(:fallback nil))
        attributes)))
@@ -3039,58 +3074,98 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 
 ;;;; LaTeX Environment
 
-(defun org-html-format-latex (latex-frag processing-type info)
-  "Format a LaTeX fragment LATEX-FRAG into HTML.
-PROCESSING-TYPE designates the tool used for conversion.  It can
-be `mathjax', `verbatim', `html', nil, t or symbols in
-`org-latex-preview-process-alist', e.g., `dvipng', `dvisvgm' or
-`imagemagick'.  See `org-html-with-latex' for more information.
-INFO is a plist containing export properties."
-  (let ((cache-relpath "") (cache-dir ""))
-    (unless (or (eq processing-type 'mathjax)
-                (eq processing-type 'html))
-      (let ((bfn (or (buffer-file-name)
-		     (make-temp-name
-		      (expand-file-name "latex" temporary-file-directory))))
-	    (latex-header
-	     (let ((header (plist-get info :latex-header)))
-	       (and header
-		    (concat (mapconcat
-			     (lambda (line) (concat "#+LATEX_HEADER: " line))
-			     (org-split-string header "\n")
-			     "\n")
-			    "\n")))))
-	(setq cache-relpath
-	      (concat (file-name-as-directory org-preview-latex-image-directory)
-		      (file-name-sans-extension
-		       (file-name-nondirectory bfn)))
-	      cache-dir (file-name-directory bfn))
-	;; Re-create LaTeX environment from original buffer in
-	;; temporary buffer so that dvipng/imagemagick can properly
-	;; turn the fragment into an image.
-	(setq latex-frag (concat latex-header latex-frag))))
-    (org-export-with-buffer-copy
-     :to-buffer (get-buffer-create " *Org HTML Export LaTeX*")
-     :drop-visibility t :drop-narrowing t :drop-contents t
-     (erase-buffer)
-     (insert latex-frag)
-     (org-latex-preview-replace-fragments
-      cache-relpath processing-type cache-dir "Creating LaTeX Image...")
-     (buffer-string))))
+(defun org-html-prepare-latex-images (parse-tree _backend info)
+  "Make sure that appropriate preview images exist for all LaTeX
+TODO."
+  (when (assq (plist-get info :with-latex) org-latex-preview-process-alist)
+    (let* ((elements
+            (org-element-map parse-tree
+                '(latex-fragment latex-environment)
+              #'identity
+              info))
+           (entries-and-numbering
+            (org-latex-preview--construct-entries
+             elements t parse-tree))
+           (processing-type (plist-get info :with-latex))
+           (processing-info
+            (cdr (assq processing-type org-latex-preview-process-alist)))
+           (imagetype (or (plist-get processing-info :image-output-type) "png"))
+           (numbering-offsets (cons nil (cadr entries-and-numbering)))
+           (html-options (plist-get info :html-latex-image-options))
+           (element-hash-table (make-hash-table :test #'eq :size (length elements)))
+           fragment-info prev-fg prev-bg)
+      (cl-loop
+       for entry in (car entries-and-numbering)
+       for element in elements
+       do
+       (pcase-let* ((`(,beg ,end ,provided-value) entry)
+                    (value (or provided-value
+                               (buffer-substring-no-properties beg end)))
+                    (fg (plist-get html-options :foreground))
+                    (bg (plist-get html-options :background))
+                    (number (car (setq numbering-offsets (cdr numbering-offsets))))
+                    (hash (org-latex-preview--hash
+                           processing-type value imagetype fg bg number))
+                    (options (org-combine-plists
+                              org-latex-preview-options
+                              html-options
+                              (list :number number
+                                    :continue-color
+                                    (and (equal prev-bg bg)
+                                         (equal prev-fg fg))))))
+         (puthash element hash element-hash-table)
+         (unless (org-latex-preview--get-cached hash)
+           (push (list :string (org-latex-preview--tex-styled
+                                processing-type value options)
+                       :overlay (org-latex-preview--ensure-overlay beg end)
+                       :key hash)
+                 fragment-info))
+         (setq prev-fg fg prev-bg bg)))
+      (let ((org-latex-preview-options
+             (list (plist-member html-options :scale))))
+        (when fragment-info
+          (apply #'org-async-wait-for
+                 (org-latex-preview--create-image-async
+                  processing-type
+                  (nreverse fragment-info)))))
+      (plist-put info :html-latex-preview-hash-table element-hash-table)
+      nil)))
 
-(defun org-html--wrap-latex-environment (contents _ &optional caption label)
+(defun org-html--as-latex (element info &optional content)
+  (let ((content (or content (org-element-property :value element))))
+    (pcase (plist-get info :with-latex)
+      ('verbatim ; Do nothing.
+       content)
+      ((or 't 'mathjax)
+       (cond ; Prepare for MathJax processing.
+        ((string-match-p "\\`\\$\\$" content)
+         (concat "\\[" (substring content 2 -2) "\\]"))
+        ((string-match-p "\\`\\$" content)
+         (concat "\\(" (substring content 1 -1) "\\)"))
+        (t content)))
+      ('html
+       (org-format-latex-as-html content))
+      ('mathml
+       (if-let ((path (org-mathml-convert-latex-cached content)))
+           (with-temp-buffer
+             (insert-file-contents path)
+             (buffer-string))
+         content))
+      ((and ptype (guard (assq ptype org-latex-preview-process-alist)))
+       (org-html-latex-image element info))
+      (processing-type
+       (warn "LaTeX fragment processor `%s' is unknown" processing-type)
+       content))))
+
+(defun org-html--wrap-latex-environment (contents &optional label)
   "Wrap CONTENTS string within appropriate environment for equations.
 When optional arguments CAPTION and LABEL are given, use them for
 caption and \"id\" attribute."
-  (format "\n<div%s class=\"equation-container\">\n%s%s\n</div>"
+  (format "\n<div%s class=\"equation-container\">\n%s\n</div>"
           ;; ID.
           (if (org-string-nw-p label) (format " id=\"%s\"" label) "")
           ;; Contents.
-          (format "<span class=\"equation\">\n%s\n</span>" contents)
-          ;; Caption.
-          (if (not (org-string-nw-p caption)) ""
-            (format "\n<span class=\"equation-label\">\n%s\n</span>"
-                    caption))))
+          (format "<span class=\"equation\">\n%s\n</span>" contents)))
 
 (defun org-html--math-environment-p (element &optional _)
   "Non-nil when ELEMENT is a LaTeX math environment.
@@ -3122,59 +3197,56 @@ For instance, change an `equation' environment to `equation*'."
   "Transcode a LATEX-ENVIRONMENT element from Org to HTML.
 CONTENTS is nil.  INFO is a plist holding contextual information."
   (let ((processing-type (plist-get info :with-latex))
-	(latex-frag (org-remove-indentation
-		     (org-element-property :value latex-environment)))
-        (attributes (org-export-read-attribute :attr_html latex-environment))
-        (label (org-html--reference latex-environment info t))
-        (caption (and (org-html--latex-environment-numbered-p latex-environment)
-                      (org-html--math-environment-p latex-environment)
-		      (number-to-string
-		       (org-export-get-ordinal
-			latex-environment info nil
-			(lambda (l _)
-			  (and (org-html--math-environment-p l)
-			       (org-html--latex-environment-numbered-p l))))))))
-    (cond
-     ((memq processing-type '(t mathjax))
-      (org-html-format-latex
-       (if (org-string-nw-p label)
-	   (replace-regexp-in-string "\\`.*"
-				     (format "\\&\n\\\\label{%s}" label)
-				     latex-frag)
-	 latex-frag)
-       'mathjax info))
-     ((assq processing-type org-latex-preview-process-alist)
-      (let ((formula-link
-             (org-html-format-latex
-              (org-html--unlabel-latex-environment latex-frag)
-              processing-type info)))
-        (when (and formula-link (string-match "file:\\([^]]*\\)" formula-link))
-          (let ((source (org-export-file-uri (match-string 1 formula-link))))
-	    (org-html--wrap-latex-environment
-	     (org-html--format-image source attributes info)
-	     info caption label)))))
-     (t (org-html--wrap-latex-environment latex-frag info caption label)))))
+        (latex-frag (org-remove-indentation
+                     (org-element-property :value latex-environment)))
+        (label (org-html--reference latex-environment info t)))
+    (if (memq processing-type '(t mathjax))
+        (org-html--as-latex
+         latex-environment info
+         (if (org-string-nw-p label)
+             (replace-regexp-in-string "\\`.*"
+                                       (format "\\&\n\\\\label{%s}" label)
+                                       latex-frag)
+           latex-frag))
+      (org-html--wrap-latex-environment
+       (org-html--as-latex latex-environment info latex-frag)
+       label))))
 
 ;;;; LaTeX Fragment
 
 (defun org-html-latex-fragment (latex-fragment _contents info)
   "Transcode a LATEX-FRAGMENT object from Org to HTML.
 CONTENTS is nil.  INFO is a plist holding contextual information."
-  (let ((latex-frag (org-element-property :value latex-fragment))
-	(processing-type (plist-get info :with-latex)))
-    (cond
-     ;; FIXME: Duplicated value in ‘cond’: t
-     ((memq processing-type '(t mathjax))
-      (org-html-format-latex latex-frag 'mathjax info))
-     ((memq processing-type '(t html))
-      (org-html-format-latex latex-frag 'html info))
-     ((assq processing-type org-latex-preview-process-alist)
-      (let ((formula-link
-	     (org-html-format-latex latex-frag processing-type info)))
-	(when (and formula-link (string-match "file:\\([^]]*\\)" formula-link))
-	  (let ((source (org-export-file-uri (match-string 1 formula-link))))
-	    (org-html--format-image source nil info)))))
-     (t latex-frag))))
+  (org-html--as-latex latex-fragment info))
+
+(defun org-html-latex-image (element info)
+  "TODO"
+  (let* ((hash (gethash element (plist-get info :html-latex-preview-hash-table)))
+         (path-info (org-latex-preview--get-cached hash)))
+    (unless hash
+      (error "Expected LaTeX preview hash to exist for element, but none found"))
+    (unless path-info
+      (error "Expected LaTeX preview %S to exist in the cache" hash))
+    (unless (car path-info)
+      (error "LaTeX preview image path is nil"))
+    (unless (file-exists-p (car path-info))
+      (error "Expected LaTeX preview file for %S to exist" hash))
+    (org-html-close-tag
+     "img"
+     (org-html--make-attribute-string
+      (list :src (car path-info)
+            :alt (org-html-encode-plain-text
+                  (org-element-property :value element))
+            :style (if (eq (org-element-type element) 'latex-environment)
+                       (format "height: %.4fem"
+                               (plist-get (cdr path-info) :height))
+                     (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
+                             (plist-get (cdr path-info) :height)
+                             (plist-get (cdr path-info) :depth)))
+            :class (if (eq (org-element-type element) 'latex-environment)
+                       "org-latex org-latex-environment"
+                     "org-latex org-latex-fragment")))
+     info)))
 
 ;;;; Line Break
 
