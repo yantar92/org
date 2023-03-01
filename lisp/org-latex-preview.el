@@ -1377,7 +1377,8 @@ Returns a list of async tasks started."
                  (list
                   #'org-latex-preview--failure-callback
                   (format "Creating LaTeX preview images failed (exit code %%d). Please see %s for details"
-                          (propertize org-latex-preview--image-log 'face 'warning))))
+                          (propertize org-latex-preview--image-log 'face 'warning))
+                  #'org-latex-preview--cleanup-callback))
       (pcase processing-type
         ('dvipng
          (plist-put (cddr img-extract-async) :filter
