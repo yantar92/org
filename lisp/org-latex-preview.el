@@ -1772,8 +1772,11 @@ fragments in EXTENDED-INFO."
     (setq preview-marks (nreverse preview-marks))
     (while preview-marks
       (goto-char (caar preview-marks))
-      ;; Check for tightpage-info
-      (unless tightpage-info
+      ;; Check for tightpage-info, as long as XeLaTeX is not being used,
+      ;; as it seems to behave differently to pdfLaTeX and luaLaTeX and
+      ;; produces an image without the margins that tightpage reports.
+      (unless (or tightpage-info (equal (plist-get extended-info :latex-processor)
+                                        "xelatex"))
         (save-excursion
           (when (re-search-forward
                  "^Preview: Tightpage \\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\)"
