@@ -1314,7 +1314,7 @@ Returns a list of async tasks started."
     ;;         │  └─ Delete tempfiles (`org-latex-preview--cleanup-callback').
     ;;         └─ (failure)
     ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
-    ;;            └─ Message "creating latex previews... failed. please see %s for details".
+    ;;            └─ Message "creating latex previews failed. please see %s for details".
     ;;
     ;; dvipng case:
     ;; ├─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
@@ -1325,7 +1325,7 @@ Returns a list of async tasks started."
     ;;    │  └─ Delete tempfiles (`org-latex-preview--cleanup-callback')
     ;;    └─ (failure)
     ;;       ├─ Run `org-latex-preview--failure-callback' (remove overlays).
-    ;;       └─ Message "creating latex previews... failed. please see %s for details".
+    ;;       └─ Message "creating latex previews failed. please see %s for details".
     ;;
     ;; generic case:
     ;; └─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
@@ -1338,7 +1338,7 @@ Returns a list of async tasks started."
     ;;         │     which can rerun the async tree if needed.
     ;;         └─ (failure)
     ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
-    ;;            └─ Message "creating latex previews... failed. please see %s for details".
+    ;;            └─ Message "creating latex previews failed. please see %s for details".
     ;;
     ;; With continuous, synchronous processing:
     ;;
@@ -1376,7 +1376,7 @@ Returns a list of async tasks started."
       (plist-put (cddr img-extract-async) :failure
                  (list
                   #'org-latex-preview--failure-callback
-                  (format "Creating LaTeX previews... failed. Please see %s for details"
+                  (format "Creating LaTeX preview images failed (exit code %%d). Please see %s for details"
                           (propertize org-latex-preview--image-log 'face 'warning))))
       (pcase processing-type
         ('dvipng
@@ -1562,7 +1562,14 @@ The path of the created LaTeX file is returned."
           :buffer tex-process-buffer
           :info extended-info
           :filter #'org-latex-preview--latex-preview-filter
-          :failure "LaTeX compilation for preview failed! (error code %d)")))
+          :failure
+          (lambda (exit-code _buf _info)
+            ;; With how preview.sty works, an exit code of 1 is expectd.
+            (unless (eq exit-code 1)
+              (message "LaTeX compilation for preview failed (error code %d). Please see %s for details"
+                       exit-code
+                       (propertize org-latex-preview--latex-log
+                                   'face 'warning)))))))
 
 (defun org-latex-preview--image-extract-async (extended-info)
   "Create an `org-async-call' spec to extract images according to EXTENDED-INFO."
@@ -1609,7 +1616,9 @@ The path of the created LaTeX file is returned."
           img-formatted-command
           :buffer img-process-buffer
           :info extended-info
-          :failure "LaTeX preview image conversion failed! (error code %d)")))
+          :failure
+          (format "Creating LaTeX preview images failed (exit code %%d). Please see %s for details"
+                  (propertize org-latex-preview--image-log 'face 'warning)))))
 
 (defun org-latex-preview--cleanup-callback (_exit-code _stdout extended-info)
   "Schedule cleanup with EXTENDED-INFO."
