@@ -5460,6 +5460,9 @@ Result depends on variable `org-highlight-latex-and-related'."
 			   (append re-latex re-entities re-sub)
 			   "\\|"))))
 
+(defvar org-latex-preview-options) ; Defined in org-latex-preview.el.
+(declare-function org-latex-preview--face-around "org-latex-preview" (start end))
+
 (defun org-do-latex-and-related (limit)
   "Highlight LaTeX snippets and environments, entities and sub/superscript.
 Stop at first highlighted object, if any.  Return t if some
@@ -5500,6 +5503,17 @@ highlighting was done, nil otherwise."
 						 'face 'org-latex-and-related))
 	      (add-text-properties (+ offset (match-beginning 0)) (match-end 0)
 				   '(font-lock-multiline t))
+              ;; Refresh the face of LaTeX previews (when applicable).
+              (when (eq (plist-get org-latex-preview-options :foreground)
+                        'auto)
+                (dolist (ov (overlays-at start))
+                  (when (and (eq (overlay-get ov 'org-overlay-type)
+                                 'org-latex-overlay)
+                             (overlay-get ov 'face)
+                             (not (eq (overlay-get ov 'face) 'error)))
+                    (overlay-put ov 'face
+                                 (org-latex-preview--face-around
+                                  (overlay-start ov) (overlay-end ov))))))
 	      (throw 'found t)))))
 	nil))))
 
