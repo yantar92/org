@@ -480,20 +480,37 @@ overlay face is set to `org-latex-preview-processing-face'."
       (overlay-put
        ov 'face
        (or (and errors 'error)
-           (and (> (overlay-start ov) (point-min))
-                (not (eq (char-before (overlay-start ov)) ?\n))
-                (let ((face (get-text-property (1- (overlay-start ov)) 'face)))
-                  (cond
-                   ((consp face)
-                    (cl-set-difference face org-latex-preview--ignored-faces))
-                   ((not (memq face org-latex-preview--ignored-faces))
-                    face))))
-           'default)))
+           (org-latex-preview--face-around
+            (overlay-start ov) (overlay-end ov)))))
      (errors
       (overlay-put
        ov 'before-string
        (propertize "!" 'display
                    `(left-fringe exclamation-mark error)))))))
+
+(defun org-latex-preview--face-around (start end)
+  "Return the relevant face symbol around the region START to END.
+A relevant face symbol before START is prefered, with END
+examined if none could be found, and finally the default face
+used as the final fallback.
+Faces in `org-latex-preview--ignored-faces' are ignored."
+  (or (and (> start (point-min))
+           (not (eq (char-before start) ?\n))
+           (let ((face (get-text-property (1- start) 'face)))
+             (cond
+              ((consp face)
+               (cl-set-difference face org-latex-preview--ignored-faces))
+              ((not (memq face org-latex-preview--ignored-faces))
+               face))))
+      (and (> (point-max) end)
+           (not (eq (char-after end) ?\n))
+           (let ((face (get-text-property end 'face)))
+             (cond
+              ((consp face)
+               (cl-set-difference face org-latex-preview--ignored-faces))
+              ((not (memq face org-latex-preview--ignored-faces))
+               face))))
+      'default))
 
 ;; Code for `org-latex-preview-auto-mode':
 ;;
@@ -1068,7 +1085,7 @@ is either the substring between BEG and END or (when provided) VALUE."
         (pcase-let* ((`(,beg ,end ,provided-value) entry)
                      (value (or provided-value
                                 (buffer-substring-no-properties beg end)))
-                     (`(,fg ,bg) (org-latex-preview--colors-at beg))
+                     (`(,fg ,bg) (org-latex-preview--colors-around beg end))
                      (number (car (setq numbering-offsets (cdr numbering-offsets))))
                      (hash (org-latex-preview--hash
                             processing-type value imagetype fg bg number))
@@ -1100,11 +1117,9 @@ is either the substring between BEG and END or (when provided) VALUE."
        :latex-preamble latex-preamble
        :place-preview-p t))))
 
-(defun org-latex-preview--colors-at (pos)
-  "Find colors for LaTeX previews to be inserted at POS."
-  (let* ((face (or (and (> pos 1)
-                        (get-text-property (1- pos) 'face))
-                   'default))
+(defun org-latex-preview--colors-around (start end)
+  "Find colors for LaTeX previews occuping the region START to END."
+  (let* ((face (org-latex-preview--face-around start end))
          (fg (pcase (plist-get org-latex-preview-options :foreground)
                ('auto
                 (org-latex-preview--resolved-faces-attr face :foreground))
@@ -2129,7 +2144,12 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
       (dolist (element (org-latex-preview-collect-fragments beg end))
         (pcase-let* ((begin (or (org-element-property :post-affiliated element)
                                 (org-element-property :begin element)))
-                     (`(,fg ,bg) (org-latex-preview--colors-at begin))
+                     (end (- (org-element-property :end element)
+                             (or (org-element-property :post-blank element) 0)
+                             (if (eq (char-before (org-element-property :end element))
+                                     ?\n)
+                                 1 0)))
+                     (`(,fg ,bg) (org-latex-preview--colors-around begin end))
                      (value (org-element-property :value element))
                      (number (and numbering-table
                                   (eq (org-element-type element)
