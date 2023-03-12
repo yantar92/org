@@ -1481,7 +1481,13 @@ default values of which are given by `org-latex-engraved-preamble' and
   (bibliography-biblatex
    :condition (eq (org-cite-processor info) 'biblatex)
    :when bibliography
-   :snippet org-cite-biblatex--generate-latex-preamble)
+   :snippet org-cite-biblatex--generate-latex-usepackage)
+  (bibliography-biblatex-resources
+   :condition (eq (org-cite-processor info) 'biblatex)
+   :when bibliography
+   :snippet org-cite-biblatex--generate-latex-bibresources
+   :no-precompile t
+   :order 90)
   (bibliography-natbib
    :condition (eq (org-cite-processor info) 'natbib)
    :when bibliography
@@ -2080,7 +2086,13 @@ specified in `org-latex-default-packages-alist' or
                         "^[ \t]*\\\\documentclass\\(\\(\\[[^]]*\\]\\)?\\)"
                         class-options header t nil 1))))
               (user-error "Unknown LaTeX class `%s'" class)))
-         generated-preamble)
+         (header-split (format "\n%%--org-latex-header-temp-split-%d--\n" (random 10000)))
+         (header (concat (org-element-normalize-string (plist-get info :latex-header))
+                         header-split
+                         (and (not snippet?)
+                              (org-element-normalize-string
+                               (plist-get info :latex-header-extra)))))
+         generated-preamble preamble-nonprecompilable)
     (plist-put info :latex-full-header
                (org-element-normalize-string
                 (org-splice-latex-header
@@ -2088,32 +2100,66 @@ specified in `org-latex-default-packages-alist' or
                  (org-latex--remove-packages org-latex-default-packages-alist info)
                  (org-latex--remove-packages org-latex-packages-alist info)
                  snippet?
-                 (mapconcat #'org-element-normalize-string
-                            (list (plist-get info :latex-header)
-                                  (and (not snippet?)
-                                       (plist-get info :latex-header-extra)))
-                            ""))))
-    (setq generated-preamble
-          (if snippet?
+                 header)))
+    (if snippet?
+        (setq generated-preamble
               (progn
                 (org-latex-guess-inputenc info)
                 (org-latex-guess-babel-language info)
                 (org-latex-guess-polyglossia-language info)
-                "\n% Generated preamble omitted for snippets.")
+                "\n% Generated preamble omitted for snippets."))
+      (let (impl-precomp impl-noprecomp)
+        (dolist (impl (plist-get info :feature-implementations))
+          (message "LaTeX feature: %s" (car impl))
+          (if (or impl-noprecomp (plist-get (cdr impl) :no-precompile))
+              (push impl impl-noprecomp)
+            (push impl impl-precomp)))
+        (message "Precomp feats: %S" (reverse (mapcar #'car impl-precomp)))
+        (message "No precomp feats: %S" (reverse (mapcar #'car impl-noprecomp)))
+        (setq generated-preamble
+              (string-join
+               (org-export-expand-feature-snippets
+                info (nreverse impl-precomp))
+               "\n\n")
+              preamble-nonprecompilable
+              (string-join
+               (org-export-expand-feature-snippets
+                info (nreverse impl-noprecomp))
+               "\n\n"))))
+    (let* ((header-parts
+            (split-string (plist-get info :latex-full-header)
+                          (regexp-quote header-split)))
+           (header-main (car header-parts))
+           (header-extra (cadr header-parts))
+           (preamble
             (concat
+             (org-latex--insert-compiler info)
+             header-main
              "\n"
-             (string-join
-              (org-export-expand-feature-snippets info)
-              "\n\n")
-             "\n")))
-    (concat
-     ;; Time-stamp.
-     (and (plist-get info :time-stamp-file)
-          (format-time-string "%% Created %Y-%m-%d %a %H:%M\n"))
-     ;; LaTeX compiler.
-     (org-latex--insert-compiler info)
-     (plist-get info :latex-full-header)
-     generated-preamble)))
+             generated-preamble
+             "\n"))
+           (format-file
+            (and org-latex-precompile
+                 (org-latex--precompile info preamble))))
+      (when (and format-file (not snippet?))
+        (let ((preamble-parts (split-string preamble (regexp-quote header-split))))
+          (setq preamble (car preamble-parts)
+                preamble-nonprecompilable
+                (concat preamble-nonprecompilable
+                        (cadr preamble-parts)))))
+      (concat (and format-file
+                   (concat "%& " (file-name-sans-extension format-file) "\n"))
+              (and (plist-get info :time-stamp-file)
+                   (format-time-string "%% Created %Y-%m-%d %a %H:%M\n"))
+              preamble
+              (and format-file
+                   "\n% end precompiled preamble\n\\ifcsname endofdump\\endcsname\\endofdump\\fi\n")
+              "\n"
+              preamble-nonprecompilable
+              (and preamble-nonprecompilable
+                   (not (string-empty-p preamble-nonprecompilable))
+                   "\n")
+              header-extra))))
 
 (defun org-latex-template (contents info)
   "Return complete document string after LaTeX conversion.
@@ -2186,6 +2232,113 @@ holding export options."
      ;; Document end.
      "\\end{document}")))
 
+(defvar org-latex-precompile t
+  "Precompile the preamble during export.
+This requires the LaTeX package \"mylatexformat\" to be installed.")
+
+(defconst org-latex--precompile-log "*Org LaTeX Precompilation*")
+
+(defvar org-latex-precompile-command
+  "%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
+
+(defvar org-latex-precompile-compiler-map
+  '(("pdflatex" . "latex")
+    ("xelatex" . "xelatex -no-pdf")
+    ("lualatex" . "dvilualatex")))
+
+(defun org-latex--precompile (info preamble)
+  "Precompile/dump LaTeX PREAMBLE text.
+
+The path to the format file (.fmt) is returned.  If the format
+file could not be found in the persist cache, it is generated
+according to PROCESSING-INFO and stored.
+
+This is intended to speed up Org's LaTeX preview generation
+process."
+  (let ((preamble-hash
+         (thread-first
+           preamble
+           (concat
+            (plist-get info :latex-compiler)
+            (and (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)"
+                                 preamble)
+                 default-directory))
+           (sha1))))
+    (or (cadr
+         (org-persist-read "LaTeX format file cache"
+                           (list :key preamble-hash)
+                           nil nil :read-related t))
+        (when-let ((dump-file
+                    (org-latex--precompile-preamble
+                     info preamble (expand-file-name preamble-hash temporary-file-directory))))
+          (cadr
+           (org-persist-register `(,"LaTeX format file cache"
+                                   (file ,dump-file))
+                                 (list :key preamble-hash)
+                                 :write-immediately t))))))
+
+(defun org-latex--remove-cached-preamble (latex-compiler preamble &optional tempfile-p)
+  "Remove the cached preamble file for PREAMBLE compiled with LATEX-COMPILER.
+TEMPFILE-P should be set to mirror the caching `org-latex--precompile' call
+which is intended to be evicted from the cache."
+  (let ((preamble-hash
+         (thread-first
+           preamble
+           (concat
+            latex-compiler
+            (if tempfile-p "-temp"
+              default-directory))
+           (sha1))))
+    (org-persist-unregister "LaTeX format file cache"
+                            (list :key preamble-hash)
+                            :remove-related t)))
+
+(defun org-latex--precompile-preamble (info preamble basepath)
+  "Precompile PREAMBLE with \"mylatexformat\".
+The PREAMBLE string is placed in BASEPATH.tex and compiled
+according to PROCESSING-INFO. If compilation and dumping
+succeeded, BASEPATH.fmt will be returned.
+
+Should any errors occur during compilation, nil will be returned,
+and appropriate warnings may be emitted."
+  (let ((dump-file (concat basepath ".fmt"))
+        (preamble-file (concat basepath ".tex"))
+        (precompile-buffer
+         (with-current-buffer
+             (get-buffer-create org-latex--precompile-log)
+           (erase-buffer)
+           (current-buffer))))
+    (with-temp-file preamble-file
+      (insert preamble "\n\\endofdump\n"))
+    (message "Precompiling Org LaTeX preamble...")
+    (condition-case nil
+        (org-compile-file
+         preamble-file (list org-latex-precompile-command)
+         "fmt" nil precompile-buffer
+         (or (plist-get info :precompile-format-spec)
+             `((?l . ,(plist-get info :latex-compiler))
+               (?L . ,(plist-get info :latex-compiler)))))
+      (:success
+       (kill-buffer precompile-buffer)
+       (delete-file preamble-file)
+       dump-file)
+      (error
+       (unless (= 0 (call-process "kpsewhich" nil nil nil "mylatexformat.ltx"))
+         (display-warning
+          '(org latex-preview preamble-precompilation)
+          "The LaTeX package \"mylatexformat\" is required for precompilation, but could not be found")
+         :warning)
+       (unless (= 0 (call-process "kpsewhich" nil nil nil "preview.sty"))
+         (display-warning
+          '(org latex-preview preamble-precompilation)
+          "The LaTeX package \"preview\" is required for precompilation, but could not be found")
+         :warning)
+       (display-warning
+        '(org latex-preview preamble-precompilation)
+        (format "Failed to precompile preamble (%s), see the \"%s\" buffer."
+                preamble-file precompile-buffer)
+        :warning)
+       nil))))
 
 
 ;;; Transcode Functions
