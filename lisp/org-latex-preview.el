@@ -1476,23 +1476,30 @@ FRAGMENTS will be placed in order, wrapped within a
 \"preview\" environment.
 
 The path of the created LaTeX file is returned."
-  (let ((tex-temp-name
-         (expand-file-name (concat (make-temp-name "org-tex-") ".tex")))
-        (header
-         (concat
-          (or (plist-get processing-info :latex-header)
-              org-latex-preview--preamble-content
-              (setq org-latex-preview--preamble-content
-                    (org-latex-preview--get-preamble)))
-          (let ((w org-latex-preview-width))
-            (cond
-             ((stringp w)
-              (format "\n\\setlength{\\textwidth}{%s}\n" w))
-             ((and (floatp w) (<= 0.0 w 1.0))
-              (format "\n\\setlength{\\textwidth}{%s\\paperwidth}\n" w))))
-          "\n\\usepackage[active,tightpage,auctex]{preview}\n"))
-        (write-region-inhibit-fsync t)
-        (coding-system-for-write buffer-file-coding-system))
+  (let* ((header
+          (concat
+           (or (plist-get processing-info :latex-header)
+               org-latex-preview--preamble-content
+               (setq org-latex-preview--preamble-content
+                     (org-latex-preview--get-preamble)))
+           (let ((w org-latex-preview-width))
+             (cond
+              ((stringp w)
+               (format "\n\\setlength{\\textwidth}{%s}\n" w))
+              ((and (floatp w) (<= 0.0 w 1.0))
+               (format "\n\\setlength{\\textwidth}{%s\\paperwidth}\n" w))))
+           "\n\\usepackage[active,tightpage,auctex]{preview}\n"))
+         (relative-file-p
+          (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)[^/]" header))
+         (remote-file-p (file-remote-p default-directory))
+         (tex-temp-name
+          (expand-file-name
+           (concat (make-temp-name "org-tex-") ".tex")
+           (and remote-file-p temporary-file-directory)))
+         (write-region-inhibit-fsync t)
+         (coding-system-for-write buffer-file-coding-system))
+    (when (and relative-file-p remote-file-p)
+      (error "Org LaTeX Preview does not currently support \\input/\\include in remote files"))
     (when org-latex-preview-use-precompilation
       (if-let ((format-file (org-latex-preview-precompile processing-info header)))
           ;; Replace header with .fmt file path.
@@ -2135,12 +2142,15 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
       (message "Cleared LaTeX preview cache for %s."
                (if (or beg end) "region" "buffer")))))
 
-(defun org-latex-preview-precompile (processing-info preamble)
+(defun org-latex-preview-precompile (processing-info preamble &optional tempfile-p)
   "Precompile/dump LaTeX PREAMBLE text.
 
 The path to the format file (.fmt) is returned.  If the format
 file could not be found in the persist cache, it is generated
 according to PROCESSING-INFO and stored.
+
+If TEMPFILE-P is non-nil, then it is assumed the preamble does
+not contain any relative references to other files.
 
 This is intended to speed up Org's LaTeX preview generation
 process."
@@ -2152,7 +2162,8 @@ process."
                             org-latex-preview-compiler-command-map))))
            `((?l . ,org-tex-compiler)
              (?L . ,(car (split-string org-tex-compiler))))))
-   preamble))
+   preamble
+   tempfile-p))
 
 (defun org-latex-preview--tex-styled (processing-type value options &optional html-p)
   "Apply LaTeX style commands to VALUE based on OPTIONS.
