@@ -2140,7 +2140,9 @@ specified in `org-latex-default-packages-alist' or
              "\n"))
            (format-file
             (and org-latex-precompile
-                 (org-latex--precompile info preamble))))
+                 (org-latex--precompile
+                  info preamble
+                  (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)[^/]" preamble)))))
       (when (and format-file (not snippet?))
         (let ((preamble-parts (split-string preamble (regexp-quote header-split))))
           (setq preamble (car preamble-parts)
@@ -2246,12 +2248,16 @@ This requires the LaTeX package \"mylatexformat\" to be installed.")
     ("xelatex" . "xelatex -no-pdf")
     ("lualatex" . "dvilualatex")))
 
-(defun org-latex--precompile (info preamble)
+(defun org-latex--precompile (info preamble &optional tempfile-p)
   "Precompile/dump LaTeX PREAMBLE text.
 
 The path to the format file (.fmt) is returned.  If the format
 file could not be found in the persist cache, it is generated
-according to PROCESSING-INFO and stored.
+according to PROCESSING-INFO and stored.  INFO is a plist used as
+a communication channel.
+
+If TEMPFILE-P is non-nil, then it is assumed the preamble does
+not contain any relative references to other files.
 
 This is intended to speed up Org's LaTeX preview generation
 process."
@@ -2260,10 +2266,11 @@ process."
            preamble
            (concat
             (plist-get info :latex-compiler)
-            (and (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)"
-                                 preamble)
-                 default-directory))
-           (sha1))))
+            (if tempfile-p "-temp"
+              default-directory))
+           (sha1)))
+        (default-directory
+          (if tempfile-p temporary-file-directory default-directory)))
     (or (cadr
          (org-persist-read "LaTeX format file cache"
                            (list :key preamble-hash)
