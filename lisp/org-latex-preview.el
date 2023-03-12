@@ -233,6 +233,12 @@ of the Emacs session."
   :package-version '(Org . "9.7")
   :type 'boolean)
 
+(defcustom org-latex-preview-numbered nil
+  "Whether to calculate and apply correct equation numbering."
+  :group 'org-latex
+  :package-version '(Org . "9.7")
+  :type 'boolean)
+
 (defface org-latex-preview-processing-face '((t :inherit shadow))
   "Face applied to LaTeX fragments for which a preview is being generated."
   :group 'org-faces)
@@ -542,9 +548,8 @@ This is intended to be placed in `post-command-hook'."
                        fragments))))))
     (when (setq fragments (delq nil fragments))
       (when (and org-latex-preview-numbered
-                 (cl-some (lambda (datum)
-                            (eq (org-element-type datum) 'latex-environment))
-                          fragments))
+                 (cl-find 'latex-environment fragments
+                          :key #'org-element-type :test #'eq))
         (setq fragments
               (append fragments
                       (org-latex-preview--get-numbered-environments
@@ -893,6 +898,10 @@ Some of the options can be changed using the variable
   (let* ((processing-info
           (cdr (assq processing-type org-latex-preview-process-alist)))
          (imagetype (or (plist-get processing-info :image-output-type) "png"))
+         (numbering-table (and org-latex-preview-numbered
+                               (cl-find 'latex-environment elements
+                                        :key #'org-element-type :test #'eq)
+                               (org-latex-preview--environment-numbering-table)))
          fragment-info prev-fg prev-bg)
     (save-excursion
       (dolist (element elements)
@@ -904,12 +913,16 @@ Some of the options can be changed using the variable
                                  1 0)))
                      (value (org-element-property :value element))
                      (`(,fg ,bg) (org-latex-preview--colors-at beg))
+                     (number (and numbering-table
+                                  (eq (org-element-type element) 'latex-environment)
+                                  (gethash element numbering-table)))
                      (hash (org-latex-preview--hash
-                            processing-type value imagetype fg bg))
+                            processing-type value imagetype fg bg number))
                      (options (org-combine-plists
                                org-latex-preview-options
                                (list :foreground fg
                                      :background bg
+                                     :number number
                                      :continue-color
                                      (and (equal prev-bg bg)
                                           (equal prev-fg fg))))))
@@ -964,7 +977,7 @@ This is surprisingly complicated given the various forms of output
     ;; A single-face spec, like org-level-1.
     (face-attribute face attr nil 'default)))
 
-(defun org-latex-preview--hash (processing-type string imagetype fg bg)
+(defun org-latex-preview--hash (processing-type string imagetype fg bg &optional number)
   "Return a SHA1 hash for referencing LaTeX fragments when previewing them.
 
 PROCESSING-TYPE is the type of process used to create the
@@ -979,7 +992,9 @@ IMAGETYPE is the type of image to be created, see
 `org-latex-preview-process-alist'.
 
 FG and BG are the foreground and background colors for the
-image."
+image.
+
+NUMBER is the equation number that should be used, if applicable."
   (sha1 (prin1-to-string
          (list processing-type
                org-latex-preview-preamble
@@ -989,7 +1004,66 @@ image."
                string
                (if (equal imagetype "svg")
                    'svg fg)
-               bg))))
+               bg
+               number))))
+
+(defconst org-latex-preview--numbered-environments
+  '("equation" "eqnarray" "math" "displaymath" ; latex.ltx
+    "align" "gather" "multiline" "flalign" "alignat" ; amsmath.sty
+    "xalignat" "xxalignat" "subequations" ; amsmath.sty
+    "dmath" "dseries" "dgroup" "darray" ; breqn.sty
+    "empheq") ; empheq.sty
+  "List of LaTeX environments which produce numbered equations.")
+
+(defun org-latex-preview--environment-numbering-table ()
+  "Creat a hash table from numbered equations to their initial index."
+  (let ((table (make-hash-table :test (if (org-element--cache-active-p)
+                                          #'eq #'equal)))
+        (counter 1))
+    (save-match-data
+      (dolist (element (org-latex-preview--get-numbered-environments))
+        (let ((content (org-element-property :value element)))
+          (puthash element counter table)
+          (if (string-match-p "\\`\\\\begin{[^}]*align" content)
+              (let ((beg (org-element-property :begin element))
+                    (end (org-element-property :end element)))
+                (cl-incf counter (1+ (how-many "\\\\$" beg end)))
+                (cl-decf counter (how-many "\\nonumber" beg end))
+                (cl-decf counter (how-many "\\tag{" beg end)))
+            (unless (or (string-match-p "\\nonumber" content)
+                        (string-match-p "\\tag{" content))
+              (cl-incf counter))))))
+    table))
+
+(defun org-latex-preview--get-numbered-environments (&optional beg end)
+  "Find all numbered environments between BEG and END."
+  (if (org-element--cache-active-p)
+      (org-element-cache-map
+       (lambda (datum)
+         (and (<= (or beg (point-min)) (org-element-property :begin datum)
+                  (org-element-property :end datum) (or end (point-max)))
+              (let* ((content (org-element-property :value datum))
+                     (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
+                               (match-string 1 content))))
+                (and (member env org-latex-preview--numbered-environments)
+                     datum))))
+       :granularity 'element
+       :restrict-elements '(latex-environment)
+       :from-pos beg
+       :to-pos (or end (point-max-marker)))
+    (org-element-map
+        (org-element-parse-buffer 'element)
+        '(latex-environment)
+      (lambda (datum)
+        (and (<= (or beg (point-min)) (org-element-property :begin datum)
+                 (org-element-property :end datum) (or end (point-max)))
+             (let* ((content (org-element-property :value datum))
+                    (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
+                              (match-string 1 content))))
+               (and (member env org-latex-preview--numbered-environments)
+                    (save-excursion
+                      (goto-char (org-element-property :begin datum))
+                      (org-element-context)))))))))
 
 (defun org-latex-preview-create-image-async (processing-type fragments-info)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
@@ -1589,15 +1663,22 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
            (or (plist-get (alist-get org-latex-preview-default-process
                                      org-latex-preview-process-alist)
                           :image-output-type)
-               "png")))
+               "png"))
+          (numbering-table
+           (and org-latex-preview-numbered
+                (org-latex-preview--environment-numbering-table))))
       (dolist (element (org-latex-preview-collect-fragments beg end))
         (pcase-let* ((begin (org-element-property :begin element))
                      (`(,fg ,bg) (org-latex-preview--colors-at begin))
-                     (value (org-element-property :value element)))
+                     (value (org-element-property :value element))
+                     (number (and numbering-table
+                                  (eq (org-element-type element)
+                                      'latex-environment)
+                                  (gethash element numbering-table))))
           (org-latex-preview--remove-cached
            (org-latex-preview--hash
             org-latex-preview-default-process
-            value imagetype fg bg))))
+            value imagetype fg bg number))))
       (message "Cleared LaTeX preview cache for %s."
                (if (or beg end) "region" "buffer")))))
 
@@ -1680,7 +1761,8 @@ HTML-P, if true, uses colors required for HTML processing."
          (bg (pcase (plist-get options (if html-p :html-background :background))
                ('default (org-latex-preview--attr-color :background))
                ("Transparent" nil)
-               (bg (org-latex-preview--format-color bg)))))
+               (bg (org-latex-preview--format-color bg))))
+         (num (or (plist-get options :number) 1)))
     (concat (and (not (plist-get options :continue-color))
                  (if (eq processing-type 'dvipng)
                      (concat (and fg (format "\\special{color rgb %s}"
@@ -1692,6 +1774,7 @@ HTML-P, if true, uses colors required for HTML processing."
                    (concat
                     (and bg (format "\\pagecolor[rgb]{%s}" bg))
                     (and fg (format "\\color[rgb]{%s}" fg)))))
+            (format "\\setcounter{equation}{%d}" (1- num))
             "%\n"
             value)))
 
