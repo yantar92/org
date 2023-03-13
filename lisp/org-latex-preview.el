@@ -307,6 +307,9 @@ in `org-latex-preview--svg-make-fg-currentColor', and so it
 should be a color that is extremely likely not otherwise found in
 the image.")
 
+(defconst org-latex-preview--overlay-priority -80
+  "The priority used with preview overlays.")
+
 (defun org-latex-preview--ensure-overlay (beg end)
   "Build an overlay between BEG and END."
   (let (ov)
@@ -334,6 +337,7 @@ the image.")
       (setq ov (make-overlay beg end nil 'front-advance))
       (overlay-put ov 'org-overlay-type 'org-latex-overlay)
       (overlay-put ov 'evaporate t)
+      (overlay-put ov 'priority org-latex-preview--overlay-priority)
       (overlay-put ov 'modification-hooks
                    (list #'org-latex-preview-auto--mark-overlay-modified))
       (overlay-put ov 'insert-in-front-hooks
