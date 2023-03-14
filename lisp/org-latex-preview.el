@@ -204,10 +204,21 @@ This is only relevant when `org-latex-preview-persist' is non-nil."
           (function :tag "Function")))
 
 (defcustom org-latex-preview-numbered nil
-  "Whether to calculate and apply correct equation numbering."
+  "Whether to calculate and apply correct equation numbering.
+When nil, equation numbering is disabled and a diamond symbol is
+shown in place of the equation number.
+
+When non-nil, equation numbering is tracked across the document.
+
+Alternatively, when set to the symbol \"preview\" numbering will
+simply be left as the automatic LaTeX numbering generated when
+previewing the batch of fragments.  This may be mostly-correct,
+or mostly-incorrect depending on the situation."
   :group 'org-latex
   :package-version '(Org . "9.7")
-  :type 'boolean)
+  :type '(choice (const :tag "No" nil)
+          (const :tag "Preview " preview)
+          (const :tag "Yes" t)))
 
 (defcustom org-latex-preview-processing-indicator 'fringe
   "The style of visual indicator for LaTeX currently being processed.
@@ -2086,7 +2097,9 @@ color information for this run."
                ('default (org-latex-preview--attr-color :background))
                ("Transparent" nil)
                (bg (org-latex-preview--format-color bg))))
-         (num (or (plist-get options :number) 1)))
+         (num (or (plist-get options :number)
+                  (and (not (eq org-latex-preview-numbered 'preview))
+                       1))))
     (concat (and (not (plist-get options :continue-color))
                  (if (eq processing-type 'dvipng)
                      (concat (and fg (format "\\special{color rgb %s}"
@@ -2098,7 +2111,7 @@ color information for this run."
                    (concat
                     (and bg (format "\\pagecolor[rgb]{%s}" bg))
                     (and fg (format "\\color[rgb]{%s}" fg)))))
-            (format "\\setcounter{equation}{%d}" (1- num))
+            (and num (format "\\setcounter{equation}{%d}" (1- num)))
             "%\n"
             value)))
 
