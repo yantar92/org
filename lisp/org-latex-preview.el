@@ -1322,6 +1322,13 @@ previews."
 
 (add-hook 'org-mode-hook #'org-latex-preview--clear-preamble-cache)
 
+(defconst org-latex-preview--single-eqn-format
+  "\n\\makeatletter
+\\renewcommand{\\theequation}{\\(\\diamond\\)\\ifnum\\value{equation}>1%
+\\,+\\,\\@arabic{\\numexpr\\value{equation}-1\\relax}\\fi}
+\\makeatother"
+  "A LaTeX preamble snippet that sets \"◇\"-based equation numbers.")
+
 (defun org-latex-preview--get-preamble (&optional buf)
   "Obtain the LaTeX preview for snippet preview in BUF."
   (with-current-buffer (or buf (current-buffer))
@@ -1346,12 +1353,15 @@ previews."
          (font-lock-mode -1)
          (setq info
                (org-export--annotate-info (org-export-get-backend 'latex) info))
+         (concat
           (org-latex-make-preamble
-          (org-combine-plists
-           (org-export-get-environment
-            (org-export-get-backend 'latex))
-           '(:time-stamp-file nil))
-          org-latex-preview-preamble 'snippet))))))
+           (org-combine-plists
+            (org-export-get-environment
+             (org-export-get-backend 'latex))
+            '(:time-stamp-file nil))
+           org-latex-preview-preamble 'snippet)
+          (and (not org-latex-preview-numbered)
+               org-latex-preview--single-eqn-format)))))))
 
 (defun org-latex-preview--create-tex-file (processing-info fragments)
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
