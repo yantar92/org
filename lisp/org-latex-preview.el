@@ -1669,7 +1669,20 @@ fragments in EXTENDED-INFO."
   (unless (plist-get extended-info :fontsize)
     (when (save-excursion
             (re-search-forward "^Preview: Fontsize \\([0-9]+\\)pt$" nil t))
-      (plist-put extended-info :fontsize (string-to-number (match-string 1)))))
+      (plist-put extended-info :fontsize (string-to-number (match-string 1)))
+      ;; Since at this point can infer that the preamble logging is complete,
+      ;; we can also check for hyperref and warn if it seems to be used,
+      ;; as it is currently known to cause issues.
+      (save-excursion
+        (goto-char (point-min))
+        (when (if (and org-latex-preview-use-precompilation
+                       (re-search-forward "^PRELOADED FILES:" nil t))
+                  (re-search-forward "^ *hyperref\\.sty" nil t)
+                (re-search-forward "^(.*hyperref/hyperref\\.sty" nil t))
+          (display-warning
+           '(org latex-preview hyperref)
+           "Hyperref seems to be loaded, this is known to cause issues with the reported size information"
+           :warning)))))
   (let ((preview-start-re
          "^! Preview: Snippet \\([0-9]+\\) started.\n<-><->\n *\nl\\.\\([0-9]+\\)[^\n]+\n")
         (preview-end-re
