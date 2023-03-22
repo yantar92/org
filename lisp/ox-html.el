@@ -1173,9 +1173,16 @@ See `format-time-string' for more information on its components."
   :type 'string)
 
 (defcustom org-html-latex-image-options
-  '(:foreground "Black" :background "Transparent" :scale 1.0)
+  '(:foreground "Black" :background "Transparent"
+    :scale 1.0 :inline nil)
   "LaTeX preview options that apply to generated images.
-This is a HTML-specific counterpart to `org-latex-preview-options', which see."
+This is a HTML-specific counterpart to `org-latex-preview-options', which see.
+
+This also supports the extra property \":inline\", which controls the
+inlining of images, it can be:
+- t, to inline all images
+- a extension, or list of extensions, to inline those formats (e.g. \"svg\")
+- nil, to never inline images"
   :group 'org-export-html
   :package-version '(Org . "9.7")
   :type 'plist)
@@ -3226,20 +3233,31 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 
 (defun org-html-latex-image (element info)
   "TODO"
-  (let* ((hash (gethash element (plist-get info :html-latex-preview-hash-table)))
-         (path-info (org-latex-preview--get-cached hash)))
-    (unless hash
-      (error "Expected LaTeX preview hash to exist for element, but none found"))
-    (unless path-info
-      (error "Expected LaTeX preview %S to exist in the cache" hash))
-    (unless (car path-info)
-      (error "LaTeX preview image path is nil"))
-    (unless (file-exists-p (car path-info))
-      (error "Expected LaTeX preview file for %S to exist" hash))
+  (let* ((hash (or (gethash element (plist-get info :html-latex-preview-hash-table))
+                   (error "Expected LaTeX preview hash to exist for element, but none found")))
+         (path-info (or (org-latex-preview--get-cached hash)
+                        (error "Expected LaTeX preview %S to exist in the cache" hash)))
+         (inline-condition (plist-get (plist-get info :html-latex-image-options) :inline))
+         (image-source
+          (if (or (eq inline-condition 't)
+                  (member (file-name-extension (car path-info))
+                          (org-ensure-list inline-condition)))
+              (let ((coding-system-for-read 'utf-8)
+                    (file-name-handler-alist nil))
+                (with-temp-buffer
+                  (insert-file-contents-literally (car path-info))
+                  (base64-encode-region (point-min) (point-max))
+                  (goto-char (point-min))
+                  (insert "data:image/svg+xml;base64,")
+                  (buffer-string)))
+              (car path-info))))
+    (unless (and (plist-get (cdr path-info) :height)
+                 (plist-get (cdr path-info) :depth))
+      (error "Something went wrong during image generation"))
     (org-html-close-tag
      "img"
      (org-html--make-attribute-string
-      (list :src (car path-info)
+      (list :src image-source
             :alt (org-html-encode-plain-text
                   (org-element-property :value element))
             :style (if (eq (org-element-type element) 'latex-environment)
