@@ -137,7 +137,7 @@ or `org-babel-execute:C++' or `org-babel-execute:D'."
 			  (`c ".c") (`cpp ".cpp") (`d ".d"))))
 	 (tmp-bin-file			;not used for D
 	  (org-babel-process-file-name
-	   (org-babel-temp-file "C-bin-" org-babel-exeext)))
+	   (org-babel-temp-file "C-bin-" 'executable)))
 	 (cmdline (cdr (assq :cmdline params)))
 	 (cmdline (if cmdline (concat " " cmdline) ""))
 	 (flags (cdr (assq :flags params)))

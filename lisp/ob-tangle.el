@@ -536,25 +536,18 @@ non-nil, return the full association list to be used by
 		      (or (ignore-errors (nth 4 (org-heading-components)))
 			  "No heading")
 		      block-counter)))
-	 (expand-cmd (intern (concat "org-babel-expand-body:" src-lang)))
-	 (assignments-cmd
-	  (intern (concat "org-babel-variable-assignments:" src-lang)))
 	 (body
 	  ;; Run the tangle-body-hook.
           (let ((body (if (org-babel-noweb-p params :tangle)
                           (if (string= "strip-tangle" (cdr (assq :noweb (nth 2 info))))
-                            (replace-regexp-in-string (org-babel-noweb-wrap) "" (nth 1 info))
+                              (replace-regexp-in-string (org-babel-noweb-wrap) "" (nth 1 info))
 			    (org-babel-expand-noweb-references info))
 			(nth 1 info))))
 	    (with-temp-buffer
 	      (insert
 	       ;; Expand body in language specific manner.
 	       (cond ((assq :no-expand params) body)
-		     ((fboundp expand-cmd) (funcall expand-cmd body params))
-		     (t
-		      (org-babel-expand-body:generic
-		       body params (and (fboundp assignments-cmd)
-					(funcall assignments-cmd params))))))
+		     (t (org-babel--expand-body-lang lang body params))))
 	      (when (string-match "-r" extra)
 		(goto-char (point-min))
 		(while (re-search-forward cref-regexp nil t)

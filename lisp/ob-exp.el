@@ -105,17 +105,16 @@ Assume point is at block opening line."
       (when info
 	;; if we're actually going to need the parameters
 	(when (member (cdr (assq :exports (nth 2 info))) '("both" "results"))
-	  (let ((lang-headers (intern (concat "org-babel-default-header-args:"
-					      lang))))
-	    (org-babel-exp--at-source
-		(setf (nth 2 info)
-		      (org-babel-process-params
-		       (apply #'org-babel-merge-params
-			      org-babel-default-header-args
-			      (and (boundp lang-headers)
-				   (symbol-value lang-headers))
-			      (append (org-babel-params-from-properties lang)
-				      (list raw-params)))))))
+	  (org-babel-exp--at-source
+	      (setf (nth 2 info)
+		    (org-babel-process-params
+		     (apply #'org-babel-merge-params
+			    org-babel-default-header-args
+                            (org-babel--default-header-args lang)
+			    (and (boundp lang-headers)
+				 (symbol-value lang-headers))
+			    (append (org-babel-params-from-properties lang)
+				    (list raw-params))))))
 	  (setf hash (org-babel-sha1-hash info :export)))
 	(org-babel-exp-do-export info 'block hash)))))
 
@@ -436,7 +435,7 @@ inhibit insertion of results into the buffer."
 	  (info (copy-sequence info))
 	  (org-babel-current-src-block-location (point-marker)))
       ;; Skip code blocks which we can't evaluate.
-      (when (fboundp (intern (concat "org-babel-execute:" lang)))
+      (when (org-babel-backend-execute-function lang)
 	(org-babel-eval-wipe-error-buffer)
 	(setf (nth 1 info) body)
 	(setf (nth 2 info)

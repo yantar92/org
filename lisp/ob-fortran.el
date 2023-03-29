@@ -53,7 +53,7 @@
 (defun org-babel-execute:fortran (body params)
   "This function should only be called by `org-babel-execute:fortran'."
   (let* ((tmp-src-file (org-babel-temp-file "fortran-src-" ".F90"))
-         (tmp-bin-file (org-babel-temp-file "fortran-bin-" org-babel-exeext))
+         (tmp-bin-file (org-babel-temp-file "fortran-bin-" 'executable))
          (cmdline (cdr (assq :cmdline params)))
          (flags (cdr (assq :flags params)))
          (full-body (org-babel-expand-body:fortran body params)))

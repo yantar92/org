@@ -37,7 +37,8 @@
 (defconst org-babel-exeext
   (if (memq system-type '(windows-nt cygwin))
       ".exe"
-    nil))
+    nil)
+  "Extension for executable in current `system-type'.")
 
 (defvar org-babel-library-of-babel)
 (defvar org-edit-src-content-indentation)
@@ -97,6 +98,9 @@
 (declare-function orgtbl-to-orgtbl "org-table" (table params))
 (declare-function tramp-compat-make-temp-file "tramp-compat" (filename &optional dir-flag))
 
+
+;;; Configuration variables
+
 (defgroup org-babel nil
   "Code block evaluation and management in `org-mode' documents."
   :tag "Babel"
@@ -110,7 +114,7 @@ blocks in Org buffers.  The default value of this variable is t,
 meaning confirmation is required for any code block evaluation.
 This variable can be set to nil to inhibit any future
 confirmation requests.  This variable can also be set to a
-function which takes two arguments the language of the code block
+function which takes two arguments: the language of the code block
 and the body of the code block.  Such a function should then
 return a non-nil value if the user should be prompted for
 execution or nil if no prompt is required.
@@ -124,9 +128,9 @@ against accidental code block evaluation.  The
 remove code block execution from the `\\[org-ctrl-c-ctrl-c]' keybinding."
   :group 'org-babel
   :version "24.1"
-  :type '(choice boolean function))
-;; don't allow this variable to be changed through file settings
-(put 'org-confirm-babel-evaluate 'safe-local-variable (lambda (x) (eq x t)))
+  :type '(choice boolean function)
+  ;; Don't allow this variable to be changed through file settings.
+  :safe (lambda (x) (eq x t)))
 
 (defcustom org-babel-no-eval-on-ctrl-c-ctrl-c nil
   "\\<org-mode-map>\
@@ -163,12 +167,10 @@ See also `org-babel-noweb-wrap-start'."
   "Format string used to wrap inline results.
 This string must include a \"%s\" which will be replaced by the results."
   :group 'org-babel
-  :type 'string)
-(put 'org-babel-inline-result-wrap
-     'safe-local-variable
-     (lambda (value)
-       (and (stringp value)
-	    (string-match-p "%s" value))))
+  :type 'string
+  :safe (lambda (value)
+          (and (stringp value)
+	       (string-match-p "%s" value))))
 
 (defcustom org-babel-hash-show-time nil
   "Non-nil means show the time the code block was evaluated in the result hash."
@@ -184,6 +186,159 @@ This string must include a \"%s\" which will be replaced by the results."
   :version "26.1"
   :package-version '(Org . "9.1")
   :safe #'booleanp)
+
+
+;;; Babel backends
+
+(cl-defstruct (org-babel-backend (:constructor org-babel--make-backend)
+			         (:copier nil))
+  langs modes default-header-args
+  execute variable-assignments expand-body
+  initiate-session prep-session load-session)
+
+(defvar org-babel--backends nil
+  "List of registered babel backends.
+See `org-babel-register-backend' for more information about backends.")
+
+(defun org-babel-register-backend (lang &rest body)
+  "Register babel backend for LANG.
+
+LANG is a string or a list of strings representing src block languages
+compatible with the backend.  BODY is a property list, where the
+following keys can be set:
+
+  `:activate'
+
+    Function activating a citation.  It is called with a single
+    argument: a citation object extracted from the current
+    buffer.  It may add text properties to the buffer.  If it is
+    not provided, `org-cite-fontify-default' is used.
+
+  `:export-bibliography'
+
+    Function rendering a bibliography.  It is called with six
+    arguments: the list of citation keys used in the document, as
+    strings, a list of bibliography files, the style, as a string
+    or nil, the local properties, as a property list, the export
+    back-end, as a symbol, and the communication channel, as a
+    property list.
+
+    It is called at each \"print_bibliography\" keyword in the
+    parse tree.  It may return a string, a parsed element, a list
+    of parsed elements, or nil.  When it returns nil, the keyword
+    is ignored.  Otherwise, the value it returns replaces the
+    keyword in the export output.
+
+  `:export-citation'    (mandatory for \"export\" capability)
+
+    Function rendering citations.  It is called with four
+    arguments: a citation object, the style, as a pair, the
+    export back-end, as a symbol, and the communication channel,
+    as a property list.
+
+    It is called on each citation object in the parse tree.  It
+    may return a string, a parsed object, a secondary string, or
+    nil.  When it returns nil, the citation is ignored.
+    Otherwise, the value it returns replaces the citation object
+    in the export output.
+
+  `:export-finalizer'
+
+    Function called at the end of export process.  It must accept
+    six arguments: the output, as a string, a list of citation
+    keys used in the document, a list of bibliography files, the
+    expected bibliography style, as a string or nil, the export
+    back-end, as a symbol, and the communication channel, as a
+    property list.
+
+    It must return a string, which will become the final output
+    from the export process, barring subsequent modifications
+    from export filters.
+
+  `:follow'
+
+    Function called to follow a citation.  It accepts two
+    arguments, the citation or citation reference object at
+    point, and any prefix argument received during interactive
+    call of `org-open-at-point'.
+
+  `:insert'
+
+    Function called to insert a citation.  It accepts two
+    arguments, the citation or citation reference object at point
+    or nil, and any prefix argument received.
+
+  `:cite-styles'
+
+    When the processor has export capability, the value can
+    specify what cite styles, variants, and their associated
+    shortcuts are supported.  It can be useful information for
+    completion or linting.
+
+    The expected format is
+
+      ((STYLE . SHORTCUTS) . VARIANTS))
+
+    where STYLE is a string, SHORTCUTS a list of strings or nil,
+    and VARIANTS is a list of pairs (VARIANT . SHORTCUTS),
+    VARIANT being a string and SHORTCUTS a list of strings or
+    nil.
+
+    The \"nil\" style denotes the processor fall-back style.  It
+    should have a corresponding entry in the value.
+
+    The value can also be a function.  It will be called without
+    any argument and should return a list structured as the above.
+
+Return a non-nil value on a successful operation."
+  (declare (indent 1))
+  (unless (and name (symbolp name))
+    (error "Invalid processor name: %S" name))
+  (setq org-cite--processors
+        (cons (apply #'org-cite--make-processor :name name body)
+              (seq-remove (lambda (p) (eq name (org-cite-processor-name p)))
+                          org-cite--processors))))
+
+(defun org-cite-try-load-processor (name)
+  "Try loading citation processor NAME if unavailable.
+NAME is a symbol.  When the NAME processor is unregistered, try
+loading \"oc-NAME\" library beforehand, then cross fingers."
+  (unless (org-cite-get-processor name)
+    (require (intern (format "oc-%s" name)) nil t)))
+
+(defun org-cite-get-processor (name)
+  "Return citation processor named after symbol NAME.
+Return nil if no such processor is found."
+  (seq-find (lambda (p) (eq name (org-cite-processor-name p)))
+	    org-cite--processors))
+
+(defun org-cite-unregister-processor (name)
+  "Unregister citation processor NAME.
+NAME is a symbol.  Raise an error if processor is not registered.
+Return a non-nil value on a successful operation."
+  (unless (and name (symbolp name))
+    (error "Invalid processor name: %S" name))
+  (pcase (org-cite-get-processor name)
+    ('nil (error "Processor %S not registered" name))
+    (processor
+     (setq org-cite--processors (delete processor org-cite--processors))))
+  t)
+
+(defun org-cite-processor-has-capability-p (processor capability)
+  "Return non-nil if PROCESSOR is able to handle CAPABILITY.
+PROCESSOR is the name of a cite processor, as a symbol.  CAPABILITY is
+`activate', `export', `follow', or `insert'."
+  (let ((p (org-cite-get-processor processor)))
+    (pcase capability
+      ((guard (not p)) nil)             ;undefined processor
+      ('activate (functionp (org-cite-processor-activate p)))
+      ('export (functionp (org-cite-processor-export-citation p)))
+      ('follow (functionp (org-cite-processor-follow p)))
+      ('insert (functionp (org-cite-processor-insert p)))
+      (other (error "Invalid capability: %S" other)))))
+
+
+;;; Other functions
 
 (defun org-babel-noweb-wrap (&optional regexp)
   "Return regexp matching a Noweb reference.
@@ -305,11 +460,15 @@ environment, to override this check."
 
 ;;;###autoload
 (defun org-babel-execute-safely-maybe ()
+  "Maybe run `org-babel-execute-maybe'.
+Do nothing when `org-babel-no-eval-on-ctrl-c-ctrl-c' is nil."
   (unless org-babel-no-eval-on-ctrl-c-ctrl-c
     (org-babel-execute-maybe)))
 
 ;;;###autoload
 (defun org-babel-execute-maybe ()
+  "Execute src block or babel call at point.
+Babel call can refer to the Library of Babel."
   (interactive)
   (or (org-babel-execute-src-block-maybe)
       (org-babel-lob-execute-maybe)))
@@ -328,7 +487,8 @@ Otherwise do nothing and return nil."
 (defun org-babel-execute-src-block-maybe ()
   "Conditionally execute a source block.
 Detect if this is context for a Babel src-block and if so
-then run `org-babel-execute-src-block'."
+then run `org-babel-execute-src-block'.
+Clear the existing babel error buffer, if any."
   (interactive)
   (org-babel-when-in-src-block
    (org-babel-eval-wipe-error-buffer)
@@ -434,7 +594,18 @@ then run `org-babel-switch-to-session'."
     (tangle	. ((tangle yes no :any)))
     (tangle-mode . ((#o755 #o555 #o444 :any)))
     (var	. :any)
-    (wrap       . :any)))
+    (wrap       . :any))
+  "Alist defining common header args and their allowed values.
+Keys of the alist are header arg symbols.  Values of the alist are
+either a symbol `:any' or a list of allowed values.  Each element of
+the value list is either symbol `:any', other symbol representing the
+allowed value, or a list of exclusive values.  `:any' implies that any
+value of the header arg is allowed.  Exclusive values override each
+other when multiple values are used in a given header argument.
+
+A good example of exclusive values is in \"results\" header arg where,
+for example, \"file\" and \"table\" values cannot co-exist.  See info
+node `(org)Results of evaluation' for more details.")
 
 (defconst org-babel-header-arg-names
   (mapcar #'car org-babel-common-header-args-w-values)
@@ -641,6 +812,15 @@ the list of header arguments."
         (push elem lst)))
     (reverse lst)))
 
+(defun org-babel-backend-default-header-args (lang)
+  "Return default header arguments for LANG.
+The arguments are computed according to variable named
+org-babel-default-header-args:LANG."
+  (let ((header-args-var (intern
+			  (concat "org-babel-default-header-args:" lang))))
+    (and (boundp header-args-var)
+         (symbol-value header-args-var))))
+
 (defun org-babel-get-src-block-info (&optional no-eval datum)
   "Extract information from a source block or inline source block.
 
@@ -662,8 +842,6 @@ a list with the following pattern:
 	 (inline (eq type 'inline-src-block)))
     (when (memq type '(inline-src-block src-block))
       (let* ((lang (org-element-property :language datum))
-	     (lang-headers (intern
-			    (concat "org-babel-default-header-args:" lang)))
 	     (name (org-element-property :name datum))
 	     (info
 	      (list
@@ -672,7 +850,7 @@ a list with the following pattern:
 	       (apply #'org-babel-merge-params
 		      (if inline org-babel-default-inline-header-args
 			org-babel-default-header-args)
-		      (and (boundp lang-headers) (eval lang-headers t))
+                      (org-babel-backend-default-header-args lang)
 		      (append
 		       ;; If DATUM is provided, make sure we get node
 		       ;; properties applicable to its location within
@@ -711,8 +889,20 @@ a list with the following pattern:
     (`(:file-desc) result)
     (`(:file-desc . ,(and (pred stringp) val)) val)))
 
-(defvar *this*) ; Dynamically bound in `org-babel-execute-src-block'
-                ; and `org-babel-read'
+(defun org-babel-backend-execute-function (lang)
+  "Return execute function for LANG."
+  (let ((cmd (intern (concat "org-babel-execute:" lang))))
+    (and (fboundp cmd) cmd)))
+
+(defun org-babel--execute-lang (lang body params)
+  "Execute BODY with PARAMS as LANG."
+  (if-let ((cmd (org-babel-backend-execute-function lang)))
+      (funcall cmd body params)
+    (error "No org-babel-execute function for %s!" lang)))
+
+;; Dynamically bound in `org-babel-execute-src-block'
+;; and `org-babel-read'
+(defvar *this*)
 
 ;;;###autoload
 (defun org-babel-execute-src-block (&optional arg info params executor-type)
@@ -784,18 +974,15 @@ guess will be made."
 		 (dir (cdr (assq :dir params)))
 		 (mkdirp (cdr (assq :mkdirp params)))
 		 (default-directory
-		   (cond
-		    ((not dir) default-directory)
-		    ((member mkdirp '("no" "nil" nil))
-		     (file-name-as-directory (expand-file-name dir)))
-		    (t
-		     (let ((d (file-name-as-directory (expand-file-name dir))))
-		       (make-directory d 'parents)
-		       d))))
-		 (cmd (intern (concat "org-babel-execute:" lang)))
+		  (cond
+		   ((not dir) default-directory)
+		   ((member mkdirp '("no" "nil" nil))
+		    (file-name-as-directory (expand-file-name dir)))
+		   (t
+		    (let ((d (file-name-as-directory (expand-file-name dir))))
+		      (make-directory d 'parents)
+		      d))))
 		 result exec-start-time)
-	    (unless (fboundp cmd)
-	      (error "No org-babel-execute function for %s!" lang))
 	    (message "Executing %s %s %s..."
 		     (capitalize lang)
                      (pcase executor-type
@@ -810,7 +997,7 @@ guess will be made."
                          (format "at position %S" (nth 5 info)))))
 	    (setq exec-start-time (current-time)
                   result
-		  (let ((r (save-current-buffer (funcall cmd body params))))
+		  (let ((r (save-current-buffer (org-babel--execute-lang lang body params))))
 		    (if (and (eq (cdr (assq :result-type params)) 'value)
 			     (or (member "vector" result-params)
 				 (member "table" result-params))
@@ -871,6 +1058,40 @@ org-babel-expand-body:lang function."
 		       (when epi (list epi)))
 	       "\n")))
 
+(defun org-babel-backend-variable-assignments-function (lang)
+  "Return variable assignment function for LANG."
+  (let ((cmd (intern (concat "org-babel-variable-assignments:" lang))))
+    (and (fboundp cmd) cmd)))
+
+(defun org-babel-backend-expand-body-function (lang)
+  "Return expand body function for LANG."
+  (let ((cmd (intern (concat "org-babel-expand-body:" lang))))
+    (and (fboundp cmd) cmd)))
+
+(defun org-babel--variable-assignments (lang params)
+  "Assign variables for LANG according to PARAMS.
+Return nil if LANG does not provide variable assignments.
+Return a list of assignment strings to be prepended to the source
+block body."
+  (if-let ((assignments-cmd
+            (org-babel-backend-variable-assignments-function lang)))
+      (funcall assignments-cmd params)
+    (when (org-babel--get-vars params)
+      (warn "Variable assignments are not supported by %s babel backend." lang))))
+
+(defun org-babel--expand-body-lang (lang body params)
+  "Expand BODY with PARAMS as LANG.
+Return the final expanded BODY string, containing variable assignments
+as necessary.
+
+Use generic `org-babel-expand-body:generic' if LANG does not define an
+expander.  LANG-specific expander functions are expected to call
+org-babel-variable-assignments:LANG if necessary."
+  (if-let ((cmd (org-babel-backend-expand-body-function lang)))
+      (funcall cmd body params)
+    (org-babel-expand-body:generic
+     body params (org-babel--variable-assignments lang params))))
+
 ;;;###autoload
 (defun org-babel-expand-src-block (&optional _arg info params)
   "Expand the current source code block.
@@ -882,18 +1103,11 @@ arguments and pop open the results in a preview buffer."
 	 (params (setf (nth 2 info)
                        (sort (org-babel-merge-params (nth 2 info) params)
                              (lambda (el1 el2) (string< (symbol-name (car el1))
-							(symbol-name (car el2)))))))
+						   (symbol-name (car el2)))))))
          (body (setf (nth 1 info)
 		     (if (org-babel-noweb-p params :eval)
 			 (org-babel-expand-noweb-references info) (nth 1 info))))
-         (expand-cmd (intern (concat "org-babel-expand-body:" lang)))
-	 (assignments-cmd (intern (concat "org-babel-variable-assignments:"
-					  lang)))
-         (expanded
-	  (if (fboundp expand-cmd) (funcall expand-cmd body params)
-	    (org-babel-expand-body:generic
-	     body params (and (fboundp assignments-cmd)
-			      (funcall assignments-cmd params))))))
+         (expanded (org-babel--expand-body-lang lang body params)))
     (if (called-interactively-p 'any)
 	(org-edit-src-code
 	 expanded (concat "*Org-Babel Preview " (buffer-name) "[ " lang " ]*"))
@@ -940,10 +1154,9 @@ arguments and pop open the results in a preview buffer."
   (let* ((info (org-babel-get-src-block-info 'no-eval))
 	 (lang (car info))
 	 (begin (nth 5 info))
-	 (lang-headers (intern (concat "org-babel-header-args:" lang)))
 	 (headers (org-babel-combine-header-arg-lists
 		   org-babel-common-header-args-w-values
-		   (when (boundp lang-headers) (eval lang-headers t))))
+		   (org-babel-backend-default-header-args lang)))
 	 (header-arg (or header-arg
 			 (completing-read
 			  "Header Arg: "
@@ -980,8 +1193,7 @@ arguments and pop open the results in a preview buffer."
 
 (defun org-babel-enter-header-arg-w-completion (&optional lang)
   "Insert header argument appropriate for LANG with completion."
-  (let* ((lang-headers-var (intern (concat "org-babel-header-args:" lang)))
-         (lang-headers (when (boundp lang-headers-var) (eval lang-headers-var t)))
+  (let* ((lang-headers (org-babel-backend-default-header-args lang))
 	 (headers-w-values (org-babel-combine-header-arg-lists
 			    org-babel-common-header-args-w-values lang-headers))
          (headers (mapcar #'symbol-name (mapcar #'car headers-w-values)))
@@ -995,6 +1207,44 @@ arguments and pop open the results in a preview buffer."
     (cons header arg)))
 
 (add-hook 'org-cycle-tab-first-hook 'org-babel-header-arg-expand)
+
+(defun org-babel-backend-initiate-session-function (lang)
+  "Return session initiator function for LANG."
+  (let ((cmd (intern (format "org-babel-%s-initiate-session" lang))))
+    (and (fboundp cmd) cmd)))
+
+(defun org-babel-backend-prep-session-function (lang)
+  "Return session prep function for LANG."
+  (let ((cmd (intern (concat "org-babel-prep-session:" lang))))
+    (and (fboundp cmd) cmd)))
+
+(defun org-babel-backend-load-session-function (lang)
+  "Return session load function for LANG."
+  (let ((cmd (intern (concat "org-babel-load-session:" lang))))
+    (and (fboundp cmd) cmd)))
+
+(defun org-babel--initiate-session (lang session params)
+  "Return existing SESSION for LANG or create a new one.
+PARAMS contains header arguments for current source code block.
+Throw an error if LANG backend does not define initiate-function."
+  (if-let ((cmd (org-babel-backend-initiate-session-function lang)))
+      (funcall cmd session params)
+    (error "No org-babel-initiate-session function for %s!" lang)))
+
+(defun org-babel--prep-session (lang session params)
+  "Assign variables for LANG in SESSION according to PARAMS.
+Throw an error if LANG backend does not define prepare function."
+  (if-let ((cmd (org-babel-backend-prep-session-function lang)))
+      (funcall cmd session params)
+    (error "No org-babel-prep-session function for %s!" lang)))
+
+(defun org-babel--load-session (lang session body params)
+  "Prepare BODY execution in LANG SESSION, according to PARAMS.
+Return session buffer with BODY inserted.
+Throw an error if LANG backend does not define session loader."
+  (if-let ((cmd (org-babel-backend-load-session-function lang)))
+      (funcall cmd session body params)
+    (error "No org-babel-load-session function for %s!" lang)))
 
 ;;;###autoload
 (defun org-babel-load-in-session (&optional _arg info)
@@ -1015,11 +1265,8 @@ session."
          (session (cdr (assq :session params)))
 	 (dir (cdr (assq :dir params)))
 	 (default-directory
-	   (or (and dir (file-name-as-directory dir)) default-directory))
-	 (cmd (intern (concat "org-babel-load-session:" lang))))
-    (unless (fboundp cmd)
-      (error "No org-babel-load-session function for %s!" lang))
-    (pop-to-buffer (funcall cmd session body params))
+	  (or (and dir (file-name-as-directory dir)) default-directory)))
+    (pop-to-buffer (org-babel--load-session lang session body params))
     (end-of-line 1)))
 
 ;;;###autoload
@@ -1036,20 +1283,13 @@ the session.  Copy the body of the code block to the kill ring."
          (session (cdr (assq :session params)))
 	 (dir (cdr (assq :dir params)))
 	 (default-directory
-	   (or (and dir (file-name-as-directory dir)) default-directory))
-	 (init-cmd (intern (format "org-babel-%s-initiate-session" lang)))
-	 (prep-cmd (intern (concat "org-babel-prep-session:" lang))))
+	  (or (and dir (file-name-as-directory dir)) default-directory)))
     (when (and (stringp session) (string= session "none"))
       (error "This block is not using a session!"))
-    (unless (fboundp init-cmd)
-      (error "No org-babel-initiate-session function for %s!" lang))
     (with-temp-buffer (insert (org-trim body))
                       (copy-region-as-kill (point-min) (point-max)))
-    (when arg
-      (unless (fboundp prep-cmd)
-	(error "No org-babel-prep-session function for %s!" lang))
-      (funcall prep-cmd session params))
-    (funcall init-cmd session params)))
+    (when arg (org-babel--prep-session lang session params))
+    (org-babel--initiate-session lang session params)))
 
 ;;;###autoload
 (defun org-babel-switch-to-session (&optional arg info)
@@ -1369,14 +1609,7 @@ CONTEXT specifies the context of evaluation.  It can be `:eval',
 	   (body (if (org-babel-noweb-p params context)
 		     (org-babel-expand-noweb-references info)
 		   (nth 1 info)))
-	   (expand-cmd (intern (concat "org-babel-expand-body:" lang)))
-	   (assignments-cmd (intern (concat "org-babel-variable-assignments:"
-					    lang)))
-	   (expanded
-	    (if (fboundp expand-cmd) (funcall expand-cmd body params)
-	      (org-babel-expand-body:generic
-	       body params (and (fboundp assignments-cmd)
-				(funcall assignments-cmd params))))))
+	   (expanded (org-babel--expand-body-lang lang body params)))
       (let* ((it (format "%s-%s"
                          (mapconcat
                           #'identity
@@ -3323,11 +3556,15 @@ Emacs shutdown.")
   "Create a temporary file in the `org-babel-temporary-directory'.
 Passes PREFIX and SUFFIX directly to `make-temp-file' with the
 value of `temporary-file-directory' temporarily set to the value
-of `org-babel-temporary-directory'."
+of `org-babel-temporary-directory'.
+If SUFFIX is symbol `executable', create temporary executable file
+with appropriate extension."
   (make-temp-file
    (concat (file-name-as-directory (org-babel-temp-directory)) prefix)
    nil
-   suffix))
+   (if (eq suffix 'executable)
+       org-babel-exeext
+     suffix)))
 
 (defmacro org-babel-temp-stable-directory ()
   "Return temporary stable directory."
@@ -3337,13 +3574,20 @@ of `org-babel-temporary-directory'."
 (defun org-babel-temp-stable-file (data prefix &optional suffix)
   "Create a temporary file in the `org-babel-remove-temporary-stable-directory'.
 The file name is stable with respect to DATA.  The file name is
-constructed like the following: PREFIXDATAhashSUFFIX."
+constructed like the following: PREFIXDATAhashSUFFIX.
+If SUFFIX is symbol `executable', create temporary executable file
+with appropriate extension."
   (let ((path
          (format
           "%s%s%s%s"
           (file-name-as-directory (org-babel-temp-stable-directory))
           prefix
           (sxhash data)
+          (cond
+           ((eq 'executable suffix)
+            org-babel-exeext)
+           ((not suffix) "")
+           (t suffix))
           (or suffix ""))))
     ;; Create file.
     (with-temp-file path)

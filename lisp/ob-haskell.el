@@ -82,7 +82,7 @@ a parameter, such as \"ghc -v\"."
   (let* ((tmp-src-file (org-babel-temp-file "Haskell-src-" ".hs"))
          (tmp-bin-file
           (org-babel-process-file-name
-           (org-babel-temp-file "Haskell-bin-" org-babel-exeext)))
+           (org-babel-temp-file "Haskell-bin-" 'executable)))
          (cmdline (cdr (assq :cmdline params)))
          (cmdline (if cmdline (concat " " cmdline) ""))
          (flags (cdr (assq :flags params)))
