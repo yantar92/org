@@ -6,6 +6,7 @@
 
 # Name of your emacs binary
 EMACS	= emacs
+EMACS_VERSION := $(shell $(EMACS) -Q --batch --eval '(message "%s" emacs-version)' 2>&1)
 
 # Where local software is found
 prefix	= /usr/share
@@ -30,6 +31,17 @@ GIT_BRANCH =
 # respect TMPDIR if it is already defined in the environment
 TMPDIR ?= /tmp
 testdir = $(TMPDIR)/tmp-orgtest
+
+# Where to store Org dependencies
+top_builddir := $(shell pwd)
+pkgdir_top := $(top_builddir)/pkg-deps
+pkgdir := $(pkgdir_top)/$(EMACS_VERSION)
+
+# Extra flags to be passed to Emacs
+EMACSFLAGS ?=
+
+# Third-party packages to install when running make
+EPACKAGES ?=
 
 # Configuration for testing
 # Verbose ERT summary by default for Emacs-28 and above.
@@ -72,11 +84,24 @@ REPRO_ARGS ?=
 req-ob-lang = --eval '(require '"'"'ob-$(ob-lang))'
 lst-ob-lang = ($(ob-lang) . t)
 req-extra   = --eval '(require '"'"'$(req))'
+package-define-refresh-mark = --eval '(setq org--compile-packages-missing nil)'
+package-need-refresh-mark = --eval '(unless (require '"'"'$(package) nil t) (setq org--compile-packages-missing t))'
+package-refresh-maybe = --eval '(if org--compile-packages-missing (package-refresh-contents) (message "No third-party packages need to be installed"))'
+package-install-maybe = --eval '(unless (require '"'"'$(package) nil t) (package-install '"'"'$(package)))'
 BTEST_RE   ?= \\(org\\|ob\\|ox\\)
 BTEST_LOAD  = \
 	--eval '(add-to-list '"'"'load-path (concat default-directory "lisp"))' \
 	--eval '(add-to-list '"'"'load-path (concat default-directory "testing"))'
 BTEST_INIT  = $(BTEST_PRE) $(BTEST_LOAD) $(BTEST_POST)
+
+ifeq (,$(EPACKAGES))
+INSTALL_PACKAGES =
+else
+INSTALL_PACKAGES = \
+	$(BATCH) \
+        $(package-define-refresh-mark) $(foreach package,$(EPACKAGES),$(package-need-refresh-mark)) $(package-refresh-maybe) \
+        $(foreach package,$(EPACKAGES),$(package-install-maybe))
+endif
 
 BTEST = $(BATCH) $(BTEST_INIT) \
 	  -l org-batch-test-init \
@@ -116,7 +141,11 @@ REPRO = $(NOBATCH) $(REPRO_INIT) $(REPRO_ARGS)
 
 # start Emacs with no user and site configuration
 # EMACSQ = -vanilla # XEmacs
-EMACSQ  = $(EMACS)  -Q
+EMACSQ  = $(EMACS)  -Q \
+	  $(EMACSFLAGS) \
+	  --eval '(setq vc-handled-backends nil org-startup-folded nil org-element-cache-persistent nil)' \
+          --eval '(make-directory "$(pkgdir)" t)' \
+	  --eval '(setq package-user-dir "$(pkgdir)")' --eval '(package-initialize)'
 
 # Using emacs in batch mode.
 BATCH	= $(EMACSQ) -batch \

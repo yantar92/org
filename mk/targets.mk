@@ -27,21 +27,21 @@ ifneq ($(GITSTATUS),)
   GITVERSION := $(GITVERSION:.dirty=).dirty
 endif
 
-.PHONY:	all oldorg update update2 up0 up1 up2 single $(SUBDIRS) \
+.PHONY:	all oldorg update update2 up0 up1 up2 uppkg single $(SUBDIRS) \
 	check test install $(INSTSUB) \
 	info html pdf card refcard doc docs \
 	autoloads cleanall clean $(CLEANDIRS:%=clean%) \
 	clean-install cleanelc cleandirs \
-	cleanlisp cleandoc cleandocs cleantest \
+	cleanlisp cleandoc cleandocs cleantest cleanpkg \
 	compile compile-dirty uncompiled \
 	config config-test config-exe config-all config-eol config-version \
 	vanilla repro
 
-CONF_BASE = EMACS DESTDIR ORGCM ORG_MAKE_DOC
-CONF_DEST = lispdir infodir datadir testdir
+CONF_BASE = EMACS DESTDIR ORGCM ORG_MAKE_DOC EPACKAGES
+CONF_DEST = lispdir infodir datadir testdir pkgdir
 CONF_TEST = BTEST_PRE BTEST_POST BTEST_OB_LANGUAGES BTEST_EXTRA BTEST_RE
 CONF_EXEC = CP MKDIR RM RMR FIND CHMOD SUDO PDFTEX TEXI2PDF TEXI2HTML MAKEINFO INSTALL_INFO
-CONF_CALL = BATCH BATCHL ELC ELCDIR NOBATCH BTEST MAKE_LOCAL_MK MAKE_ORG_INSTALL MAKE_ORG_VERSION
+CONF_CALL = BATCH BATCHL ELC ELCDIR NOBATCH INSTALL_PACKAGES BTEST MAKE_LOCAL_MK MAKE_ORG_INSTALL MAKE_ORG_VERSION
 config-eol:: EOL = \#
 config-eol:: config-all
 config config-all::
@@ -86,7 +86,7 @@ local.mk:
 
 all compile::
 	$(foreach dir, doc lisp, $(MAKE) -C $(dir) clean;)
-compile compile-dirty::
+compile compile-dirty:: uppkg
 	$(MAKE) -C lisp $@
 all clean-install::
 	$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir) $@;)
@@ -94,13 +94,17 @@ all clean-install::
 vanilla:
 	-@$(NOBATCH) &
 
-check test::	compile
+check test::	uppkg compile
 check test test-dirty::
 	-$(MKDIR) $(testdir)
 	TMPDIR=$(testdir) $(BTEST)
 ifeq ($(TEST_NO_AUTOCLEAN),) # define this variable to leave $(testdir) around for inspection
 	$(MAKE) cleantest
 endif
+
+uppkg::
+	@$(MKDIR) -p $(pkgdir)
+	-@$(INSTALL_PACKAGES)
 
 up0 up1 up2::
 	git checkout $(GIT_BRANCH)
@@ -126,7 +130,7 @@ $(INSTSUB):
 autoloads: lisp
 	$(MAKE) -C $< $@
 
-repro: cleanall autoloads
+repro: cleanall uppkg autoloads
 	-@$(REPRO) &
 
 cleandirs:
@@ -134,7 +138,7 @@ cleandirs:
 
 clean:	cleanlisp cleandoc
 
-cleanall: cleandirs cleantest
+cleanall: cleandirs cleantest cleanpkg
 	-$(FIND) . \( -name \*~ -o -name \*# -o -name .#\* \) -exec $(RM) {} +
 	-$(FIND) $(CLEANDIRS) \( -name \*~ -o -name \*.elc \) -exec $(RM) {} +
 
@@ -159,3 +163,6 @@ cleantest:
 	  $(FIND) $(testdir) -type d -exec $(CHMOD) u+w {} + && \
 	  $(RMR) $(testdir) ; \
 	}
+
+cleanpkg:
+	-$(RMR) $(pkgdir_top)
