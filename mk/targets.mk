@@ -103,6 +103,7 @@ ifeq ($(TEST_NO_AUTOCLEAN),) # define this variable to leave $(testdir) around f
 endif
 
 uppkg::
+	$(info ========= Installing required third-party packages)
 	@$(MKDIR) -p $(pkgdir)
 	-@$(INSTALL_PACKAGES)
 
