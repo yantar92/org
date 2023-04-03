@@ -95,6 +95,48 @@
 (defvar org-fold-core-style)
 
 
+;;; compat.el
+
+;; Do not throw an error when not available - assume latest Emacs
+;; version (built-in Org).
+(require 'compat nil 'noerror)
+
+;; Provide compatibility macros when we are a part of Emacs.
+;; See https://elpa.gnu.org/packages/doc/compat.html#Usage
+
+(defmacro org-compat-function (fun)
+  "Return compatibility function symbol for FUN.
+
+If the Emacs version provides a sufficiently recent version of
+FUN, the symbol FUN is returned itself.  Otherwise the macro
+returns the symbol of a compatibility function which supports the
+behavior and calling convention of the current stable Emacs
+version.  For example Compat 29.1 will provide compatibility
+functions which implement the behavior and calling convention of
+Emacs 29.1.
+
+See also `org-compat-call' to directly call compatibility functions."
+  (let ((compat (intern (format "compat--%s" fun))))
+    `#',(if (fboundp compat) compat fun)))
+
+(defmacro org-compat-call (fun &rest args)
+  "Call compatibility function or macro FUN with ARGS.
+
+A good example function is `plist-get' which was extended with an
+additional predicate argument in Emacs 29.1.  The compatibility
+function, which supports this additional argument, can be
+obtained via (compat-function plist-get) and called
+via (compat-call plist-get plist prop predicate).  It is not
+possible to directly call (plist-get plist prop predicate) on
+Emacs older than 29.1, since the original `plist-get' function
+does not yet support the predicate argument.  Note that the
+Compat library never overrides existing functions.
+
+See also `org-compat-function' to lookup compatibility functions."
+  (let ((compat (intern (format "compat--%s" fun))))
+    `(,(if (fboundp compat) compat fun) ,@args)))
+
+
 ;;; Emacs < 29 compatibility
 
 (defvar org-file-has-changed-p--hash-table (make-hash-table :test #'equal)
