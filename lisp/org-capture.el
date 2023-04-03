@@ -1323,9 +1323,9 @@ may have been stored before."
 	      ;; prioritize the existing list.
 	      (when prepend?
 		(let ((ordered? (eq 'ordered (org-element-property :type item))))
-		  (when (org-xor ordered?
-				 (string-match-p "\\`[A-Za-z0-9]\\([.)]\\)"
-						 template))
+		  (when (xor ordered?
+			     (string-match-p "\\`[A-Za-z0-9]\\([.)]\\)"
+					     template))
 		    (org-cycle-list-bullet (if ordered? "1." "-")))))
 	      ;; Eventually repair the list for proper indentation and
 	      ;; bullets.
@@ -1867,7 +1867,7 @@ Expansion occurs in a temporary Org mode buffer."
 		     (setq org-capture--prompt-history
 			   (gethash prompt org-capture--prompt-history-table))
                      (push (org-completing-read
-                            (org-format-prompt (or prompt "Enter string") default)
+                            (format-prompt (or prompt "Enter string") default)
 			    completions
 			    nil nil nil 'org-capture--prompt-history default)
 			   strings)

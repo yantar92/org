@@ -79,9 +79,6 @@
 (declare-function org-fold-show-all "org-fold" (&optional types))
 (declare-function org-fold-show-children "org-fold" (&optional level))
 (declare-function org-fold-show-entry "org-fold" (&optional hide-drawers))
-;; `org-string-equal-ignore-case' is in _this_ file but isn't at the
-;; top-level.
-(declare-function org-string-equal-ignore-case "org-compat" (string1 string2))
 
 (defvar calendar-mode-map)
 (defvar org-complex-heading-regexp)
@@ -136,105 +133,26 @@ See also `org-compat-function' to lookup compatibility functions."
   (let ((compat (intern (format "compat--%s" fun))))
     `(,(if (fboundp compat) compat fun) ,@args)))
 
-
-;;; Emacs < 29 compatibility
+;; Obsolete compatibility wrappers used before inclusion of compat.el.
 
-(defvar org-file-has-changed-p--hash-table (make-hash-table :test #'equal)
-  "Internal variable used by `org-file-has-changed-p'.")
-
-(if (fboundp 'file-has-changed-p)
-    (defalias 'org-file-has-changed-p #'file-has-changed-p)
-  (defun org-file-has-changed-p (file &optional tag)
-    "Return non-nil if FILE has changed.
-The size and modification time of FILE are compared to the size
-and modification time of the same FILE during a previous
-invocation of `org-file-has-changed-p'.  Thus, the first invocation
-of `org-file-has-changed-p' always returns non-nil when FILE exists.
-The optional argument TAG, which must be a symbol, can be used to
-limit the comparison to invocations with identical tags; it can be
-the symbol of the calling function, for example."
-    (let* ((file (directory-file-name (expand-file-name file)))
-           (remote-file-name-inhibit-cache t)
-           (fileattr (file-attributes file 'integer))
-	   (attr (and fileattr
-                      (cons (file-attribute-size fileattr)
-		            (file-attribute-modification-time fileattr))))
-	   (sym (concat (symbol-name tag) "@" file))
-	   (cachedattr (gethash sym org-file-has-changed-p--hash-table)))
-      (when (not (equal attr cachedattr))
-        (puthash sym attr org-file-has-changed-p--hash-table)))))
-
-(if (fboundp 'string-equal-ignore-case)
-    (defalias 'org-string-equal-ignore-case #'string-equal-ignore-case)
-  ;; From Emacs subr.el.
-  (defun org-string-equal-ignore-case (string1 string2)
-    "Like `string-equal', but case-insensitive.
-Upper-case and lower-case letters are treated as equal.
-Unibyte strings are converted to multibyte for comparison."
-    (eq t (compare-strings string1 0 nil string2 0 nil t))))
-
-
-;;; Emacs < 28.1 compatibility
-
-(if (fboundp 'file-name-concat)
-    (defalias 'org-file-name-concat #'file-name-concat)
-  (defun org-file-name-concat (directory &rest components)
-    "Append COMPONENTS to DIRECTORY and return the resulting string.
-
-Elements in COMPONENTS must be a string or nil.
-DIRECTORY or the non-final elements in COMPONENTS may or may not end
-with a slash -- if they don't end with a slash, a slash will be
-inserted before contatenating."
-    (save-match-data
-      (mapconcat
-       #'identity
-       (delq nil
-             (mapcar
-              (lambda (str)
-                (when (and str (not (seq-empty-p str))
-                           (string-match "\\(.+\\)/?" str))
-                  (match-string 1 str)))
-              (cons directory components)))
-       "/"))))
-
-(if (fboundp 'directory-empty-p)
-    (defalias 'org-directory-empty-p #'directory-empty-p)
-  (defun org-directory-empty-p (dir)
-    "Return t if DIR names an existing directory containing no other files."
-    (and (file-directory-p dir)
-         (null (directory-files dir nil directory-files-no-dot-files-regexp t)))))
-
-(if (fboundp 'string-clean-whitespace)
-    (defalias 'org-string-clean-whitespace #'string-clean-whitespace)
-  ;; From Emacs subr-x.el.
-  (defun org-string-clean-whitespace (string)
-    "Clean up whitespace in STRING.
-All sequences of whitespaces in STRING are collapsed into a
-single space character, and leading/trailing whitespace is
-removed."
-    (let ((blank "[[:blank:]\r\n]+"))
-      (string-trim (replace-regexp-in-string blank " " string t t)
-                   blank blank))))
-
-(if (fboundp 'format-prompt)
-    (defalias 'org-format-prompt #'format-prompt)
-  ;; From Emacs minibuffer.el, inlining
-  ;; `minibuffer-default-prompt-format' value and replacing `length<'
-  ;; (both new in Emacs 28.1).
-  (defun org-format-prompt (prompt default &rest format-args)
-    "Compatibility substitute for `format-prompt'."
-    (concat
-     (if (null format-args)
-         prompt
-       (apply #'format prompt format-args))
-     (and default
-          (or (not (stringp default))
-              (> (length default) 0))
-          (format " (default %s)"
-                  (if (consp default)
-                      (car default)
-                    default)))
-     ": ")))
+(define-obsolete-function-alias 'org-file-has-changed-p
+  'file-has-changed-p "9.7")
+(define-obsolete-function-alias 'org-string-equal-ignore-case
+  'string-equal-ignore-case "9.7")
+(define-obsolete-function-alias 'org-file-name-concat
+  'file-name-concat "9.7")
+(define-obsolete-function-alias 'org-directory-empty-p
+  'directory-empty-p "9.7")
+(define-obsolete-function-alias 'org-string-clean-whitespace
+  'string-clean-whitespace "9.7")
+(define-obsolete-function-alias 'org-format-prompt
+  'format-prompt "9.7")
+(define-obsolete-function-alias 'org-xor
+  'xor "9.7")
+(define-obsolete-function-alias 'org-string-distance
+  'string-distance "9.7")
+(define-obsolete-function-alias 'org-buffer-hash
+  'buffer-hash "9.7")
 
 
 ;;; Emacs < 27.1 compatibility
@@ -251,22 +169,6 @@ removed."
     (defsubst org-replace-buffer-contents (source &optional _max-secs _max-costs)
       (replace-buffer-contents source))
   (defalias 'org-replace-buffer-contents #'replace-buffer-contents))
-
-(unless (fboundp 'proper-list-p)
-  ;; `proper-list-p' was added in Emacs 27.1.  The function below is
-  ;; taken from Emacs subr.el 200195e824b^.
-  (defun proper-list-p (object)
-    "Return OBJECT's length if it is a proper list, nil otherwise.
-A proper list is neither circular nor dotted (i.e., its last cdr
-is nil)."
-    (and (listp object) (ignore-errors (length object)))))
-
-(if (fboundp 'xor)
-    ;; `xor' was added in Emacs 27.1.
-    (defalias 'org-xor #'xor)
-  (defsubst org-xor (a b)
-    "Exclusive `or'."
-    (if a (not b) b)))
 
 (unless (fboundp 'pcomplete-uniquify-list)
   ;; The misspelled variant was made obsolete in Emacs 27.1
@@ -297,29 +199,6 @@ extension beyond end of line was not controllable."
   (when (fboundp 'set-face-extend)
     (mapc (lambda (f) (set-face-extend f extend-p)) faces)))
 
-(if (fboundp 'string-distance)
-    (defalias 'org-string-distance 'string-distance)
-  (defun org-string-distance (s1 s2)
-    "Return the edit (levenshtein) distance between strings S1 S2."
-    (let* ((l1 (length s1))
-	   (l2 (length s2))
-	   (dist (vconcat (mapcar (lambda (_) (make-vector (1+ l2) nil))
-				  (number-sequence 1 (1+ l1)))))
-	   (in (lambda (i j) (aref (aref dist i) j))))
-      (setf (aref (aref dist 0) 0) 0)
-      (dolist (j (number-sequence 1 l2))
-        (setf (aref (aref dist 0) j) j))
-      (dolist (i (number-sequence 1 l1))
-        (setf (aref (aref dist i) 0) i)
-        (dolist (j (number-sequence 1 l2))
-	  (setf (aref (aref dist i) j)
-	        (min
-	         (1+ (funcall in (1- i) j))
-	         (1+ (funcall in i (1- j)))
-	         (+ (if (equal (aref s1 (1- i)) (aref s2 (1- j))) 0 1)
-		    (funcall in (1- i) (1- j)))))))
-      (funcall in l1 l2))))
-
 (define-obsolete-function-alias 'org-babel-edit-distance 'org-string-distance
   "9.5")
 
@@ -339,23 +218,6 @@ Execute BODY, and unwind connection-local variables."
 (if (fboundp 'line-number-display-width)
     (defalias 'org-line-number-display-width 'line-number-display-width)
   (defun org-line-number-display-width (&rest _) 0))
-
-(if (fboundp 'buffer-hash)
-    (defalias 'org-buffer-hash 'buffer-hash)
-  (defun org-buffer-hash () (md5 (current-buffer))))
-
-(unless (fboundp 'file-attribute-modification-time)
-  (defsubst file-attribute-modification-time (attributes)
-    "The modification time in ATTRIBUTES returned by `file-attributes'.
-This is the time of the last change to the file's contents, and
-is a Lisp timestamp in the same style as `current-time'."
-    (nth 5 attributes)))
-
-(unless (fboundp 'file-attribute-size)
-  (defsubst file-attribute-size (attributes)
-    "The size (in bytes) in ATTRIBUTES returned by `file-attributes'.
-This is a floating point number if the size is too large for an integer."
-    (nth 7 attributes)))
 
 
 ;;; Obsolete aliases (remove them after the next major release).
@@ -1460,7 +1322,7 @@ ELEMENT is the element at point."
 	  (and log
 	       (let ((drawer (org-element-lineage element '(drawer))))
 		 (and drawer
-		      (org-string-equal-ignore-case
+		      (string-equal-ignore-case
 		       log (org-element-property :drawer-name drawer))))))
 	nil)
        (t

@@ -1692,7 +1692,7 @@ non-nil."
 				(abbreviate-file-name
 				 (buffer-file-name (buffer-base-buffer)))))
 	   ;; Add a context search string.
-	   (when (org-xor org-link-context-for-files (equal arg '(4)))
+	   (when (xor org-link-context-for-files (equal arg '(4)))
 	     (let* ((element (org-element-at-point))
 		    (name (org-element-property :name element))
 		    (context
@@ -1724,7 +1724,7 @@ non-nil."
 			     (abbreviate-file-name
 			      (buffer-file-name (buffer-base-buffer)))))
 	;; Add a context search string.
-	(when (org-xor org-link-context-for-files (equal arg '(4)))
+	(when (xor org-link-context-for-files (equal arg '(4)))
 	  (let ((context (org-link--normalize-string
 			  (or (org-link--context-from-region)
 			      (org-current-line-string))
