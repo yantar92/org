@@ -501,7 +501,7 @@ If ELEMENT cannot have contents, return CONTENTS."
 
 ;;;; AST modification
 
-(define-inline org-element-adopt-elements (parent &rest children)
+(defun org-element-adopt-elements (parent &rest children)
   "Append elements to the contents of another element.
 
 PARENT is an element or object.  CHILDREN can be elements,
@@ -513,21 +513,18 @@ The function takes care of setting `:parent' property for each child.
 Return the modified parent element."
   (declare (indent 1))
   (if (not children) parent
-    (inline-letevals (parent children)
-      (inline-quote
-       (progn
-         ;; Link every child to PARENT. If PARENT is nil, it is a secondary
-         ;; string: parent is the list itself.
-         (dolist (child ,children)
-           (when child
-             (org-element-put-property child :parent (or ,parent ,children))))
-         ;; Add CHILDREN at the end of PARENT contents.
-         (when ,parent
-           (apply #'org-element-set-contents
-	          ,parent
-	          (nconc (org-element-contents ,parent) ,children)))
-         ;; Return modified PARENT element.
-         (or ,parent ,children))))))
+    ;; Link every child to PARENT. If PARENT is nil, it is a secondary
+    ;; string: parent is the list itself.
+    (dolist (child children)
+      (when child
+        (org-element-put-property child :parent (or parent children))))
+    ;; Add CHILDREN at the end of PARENT contents.
+    (when parent
+      (apply #'org-element-set-contents
+	     parent
+	     (nconc (org-element-contents parent) children)))
+    ;; Return modified PARENT element.
+    (or parent children)))
 
 (defun org-element-extract-element (element)
   "Extract ELEMENT from parse tree.
