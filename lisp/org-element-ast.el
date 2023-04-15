@@ -476,9 +476,11 @@ If ELEMENT cannot have contents, return CONTENTS."
     ;; Anonymous element.
     (`anonymous
      (setcar element (car contents))
-     (setcdr element (cdr contents)))
+     (setcdr element (cdr contents))
+     element)
     ;; Element with type.
-    (_ (setf (nth 2 element) contents))))
+    (_ (setf (cddr element) contents)
+       element)))
 
 (defsubst org-element-contents (element)
   "Extract contents from an ELEMENT."
@@ -774,7 +776,7 @@ When TYPE is nil or `anonymous', PROPS must be nil."
   (cl-assert (plistp props))
   ;; Assign parray.
   (when props
-    (setq props (org-element--put-parray (list nil props)))
+    (setq props (org-element--put-parray (list 'dummy props)))
     ;; Remove standard properties from PROPS plist by side effect.
     (let ((ptail props))
       (if (not (and (keywordp (car ptail))
