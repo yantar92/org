@@ -502,7 +502,7 @@ Faces in `org-latex-preview--ignored-faces' are ignored."
 
 (defvar-local org-latex-preview-auto--from-overlay nil
   "Whether the cursor if starting from within a preview overlay.")
-(defvar-local org-latex-preview-auto--marker (make-marker)
+(defvar-local org-latex-preview-auto--marker nil
   "Marker to keep track of the previous cursor position.
 This helps with tracking cursor movement into and out of preview overlays.")
 (defvar-local org-latex-preview-auto--inhibit nil
@@ -742,6 +742,7 @@ them or vice-versa, customize the variable `org-latex-preview-auto-generate'."
   :global nil
   (if org-latex-preview-auto-mode
       (progn
+        (setq org-latex-preview-auto--marker (make-marker))
         (add-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor nil 'local)
         (org-latex-preview-auto--handle-pre-cursor) ; Invoke setup before the hook even fires.
         (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local)
