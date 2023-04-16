@@ -49,7 +49,7 @@
 ;; :standard-properties holds an array with
 ;; `org-element--standard-properties' values, in the same order.  The
 ;; values in the array have priority over the same properties
-;; specified in the property list.  You should not rely or the value
+;; specified in the property list.  You should not rely on the value
 ;; of `org-element--standard-propreties' in the code.
 ;;
 ;; The previous example can also be presented in more compact form as:
@@ -253,13 +253,15 @@ object is created.")
     (inline-quote
      (pcase (org-element-type ,element)
        ((or`nil `anonymous) nil)
-       (`plain-text (get-text-property 0 :standard-properties ,element))
+       ;; Do not use property array for strings - they usually hold
+       ;; `:parent' property and nothing more.
+       (`plain-text nil)
        (_
         ;; (type (:standard-properties val ...) ...)
-        (if (eq :standard-properties (car (nth 1 ,element)))
-            (cadr (nth 1 ,element))
-          ;; Non-standard order.  Go long way.
-          (plist-get (nth 1 ,element) :standard-properties)))))))
+        (and (eq :standard-properties (car (nth 1 ,element)))
+             (cadr (nth 1 ,element))
+             ;; Non-standard order.  Go long way.
+             (plist-get (nth 1 ,element) :standard-properties)))))))
 
 (define-inline org-element--plist-property (property element &optional dflt)
   "Extract the value for PROPERTY from ELEMENT property list.
@@ -308,11 +310,11 @@ If PROPERTY is not present, return DFLT."
 
 (define-inline org-element--put-parray (element &optional parray)
   "Initialize standard property array in ELEMENT.
-Return the array."
+Return the array or nil when ELEMENT is `plain-text'."
   (inline-letevals (element parray)
     (inline-quote
      (let ((parray ,parray))
-       (unless parray
+       (unless (or parray (memq (org-element-type ,element) '(plain-text nil anonymous)))
          (setq parray (make-vector ,(length org-element--standard-properties)
                                    'org-element-ast--nil))
          ;; Copy plist standard properties back to parray.
@@ -320,14 +322,9 @@ Return the array."
           (lambda (prop idx)
             (aset parray idx (org-element--plist-property prop ,element 'org-element-ast--nil)))
           org-element--standard-properties))
-       (pcase (org-element-type ,element)
-         ((or `nil `anonymous) nil)
-         (`plain-text
-          (org-add-props ,element nil :standard-properties parray))
-         (_
-          (setcar (cdr ,element)
-                  (nconc (list :standard-properties parray)
-                         (cadr ,element)))))
+       (setcar (cdr ,element)
+               `(nconc (list :standard-properties parray)
+                       (cadr ,element)))
        parray))))
 
 (define-inline org-element-put-property (element property value)
@@ -338,15 +335,18 @@ Return modified element."
     (if idx
         (inline-letevals (element value)
           (inline-quote
-           (let ((parray
-                  (or (org-element--parray ,element)
-                      (org-element--put-parray ,element))))
-             (when parray (aset parray ,idx ,value))
-             ,element)))
+           (if (eq 'plain-text (org-element-type ,element))
+               ;; Special case: Do not use parray for plain-text.
+               (org-add-props ,element nil ,property ,value)
+             (let ((parray
+                    (or (org-element--parray ,element)
+                        (org-element--put-parray ,element))))
+               (when parray (aset parray ,idx ,value))
+               ,element))))
       (inline-letevals (element property value)
         (inline-quote
          (let ((idx ,(org-element--property-idx property)))
-           (if idx
+           (if (and idx (not (eq 'plain-text (org-element-type ,element))))
                (when-let
                    ((parray
                      (or (org-element--parray ,element)
@@ -775,7 +775,7 @@ string.  Alternatively, TYPE can be a string.
 When TYPE is nil or `anonymous', PROPS must be nil."
   (cl-assert (plistp props))
   ;; Assign parray.
-  (when props
+  (when (and props (not (stringp type) (eq type 'plain-text)))
     (setq props (org-element--put-parray (list 'dummy props)))
     ;; Remove standard properties from PROPS plist by side effect.
     (let ((ptail props))
