@@ -248,6 +248,54 @@ be revealed when using `org-latex-preview-auto-mode'."
   :package-version '(Org . "9.7")
   :group 'org-latex-preview)
 
+(defcustom org-latex-preview-process-finish-functions nil
+  "Abnormal hook run after preview generation.
+
+Each function in this hook is called with three arguments:
+
+- The exit-code of the preview generation process.  More
+  specifically, this is the exit-code of the image-converter, the
+  final process in the chain of processes that generates a LaTeX
+  preview image.
+
+- The process buffer.
+
+- The processing-info plist, containing the state of the LaTeX
+  preview process.  See `org-latex-preview--create-image-async'
+  for details.
+
+This hook can be used for introspection of or additional
+processing after the LaTeX preview process."
+  :group 'org-latex-preview
+  :type 'hook)
+
+(defcustom org-latex-preview-update-overlay-functions nil
+  "Abnormal hook run after a preview-overlay is updated.
+
+Each function in this hook is called with one argument, the
+overlay that was updated."
+  :group 'org-latex-preview
+  :type 'hook)
+
+(defcustom org-latex-preview-close-hook nil
+  "Hook run after placing a LaTeX preview image.
+
+This hook typically runs when the cursor is moved out of a LaTeX
+fragment or environment with `org-latex-preview-auto-mode'
+active, causing the display of text contents to be replaced by
+the corresponding preview image."
+  :group 'org-latex-preview
+  :type 'hook)
+(defcustom org-latex-preview-open-hook nil
+  "Hook run after hiding a LaTeX preview image.
+
+This hook typically runs when the cursor is moved into a LaTeX
+fragment or environment with `org-latex-preview-auto-mode'
+active, causing the display of the preview image to be replaced
+by the corresponding LaTeX fragment text."
+  :group 'org-latex-preview
+  :type 'hook)
+
 (defface org-latex-preview-processing-face '((t :inherit shadow))
   "Face applied to LaTeX fragments for which a preview is being generated.
 
@@ -441,7 +489,8 @@ overlay face is set to `org-latex-preview-processing-face'."
       (overlay-put
        ov 'before-string
        (propertize "!" 'display
-                   `(left-fringe exclamation-mark error)))))))
+                   `(left-fringe exclamation-mark error))))))
+      (run-hook-with-args 'org-latex-preview-update-overlay-functions ov))
 
 (defun org-latex-preview--face-around (start end)
   "Return the relevant face symbol around the region START to END.
@@ -674,7 +723,8 @@ image and display its text."
         (overlay-put ov 'hidden-face f)
         (overlay-put ov 'face nil))
       (org-latex-preview-auto--move-into ov)
-      (setq org-latex-preview-auto--from-overlay nil))))
+      (setq org-latex-preview-auto--from-overlay nil)
+      (run-hooks 'org-latex-preview-open-hook))))
 
 (defun org-latex-preview-auto--close-previous-overlay ()
   "Close Org latex preview image overlays.
@@ -697,7 +747,8 @@ image.  The preview image is regenerated if necessary."
           (unless (eq f 'org-latex-preview-processing-face)
             (overlay-put ov 'face f))
           (overlay-put ov 'hidden-face nil))
-        (overlay-put ov 'display (overlay-get ov 'preview-image))))))
+        (overlay-put ov 'display (overlay-get ov 'preview-image)))
+      (run-hooks 'org-latex-preview-close-hook))))
 
 (defun org-latex-preview-auto--regenerate-overlay (ov)
   "Regenerate the LaTeX fragment under overlay OV."
@@ -1301,6 +1352,12 @@ Returns a list of async tasks started."
                   (format "Creating LaTeX preview images failed (exit code %%d). Please see %s for details"
                           (propertize org-latex-preview--image-log 'face 'warning))
                   #'org-latex-preview--cleanup-callback))
+      (when org-latex-preview-process-finish-functions
+        ;; Extra callbacks to run after image generation
+        (push #'org-latex-preview--run-finish-functions
+              (plist-get (cddr img-extract-async) :success))
+        (push #'org-latex-preview--run-finish-functions
+              (plist-get (cddr img-extract-async) :failure)))
       (pcase processing-type
         ('dvipng
          (plist-put (cddr img-extract-async) :filter
@@ -1321,6 +1378,12 @@ Returns a list of async tasks started."
         (plist-put (cddr tex-compile-async) :success img-extract-async)
         (plist-put (cddr tex-compile-async) :failure img-extract-async)
         (list (org-async-call tex-compile-async))))))
+
+(defun org-latex-preview--run-finish-functions (&rest args)
+  "Run hooks after preview image generation, with arguments ARGS."
+  (apply #'run-hook-with-args
+         'org-latex-preview-process-finish-functions
+         args))
 
 (defun org-latex-preview--failure-callback (_exit _buf extended-info)
   "Clear overlays corresponding to previews that failed to generate.
