@@ -698,9 +698,16 @@ image.  The preview image is regenerated if necessary."
                         (eq (org-element-type fragment) 'latex-environment)
                         (org-latex-preview--get-numbered-environments
                          (overlay-end ov) nil))))
-      (org-latex-preview--place-from-elements
-       org-latex-preview-default-process
-       (append (list fragment) others)))))
+      (if (memq (org-element-type fragment)
+                '(latex-fragment latex-environment))
+          (org-latex-preview--place-from-elements
+           org-latex-preview-default-process
+           (cons fragment others))
+        (delete-overlay ov)
+        (when others
+          (org-latex-preview--place-from-elements
+           org-latex-preview-default-process
+           others))))))
 
 (defun org-latex-preview-auto--insert-front-handler
     (ov after-p _beg end &optional _length)
