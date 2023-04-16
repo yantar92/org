@@ -392,15 +392,20 @@ the image.")
           (overlay-put ov 'face nil)
           (overlay-put ov 'help-echo nil)     ;tooltip error display
           (overlay-put ov 'before-string nil) ;error fringe marker
-          (overlay-put ov 'hidden-face nil)   ;(re)store svg face
-          ;; Do not set the display property of preview image
+          ;; (overlay-put ov 'hidden-face nil)   ;(re)store svg face
+          ;; We do not set the display property of preview image
           ;; overlays to nil when ensuring that an overlay exists.
           ;; This causes flicker during regeneration as the the
           ;; underlying text is shown and then replaced with the new
           ;; image.
-          (overlay-put ov 'preview-image nil) ;(re)store image spec
+          ;;
+          ;; We also do not reset the image spec stored in the
+          ;; `preview-image' property, or the state of the preview
+          ;; stored in the `view-text' property, as persisting the
+          ;; state of an already existing overlay is required for live
+          ;; previews.
           (overlay-put ov 'preview-state nil) ;is fragment modified?
-          (overlay-put ov 'view-text nil))))
+          )))
     (unless ov
       (setq ov (make-overlay beg end nil 'front-advance))
       (overlay-put ov 'org-overlay-type 'org-latex-overlay)
@@ -469,28 +474,29 @@ overlay face is set to `org-latex-preview-processing-face'."
                                  (round (* 100 (- 1 (/ (max 0.0 (- depth 0.02))
                                                        height))))
                                'center)))))
+    (overlay-put ov 'preview-image image-display)
+    (cond
+       ((eq image-type 'svg)
+        (overlay-put
+         ov 'hidden-face
+         (or (and errors 'error)
+             (org-latex-preview--face-around
+              (overlay-start ov) (overlay-end ov)))))
+       (errors
+        (overlay-put
+         ov 'before-string
+         (propertize "!" 'display
+                     `(left-fringe exclamation-mark error)))))
     (when org-latex-preview-processing-indicator
       (org-latex-preview--indicate-processing ov))
-    ;; This is a temporary measure until a more sophisticated
-    ;; interface for errors is available in Org.
-    (when (and errors tooltip-mode)
-      (overlay-put ov 'help-echo errors))
-    (when image-display
-      (overlay-put ov 'display image-display)
-      (overlay-put ov 'preview-image image-display))
-    (cond
-     ((eq image-type 'svg)
-      (overlay-put
-       ov 'face
-       (or (and errors 'error)
-           (org-latex-preview--face-around
-            (overlay-start ov) (overlay-end ov)))))
-     (errors
-      (overlay-put
-       ov 'before-string
-       (propertize "!" 'display
-                   `(left-fringe exclamation-mark error))))))
-      (run-hook-with-args 'org-latex-preview-update-overlay-functions ov))
+    (unless (overlay-get ov 'view-text) ;Live previewing this element, update in background
+      ;; This is a temporary measure until a more sophisticated
+      ;; interface for errors is available in Org.
+      (when (and errors tooltip-mode)
+        (overlay-put ov 'help-echo errors))
+      (when image-display (overlay-put ov 'display image-display))
+      (overlay-put ov 'face (overlay-get ov 'hidden-face)))
+    (run-hook-with-args 'org-latex-preview-update-overlay-functions ov)))
 
 (defun org-latex-preview--face-around (start end)
   "Return the relevant face symbol around the region START to END.
