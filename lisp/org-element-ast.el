@@ -222,10 +222,11 @@ resolution."
 
   (defconst org-element--standard-properties
     '( :begin :end :contents-begin :contents-end
-       :post-blank :post-affiliated :parent :secondary
+       :post-blank :post-affiliated :secondary
        :cached :org-element--cache-sync-key
-       :deferred :robust-begin :robust-end
-       :mode :granularity)
+       :robust-begin :robust-end
+       :mode :granularity
+       :parent :deferred)
     "Standard properties stored in every syntax object structure.
 These properties are stored in an array pre-allocated every time a new
 object is created.")
