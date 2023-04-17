@@ -70,7 +70,7 @@
 ;; with :parent property value pointing back to the containing bold
 ;; element.
 ;;
-;; `anonymous' syntax element is represented as nil or a list with `car'
+;; `anonymous' syntax element is represented as a list with `car'
 ;; containing another syntax element.  Such element has nil type, does
 ;; not have properties, and its contents is a list of the contained
 ;; syntax elements.  `:parent' property of the contained elements
@@ -172,12 +172,12 @@ The function returns the type of the element provided.
 It can also return the following special value:
   `plain-text'       for a string
   `org-data'         for a complete document
-  `anonymous'        for empty element or list of elements
+  `anonymous'        for list of elements
   nil                in any other case."
   (declare (pure t))
   (cond
    ((stringp element) 'plain-text)
-   ((null element) 'anonymous)
+   ((null element) nil)
    ((not (consp element)) nil)
    ((symbolp (car element)) (car element))
    ((and (car element) (org-element-type (car element)))
