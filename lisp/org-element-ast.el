@@ -357,6 +357,8 @@ Return modified element."
                (`plain-text
                 (org-add-props ,element nil ,property ,value))
                (_
+                ;; Note that `plist-put' adds new elements at the end,
+                ;; thus keeping `:standard-properties' as the first element.
                 (setcar (cdr ,element) (plist-put (nth 1 ,element) ,property ,value)))))
            ,element))))))
 
