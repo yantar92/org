@@ -316,17 +316,16 @@ Return the array or nil when ELEMENT is `plain-text'."
     (inline-quote
      (let ((parray ,parray))
        (unless (or parray (memq (org-element-type ,element) '(plain-text nil anonymous)))
-         (setq parray (make-vector ,(length org-element--standard-properties)
-                                   'org-element-ast--nil))
+         (setq parray (make-vector ,(length org-element--standard-properties) nil))
          ;; Copy plist standard properties back to parray.
          (seq-do-indexed
           (lambda (prop idx)
-            (aset parray idx (org-element--plist-property prop ,element 'org-element-ast--nil)))
-          org-element--standard-properties))
-       (setcar (cdr ,element)
-               `(nconc (list :standard-properties parray)
-                       (cadr ,element)))
-       parray))))
+            (aset parray idx (org-element--plist-property prop ,element)))
+          org-element--standard-properties)
+         (setcar (cdr ,element)
+                 `(nconc (list :standard-properties parray)
+                         (cadr ,element)))
+         parray)))))
 
 (define-inline org-element-put-property (element property value)
   "In ELEMENT set PROPERTY to VALUE.
