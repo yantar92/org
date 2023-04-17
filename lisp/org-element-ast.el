@@ -323,8 +323,8 @@ Return the array or nil when ELEMENT is `plain-text'."
             (aset parray idx (org-element--plist-property prop ,element)))
           org-element--standard-properties)
          (setcar (cdr ,element)
-                 `(nconc (list :standard-properties parray)
-                         (cadr ,element)))
+                 (nconc (list :standard-properties parray)
+                        (cadr ,element)))
          parray)))))
 
 (define-inline org-element-put-property (element property value)
