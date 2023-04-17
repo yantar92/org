@@ -187,6 +187,7 @@ It can also return the following special value:
 (defun org-element-secondary-p (object)
   "Non-nil when OBJECT directly belongs to a secondary element.
 Return value is the containing property name, as a keyword, or nil."
+  (declare (pure t))
   (let* ((parent (org-element-property :parent object))
 	 (properties (org-element-property :secondary parent)))
     (catch 'exit
