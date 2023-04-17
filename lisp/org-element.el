@@ -1,4 +1,4 @@
-;;; org-element.el --- Parser for Org Syntax         -*- lexical-binding: t; no-byte-compile: t; -*-
+;;; org-element.el --- Parser for Org Syntax         -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2012-2023 Free Software Foundation, Inc.
 
