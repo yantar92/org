@@ -441,20 +441,6 @@ ELEMENT.
             (plist-get props :standard-properties)))
           props))))))
 
-(defun org-element-resolve-deferred (element)
-  "Resolve all the deferred values in ELEMENT.
-Return the modified element."
-  ;; Resolve properties.
-  (org-element-properties element nil 'resolve)
-  ;; Resolve contents.
-  (org-element-contents element)
-  ;; Resolve secondary objects.
-  (dolist (sp (org-element-property :secondary element))
-    (org-element-put-property
-     element sp
-     (org-element-resolve-deferred (org-element-property sp element))))
-  element)
-
 ;;;; Object contents
 
 (defsubst org-element-contents-1 (element)
@@ -499,6 +485,20 @@ If ELEMENT cannot have contents, return CONTENTS."
           (when undefer-p (setcar contents resolved-value))))
       (setq contents (cdr contents)))
     (org-element-contents-1 element)))
+
+(defun org-element-resolve-deferred (element)
+  "Resolve all the deferred values in ELEMENT.
+Return the modified element."
+  ;; Resolve properties.
+  (org-element-properties element nil 'resolve)
+  ;; Resolve contents.
+  (org-element-contents element)
+  ;; Resolve secondary objects.
+  (dolist (sp (org-element-property :secondary element))
+    (org-element-put-property
+     element sp
+     (org-element-resolve-deferred (org-element-property sp element))))
+  element)
 
 ;;;; AST modification
 
