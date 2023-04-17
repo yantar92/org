@@ -362,36 +362,33 @@ Return modified element."
                 (setcar (cdr ,element) (plist-put (nth 1 ,element) ,property ,value)))))
            ,element))))))
 
-(define-inline org-element-property (property element &optional dflt)
+(defun org-element-property (property element &optional dflt)
   "Extract the value from the PROPERTY of an ELEMENT.
 Return DFLT when PROPERTY is not present."
-  (inline-letevals (property element)
-    (inline-quote
-     (progn
-       (let ((value (org-element-property-1 ,property ,element 'org-element-ast--nil))
-             resolved-value)
-         ;; PROPERTY not present.
-         (when (eq 'org-element-ast--nil value)
-           ;; If :deferred has `org-element-deferred' type, resolve it for
-           ;; side-effects, and re-assign the new value.
-           (let ((deferred-prop-value (org-element-property-1 :deferred ,element)))
-             (when (org-element-deferred-p deferred-prop-value)
-               (org-element-put-property
-                ,element
-                :deferred
-                (org-element--deferred-resolve deferred-prop-value ,element))))
-           ;; Try to retrieve the value again.
-           (setq value (org-element-property-1 ,property ,element ,dflt)))
-         (if (not (org-element-deferred-p value))
-             (setq resolved-value value)
-           ;; Deferred property.  Resolve it.
-           (setq resolved-value (org-element--deferred-resolve value ,element))
-           ;; Store the resolved property value, if needed.
-           (when (org-element-deferred-auto-undefer-p value)
-             (org-element-put-property
-              ,element ,property resolved-value)))
-         ;; Return the resolved value.
-         resolved-value)))))
+  (let ((value (org-element-property-1 property element 'org-element-ast--nil))
+        resolved-value)
+    ;; PROPERTY not present.
+    (when (eq 'org-element-ast--nil value)
+      ;; If :deferred has `org-element-deferred' type, resolve it for
+      ;; side-effects, and re-assign the new value.
+      (let ((deferred-prop-value (org-element-property-1 :deferred element)))
+        (when (org-element-deferred-p deferred-prop-value)
+          (org-element-put-property
+           element
+           :deferred
+           (org-element--deferred-resolve deferred-prop-value element))))
+      ;; Try to retrieve the value again.
+      (setq value (org-element-property-1 property element dflt)))
+    (if (not (org-element-deferred-p value))
+        (setq resolved-value value)
+      ;; Deferred property.  Resolve it.
+      (setq resolved-value (org-element--deferred-resolve value element))
+      ;; Store the resolved property value, if needed.
+      (when (org-element-deferred-auto-undefer-p value)
+        (org-element-put-property
+         element property resolved-value)))
+    ;; Return the resolved value.
+    resolved-value))
 
 (defun org-element-properties (element &optional properties resolve-deferred)
   "Return full property list for ELEMENT.
