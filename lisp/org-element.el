@@ -1006,7 +1006,10 @@ Assume point is at beginning of the headline."
 			  :footnote-section-p footnote-section-p
 			  :archivedp archivedp
 			  :commentedp commentedp
-			  :post-affiliated begin)
+			  :post-affiliated begin
+                          :secondary (alist-get
+                                      'headline
+                                      org-element-secondary-value-alist))
 		    time-props
 		    standard-props))))
 	(org-element-put-property
@@ -1242,7 +1245,10 @@ Assume point is at beginning of the inline task."
 			 :post-blank (1- (count-lines (or task-end begin) end))
 			 :post-affiliated begin
                          :archivedp archivedp
-			 :commentedp commentedp)
+			 :commentedp commentedp
+                         :secondary (alist-get
+                                     'inlinetask
+                                     org-element-secondary-value-alist))
 		   time-props
 		   standard-props))))
       (org-element-put-property
@@ -1369,7 +1375,10 @@ Assume point is at the beginning of the item."
 			:structure struct
 			:pre-blank pre-blank
 			:post-blank (count-lines (or contents-end begin) end)
-			:post-affiliated begin))))
+			:post-affiliated begin
+                        :secondary (alist-get
+                                    'item
+                                    org-element-secondary-value-alist)))))
       (org-element-put-property
        item :tag
        (let ((raw (org-list-get-tag begin struct)))
@@ -2888,7 +2897,10 @@ Assume point is at the beginning of the citation."
 			     :post-blank (progn
 					   (goto-char closing)
 					   (skip-chars-forward " \t"))
-			     :end (point)))))
+			     :end (point)
+                             :secondary (alist-get
+                                         'citation
+                                         org-element-secondary-value-alist)))))
 	    ;; `:contents-begin' depends on the presence of
 	    ;; a non-empty common prefix.
 	    (goto-char first-key-end)
@@ -2958,7 +2970,10 @@ Assume point is at the beginning of the reference."
 		      (list :key key
 			    :begin begin
 			    :end end
-			    :post-blank 0))))
+			    :post-blank 0
+                            :secondary (alist-get
+                                        'citation-reference
+                                        org-element-secondary-value-alist)))))
 	  (when (< begin key-start)
 	    (org-element-put-property
 	     reference :prefix
