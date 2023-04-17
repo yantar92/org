@@ -530,14 +530,15 @@ value of DATUM `:parent' property."
      ;; Special cases.
      ((eq type 'org-data) 'element)
      ((eq type 'plain-text) 'object)
-     ((not type) 'object)
+     ((eq type 'anonymous) 'object)
+     ((not type) nil)
      ;; Pseudo object or elements.  Make a guess about its class.
      ;; Basically a pseudo object is contained within another object,
      ;; a secondary string or a container element.
      ((not parent) 'element)
      (t
       (let ((parent-type (org-element-type parent)))
-	(cond ((not parent-type) 'object)
+	(cond ((eq 'anonymous parent-type) 'object)
 	      ((memq parent-type org-element-object-containers) 'object)
 	      ((org-element-secondary-p datum) 'object)
 	      (t 'element)))))))
