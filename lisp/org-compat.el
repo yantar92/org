@@ -94,9 +94,10 @@
 
 ;;; compat.el
 
-;; Do not throw an error when not available - assume latest Emacs
-;; version (built-in Org).
-(require 'compat nil 'noerror)
+;; Use compat for older Emacs, supplying helpful error message if
+;; compat is not available.
+(when (version< emacs-version "29")
+  (org-require-package 'compat))
 
 ;; Provide compatibility macros when we are a part of Emacs.
 ;; See https://elpa.gnu.org/packages/doc/compat.html#Usage
