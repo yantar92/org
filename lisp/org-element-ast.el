@@ -820,16 +820,17 @@ When DATUM is `plain-text', all the properties are removed."
          ;; Copy `:standard-properties'
          (when-let ((parray (org-element-property-1 :standard-properties element-copy)))
            (org-element-put-property element-copy :standard-properties (copy-sequence parray)))
-         ;; We cannot simply return the copies property list.  When
-         ;; DATUM is i.e. a headline, it's property list (`:title'
-         ;; in case of headline) can contain parsed objects.  The
-         ;; objects will contain `:parent' property set to the DATUM
-         ;; itself.  When copied, these inner `:parent' property
-         ;; values will contain incorrect object decoupled from
-         ;; DATUM.  Changes to the DATUM copy will no longer be
-         ;; reflected in the `:parent' properties.  So, we need to
-         ;; reassign inner `:parent' properties to the DATUM copy
-         ;; explicitly.
+         ;; Clear `:parent'.
+         (org-element-put-property element-copy :parent nil)
+         ;; We cannot simply return the copied property list.  When
+         ;; DATUM is i.e. a headline, it's property list `:title' can
+         ;; contain parsed objects.  The objects will contain
+         ;; `:parent' property set to the DATUM itself.  When copied,
+         ;; these inner `:parent' property values will contain
+         ;; incorrect object decoupled from DATUM.  Changes to the
+         ;; DATUM copy will no longer be reflected in the `:parent'
+         ;; properties.  So, we need to reassign inner `:parent'
+         ;; properties to the DATUM copy explicitly.
          (dolist (secondary-prop (org-element-property :secondary element-copy))
            (when-let ((secondary-value (org-element-property secondary-prop element-copy)))
              (when (eq 'anonymous (org-element-type secondary-value))
