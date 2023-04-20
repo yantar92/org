@@ -964,7 +964,9 @@ Return value is a plist."
      (setcar (cdr element)
              (nconc
               (nth 1 element)
-              (org-element--get-node-properties))))))
+              (org-element--get-node-properties)))))
+  ;; Return nil.
+  nil)
 
 (defun org-element-headline-parser (&optional _ raw-secondary-p)
   "Parse a headline.
