@@ -349,13 +349,13 @@ Return modified element."
                ,element))))
       (inline-letevals (element property value)
         (inline-quote
-         (let ((idx ,(org-element--property-idx property)))
+         (let ((idx (org-element--property-idx ,property)))
            (if (and idx (not (eq 'plain-text (org-element-type ,element))))
                (when-let
                    ((parray
                      (or (org-element--parray ,element)
                          (org-element--put-parray ,element))))
-                 (aset parray ,idx ,value))
+                 (aset parray idx ,value))
              (pcase (org-element-type ,element)
                (`nil nil)
                (`plain-text
