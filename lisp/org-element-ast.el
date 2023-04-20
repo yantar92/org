@@ -888,5 +888,29 @@ When DATUM is `plain-text', all the properties are removed."
                (setq contents (cdr contents)))))
          element-copy)))))
 
+(defun org-element-lineage (datum &optional types with-self)
+  "List all ancestors of a given element or object.
+
+DATUM is an object or element.
+
+Return ancestors from the closest to the farthest.  When optional
+argument TYPES is a list of symbols, return the first element or
+object in the lineage whose type belongs to that list instead.
+
+When optional argument WITH-SELF is non-nil, lineage includes
+DATUM itself as the first element, and TYPES, if provided, also
+apply to it.
+
+When DATUM is obtained through `org-element-context' or
+`org-element-at-point', and org-element-cache is disabled, only
+ancestors from its section can be found.  There is no such limitation
+when DATUM belongs to a full parse tree."
+  (let ((up (if with-self datum (org-element-property :parent datum)))
+	ancestors)
+    (while (and up (not (memq (org-element-type up) types)))
+      (unless types (push up ancestors))
+      (setq up (org-element-property :parent up)))
+    (if types up (nreverse ancestors))))
+
 (provide 'org-element-ast)
 ;;; org-element-ast.el ends here
