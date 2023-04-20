@@ -7170,10 +7170,14 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
               (org-with-wide-buffer
                (org-element--cache-sync (current-buffer) (point-max))
                ;; Cleanup cache request keys to avoid collisions during next
-               ;; Emacs session.
+               ;; Emacs session.  Resolve all the deferred properties.
                (avl-tree-mapc
                 (lambda (el)
-                  (org-element-put-property el :org-element--cache-sync-key nil))
+                  (org-element-put-property el :org-element--cache-sync-key nil)
+                  ;; FIXME: This is mostly because deferred properties
+                  ;; tend to hold buffer, which is not a printable
+                  ;; object.
+                  (org-element-resolve-deferred el))
                 org-element--cache)
                nil)
             'forbid))
