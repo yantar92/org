@@ -804,11 +804,15 @@ When TYPE is nil or `anonymous', PROPS must be nil."
      (if props (org-add-props type props) type))
     (_ (apply #'org-element-adopt-elements (list type props) children))))
 
-(defun org-element-copy (datum)
+(defun org-element-copy (datum &optional keep-contents)
   "Return a copy of DATUM.
 DATUM is an element, object, string or nil.  `:parent' property
 is cleared and contents are removed in the process.
 Secondary objects are also copied and their `:parent' gets re-assigned.
+
+When optional argument KEEP-CONTENTS is non-nil, do not remove the
+contents.  Instead, copy the children recursively, updating their
+`:parent' property.
 
 As a special case, `anonymous' elements do not have their contents
 removed.  The contained children are copied recursively, updating
@@ -820,12 +824,15 @@ When DATUM is `plain-text', all the properties are removed."
       (`plain-text (substring-no-properties datum))
       (`nil (error "Not an element: %S" datum))
       (`anonymous
-       (let ((element-copy (mapcar #'org-element-copy datum)))
-         (dolist (child element-copy)
-           (org-element-put-property child :parent element-copy))
+       (let* ((element-copy (copy-sequence datum))
+              (tail element-copy))
+         (while tail
+           (setcar tail (org-element-copy (car tail) t))
+           (org-element-put-property (car tail) :parent element-copy)
+           (setq tail (cdr tail)))
          element-copy))
-      (type
-       (let ((element-copy (list type (copy-sequence (nth 1 datum)))))
+      (_
+       (let ((element-copy (copy-sequence datum)))
          ;; Copy `:standard-properties'
          (when-let ((parray (org-element-property-1 :standard-properties element-copy)))
            (org-element-put-property element-copy :standard-properties (copy-sequence parray)))
@@ -847,6 +854,11 @@ When DATUM is `plain-text', all the properties are removed."
                (dolist (el secondary-value)
                  (org-element-put-property el :parent element-copy))
                (org-element-put-property element-copy secondary-prop secondary-value))))
+         (when keep-contents
+           (let ((contents (org-element-contents element-copy)))
+             (while contents
+               (setcar contents (org-element-copy (car contents) t))
+               (setq contents (cdr contents)))))
          element-copy)))))
 
 (provide 'org-element-ast)
