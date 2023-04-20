@@ -7195,7 +7195,7 @@ the cache persistence in the buffer."
             (org-persist-register
              'org-element--headline-cache
              (current-buffer)
-             :inherit 'org-element--cache)))
+             :inherit '((elisp org-element--cache) (version "2.0")))))
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
         (setq-local org-element--cache-last-buffer-size (buffer-size))
         (setq-local org-element--cache-gapless nil)
