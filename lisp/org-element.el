@@ -5789,21 +5789,21 @@ optional argument PROPS is a list of keywords, only shift
 properties provided in that list.
 
 Properties are modified by side-effect."
-  (let ((properties (nth 1 element)))
-    ;; Shift `:structure' property for the first plain list only: it
-    ;; is the only one that really matters and it prevents from
-    ;; shifting it more than once.
-    (when (and (or (not props) (memq :structure props))
-	       (eq (org-element-type element) 'plain-list)
-	       (not (eq (org-element-type (plist-get properties :parent)) 'item)))
-      (dolist (item (plist-get properties :structure))
-	(cl-incf (car item) offset)
-	(cl-incf (nth 6 item) offset)))
-    (dolist (key '( :begin :contents-begin :contents-end :end
-                    :post-affiliated :robust-begin :robust-end))
-      (let ((value (and (or (not props) (memq key props))
-			(plist-get properties key))))
-	(and value (plist-put properties key (+ offset value)))))))
+  ;; Shift `:structure' property for the first plain list only: it
+  ;; is the only one that really matters and it prevents from
+  ;; shifting it more than once.
+  (when (and (or (not props) (memq :structure props))
+             (eq (org-element-type element) 'plain-list)
+             (not (eq (org-element-type (org-element-property :parent element)) 'item)))
+    (let ((structure (org-element-property-1 :structure element)))
+      (dolist (item structure)
+        (cl-incf (car item) offset)
+        (cl-incf (nth 6 item) offset))))
+  (dolist (key '( :begin :contents-begin :contents-end :end
+                  :post-affiliated :robust-begin :robust-end))
+    (when (and (or (not props) (memq key props))
+               (org-element-property key element))
+      (cl-incf (org-element-property-1 key element) offset))))
 
 (defvar org-element--cache-interrupt-C-g t
   "When non-nil, allow the user to abort `org-element--cache-sync'.
