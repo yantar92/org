@@ -3019,14 +3019,15 @@ Assume point is at the beginning of the reference."
                (suffix-end (if separator (1- end) end))
                (types (org-element-restriction 'citation-reference))
 	       (reference
-	        (list 'citation-reference
-		      (list :key key
-			    :begin begin
-			    :end end
-			    :post-blank 0
-                            :secondary (alist-get
-                                        'citation-reference
-                                        org-element-secondary-value-alist)))))
+	        (org-element-create
+                 'citation-reference
+		 (list :key key
+		       :begin begin
+		       :end end
+		       :post-blank 0
+                       :secondary (alist-get
+                                   'citation-reference
+                                   org-element-secondary-value-alist)))))
 	  (when (< begin key-start)
 	    (org-element-put-property
 	     reference :prefix
