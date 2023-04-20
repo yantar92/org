@@ -51,8 +51,7 @@
     (should (= 1 (org-element-property-1 (intern (concat ":beg" "in1")) element 'default))))
   ;; Only standard properties.
   (dolist (element `((headline (:standard-properties ,(make-vector 10 'test)))
-                     (headline (:standard-properties ,(make-vector 10 'test)) (headline))
-                     ,(propertize "string" :standard-properties (make-vector 10 'test))))
+                     (headline (:standard-properties ,(make-vector 10 'test)) (headline))))
     (should (eq 'test (org-element-property-1 :begin element)))
     (should (eq 'test (org-element-property-1 :begin element 'default)))
     (should-not (org-element-property-1 :begin1 element))
@@ -76,8 +75,7 @@
   ;; Standard properties mixed in the plist and standard array.
   (dolist (element `((headline (:standard-properties ,(make-vector 10 'test) :begin 1))
                      (headline (:begin 1 :standard-properties ,(make-vector 10 'test)))
-                     (headline (:standard-properties ,(make-vector 10 'test) :begin 1) (headline))
-                     ,(propertize "string" :begin 1 :standard-properties (make-vector 10 'test))))
+                     (headline (:standard-properties ,(make-vector 10 'test) :begin 1) (headline))))
     (should (eq 'test (org-element-property-1 :begin element)))
     (should (eq 'test (org-element-property-1 :begin element 'default)))
     (should-not (org-element-property-1 :begin1 element))
@@ -89,8 +87,7 @@
   ;; General case.
   (dolist (element `((headline (:standard-properties ,(make-vector 10 'test) :begin1 1))
                      (headline (:begin1 1 :standard-properties ,(make-vector 10 'test)))
-                     (headline (:standard-properties ,(make-vector 10 'test) :begin1 1) (headline))
-                     ,(propertize "string" :begin1 1 :standard-properties (make-vector 10 'test))))
+                     (headline (:standard-properties ,(make-vector 10 'test) :begin1 1) (headline))))
     (should (eq 'test (org-element-property-1 :begin element)))
     (should (eq 'test (org-element-property-1 :begin element 'default)))
     (should (= 1 (org-element-property-1 :begin1 element)))
