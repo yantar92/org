@@ -22,6 +22,9 @@
 
 ;; This file implements Org abstract syntax tree (AST) data structure.
 ;;
+;; Only the most generic aspect of the syntax tree are considered
+;; below.  The fine details of Org syntax are implemented elsewhere.
+;;
 ;; 1. Syntax elements
 ;; ------------------
 ;; Each Org syntax element can be represented as a string or list.
@@ -45,18 +48,35 @@
 ;; elements.
 ;;
 ;; PROPERTIES is a property list (:property1 value1 :property2 value2 ...)
-;; holding properties and value.  A special property
-;; :standard-properties holds an array with
+;; holding properties and value.
+;;
+;; `:standard-properties', `:parent', `:deferred', and `:secondary'
+;; properties are treated specially in the code below.
+;;
+;; `:standard-properties' holds an array with
 ;; `org-element--standard-properties' values, in the same order.  The
 ;; values in the array have priority over the same properties
 ;; specified in the property list.  You should not rely on the value
 ;; of `org-element--standard-propreties' in the code.
+;; `:standard-properties' may or may not be actually present in
+;; PROPERTIES.  It is mostly used to speed up property access in
+;; performance-critical code.
 ;;
 ;; The previous example can also be presented in more compact form as:
 ;;
 ;;    (bold (:standard-properties [1 10 ... 2 ...]) "bold text")
 ;;
 ;; Using an array allows faster access to frequently used properties.
+;;
+;; `:parent' holds the containing element, for a child element within
+;; the AST.  It may or may not be present in PROPERTIES.
+;;
+;; `:secondary' holds a list of properties that may contain additional
+;; AST elements, in addition to the element contents.
+;;
+;; `deferred' property describes how to update not-yet-calculated
+;; properties on request.
+;;
 ;;
 ;; Syntax element can also be represented as a string.  Strings always
 ;; represent syntax element of `plain-text' type with contents being nil
@@ -76,10 +96,12 @@
 ;; containing another syntax element.  Such element has nil type, does
 ;; not have properties, and its contents is a list of the contained
 ;; syntax elements.  `:parent' property of the contained elements
-;; point back to the list itself.
+;; point back to the list itself, except when `anonymous' element
+;; holds secondary value (see below), in which case the `:parent'
+;; property is set to be the containing element in AST.
 ;;
-;; Any value other then described above is not considered as Org
-;; syntax element.
+;; Any element representation other then described above is not
+;; considered as Org syntax element.
 ;;
 ;; 2. Deferred values
 ;; ------------------
