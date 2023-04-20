@@ -521,7 +521,7 @@ element or object type."
 Class is either `element' or `object'.  Optional argument PARENT
 is the element or object containing DATUM.  It defaults to the
 value of DATUM `:parent' property."
-  (let ((type (org-element-type datum))
+  (let ((type (org-element-type datum t))
 	(parent (or parent (org-element-property :parent datum))))
     (cond
      ;; Trivial cases.
@@ -537,7 +537,7 @@ value of DATUM `:parent' property."
      ;; a secondary string or a container element.
      ((not parent) 'element)
      (t
-      (let ((parent-type (org-element-type parent)))
+      (let ((parent-type (org-element-type parent t)))
 	(cond ((eq 'anonymous parent-type) 'object)
 	      ((memq parent-type org-element-object-containers) 'object)
 	      ((org-element-secondary-p datum) 'object)

@@ -165,22 +165,23 @@
 
 ;;;; Syntax element type
 
-(defun org-element-type (element)
+(defun org-element-type (element &optional anonymous)
   "Return type of ELEMENT.
 
 The function returns the type of the element provided.
 It can also return the following special value:
   `plain-text'       for a string
-  `org-data'         for a complete document
-  `anonymous'        for list of elements
-  nil                in any other case."
+  nil                in any other case.
+
+When optional argument ANONYMOUS is non-nil, return symbol `anonymous'
+when ELEMENT is an anonymous element."
   (declare (pure t))
   (cond
    ((stringp element) 'plain-text)
    ((null element) nil)
    ((not (consp element)) nil)
    ((symbolp (car element)) (car element))
-   ((and (car element) (org-element-type (car element)))
+   ((and anonymous (car element) (org-element-type (car element)))
     'anonymous)
    (t nil)))
 
@@ -254,7 +255,7 @@ object is created.")
   (inline-letevals (element)
     (inline-quote
      (pcase (org-element-type ,element)
-       ((or`nil `anonymous) nil)
+       (`nil nil)
        ;; Do not use property array for strings - they usually hold
        ;; `:parent' property and nothing more.
        (`plain-text nil)
@@ -272,7 +273,7 @@ Ignore standard property array."
   (inline-letevals (property element dflt)
     (inline-quote
      (pcase (org-element-type ,element)
-       ((or `nil `anonymous) ,dflt)
+       (`nil ,dflt)
        (`plain-text
         (or (get-text-property 0 ,property ,element)
             (when ,dflt
@@ -316,7 +317,7 @@ Return the array or nil when ELEMENT is `plain-text'."
   (inline-letevals (element parray)
     (inline-quote
      (let ((parray ,parray))
-       (unless (or parray (memq (org-element-type ,element) '(plain-text nil anonymous)))
+       (unless (or parray (memq (org-element-type ,element) '(plain-text nil)))
          (setq parray (make-vector ,(length org-element--standard-properties) nil))
          ;; Copy plist standard properties back to parray.
          (seq-do-indexed
@@ -354,7 +355,7 @@ Return modified element."
                          (org-element--put-parray ,element))))
                  (aset parray ,idx ,value))
              (pcase (org-element-type ,element)
-               ((or `nil `anonymous) nil)
+               (`nil nil)
                (`plain-text
                 (org-add-props ,element nil ,property ,value))
                (_
@@ -410,7 +411,7 @@ ELEMENT.
            (val (list p val))))
        properties)
     (pcase (org-element-type element)
-      ((or `anonymous `nil) nil)
+      (`nil nil)
       (type
        (when resolve-deferred
          ;; Compute missing properties.
@@ -456,7 +457,7 @@ Do not resolve deferred values."
   "Set ELEMENT's contents to CONTENTS.
 Return ELEMENT.
 If ELEMENT cannot have contents, return CONTENTS."
-  (pcase (org-element-type element)
+  (pcase (org-element-type element t)
     (`plain-text contents)
     ((guard (null element)) contents)
     ;; Anonymous element.
@@ -807,7 +808,7 @@ their `:parent' property to the copied `anonymous' element.
 
 When DATUM is `plain-text', all the properties are removed."
   (when datum
-    (pcase (org-element-type datum)
+    (pcase (org-element-type datum t)
       (`plain-text (substring-no-properties datum))
       (`nil (error "Not an element: %S" datum))
       (`anonymous
@@ -833,7 +834,7 @@ When DATUM is `plain-text', all the properties are removed."
          ;; properties to the DATUM copy explicitly.
          (dolist (secondary-prop (org-element-property :secondary element-copy))
            (when-let ((secondary-value (org-element-property secondary-prop element-copy)))
-             (when (eq 'anonymous (org-element-type secondary-value))
+             (when (eq 'anonymous (org-element-type secondary-value t))
                (setq secondary-value (org-element-copy secondary-value))
                (dolist (el secondary-value)
                  (org-element-put-property el :parent element-copy))
