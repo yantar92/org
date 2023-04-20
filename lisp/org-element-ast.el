@@ -816,8 +816,9 @@ When TYPE is nil or `anonymous', PROPS must be nil."
           (if (not (and (keywordp (car ptail))
                       (org-element--property-idx (car ptail))))
               (setq ptail (cddr ptail))
-            (if (null (cddr ptail))
-                (setq ptail nil)
+            (if (null (cddr ptail)) ; last property
+                (setq props (nbutlast props 2)
+                      ptail nil)
               (setcar ptail (nth 2 ptail))
               (setcdr ptail (seq-drop ptail 3))))))))
   (pcase type
