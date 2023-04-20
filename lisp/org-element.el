@@ -857,17 +857,6 @@ CONTENTS is the contents of the footnote-definition."
 
 ;;;; Headline
 
-(defvar org-element--headline-re-cache (make-hash-table :test #'eql)
-  "Hash table holding association between headline level regexp.")
-(defmacro org-element--headline-re (true-level)
-  "Generate headline regexp for TRUE-LEVEL."
-  `(or (gethash ,true-level org-element--headline-re-cache)
-       (puthash
-        ,true-level
-        (rx-to-string
-         `(seq line-start (** 1 ,,true-level "*") " "))
-        org-element--headline-re-cache)))
-
 (defun org-element--get-node-properties (&optional at-point-p?)
   "Return node properties for headline or property drawer at point.
 Upcase property names.  It avoids confusion between properties
@@ -1024,7 +1013,7 @@ Assume point is at beginning of the headline."
 				    (string= org-footnote-section raw-value)))
            (end
             (save-excursion
-              (if (re-search-forward (org-element--headline-re true-level) nil t)
+              (if (re-search-forward (org-headline-re true-level) nil t)
                   (line-beginning-position)
                 (point-max))))
 	   (contents-begin (save-excursion
