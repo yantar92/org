@@ -394,6 +394,12 @@ Return DFLT when PROPERTY is not present."
     ;; Return the resolved value.
     resolved-value))
 
+(gv-define-setter org-element-property (value property element &optional _)
+  `(org-element-put-property ,element ,property ,value))
+
+(gv-define-setter org-element-property-1 (value property element &optional _)
+  `(org-element-put-property ,element ,property ,value))
+
 (defun org-element-properties (element &optional properties resolve-deferred)
   "Return full property list for ELEMENT.
 When optional argument PROPERTIES is non-nil, only return property list
