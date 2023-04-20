@@ -784,15 +784,20 @@ string.  Alternatively, TYPE can be a string.
 When TYPE is nil or `anonymous', PROPS must be nil."
   (cl-assert (plistp props))
   ;; Assign parray.
-  (when (and props (not (stringp type) (eq type 'plain-text)))
-    (setq props (org-element--put-parray (list 'dummy props)))
-    ;; Remove standard properties from PROPS plist by side effect.
-    (let ((ptail props))
-      (if (not (and (keywordp (car ptail))
-                  (org-element--property-idx (car ptail))))
-          (setq ptail (cddr ptail))
-        (setcar ptail (nth 2 ptail))
-        (setcdr ptail (seq-drop ptail 3)))))
+  (when (and props (not (stringp type)) (not (eq type 'plain-text)))
+    (let ((element (list 'dummy props)))
+      (org-element--put-parray element)
+      (setq props (nth 1 element))
+      ;; Remove standard properties from PROPS plist by side effect.
+      (let ((ptail props))
+        (while ptail
+          (if (not (and (keywordp (car ptail))
+                      (org-element--property-idx (car ptail))))
+              (setq ptail (cddr ptail))
+            (if (null (cddr ptail))
+                (setq ptail nil)
+              (setcar ptail (nth 2 ptail))
+              (setcdr ptail (seq-drop ptail 3))))))))
   (pcase type
     ((or `nil `anonymous)
      (cl-assert (null props))
