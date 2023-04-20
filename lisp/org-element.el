@@ -7179,14 +7179,23 @@ the cache persistence in the buffer."
         ;; Only persist cache in file buffers.
         (when (and (buffer-file-name) (not no-persistence))
           (when (not org-element-cache-persistent)
-            (org-persist-unregister 'org-element--headline-cache (current-buffer))
-            (org-persist-unregister 'org-element--cache (current-buffer)))
+            (org-persist-unregister
+             'org-element--headline-cache
+             (current-buffer)
+             :remove-related t)
+            (org-persist-unregister
+             'org-element--cache
+             (current-buffer)
+             :remove-related t))
           (when (and org-element-cache-persistent
                      (buffer-file-name (current-buffer)))
-            (org-persist-register 'org-element--cache (current-buffer))
-            (org-persist-register 'org-element--headline-cache
-                                  (current-buffer)
-                                  :inherit 'org-element--cache)))
+            (org-persist-register
+             '((elisp org-element--cache) (version "2.0"))
+             (current-buffer))
+            (org-persist-register
+             'org-element--headline-cache
+             (current-buffer)
+             :inherit 'org-element--cache)))
         (setq-local org-element--cache-change-tic (buffer-chars-modified-tick))
         (setq-local org-element--cache-last-buffer-size (buffer-size))
         (setq-local org-element--cache-gapless nil)
