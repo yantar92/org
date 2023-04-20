@@ -61,6 +61,8 @@
 ;; Syntax element can also be represented as a string.  Strings always
 ;; represent syntax element of `plain-text' type with contents being nil
 ;; and properties represented as string properties at position 0.
+;; `:standard-properties' are not considered for `plain-text' elements
+;; as `plain-text' elements tend to hold much less properties.
 ;;
 ;; In the above example, `plain-text' element "bold text" is more
 ;; accurately represented as
@@ -261,10 +263,10 @@ object is created.")
        (`plain-text nil)
        (_
         ;; (type (:standard-properties val ...) ...)
-        (and (eq :standard-properties (car (nth 1 ,element)))
-             (cadr (nth 1 ,element))
-             ;; Non-standard order.  Go long way.
-             (plist-get (nth 1 ,element) :standard-properties)))))))
+        (if (eq :standard-properties (car (nth 1 ,element)))
+            (cadr (nth 1 ,element))
+          ;; Non-standard order.  Go long way.
+          (plist-get (nth 1 ,element) :standard-properties)))))))
 
 (define-inline org-element--plist-property (property element &optional dflt)
   "Extract the value for PROPERTY from ELEMENT property list.
