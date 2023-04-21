@@ -813,9 +813,9 @@ get an unnecessary O(N²) space complexity, so you're usually better off using
   "Generate headline regexp for TRUE-LEVEL.
 When NO-BOL is non-nil, regexp will not demand the regexp to start at
 beginning of line."
-  (or (gethash true-level org--headline-re-cache)
+  (or (gethash (cons true-level no-bol) org--headline-re-cache)
       (puthash
-       true-level
+       (cons true-level no-bol)
        (rx-to-string
         (if no-bol
             `(seq (** 1 ,true-level "*") " ")
