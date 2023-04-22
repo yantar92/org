@@ -347,10 +347,11 @@ Return the array or nil when ELEMENT is `plain-text'."
        (unless (or parray (memq (org-element-type ,element) '(plain-text nil)))
          (setq parray (make-vector ,(length org-element--standard-properties) nil))
          ;; Copy plist standard properties back to parray.
-         (seq-do-indexed
-          (lambda (prop idx)
-            (aset parray idx (org-element--plist-property prop ,element)))
-          org-element--standard-properties)
+         (let ((stdplist org-element--standard-properties-idxs))
+           (while stdplist
+             (aset parray (cadr stdplist)
+                   (org-element--plist-property (car stdplist) ,element))
+             (setq stdplist (cddr stdplist))))
          (setcar (cdr ,element)
                  (nconc (list :standard-properties parray)
                         (cadr ,element)))
