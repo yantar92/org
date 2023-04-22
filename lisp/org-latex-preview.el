@@ -378,8 +378,10 @@ overlay face is set to `org-latex-preview-processing-face'."
 (defun org-latex-preview-auto--mark-overlay-modified (ov after-p _beg _end &optional _l)
   "When AFTER-P mark OV as modified and display nothing."
   (when after-p
-    (overlay-put ov 'preview-state 'modified)
-    (overlay-put ov 'display nil)))
+    (unless (eq (overlay-get ov 'preview-state) 'modified)
+      (overlay-put ov 'preview-state 'modified)
+      (overlay-put ov 'face nil)
+      (overlay-put ov 'display nil))))
 
 (defun org-latex-preview--update-overlay (ov path-info)
   "Update the overlay OV to show the image specified by PATH-INFO."
