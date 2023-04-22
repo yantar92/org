@@ -1346,7 +1346,8 @@ previews."
   "Obtain the LaTeX preview for snippet preview in BUF."
   (with-current-buffer (or buf (current-buffer))
     (org-fold-core-ignore-modifications
-      (let ((info (org-combine-plists
+      (let ((org-inhibit-startup t)
+            (info (org-combine-plists
                    (org-export--get-export-attributes
                     (org-export-get-backend 'latex))
                    (org-export--get-buffer-attributes)
