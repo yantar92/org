@@ -256,22 +256,25 @@ resolution."
 These properties are stored in an array pre-allocated every time a new
 object is created.")
 
-  (defconst org-element--standard-properties-table
-    (let ((table (make-hash-table :size (length org-element--standard-properties))))
+  (defconst org-element--standard-properties-idxs
+    (let (plist)
       (seq-do-indexed
        (lambda (property idx)
-         (puthash property idx table))
+         (setq plist (plist-put plist property idx)))
        org-element--standard-properties)
-      table)
-    "Hash table holding standard indexes for `org-element--standard-properties'."))
+      plist)
+    "Property list holding standard indexes for `org-element--standard-properties'."))
 
 (define-inline org-element--property-idx (property)
   "Return standard property index or nil."
   (declare (pure t))
   (if (inline-const-p property)
-      (gethash (inline-const-val property)
-               org-element--standard-properties-table)
-    (inline-quote (gethash ,property org-element--standard-properties-table))))
+      (plist-get
+       org-element--standard-properties-idxs
+       (inline-const-val property))
+    (inline-quote (plist-get
+                   org-element--standard-properties-idxs
+                   ,property))))
 
 (define-inline org-element--parray (element)
   "Return standard property array for ELEMENT."
