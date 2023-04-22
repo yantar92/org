@@ -2023,11 +2023,15 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
         (t (list nil nil))))))
   ;; Clear the precompile cache if clearing the whole buffer or everything.
   (when (or clear-entire-cache (not (or beg end)))
+    (or org-latex-preview--preamble-content
+        (setq org-latex-preview--preamble-content
+              (org-latex-preview--get-preamble)))
     (dolist (compiler org-latex-compilers)
       (org-latex--remove-cached-preamble
        compiler org-latex-preview--preamble-content nil)
       (org-latex--remove-cached-preamble
-       compiler org-latex-preview--preamble-content t)))
+       compiler org-latex-preview--preamble-content t))
+    (org-latex-preview--clear-preamble-cache))
   (org-latex-preview-clear-overlays beg end)
   (if clear-entire-cache
       (let ((n 0))
