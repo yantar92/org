@@ -146,5 +146,24 @@
      (eq 'foo
          (org-element-property-1 :foo element)))))
 
+(ert-deftest test-org-element-ast/org-element-create ()
+  "Test `org-element-create' specifications."
+  (should
+   (pcase (org-element-create 'foo '(:a 1 :b 2))
+     (`(foo (:standard-properties ,_ :a 1 :b 2)) t)))
+  (should
+   (pcase (org-element-create 'foo '(:begin 10))
+     (`(foo (:standard-properties ,vec))
+      (= 10 (aref vec (org-element--property-idx :begin))))))
+  ;; Strings
+  (should (equal "foo" (org-element-create "foo")))
+  (should (equal "foo" (org-element-create 'plain-text nil "foo")))
+  (should (get-text-property 0 :a (org-element-create 'plain-text '(:a 1) "foo")))
+  (should (get-text-property 0 :begin (org-element-create 'plain-text '(:begin 1) "foo")))
+  ;; Children
+  (let ((children '("a" "b" (org-element-create 'foo))))
+    (should (equal (cddr (apply #'org-element-create 'bar nil children))
+                   children))))
+
 (provide 'test-org-element-ast)
 ;;; test-org-element-ast.el ends here
