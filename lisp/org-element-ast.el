@@ -668,21 +668,17 @@ The function takes care of setting `:parent' property for NEW."
       (setcar old (car new))
       (setcdr old (cdr new)))))
 
-;; (defun org-element--map
-;;     (data types fun &optional first-match no-recursion with-properties)
-;;   "Map a function on selected elements or objects.
+;; (defun org-element-ast-map
+;;     (data types fun &optional ignore first-match no-recursion with-properties no-secondary)
+;;   "Map a function on selected syntax elements.
 
-;; DATA is a parse tree (for example, returned by
-;; `org-element-parse-buffer'), an element, an object, a string, or a
-;; list of such constructs.  TYPES is a symbol or list of symbols of
-;; elements or object types (see `org-element-all-elements' and
-;; `org-element-all-objects' for a complete list of types).  FUN is the
-;; function called on the matching element or object.  It has to accept
-;; one argument: the element or object itself.
+;; DATA is a syntax tree.  TYPES is a symbol or list of symbols of
+;; element types.  FUN is the function called on the matching element.
+;; It has to accept one argument: the element itself.
 
-;; When optional argument INFO is non-nil, it should be a plist
-;; holding export options.  In that case, parts of the parse tree
-;; not exportable according to that property list will be skipped.
+;; When optional argument IGNORE is non-nil, it should be a list holding
+;; elements to be skipped.  In that case, the listed elements and their
+;; contents will be skipped.
 
 ;; When optional argument FIRST-MATCH is non-nil, stop at the first
 ;; match for which FUN doesn't return nil, and return that value.
@@ -692,46 +688,17 @@ The function takes care of setting `:parent' property for NEW."
 ;; enter any recursive element or object whose type belongs to that
 ;; list.  Though, FUN can still be applied on them.
 
-;; When optional argument WITH-AFFILIATED is non-nil, FUN will also
-;; apply to matching objects within parsed affiliated keywords (see
-;; `org-element-parsed-keywords').
+;; When optional argument WITH-PROPERTIES is non-nil, it should hold a list
+;; of property names.  These properties will be treated as additional
+;; secondary properties.
 
-;; Nil values returned from FUN do not appear in the results.
+;; When optional argument NO-SECONDARY is non-nil, do not recurse into
+;; secondary strings.
 
+;; FUN may also throw 'org-element-skip signal.  Then,
+;; `org-element-ast-map' will not recurse into the current element.
 
-;; Examples:
-;; ---------
-
-;; Assuming TREE is a variable containing an Org buffer parse tree,
-;; the following example will return a flat list of all `src-block'
-;; and `example-block' elements in it:
-
-;;   (setq tree (org-element-parse-buffer))
-;;   (org-element-map tree \\='(example-block src-block) #\\='identity)
-
-;; The following snippet will find the first headline with a level
-;; of 1 and a \"phone\" tag, and will return its beginning position:
-
-;;   (org-element-map tree \\='headline
-;;    (lambda (hl)
-;;      (and (= (org-element-property :level hl) 1)
-;;           (member \"phone\" (org-element-property :tags hl))
-;;           (org-element-property :begin hl)))
-;;    nil t)
-
-;; The next example will return a flat list of all `plain-list' type
-;; elements in TREE that are not a sub-list themselves:
-
-;;   (org-element-map tree \\='plain-list #\\='identity nil nil \\='plain-list)
-
-;; Eventually, this example will return a flat list of all `bold'
-;; type objects containing a `latex-snippet' type object, even
-;; looking into captions:
-
-;;   (org-element-map tree \\='bold
-;;    (lambda (b)
-;;      (and (org-element-map b \\='latex-snippet #\\='identity nil t) b))
-;;    nil nil nil t)"
+;; Nil values returned from FUN do not appear in the results."
 ;;   (declare (indent 2))
 ;;   ;; Ensure TYPES and NO-RECURSION are a list, even of one element.
 ;;   (let* ((types (if (listp types) types (list types)))
