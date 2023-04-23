@@ -426,6 +426,36 @@ Return DFLT when PROPERTY is not present."
 (gv-define-setter org-element-property-1 (value property element &optional _)
   `(org-element-put-property ,element ,property ,value))
 
+(defun org-element-property-inherited (property element &optional accumulate literal-nil)
+  "Extract the value from the PROPERTY of an ELEMENT and/or its parents.
+
+PROPERTY is a single property or a list of properties to be considered.
+When optional argument ACCUMULATE is nil, return the first non-nil value
+(properties when PROPERTY is a list are considered one by one).
+When ACCUMULATE is non-nil, extract all the values, starting from the
+outermost ancestor and accumulate them into a single list.  The values
+that are lists are appended.
+When ACCUMULATE is a string, join the resulting list elements into a
+string, using string value as separator.
+When LITERAL-nil is non-nil, treat property values \"nil\" and nil."
+  (setq property (ensure-list property))
+  (let (acc local val)
+    (catch :found
+      (while element
+        (setq local nil)
+        (dolist (prop property)
+          (setq val (org-element-property prop element))
+          (when literal-nil (setq val (org-not-nil val)))
+          (when (and (not accumulate) val) (throw :found val))
+          ;; Append to the end.
+          (setq local (append local (ensure-list val))))
+        ;; Append parent to front.
+        (setq acc (append local acc))
+        (setq element (org-element-property :parent element)))
+      (if (and (stringp accumulate) acc)
+          (mapconcat #'identity acc accumulate)
+        acc))))
+
 (defun org-element-properties (element &optional properties resolve-deferred)
   "Return full property list for ELEMENT.
 When optional argument PROPERTIES is non-nil, only return property list
