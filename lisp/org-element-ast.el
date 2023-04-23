@@ -830,7 +830,7 @@ When TYPE is nil or `anonymous', PROPS must be nil."
      (cl-assert (null props))
      (apply #'org-element-adopt-elements nil children))
     (`plain-text
-     (cl-assert (length= 1 children))
+     (cl-assert (length= children 1))
      (org-add-props (car children) props))
     ((pred stringp)
      (if props (org-add-props type props) type))
