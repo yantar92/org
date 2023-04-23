@@ -112,29 +112,33 @@
 (ert-deftest test-org-element-ast/org-element-put-property ()
   "Test `org-element-put-property' specifications."
   ;; No properties.
-  ;; (let ((element (list 'heading nil))
-  ;;       vec)
-  ;;   (setq vec (make-vector (length org-element--standard-properties) nil))
-  ;;   (aset vec 0 1)
-  ;;   (should
-  ;;    (equal
-  ;;     (list 'heading (list :standard-properties vec))
-  ;;     (org-element-put-property element :begin 1))))
+  (let ((element (list 'heading nil))
+        vec)
+    (setq vec (make-vector (length org-element--standard-properties) nil))
+    (aset vec 0 1)
+    (should
+     (equal
+      (list 'heading (list :standard-properties vec))
+      (org-element-put-property element :begin 1))))
   (let ((element (list 'heading nil)))
     (should
      (equal
       (list 'heading (list :begin1 1))
       (org-element-put-property element :begin1 1))))
   ;; Standard properties.
-  ;; (let ((element (list 'heading (list :standard-properties (make-vector (length org-element--standard-properties) 'foo)))))
-  ;;   (should
-  ;;    (= 1
-  ;;       (org-element-property-1 :begin (org-element-put-property element :begin 1)))))
+  (let ((element (list 'heading (list :standard-properties (make-vector (length org-element--standard-properties) 'foo)))))
+    (should
+     (= 1
+        (org-element-property-1 :begin (org-element-put-property element :begin 1)))))
   ;; Adding standard properties when other standard properties are defined manually in the plist.
   (let ((element (list 'heading (list :begin 1 :end 20 :foo 'foo))))
     (should
      (= 2
         (org-element-property-1 :begin (org-element-put-property element :begin 2))))
+    ;; Check setter.
+    (cl-incf (org-element-property-1 :begin element))
+    (should
+     (= 3 (org-element-property-1 :begin element)))
     (should
      (= 20
         (org-element-property-1 :end element)))
