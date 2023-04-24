@@ -71,8 +71,8 @@
 ;; `:parent' holds the containing element, for a child element within
 ;; the AST.  It may or may not be present in PROPERTIES.
 ;;
-;; `:secondary' holds a list of properties that may contain additional
-;; AST elements, in addition to the element contents.
+;; `:secondary' holds a list of properties that may contain extra AST
+;; elements, in addition to the element contents.
 ;;
 ;; `deferred' property describes how to update not-yet-calculated
 ;; properties on request.
@@ -214,11 +214,13 @@ when ELEMENT is an anonymous element."
 Return value is the containing property name, as a keyword, or nil."
   (declare (pure t))
   (let* ((parent (org-element-property :parent object))
-	 (properties (org-element-property :secondary parent)))
+	 (properties (org-element-property :secondary parent))
+         val)
     (catch 'exit
       (dolist (p properties)
-	(and (memq object (org-element-property p parent))
-	     (throw 'exit p))))))
+        (setq val (org-element-property-1 p parent))
+	(when (or (eq object val) (memq object val))
+	  (throw 'exit p))))))
 
 ;;;; Deferred values
 
@@ -878,11 +880,12 @@ When DATUM is `plain-text', all the properties are removed."
          ;; properties to the DATUM copy explicitly.
          (dolist (secondary-prop (org-element-property :secondary element-copy))
            (when-let ((secondary-value (org-element-property secondary-prop element-copy)))
-             (when (eq 'anonymous (org-element-type secondary-value t))
-               (setq secondary-value (org-element-copy secondary-value))
+             (setq secondary-value (org-element-copy secondary-value))
+             (if (org-element-type secondary-value)
+                 (org-element-put-property secondary-value :parent element-copy)
                (dolist (el secondary-value)
-                 (org-element-put-property el :parent element-copy))
-               (org-element-put-property element-copy secondary-prop secondary-value))))
+                 (org-element-put-property el :parent element-copy)))
+             (org-element-put-property element-copy secondary-prop secondary-value)))
          (when keep-contents
            (let ((contents (org-element-contents element-copy)))
              (while contents
