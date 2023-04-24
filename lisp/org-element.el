@@ -4395,7 +4395,7 @@ When PARSE is non-nil, values from keywords belonging to
 	  (when (or (member kwd org-element-multiple-keywords)
 		    ;; Attributes can always appear on multiple lines.
 		    (string-match "^ATTR_" kwd))
-	    (setq value (cons value (plist-get output kwd-sym))))
+	    (setq value (nconc (plist-get output kwd-sym) (list value))))
 	  ;; Eventually store the new value in OUTPUT.
 	  (setq output (plist-put output kwd-sym value))
 	  ;; Move to next keyword.
@@ -4638,13 +4638,13 @@ looking into captions:
 			   ((not value))
 			   ((member kwd org-element-dual-keywords)
 			    (if (member kwd org-element-multiple-keywords)
-				(dolist (line (reverse value))
+				(dolist (line value)
 				  (funcall --walk-tree (cdr line))
 				  (funcall --walk-tree (car line)))
 			      (funcall --walk-tree (cdr value))
 			      (funcall --walk-tree (car value))))
 			   ((member kwd org-element-multiple-keywords)
-			    (mapc --walk-tree (reverse value)))
+			    (mapc --walk-tree value))
 			   (t (funcall --walk-tree value))))))
 		    ;; Determine if a recursion into --DATA is possible.
 		    (cond
