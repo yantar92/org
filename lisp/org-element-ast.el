@@ -697,7 +697,7 @@ The function takes care of setting `:parent' property for NEW."
 ;; When optional argument NO-SECONDARY is non-nil, do not recurse into
 ;; secondary strings.
 
-;; FUN may also throw 'org-element-skip signal.  Then,
+;; FUN may also throw `:org-element-skip' signal.  Then,
 ;; `org-element-ast-map' will not recurse into the current element.
 
 ;; Nil values returned from FUN do not appear in the results."
@@ -706,59 +706,40 @@ The function takes care of setting `:parent' property for NEW."
 ;;   (let* ((types (if (listp types) types (list types)))
 ;; 	 (no-recursion (if (listp no-recursion) no-recursion
 ;; 			 (list no-recursion)))
-;; 	 ;; Recursion depth is determined by --CATEGORY.
-;; 	 (--category
-;; 	  (catch :--found
-;; 	    (let ((category 'greater-elements)
-;; 		  (all-objects (cons 'plain-text org-element-all-objects)))
-;; 	      (dolist (type types category)
-;; 		(cond ((memq type all-objects)
-;; 		       ;; If one object is found, the function has
-;; 		       ;; to recurse into every object.
-;; 		       (throw :--found 'objects))
-;; 		      ((not (memq type org-element-greater-elements))
-;; 		       ;; If one regular element is found, the
-;; 		       ;; function has to recurse, at least, into
-;; 		       ;; every element it encounters.
-;; 		       (and (not (eq category 'elements))
-;; 			    (setq category 'elements))))))))
-;;          (--ignore-list (plist-get info :ignore-list))
 ;; 	 --acc)
 ;;     (letrec ((--walk-tree
 ;; 	      (lambda (--data)
 ;; 		;; Recursively walk DATA.  INFO, if non-nil, is a plist
 ;; 		;; holding contextual information.
-;; 		(let ((--type (org-element-type --data)))
+;; 		(let ((--type (org-element-type --data))
+;;                       (recurse nil))
 ;; 		  (cond
 ;; 		   ((not --data))
 ;; 		   ;; Ignored element in an export context.
-;; 		   ((and info (memq --data --ignore-list)))
+;; 		   ((and ignore (memq --data ignore)))
 ;; 		   ;; List of elements or objects.
 ;; 		   ((not --type) (mapc --walk-tree --data))
-;; 		   ;; Unconditionally enter parse trees.
-;; 		   ((eq --type 'org-data)
-;; 		    (mapc --walk-tree (org-element-contents --data)))
 ;; 		   (t
 ;; 		    ;; Check if TYPE is matching among TYPES.  If so,
 ;; 		    ;; apply FUN to --DATA and accumulate return value
 ;; 		    ;; into --ACC (or exit if FIRST-MATCH is non-nil).
 ;; 		    (when (memq --type types)
-;; 		      (let ((result (funcall fun --data)))
+;; 		      (let ((result
+;;                              (catch :org-element-skip
+;;                                (funcall fun --data)
+;;                                (setq recurse t))))
 ;; 			(cond ((not result))
 ;; 			      (first-match (throw :--map-first-match result))
 ;; 			      (t (push result --acc)))))
-;; 		    ;; If --DATA has a secondary string that can contain
-;; 		    ;; objects with their type among TYPES, look inside.
-;; 		    (when (and (eq --category 'objects) (not (stringp --data)))
-;; 		      (dolist (p (cdr (assq --type
-;; 					    org-element-secondary-value-alist)))
+;; 		    ;; If --DATA has a secondary string, look inside.
+;; 		    (unless no-secondary
+;; 		      (dolist (p (org-element-property :secondary --data))
 ;; 			(funcall --walk-tree (org-element-property p --data))))
-;; 		    ;; If --DATA has any parsed affiliated keywords and
-;; 		    ;; WITH-AFFILIATED is non-nil, look for objects in
-;; 		    ;; them.
-;; 		    (when (and with-affiliated
-;; 			       (eq --category 'objects)
-;; 			       (eq (org-element-class --data) 'element))
+;; 		    ;; If WITH-PROPERTIES is non-nil, look inside.
+;; 		    (when with-properties
+;; 		      (dolist (p with-properties)
+                        
+;;                         )
 ;; 		      (dolist (kwd-pair org-element--parsed-properties-alist)
 ;; 			(let ((kwd (car kwd-pair))
 ;; 			      (value (org-element-property (cdr kwd-pair) --data)))
