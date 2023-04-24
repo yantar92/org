@@ -1,0 +1,30 @@
+#+latex_header: \usepackage{amsmath}
+#+latex_header: \usepackage{amssymb}
+
+* Inline fragments and LaTeX environments
+:PROPERTIES:
+:ID:       0b3807b3-69af-40cb-a27a-b380d54879cc
+:END:
+
+The LQR problem for a time-periodic system of the form
+\begin{align}
+\dot{x} = A(t) x + B(t) u, \quad  t \in [0, \infty), \quad x(0) = x_i \label{eq:time-varying-system}\\
+A(t+T) = A(t),\ B(t + T) = B(t) \nonumber
+\end{align}
+is as follows. With a quadratic form defined on \( (x,u) \) pairs
+\begin{align}
+\label{eq:quadratic-form}
+\mathbf{q}(x, u) := \lim_{t_f \to \infty} \int_{0}^{t_f} \begin{bmatrix} x \\ u \end{bmatrix}^{\star} \begin{bmatrix}
+Q & 0 \\
+0 & r
+ \end{bmatrix} \begin{bmatrix} x \\ u \end{bmatrix} =: \lim_{t_f \to \infty} \int_{0}^{t_f} q(x,u) dt
+\end{align}
+with \( q \ge 0 \) and \( r \ge 0 \), find the infimum of the quadratic form \( \mathbf{q} \) subject to the dynamics:
+\[
+\inf_{x,u} \mathbf{q}(x,u).
+\]
+\begin{align}
+\label{eq:lqr-inf-via-duality}
+\inf_{x, u} \mathbf{q}(x, u) = x_i^{\star} \bar{\lambda}(0) x_i,
+\end{align}
+where \( \bar{\lambda} \) is the maximal solution of the differential linear matrix inequality over \( [0, t] \).
