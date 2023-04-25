@@ -712,7 +712,7 @@ Nil values returned from FUN do not appear in the results."
 		;; Recursively walk DATA.  INFO, if non-nil, is a plist
 		;; holding contextual information.
 		(let ((--type (org-element-type --data))
-                      (recurse nil))
+                      recurse)
 		  (cond
 		   ((not --data))
 		   ;; Ignored element in an export context.
@@ -723,9 +723,11 @@ Nil values returned from FUN do not appear in the results."
 		    ;; Check if TYPE is matching among TYPES.  If so,
 		    ;; apply FUN to --DATA and accumulate return value
 		    ;; into --ACC (or exit if FIRST-MATCH is non-nil).
+                    (setq recurse t)
 		    (when (memq --type types)
 		      (let ((result
                              (catch :org-element-skip
+                               (setq recurse nil)
                                (prog1 (funcall fun --data)
                                  (setq recurse t)))))
 			(cond ((not result))
@@ -737,16 +739,14 @@ Nil values returned from FUN do not appear in the results."
                      ((not recurse))
 		     ;; --TYPE is explicitly removed from recursion.
 		     ((memq --type no-recursion))
-		     ;; --DATA has no contents.
-		     ((not (org-element-contents --data)))
 		     ;; In any other case, map secondary, affiliated, and contents.
 		     (t
-		      (unless no-secondary
-		        (dolist (p (org-element-property :secondary --data))
-			  (funcall --walk-tree (org-element-property p --data))))
 		      (when with-properties
 		        (dolist (p with-properties)
                           (funcall --walk-tree (org-element-property p --data))))
+                      (unless no-secondary
+		        (dolist (p (org-element-property :secondary --data))
+			  (funcall --walk-tree (org-element-property p --data))))
                       (mapc --walk-tree (org-element-contents --data))))))))))
       (catch :--map-first-match
 	(funcall --walk-tree data)
