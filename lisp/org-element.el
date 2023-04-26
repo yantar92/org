@@ -1278,15 +1278,17 @@ Assume point is at beginning of the inline task."
                    (mapcar #'org-element--get-cached-string
 		           (org-split-string (match-string-no-properties 1) ":"))))
 	   (title-end (point))
-	   (raw-value (org-trim
-		       (buffer-substring-no-properties title-start title-end)))
-           (archivedp (member org-element-archive-tag tags))
+	   (raw-value-deferred
+            (org-element-deferred
+             :fun #'org-element--headline-raw-value
+             :args
+             (list (- title-start begin) (- title-end begin))))
+           (archivedp (if (member org-element-archive-tag tags) t nil))
 	   (task-end (save-excursion
 		       (end-of-line)
 		       (and (re-search-forward org-element-headline-re limit t)
 			    (looking-at-p "[ \t]*END[ \t]*$")
 			    (line-beginning-position))))
-	   (standard-props (and task-end (org-element--get-node-properties)))
 	   (time-props (and task-end (org-element--get-time-properties)))
 	   (contents-begin (and task-end
 				(< (point) task-end)
@@ -1303,7 +1305,7 @@ Assume point is at beginning of the inline task."
 	    (org-element-create
              'inlinetask
 	     (nconc
-	      (list :raw-value raw-value
+	      (list :raw-value raw-value-deferred
 		    :begin begin
 		    :end end
 		    :pre-blank
@@ -1322,12 +1324,17 @@ Assume point is at beginning of the inline task."
 		    :commentedp commentedp
                     :secondary (alist-get
                                 'inlinetask
-                                org-element-secondary-value-alist))
-	      time-props
-	      standard-props))))
+                                org-element-secondary-value-alist)
+                    :deferred
+                    (and task-end
+                         (org-element-deferred
+                          :fun #'org-element-headline-parser--deferred
+                          :auto-undefer-p t))
+                    :buffer (current-buffer))
+	      time-props))))
       (org-element-put-property
        inlinetask :title
-       (if raw-secondary-p raw-value
+       (if raw-secondary-p raw-value-deferred
 	 (org-element--parse-objects
 	  (progn (goto-char title-start)
 		 (skip-chars-forward " \t")
