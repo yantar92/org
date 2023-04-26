@@ -4196,11 +4196,7 @@ element it has to parse."
             ((org-with-limited-levels (looking-at-p org-outline-regexp-bol))
              (org-element-headline-parser limit raw-secondary-p))
             ;; Sections (must be checked after headline).
-            ((eq mode 'section) (org-element-section-parser limit))
-            ((eq mode 'first-section)
-	     (org-element-section-parser
-	      (or (save-excursion (org-with-limited-levels (outline-next-heading)))
-	          limit)))
+            ((memq mode '(section first-section)) (org-element-section-parser nil))
             ;; Comments.
             ((looking-at "^[ \t]*#\\(?: \\|$\\)")
 	     (org-element-comment-parser limit))
