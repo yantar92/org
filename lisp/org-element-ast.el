@@ -121,6 +121,9 @@
 ;; first resolved for side effects of setting the missing properties.
 ;; The resolved value is re-assigned to the `:deferred' property.
 ;;
+;; Note that `org-element-copy' unconditionally resolves deferred
+;; properties.  This is useful to generate side-effect-free AST.
+;;
 ;; 3. Org document representation
 ;; ------------------------------
 ;; Document AST is represented by nested Org elements.
@@ -394,9 +397,11 @@ Return modified element."
                 (setcar (cdr ,element) (plist-put (nth 1 ,element) ,property ,value)))))
            ,element))))))
 
-(defun org-element-property (property element &optional dflt)
+(defun org-element-property (property element &optional dflt force-undefer)
   "Extract the value from the PROPERTY of an ELEMENT.
-Return DFLT when PROPERTY is not present."
+Return DFLT when PROPERTY is not present.
+When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
+properties, replacing their values in ELEMENT."
   (let ((value (org-element-property-1 property element 'org-element-ast--nil))
         resolved-value)
     ;; PROPERTY not present.
@@ -416,7 +421,8 @@ Return DFLT when PROPERTY is not present."
       ;; Deferred property.  Resolve it.
       (setq resolved-value (org-element--deferred-resolve value element))
       ;; Store the resolved property value, if needed.
-      (when (org-element-deferred-auto-undefer-p value)
+      (when (or force-undefer
+                (org-element-deferred-auto-undefer-p value))
         (org-element-put-property
          element property resolved-value)))
     ;; Return the resolved value.
@@ -464,14 +470,18 @@ When optional argument PROPERTIES is non-nil, only return property list
 for the listed properties, if they are present.
 
 When RESOLVE-DEFERRED is non-nil, resolve deferred values, modifying
-ELEMENT.
+ELEMENT.  When it is symbol `force', unconditionally undefer the
+values.
 
 `:standard-properties' value is unwrapped into the property list."
   (if properties
       (mapcan
        (lambda (p)
          (pcase (if resolve-deferred
-                    (org-element-property p element 'org-element-ast--nil)
+                    (org-element-property
+                     p element
+                     'org-element-ast--nil
+                     (eq resolve-deferred 'force))
                   (org-element-property-1 p element 'org-element-ast--nil))
            (`org-element-ast--nil nil)
            (val (list p val))))
@@ -490,11 +500,15 @@ ELEMENT.
            (let ((plist props))
              ;; Resolve every property.
              (while plist
-               (org-element-property (car plist) element)
+               (org-element-property
+                (car plist) element
+                nil (eq resolve-deferred 'force))
                (setq plist (cddr plist)))
              ;; Resolve standard properties.
              (dolist (p org-element--standard-properties)
-               (org-element-property p element)))
+               (org-element-property
+                p element
+                nil (eq resolve-deferred 'force))))
            (setq props
                  (if (eq type 'plain-text)
                      (text-properties-at 0 element)
@@ -554,11 +568,13 @@ If ELEMENT cannot have contents, return CONTENTS."
       (setq contents (cdr contents)))
     (org-element-contents-1 element)))
 
-(defun org-element-resolve-deferred (element)
+(defun org-element-resolve-deferred (element &optional force-undefer)
   "Resolve all the deferred values in ELEMENT.
-Return the modified element."
+Return the modified element.
+When FORCE-UNDERFER is non-nil, unconditionally replace deferred
+properties with their values."
   ;; Resolve properties.
-  (org-element-properties element nil 'resolve)
+  (org-element-properties element nil (when force-undefer 'force))
   ;; Resolve contents.
   (org-element-contents element)
   ;; Resolve secondary objects.
@@ -791,7 +807,7 @@ When TYPE is nil or `anonymous', PROPS must be nil."
     (_ (apply #'org-element-adopt-elements (list type props) children))))
 
 (defun org-element-copy (datum &optional keep-contents)
-  "Return a copy of DATUM.
+  "Return a copy of DATUM with all deferred values resolved.
 DATUM is an element, object, string or nil.  `:parent' property
 is cleared and contents are removed in the process.
 Secondary objects are also copied and their `:parent' gets re-assigned.
@@ -846,7 +862,7 @@ When DATUM is `plain-text', all the properties are removed."
              (while contents
                (setcar contents (org-element-copy (car contents) t))
                (setq contents (cdr contents)))))
-         element-copy)))))
+         (org-element-resolve-deferred element-copy 'force))))))
 
 (defun org-element-lineage (datum &optional types with-self)
   "List all ancestors of a given element or object.
