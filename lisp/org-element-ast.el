@@ -580,15 +580,19 @@ If ELEMENT cannot have contents, return CONTENTS."
       (setq contents (cdr contents)))
     (org-element-contents-1 element)))
 
-(defun org-element-resolve-deferred (element &optional force-undefer)
+(defun org-element-resolve-deferred (element &optional force-undefer recursive)
   "Resolve all the deferred values in ELEMENT.
 Return the modified element.
-When FORCE-UNDERFER is non-nil, unconditionally replace deferred
-properties with their values."
+When FORCE-UNDEFER is non-nil, unconditionally replace deferred
+properties with their values.
+When RECURSIVE is non-nil, descend into child element contents."
   ;; Resolve properties.
   (org-element-properties element nil (when force-undefer 'force))
   ;; Resolve contents.
-  (org-element-contents element)
+  (let ((contents (org-element-contents element)))
+    (when recursive
+      (dolist (el contents)
+        (org-element-resolve-deferred el force-undefer recursive))))
   ;; Resolve secondary objects.
   (dolist (sp (org-element-property :secondary element))
     (org-element-put-property
