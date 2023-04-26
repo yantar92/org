@@ -958,6 +958,14 @@ Return value is a plist."
   ;; Return nil.
   nil)
 
+(defun org-element--headline-raw-value (headline beg-offset end-offset)
+  "Retrieve :raw-value in HEADLINE according to BEG-OFFSET and END-OFFSET."
+  (with-current-buffer (org-element-property :buffer headline)
+    (let ((beg (org-element-property :begin headline)))
+      (org-trim
+       (buffer-substring-no-properties
+        (+ beg beg-offset) (+ beg end-offset))))))
+
 (defun org-element-headline-parser (&optional _ raw-secondary-p)
   "Parse a headline.
 
@@ -1007,9 +1015,14 @@ Assume point is at beginning of the headline."
                    (mapcar #'org-element--get-cached-string
 		           (org-split-string (match-string-no-properties 1) ":"))))
 	   (title-end (point))
-	   (raw-value (org-trim
+           (raw-value (org-trim
 		       (buffer-substring-no-properties title-start title-end)))
-	   (archivedp (member org-element-archive-tag tags))
+	   (raw-value-deferred
+            (org-element-deferred
+             :fun #'org-element--headline-raw-value
+             :args
+             (list (- title-start begin) (- title-end begin))))
+	   (archivedp (if (member org-element-archive-tag tags) t nil))
 	   (footnote-section-p (and org-footnote-section
 				    (string= org-footnote-section raw-value)))
            (end
@@ -1039,7 +1052,7 @@ Assume point is at beginning of the headline."
       (let ((headline
 	     (org-element-create
               'headline
-	      (list :raw-value raw-value
+	      (list :raw-value raw-value-deferred
 		    :begin begin
 		    :end end
 		    :pre-blank
