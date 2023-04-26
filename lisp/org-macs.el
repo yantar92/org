@@ -807,7 +807,7 @@ get an unnecessary O(N²) space complexity, so you're usually better off using
       (eval form t)
     (error (format "%%![Error: %s]" error))))
 
-(defvar org--headline-re-cache (make-hash-table :test #'eql)
+(defvar org--headline-re-cache (make-hash-table :test #'equal)
   "Hash table holding association between headline level regexp.")
 (defun org-headline-re (true-level &optional no-bol)
   "Generate headline regexp for TRUE-LEVEL.
