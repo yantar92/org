@@ -574,7 +574,6 @@ and END-OFFSET."
   (org-unescape-code-in-string
    (org-element--substring element beg-offset end-offset)))
 
-
 
 ;;; Greater elements
 ;;
@@ -3215,8 +3214,11 @@ Assume point is at the beginning of the snippet."
 	(let* ((begin (match-beginning 0))
 	       (backend (org-element--get-cached-string
                          (match-string-no-properties 1)))
-	       (value (buffer-substring-no-properties
-		       (match-end 0) contents-end))
+	       (value
+                (org-element-deferred
+                 nil #'org-element--substring
+                 (- (match-end 0) begin)
+                 (- contents-end begin)))
 	       (post-blank (skip-chars-forward " \t"))
 	       (end (point)))
 	  (org-element-create
