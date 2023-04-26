@@ -4518,8 +4518,10 @@ If STRING is the empty string or nil, return nil."
 	  (let ((inhibit-read-only t)) (insert string))
 	  ;; Prevent "Buffer *temp* modified; kill anyway?".
 	  (restore-buffer-modified-p nil)
-	  (org-element--parse-objects
-	   (point-min) (point-max) nil restriction parent))))))
+          (org-element-resolve-deferred
+	   (org-element--parse-objects
+	    (point-min) (point-max) nil restriction parent)
+           'force 'recurse))))))
 
 (defun org-element-map
     (data types fun &optional info first-match no-recursion with-affiliated)
@@ -4736,7 +4738,9 @@ Elements are accumulated into ACC."
 	     ((memq granularity '(object nil))
 	      (org-element--parse-objects
 	       cbeg (org-element-property :contents-end element) element
-	       (org-element-restriction type))))
+	       (org-element-restriction type))
+              ;; Undefer all the deferred properties in child objects.
+              (org-element-resolve-deferred element 'force 'recurse)))
 	    (push (org-element-put-property element :parent acc) elements)
 	    ;; Update mode.
 	    (setq mode (org-element--next-mode mode type nil)))))
@@ -4749,117 +4753,121 @@ Elements are accumulated into ACC."
 RESTRICTION is a list of object types, as symbols, that should be
 looked after.  This function assumes that the buffer is narrowed
 to an appropriate container (e.g., a paragraph)."
-  (cond
-   ((memq 'table-cell restriction) (org-element-table-cell-parser))
-   ((memq 'citation-reference restriction)
-    (org-element-citation-reference-parser))
-   (t
-    (let* ((start (point))
-	   (limit
-	    ;; Object regexp sometimes needs to have a peek at
-	    ;; a character ahead.  Therefore, when there is a hard
-	    ;; limit, make it one more than the true beginning of the
-	    ;; radio target.
-	    (save-excursion
-	      (cond ((not org-target-link-regexp) nil)
-		    ((not (memq 'link restriction)) nil)
-		    ((progn
-		       (unless (bolp) (forward-char -1))
-		       (not (re-search-forward org-target-link-regexp nil t)))
-		     nil)
-		    ;; Since we moved backward, we do not want to
-		    ;; match again an hypothetical 1-character long
-		    ;; radio link before us.  Realizing that this can
-		    ;; only happen if such a radio link starts at
-		    ;; beginning of line, we prevent this here.
-		    ((and (= start (1+ (line-beginning-position)))
-			  (= start (match-end 1)))
-		     (and (re-search-forward org-target-link-regexp nil t)
-			  (1+ (match-beginning 1))))
-		    (t (1+ (match-beginning 1))))))
-	   found)
-      (save-excursion
-	(while (and (not found)
-		    (re-search-forward org-element--object-regexp limit 'move))
-	  (goto-char (match-beginning 0))
-	  (let ((result (match-string 0)))
-	    (setq found
-		  (cond
-		   ((string-prefix-p "call_" result t)
-		    (and (memq 'inline-babel-call restriction)
-			 (org-element-inline-babel-call-parser)))
-		   ((string-prefix-p "src_" result t)
-		    (and (memq 'inline-src-block restriction)
-			 (org-element-inline-src-block-parser)))
-		   (t
-		    (pcase (char-after)
-		      (?^ (and (memq 'superscript restriction)
-			       (org-element-superscript-parser)))
-		      (?_ (or (and (memq 'subscript restriction)
-				   (org-element-subscript-parser))
-			      (and (memq 'underline restriction)
-				   (org-element-underline-parser))))
-		      (?* (and (memq 'bold restriction)
-			       (org-element-bold-parser)))
-		      (?/ (and (memq 'italic restriction)
-			       (org-element-italic-parser)))
-		      (?~ (and (memq 'code restriction)
-			       (org-element-code-parser)))
-		      (?= (and (memq 'verbatim restriction)
-			       (org-element-verbatim-parser)))
-		      (?+ (and (memq 'strike-through restriction)
-			       (org-element-strike-through-parser)))
-		      (?@ (and (memq 'export-snippet restriction)
-			       (org-element-export-snippet-parser)))
-		      (?{ (and (memq 'macro restriction)
-			       (org-element-macro-parser)))
-		      (?$ (and (memq 'latex-fragment restriction)
-			       (org-element-latex-fragment-parser)))
-		      (?<
-		       (if (eq (aref result 1) ?<)
-			   (or (and (memq 'radio-target restriction)
-				    (org-element-radio-target-parser))
-			       (and (memq 'target restriction)
-				    (org-element-target-parser)))
-			 (or (and (memq 'timestamp restriction)
-				  (org-element-timestamp-parser))
-			     (and (memq 'link restriction)
-				  (org-element-link-parser)))))
-		      (?\\
-		       (if (eq (aref result 1) ?\\)
-			   (and (memq 'line-break restriction)
-				(org-element-line-break-parser))
-			 (or (and (memq 'entity restriction)
-				  (org-element-entity-parser))
-			     (and (memq 'latex-fragment restriction)
-				  (org-element-latex-fragment-parser)))))
-		      (?\[
-		       (pcase (aref result 1)
-			 ((and ?\[
-			       (guard (memq 'link restriction)))
-			  (org-element-link-parser))
-			 ((and ?f
-			       (guard (memq 'footnote-reference restriction)))
-			  (org-element-footnote-reference-parser))
-			 ((and ?c
-			       (guard (memq 'citation restriction)))
-			  (org-element-citation-parser))
-			 ((and (or ?% ?/)
-			       (guard (memq 'statistics-cookie restriction)))
-			  (org-element-statistics-cookie-parser))
-			 (_
-			  (or (and (memq 'timestamp restriction)
-				   (org-element-timestamp-parser))
-			      (and (memq 'statistics-cookie restriction)
-				   (org-element-statistics-cookie-parser))))))
-		      ;; This is probably a plain link.
-		      (_ (and (memq 'link restriction)
-			      (org-element-link-parser)))))))
-	    (or (eobp) (forward-char))))
-	(cond (found)
-	      (limit (forward-char -1)
-		     (org-element-link-parser))	;radio link
-	      (t nil)))))))
+  (let (result)
+    (setq
+     result
+     (cond
+      ((memq 'table-cell restriction) (org-element-table-cell-parser))
+      ((memq 'citation-reference restriction)
+       (org-element-citation-reference-parser))
+      (t
+       (let* ((start (point))
+	      (limit
+	       ;; Object regexp sometimes needs to have a peek at
+	       ;; a character ahead.  Therefore, when there is a hard
+	       ;; limit, make it one more than the true beginning of the
+	       ;; radio target.
+	       (save-excursion
+	         (cond ((not org-target-link-regexp) nil)
+		       ((not (memq 'link restriction)) nil)
+		       ((progn
+		          (unless (bolp) (forward-char -1))
+		          (not (re-search-forward org-target-link-regexp nil t)))
+		        nil)
+		       ;; Since we moved backward, we do not want to
+		       ;; match again an hypothetical 1-character long
+		       ;; radio link before us.  Realizing that this can
+		       ;; only happen if such a radio link starts at
+		       ;; beginning of line, we prevent this here.
+		       ((and (= start (1+ (line-beginning-position)))
+			     (= start (match-end 1)))
+		        (and (re-search-forward org-target-link-regexp nil t)
+			     (1+ (match-beginning 1))))
+		       (t (1+ (match-beginning 1))))))
+	      found)
+         (save-excursion
+	   (while (and (not found)
+		       (re-search-forward org-element--object-regexp limit 'move))
+	     (goto-char (match-beginning 0))
+	     (let ((result (match-string 0)))
+	       (setq found
+		     (cond
+		      ((string-prefix-p "call_" result t)
+		       (and (memq 'inline-babel-call restriction)
+			    (org-element-inline-babel-call-parser)))
+		      ((string-prefix-p "src_" result t)
+		       (and (memq 'inline-src-block restriction)
+			    (org-element-inline-src-block-parser)))
+		      (t
+		       (pcase (char-after)
+		         (?^ (and (memq 'superscript restriction)
+			          (org-element-superscript-parser)))
+		         (?_ (or (and (memq 'subscript restriction)
+				      (org-element-subscript-parser))
+			         (and (memq 'underline restriction)
+				      (org-element-underline-parser))))
+		         (?* (and (memq 'bold restriction)
+			          (org-element-bold-parser)))
+		         (?/ (and (memq 'italic restriction)
+			          (org-element-italic-parser)))
+		         (?~ (and (memq 'code restriction)
+			          (org-element-code-parser)))
+		         (?= (and (memq 'verbatim restriction)
+			          (org-element-verbatim-parser)))
+		         (?+ (and (memq 'strike-through restriction)
+			          (org-element-strike-through-parser)))
+		         (?@ (and (memq 'export-snippet restriction)
+			          (org-element-export-snippet-parser)))
+		         (?{ (and (memq 'macro restriction)
+			          (org-element-macro-parser)))
+		         (?$ (and (memq 'latex-fragment restriction)
+			          (org-element-latex-fragment-parser)))
+		         (?<
+		          (if (eq (aref result 1) ?<)
+			      (or (and (memq 'radio-target restriction)
+				       (org-element-radio-target-parser))
+			          (and (memq 'target restriction)
+				       (org-element-target-parser)))
+			    (or (and (memq 'timestamp restriction)
+				     (org-element-timestamp-parser))
+			        (and (memq 'link restriction)
+				     (org-element-link-parser)))))
+		         (?\\
+		          (if (eq (aref result 1) ?\\)
+			      (and (memq 'line-break restriction)
+				   (org-element-line-break-parser))
+			    (or (and (memq 'entity restriction)
+				     (org-element-entity-parser))
+			        (and (memq 'latex-fragment restriction)
+				     (org-element-latex-fragment-parser)))))
+		         (?\[
+		          (pcase (aref result 1)
+			    ((and ?\[
+			          (guard (memq 'link restriction)))
+			     (org-element-link-parser))
+			    ((and ?f
+			          (guard (memq 'footnote-reference restriction)))
+			     (org-element-footnote-reference-parser))
+			    ((and ?c
+			          (guard (memq 'citation restriction)))
+			     (org-element-citation-parser))
+			    ((and (or ?% ?/)
+			          (guard (memq 'statistics-cookie restriction)))
+			     (org-element-statistics-cookie-parser))
+			    (_
+			     (or (and (memq 'timestamp restriction)
+				      (org-element-timestamp-parser))
+			         (and (memq 'statistics-cookie restriction)
+				      (org-element-statistics-cookie-parser))))))
+		         ;; This is probably a plain link.
+		         (_ (and (memq 'link restriction)
+			         (org-element-link-parser)))))))
+	       (or (eobp) (forward-char))))
+	   (cond (found)
+	         (limit (forward-char -1)
+		        (org-element-link-parser))	;radio link
+	         (t nil)))))))
+    (org-element-put-property result :buffer (current-buffer))))
 
 (defun org-element--parse-objects (beg end acc restriction &optional parent)
   "Parse objects between BEG and END and return recursive structure.
