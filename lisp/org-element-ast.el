@@ -256,7 +256,7 @@ resolution."
        :cached :org-element--cache-sync-key
        :robust-begin :robust-end
        :mode :granularity
-       :parent :deferred :structure)
+       :parent :deferred :structure :buffer)
     "Standard properties stored in every syntax object structure.
 These properties are stored in an array pre-allocated every time a new
 object is created.")

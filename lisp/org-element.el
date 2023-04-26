@@ -545,7 +545,8 @@ value of DATUM `:parent' property."
 
 (defconst org-element--cache-element-properties
   '(:cached
-    :org-element--cache-sync-key)
+    :org-element--cache-sync-key
+    :buffer)
   "List of element properties used internally by cache.")
 
 (defvar org-element--string-cache (obarray-make)
@@ -910,9 +911,9 @@ Return value is a plist."
 		  (t (setq plist (plist-put plist :closed time))))))
 	plist))))
 
-(defun org-element-headline-parser--deferred (element buffer)
+(defun org-element-headline-parser--deferred (element)
   "Parse and set extra properties for ELEMENT headline in BUFFER."
-  (with-current-buffer buffer
+  (with-current-buffer (org-element-property :buffer element)
     (org-with-wide-buffer
      ;; Update robust boundaries to not
      ;; include property drawer and planning.
@@ -1067,8 +1068,7 @@ Assume point is at beginning of the headline."
                     :deferred
                     (org-element-deferred
                      :fun #'org-element-headline-parser--deferred
-                     :auto-undefer-p t
-                     :args (list (current-buffer)))))))
+                     :auto-undefer-p t)))))
 	(org-element-put-property
 	 headline :title
 	 (if raw-secondary-p raw-value
@@ -1203,7 +1203,8 @@ parser (e.g. `:end' and :END:).  Return value is a plist."
              :post-blank (count-lines pos-before-blank end)
              :post-affiliated begin
              :path (buffer-file-name)
-             :mode 'org-data)
+             :mode 'org-data
+             :buffer (current-buffer))
        properties)))))
 
 (defun org-element-org-data-interpreter (_ contents)
@@ -4316,6 +4317,7 @@ element it has to parse."
 	          ;; Default element: Paragraph.
 	          (t (org-element-paragraph-parser limit affiliated)))))))
           (when result
+            (org-element-put-property result :buffer (current-buffer))
             (org-element-put-property result :mode mode)
             (org-element-put-property result :granularity granularity))
           (when (and (not (buffer-narrowed-p))
@@ -7114,14 +7116,11 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
               (org-with-wide-buffer
                (org-element--cache-sync (current-buffer) (point-max))
                ;; Cleanup cache request keys to avoid collisions during next
-               ;; Emacs session.  Resolve all the deferred properties.
+               ;; Emacs session.  Cleanup known non-printable objects.
                (avl-tree-mapc
                 (lambda (el)
                   (org-element-put-property el :org-element--cache-sync-key nil)
-                  ;; FIXME: This is mostly because deferred properties
-                  ;; tend to hold buffer, which is not a printable
-                  ;; object.
-                  (org-element-resolve-deferred el))
+                  (org-element-put-property el :buffer nil))
                 org-element--cache)
                nil)
             'forbid))
@@ -7148,6 +7147,10 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
     (with-current-buffer (get-file-buffer (plist-get associated :file))
       (when (and org-element-use-cache org-element-cache-persistent)
         (when (and (equal container '(elisp org-element--cache)) org-element--cache)
+          ;; Restore `:buffer' property.
+          (avl-tree-mapc
+           (lambda (el) (org-element-put-property el :buffer (current-buffer)))
+           org-element--cache)
           (setq-local org-element--cache-size (avl-tree-size org-element--cache)))
         (when (and (equal container '(elisp org-element--headline-cache)) org-element--headline-cache)
           (setq-local org-element--headline-cache-size (avl-tree-size org-element--headline-cache)))))))
