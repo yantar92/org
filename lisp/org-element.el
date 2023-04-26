@@ -560,6 +560,21 @@ Return nil if STRING is nil."
   (when string
     (symbol-name (intern string org-element--string-cache))))
 
+(defun org-element--substring (element beg-offset end-offset)
+  "Get substring inside ELEMENT according to BEG-OFFSET and END-OFFSET."
+  (with-current-buffer (org-element-property :buffer element)
+    (let ((beg (org-element-property :begin element)))
+      (buffer-substring-no-properties
+       (+ beg beg-offset) (+ beg end-offset)))))
+
+(defun org-element--unescape-substring (element beg-offset end-offset)
+  "Call `org-element--substring' and unescape the result.
+See `org-element--substring' for the meaning of ELEMENT, BEG-OFFSET,
+and END-OFFSET."
+  (org-unescape-code-in-string
+   (org-element--substring element beg-offset end-offset)))
+
+
 
 ;;; Greater elements
 ;;
@@ -960,11 +975,7 @@ Return value is a plist."
 
 (defun org-element--headline-raw-value (headline beg-offset end-offset)
   "Retrieve :raw-value in HEADLINE according to BEG-OFFSET and END-OFFSET."
-  (with-current-buffer (org-element-property :buffer headline)
-    (let ((beg (org-element-property :begin headline)))
-      (org-trim
-       (buffer-substring-no-properties
-        (+ beg beg-offset) (+ beg end-offset))))))
+  (org-trim (org-element--substring headline beg-offset end-offset)))
 
 (defun org-element-headline-parser (&optional _ raw-secondary-p)
   "Parse a headline.
@@ -2045,8 +2056,11 @@ Assume point is at comment block beginning."
 					  (point)))
 		 (end (progn (skip-chars-forward " \r\t\n" limit)
 			     (if (eobp) (point) (line-beginning-position))))
-		 (value (buffer-substring-no-properties
-			 contents-begin contents-end)))
+		 (value
+                  (org-element-deferred
+                   nil #'org-element--substring
+                   (- contents-begin begin)
+                   (- contents-end begin))))
 	    (org-element-create
              'comment-block
 	     (nconc
@@ -2161,9 +2175,11 @@ containing `:begin', `:end', `:number-lines', `:preserve-indent',
 		 (begin (car affiliated))
 		 (post-affiliated (point))
 		 (contents-begin (line-beginning-position 2))
-		 (value (org-unescape-code-in-string
-			 (buffer-substring-no-properties
-			  contents-begin contents-end)))
+		 (value
+                  (org-element-deferred
+                   nil #'org-element--unescape-substring
+                   (- contents-begin begin)
+                   (- contents-end begin)))
 		 (pos-before-blank (progn (goto-char contents-end)
 					  (forward-line)
 					  (point)))
@@ -2241,9 +2257,11 @@ Assume point is at export-block beginning."
 					(point)))
 	       (end (progn (skip-chars-forward " \r\t\n" limit)
 			   (if (eobp) (point) (line-beginning-position))))
-	       (value (org-unescape-code-in-string
-		       (buffer-substring-no-properties contents-begin
-						       contents-end))))
+	       (value
+                (org-element-deferred
+                 nil #'org-element--unescape-substring
+                 (- contents-begin begin)
+                 (- contents-end begin))))
 	  (org-element-create
            'export-block
 	   (nconc
@@ -2425,7 +2443,11 @@ Assume point is at the beginning of the latex environment."
 	  (org-element-paragraph-parser limit affiliated)
 	(let* ((code-end (progn (forward-line) (point)))
 	       (begin (car affiliated))
-	       (value (buffer-substring-no-properties code-begin code-end))
+	       (value
+                (org-element-deferred
+                 nil #'org-element--substring
+                 (- code-begin begin)
+                 (- code-end begin)))
 	       (end (progn (skip-chars-forward " \r\t\n" limit)
 			   (if (eobp) (point) (line-beginning-position)))))
 	  (org-element-create
@@ -2687,9 +2709,11 @@ Assume point is at the beginning of the block."
 		      (and retain-labels
 			   (not (string-match "-k\\>" switches)))))
 		 ;; Retrieve code.
-		 (value (org-unescape-code-in-string
-			 (buffer-substring-no-properties
-			  (line-beginning-position 2) contents-end)))
+		 (value
+                  (org-element-deferred
+                   nil #'org-element--unescape-substring
+                   (- (line-beginning-position 2) begin)
+                   (- contents-end begin)))
 		 (pos-before-blank (progn (goto-char contents-end)
 					  (forward-line)
 					  (point)))
@@ -2789,8 +2813,10 @@ Assume point is at the beginning of the table."
 	      :contents-begin (and (eq type 'org) table-begin)
 	      :contents-end (and (eq type 'org) table-end)
 	      :value (and (eq type 'table.el)
-			  (buffer-substring-no-properties
-			   table-begin table-end))
+                          (org-element-deferred
+                           nil #'org-element--substring
+                           (- table-begin begin)
+                           (- table-end begin)))
 	      :post-blank (count-lines pos-before-blank end)
 	      :post-affiliated table-begin)
 	(cdr affiliated))))))
@@ -2950,8 +2976,10 @@ Assume point is at first MARK."
                     (if (memq type '(code verbatim))
                         (list :value
                               (and (memq type '(code verbatim))
-                                   (buffer-substring
-                                    contents-begin contents-end)))
+                                   (org-element-deferred
+                                    nil #'org-element--substring
+                                    (- contents-begin origin)
+                                    (- contents-end origin))))
                       (list :contents-begin contents-begin
                             :contents-end contents-end)))))))))))))
 
@@ -3278,7 +3306,10 @@ Assume point is at the beginning of the babel call."
 		(let ((p (org-element--parse-paired-brackets ?\[)))
 		  (and (org-string-nw-p p)
 		       (replace-regexp-in-string "\n[ \t]*" " " (org-trim p)))))
-	       (value (buffer-substring-no-properties begin (point)))
+	       (value
+                (org-element-deferred
+                 nil #'org-element--substring
+                 0 (- (point) begin)))
 	       (post-blank (skip-chars-forward " \t"))
 	       (end (point)))
 	  (org-element-create
@@ -3410,7 +3441,10 @@ Assume point is at the beginning of the LaTeX fragment."
 	     (end (point)))
 	(org-element-create
          'latex-fragment
-	 (list :value (buffer-substring-no-properties begin after-fragment)
+	 (list :value
+               (org-element-deferred
+                nil #'org-element--substring
+                0 (- after-fragment begin))
 	       :begin begin
 	       :end end
 	       :post-blank post-blank))))))
