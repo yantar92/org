@@ -983,7 +983,8 @@ Assume point is at beginning of the headline."
 		      (let (case-fold-search) (looking-at (concat org-todo-regexp "\\(?: \\|$\\)")))
 		      (progn (goto-char (match-end 0))
 			     (skip-chars-forward " \t")
-			     (match-string-no-properties 1))))
+                             ;; Return an existing string object.
+                             (cl-find (match-string-no-properties 1) org-todo-keywords-1 :test #'equal))))
 	   (todo-type
 	    (and todo (if (member todo org-done-keywords) 'done 'todo)))
 	   (priority (and (looking-at "\\[#.\\][ \t]*")
@@ -1242,7 +1243,8 @@ Assume point is at beginning of the inline task."
 		      (let (case-fold-search) (looking-at org-todo-regexp))
 		      (progn (goto-char (match-end 0))
 			     (skip-chars-forward " \t")
-			     (match-string-no-properties 0))))
+                             ;; Return an existing string object.
+                             (cl-find (match-string-no-properties 0) org-todo-keywords-1 :test #'equal))))
 	   (todo-type (and todo
 			   (if (member todo org-done-keywords) 'done 'todo)))
 	   (priority (and (looking-at "\\[#.\\][ \t]*")
