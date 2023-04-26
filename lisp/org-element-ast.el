@@ -229,7 +229,15 @@ Return value is the containing property name, as a keyword, or nil."
 
 (cl-defstruct
     (org-element-deferred
-     (:constructor org-element-deferred)
+     (:constructor nil)
+     (:constructor org-element-deferred
+                   ( auto-undefer-p fun &rest arg-value
+                     &aux (args arg-value)))
+     (:constructor org-element-deferred-alias
+                   ( keyword &optional auto-undefer-p
+                     &aux
+                     (fun #'org-element-property-2)
+                     (args (list keyword))))
      (:type vector) :named)
   "Dynamically computed value.
 
@@ -427,6 +435,10 @@ properties, replacing their values in ELEMENT."
          element property resolved-value)))
     ;; Return the resolved value.
     resolved-value))
+
+(define-inline org-element-property-2 (element property &optional dflt force-undefer)
+  "Like `org-element-property', but reverse the order of ELEMENT and PROPERTY."
+  (inline-quote (org-element-property ,property ,element ,dflt ,force-undefer)))
 
 (gv-define-setter org-element-property (value property element &optional _)
   `(org-element-put-property ,element ,property ,value))

@@ -1019,9 +1019,8 @@ Assume point is at beginning of the headline."
 		       (buffer-substring-no-properties title-start title-end)))
 	   (raw-value-deferred
             (org-element-deferred
-             :fun #'org-element--headline-raw-value
-             :args
-             (list (- title-start begin) (- title-end begin))))
+             nil #'org-element--headline-raw-value
+             (- title-start begin) (- title-end begin)))
 	   (archivedp (if (member org-element-archive-tag tags) t nil))
 	   (footnote-section-p (and org-footnote-section
 				    (string= org-footnote-section raw-value)))
@@ -1080,11 +1079,10 @@ Assume point is at beginning of the headline."
                                 org-element-secondary-value-alist)
                     :deferred
                     (org-element-deferred
-                     :fun #'org-element-headline-parser--deferred
-                     :auto-undefer-p t)))))
+                     t #'org-element-headline-parser--deferred)))))
 	(org-element-put-property
 	 headline :title
-	 (if raw-secondary-p raw-value-deferred
+	 (if raw-secondary-p (org-element-deferred-alias :raw-value)
 	   (org-element--parse-objects
 	    (progn (goto-char title-start)
 		   (skip-chars-forward " \t")
@@ -1280,9 +1278,8 @@ Assume point is at beginning of the inline task."
 	   (title-end (point))
 	   (raw-value-deferred
             (org-element-deferred
-             :fun #'org-element--headline-raw-value
-             :args
-             (list (- title-start begin) (- title-end begin))))
+             nil #'org-element--headline-raw-value
+             (- title-start begin) (- title-end begin)))
            (archivedp (if (member org-element-archive-tag tags) t nil))
 	   (task-end (save-excursion
 		       (end-of-line)
@@ -1328,13 +1325,12 @@ Assume point is at beginning of the inline task."
                     :deferred
                     (and task-end
                          (org-element-deferred
-                          :fun #'org-element-headline-parser--deferred
-                          :auto-undefer-p t))
+                          t #'org-element-headline-parser--deferred))
                     :buffer (current-buffer))
 	      time-props))))
       (org-element-put-property
        inlinetask :title
-       (if raw-secondary-p raw-value-deferred
+       (if raw-secondary-p (org-element-deferred-alias :raw-value)
 	 (org-element--parse-objects
 	  (progn (goto-char title-start)
 		 (skip-chars-forward " \t")
