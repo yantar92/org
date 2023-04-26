@@ -1084,7 +1084,7 @@ Assume point is at beginning of the headline."
                      :auto-undefer-p t)))))
 	(org-element-put-property
 	 headline :title
-	 (if raw-secondary-p raw-value
+	 (if raw-secondary-p raw-value-deferred
 	   (org-element--parse-objects
 	    (progn (goto-char title-start)
 		   (skip-chars-forward " \t")
