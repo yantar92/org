@@ -563,6 +563,16 @@ and END-OFFSET."
   (org-unescape-code-in-string
    (org-element--substring element beg-offset end-offset)))
 
+(defvar org-element--string-cache (obarray-make)
+  "Obarray holding tag strings and todo keyword objects.
+We use shared string storage to reduce memory footprint of the syntax
+tree.")
+
+(defsubst org-element--get-cached-string (string)
+  "Return cached object equal to STRING.
+Return nil if STRING is nil."
+  (when string
+    (symbol-name (intern string org-element--string-cache))))
 
 
 ;;; Greater elements
@@ -676,7 +686,7 @@ Assume point is at beginning of drawer."
 	       (name
                 (progn
                   (looking-at org-element-drawer-re)
-		  (match-string-no-properties 1)))
+		  (org-element--get-cached-string (match-string-no-properties 1))))
 	       (begin (car affiliated))
 	       (post-affiliated (point))
 	       ;; Empty drawers have no contents.
@@ -734,7 +744,7 @@ Assume point is at beginning of dynamic block."
 	(save-excursion
 	  (let* ((name (progn
                          (looking-at org-element-dynamic-block-open-re)
-			 (match-string-no-properties 1)))
+			 (org-element--get-cached-string (match-string-no-properties 1))))
 		 (arguments (match-string-no-properties 2))
 		 (begin (car affiliated))
 		 (post-affiliated (point))
@@ -795,7 +805,8 @@ a plist containing `:label', `:begin' `:end', `:contents-begin',
 Assume point is at the beginning of the footnote definition."
   (save-excursion
     (let* ((label (progn (looking-at org-footnote-definition-re)
-			 (match-string-no-properties 1)))
+			 (org-element--get-cached-string
+                          (match-string-no-properties 1))))
 	   (begin (car affiliated))
 	   (post-affiliated (point))
 	   (end
@@ -993,8 +1004,7 @@ Assume point is at beginning of the headline."
 		      (let (case-fold-search) (looking-at (concat org-todo-regexp "\\(?: \\|$\\)")))
 		      (progn (goto-char (match-end 0))
 			     (skip-chars-forward " \t")
-                             ;; Return an existing string object.
-                             (cl-find (match-string-no-properties 1) org-todo-keywords-1 :test #'equal))))
+                             (org-element--get-cached-string (match-string-no-properties 1)))))
 	   (todo-type
 	    (and todo (if (member todo org-done-keywords) 'done 'todo)))
 	   (priority (and (looking-at "\\[#.\\][ \t]*")
@@ -1012,7 +1022,8 @@ Assume point is at beginning of the headline."
 			(line-end-position)
 			'move)
 		   (goto-char (match-beginning 0))
-		   (org-split-string (match-string-no-properties 1) ":")))
+                   (mapcar #'org-element--get-cached-string
+		           (org-split-string (match-string-no-properties 1) ":"))))
 	   (title-end (point))
            (raw-value (org-trim
 		       (buffer-substring-no-properties title-start title-end)))
@@ -1251,8 +1262,7 @@ Assume point is at beginning of the inline task."
 		      (let (case-fold-search) (looking-at org-todo-regexp))
 		      (progn (goto-char (match-end 0))
 			     (skip-chars-forward " \t")
-                             ;; Return an existing string object.
-                             (cl-find (match-string-no-properties 0) org-todo-keywords-1 :test #'equal))))
+                             (org-element--get-cached-string (match-string-no-properties 0)))))
 	   (todo-type (and todo
 			   (if (member todo org-done-keywords) 'done 'todo)))
 	   (priority (and (looking-at "\\[#.\\][ \t]*")
@@ -1273,7 +1283,8 @@ Assume point is at beginning of the inline task."
 			(line-end-position)
 			'move)
 		   (goto-char (match-beginning 0))
-		   (org-split-string (match-string-no-properties 1) ":")))
+                   (mapcar #'org-element--get-cached-string
+		           (org-split-string (match-string-no-properties 1) ":"))))
 	   (title-end (point))
 	   (raw-value-deferred
             (org-element-deferred
@@ -1400,7 +1411,7 @@ Assume point is at the beginning of the item."
     (beginning-of-line)
     (looking-at org-list-full-item-re)
     (let* ((begin (point))
-	   (bullet (match-string-no-properties 1))
+	   (bullet (org-element--get-cached-string (match-string-no-properties 1)))
 	   (checkbox (let ((box (match-string 3)))
 		       (cond ((equal "[ ]" box) 'off)
 			     ((equal "[X]" box) 'on)
@@ -1794,7 +1805,8 @@ containing `:type', `:parameters', `:begin', `:end',
 Assume point is at the beginning of the block."
   (let* ((case-fold-search t)
 	 (type (progn (looking-at "[ \t]*#\\+BEGIN_\\(\\S-+\\)[ \t]*\\(.*\\)[ \t]*$")
-		      (match-string-no-properties 1)))
+		      (org-element--get-cached-string
+                       (match-string-no-properties 1))))
 	 (parameters (match-string-no-properties 2)))
     (if (not (save-excursion
 	       (re-search-forward
@@ -2367,7 +2379,8 @@ CDR is a plist containing `:key', `:value', `:begin', `:end',
     (let ((begin (or (car affiliated) (point)))
 	  (post-affiliated (point))
 	  (key (progn (looking-at "[ \t]*#\\+\\(\\S-*\\):")
-		      (upcase (match-string-no-properties 1))))
+		      (org-element--get-cached-string
+                       (upcase (match-string-no-properties 1)))))
 	  (value (org-trim (buffer-substring-no-properties
                             (match-end 0) (line-end-position))))
 	  (pos-before-blank (progn (forward-line) (point)))
@@ -2464,7 +2477,8 @@ containing `:key', `:value', `:begin', `:end', `:post-blank' and
   (looking-at org-property-re)
   (let ((case-fold-search t)
 	(begin (point))
-	(key   (match-string-no-properties 2))
+	(key   (org-element--get-cached-string
+                (match-string-no-properties 2)))
 	(value (match-string-no-properties 3))
 	(end (save-excursion
 	       (end-of-line)
@@ -2656,7 +2670,8 @@ Assume point is at the beginning of the block."
 \\(?: +\\(\\S-+\\)\\)?\
 \\(\\(?: +\\(?:-\\(?:l \".+\"\\|[ikr]\\)\\|[-+]n\\(?: *[0-9]+\\)?\\)\\)+\\)?\
 \\(.*\\)[ \t]*$")
-		    (match-string-no-properties 1)))
+		    (org-element--get-cached-string
+                     (match-string-no-properties 1))))
 		 ;; Get switches.
 		 (switches (match-string-no-properties 2))
 		 ;; Get parameters.
@@ -2998,7 +3013,8 @@ Assume point is at the beginning of the citation."
   (when (looking-at org-element-citation-prefix-re)
     (let* ((begin (point))
 	   (style (and (match-end 1)
-		       (match-string-no-properties 1)))
+		       (org-element--get-cached-string
+                        (match-string-no-properties 1))))
 	   ;; Ignore blanks between cite type and prefix or key.
 	   (start (match-end 0))
 	   (closing (with-syntax-table org-element--pair-square-table
@@ -3078,7 +3094,8 @@ Assume point is at the beginning of the reference."
   (save-excursion
     (let ((begin (point)))
       (when (re-search-forward org-element-citation-key-re nil t)
-        (let* ((key (match-string-no-properties 1))
+        (let* ((key (org-element--get-cached-string
+                     (match-string-no-properties 1)))
 	       (key-start (match-beginning 0))
 	       (key-end (match-end 0))
 	       (separator (search-forward ";" nil t))
@@ -3195,9 +3212,13 @@ Assume point is at the beginning of the snippet."
 					    (re-search-forward "@@" nil t)
 					  (match-beginning 0)))))
 	(let* ((begin (match-beginning 0))
-	       (backend (match-string-no-properties 1))
-	       (value (buffer-substring-no-properties
-		       (match-end 0) contents-end))
+	       (backend (org-element--get-cached-string
+                         (match-string-no-properties 1)))
+	       (value
+                (org-element-deferred
+                 nil #'org-element--substring
+                 (- (match-end 0) begin)
+                 (- contents-end begin)))
 	       (post-blank (skip-chars-forward " \t"))
 	       (end (point)))
 	  (org-element-create
@@ -3230,7 +3251,8 @@ When at a footnote reference, return a list whose car is
       (when closing
 	(save-excursion
 	  (let* ((begin (point))
-		 (label (match-string-no-properties 1))
+		 (label (org-element--get-cached-string
+                         (match-string-no-properties 1)))
 		 (inner-begin (match-end 0))
 		 (inner-end (1- closing))
 		 (type (if (match-end 2) 'inline 'standard))
@@ -3272,7 +3294,8 @@ Assume point is at the beginning of the babel call."
 	      (looking-at "\\<call_\\([^ \t\n[(]+\\)[([]"))
 	(goto-char (match-end 1))
 	(let* ((begin (match-beginning 0))
-	       (call (match-string-no-properties 1))
+	       (call (org-element--get-cached-string
+                      (match-string-no-properties 1)))
 	       (inside-header
 		(let ((p (org-element--parse-paired-brackets ?\[)))
 		  (and (org-string-nw-p p)
@@ -3330,7 +3353,8 @@ Assume point is at the beginning of the inline source block."
 	      (looking-at "\\<src_\\([^ \t\n[{]+\\)[{[]"))
 	(goto-char (match-end 1))
 	(let ((begin (match-beginning 0))
-	      (language (match-string-no-properties 1))
+	      (language (org-element--get-cached-string
+                         (match-string-no-properties 1)))
 	      (parameters
 	       (let ((p (org-element--parse-paired-brackets ?\[)))
 		 (and (org-string-nw-p p)
@@ -3574,7 +3598,7 @@ Assume point is at the beginning of the link."
 	  (setq path (cdr trans))))
       (org-element-create
        'link
-       (list :type type
+       (list :type (org-element--get-cached-string type)
 	     :path path
 	     :format format
 	     :raw-link (or raw-link path)
@@ -3639,7 +3663,8 @@ Assume point is at the macro."
   (save-excursion
     (when (looking-at "{{{\\([a-zA-Z][-a-zA-Z0-9_]*\\)\\((\\(\\(?:.\\|\n\\)*?\\))\\)?}}}")
       (let ((begin (point))
-	    (key (downcase (match-string-no-properties 1)))
+	    (key (org-element--get-cached-string
+                  (downcase (match-string-no-properties 1))))
 	    (value (match-string-no-properties 0))
 	    (post-blank (progn (goto-char (match-end 0))
 			       (skip-chars-forward " \t")))
