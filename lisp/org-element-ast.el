@@ -238,6 +238,10 @@ Return value is the containing property name, as a keyword, or nil."
                      &aux
                      (fun #'org-element-property-2)
                      (args (list keyword))))
+     (:constructor org-element-deferred-list
+                   ( args &optional auto-undefer-p
+                     &aux
+                     (fun #'org-element--deferred-resolve-list)))
      (:type vector) :named)
   "Dynamically computed value.
 
@@ -253,6 +257,16 @@ resolution."
   (apply (org-element-deferred-fun deferred-value)
          element
          (org-element-deferred-args deferred-value)))
+
+(defsubst org-element--deferred-resolve-list (element &rest list)
+  "Resolve all the deferred values in LIST for ELEMENT.
+Return a new list with all the values resolved."
+  (mapcar
+   (lambda (value)
+     (if (org-element-deferred-p value)
+         (org-element--deferred-resolve value element)
+       value))
+   list))
 
 ;;;; Object properties
 
