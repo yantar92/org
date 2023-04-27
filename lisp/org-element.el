@@ -497,8 +497,8 @@ past the brackets."
 ;; There is `org-element-put-property', `org-element-set-contents'.
 ;; These low-level functions are useful to build a parse tree.
 ;;
-;; `org-element-adopt-elements', `org-element-set-element',
-;; `org-element-extract-element' and `org-element-insert-before' are
+;; `org-element-adopt-elements', `org-element-set',
+;; `org-element-extract' and `org-element-insert-before' are
 ;; high-level functions useful to modify a parse tree.
 ;;
 ;; `org-element-secondary-p' is a predicate used to know if a given
@@ -4391,7 +4391,7 @@ element it has to parse."
                      add-to-cache)
             (if (not old-element)
                 (setq result (org-element--cache-put result))
-              (org-element-set-element old-element result org-element--cache-element-properties)
+              (org-element-set old-element result org-element--cache-element-properties)
               (setq result old-element)))
           result)))))
 
@@ -6909,7 +6909,7 @@ known element in cache (it may start after END)."
                               (org-element--cache-log-message
                                "Found non-robust headline that can be updated individually: %S"
                                (org-element--format-element current))
-                              (org-element-set-element up current org-element--cache-element-properties)
+                              (org-element-set up current org-element--cache-element-properties)
                               t)))
                      ;; If UP is org-data, the situation is similar to
                      ;; headline case.  We just need to re-parse the
@@ -6918,7 +6918,7 @@ known element in cache (it may start after END)."
                      ;; potentially alter first-section).
                      (when (and (eq 'org-data (org-element-type up))
                                 (>= beg (org-element-property :contents-begin up)))
-                       (org-element-set-element up (org-with-point-at 1 (org-element-org-data-parser)) org-element--cache-element-properties)
+                       (org-element-set up (org-with-point-at 1 (org-element-org-data-parser)) org-element--cache-element-properties)
                        (org-element--cache-log-message
                         "Found non-robust change invalidating org-data. Re-parsing: %S"
                         (org-element--format-element up))

@@ -25,24 +25,32 @@
 ;; Only the most generic aspect of the syntax tree are considered
 ;; below.  The fine details of Org syntax are implemented elsewhere.
 ;;
-;; 1. Syntax elements
+;; Org AST is composed of nested syntax nodes.
+;; Within actual Org syntax, the nodes can be either headings,
+;; elements, or objects.  However, historically, we often call syntax
+;; nodes simply "elements", unless the context requires clarification
+;; about the node type.  In particular, many functions below will have
+;; naming pattern `org-element-X', implying `org-element-node-X' --
+;; they will apply to all the node types, not just to elements.
+;;
+;; 1. Syntax nodes
 ;; ------------------
-;; Each Org syntax element can be represented as a string or list.
+;; Each Org syntax node can be represented as a string or list.
 ;;
-;; The main element representation follows the pattern
+;; The main node representation follows the pattern
 ;; (TYPE PROPERTIES CONTENTS), where
-;;   TYPE is a symbol describing the element type.
+;;   TYPE is a symbol describing the node type.
 ;;   PROPERTIES is the property list attached to it.
-;;   CONTENTS is a list of syntax elements contained in the current
-;;            element, when applicable.
+;;   CONTENTS is a list of child syntax nodes contained within the
+;;            current node, when applicable.
 ;;
-;;; For example, "*bold text*  " element can be represented as
+;;; For example, "*bold text*  " node can be represented as
 ;;
 ;;    (bold (:begin 1 :end 14 :post-blank 2 ...) "bold text")
 ;;
 ;; TYPE can be any symbol, including symbol not explicitly defined by
 ;; Org syntax.  If TYPE is not a part of the syntax, the syntax
-;; element is called "pseudo element", but otherwise considered a
+;; node is called "pseudo element/object", but otherwise considered a
 ;; valid part of Org syntax tree.  Search "Pseudo objects and
 ;; elements" in lisp/ox-latex.el for an example of using pseudo
 ;; elements.
@@ -60,7 +68,8 @@
 ;; of `org-element--standard-propreties' in the code.
 ;; `:standard-properties' may or may not be actually present in
 ;; PROPERTIES.  It is mostly used to speed up property access in
-;; performance-critical code.
+;; performance-critical code, as most of the code requesting property
+;; values by constant name is inlined.
 ;;
 ;; The previous example can also be presented in more compact form as:
 ;;
@@ -68,48 +77,48 @@
 ;;
 ;; Using an array allows faster access to frequently used properties.
 ;;
-;; `:parent' holds the containing element, for a child element within
-;; the AST.  It may or may not be present in PROPERTIES.
+;; `:parent' holds the containing node, for a child node within the
+;; AST.  It may or may not be present in PROPERTIES.
 ;;
 ;; `:secondary' holds a list of properties that may contain extra AST
-;; elements, in addition to the element contents.
+;; nodes, in addition to the node contents.
 ;;
 ;; `deferred' property describes how to update not-yet-calculated
 ;; properties on request.
 ;;
 ;;
-;; Syntax element can also be represented as a string.  Strings always
-;; represent syntax element of `plain-text' type with contents being nil
+;; Syntax node can also be represented by a string.  Strings always
+;; represent syntax node of `plain-text' type with contents being nil
 ;; and properties represented as string properties at position 0.
-;; `:standard-properties' are not considered for `plain-text' elements
-;; as `plain-text' elements tend to hold much less properties.
+;; `:standard-properties' are not considered for `plain-text' nodes as
+;; `plain-text' nodes tend to hold much fewer properties.
 ;;
-;; In the above example, `plain-text' element "bold text" is more
+;; In the above example, `plain-text' node "bold text" is more
 ;; accurately represented as
 ;;
 ;;    #("bold text" 0 9 (:parent (bold ...)))
 ;;
-;; with :parent property value pointing back to the containing bold
-;; element.
+;; with :parent property value pointing back to the containing `bold'
+;; node.
 ;;
-;; `anonymous' syntax element is represented as a list with `car'
-;; containing another syntax element.  Such element has nil type, does
-;; not have properties, and its contents is a list of the contained
-;; syntax elements.  `:parent' property of the contained elements
-;; point back to the list itself, except when `anonymous' element
-;; holds secondary value (see below), in which case the `:parent'
-;; property is set to be the containing element in AST.
+;; `anonymous' syntax node is represented as a list with `car'
+;; containing another syntax node.  Such node has nil type, does not
+;; have properties, and its contents is a list of the contained syntax
+;; node.  `:parent' property of the contained nodes point back to the
+;; list itself, except when `anonymous' node holds secondary value
+;; (see below), in which case the `:parent' property is set to be the
+;; containing node in the AST.
 ;;
-;; Any element representation other then described above is not
-;; considered as Org syntax element.
+;; Any node representation other then described above is not
+;; considered as Org syntax node.
 ;;
 ;; 2. Deferred values
 ;; ------------------
 ;; Sometimes, it is computationally expensive or even not possible to
-;; calculate property values when creating the AST element.  The value
+;; calculate property values when creating an AST node.  The value
 ;; calculation can be deferred to the time the value is requested.
 ;;
-;; Property values and contained elements may have a special value of
+;; Property values and contained nodes may have a special value of
 ;; `org-element-deferred' type.  Such values are computed dynamically.
 ;; Either every time the property value is requested or just the first
 ;; time.  In the latter case, the `org-element-deferred' property
@@ -122,26 +131,27 @@
 ;; The resolved value is re-assigned to the `:deferred' property.
 ;;
 ;; Note that `org-element-copy' unconditionally resolves deferred
-;; properties.  This is useful to generate side-effect-free AST.
+;; properties.  This is useful to generate pure (in functional sense)
+;; AST.
 ;;
 ;; 3. Org document representation
 ;; ------------------------------
-;; Document AST is represented by nested Org elements.
+;; Document AST is represented by nested Org syntax nodes.
 ;;
-;; Each element in the AST can hold the contained elements in its CONTENTS or
+;; Each node in the AST can hold the contained node in its CONTENTS or
 ;; as values of properties.
 ;;
-;; For example, (bold (...) "bold text") `bold' element contains
-;; `plain-text' element in CONTENTS.
+;; For example, (bold (...) "bold text") `bold' node contains
+;; `plain-text' node in CONTENTS.
 ;;
-;; The containing element is called "parent element".
+;; The containing node is called "parent node".
 ;;
-;; The contained elements held inside CONTENTS are called "child elements".
+;; The contained nodes held inside CONTENTS are called "child nodes".
 ;; They must have their `:parent' property set to the containing
-;; parent element.
+;; parent node.
 ;;
-;; The contained elements can also be held as property values.  Such
-;; elements are called "secondary elements".  Only certain properties
+;; The contained nodes can also be held as property values.  Such
+;; nodes are called "secondary nodes".  Only certain properties
 ;; can contribute to AST - the property names listed as the value of
 ;; special property `:secondary'
 ;;
@@ -150,8 +160,8 @@
 ;;   (headline ((:secondary (:title)
 ;;               :title (#("text" 0 4 (:parent (headline ...)))))))
 ;;
-;; is a parent headline element containing "text" secondary string
-;; element inside `:title' property.  Note that `:title' is listed in
+;; is a parent headline node containing "text" secondary string node
+;; inside `:title' property.  Note that `:title' is listed in
 ;; `:secondary' value.
 ;;
 ;; The following example illustrates an example AST for Org document:
@@ -161,15 +171,15 @@
 ;; Paragraph.
 ;; ---- end -----------------
 ;;
-;; (org-data (...) ; `org-data' element.
+;; (org-data (...) ; `org-data' node.
 ;;   (headline
 ;;     (
 ;;      ;; `:secondary' property lists property names that contain other
-;;      ;; syntax tree elements.
+;;      ;; syntax tree nodes.
 ;;
 ;;      :secondary (:title)
 ;;
-;;      ;; `:title' property is set to anonymous element containing:
+;;      ;; `:title' property is set to anonymous node containing:
 ;;      ;; `plain-text', `bold', `plain-text'.
 ;;
 ;;      :title ("Heading with " (bold (:post-blank 1 ...) "bold") "text"))
@@ -179,7 +189,7 @@
 ;;       (paragraph
 ;;         ;; `:parent' property set to the containing section.
 ;;         (:parent (section ...))
-;;         ;; paragraph contents is a `plain-text' element.
+;;         ;; paragraph contents is a `plain-text' node.
 ;;         "Paragraph1."))))
 ;;
 ;; Try calling M-: (org-element-parse-buffer) on the above example Org
@@ -190,39 +200,39 @@
 (require 'org-macs)
 (require 'inline) ; load indentation rules
 
-;;;; Syntax element type
+;;;; Syntax node type
 
-(defun org-element-type (element &optional anonymous)
-  "Return type of ELEMENT.
+(defun org-element-type (node &optional anonymous)
+  "Return type of NODE.
 
-The function returns the type of the element provided.
+The function returns the type of the node provided.
 It can also return the following special value:
   `plain-text'       for a string
   nil                in any other case.
 
 When optional argument ANONYMOUS is non-nil, return symbol `anonymous'
-when ELEMENT is an anonymous element."
+when NODE is an anonymous node."
   (declare (pure t))
   (cond
-   ((stringp element) 'plain-text)
-   ((null element) nil)
-   ((not (consp element)) nil)
-   ((symbolp (car element)) (car element))
-   ((and anonymous (car element) (org-element-type (car element)))
+   ((stringp node) 'plain-text)
+   ((null node) nil)
+   ((not (consp node)) nil)
+   ((symbolp (car node)) (car node))
+   ((and anonymous (car node) (org-element-type (car node)))
     'anonymous)
    (t nil)))
 
-(defun org-element-secondary-p (object)
-  "Non-nil when OBJECT directly belongs to a secondary element.
+(defun org-element-secondary-p (node)
+  "Non-nil when NODE directly belongs to a secondary node.
 Return value is the containing property name, as a keyword, or nil."
   (declare (pure t))
-  (let* ((parent (org-element-property :parent object))
+  (let* ((parent (org-element-property :parent node))
 	 (properties (org-element-property :secondary parent))
          val)
     (catch 'exit
       (dolist (p properties)
         (setq val (org-element-property-1 p parent))
-	(when (or (eq object val) (memq object val))
+	(when (or (eq node val) (memq node val))
 	  (throw 'exit p))))))
 
 ;;;; Deferred values
@@ -231,40 +241,40 @@ Return value is the containing property name, as a keyword, or nil."
     (org-element-deferred
      (:constructor nil)
      (:constructor org-element-deferred
-                   ( auto-undefer-p fun &rest arg-value
+                   ( auto-undefer-p function &rest arg-value
                      &aux (args arg-value)))
      (:constructor org-element-deferred-alias
                    ( keyword &optional auto-undefer-p
                      &aux
-                     (fun #'org-element-property-2)
+                     (function #'org-element-property-2)
                      (args (list keyword))))
      (:constructor org-element-deferred-list
                    ( args &optional auto-undefer-p
                      &aux
-                     (fun #'org-element--deferred-resolve-list)))
+                     (function #'org-element--deferred-resolve-list)))
      (:type vector) :named)
   "Dynamically computed value.
 
-The value can be obtained by calling FUN with containing syntax object
+The value can be obtained by calling FUN with containing syntax node
 as first argument and ARGS list as remainting arguments.
 
 AUTO-UNDEFER slot flags if the property value should be replaced upon
-resolution."
-  fun args auto-undefer-p)
+resolution.  Some functions may ignore this flag."
+  function args auto-undefer-p)
 
-(defsubst org-element--deferred-resolve (deferred-value &optional element)
-  "Resolve DEFERRED-VALUE for ELEMENT."
-  (apply (org-element-deferred-fun deferred-value)
-         element
+(defsubst org-element--deferred-resolve (deferred-value &optional node)
+  "Resolve DEFERRED-VALUE for NODE."
+  (apply (org-element-deferred-function deferred-value)
+         node
          (org-element-deferred-args deferred-value)))
 
-(defsubst org-element--deferred-resolve-list (element &rest list)
-  "Resolve all the deferred values in LIST for ELEMENT.
+(defsubst org-element--deferred-resolve-list (node &rest list)
+  "Resolve all the deferred values in LIST for NODE.
 Return a new list with all the values resolved."
   (mapcar
    (lambda (value)
      (if (org-element-deferred-p value)
-         (org-element--deferred-resolve value element)
+         (org-element--deferred-resolve value node)
        value))
    list))
 
@@ -279,9 +289,10 @@ Return a new list with all the values resolved."
        :robust-begin :robust-end
        :mode :granularity
        :parent :deferred :structure :buffer)
-    "Standard properties stored in every syntax object structure.
+    "Standard properties stored in every syntax node structure.
 These properties are stored in an array pre-allocated every time a new
-object is created.")
+object is created.  Two exceptions are `anonymous' and `plain-text'
+node types.")
 
   (defconst org-element--standard-properties-idxs
     (let (plist)
@@ -303,201 +314,200 @@ object is created.")
                    org-element--standard-properties-idxs
                    ,property))))
 
-(define-inline org-element--parray (element)
-  "Return standard property array for ELEMENT."
+(define-inline org-element--parray (node)
+  "Return standard property array for NODE."
   (declare (pure t))
-  (inline-letevals (element)
+  (inline-letevals (node)
     (inline-quote
-     (pcase (org-element-type ,element)
+     (pcase (org-element-type ,node)
        (`nil nil)
        ;; Do not use property array for strings - they usually hold
        ;; `:parent' property and nothing more.
        (`plain-text nil)
        (_
         ;; (type (:standard-properties val ...) ...)
-        (if (eq :standard-properties (car (nth 1 ,element)))
-            (cadr (nth 1 ,element))
+        (if (eq :standard-properties (car (nth 1 ,node)))
+            (cadr (nth 1 ,node))
           ;; Non-standard order.  Go long way.
-          (plist-get (nth 1 ,element) :standard-properties)))))))
+          (plist-get (nth 1 ,node) :standard-properties)))))))
 
-(define-inline org-element--plist-property (property element &optional dflt)
-  "Extract the value for PROPERTY from ELEMENT property list.
+(define-inline org-element--plist-property (property node &optional dflt)
+  "Extract the value for PROPERTY from NODE's property list.
 Ignore standard property array."
   (declare (pure t))
-  (inline-letevals (property element dflt)
+  (inline-letevals (property node dflt)
     (inline-quote
-     (pcase (org-element-type ,element)
+     (pcase (org-element-type ,node)
        (`nil ,dflt)
        (`plain-text
-        (or (get-text-property 0 ,property ,element)
+        (or (get-text-property 0 ,property ,node)
             (when ,dflt
-              (if (plist-member (text-properties-at 0 ,element) ,property)
+              (if (plist-member (text-properties-at 0 ,node) ,property)
                   nil ,dflt))))
        (_
-        (or (plist-get (nth 1 ,element) ,property)
+        (or (plist-get (nth 1 ,node) ,property)
             (when ,dflt
-              (if (plist-member (nth 1 ,element) ,property)
+              (if (plist-member (nth 1 ,node) ,property)
                   nil ,dflt))))))))
 
-(define-inline org-element-property-1 (property element &optional dflt)
-  "Extract the value for PROPERTY of an ELEMENT.
+(define-inline org-element-property-1 (property node &optional dflt)
+  "Extract the value for PROPERTY of an NODE.
 Do not resolve deferred values.
 If PROPERTY is not present, return DFLT."
   (declare (pure t))
   (let ((idx (and (inline-const-p property)
                   (org-element--property-idx property))))
     (if idx
-        (inline-letevals (element)
+        (inline-letevals (node)
           (inline-quote
-           (if-let ((parray (org-element--parray ,element)))
+           (if-let ((parray (org-element--parray ,node)))
                (pcase (aref parray ,idx)
                  (`org-element-ast--nil ,dflt)
                  (val val))
              ;; No property array exists.  Fall back to `plist-get'.
-             (org-element--plist-property ,property ,element ,dflt))))
-      (inline-letevals (element property)
+             (org-element--plist-property ,property ,node ,dflt))))
+      (inline-letevals (node property)
         (inline-quote
          (let ((idx (org-element--property-idx ,property)))
-           (if-let ((parray (and idx (org-element--parray ,element))))
+           (if-let ((parray (and idx (org-element--parray ,node))))
                (pcase (aref parray idx)
                  (`org-element-ast--nil ,dflt)
                  (val val))
              ;; No property array exists.  Fall back to `plist-get'.
-             (org-element--plist-property ,property ,element ,dflt))))))))
+             (org-element--plist-property ,property ,node ,dflt))))))))
 
-(define-inline org-element--put-parray (element &optional parray)
-  "Initialize standard property array in ELEMENT.
-Return the array or nil when ELEMENT is `plain-text'."
-  (inline-letevals (element parray)
+(define-inline org-element--put-parray (node &optional parray)
+  "Initialize standard property array in NODE.
+Return the array or nil when NODE is `plain-text'."
+  (inline-letevals (node parray)
     (inline-quote
      (let ((parray ,parray))
-       (unless (or parray (memq (org-element-type ,element) '(plain-text nil)))
+       (unless (or parray (memq (org-element-type ,node) '(plain-text nil)))
          (setq parray (make-vector ,(length org-element--standard-properties) nil))
          ;; Copy plist standard properties back to parray.
          (let ((stdplist org-element--standard-properties-idxs))
            (while stdplist
              (aset parray (cadr stdplist)
-                   (org-element--plist-property (car stdplist) ,element))
+                   (org-element--plist-property (car stdplist) ,node))
              (setq stdplist (cddr stdplist))))
-         (setcar (cdr ,element)
+         (setcar (cdr ,node)
                  (nconc (list :standard-properties parray)
-                        (cadr ,element)))
+                        (cadr ,node)))
          parray)))))
 
-(define-inline org-element-put-property (element property value)
-  "In ELEMENT set PROPERTY to VALUE.
-Return modified element."
+(define-inline org-element-put-property (node property value)
+  "In NODE, set PROPERTY to VALUE.
+Return modified NODE."
   (let ((idx (and (inline-const-p property)
                   (org-element--property-idx property))))
     (if idx
-        (inline-letevals (element value)
+        (inline-letevals (node value)
           (inline-quote
-           (if (eq 'plain-text (org-element-type ,element))
+           (if (eq 'plain-text (org-element-type ,node))
                ;; Special case: Do not use parray for plain-text.
-               (org-add-props ,element nil ,property ,value)
+               (org-add-props ,node nil ,property ,value)
              (let ((parray
-                    (or (org-element--parray ,element)
-                        (org-element--put-parray ,element))))
+                    (or (org-element--parray ,node)
+                        (org-element--put-parray ,node))))
                (when parray (aset parray ,idx ,value))
-               ,element))))
-      (inline-letevals (element property value)
+               ,node))))
+      (inline-letevals (node property value)
         (inline-quote
          (let ((idx (org-element--property-idx ,property)))
-           (if (and idx (not (eq 'plain-text (org-element-type ,element))))
+           (if (and idx (not (eq 'plain-text (org-element-type ,node))))
                (when-let
                    ((parray
-                     (or (org-element--parray ,element)
-                         (org-element--put-parray ,element))))
+                     (or (org-element--parray ,node)
+                         (org-element--put-parray ,node))))
                  (aset parray idx ,value))
-             (pcase (org-element-type ,element)
+             (pcase (org-element-type ,node)
                (`nil nil)
                (`plain-text
-                (org-add-props ,element nil ,property ,value))
+                (org-add-props ,node nil ,property ,value))
                (_
                 ;; Note that `plist-put' adds new elements at the end,
                 ;; thus keeping `:standard-properties' as the first element.
-                (setcar (cdr ,element) (plist-put (nth 1 ,element) ,property ,value)))))
-           ,element))))))
+                (setcar (cdr ,node) (plist-put (nth 1 ,node) ,property ,value)))))
+           ,node))))))
 
-(defun org-element-property (property element &optional dflt force-undefer)
-  "Extract the value from the PROPERTY of an ELEMENT.
+(defun org-element-property (property node &optional dflt force-undefer)
+  "Extract the value from the PROPERTY of a NODE.
 Return DFLT when PROPERTY is not present.
 When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
-properties, replacing their values in ELEMENT."
-  (let ((value (org-element-property-1 property element 'org-element-ast--nil))
+properties, replacing their values in NODE."
+  (let ((value (org-element-property-1 property node 'org-element-ast--nil))
         resolved-value)
     ;; PROPERTY not present.
     (when (eq 'org-element-ast--nil value)
       ;; If :deferred has `org-element-deferred' type, resolve it for
       ;; side-effects, and re-assign the new value.
-      (let ((deferred-prop-value (org-element-property-1 :deferred element)))
+      (let ((deferred-prop-value (org-element-property-1 :deferred node)))
         (when (org-element-deferred-p deferred-prop-value)
           (org-element-put-property
-           element
+           node
            :deferred
-           (org-element--deferred-resolve deferred-prop-value element))))
+           (org-element--deferred-resolve deferred-prop-value node))))
       ;; Try to retrieve the value again.
-      (setq value (org-element-property-1 property element dflt)))
+      (setq value (org-element-property-1 property node dflt)))
     (if (not (org-element-deferred-p value))
         (setq resolved-value value)
       ;; Deferred property.  Resolve it.
-      (setq resolved-value (org-element--deferred-resolve value element))
+      (setq resolved-value (org-element--deferred-resolve value node))
       ;; Store the resolved property value, if needed.
       (when (or force-undefer
                 (org-element-deferred-auto-undefer-p value))
         (org-element-put-property
-         element property resolved-value)))
+         node property resolved-value)))
     ;; Return the resolved value.
     resolved-value))
 
-(define-inline org-element-property-2 (element property &optional dflt force-undefer)
-  "Like `org-element-property', but reverse the order of ELEMENT and PROPERTY."
-  (inline-quote (org-element-property ,property ,element ,dflt ,force-undefer)))
+(define-inline org-element-property-2 (node property &optional dflt force-undefer)
+  "Like `org-element-property', but reverse the order of NODE and PROPERTY."
+  (inline-quote (org-element-property ,property ,node ,dflt ,force-undefer)))
 
-(gv-define-setter org-element-property (value property element &optional _)
-  `(org-element-put-property ,element ,property ,value))
+(gv-define-setter org-element-property (value property node &optional _)
+  `(org-element-put-property ,node ,property ,value))
 
-(gv-define-setter org-element-property-1 (value property element &optional _)
-  `(org-element-put-property ,element ,property ,value))
+(gv-define-setter org-element-property-1 (value property node &optional _)
+  `(org-element-put-property ,node ,property ,value))
 
-(defun org-element-property-inherited (property element &optional accumulate literal-nil)
-  "Extract the value from the PROPERTY of an ELEMENT and/or its parents.
+(defun org-element-property-inherited (property node &optional accumulate literal-nil)
+  "Extract the value from the PROPERTY of a NODE and/or its parents.
 
 PROPERTY is a single property or a list of properties to be considered.
 When optional argument ACCUMULATE is nil, return the first non-nil value
-(properties when PROPERTY is a list are considered one by one).
+\\(properties when PROPERTY is a list are considered one by one).
 When ACCUMULATE is non-nil, extract all the values, starting from the
 outermost ancestor and accumulate them into a single list.  The values
 that are lists are appended.
 When ACCUMULATE is a string, join the resulting list elements into a
 string, using string value as separator.
-When LITERAL-nil is non-nil, treat property values \"nil\" and nil."
+When LITERAL-NIL is non-nil, treat property values \"nil\" and nil."
   (setq property (ensure-list property))
   (let (acc local val)
     (catch :found
-      (while element
+      (while node
         (setq local nil)
         (dolist (prop property)
-          (setq val (org-element-property prop element))
+          (setq val (org-element-property prop node))
           (when literal-nil (setq val (org-not-nil val)))
           (when (and (not accumulate) val) (throw :found val))
           ;; Append to the end.
           (setq local (append local (ensure-list val))))
         ;; Append parent to front.
         (setq acc (append local acc))
-        (setq element (org-element-property :parent element)))
+        (setq node (org-element-property :parent node)))
       (if (and (stringp accumulate) acc)
           (mapconcat #'identity acc accumulate)
         acc))))
 
-(defun org-element-properties (element &optional properties resolve-deferred)
-  "Return full property list for ELEMENT.
+(defun org-element-properties (node &optional properties resolve-deferred)
+  "Return full property list for NODE.
 When optional argument PROPERTIES is non-nil, only return property list
 for the listed properties, if they are present.
 
 When RESOLVE-DEFERRED is non-nil, resolve deferred values, modifying
-ELEMENT.  When it is symbol `force', unconditionally undefer the
-values.
+NODE.  When it is symbol `force', unconditionally undefer the values.
 
 `:standard-properties' value is unwrapped into the property list."
   (if properties
@@ -505,40 +515,40 @@ values.
        (lambda (p)
          (pcase (if resolve-deferred
                     (org-element-property
-                     p element
+                     p node
                      'org-element-ast--nil
                      (eq resolve-deferred 'force))
-                  (org-element-property-1 p element 'org-element-ast--nil))
+                  (org-element-property-1 p node 'org-element-ast--nil))
            (`org-element-ast--nil nil)
            (val (list p val))))
        properties)
-    (pcase (org-element-type element)
+    (pcase (org-element-type node)
       (`nil nil)
       (type
        (when resolve-deferred
          ;; Compute missing properties.
-         (org-element-property :deferred element))
+         (org-element-property :deferred node))
        (let ((props
               (if (eq type 'plain-text)
-                  (text-properties-at 0 element)
-                (nth 1 element))))
+                  (text-properties-at 0 node)
+                (nth 1 node))))
          (when resolve-deferred
            (let ((plist props))
              ;; Resolve every property.
              (while plist
                (org-element-property
-                (car plist) element
+                (car plist) node
                 nil (eq resolve-deferred 'force))
                (setq plist (cddr plist)))
              ;; Resolve standard properties.
              (dolist (p org-element--standard-properties)
                (org-element-property
-                p element
+                p node
                 nil (eq resolve-deferred 'force))))
            (setq props
                  (if (eq type 'plain-text)
-                     (text-properties-at 0 element)
-                   (nth 1 element))))
+                     (text-properties-at 0 node)
+                   (nth 1 node))))
          (append
           (apply
            #'nconc
@@ -551,81 +561,82 @@ values.
 
 ;;;; Object contents
 
-(defsubst org-element-contents-1 (element)
-  "Extract contents from an ELEMENT.
+(defsubst org-element-contents-1 (node)
+  "Extract contents from NODE.
 Do not resolve deferred values."
   (declare (pure t))
-  (cond ((not (consp element)) nil)
-	((symbolp (car element)) (nthcdr 2 element))
-	(t element)))
+  (cond ((not (consp node)) nil)
+	((symbolp (car node)) (nthcdr 2 node))
+	(t node)))
 
-(defsubst org-element-set-contents (element &rest contents)
-  "Set ELEMENT's contents to CONTENTS.
-Return ELEMENT.
-If ELEMENT cannot have contents, return CONTENTS."
-  (pcase (org-element-type element t)
+(defsubst org-element-set-contents (node &rest contents)
+  "Set NODE's contents to CONTENTS.
+Return modified NODE.
+If NODE cannot have contents, return CONTENTS."
+  (pcase (org-element-type node t)
     (`plain-text contents)
-    ((guard (null element)) contents)
-    ;; Anonymous element.
+    ((guard (null node)) contents)
+    ;; Anonymous node.
     (`anonymous
-     (setcar element (car contents))
-     (setcdr element (cdr contents))
-     element)
-    ;; Element with type.
-    (_ (setf (cddr element) contents)
-       element)))
+     (setcar node (car contents))
+     (setcdr node (cdr contents))
+     node)
+    ;; Node with type.
+    (_ (setf (cddr node) contents)
+       node)))
 
-(defsubst org-element-contents (element)
-  "Extract contents from an ELEMENT."
-  (let ((contents (org-element-contents-1 element)))
+(defsubst org-element-contents (node)
+  "Extract contents from NODE."
+  (let ((contents (org-element-contents-1 node)))
     ;; Resolve deferred values.
     (while (org-element-deferred-p contents)
       (if (not (org-element-deferred-auto-undefer-p contents))
-          (setq contents (org-element--deferred-resolve contents element))
+          (setq contents (org-element--deferred-resolve contents node))
         (org-element-set-contents
-         element (org-element--deferred-resolve contents element))
-        (setq contents (org-element-contents-1 element))))
+         node (org-element--deferred-resolve contents node))
+        (setq contents (org-element-contents-1 node))))
     (while contents
       (while (org-element-deferred-p (car contents))
         (let* ((undefer-p (org-element-deferred-auto-undefer-p (car contents)))
-               (resolved-value (org-element--deferred-resolve (car contents) element)))
+               (resolved-value (org-element--deferred-resolve (car contents) node)))
           ;; Store the resolved property value, if needed.
           (when undefer-p (setcar contents resolved-value))))
       (setq contents (cdr contents)))
-    (org-element-contents-1 element)))
+    (org-element-contents-1 node)))
 
-(defun org-element-resolve-deferred (element &optional force-undefer recursive)
-  "Resolve all the deferred values in ELEMENT.
-Return the modified element.
+(defun org-element-resolve-deferred (node &optional force-undefer recursive)
+  "Resolve all the deferred values in NODE.
+Return the modified NODE.
 When FORCE-UNDEFER is non-nil, unconditionally replace deferred
 properties with their values.
-When RECURSIVE is non-nil, descend into child element contents."
+When RECURSIVE is non-nil, descend into child node contents."
   ;; Resolve properties.
-  (org-element-properties element nil (when force-undefer 'force))
+  (org-element-properties node nil (when force-undefer 'force))
   ;; Resolve contents.
-  (let ((contents (org-element-contents element)))
+  (let ((contents (org-element-contents node)))
     (when recursive
       (dolist (el contents)
         (org-element-resolve-deferred el force-undefer recursive))))
   ;; Resolve secondary objects.
-  (dolist (sp (org-element-property :secondary element))
+  (dolist (sp (org-element-property :secondary node))
     (org-element-put-property
-     element sp
-     (org-element-resolve-deferred (org-element-property sp element))))
-  element)
+     node sp
+     (org-element-resolve-deferred (org-element-property sp node))))
+  node)
 
 ;;;; AST modification
 
-(defun org-element-adopt-elements (parent &rest children)
-  "Append elements to the contents of another element.
+(defalias 'org-element-adopt-elements #'org-element-adopt)
+(defun org-element-adopt (parent &rest children)
+  "Append CHILDREN to the contents of PARENT.
 
-PARENT is an element or object.  CHILDREN can be elements,
-objects, or a strings.
+PARENT is a syntax node.  CHILDREN can be elements, objects, or
+strings.
 
-If PARENT is nil, create a new anonymous element containing CHILDREN.
+If PARENT is nil, create a new anonymous node containing CHILDREN.
 
 The function takes care of setting `:parent' property for each child.
-Return the modified parent element."
+Return the modified PARENT."
   (declare (indent 1))
   (if (not children) parent
     ;; Link every child to PARENT. If PARENT is nil, it is a secondary
@@ -641,24 +652,25 @@ Return the modified parent element."
     ;; Return modified PARENT element.
     (or parent children)))
 
-(defun org-element-extract-element (element)
-  "Extract ELEMENT from parse tree.
-Remove element from the parse tree by side-effect, and return it
+(defalias 'org-element-extract-element #'org-element-extract)
+(defun org-element-extract (node)
+  "Extract NODE from parse tree.
+Remove NODE from the parse tree by side-effect, and return it
 with its `:parent' property stripped out."
-  (let ((parent (org-element-property :parent element))
-	(secondary (org-element-secondary-p element)))
+  (let ((parent (org-element-property :parent node))
+	(secondary (org-element-secondary-p node)))
     (if secondary
         (org-element-put-property
 	 parent secondary
-	 (delq element (org-element-property secondary parent)))
+	 (delq node (org-element-property secondary parent)))
       (apply #'org-element-set-contents
 	     parent
-	     (delq element (org-element-contents parent))))
-    ;; Return ELEMENT with its :parent removed.
-    (org-element-put-property element :parent nil)))
+	     (delq node (org-element-contents parent))))
+    ;; Return NODE with its :parent removed.
+    (org-element-put-property node :parent nil)))
 
-(defun org-element-insert-before (element location)
-  "Insert ELEMENT before LOCATION in parse tree.
+(defun org-element-insert-before (node location)
+  "Insert NODE before LOCATION in parse tree.
 LOCATION is an element, object or string within the parse tree.
 Parse tree is modified by side effect."
   (let* ((parent (org-element-property :parent location))
@@ -667,28 +679,29 @@ Parse tree is modified by side effect."
 		     (org-element-contents parent)))
 	 ;; Special case: LOCATION is the first element of an
 	 ;; independent secondary string (e.g. :title property).  Add
-	 ;; ELEMENT in-place.
+	 ;; NODE in-place.
 	 (specialp (and (not property)
 			(eq siblings parent)
 			(eq (car parent) location))))
-    ;; Install ELEMENT at the appropriate LOCATION within SIBLINGS.
+    ;; Install NODE at the appropriate LOCATION within SIBLINGS.
     (cond (specialp)
 	  ((or (null siblings) (eq (car siblings) location))
-	   (push element siblings))
-	  ((null location) (nconc siblings (list element)))
+	   (push node siblings))
+	  ((null location) (nconc siblings (list node)))
 	  (t
 	   (let ((index (cl-position location siblings)))
-	     (unless index (error "No location found to insert element"))
-	     (push element (cdr (nthcdr (1- index) siblings))))))
+	     (unless index (error "No location found to insert node"))
+	     (push node (cdr (nthcdr (1- index) siblings))))))
     ;; Store SIBLINGS at appropriate place in parse tree.
     (cond
-     (specialp (setcdr parent (copy-sequence parent)) (setcar parent element))
+     (specialp (setcdr parent (copy-sequence parent)) (setcar parent node))
      (property (org-element-put-property parent property siblings))
      (t (apply #'org-element-set-contents parent siblings)))
     ;; Set appropriate :parent property.
-    (org-element-put-property element :parent parent)))
+    (org-element-put-property node :parent parent)))
 
-(defun org-element-set-element (old new &optional keep-props)
+(defalias 'org-element-set-element #'org-element-set)
+(defun org-element-set (old new &optional keep-props)
   "Replace element or object OLD with element or object NEW.
 When KEEP-PROPS is non-nil, keep OLD values of the listed property
 names.
@@ -706,7 +719,7 @@ The function takes care of setting `:parent' property for NEW."
         ;; We cannot replace OLD with NEW since strings are not mutable.
         ;; We take the long path.
         (progn (org-element-insert-before new old)
-	       (org-element-extract-element old))
+	       (org-element-extract old))
       ;; Since OLD is going to be changed into NEW by side-effect, first
       ;; make sure that every element or object within NEW has OLD as
       ;; parent.
@@ -718,23 +731,23 @@ The function takes care of setting `:parent' property for NEW."
 
 (defun org-element-ast-map
     (data types fun &optional ignore first-match no-recursion with-properties no-secondary)
-  "Map a function on selected syntax elements.
+  "Map a function on selected syntax nodes.
 
 DATA is a syntax tree.  TYPES is a symbol or list of symbols of
-element types.  FUN is the function called on the matching element.
-It has to accept one argument: the element itself.
+node types.  FUN is the function called on the matching nodes.
+It has to accept one argument: the node itself.
 
 When optional argument IGNORE is non-nil, it should be a list holding
-elements to be skipped.  In that case, the listed elements and their
+nodes to be skipped.  In that case, the listed nodes and their
 contents will be skipped.
 
 When optional argument FIRST-MATCH is non-nil, stop at the first
 match for which FUN doesn't return nil, and return that value.
 
 Optional argument NO-RECURSION is a symbol or a list of symbols
-representing elements or objects types.  `org-element-map' won't
-enter any recursive element or object whose type belongs to that
-list.  Though, FUN can still be applied on them.
+representing node types.  `org-element-map' won't enter any recursive
+element or object whose type belongs to that list.  Though, FUN can
+still be applied on them.
 
 When optional argument WITH-PROPERTIES is non-nil, it should hold a list
 of property names.  These properties will be treated as additional
@@ -744,11 +757,11 @@ When optional argument NO-SECONDARY is non-nil, do not recurse into
 secondary strings.
 
 FUN may also throw `:org-element-skip' signal.  Then,
-`org-element-ast-map' will not recurse into the current element.
+`org-element-ast-map' will not recurse into the current node.
 
 Nil values returned from FUN do not appear in the results."
   (declare (indent 2))
-  ;; Ensure TYPES and NO-RECURSION are a list, even of one element.
+  ;; Ensure TYPES and NO-RECURSION are a list, even of one node.
   (let* ((types (if (listp types) types (list types)))
 	 (no-recursion (if (listp no-recursion) no-recursion
 			 (list no-recursion)))
@@ -761,7 +774,7 @@ Nil values returned from FUN do not appear in the results."
                       recurse)
 		  (cond
 		   ((not --data))
-		   ;; Ignored element in an export context.
+		   ;; Ignored node in an export context.
 		   ((and ignore (memq --data ignore)))
 		   ;; List of elements or objects.
 		   ((not --type) (mapc --walk-tree --data))
@@ -800,20 +813,20 @@ Nil values returned from FUN do not appear in the results."
 	(nreverse --acc)))))
 
 (defun org-element-create (type &optional props &rest children)
-  "Create a new element of TYPE.
+  "Create a new syntax node of TYPE.
 Optional argument PROPS, when non-nil, is a plist defining the
-properties of the element.  CHILDREN can be elements, objects or
+properties of the node.  CHILDREN can be elements, objects or
 strings.
 
-When TYPE is `plain-text', CHILDREN must contain a single element -
-string.  Alternatively, TYPE can be a string.
-When TYPE is nil or `anonymous', PROPS must be nil."
+When TYPE is `plain-text', CHILDREN must contain a single node -
+string.  Alternatively, TYPE can be a string.  When TYPE is nil or
+`anonymous', PROPS must be nil."
   (cl-assert (plistp props))
   ;; Assign parray.
   (when (and props (not (stringp type)) (not (eq type 'plain-text)))
-    (let ((element (list 'dummy props)))
-      (org-element--put-parray element)
-      (setq props (nth 1 element))
+    (let ((node (list 'dummy props)))
+      (org-element--put-parray node)
+      (setq props (nth 1 node))
       ;; Remove standard properties from PROPS plist by side effect.
       (let ((ptail props))
         (while ptail
@@ -828,13 +841,13 @@ When TYPE is nil or `anonymous', PROPS must be nil."
   (pcase type
     ((or `nil `anonymous)
      (cl-assert (null props))
-     (apply #'org-element-adopt-elements nil children))
+     (apply #'org-element-adopt nil children))
     (`plain-text
      (cl-assert (length= children 1))
      (org-add-props (car children) props))
     ((pred stringp)
      (if props (org-add-props type props) type))
-    (_ (apply #'org-element-adopt-elements (list type props) children))))
+    (_ (apply #'org-element-adopt (list type props) children))))
 
 (defun org-element-copy (datum &optional keep-contents)
   "Return a copy of DATUM with all deferred values resolved.
@@ -846,30 +859,30 @@ When optional argument KEEP-CONTENTS is non-nil, do not remove the
 contents.  Instead, copy the children recursively, updating their
 `:parent' property.
 
-As a special case, `anonymous' elements do not have their contents
+As a special case, `anonymous' nodes do not have their contents
 removed.  The contained children are copied recursively, updating
-their `:parent' property to the copied `anonymous' element.
+their `:parent' property to the copied `anonymous' node.
 
 When DATUM is `plain-text', all the properties are removed."
   (when datum
     (pcase (org-element-type datum t)
       (`plain-text (substring-no-properties datum))
-      (`nil (error "Not an element: %S" datum))
+      (`nil (error "Not an Org syntax node: %S" datum))
       (`anonymous
-       (let* ((element-copy (copy-sequence datum))
-              (tail element-copy))
+       (let* ((node-copy (copy-sequence datum))
+              (tail node-copy))
          (while tail
            (setcar tail (org-element-copy (car tail) t))
-           (org-element-put-property (car tail) :parent element-copy)
+           (org-element-put-property (car tail) :parent node-copy)
            (setq tail (cdr tail)))
-         element-copy))
+         node-copy))
       (_
-       (let ((element-copy (copy-sequence datum)))
+       (let ((node-copy (copy-sequence datum)))
          ;; Copy `:standard-properties'
-         (when-let ((parray (org-element-property-1 :standard-properties element-copy)))
-           (org-element-put-property element-copy :standard-properties (copy-sequence parray)))
+         (when-let ((parray (org-element-property-1 :standard-properties node-copy)))
+           (org-element-put-property node-copy :standard-properties (copy-sequence parray)))
          ;; Clear `:parent'.
-         (org-element-put-property element-copy :parent nil)
+         (org-element-put-property node-copy :parent nil)
          ;; We cannot simply return the copied property list.  When
          ;; DATUM is i.e. a headline, it's property list `:title' can
          ;; contain parsed objects.  The objects will contain
@@ -879,20 +892,20 @@ When DATUM is `plain-text', all the properties are removed."
          ;; DATUM copy will no longer be reflected in the `:parent'
          ;; properties.  So, we need to reassign inner `:parent'
          ;; properties to the DATUM copy explicitly.
-         (dolist (secondary-prop (org-element-property :secondary element-copy))
-           (when-let ((secondary-value (org-element-property secondary-prop element-copy)))
+         (dolist (secondary-prop (org-element-property :secondary node-copy))
+           (when-let ((secondary-value (org-element-property secondary-prop node-copy)))
              (setq secondary-value (org-element-copy secondary-value))
              (if (org-element-type secondary-value)
-                 (org-element-put-property secondary-value :parent element-copy)
+                 (org-element-put-property secondary-value :parent node-copy)
                (dolist (el secondary-value)
-                 (org-element-put-property el :parent element-copy)))
-             (org-element-put-property element-copy secondary-prop secondary-value)))
+                 (org-element-put-property el :parent node-copy)))
+             (org-element-put-property node-copy secondary-prop secondary-value)))
          (when keep-contents
-           (let ((contents (org-element-contents element-copy)))
+           (let ((contents (org-element-contents node-copy)))
              (while contents
                (setcar contents (org-element-copy (car contents) t))
                (setq contents (cdr contents)))))
-         (org-element-resolve-deferred element-copy 'force))))))
+         (org-element-resolve-deferred node-copy 'force))))))
 
 (defun org-element-lineage (datum &optional types with-self)
   "List all ancestors of a given element or object.
