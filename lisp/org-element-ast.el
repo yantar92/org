@@ -255,8 +255,8 @@ Return value is the containing property name, as a keyword, or nil."
      (:type vector) :named)
   "Dynamically computed value.
 
-The value can be obtained by calling FUN with containing syntax node
-as first argument and ARGS list as remainting arguments.
+The value can be obtained by calling FUNCTION with containing syntax
+node as first argument and ARGS list as remainting arguments.
 
 AUTO-UNDEFER slot flags if the property value should be replaced upon
 resolution.  Some functions may ignore this flag."
