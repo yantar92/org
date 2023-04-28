@@ -218,7 +218,7 @@ when NODE is an anonymous node."
    ((null node) nil)
    ((not (consp node)) nil)
    ((symbolp (car node)) (car node))
-   ((and anonymous (car node) (org-element-type (car node)))
+   ((and anonymous (car node) (org-element-type (car node) t))
     'anonymous)
    (t nil)))
 
