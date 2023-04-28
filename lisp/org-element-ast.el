@@ -222,6 +222,19 @@ when NODE is an anonymous node."
     'anonymous)
    (t nil)))
 
+(define-inline org-element-type-p (node types)
+  "Return non-nil when NODE type is one of TYPES.
+TYPES can be a type symbol or a list of symbols."
+  (if (inline-const-p types)
+      (if (listp (inline-const-val types))
+          (inline-quote (memq (org-element-type ,node t) ,types))
+        (inline-quote (eq (org-element-type ,node t) ,types)))
+    (inline-letevals (node types)
+      (inline-quote
+       (if (listp ,types)
+           (memq (org-element-type ,node t) ,types)
+         (eq (org-element-type ,node t) ,types))))))
+
 (defun org-element-secondary-p (node)
   "Non-nil when NODE directly belongs to a secondary node.
 Return value is the containing property name, as a keyword, or nil."
@@ -403,7 +416,7 @@ Return modified NODE."
     (if idx
         (inline-letevals (node value)
           (inline-quote
-           (if (eq 'plain-text (org-element-type ,node))
+           (if (org-element-type-p ,node 'plain-text)
                ;; Special case: Do not use parray for plain-text.
                (org-add-props ,node nil ,property ,value)
              (let ((parray
@@ -414,7 +427,7 @@ Return modified NODE."
       (inline-letevals (node property value)
         (inline-quote
          (let ((idx (org-element--property-idx ,property)))
-           (if (and idx (not (eq 'plain-text (org-element-type ,node))))
+           (if (and idx (not (org-element-type-p ,node 'plain-text)))
                (when-let
                    ((parray
                      (or (org-element--parray ,node)
@@ -960,7 +973,7 @@ ancestors from its section can be found.  There is no such limitation
 when DATUM belongs to a full parse tree."
   (let ((up (if with-self datum (org-element-property :parent datum)))
 	ancestors)
-    (while (and up (not (memq (org-element-type up) types)))
+    (while (and up (not (org-element-type-p up types)))
       (unless types (push up ancestors))
       (setq up (org-element-property :parent up)))
     (if types up (nreverse ancestors))))
