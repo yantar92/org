@@ -7204,7 +7204,11 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
                (avl-tree-mapc
                 (lambda (el)
                   (org-element-put-property el :org-element--cache-sync-key nil)
-                  (org-element-put-property el :buffer nil))
+                  (org-element-map el t
+                    (lambda (el2)
+                      (unless (eq 'plain-text (org-element-type el2))
+                        (org-element-put-property el2 :buffer nil)))
+                    nil nil nil 'with-affiliated 'no-undefer))
                 org-element--cache)
                nil)
             'forbid))
@@ -7233,7 +7237,12 @@ The element is: %S\n The real element is: %S\n Cache around :begin:\n%S\n%S\n%S"
         (when (and (equal container '(elisp org-element--cache)) org-element--cache)
           ;; Restore `:buffer' property.
           (avl-tree-mapc
-           (lambda (el) (org-element-put-property el :buffer (current-buffer)))
+           (lambda (el)
+             (org-element-map el t
+               (lambda (el2)
+                 (unless (eq 'plain-text (org-element-type el2))
+                   (org-element-put-property el2 :buffer (current-buffer))))
+               nil nil nil 'with-affiliated 'no-undefer))
            org-element--cache)
           (setq-local org-element--cache-size (avl-tree-size org-element--cache)))
         (when (and (equal container '(elisp org-element--headline-cache)) org-element--headline-cache)
