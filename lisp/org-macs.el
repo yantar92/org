@@ -823,6 +823,7 @@ beginning of line."
        org--headline-re-cache)))
 
 (defvar org-outline-regexp) ; defined in org.el
+(defvar org-outline-regexp-bol) ; defined in org.el
 (defvar org-odd-levels-only) ; defined in org.el
 (defvar org-inlinetask-min-level) ; defined in org-inlinetask.el
 (defun org-get-limited-outline-regexp (&optional with-bol)
@@ -830,9 +831,11 @@ beginning of line."
 The number of levels is controlled by `org-inlinetask-min-level'.
 Match at beginning of line when WITH-BOL is non-nil."
   (cond ((not (derived-mode-p 'org-mode))
-	 outline-regexp)
+         (if (string-prefix-p "^" outline-regexp)
+             (if with-bol outline-regexp (substring outline-regexp 1))
+           (if with-bol (concat "^" outline-regexp) outline-regexp)))
 	((not (featurep 'org-inlinetask))
-	 org-outline-regexp)
+	 (if with-bol org-outline-regexp-bol org-outline-regexp))
 	(t
 	 (let* ((limit-level (1- org-inlinetask-min-level))
 		(nstars (if org-odd-levels-only
