@@ -304,7 +304,7 @@ Return a new list with all the values resolved."
        :post-blank :post-affiliated :secondary
        :cached :org-element--cache-sync-key
        :robust-begin :robust-end
-       :mode :granularity
+       :mode :granularity :true-level
        :parent :deferred :structure :buffer)
     "Standard properties stored in every syntax node structure.
 These properties are stored in an array pre-allocated every time a new
