@@ -134,6 +134,9 @@
 ;; properties.  This is useful to generate pure (in functional sense)
 ;; AST.
 ;;
+;; The properties listed in `org-element--standard-properties', except
+;; `:deferred' are never considered to have deferred value.
+;;
 ;; 3. Org document representation
 ;; ------------------------------
 ;; Document AST is represented by nested Org syntax nodes.
@@ -452,7 +455,7 @@ Return modified NODE."
 See `org-element-put-property' for the meaning of PROPERTY and VALUE."
   (inline-quote (org-element-put-property ,node ,property ,value)))
 
-(defun org-element-property (property node &optional dflt force-undefer)
+(defun org-element--property (property node &optional dflt force-undefer)
   "Extract the value from the PROPERTY of a NODE.
 Return DFLT when PROPERTY is not present.
 When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
@@ -484,6 +487,20 @@ properties, replacing their values in NODE."
         (setq retry nil)))
     ;; Return the resolved value.
     (if (eq value 'org-element-ast--nil) dflt value)))
+
+(define-inline org-element-property (property node &optional dflt force-undefer)
+  "Extract the value from the PROPERTY of a NODE.
+Return DFLT when PROPERTY is not present.
+When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
+properties, replacing their values in NODE.
+
+Note: The properties listed in `org-element--standard-properties',
+except `:deferred' may not be resolved."
+  (if (and (inline-const-p property)
+           (not (eq :deferred (inline-const-val property)))
+           (org-element--property-idx (inline-const-val property)))
+      (inline-quote (org-element-property-1 ,property ,node ,dflt))
+    (inline-quote (org-element--property ,property ,node ,dflt ,force-undefer))))
 
 (define-inline org-element-property-2 (node property &optional dflt force-undefer)
   "Like `org-element-property', but reverse the order of NODE and PROPERTY."
@@ -563,13 +580,7 @@ NODE.  When it is symbol `force', unconditionally undefer the values.
                (org-element-property
                 (car plist) node
                 nil (eq resolve-deferred 'force))
-               (setq plist (cddr plist)))
-             ;; Resolve standard properties.
-             (dolist (p org-element--standard-properties)
-               (unless (eq p :deferred)
-                 (org-element-property
-                  p node
-                  nil (eq resolve-deferred 'force)))))
+               (setq plist (cddr plist))))
            (setq props
                  (if (eq type 'plain-text)
                      (text-properties-at 0 node)
