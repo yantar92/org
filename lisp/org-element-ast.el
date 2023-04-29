@@ -542,7 +542,7 @@ NODE.  When it is symbol `force', unconditionally undefer the values.
       (type
        (when resolve-deferred
          ;; Compute missing properties.
-         (org-element-property :deferred node))
+         (org-element-property :deferred node (eq resolve-deferred 'force)))
        (let ((props
               (if (eq type 'plain-text)
                   (text-properties-at 0 node)
@@ -557,9 +557,10 @@ NODE.  When it is symbol `force', unconditionally undefer the values.
                (setq plist (cddr plist)))
              ;; Resolve standard properties.
              (dolist (p org-element--standard-properties)
-               (org-element-property
-                p node
-                nil (eq resolve-deferred 'force))))
+               (unless (eq p :deferred)
+                 (org-element-property
+                  p node
+                  nil (eq resolve-deferred 'force)))))
            (setq props
                  (if (eq type 'plain-text)
                      (text-properties-at 0 node)
@@ -603,7 +604,7 @@ If NODE cannot have contents, return CONTENTS."
 (defsubst org-element-contents (node)
   "Extract contents from NODE."
   (let ((contents (org-element-contents-1 node)))
-    ;; Resolve deferred values.
+    ;; Resolve deferred values recursively.
     (while (org-element-deferred-p contents)
       (if (not (org-element-deferred-auto-undefer-p contents))
           (setq contents (org-element--deferred-resolve contents node))
