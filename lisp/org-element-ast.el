@@ -271,6 +271,10 @@ Return value is the containing property name, as a keyword, or nil."
 The value can be obtained by calling FUNCTION with containing syntax
 node as first argument and ARGS list as remainting arguments.
 
+If the function throws `:org-element-deferred-retry' signal, assume
+that the syntax node has been modified by side effect and retry
+retrieving the value that was previously deferred.
+
 AUTO-UNDEFER slot flags if the property value should be replaced upon
 resolution.  Some functions may ignore this flag."
   function args auto-undefer-p)
@@ -453,26 +457,31 @@ See `org-element-put-property' for the meaning of PROPERTY and VALUE."
 Return DFLT when PROPERTY is not present.
 When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
 properties, replacing their values in NODE."
-  (let ((value (org-element-property-1 property node 'org-element-ast--nil)))
-    ;; PROPERTY not present.
-    (when (and (eq 'org-element-ast--nil value)
-               (org-element-deferred-p
-                (org-element-property-1 :deferred node)))
-      ;; If :deferred has `org-element-deferred' type, resolve it for
-      ;; side-effects, and re-assign the new value.
-      (org-element-property :deferred node nil 'force-undefer)
-      ;; Try to retrieve the value again.
-      (setq value (org-element-property-1 property node dflt)))
-    ;; Deferred property.  Resolve it recursively.
-    (when (org-element-deferred-p value)
-      (let (undefer (value-to-store 'org-element-ast--nil))
-        (while (org-element-deferred-p value)
-          (setq undefer (or force-undefer (org-element-deferred-auto-undefer-p value))
-                value (org-element--deferred-resolve value node))
-          (when undefer (setq value-to-store value)))
-        ;; Store the resolved property value, if needed.
-        (unless (eq value-to-store 'org-element-ast--nil)
-          (org-element-put-property node property value-to-store))))
+  (let ((retry t) value)
+    (while retry
+      (catch :org-element-deferred-retry
+        (setq value (org-element-property-1 property node 'org-element-ast--nil))
+        ;; PROPERTY not present.
+        (when (and (eq 'org-element-ast--nil value)
+                   (org-element-deferred-p
+                    (org-element-property-1 :deferred node)))
+          ;; If :deferred has `org-element-deferred' type, resolve it for
+          ;; side-effects, and re-assign the new value.
+          (org-element-property :deferred node nil 'force-undefer)
+          ;; Try to retrieve the value again.
+          (setq value (org-element-property-1 property node dflt)))
+        ;; Deferred property.  Resolve it recursively.
+        (when (org-element-deferred-p value)
+          (let ((value-to-store 'org-element-ast--nil) undefer)
+            (while (org-element-deferred-p value)
+              (setq undefer (or force-undefer (org-element-deferred-auto-undefer-p value))
+                    value (org-element--deferred-resolve value node))
+              (when undefer (setq value-to-store value)))
+            ;; Store the resolved property value, if needed.
+            (unless (eq value-to-store 'org-element-ast--nil)
+              (org-element-put-property node property value-to-store))))
+        ;; Finished resolving.
+        (setq retry nil)))
     ;; Return the resolved value.
     (if (eq value 'org-element-ast--nil) dflt value)))
 
@@ -603,21 +612,25 @@ If NODE cannot have contents, return CONTENTS."
 
 (defsubst org-element-contents (node)
   "Extract contents from NODE."
-  (let ((contents (org-element-contents-1 node)))
-    ;; Resolve deferred values recursively.
-    (while (org-element-deferred-p contents)
-      (if (not (org-element-deferred-auto-undefer-p contents))
-          (setq contents (org-element--deferred-resolve contents node))
-        (org-element-set-contents
-         node (org-element--deferred-resolve contents node))
-        (setq contents (org-element-contents-1 node))))
-    (while contents
-      (while (org-element-deferred-p (car contents))
-        (let* ((undefer-p (org-element-deferred-auto-undefer-p (car contents)))
-               (resolved-value (org-element--deferred-resolve (car contents) node)))
-          ;; Store the resolved property value, if needed.
-          (when undefer-p (setcar contents resolved-value))))
-      (setq contents (cdr contents)))
+  (let ((contents (org-element-contents-1 node))
+        (retry t))
+    (while retry
+      (catch :org-element-deferred-retry
+        ;; Resolve deferred values recursively.
+        (while (org-element-deferred-p contents)
+          (if (not (org-element-deferred-auto-undefer-p contents))
+              (setq contents (org-element--deferred-resolve contents node))
+            (org-element-set-contents
+             node (org-element--deferred-resolve contents node))
+            (setq contents (org-element-contents-1 node))))
+        (while contents
+          (while (org-element-deferred-p (car contents))
+            (let* ((undefer-p (org-element-deferred-auto-undefer-p (car contents)))
+                   (resolved-value (org-element--deferred-resolve (car contents) node)))
+              ;; Store the resolved property value, if needed.
+              (when undefer-p (setcar contents resolved-value))))
+          (setq contents (cdr contents)))
+        (setq retry nil)))
     (org-element-contents-1 node)))
 
 (defun org-element-resolve-deferred (node &optional force-undefer recursive)
