@@ -41,7 +41,7 @@ pkgdir := $(pkgdir_top)/$(EMACS_VERSION)
 EMACSFLAGS ?=
 
 # Third-party packages to install when running make
-EPACKAGES ?=
+EPACKAGES ?= compat
 
 # Configuration for testing
 # Verbose ERT summary by default for Emacs-28 and above.
