@@ -1137,6 +1137,7 @@ Assume point is at beginning of the headline."
 	:contents-end contents-end
         :robust-begin robust-begin
         :robust-end robust-end
+        :true-level true-level
         :buffer (current-buffer)
         :raw-value deferred-title-prop
         :title deferred-title-prop
@@ -6463,7 +6464,9 @@ the expected result."
             ;; buffer above.  This comes at the cost of not calculating
             ;; `:parent' property for headings.
             ((not cached)
-             (if (org-with-limited-levels (outline-previous-heading))
+             (if (re-search-backward
+                  (org-get-limited-outline-regexp t)
+                  nil 'move)
                  (progn
                    (setq element (org-element-headline-parser nil 'fast))
 	           (setq mode 'planning)
@@ -6493,11 +6496,11 @@ the expected result."
              (let ((up cached)
                    (pos (if (= (point-max) pos) (1- pos) pos)))
                (while (and up (<= (org-element-property :end up) pos))
-                 (goto-char (org-element-property :end up))
-                 (setq element up
+                 (setq next (org-element-property :end up)
+                       element up
                        mode (org-element--next-mode (org-element-property :mode element) (org-element-type element) nil)
-                       up (org-element-property :parent up)
-                       next (point)))
+                       up (org-element-property :parent up)))
+               (when next (goto-char next))
                (when up (setq element up)))))
            ;; Parse successively each element until we reach POS.
            (let ((end (or (org-element-property :end element) (point-max)))
@@ -6535,7 +6538,7 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                      (setq element (or (org-element--cache-put element) element))
                    ;; Nothing to parse (i.e. empty file).
                    (throw 'exit parent))
-                 (unless (or (not (org-element--cache-active-p)) parent)
+                 (unless (or parent (not (org-element--cache-active-p)))
                    (org-element--cache-warn
                     "Got empty parent while parsing. Please report it to Org mode mailing list (M-x org-submit-bug-report).\n Backtrace:\n%S"
                     (when (and (fboundp 'backtrace-get-frames)
@@ -6556,13 +6559,9 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                    (goto-char elem-end)
                    (when (eq type 'headline)
                      (save-match-data
-                       (unless (when (and (/= 1 (org-element-property :level element))
+                       (unless (when (and (/= 1 (org-element-property :true-level element))
                                           (re-search-forward
-                                           (rx-to-string
-                                            `(and bol (repeat 1 ,(1- (let ((level (org-element-property :level element)))
-                                                                       (if org-odd-levels-only (1- (* level 2)) level)))
-                                                              "*")
-                                                  " "))
+                                           (org-headline-re (1- (org-element-property :true-level element)))
                                            pos t))
                                  (beginning-of-line)
                                  t)
@@ -6574,11 +6573,7 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                          (goto-char pos)
                          (unless
                              (re-search-backward
-                              (rx-to-string
-                               `(and bol (repeat ,(let ((level (org-element-property :level element)))
-                                                    (if org-odd-levels-only (1- (* level 2)) level))
-                                                 "*")
-                                     " "))
+                              (org-headline-re (org-element-property :true-level element))
                               elem-end t)
                            ;; Roll-back to normal parsing.
                            (goto-char elem-end)))))
