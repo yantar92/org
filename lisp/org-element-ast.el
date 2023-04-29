@@ -453,31 +453,28 @@ See `org-element-put-property' for the meaning of PROPERTY and VALUE."
 Return DFLT when PROPERTY is not present.
 When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
 properties, replacing their values in NODE."
-  (let ((value (org-element-property-1 property node 'org-element-ast--nil))
-        resolved-value)
+  (let ((value (org-element-property-1 property node 'org-element-ast--nil)))
     ;; PROPERTY not present.
-    (when (eq 'org-element-ast--nil value)
+    (when (and (eq 'org-element-ast--nil value)
+               (org-element-deferred-p
+                (org-element-property-1 :deferred node)))
       ;; If :deferred has `org-element-deferred' type, resolve it for
       ;; side-effects, and re-assign the new value.
-      (let ((deferred-prop-value (org-element-property-1 :deferred node)))
-        (when (org-element-deferred-p deferred-prop-value)
-          (org-element-put-property
-           node
-           :deferred
-           (org-element--deferred-resolve deferred-prop-value node))))
+      (org-element-property :deferred node nil 'force-undefer)
       ;; Try to retrieve the value again.
       (setq value (org-element-property-1 property node dflt)))
-    (if (not (org-element-deferred-p value))
-        (setq resolved-value value)
-      ;; Deferred property.  Resolve it.
-      (setq resolved-value (org-element--deferred-resolve value node))
-      ;; Store the resolved property value, if needed.
-      (when (or force-undefer
-                (org-element-deferred-auto-undefer-p value))
-        (org-element-put-property
-         node property resolved-value)))
+    ;; Deferred property.  Resolve it recursively.
+    (when (org-element-deferred-p value)
+      (let (undefer (value-to-store 'org-element-ast--nil))
+        (while (org-element-deferred-p value)
+          (setq undefer (or force-undefer (org-element-deferred-auto-undefer-p value))
+                value (org-element--deferred-resolve value node))
+          (when undefer (setq value-to-store value)))
+        ;; Store the resolved property value, if needed.
+        (unless (eq value-to-store 'org-element-ast--nil)
+          (org-element-put-property node property value-to-store))))
     ;; Return the resolved value.
-    resolved-value))
+    (if (eq value 'org-element-ast--nil) dflt value)))
 
 (define-inline org-element-property-2 (node property &optional dflt force-undefer)
   "Like `org-element-property', but reverse the order of NODE and PROPERTY."
