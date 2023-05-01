@@ -4540,11 +4540,17 @@ This function assumes that current major mode is `org-mode'."
     (let ((org-data (org-element-org-data-parser))
           (gc-cons-threshold #x40000000))
       (org-skip-whitespace)
-      (org-element--parse-elements
-       (line-beginning-position) (point-max)
-       ;; Start in `first-section' mode so text before the first
-       ;; headline belongs to a section.
-       'first-section nil granularity visible-only org-data))))
+      (setq org-data
+            (org-element--parse-elements
+             (line-beginning-position) (point-max)
+             ;; Start in `first-section' mode so text before the first
+             ;; headline belongs to a section.
+             'first-section nil granularity visible-only org-data))
+      (org-element-map ; undefer
+          org-data t
+        (lambda (el) (org-element-properties-resolve el t))
+        nil nil nil t)
+      org-data)))
 
 (defun org-element-parse-secondary-string (string restriction &optional parent)
   "Recursively parse objects in STRING and return structure.
@@ -4560,7 +4566,8 @@ If STRING is the empty string or nil, return nil."
   (cond
    ((not string) nil)
    ((equal string "") nil)
-   (t (let ((local-variables (buffer-local-variables)))
+   (t (let ((local-variables (buffer-local-variables))
+            rtn)
 	(with-temp-buffer
 	  (dolist (v local-variables)
 	    (ignore-errors
@@ -4573,10 +4580,13 @@ If STRING is the empty string or nil, return nil."
 	  (let ((inhibit-read-only t)) (insert string))
 	  ;; Prevent "Buffer *temp* modified; kill anyway?".
 	  (restore-buffer-modified-p nil)
-          (org-element-resolve-deferred
-	   (org-element--parse-objects
-	    (point-min) (point-max) nil restriction parent)
-           'force 'recurse))))))
+          (setq rtn
+	        (org-element--parse-objects
+	         (point-min) (point-max) nil restriction parent))
+          ;; Resolve deferred.
+          (org-element-map rtn t
+            (lambda (el) (org-element-properties-resolve el t)))
+          rtn)))))
 
 (defun org-element-map
     ( data types fun
@@ -4807,9 +4817,7 @@ Elements are accumulated into ACC."
 	     ((memq granularity '(object nil))
 	      (org-element--parse-objects
 	       cbeg (org-element-property :contents-end element) element
-	       (org-element-restriction type))
-              ;; Undefer all the deferred properties in child objects.
-              (org-element-resolve-deferred element 'force 'recurse)))
+	       (org-element-restriction type))))
 	    (push (org-element-put-property element :parent acc) elements)
 	    ;; Update mode.
 	    (setq mode (org-element--next-mode mode type nil)))))
