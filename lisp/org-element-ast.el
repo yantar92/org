@@ -282,19 +282,48 @@ AUTO-UNDEFER slot flags if the property value should be replaced upon
 resolution.  Some functions may ignore this flag."
   function args auto-undefer-p)
 
-(defsubst org-element--deferred-resolve (deferred-value &optional node)
-  "Resolve DEFERRED-VALUE for NODE."
+(defsubst org-element--deferred-resolve-once (deferred-value &optional node)
+  "Resolve DEFERRED-VALUE for NODE.
+Throw `:org-element-deferred-retry' if NODE has been modified and we
+need to re-read the value again."
   (apply (org-element-deferred-function deferred-value)
          node
          (org-element-deferred-args deferred-value)))
 
+(defsubst org-element--deferred-resolve (value &optional node force-undefer)
+  "Resolve VALUE for NODE recursively.
+Return a cons cell of the resolved value and the value to store.
+When no value should be stored, return `org-element-ast--nil' as cdr.
+When FORCE-UNDEFER is non-nil, resolve all the deferred values, ignoring
+their `auto-undefer-p' slot.
+
+Throw `:org-element-deferred-retry' if NODE has been modified and we
+need to re-read the value again."
+  (let ((value-to-store 'org-element-ast--nil) undefer)
+    (while (org-element-deferred-p value)
+      (setq undefer (or force-undefer (org-element-deferred-auto-undefer-p value))
+            value (org-element--deferred-resolve-once value node))
+      (when undefer (setq value-to-store value)))
+    (cons value value-to-store)))
+
+(defsubst org-element--deferred-resolve-force (value &optional node)
+  "Resolve VALUE for NODE recursively, ignoring `auto-undefer-p'.
+Return the resolved value.
+
+Throw `:org-element-deferred-retry' if NODE has been modified and we
+need to re-read the value again."
+  (car (org-element--deferred-resolve value node 'force)))
+
 (defsubst org-element--deferred-resolve-list (node &rest list)
-  "Resolve all the deferred values in LIST for NODE.
-Return a new list with all the values resolved."
+  "Unconditionally resolve all the deferred values in LIST for NODE.
+Return a new list with all the values resolved.
+
+Throw `:org-element-deferred-retry' if NODE has been modified and we
+need to re-read the value again."
   (mapcar
    (lambda (value)
      (if (org-element-deferred-p value)
-         (org-element--deferred-resolve value node)
+         (org-element--deferred-resolve-force value node)
        value))
    list))
 
@@ -470,16 +499,15 @@ properties, replacing their values in NODE."
                     (org-element-property-1 :deferred node)))
           ;; If :deferred has `org-element-deferred' type, resolve it for
           ;; side-effects, and re-assign the new value.
-          (org-element-property :deferred node nil 'force-undefer)
+          (org-element--property :deferred node nil 'force-undefer)
           ;; Try to retrieve the value again.
           (setq value (org-element-property-1 property node dflt)))
         ;; Deferred property.  Resolve it recursively.
         (when (org-element-deferred-p value)
-          (let ((value-to-store 'org-element-ast--nil) undefer)
-            (while (org-element-deferred-p value)
-              (setq undefer (or force-undefer (org-element-deferred-auto-undefer-p value))
-                    value (org-element--deferred-resolve value node))
-              (when undefer (setq value-to-store value)))
+          (pcase-let
+              ((`(,resolved . ,value-to-store)
+                (org-element--deferred-resolve value node force-undefer)))
+            (setq value resolved)
             ;; Store the resolved property value, if needed.
             (unless (eq value-to-store 'org-element-ast--nil)
               (org-element-put-property node property value-to-store))))
@@ -495,7 +523,7 @@ When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
 properties, replacing their values in NODE.
 
 Note: The properties listed in `org-element--standard-properties',
-except `:deferred' may not be resolved."
+except `:deferred', may not be resolved."
   (if (and (inline-const-p property)
            (not (eq :deferred (inline-const-val property)))
            (org-element--property-idx (inline-const-val property)))
@@ -542,60 +570,113 @@ When LITERAL-NIL is non-nil, treat property values \"nil\" and nil."
           (mapconcat #'identity acc accumulate)
         acc))))
 
-(defun org-element-properties (node &optional properties resolve-deferred)
-  "Return full property list for NODE.
-When optional argument PROPERTIES is non-nil, only return property list
-for the listed properties, if they are present.
+(defun org-element--properties-mapc (fun node &optional collect no-standard)
+  "Apply FUN for each property of NODE.
+FUN will be called with three arguments: property name, property
+value, and node.
 
-When RESOLVE-DEFERRED is non-nil, resolve deferred values, modifying
-NODE.  When it is symbol `force', unconditionally undefer the values.
+Do not resolve deferred values, except `:deferred'.
 
-`:standard-properties' value is unwrapped into the property list."
-  (if properties
-      (mapcan
-       (lambda (p)
-         (pcase (if resolve-deferred
-                    (org-element-property
-                     p node
-                     'org-element-ast--nil
-                     (eq resolve-deferred 'force))
-                  (org-element-property-1 p node 'org-element-ast--nil))
-           (`org-element-ast--nil nil)
-           (val (list p val))))
-       properties)
+When NO-STANDARD is non-nil, do no map over
+`org-element--standard-properties'.
+
+When COLLECT is symbol `set', set the property values to the return
+values and finally return nil.  When COLLECT is non-nil and not symbol
+`set', collect the return values into a list and return it.
+Otherwise, return nil."
+  (let (acc rtn)
     (pcase (org-element-type node)
       (`nil nil)
       (type
-       (when resolve-deferred
-         ;; Compute missing properties.
-         (org-element-property :deferred node (eq resolve-deferred 'force)))
+       ;; Compute missing properties.
+       (org-element-property :deferred node)
+       ;; Map over parray.
+       (unless no-standard
+         (let ((standard-idxs
+                org-element--standard-properties-idxs)
+               (parray (org-element--parray node)))
+           (while standard-idxs
+             (setq
+              rtn
+              (funcall
+               fun
+               (car standard-idxs)
+               (aref parray (cadr standard-idxs))
+               node))
+             (when collect
+               (unless (eq rtn (aref parray (cadr standard-idxs)))
+                 (if (eq collect 'set)
+                     (setf (aref parray (cadr standard-idxs)) rtn)
+                   (push rtn acc))))
+             (setq standard-idxs (cddr standard-idxs)))))
+       ;; Map over plist.
        (let ((props
               (if (eq type 'plain-text)
                   (text-properties-at 0 node)
                 (nth 1 node))))
-         (when resolve-deferred
-           (let ((plist props))
-             ;; Resolve every property.
-             (while plist
-               (org-element-property
-                (car plist) node
-                nil (eq resolve-deferred 'force))
-               (setq plist (cddr plist))))
-           (setq props
-                 (if (eq type 'plain-text)
-                     (text-properties-at 0 node)
-                   (nth 1 node))))
-         (append
-          (apply
-           #'nconc
-           (seq-map-indexed
-            (lambda (val idx)
-              (unless (eq 'org-element-ast--nil val)
-                (list (nth idx org-element--standard-properties) val)))
-            (plist-get props :standard-properties)))
-          props))))))
+         (while props
+           (setq rtn (funcall fun (car props) (cadr props) node))
+           (when collect
+             (if (eq collect 'set)
+                 (unless (eq rtn (cadr props))
+                   (if (eq type 'plain-text)
+                       (org-add-props node nil (car props) rtn)
+                     (setf (cadr props) rtn)))
+               (push rtn acc)))
+           (setq props (cddr props))))))
+    ;; Return.
+    (when collect (nreverse acc))))
 
-;;;; Object contents
+(defsubst org-element-properties-resolve (node &optional force-undefer)
+  "Resolve all the deferred properties in NODE, modifying the NODE.
+When FORCE-UNDEFER is non-nil, resolve unconditionally.
+Return the modified NODE."
+  ;; Compute all the available properties.
+  (org-element-property :deferred node nil force-undefer)
+  (org-element--properties-mapc
+   (if force-undefer
+       (lambda (property val node)
+         (catch :found
+           (catch :org-element-deferred-retry
+             (throw :found (org-element--deferred-resolve-force val node)))
+           ;; Caught `:org-element-deferred-retry'.  Go long way.
+           (org-element-property property node nil t)))
+     (lambda (property val node)
+       (catch :found
+         (catch :org-element-deferred-retry
+           (throw :found (cdr (org-element--deferred-resolve val node))))
+         ;; Caught `:org-element-deferred-retry'.  Go long way.
+         (org-element-property property node))))
+   node 'set 'no-standard)
+  node)
+
+(defsubst org-element-properties-mapc (fun node &optional undefer)
+  "Apply FUN for each property of NODE for side effect.
+FUN will be called with three arguments: property name, property
+value, and NODE.
+
+When UNDEFER is non-nil, undefer deferred properties unconditionally.
+When UNDEFER is symbol `force', unconditionally replace the property
+values with undeferred values.
+
+Return nil."
+  (when undefer
+    (org-element-properties-resolve node (eq 'force undefer)))
+  (org-element--properties-mapc fun node))
+
+(defsubst org-element-properties-mapcar (fun node &optional undefer)
+  "Apply FUN for each property of NODE and return a list of the results.
+FUN will be called with three arguments: property name, property
+value, and NODE.
+
+When UNDEFER is non-nil, undefer deferred properties unconditionally.
+When UNDEFER is symbol `force', unconditionally replace the property
+values with undeferred values."
+  (when undefer
+    (org-element-properties-resolve node (eq 'force undefer)))
+  (org-element--properties-mapc fun node 'collect))
+
+;;;; Node contents.
 
 (defsubst org-element-contents-1 (node)
   "Extract contents from NODE.
@@ -622,46 +703,36 @@ If NODE cannot have contents, return CONTENTS."
        node)))
 
 (defsubst org-element-contents (node)
-  "Extract contents from NODE."
+  "Extract contents from NODE.
+Resolve contents value unconditionally, if it is deferred."
   (let ((contents (org-element-contents-1 node))
         (retry t))
     (while retry
       (catch :org-element-deferred-retry
-        ;; Resolve deferred values recursively.
-        (while (org-element-deferred-p contents)
-          (if (not (org-element-deferred-auto-undefer-p contents))
-              (setq contents (org-element--deferred-resolve contents node))
-            (org-element-set-contents
-             node (org-element--deferred-resolve contents node))
-            (setq contents (org-element-contents-1 node))))
+        (when (org-element-deferred-p contents)
+          (setq contents
+                (org-element--deferred-resolve-force
+                 contents node))
+          (org-element-set-contents node contents))
         (while contents
-          (while (org-element-deferred-p (car contents))
-            (let* ((undefer-p (org-element-deferred-auto-undefer-p (car contents)))
-                   (resolved-value (org-element--deferred-resolve (car contents) node)))
-              ;; Store the resolved property value, if needed.
-              (when undefer-p (setcar contents resolved-value))))
+          (when (org-element-deferred-p (car contents))
+            (setcar
+             contents
+             (org-element--deferred-resolve-force
+              (car contents) node)))
           (setq contents (cdr contents)))
         (setq retry nil)))
     (org-element-contents-1 node)))
 
-(defun org-element-resolve-deferred (node &optional force-undefer recursive)
-  "Resolve all the deferred values in NODE.
+(defsubst org-element-resolve-deferred (node &optional force-undefer)
+  "Resolve all the deferred properties in NODE.
 Return the modified NODE.
 When FORCE-UNDEFER is non-nil, unconditionally replace deferred
-properties with their values.
-When RECURSIVE is non-nil, descend into child node contents."
+properties with their values."
   ;; Resolve properties.
-  (org-element-properties node nil (when force-undefer 'force))
+  (org-element-properties-resolve node force-undefer)
   ;; Resolve contents.
-  (let ((contents (org-element-contents node)))
-    (when recursive
-      (dolist (el contents)
-        (org-element-resolve-deferred el force-undefer recursive))))
-  ;; Resolve secondary objects.
-  (dolist (sp (org-element-property :secondary node))
-    (org-element-put-property
-     node sp
-     (org-element-resolve-deferred (org-element-property sp node))))
+  (org-element-contents node)
   node)
 
 ;;;; AST modification
@@ -924,7 +995,7 @@ string.  Alternatively, TYPE can be a string.  When TYPE is nil or
     (_ (apply #'org-element-adopt (list type props) children))))
 
 (defun org-element-copy (datum &optional keep-contents)
-  "Return a copy of DATUM with all deferred values resolved.
+  "Return a copy of DATUM.
 DATUM is an element, object, string or nil.  `:parent' property
 is cleared and contents are removed in the process.
 Secondary objects are also copied and their `:parent' gets re-assigned.
@@ -968,7 +1039,7 @@ When DATUM is `plain-text', all the properties are removed."
          ;; properties to the DATUM copy explicitly.
          (dolist (secondary-prop (org-element-property :secondary node-copy))
            (when-let ((secondary-value (org-element-property secondary-prop node-copy)))
-             (setq secondary-value (org-element-copy secondary-value))
+             (setq secondary-value (org-element-copy secondary-value t))
              (if (org-element-type secondary-value)
                  (org-element-put-property secondary-value :parent node-copy)
                (dolist (el secondary-value)
@@ -979,7 +1050,7 @@ When DATUM is `plain-text', all the properties are removed."
              (while contents
                (setcar contents (org-element-copy (car contents) t))
                (setq contents (cdr contents)))))
-         (org-element-resolve-deferred node-copy 'force))))))
+         node-copy)))))
 
 (defun org-element-lineage (datum &optional types with-self)
   "List all ancestors of a given element or object.
