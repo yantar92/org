@@ -565,20 +565,21 @@ Otherwise, return nil."
          (let ((standard-idxs
                 org-element--standard-properties-idxs)
                (parray (org-element--parray node)))
-           (while standard-idxs
-             (setq
-              rtn
-              (funcall
-               fun
-               (car standard-idxs)
-               (aref parray (cadr standard-idxs))
-               node))
-             (when collect
-               (unless (eq rtn (aref parray (cadr standard-idxs)))
-                 (if (eq collect 'set)
-                     (setf (aref parray (cadr standard-idxs)) rtn)
-                   (push rtn acc))))
-             (setq standard-idxs (cddr standard-idxs)))))
+           (when parray
+             (while standard-idxs
+               (setq
+                rtn
+                (funcall
+                 fun
+                 (car standard-idxs)
+                 (aref parray (cadr standard-idxs))
+                 node))
+               (when collect
+                 (unless (eq rtn (aref parray (cadr standard-idxs)))
+                   (if (eq collect 'set)
+                       (setf (aref parray (cadr standard-idxs)) rtn)
+                     (push rtn acc))))
+               (setq standard-idxs (cddr standard-idxs))))))
        ;; Map over plist.
        (let ((props
               (if (eq type 'plain-text)
@@ -614,7 +615,9 @@ Return the modified NODE."
      (lambda (property val node)
        (catch :found
          (catch :org-element-deferred-retry
-           (throw :found (cdr (org-element--deferred-resolve val node))))
+           (throw :found (pcase (org-element--deferred-resolve val node)
+                           (`(,val . org-element-ast--nil) val)
+                           (`(_ . ,to-store) to-store))))
          ;; Caught `:org-element-deferred-retry'.  Go long way.
          (org-element-property property node))))
    node 'set 'no-standard)
@@ -625,7 +628,7 @@ Return the modified NODE."
 FUN will be called with three arguments: property name, property
 value, and NODE.
 
-When UNDEFER is non-nil, undefer deferred properties unconditionally.
+When UNDEFER is non-nil, undefer deferred properties.
 When UNDEFER is symbol `force', unconditionally replace the property
 values with undeferred values.
 
@@ -1102,8 +1105,8 @@ When INCLUDE-NIL is non-nil, include present properties with value nil."
       (while node
         (setq local nil)
         (dolist (prop property)
-          (setq val (org-element-property prop node 'org-element--ast-nil))
-          (unless (eq val 'org-element--ast-nil) ; not present
+          (setq val (org-element-property prop node 'org-element-ast--nil))
+          (unless (eq val 'org-element-ast--nil) ; not present
             (when literal-nil (setq val (org-not-nil val)))
             (when (and (not accumulate) (or val include-nil))
               (throw :found val))
