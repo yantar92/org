@@ -5063,20 +5063,23 @@ If there is no affiliated keyword, return the empty string."
 		   ;; All attribute keywords can have multiple lines.
 		   (string-match "^ATTR_" keyword))
 	       (mapconcat (lambda (line) (funcall keyword-to-org keyword line))
-			  (reverse value)
-			  "")
+			  value "")
 	     (funcall keyword-to-org keyword value)))))
      ;; List all ELEMENT's properties matching an attribute line or an
      ;; affiliated keyword, but ignore translated keywords since they
      ;; cannot belong to the property list.
-     (cl-loop for prop in (nth 1 element) by 'cddr
-	      when (let ((keyword (upcase (substring (symbol-name prop) 1))))
-		     (or (string-match "^ATTR_" keyword)
-			 (and
-			  (member keyword org-element-affiliated-keywords)
-			  (not (assoc keyword
-				      org-element-keyword-translation-alist)))))
-	      collect prop)
+     (let (acc)
+       (org-element-properties-mapc
+        (lambda (prop _ _)
+          (let  ((keyword (upcase (substring (symbol-name prop) 1))))
+            (when (or (string-match "^ATTR_" keyword)
+		      (and
+		       (member keyword org-element-affiliated-keywords)
+		       (not (assoc keyword
+			         org-element-keyword-translation-alist))))
+              (push prop acc))))
+        element t)
+       (nreverse acc))
      "")))
 
 ;; Because interpretation of the parse tree must return the same
