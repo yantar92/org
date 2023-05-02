@@ -2772,7 +2772,7 @@ Outside list"
   (should
    (equal
     (org-element-interpret-data
-     '(org-data nil (paragraph (:attr_ascii ("line2" "line1")) "Paragraph")))
+     '(org-data nil (paragraph (:attr_ascii ("line1" "line2")) "Paragraph")))
     "#+attr_ascii: line1\n#+attr_ascii: line2\nParagraph\n"))
   ;; Interpret parsed affiliated keywords.
   (should
@@ -2791,7 +2791,7 @@ Outside list"
    (equal
     (org-element-interpret-data
      '(org-data nil (paragraph
-		     (:caption ((("l2") "s2") (("l1") "s1"))) "Paragraph")))
+		     (:caption ((("l1") "s1") (("l2") "s2"))) "Paragraph")))
     "#+caption[s1]: l1\n#+caption[s2]: l2\nParagraph\n"))
   ;; Pseudo objects and elements are transparent.
   (should
