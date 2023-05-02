@@ -540,36 +540,6 @@ except `:deferred', may not be resolved."
 (gv-define-setter org-element-property-1 (value property node &optional _)
   `(org-element-put-property ,node ,property ,value))
 
-(defun org-element-property-inherited (property node &optional accumulate literal-nil)
-  "Extract the value from the PROPERTY of a NODE and/or its parents.
-
-PROPERTY is a single property or a list of properties to be considered.
-When optional argument ACCUMULATE is nil, return the first non-nil value
-\\(properties when PROPERTY is a list are considered one by one).
-When ACCUMULATE is non-nil, extract all the values, starting from the
-outermost ancestor and accumulate them into a single list.  The values
-that are lists are appended.
-When ACCUMULATE is a string, join the resulting list elements into a
-string, using string value as separator.
-When LITERAL-NIL is non-nil, treat property values \"nil\" and nil."
-  (setq property (ensure-list property))
-  (let (acc local val)
-    (catch :found
-      (while node
-        (setq local nil)
-        (dolist (prop property)
-          (setq val (org-element-property prop node))
-          (when literal-nil (setq val (org-not-nil val)))
-          (when (and (not accumulate) val) (throw :found val))
-          ;; Append to the end.
-          (setq local (append local (ensure-list val))))
-        ;; Append parent to front.
-        (setq acc (append local acc))
-        (setq node (org-element-property :parent node)))
-      (if (and (stringp accumulate) acc)
-          (mapconcat #'identity acc accumulate)
-        acc))))
-
 (defun org-element--properties-mapc (fun node &optional collect no-standard)
   "Apply FUN for each property of NODE.
 FUN will be called with three arguments: property name, property
@@ -1075,6 +1045,76 @@ when DATUM belongs to a full parse tree."
       (unless types (push up ancestors))
       (setq up (org-element-property :parent up)))
     (if types up (nreverse ancestors))))
+
+(defun org-element-lineage-map (datum fun &optional types with-self first-match)
+  "Map FUN across ancestors of DATUM, from closest to furthest.
+Return a list of results.  Nil values returned from FUN do not appear
+in the results.
+
+DATUM is an object or element.
+
+FUN is a function accepting a single argument: syntax node.
+
+When optional argument TYPES is a list of symbols, only map across
+nodes with the listed types.
+
+When optional argument WITH-SELF is non-nil, lineage includes
+DATUM itself as the first element, and TYPES, if provided, also
+apply to it.
+
+When optional argument FIRST-MATCH is non-nil, stop at the first
+match for which FUN doesn't return nil, and return that value."
+  (let ((up (if with-self datum (org-element-property :parent datum)))
+	acc rtn)
+    (catch :--first-match
+      (while up
+        (when (or (not types) (org-element-type-p up types))
+          (setq rtn (funcall fun up))
+          (if (and first-match rtn)
+              (throw :--first-match rtn)
+            (when rtn (push rtn acc))))
+        (setq up (org-element-property :parent up)))
+      (nreverse acc))))
+
+(defun org-element-property-inherited (property node &optional with-self accumulate literal-nil include-nil)
+  "Extract non-nil value from the PROPERTY of a NODE and/or its parents.
+
+PROPERTY is a single property or a list of properties to be considered.
+
+When WITH-SELF is non-nil, consider PROPERTY in the NODE itself.
+Otherwise, only start from the immediate parent.
+
+When optional argument ACCUMULATE is nil, return the first non-nil value
+\\(properties when PROPERTY is a list are considered one by one).
+When ACCUMULATE is non-nil, extract all the values, starting from the
+outermost ancestor and accumulate them into a single list.  The values
+that are lists are appended.
+When ACCUMULATE is a string, join the resulting list elements into a
+string, using string value as separator.
+
+When LITERAL-NIL is non-nil, treat property values \"nil\" and nil.
+
+When INCLUDE-NIL is non-nil, include present properties with value nil."
+  (setq property (ensure-list property))
+  (let (acc local val)
+    (catch :found
+      (unless with-self (setq node (org-element-property :parent node)))
+      (while node
+        (setq local nil)
+        (dolist (prop property)
+          (setq val (org-element-property prop node 'org-element--ast-nil))
+          (unless (eq val 'org-element--ast-nil) ; not present
+            (when literal-nil (setq val (org-not-nil val)))
+            (when (and (not accumulate) (or val include-nil))
+              (throw :found val))
+            ;; Append to the end.
+            (setq local (append local (ensure-list val)))))
+        ;; Append parent to front.
+        (setq acc (append local acc))
+        (setq node (org-element-property :parent node)))
+      (if (and (stringp accumulate) acc)
+          (mapconcat #'identity acc accumulate)
+        acc))))
 
 (provide 'org-element-ast)
 ;;; org-element-ast.el ends here
