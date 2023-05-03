@@ -2966,7 +2966,7 @@ containing their first reference."
 					 d))
 				  definitions)))
 			    (org-element-adopt
-			        (org-element-lineage reference '(section))
+			        (org-element-lineage reference 'section)
 			      definition)
 			    ;; Also insert definitions for nested
 			    ;; references, if any.
@@ -6039,12 +6039,12 @@ Return the new string."
 (defun org-export-get-parent-headline (blob)
   "Return BLOB parent headline or nil.
 BLOB is the element or object being considered."
-  (org-element-lineage blob '(headline)))
+  (org-element-lineage blob 'headline))
 
 (defun org-export-get-parent-table (object)
   "Return OBJECT parent table or nil.
 OBJECT is either a `table-cell' or `table-element' type object."
-  (org-element-lineage object '(table)))
+  (org-element-lineage object 'table))
 
 (defun org-export-get-previous-element (blob info &optional n)
   "Return previous element or object.

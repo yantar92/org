@@ -7267,7 +7267,7 @@ Use the command `\\[widen]' to see the whole buffer again."
   (if (org-element--cache-active-p)
       (let* ((heading (org-element-lineage
                        (or element (org-element-at-point))
-                       '(headline) t))
+                       'headline t))
              (end (org-element-property :end heading)))
         (if (and heading end)
             (narrow-to-region (org-element-property :begin heading)
@@ -16341,7 +16341,7 @@ buffer boundaries with possible narrowing."
 	  (while (re-search-forward file-types-re end t)
 	    (let* ((link (org-element-lineage
 			  (save-match-data (org-element-context))
-			  '(link) t))
+			  'link t))
                    (linktype (org-element-property :type link))
 		   (inner-start (match-beginning 1))
 		   (path
@@ -16431,7 +16431,7 @@ buffer boundaries with possible narrowing."
      ((eq org-image-actual-width t) nil)
      ((listp org-image-actual-width)
       (let* ((case-fold-search t)
-             (par (org-element-lineage link '(paragraph)))
+             (par (org-element-lineage link 'paragraph))
              (attr-re "^[ \t]*#\\+attr_.*?: +.*?:width +\\(\\S-+\\)")
              (par-end (org-element-property :post-affiliated par))
              ;; Try to find an attribute providing a :width.
@@ -17842,7 +17842,7 @@ object (e.g., within a comment).  In these case, you need to use
 	(when string (save-excursion (insert (org-trim string))))))
      ;; In a list, make sure indenting keeps trailing text within.
      ((and (not (eolp))
-	   (org-element-lineage context '(item)))
+	   (org-element-lineage context 'item))
       (let ((trailing-data
 	     (delete-and-extract-region (point) (line-end-position))))
 	(org--newline indent arg interactive)
@@ -20188,7 +20188,7 @@ depending on context."
   (interactive)
   (let* ((element (org-element-at-point))
 	 (contents-begin (org-element-property :contents-begin element))
-	 (table (org-element-lineage element '(table) t)))
+	 (table (org-element-lineage element 'table t)))
     (if (and table
 	     (> (point) contents-begin)
 	     (<= (point) (org-element-property :contents-end table)))
@@ -20213,7 +20213,7 @@ depending on context."
 	(call-interactively #'forward-sentence))
     (let* ((element (org-element-at-point))
 	   (contents-end (org-element-property :contents-end element))
-	   (table (org-element-lineage element '(table) t)))
+	   (table (org-element-lineage element 'table t)))
       (if (and table
 	       (>= (point) (org-element-property :contents-begin table))
 	       (< (point) contents-end))
@@ -20427,7 +20427,7 @@ instead of back to heading."
 Respect narrowing."
   (let ((cached (org-element-at-point nil 'cached)))
     (if cached
-        (let ((cached-headline (org-element-lineage cached '(headline) t)))
+        (let ((cached-headline (org-element-lineage cached 'headline t)))
           (or (not cached-headline)
               (< (org-element-property :begin cached-headline) (point-min))))
       (org-with-limited-levels
@@ -20550,7 +20550,7 @@ make a significant difference in outlines with very many siblings."
                       (org-element-at-point nil t))))
     (if element
         (let* ((current-heading (org-element-lineage element '(headline inlinetask) 'with-self))
-               (parent (org-element-lineage current-heading '(headline))))
+               (parent (org-element-lineage current-heading 'headline)))
           (if (and parent
                    (<= (point-min) (org-element-property :begin parent)))
               (progn
@@ -20950,7 +20950,7 @@ Function may return a real element, or a pseudo-element with type
 	      (list begin end (org-element-parent e))))
 	   ;; Find the full plain list containing point, the check it
 	   ;; contains exactly one line per item.
-	   ((let ((l (org-element-lineage e '(plain-list) t)))
+	   ((let ((l (org-element-lineage e 'plain-list t)))
 	      (while (org-element-type-p
                       (org-element-parent l)
                       '(item plain-list))

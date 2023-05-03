@@ -2596,7 +2596,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 	(cond
 	 ((string-match-p "\\<headlines\\>" value)
 	  (let* ((localp (string-match-p "\\<local\\>" value))
-		 (parent (org-element-lineage keyword '(headline)))
+		 (parent (org-element-lineage keyword 'headline))
 		 (level (if (not (and localp parent)) 0
 			  (org-export-get-relative-level parent info)))
 		 (depth

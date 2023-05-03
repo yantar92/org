@@ -1760,7 +1760,7 @@ contextual information."
   (let ((links
 	 (and (plist-get info :ascii-links-to-notes)
 	      ;; Take care of links in first section of the document.
-	      (not (org-element-lineage section '(headline)))
+	      (not (org-element-lineage section 'headline))
 	      (org-ascii--describe-links
 	       (org-ascii--unique-links section info)
 	       (org-ascii--current-text-width section info)

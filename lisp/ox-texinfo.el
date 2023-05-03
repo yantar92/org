@@ -1352,7 +1352,7 @@ INFO is a plist holding contextual information.  See
 		     (org-element-type-p
 		      (org-element-parent destination)
                       'headline))))
-	   (let ((headline (org-element-lineage destination '(headline) t)))
+	   (let ((headline (org-element-lineage destination 'headline t)))
 	     (org-texinfo--@ref headline desc info)))
 	  (_ (org-texinfo--@ref destination desc info)))))
      ((string= type "mailto")
