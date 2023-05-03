@@ -256,15 +256,15 @@ Return value is the containing property name, as a keyword, or nil."
 (cl-defstruct
     (org-element-deferred
      (:constructor nil)
-     (:constructor org-element-deferred
+     (:constructor org-element-deferred-create
                    ( auto-undefer-p function &rest arg-value
                      &aux (args arg-value)))
-     (:constructor org-element-deferred-alias
+     (:constructor org-element-deferred-create-alias
                    ( keyword &optional auto-undefer-p
                      &aux
                      (function #'org-element-property-2)
                      (args (list keyword))))
-     (:constructor org-element-deferred-list
+     (:constructor org-element-deferred-create-list
                    ( args &optional auto-undefer-p
                      &aux
                      (function #'org-element--deferred-resolve-list)))
