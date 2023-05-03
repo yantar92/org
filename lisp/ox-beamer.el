@@ -517,7 +517,7 @@ used as a communication channel."
 	 ;; when there is no previous headline or the previous
 	 ;; headline do not have a BEAMER_column property.
 	 (parent-env (org-element-property
-		      :BEAMER_ENV (org-export-get-parent-headline headline)))
+		      :BEAMER_ENV (org-element-lineage headline 'headline)))
 	 (start-columns-p
 	  (or (equal environment "columns")
 	      (and column-width
@@ -740,7 +740,7 @@ used as a communication channel."
       ;; Fall-back to LaTeX export.  However, prefer "\hyperlink" over
       ;; "\hyperref" since the former handles overlay specifications.
       (let* ((latex-link (org-export-with-backend 'latex link contents info))
-             (parent (org-export-get-parent-element link))
+             (parent (org-element-parent-element link))
              (attr (org-export-read-attribute :attr_beamer parent))
              (overlay (plist-get attr :overlay)))
         (cond ((string-match "\\`\\\\hyperref\\[\\(.*?\\)\\]" latex-link)

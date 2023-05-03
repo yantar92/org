@@ -1797,8 +1797,8 @@ holding contextual information."
 		      ;; If top-level list, re-start numbering.  Otherwise,
 		      ;; continue numbering.
 		      (format "text:continue-numbering=\"%s\""
-			      (let* ((parent (org-export-get-parent-headline
-					      headline)))
+			      (let* ((parent (org-element-lineage
+					      headline 'headline)))
 				(if (and parent
 					 (org-export-low-level-p parent info))
 				    "true" "false")))))
@@ -2081,7 +2081,7 @@ SHORT-CAPTION are strings."
   (cl-assert (org-element-type-p element '(link table src-block paragraph)))
   (let* ((element-or-parent
 	  (cl-case (org-element-type element)
-	    (link (org-export-get-parent-element element))
+	    (link (org-element-parent-element element))
 	    (t element)))
 	 ;; Get label and caption.
 	 (label (and (or (org-element-property :name element)
@@ -2259,7 +2259,7 @@ used as a communication channel."
 		(org-odt--copy-image-file src-expanded)))
 	 ;; Extract attributes from #+ATTR_ODT line.
 	 (attr-from (cl-case (org-element-type element)
-		      (link (org-export-get-parent-element element))
+		      (link (org-element-parent-element element))
 		      (t element)))
 	 ;; Convert attributes to a plist.
 	 (attr-plist (org-export-read-attribute :attr_odt attr-from))
@@ -2297,7 +2297,7 @@ used as a communication channel."
 	 ;; Check if this link was created by LaTeX-to-PNG converter.
 	 (replaces (org-element-property
 		    :replaces (if (not standalone-link-p) element
-				(org-export-get-parent-element element))))
+				(org-element-parent-element element))))
 	 ;; If yes, note down the type of the element - LaTeX Fragment
 	 ;; or LaTeX environment.  It will go in to frame title.
 	 (title (and replaces (capitalize
@@ -2333,7 +2333,7 @@ used as a communication channel."
 	 ;; converter.
 	 (replaces (org-element-property
 		    :replaces (if (not standalone-link-p) element
-				(org-export-get-parent-element element))))
+				(org-element-parent-element element))))
 	 ;; If yes, note down the type of the element - LaTeX Fragment
 	 ;; or LaTeX environment.  It will go in to frame title.
 	 (title (and replaces (capitalize
@@ -3231,7 +3231,8 @@ contextual information."
 ;;;; Table Cell
 
 (defun org-odt-table-style-spec (element info)
-  (let* ((table (org-export-get-parent-table element))
+  "Get table style from `:odt-table-styles' INFO property."
+  (let* ((table (org-element-lineage element 'table))
 	 (table-attributes (org-export-read-attribute :attr_odt table))
 	 (table-style (plist-get table-attributes :style)))
     (assoc table-style (plist-get info :odt-table-styles))))
@@ -3256,7 +3257,7 @@ styles congruent with the ODF-1.2 specification."
 	 (r (car table-cell-address)) (c (cdr table-cell-address))
 	 (style-spec (org-odt-table-style-spec table-cell info))
 	 (table-dimensions (org-export-table-dimensions
-			    (org-export-get-parent-table table-cell)
+			    (org-element-lineage table-cell 'table)
 			    info)))
     (when style-spec
       ;; LibreOffice - particularly the Writer - honors neither table
@@ -3314,9 +3315,9 @@ channel."
 	    (cond
 	     ((and (= 1 (org-export-table-row-group table-row info))
 		   (org-export-table-has-header-p
-		    (org-export-get-parent-table table-row) info))
+		    (org-element-lineage table-row 'table) info))
 	      "OrgTableHeading")
-	     ((let* ((table (org-export-get-parent-table table-cell))
+	     ((let* ((table (org-element-lineage table-cell 'table))
 		     (table-attrs (org-export-read-attribute :attr_odt table))
 		     (table-header-columns
 		      (let ((cols (plist-get table-attrs :header-columns)))
@@ -3374,7 +3375,7 @@ communication channel."
     (let* ((rowgroup-tags
 	    (if (and (= 1 (org-export-table-row-group table-row info))
 		     (org-export-table-has-header-p
-		      (org-export-get-parent-table table-row) info))
+		      (org-element-lineage table-row 'table) info))
 		;; If the row belongs to the first rowgroup and the
 		;; table has more than one row groups, then this row
 		;; belongs to the header row group.

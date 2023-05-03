@@ -3247,7 +3247,7 @@ INFO is a plist holding contextual information.  See
 	   ;; do this for the first link in parent (inner image link
 	   ;; for inline images).  This is needed as long as
 	   ;; attributes cannot be set on a per link basis.
-	   (let* ((parent (org-export-get-parent-element link))
+	   (let* ((parent (org-element-parent-element link))
 		  (link (let ((container (org-element-parent link)))
 			  (if (and (org-element-type-p container 'link)
 				   (org-html-inline-image-p link info))
@@ -3554,7 +3554,7 @@ holding contextual information."
   "Transcode a SECTION element from Org to HTML.
 CONTENTS holds the contents of the section.  INFO is a plist
 holding contextual information."
-  (let ((parent (org-export-get-parent-headline section)))
+  (let ((parent (org-element-lineage section 'headline)))
     ;; Before first headline: no container, just return CONTENTS.
     (if (not parent) contents
       ;; Get div's class and id references.
@@ -3692,7 +3692,7 @@ contextual information."
 CONTENTS is nil.  INFO is a plist used as a communication
 channel."
   (let* ((table-row (org-element-parent table-cell))
-	 (table (org-export-get-parent-table table-cell))
+	 (table (org-element-lineage table-cell 'table))
 	 (cell-attrs
 	  (if (not (plist-get info :html-table-align-individual-fields)) ""
 	    (format (if (and (boundp 'org-html-format-table-no-css)
@@ -3756,7 +3756,7 @@ communication channel."
 	     ((not (= 1 group)) '("<tbody>" . "\n</tbody>"))
 	     ;; Row is from first group.  Table has >=1 groups.
 	     ((org-export-table-has-header-p
-	       (org-export-get-parent-table table-row) info)
+	       (org-element-lineage table-row 'table) info)
 	      '("<thead>" . "\n</thead>"))
 	     ;; Row is from first and only group.
 	     (t '("<tbody>" . "\n</tbody>")))))

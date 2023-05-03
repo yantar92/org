@@ -1843,14 +1843,14 @@ not exported."
     (table (not (plist-get options :with-tables)))
     (table-cell
      (and (org-export-table-has-special-column-p
-	   (org-export-get-parent-table datum))
+	   (org-element-lineage datum 'table))
 	  (org-export-first-sibling-p datum options)))
     (table-row (org-export-table-row-is-special-p datum options))
     (timestamp
      ;; `:with-timestamps' only applies to isolated timestamps
      ;; objects, i.e. timestamp objects in a paragraph containing only
      ;; timestamps and whitespaces.
-     (when (let ((parent (org-export-get-parent-element datum)))
+     (when (let ((parent (org-element-parent-element datum)))
 	     (and (org-element-type-p parent '(paragraph verse-block))
 		  (not (org-element-map parent
 			   (cons 'plain-text
@@ -4256,7 +4256,7 @@ inherited from a parent headline.
 
 Return value is a string or nil."
   (let ((headline (if (org-element-type-p datum 'headline) datum
-		    (org-export-get-parent-headline datum))))
+		    (org-element-lineage datum 'headline))))
     (if (not inherited) (org-element-property property datum)
       (org-element-property-inherited property headline 'with-self nil nil t))))
 
@@ -5359,7 +5359,7 @@ row (resp. last row) of the table, ignoring table rules, if any.
 
 Returned borders ignore special rows."
   (let* ((row (org-element-parent table-cell))
-	 (table (org-export-get-parent-table table-cell))
+	 (table (org-element-lineage table-cell 'table))
 	 borders)
     ;; Top/above border?  TABLE-CELL has a border above when a rule
     ;; used to demarcate row groups can be found above.  Hence,
@@ -5476,7 +5476,7 @@ INFO is a plist used as a communication channel."
 INFO is a plist used as a communication channel.  Always return
 nil for special rows and rows separators."
   (and (org-export-table-has-header-p
-	(org-export-get-parent-table table-row) info)
+	(org-element-lineage table-row 'table) info)
        (eql (org-export-table-row-group table-row info) 1)))
 
 (defun org-export-table-row-starts-header-p (table-row info)
@@ -5506,7 +5506,7 @@ for special rows and separators."
 	;; First time a row is queried, populate cache with all the
 	;; rows from the table.
 	(let ((number -1))
-	  (org-element-map (org-export-get-parent-table table-row) 'table-row
+	  (org-element-map (org-element-lineage table-row 'table) 'table-row
 	    (lambda (row)
 	      (when (eq (org-element-property :type row) 'standard)
 		(puthash row (cl-incf number) cache)))
@@ -5613,7 +5613,7 @@ Return a list of all exportable headlines as parsed elements.
 Footnote sections are ignored."
   (let* ((scope (cond ((not scope) (plist-get info :parse-tree))
 		      ((org-element-type-p scope 'headline) scope)
-		      ((org-export-get-parent-headline scope))
+		      ((org-element-lineage scope 'headline))
 		      (t (plist-get info :parse-tree))))
 	 (limit (plist-get info :headline-levels))
 	 (n (if (not (wholenump n)) limit
@@ -6031,7 +6031,7 @@ Return the new string."
 ;; Here are various functions to retrieve information about the
 ;; neighborhood of a given element or object.  Neighbors of interest
 ;; are parent headline (`org-export-get-parent-headline'), first
-;; element containing an object, (`org-export-get-parent-element'),
+;; element containing an object, (`org-element-parent-element'),
 ;; parent table (`org-export-get-parent-table'), previous element or
 ;; object (`org-export-get-previous-element') and next element or
 ;; object (`org-export-get-next-element').
@@ -6040,11 +6040,6 @@ Return the new string."
   "Return BLOB parent headline or nil.
 BLOB is the element or object being considered."
   (org-element-lineage blob '(headline)))
-
-(defun org-export-get-parent-element (object)
-  "Return first element containing OBJECT or nil.
-OBJECT is the object to consider."
-  (org-element-lineage object org-element-all-elements))
 
 (defun org-export-get-parent-table (object)
   "Return OBJECT parent table or nil.
