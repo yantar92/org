@@ -2217,7 +2217,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 				'(footnote-reference footnote-definition
 						     table-cell verse-block))
 	   (org-element-type-p
-	    (org-export-get-parent-element footnote-reference) 'item))
+	    (org-element-parent-element footnote-reference) 'item))
        "\\footnotemark")
       ;; Otherwise, define it with \footnote command.
       (t
@@ -2708,7 +2708,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
   "Return LaTeX code for an inline image.
 LINK is the link pointing to the inline image.  INFO is a plist
 used as a communication channel."
-  (let* ((parent (org-export-get-parent-element link))
+  (let* ((parent (org-element-parent-element link))
 	 (path (let ((raw-path (org-element-property :path link)))
 		 (if (not (file-name-absolute-p raw-path)) raw-path
 		   (expand-file-name raw-path))))
@@ -3983,7 +3983,7 @@ This function assumes TABLE has `org' as its `:type' property and
 CONTENTS is the cell contents.  INFO is a plist used as
 a communication channel."
   (let ((type (org-export-read-attribute
-               :attr_latex (org-export-get-parent-table table-cell) :mode))
+               :attr_latex (org-element-lineage table-cell 'table) :mode))
         (scientific-format (plist-get info :latex-table-scientific-notation)))
     (concat
      (if (and contents
@@ -4033,7 +4033,7 @@ a communication channel."
 	;; Special case for long tables.  Define header and footers.
 	((and longtablep (org-export-table-row-ends-header-p table-row info))
 	 (let ((columns (cdr (org-export-table-dimensions
-			      (org-export-get-parent-table table-row) info))))
+			      (org-element-lineage table-row 'table) info))))
 	   (format "%s
 \\endfirsthead
 \\multicolumn{%d}{l}{%s} \\\\[0pt]

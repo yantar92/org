@@ -557,7 +557,7 @@ node or anchor name is unique."
 	  ;; Consequently, we ensure that every parent headline gets
 	  ;; its node beforehand.  As a recursive operation, this
 	  ;; achieves the desired effect.
-	  (let ((parent (org-element-lineage datum '(headline))))
+	  (let ((parent (org-element-lineage datum 'headline)))
 	    (when (and parent (not (assq parent cache)))
 	      (org-texinfo--get-node parent info)
 	      (setq cache (plist-get info :texinfo-node-cache))))
@@ -1370,7 +1370,7 @@ INFO is a plist holding contextual information.  See
   "Return Texinfo code for an inline image.
 LINK is the link pointing to the inline image.  INFO is the
 current state of the export, as a plist."
-  (let* ((parent (org-export-get-parent-element link))
+  (let* ((parent (org-element-parent-element link))
 	 (label (and (org-element-property :name parent)
 		     (org-texinfo--get-node parent info)))
 	 (caption (org-export-get-caption parent))
@@ -1651,7 +1651,7 @@ contextual information."
   "Transcode a SECTION element from Org to Texinfo.
 CONTENTS holds the contents of the section.  INFO is a plist
 holding contextual information."
-  (let ((parent (org-export-get-parent-headline section)))
+  (let ((parent (org-element-lineage section 'headline)))
     (when parent   ;first section is handled in `org-texinfo-template'
       (org-trim
        (concat contents
@@ -1808,7 +1808,7 @@ a communication channel."
     (let ((rowgroup-tag
 	   (if (and (= 1 (org-export-table-row-group table-row info))
 		    (org-export-table-has-header-p
-		     (org-export-get-parent-table table-row) info))
+		     (org-element-lineage table-row 'table) info))
 	       "@headitem "
 	     "@item ")))
       (concat rowgroup-tag contents "\n"))))
