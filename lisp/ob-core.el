@@ -65,6 +65,11 @@
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-normalize-string "org-element" (s))
 (declare-function org-element-property "org-element-ast" (property node))
+(declare-function org-element-begin "org-element" (node))
+(declare-function org-element-end "org-element" (node))
+(declare-function org-element-post-affiliated "org-element" (node))
+(declare-function org-element-contents-begin "org-element" (node))
+(declare-function org-element-contents-end "org-element" (node))
 (declare-function org-element-parent "org-element-ast" (node))
 (declare-function org-element-type "org-element-ast" (node &optional anonymous))
 (declare-function org-element-type-p "org-element-ast" (node &optional types))
@@ -678,7 +683,7 @@ a list with the following pattern:
 		       ;; If DATUM is provided, make sure we get node
 		       ;; properties applicable to its location within
 		       ;; the document.
-		       (org-with-point-at (org-element-property :begin datum)
+		       (org-with-point-at (org-element-begin datum)
 			 (org-babel-params-from-properties lang no-eval))
 		       (mapcar (lambda (h)
 				 (org-babel-parse-header-arguments h no-eval))
@@ -1096,7 +1101,7 @@ Return t if a code block was found at point, nil otherwise."
 	  ;; we want to restore this location after executing BODY.
 	  (outside-position
 	   (and (<= (line-beginning-position)
-		    (org-element-property :post-affiliated element))
+		    (org-element-post-affiliated element))
 		(point-marker)))
 	  (org-src-window-setup 'switch-invisibly))
      (when (and (org-babel-where-is-src-block-head element)
@@ -1239,7 +1244,7 @@ buffer."
 	   (let ((,datum (save-match-data (org-element-context))))
 	     (when (org-element-type-p ,datum 'inline-src-block)
 	       (goto-char (match-beginning 0))
-	       (let ((,end (copy-marker (org-element-property :end ,datum))))
+	       (let ((,end (copy-marker (org-element-end ,datum))))
 		 ,@body
 		 (goto-char ,end)
 		 (set-marker ,end nil))))))
@@ -1267,7 +1272,7 @@ buffer."
 	   (let ((,datum (save-match-data (org-element-context))))
 	     (when (org-element-type-p ,datum '(babel-call inline-babel-call))
 	       (goto-char (match-beginning 0))
-	       (let ((,end (copy-marker (org-element-property :end ,datum))))
+	       (let ((,end (copy-marker (org-element-end ,datum))))
 		 ,@body
 		 (goto-char ,end)
 		 (set-marker ,end nil))))))
@@ -1298,7 +1303,7 @@ buffer."
                     ,datum
                     '(babel-call inline-babel-call inline-src-block src-block))
 	       (goto-char (match-beginning 0))
-	       (let ((,end (copy-marker (org-element-property :end ,datum))))
+	       (let ((,end (copy-marker (org-element-end ,datum))))
 		 ,@body
 		 (goto-char ,end)
 		 (set-marker ,end nil))))))
@@ -1825,13 +1830,13 @@ If the point is not on a source block or within blank lines after an
 src block, then return nil."
   (let ((element (or src-block (org-element-at-point))))
     (when (org-element-type-p element 'src-block)
-      (let ((end (org-element-property :end element)))
+      (let ((end (org-element-end element)))
 	(org-with-wide-buffer
 	 ;; Ensure point is not on a blank line after the block.
 	 (beginning-of-line)
 	 (skip-chars-forward " \r\t\n" end)
 	 (when (< (point) end)
-	   (prog1 (goto-char (org-element-property :post-affiliated element))
+	   (prog1 (goto-char (org-element-post-affiliated element))
 	     (looking-at org-babel-src-block-regexp))))))))
 
 ;;;###autoload
@@ -1929,7 +1934,7 @@ buffer or nil if no such result exists."
 	  (let ((element (org-element-at-point)))
 	    (when (or (org-element-type-p element 'keyword)
 		      (< (point)
-			 (org-element-property :post-affiliated element)))
+			 (org-element-post-affiliated element)))
 	      (throw :found (line-beginning-position)))))))))
 
 (defun org-babel-result-names (&optional file)
@@ -2076,11 +2081,11 @@ leave point where new results should be inserted."
     (let ((case-fold-search t)) (looking-at org-babel-result-regexp))
     (unless (string= (match-string 1) hash)
       (let* ((e (org-element-at-point))
-	     (post (copy-marker (org-element-property :post-affiliated e))))
+	     (post (copy-marker (org-element-post-affiliated e))))
 	;; Delete contents.
 	(delete-region post
 		       (save-excursion
-			 (goto-char (org-element-property :end e))
+			 (goto-char (org-element-end e))
 			 (skip-chars-backward " \t\n")
 			 (line-beginning-position 2)))
 	;; Delete RESULT keyword.  However, if RESULTS keyword is
@@ -2120,7 +2125,7 @@ to HASH."
 		                    :end (org-element-parent context)))
                          (_ (org-element-property
 		             :contents-end (org-element-parent context))))))
-	    (goto-char (org-element-property :end context))
+	    (goto-char (org-element-end context))
 	    (skip-chars-forward " \t\n" limit)
 	    (throw :found
 		   (and
@@ -2133,14 +2138,14 @@ to HASH."
 			     (delete-region
 			      (point)
 			      (progn
-				(goto-char (org-element-property :end result))
+				(goto-char (org-element-end result))
 				(skip-chars-backward " \t")
 				(point)))
 			     (point))))))))
 	 ((or `babel-call `src-block)
 	  (let* ((name (org-element-property :name context))
 		 (named-results (and name (org-babel-find-named-result name))))
-	    (goto-char (or named-results (org-element-property :end context)))
+	    (goto-char (or named-results (org-element-end context)))
 	    (cond
 	     ;; Existing results named after the current source.
 	     (named-results
@@ -2163,7 +2168,7 @@ to HASH."
 	     ((let* ((next (org-element-at-point))
 		     (end (save-excursion
 			    (goto-char
-			     (org-element-property :post-affiliated next))
+			     (org-element-post-affiliated next))
 			    (line-end-position)))
 		     (empty-result-re (concat org-babel-result-regexp "$"))
 		     (case-fold-search t))
@@ -2179,7 +2184,7 @@ to HASH."
       ;; after the previous element.
       (when insert
 	(save-excursion
-	  (goto-char (min (org-element-property :end context) (point-max)))
+	  (goto-char (min (org-element-end context) (point-max)))
 	  (skip-chars-backward " \t\n")
 	  (forward-line)
 	  (unless (bolp) (insert "\n"))
@@ -2192,7 +2197,7 @@ to HASH."
   "Read ELEMENT into emacs-lisp.
 Return nil if ELEMENT cannot be read."
   (org-with-wide-buffer
-   (goto-char (org-element-property :post-affiliated element))
+   (goto-char (org-element-post-affiliated element))
    (pcase (org-element-type element)
      (`fixed-width
       (let ((v (org-trim (org-element-property :value element))))
@@ -2214,17 +2219,17 @@ Return nil if ELEMENT cannot be read."
 	       (save-excursion
 		 (goto-char (match-end 0))
 		 (skip-chars-forward " \r\t\n")
-		 (<= (org-element-property :end element)
+		 (<= (org-element-end element)
 		     (point))))
 	  (org-babel-read-link)
 	(buffer-substring-no-properties
-	 (org-element-property :contents-begin element)
-	 (org-element-property :contents-end element))))
+	 (org-element-contents-begin element)
+	 (org-element-contents-end element))))
      ((or `center-block `quote-block `verse-block `special-block)
       (org-remove-indentation
        (buffer-substring-no-properties
-	(org-element-property :contents-begin element)
-	(org-element-property :contents-end element))))
+	(org-element-contents-begin element)
+	(org-element-contents-end element))))
      (_ nil))))
 
 (defun org-babel-read-result ()
@@ -2411,7 +2416,7 @@ INFO may provide the values of these header arguments (in the
 	      (progn
 		(when outside-scope (widen))
 		(if existing-result (goto-char existing-result)
-		  (goto-char (org-element-property :end inline))
+		  (goto-char (org-element-end inline))
 		  (skip-chars-backward " \t"))
 		(unless inline
 		  (setq indent (current-indentation))
@@ -2645,7 +2650,7 @@ Leading white space is trimmed."
   (let* ((el (or datum (org-element-context))))
     (when (org-element-type-p el '(inline-src-block inline-babel-call))
       (org-with-wide-buffer
-       (goto-char (org-element-property :end el))
+       (goto-char (org-element-end el))
        (skip-chars-backward " \t")
        (let ((result (save-excursion
 		       (skip-chars-forward
@@ -2657,7 +2662,7 @@ Leading white space is trimmed."
 		    (string= (org-element-property :key result) "results"))
 	   (delete-region		; And leading whitespace.
 	    (point)
-	    (progn (goto-char (org-element-property :end result))
+	    (progn (goto-char (org-element-end result))
 		   (skip-chars-backward " \t\n")
 		   (point)))))))))
 
@@ -2685,7 +2690,7 @@ in the buffer."
                          latex-environment))
 	       (save-excursion
 		 (goto-char (min (point-max) ;for narrowed buffers
-				 (org-element-property :end element)))
+				 (org-element-end element)))
 		 (skip-chars-backward " \r\t\n")
 		 (line-beginning-position 2))
 	     (point))))))
@@ -2788,7 +2793,7 @@ specified as an an \"attachment:\" style link."
 		      (buffer-string))))))
       (delete-region body-start
 		     (org-with-wide-buffer
-		      (goto-char (org-element-property :end element))
+		      (goto-char (org-element-end element))
 		      (skip-chars-backward " \t\n")
 		      (line-beginning-position)))
       (goto-char body-start)
