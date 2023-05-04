@@ -135,7 +135,8 @@
 ;; AST.
 ;;
 ;; The properties listed in `org-element--standard-properties', except
-;; `:deferred' are never considered to have deferred value.
+;; `:deferred' and `:parent' are never considered to have deferred value.
+;; This constraint makes org-element API significantly faster.
 ;;
 ;; 3. Org document representation
 ;; ------------------------------
@@ -525,8 +526,10 @@ properties, replacing their values in NODE.
 Note: The properties listed in `org-element--standard-properties',
 except `:deferred', may not be resolved."
   (if (and (inline-const-p property)
-           (not (eq :deferred (inline-const-val property)))
+           (not (memq (inline-const-val property) '(:deferred :parent)))
            (org-element--property-idx (inline-const-val property)))
+      ;; This is an important optimization, making common org-element
+      ;; API calls much faster.
       (inline-quote (org-element-property-1 ,property ,node ,dflt))
     (inline-quote (org-element--property ,property ,node ,dflt ,force-undefer))))
 
