@@ -605,6 +605,24 @@ Otherwise, return nil."
     ;; Return.
     (when collect (nreverse acc))))
 
+(defun org-element--deferred-resolve-force-rec (property val node)
+  "Resolve deferred PROPERTY VAL in NODE recursively.  Force undefer."
+  (catch :found
+    (catch :org-element-deferred-retry
+      (throw :found (org-element--deferred-resolve-force val node)))
+    ;; Caught `:org-element-deferred-retry'.  Go long way.
+    (org-element-property property node nil t)))
+
+(defun org-element--deferred-resolve-rec (property val node)
+  "Resolve deferred PROPERTY VAL in NODE recursively."
+  (catch :found
+    (catch :org-element-deferred-retry
+      (throw :found (pcase (org-element--deferred-resolve val node)
+                      (`(,val . org-element-ast--nil) val)
+                      (`(_ . ,to-store) to-store))))
+    ;; Caught `:org-element-deferred-retry'.  Go long way.
+    (org-element-property property node)))
+
 (defsubst org-element-properties-resolve (node &optional force-undefer)
   "Resolve all the deferred properties in NODE, modifying the NODE.
 When FORCE-UNDEFER is non-nil, resolve unconditionally.
@@ -613,20 +631,8 @@ Return the modified NODE."
   (org-element-property :deferred node nil force-undefer)
   (org-element--properties-mapc
    (if force-undefer
-       (lambda (property val node)
-         (catch :found
-           (catch :org-element-deferred-retry
-             (throw :found (org-element--deferred-resolve-force val node)))
-           ;; Caught `:org-element-deferred-retry'.  Go long way.
-           (org-element-property property node nil t)))
-     (lambda (property val node)
-       (catch :found
-         (catch :org-element-deferred-retry
-           (throw :found (pcase (org-element--deferred-resolve val node)
-                           (`(,val . org-element-ast--nil) val)
-                           (`(_ . ,to-store) to-store))))
-         ;; Caught `:org-element-deferred-retry'.  Go long way.
-         (org-element-property property node))))
+       #'org-element--deferred-resolve-force-rec
+     #'org-element--deferred-resolve-rec)
    node 'set 'no-standard)
   node)
 
