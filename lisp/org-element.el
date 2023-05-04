@@ -6532,7 +6532,12 @@ the expected result."
                (when up (setq element up)))))
            ;; Parse successively each element until we reach POS.
            (let ((end (or (org-element-end element) (point-max)))
-	         (parent (org-element-parent element)))
+	         (parent (when (org-element--cache-active-p)
+                           ;; Cache is not active.  Parent is deferred.
+                           ;; We will not actually use parent during
+                           ;; the first iteration of the `while' loop.
+                           ;; Avoid undeferring here.
+                           (org-element-parent element))))
              (while t
 	       (when (org-element--cache-interrupt-p time-limit)
                  (throw 'org-element--cache-interrupt nil))
