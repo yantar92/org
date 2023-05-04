@@ -833,7 +833,7 @@ It has to accept one argument: the node itself.
 
 When TYPES is t, call FUN for all the node types.
 
-FUN can also be a lisp form.  The form will be evaluated as function
+FUN can also be a Lisp form.  The form will be evaluated as function
 with symbol `node' bound to the current node.
 
 When optional argument IGNORE is non-nil, it should be a list holding
@@ -1086,6 +1086,7 @@ apply to it.
 
 When optional argument FIRST-MATCH is non-nil, stop at the first
 match for which FUN doesn't return nil, and return that value."
+  (declare (indent 2))
   (let ((up (if with-self datum (org-element-parent datum)))
 	acc rtn)
     (catch :--first-match
@@ -1107,7 +1108,7 @@ When WITH-SELF is non-nil, consider PROPERTY in the NODE itself.
 Otherwise, only start from the immediate parent.
 
 When optional argument ACCUMULATE is nil, return the first non-nil value
-\\(properties when PROPERTY is a list are considered one by one).
+\(properties when PROPERTY is a list are considered one by one).
 When ACCUMULATE is non-nil, extract all the values, starting from the
 outermost ancestor and accumulate them into a single list.  The values
 that are lists are appended.
