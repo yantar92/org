@@ -6446,6 +6446,22 @@ and footnote-definition."
             (skip-chars-backward " \r\n\t")
             (line-beginning-position 2)))))
 
+(defun org-element--headline-parent-deferred (headline)
+  "Parse parent for HEADLINE."
+  (with-current-buffer (org-element-property :buffer headline)
+    (org-with-point-at (org-element-begin headline)
+      (if (or (bobp) (= 1 (org-element-property :true-level headline)))
+          ;; Top-level heading.  Parent is `org-data'.
+          (org-element-org-data-parser)
+        (re-search-backward
+         (org-headline-re
+          (1- (org-element-property :true-level headline)))
+         nil 'move)
+        (let ((parent (org-element-at-point)))
+          (if (org-element-type-p parent 'headline) parent
+            ;; Before first headline.  Assign `org-data'.
+            (org-element-lineage parent 'org-data t)))))))
+
 (defun org-element--parse-to (pos &optional syncp time-limit)
   "Parse elements in current section, down to POS.
 
@@ -6489,14 +6505,17 @@ the expected result."
 	     (setq mode 'org-data))
             ;; Nothing in cache before point because cache is not active.
             ;; Parse from previous heading to avoid re-parsing the whole
-            ;; buffer above.  This comes at the cost of not calculating
-            ;; `:parent' property for headings.
+            ;; buffer above.  Arrange `:parent' to be calculated on demand.
             ((not cached)
              (if (re-search-backward
                   (org-get-limited-outline-regexp t)
                   nil 'move)
                  (progn
                    (setq element (org-element-headline-parser nil 'fast))
+                   (org-element-put-property
+                    element :parent
+                    (org-element-deferred-create
+                     t #'org-element--headline-parent-deferred))
 	           (setq mode 'planning)
 	           (forward-line))
                (setq element (org-element-org-data-parser))
