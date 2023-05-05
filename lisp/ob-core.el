@@ -2160,10 +2160,10 @@ to HASH."
 	  ;; Results for inline objects are located right after them.
 	  ;; There is no RESULTS line to insert either.
 	  (let ((limit (pcase (org-element-type (org-element-parent context))
-                         (`section (org-element-property
-		                    :end (org-element-parent context)))
-                         (_ (org-element-property
-		             :contents-end (org-element-parent context))))))
+                         (`section (org-element-end
+                                    (org-element-parent context)))
+                         (_ (org-element-contents-end
+		             (org-element-parent context))))))
 	    (goto-char (org-element-end context))
 	    (skip-chars-forward " \t\n" limit)
 	    (throw :found
@@ -2197,10 +2197,10 @@ to HASH."
 	     ;; buffer or outside CONTEXT parent.
 	     ((eq (point)
 		  (or (pcase (org-element-type (org-element-parent context))
-                        ((or `section `org-data) (org-element-property
-		                                  :end (org-element-parent context)))
-                        (_ (org-element-property
-		            :contents-end (org-element-parent context))))
+                        ((or `section `org-data)
+                         (org-element-end (org-element-parent context)))
+                        (_ (org-element-contents-end
+                            (org-element-parent context))))
 		      (point-max))))
 	     ;; Check if next element is an anonymous result below
 	     ;; the current block.
@@ -2694,8 +2694,8 @@ Leading white space is trimmed."
        (let ((result (save-excursion
 		       (skip-chars-forward
 			" \t\n"
-			(org-element-property
-			 :contents-end (org-element-parent el)))
+			(org-element-contents-end
+			 (org-element-parent el)))
 		       (org-element-context))))
 	 (when (and (org-element-type-p result 'macro)
 		    (string= (org-element-property :key result) "results"))
