@@ -7950,20 +7950,13 @@ call CMD."
     (cl-progv vars vals
       (call-interactively cmd))))
 
-(defun org-get-category (&optional pos force-refresh)
-  "Get the category applying to position POS."
-  (save-match-data
-    (when force-refresh (org-refresh-category-properties))
-    (let ((pos (or pos (point))))
-      (if (org-element--cache-active-p)
-          ;; Sync cache.
-          (org-with-point-at (org-element-begin (org-element-at-point pos))
-            (or (org-entry-get-with-inheritance "CATEGORY")
-                "???"))
-        (or (get-text-property pos 'org-category)
-            (progn
-              (org-refresh-category-properties)
-              (get-text-property pos 'org-category)))))))
+(defun org-get-category (&optional pos _)
+  "Get the category applying to position POS.
+Return \"???\" when no category is set."
+  ;; Sync cache.
+  (or (org-entry-get-with-inheritance
+       "CATEGORY" nil (or pos (point)))
+      "???"))
 
 ;;; Refresh properties
 
@@ -8017,52 +8010,6 @@ the whole buffer."
 	  ;; TPROP is an alist with (property . function) elements.
 	  (pcase-dolist (`(,prop . ,f) tprop)
 	    (put-text-property start end prop (funcall f p))))))))
-
-(defun org-refresh-category-properties ()
-  "Refresh category text properties in the buffer."
-  (unless (org-element--cache-active-p)
-    (let ((case-fold-search t)
-	  (inhibit-read-only t)
-	  (default-category
-	   (cond ((null org-category)
-		  (if buffer-file-name
-		      (file-name-sans-extension
-		       (file-name-nondirectory buffer-file-name))
-		    "???"))
-		 ((symbolp org-category) (symbol-name org-category))
-		 (t org-category))))
-      (let ((category (catch 'buffer-category
-                        (org-with-wide-buffer
-	                 (goto-char (point-max))
-	                 (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-	                   (let ((element (org-element-at-point-no-context)))
-	                     (when (org-element-type-p element 'keyword)
-		               (throw 'buffer-category
-		                      (org-element-property :value element))))))
-	                default-category)))
-        (with-silent-modifications
-          (org-with-wide-buffer
-           ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
-           ;; keyword.  If none is found, fall-back to `org-category' or
-           ;; buffer file name, or set it by the document property drawer.
-           (put-text-property (point-min) (point-max)
-                              'org-category category)
-           ;; Set categories from the document property drawer or
-           ;; property drawers in the outline.  If category is found in
-           ;; the property drawer for the whole buffer that value
-           ;; overrides the keyword-based value set above.
-           (goto-char (point-min))
-           (let ((regexp (org-re-property "CATEGORY")))
-             (while (re-search-forward regexp nil t)
-               (let ((value (match-string-no-properties 3)))
-                 (when (org-at-property-p)
-                   (put-text-property
-                    (save-excursion (org-back-to-heading-or-point-min t))
-                    (save-excursion (if (org-before-first-heading-p)
-                                        (point-max)
-                                      (org-end-of-subtree t t)))
-                    'org-category
-                    value)))))))))))
 
 (defun org-refresh-stats-properties ()
   "Refresh stats text properties in the buffer."
@@ -15117,12 +15064,11 @@ appointments, statistics and subtree-local categories.
 If you don't use these in the agenda, you can add them to this
 list and agenda building will be a bit faster.
 The value is a list, with zero or more of the symbols `effort', `appt',
-`stats' or `category'."
+or `stats'."
   :type '(set :greedy t
 	      (const effort)
 	      (const appt)
-	      (const stats)
-	      (const category))
+	      (const stats))
   :version "26.1"
   :package-version '(Org . "8.3")
   :group 'org-agenda)
@@ -15407,8 +15353,6 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
               (org-get-agenda-file-buffer file))
           (org-with-wide-buffer
 	   (org-set-regexps-and-options 'tags-only)
-	   (or (memq 'category org-agenda-ignore-properties)
-	       (org-refresh-category-properties))
 	   (or (memq 'stats org-agenda-ignore-properties)
 	       (org-refresh-stats-properties))
 	   (or (memq 'effort org-agenda-ignore-properties)
