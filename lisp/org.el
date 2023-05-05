@@ -7273,26 +7273,19 @@ If yes, remember the marker and the distance to BEG."
 
 (defun org-narrow-to-subtree (&optional element)
   "Narrow buffer to the current subtree.
-Use the command `\\[widen]' to see the whole buffer again."
+Use the command `\\[widen]' to see the whole buffer again.
+With optional argument ELEMENT narrow to subtree around ELEMENT."
   (interactive)
-  (if (org-element--cache-active-p)
-      (let* ((heading (org-element-lineage
-                       (or element (org-element-at-point))
-                       'headline t))
-             (end (org-element-end heading)))
-        (if (and heading end)
-            (narrow-to-region (org-element-begin heading)
-                              (if (= end (point-max))
-                                  end (1- end)))
-          (signal 'outline-before-first-heading nil)))
-    (save-excursion
-      (save-match-data
-        (org-with-limited-levels
-         (narrow-to-region
-	  (progn (org-back-to-heading t) (point))
-	  (progn (org-end-of-subtree t t)
-	         (when (and (org-at-heading-p) (not (eobp))) (backward-char 1))
-	         (point))))))))
+  (let* ((heading
+          (org-element-lineage
+           (or element (org-element-at-point))
+           'headline 'with-self))
+         (end (org-element-end heading)))
+    (if (and heading end)
+        (narrow-to-region (org-element-begin heading)
+                          (if (= end (point-max))
+                              end (1- end)))
+      (signal 'outline-before-first-heading nil))))
 
 (defun org-toggle-narrow-to-subtree ()
   "Narrow to the subtree at point or widen a narrowed buffer.
@@ -20379,20 +20372,15 @@ This function also checks ancestors of the current headline,
 unless optional argument NO-INHERITANCE is non-nil.
 
 Optional argument ELEMENT contains element at point."
-  (save-match-data
-    (let ((el (or element
-                  (org-element-at-point nil 'cached)
-                  (org-with-wide-buffer
-                   (org-back-to-heading-or-point-min t)
-                   (org-element-at-point)))))
-      (catch :found
-        (setq el (org-element-lineage el '(headline inlinetask) 'include-self))
-        (if no-inheritance
-            (org-element-property :commentedp el)
-          (while el
-            (when (org-element-property :commentedp el)
-              (throw :found t))
-            (setq el (org-element-parent el))))))))
+  (unless element
+    (setq
+     element
+     (org-element-lineage
+      (org-element-at-point)
+      '(headline inlinetask) 'with-self)))
+  (if no-inheritance
+      (org-element-property :commentedp element)
+    (org-element-property-inherited :commentedp element 'with-self)))
 
 (defun org-in-archived-heading-p (&optional no-inheritance element)
   "Non-nil if point is under an archived heading.
@@ -20400,23 +20388,15 @@ This function also checks ancestors of the current headline,
 unless optional argument NO-INHERITANCE is non-nil.
 
 Optional argument ELEMENT contains element at point."
-  (cond
-   ((and (not element) (org-before-first-heading-p)) nil)
-   ((if element
-        (org-element-property :archivedp element)
-      (let ((tags (org-get-tags element 'local)))
-        (and tags
-	     (cl-some (apply-partially #'string= org-archive-tag) tags)))))
-   (no-inheritance nil)
-   (t
-    (if (or element (org-element--cache-active-p))
-        (catch :archived
-          (unless element (setq element (org-element-at-point)))
-          (while element
-            (when (org-element-property :archivedp element)
-              (throw :archived t))
-            (setq element (org-element-parent element))))
-      (save-excursion (and (org-up-heading-safe) (org-in-archived-heading-p)))))))
+  (unless element
+    (setq
+     element
+     (org-element-lineage
+      (org-element-at-point)
+      '(headline inlinetask) 'with-self)))
+  (if no-inheritance
+      (org-element-property :archivedp element)
+    (org-element-property-inherited :archivedp element 'with-self)))
 
 (defun org-at-comment-p nil
   "Return t if cursor is in a commented line."
