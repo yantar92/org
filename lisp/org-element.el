@@ -6507,6 +6507,7 @@ the expected result."
             ;; Parse from previous heading to avoid re-parsing the whole
             ;; buffer above.  Arrange `:parent' to be calculated on demand.
             ((not cached)
+             (end-of-line) ; ensure the end of current heading.
              (if (re-search-backward
                   (org-get-limited-outline-regexp t)
                   nil 'move)
