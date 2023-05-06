@@ -169,6 +169,13 @@ Style, if any, is located in match group 1.")
   "Regexp matching opening or closing line of a drawer.
 Drawer's name is located in match group 1.")
 
+(defconst org-element-drawer-re-nogroup
+  (rx line-start (0+ (any ?\s ?\t))
+      ":" (1+ (any ?- ?_ word)) ":"
+      (0+ (any ?\s ?\t)) line-end)
+  "Regexp matching opening or closing line of a drawer.
+Drawer's name is located in match group 1.")
+
 (defconst org-element-dynamic-block-open-re
   (rx line-start (0+ (any ?\s ?\t))
       "#+BEGIN:" (0+ (any ?\s ?\t))
@@ -4319,7 +4326,7 @@ element it has to parse."
 	      ((looking-at-p org-element--latex-begin-environment)
 	       (org-element-latex-environment-parser limit affiliated))
 	      ;; Drawer.
-	      ((looking-at-p org-element-drawer-re)
+	      ((looking-at-p org-element-drawer-re-nogroup)
 	       (org-element-drawer-parser limit affiliated))
 	      ;; Fixed Width
 	      ((looking-at-p "[ \t]*:\\( \\|$\\)")
