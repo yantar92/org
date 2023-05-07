@@ -585,7 +585,11 @@ Counting starts at 1."
 (defun org-refresh-category-properties ()
   "Refresh category text properties in the buffer."
   nil)
+(defun org-refresh-effort-properties ()
+  "Refresh effort properties."
+  nil)
 (make-obsolete 'org-refresh-category-properties "no longer used" "9.7")
+(make-obsolete 'org-refresh-effort-properties "no longer used" "9.7")
 
 (defun org-compatible-face (inherits specs)
   "Make a compatible face specification.
