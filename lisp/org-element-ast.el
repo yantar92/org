@@ -485,53 +485,39 @@ Return modified NODE."
 See `org-element-put-property' for the meaning of PROPERTY and VALUE."
   (inline-quote (org-element-put-property ,node ,property ,value)))
 
-(defun org-element--property (property node &optional dflt force-undefer)
+(defun org-element-property (property node &optional dflt force-undefer)
   "Extract the value from the PROPERTY of a NODE.
 Return DFLT when PROPERTY is not present.
 When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
 properties, replacing their values in NODE."
-  (let ((retry t) value)
-    (while retry
-      (catch :org-element-deferred-retry
-        (setq value (org-element-property-1 property node 'org-element-ast--nil))
-        ;; PROPERTY not present.
-        (when (and (eq 'org-element-ast--nil value)
-                   (org-element-deferred-p
-                    (org-element-property-1 :deferred node)))
-          ;; If :deferred has `org-element-deferred' type, resolve it for
-          ;; side-effects, and re-assign the new value.
-          (org-element--property :deferred node nil 'force-undefer)
-          ;; Try to retrieve the value again.
-          (setq value (org-element-property-1 property node dflt)))
-        ;; Deferred property.  Resolve it recursively.
-        (when (org-element-deferred-p value)
-          (pcase-let
-              ((`(,resolved . ,value-to-store)
-                (org-element--deferred-resolve value node force-undefer)))
-            (setq value resolved)
-            ;; Store the resolved property value, if needed.
-            (unless (eq value-to-store 'org-element-ast--nil)
-              (org-element-put-property node property value-to-store))))
-        ;; Finished resolving.
-        (setq retry nil)))
+  (let ((value (org-element-property-1 property node 'org-element-ast--nil)))
+    ;; PROPERTY not present.
+    (when (and (eq 'org-element-ast--nil value)
+               (org-element-deferred-p
+                (org-element-property-1 :deferred node)))
+      ;; If :deferred has `org-element-deferred' type, resolve it for
+      ;; side-effects, and re-assign the new value.
+      (org-element-property :deferred node nil 'force-undefer)
+      ;; Try to retrieve the value again.
+      (setq value (org-element-property-1 property node dflt)))
+    ;; Deferred property.  Resolve it recursively.
+    (when (org-element-deferred-p value)
+      (let ((retry t) (firstiter t))
+        (while retry
+          (if firstiter (setq firstiter nil) ; avoid extra call to `org-element-property-1'.
+            (setq value (org-element-property-1 property node 'org-element-ast--nil)))
+          (catch :org-element-deferred-retry
+            (pcase-let
+                ((`(,resolved . ,value-to-store)
+                  (org-element--deferred-resolve value node force-undefer)))
+              (setq value resolved)
+              ;; Store the resolved property value, if needed.
+              (unless (eq value-to-store 'org-element-ast--nil)
+                (org-element-put-property node property value-to-store)))
+            ;; Finished resolving.
+            (setq retry nil)))))
     ;; Return the resolved value.
     (if (eq value 'org-element-ast--nil) dflt value)))
-
-(define-inline org-element-property (property node &optional dflt force-undefer)
-  "Extract the value from the PROPERTY of a NODE.
-Return DFLT when PROPERTY is not present.
-When FORCE-UNDEFER is non-nil, unconditionally resolve deferred
-properties, replacing their values in NODE.
-
-Note: The properties listed in `org-element--standard-properties',
-except `:deferred', may not be resolved."
-  (if (and (inline-const-p property)
-           (not (memq (inline-const-val property) '(:deferred :parent)))
-           (org-element--property-idx (inline-const-val property)))
-      ;; This is an important optimization, making common org-element
-      ;; API calls much faster.
-      (inline-quote (org-element-property-1 ,property ,node ,dflt))
-    (inline-quote (org-element--property ,property ,node ,dflt ,force-undefer))))
 
 (define-inline org-element-property-2 (node property &optional dflt force-undefer)
   "Like `org-element-property', but reverse the order of NODE and PROPERTY."
@@ -636,7 +622,7 @@ Return the modified NODE."
    (if force-undefer
        #'org-element--deferred-resolve-force-rec
      #'org-element--deferred-resolve-rec)
-   node 'set 'no-standard)
+   node 'set)
   node)
 
 (defsubst org-element-properties-mapc (fun node &optional undefer)
