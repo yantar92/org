@@ -421,7 +421,7 @@ group 4: description tag")
 (defun org-in-item-p ()
   "Return item beginning position when in a plain list, nil otherwise."
   (save-excursion
-    (beginning-of-line)
+    (forward-line 0)
     (let* ((case-fold-search t)
 	   (context (org-list-context))
 	   (lim-up (car context))
@@ -469,7 +469,7 @@ group 4: description tag")
 		     (re-search-backward "^[ \t]*#\\+begin_" lim-up t)))
 	       ((and (looking-at "^[ \t]*:END:")
 		     (re-search-backward org-drawer-regexp lim-up t))
-		(beginning-of-line))
+		(forward-line 0))
 	       ((and inlinetask-re (looking-at inlinetask-re))
 		(org-inlinetask-goto-beginning)
 		(forward-line -1))
@@ -488,7 +488,7 @@ group 4: description tag")
   "Is point in a line starting a hand-formatted item?
 Modify match data, matching against `org-item-re'."
   (save-excursion
-    (beginning-of-line)
+    (forward-line 0)
     (and
      (org-element-type-p
       (org-element-at-point)
@@ -536,7 +536,7 @@ Contexts `block' and `invalid' refer to `org-list-forbidden-blocks'."
   (save-match-data
     (save-excursion
       (org-with-limited-levels
-       (beginning-of-line)
+       (forward-line 0)
        (let ((case-fold-search t) (pos (point)) beg end context-type
 	     ;; Get positions of surrounding headings.  This is the
 	     ;; default context.
@@ -623,7 +623,7 @@ will get the following structure:
 
 Assume point is at an item."
   (save-excursion
-    (beginning-of-line)
+    (forward-line 0)
     (let* ((case-fold-search t)
 	   (context (org-list-context))
 	   (lim-up (car context))
@@ -691,7 +691,7 @@ Assume point is at an item."
 		     (re-search-backward "^[ \t]*#\\+begin_" lim-up t)))
 	       ((and (looking-at "^[ \t]*:END:")
 		     (re-search-backward org-drawer-regexp lim-up t))
-		(beginning-of-line))
+		(forward-line 0))
 	       ((and inlinetask-re (looking-at inlinetask-re))
 		(org-inlinetask-goto-beginning)
 		(forward-line -1))
@@ -1859,7 +1859,7 @@ Initial position of cursor is restored after the changes."
 	  (lambda (end beg delta)
 	    (goto-char end)
 	    (skip-chars-backward " \r\t\n")
-	    (beginning-of-line)
+	    (forward-line 0)
 	    (while (or (> (point) beg)
 		       (and (= (point) beg)
 			    (not (looking-at item-re))))
@@ -2246,7 +2246,7 @@ item is invisible."
 	  (setq struct (org-list-insert-item pos struct prevs checkbox desc))
 	  (org-list-write-struct struct (org-list-parents-alist struct))
 	  (when checkbox (org-update-checkbox-count-maybe))
-          (beginning-of-line)
+          (forward-line 0)
 	  (looking-at org-list-full-item-re)
 	  (goto-char (if (and (match-beginning 4)
 			      (save-match-data
@@ -2276,7 +2276,7 @@ is an integer, 0 means `-', 1 means `+' etc.  If WHICH is
   (interactive "P")
   (unless (org-at-item-p) (error "Not at an item"))
   (let ((origin (point-marker)))
-    (beginning-of-line)
+    (forward-line 0)
     (let* ((struct (org-list-struct))
            (parents (org-list-parents-alist struct))
            (prevs (org-list-prevs-alist struct))
@@ -2338,14 +2338,14 @@ is an integer, 0 means `-', 1 means `+' etc.  If WHICH is
       (setq struct (org-list-struct))
       (cond
        ((>= origin-offset2 0)
-        (beginning-of-line)
+        (forward-line 0)
         (move-marker origin (+ (point)
                                (org-list-get-ind (point) struct)
                                (length (org-list-get-bullet (point) struct))
                                origin-offset2))
         (goto-char origin))
        ((>= origin-offset 0)
-        (beginning-of-line)
+        (forward-line 0)
         (move-marker origin (+ (point)
                                (org-list-get-ind (point) struct)
                                origin-offset))
@@ -2390,7 +2390,7 @@ is an integer, 0 means `-', 1 means `+' etc.  If WHICH is
 (defun org-at-radio-list-p ()
   "Is point at a list item with radio buttons?"
   (when (org-match-line (org-item-re))	;short-circuit
-    (let* ((e (save-excursion (beginning-of-line) (org-element-at-point))))
+    (let* ((e (save-excursion (forward-line 0) (org-element-at-point))))
       ;; Check we're really on a line with a bullet.
       (when (org-element-type-p e '(item plain-list))
 	;; Look for ATTR_ORG attribute in the current plain list.
@@ -2520,7 +2520,7 @@ subtree, ignoring planning line and any drawer following it."
 	  (while (< (point) end)
 	    (when (org-at-item-checkbox-p)
 	      (replace-match "[ ]" t t nil 1))
-	    (beginning-of-line 2)))
+	    (forward-line 1)))
 	(org-update-checkbox-count-maybe 'all)))))
 
 (defun org-update-checkbox-count (&optional all)
@@ -2989,7 +2989,7 @@ function is being called interactively."
 	     (now (current-time))
 	     (next-record (lambda ()
 			    (skip-chars-forward " \r\t\n")
-			    (or (eobp) (beginning-of-line))))
+			    (or (eobp) (forward-line 0))))
 	     (end-record (lambda ()
 			   (goto-char (org-list-get-item-end-before-blank
 				       (point) struct))))
@@ -3069,7 +3069,7 @@ With a prefix argument ARG, change the region in a single item."
                    ;; footnote definition, thus not slurping the
                    ;; following element.
                    (unless (<= 2 (org-element-post-blank
-                                 (org-element-at-point)))
+                                  (org-element-at-point)))
                      (setf (car definitions)
                            (concat (car definitions)
                                    (make-string
@@ -3198,7 +3198,7 @@ With a prefix argument ARG, change the region in a single item."
            (when footnote-definitions
              (goto-char end)
              ;; Insert footnote definitions after the list.
-             (unless (bolp) (beginning-of-line 2))
+             (unless (bolp) (forward-line 1))
              ;; At (point-max).
              (unless (bolp) (insert "\n"))
              (dolist (def footnote-definitions)
@@ -3230,7 +3230,7 @@ With a prefix argument ARG, change the region in a single item."
                               (org-element-at-point (1- end))
                               'plain-list t)))
                  ;; Insert footnote definitions after the list.
-                 (unless (bolp) (beginning-of-line 2))
+                 (unless (bolp) (forward-line 1))
                  ;; At (point-max).
                  (unless (bolp) (insert "\n"))
                  (dolist (def footnote-definitions)
@@ -3447,7 +3447,7 @@ Valid parameters are:
 		      (if (consp e) (funcall insert-list e)
 			(insert e)
 			(insert "\n")))
-		    (beginning-of-line)
+		    (forward-line 0)
 		    (save-excursion
 		      (let ((ind (if (eq type 'ordered) 3 2)))
 			(while (> (point) start)

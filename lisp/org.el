@@ -5505,7 +5505,7 @@ by a #."
 				  '(display t invisible t intangible t))
 	  ;; Handle short captions
 	  (save-excursion
-	    (beginning-of-line)
+	    (forward-line 0)
 	    (looking-at (rx (group (zero-or-more (any " \t"))
 				   "#+caption"
 				   (optional "[" (zero-or-more any) "]")
@@ -6426,7 +6426,7 @@ unconditionally."
   "Make the number of empty lines before current exactly N.
 So this will delete or add empty lines."
   (let ((column (current-column)))
-    (beginning-of-line)
+    (forward-line 0)
     (unless (bobp)
       (let ((start (save-excursion
 		     (skip-chars-backward " \r\t\n")
@@ -6561,7 +6561,7 @@ unchecked check box."
 	     (run-hook-with-args-until-success
 	      'org-todo-get-default-hook new-mark-x nil)
 	     new-mark-x)))
-      (beginning-of-line 1)
+      (forward-line 0)
       (and (looking-at org-outline-regexp) (goto-char (match-end 0))
 	   (if org-treat-insert-todo-heading-as-state-change
 	       (org-todo new-mark)
@@ -6647,7 +6647,7 @@ headings in the region."
   "Fix cursor position and indentation after demoting/promoting."
   (let ((pos (point)))
     (when (save-excursion
-	    (beginning-of-line)
+	    (forward-line 0)
 	    (let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
 	    (or (eq pos (match-end 1)) (eq pos (match-end 2))))
       (cond ((eobp) (insert " "))
@@ -6669,7 +6669,7 @@ Returns 0 for the first headline in the buffer, and nil if before the
 first headline."
   (and (org-current-level)
        (or (and (/= (line-beginning-position) (point-min))
-		(save-excursion (beginning-of-line 0) (org-current-level)))
+		(save-excursion (forward-line -1) (org-current-level)))
 	   0)))
 
 (defun org-reduced-level (l)
@@ -6876,7 +6876,7 @@ Assume point is at a heading or an inlinetask beginning."
 		 ;; Ignore contents of example blocks and source
 		 ;; blocks if their indentation is meant to be
 		 ;; preserved.  Jump to block's closing line.
-		 (beginning-of-line)
+		 (forward-line 0)
 		 (or (and (looking-at-p "[ \t]*#\\+BEGIN_\\(EXAMPLE\\|SRC\\)")
 			  (let ((e (org-element-at-point)))
 			    (and (org-element-type-p
@@ -6885,7 +6885,7 @@ Assume point is at a heading or an inlinetask beginning."
 				     (org-element-property :preserve-indent e))
 				 (goto-char (org-element-end e))
 				 (progn (skip-chars-backward " \r\t\n")
-					(beginning-of-line)
+					(forward-line 0)
 					t))))
 		     (forward-line))))))))
        ;; Shift lines but footnote definitions, inlinetasks boundaries
@@ -6901,7 +6901,7 @@ Assume point is at a heading or an inlinetask beginning."
 	  ((looking-at-p "[ \t]*$") (forward-line))
 	  (t
 	   (indent-line-to (+ (current-indentation) diff))
-	   (beginning-of-line)
+	   (forward-line 0)
 	   (or (and (looking-at-p "[ \t]*#\\+BEGIN_\\(EXAMPLE\\|SRC\\)")
 		    (let ((e (org-element-at-point)))
 		      (and (org-element-type-p
@@ -6910,7 +6910,7 @@ Assume point is at a heading or an inlinetask beginning."
 			       (org-element-property :preserve-indent e))
 			   (goto-char (org-element-end e))
 			   (progn (skip-chars-backward " \r\t\n")
-				  (beginning-of-line)
+				  (forward-line 0)
 				  t))))
 	       (forward-line)))))))))
 
@@ -7703,7 +7703,7 @@ function is being called interactively."
       (or (org-at-heading-p) (outline-next-heading))
       (setq start (point))
       (goto-char (point-max))
-      (beginning-of-line 1)
+      (forward-line 0)
       (when (looking-at ".*?\\S-")
 	;; File ends in a non-white line
 	(end-of-line 1)
@@ -8675,7 +8675,7 @@ If not found, stay at current position and return nil."
   "Create a dynamic block section, with parameters taken from PLIST.
 PLIST must contain a :name entry which is used as the name of the block."
   (when (string-match "\\S-" (buffer-substring (line-beginning-position)
-                                               (line-end-position)))
+                                              (line-end-position)))
     (end-of-line 1)
     (newline))
   (let ((col (current-column))
@@ -8686,7 +8686,7 @@ PLIST must contain a :name entry which is used as the name of the block."
 	  (setq plist (cddr plist))
 	(insert " " (prin1-to-string (pop plist)))))
     (insert "\n\n" (make-string col ?\ ) "#+END:\n")
-    (beginning-of-line -2)))
+    (forward-line -3)))
 
 (defun org-prepare-dblock ()
   "Prepare dynamic block for refresh.
@@ -8699,7 +8699,7 @@ the property list including an extra property :name with the block name."
 	 (params (append (list :name name)
 			 (read (concat "(" (match-string 3) ")")))))
     (save-excursion
-      (beginning-of-line 1)
+      (forward-line 0)
       (skip-chars-forward " \t")
       (setq params (plist-put params :indentation-column (current-column))))
     (unless (re-search-forward org-dblock-end-re nil t)
@@ -8806,7 +8806,7 @@ the correct writing function."
 	  (forward-line 1)
 	  (while (not (looking-at org-dblock-end-re))
 	    (insert indent)
-	    (beginning-of-line 2))
+	    (forward-line 1))
 	  (when (looking-at org-dblock-end-re)
 	    (and (looking-at "[ \t]+")
 		 (replace-match ""))
@@ -9028,7 +9028,7 @@ When foo is written as FOO, upcase the #+BEGIN/END as well."
     (when region? (goto-char region-start))
     (let ((column (current-indentation)))
       (if (save-excursion (skip-chars-backward " \t") (bolp))
-	  (beginning-of-line)
+	  (forward-line 0)
 	(insert "\n"))
       (save-excursion
 	(indent-to column)
@@ -9378,8 +9378,9 @@ When called through ELisp, arg is also interpreted in the following way:
 	    ;; Fixup cursor location if close to the keyword.
 	    (when (and (outline-on-heading-p)
 		       (not (bolp))
-		       (save-excursion (beginning-of-line 1)
-				       (looking-at org-todo-line-regexp))
+		       (save-excursion
+                         (forward-line 0)
+			 (looking-at org-todo-line-regexp))
 		       (< (point) (+ 2 (or (match-end 2) (match-end 1)))))
 	      (goto-char (or (match-end 2) (match-end 1)))
 	      (and (looking-at " ")
@@ -9568,15 +9569,15 @@ all statistics cookies in the buffer."
 		     (re-search-forward
 		      "^[ \t]*\\([-+*]\\|[0-9]+[.)]\\) \\[[- X]\\]" end t))
 	           (not (save-excursion
-                          (re-search-forward
-			   ":COOKIE_DATA:.*\\<todo\\>" end t))))
+                        (re-search-forward
+			 ":COOKIE_DATA:.*\\<todo\\>" end t))))
 	      (org-update-checkbox-count)
 	    (if (and l2 (> l2 l1))
 		(progn
 		  (goto-char end)
 		  (org-update-parent-todo-statistics))
 	      (goto-char pos)
-	      (beginning-of-line 1)
+	      (forward-line 0)
 	      (while (re-search-forward
 		      "\\(\\(\\[[0-9]*%\\]\\)\\|\\(\\[[0-9]*/[0-9]*\\]\\)\\)"
                       (line-end-position) t)
@@ -9604,7 +9605,7 @@ statistics everywhere."
 	 checkbox-beg cookie-present)
     (catch 'exit
       (save-excursion
-	(beginning-of-line 1)
+	(forward-line 0)
 	(setq ltoggle (funcall outline-level))
 	;; Three situations are to consider:
 
@@ -10218,7 +10219,7 @@ nil."
   (or (let ((cached (org-element-at-point nil 'cached)))
         (and cached (org-element-type-p cached 'planning)))
       (org-with-wide-buffer
-       (beginning-of-line)
+       (forward-line 0)
        (and (looking-at-p org-planning-line-re)
 	    (eq (point)
 	        (ignore-errors
@@ -10404,11 +10405,11 @@ narrowing."
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
        (let ((endpos (point)))
          (skip-chars-forward " \t\n")
-         (beginning-of-line)
+         (forward-line 0)
          (unless org-log-states-order-reversed
 	   (org-skip-over-state-notes)
 	   (skip-chars-backward " \t\n")
-	   (beginning-of-line 2))
+	   (forward-line 1))
          ;; When current headline is at the end of buffer and does not
          ;; end with trailing newline the above can move to the
          ;; beginning of the headline.
@@ -10895,7 +10896,7 @@ and by additional input from the age of a schedules or deadline entry."
 		 (org-get-at-bol 'priority)
 	       (save-excursion
 		 (save-match-data
-		   (beginning-of-line)
+		   (forward-line 0)
 		   (and (looking-at org-heading-regexp)
 			(org-get-priority (match-string 0))))))))
     (message "Priority is %d" (if pri pri -1000))))
@@ -11743,7 +11744,7 @@ Returns the new tags string, or nil to not change the current settings."
 	 (done-keywords org-done-keywords)
 	 groups ingroup intaggroup)
     (save-excursion
-      (beginning-of-line)
+      (forward-line 0)
       (if (looking-at org-tag-line-re)
 	  (setq ov-start (match-beginning 1)
 		ov-end (match-end 1)
@@ -11913,7 +11914,7 @@ Returns the new tags string, or nil to not change the current settings."
 				(assoc b (cdr (memq (assoc a ntable) ntable))))))
 		  (when (eq exit-after-next 'now) (throw 'exit t))
 		  (goto-char (point-min))
-		  (beginning-of-line 2)
+		  (forward-line 1)
                   (delete-region (point) (line-end-position))
 		  (org-fast-tag-insert "Current" current c-face)
 		  (org-set-current-tags-overlay current ov-prefix)
@@ -12216,7 +12217,7 @@ FORCE is non-nil, or return nil."
 (defun org-at-property-drawer-p ()
   "Non-nil when point is at the first line of a property drawer."
   (org-with-wide-buffer
-   (beginning-of-line)
+   (forward-line 0)
    (and (looking-at org-property-drawer-re)
 	(or (bobp)
 	    (progn
@@ -12236,7 +12237,7 @@ FORCE is non-nil, or return nil."
   "Non-nil when point is inside a property drawer.
 See `org-property-re' for match data, if applicable."
   (save-excursion
-    (beginning-of-line)
+    (forward-line 0)
     (and (looking-at org-property-re)
 	 (let ((property-drawer (save-match-data (org-get-property-block))))
 	   (and property-drawer
@@ -12934,7 +12935,7 @@ Point is left between drawer's boundaries."
 	(unwind-protect
 	    (progn
 	      (goto-char rbeg)
-	      (beginning-of-line)
+	      (forward-line 0)
 	      (when (save-excursion
 		      (re-search-forward org-outline-regexp-bol rend t))
 		(user-error "Drawers cannot contain headlines"))
@@ -12942,7 +12943,7 @@ Point is left between drawer's boundaries."
 	      ;; non-blank line in region.  Insert drawer's opening
 	      ;; there, then indent it.
 	      (org-skip-whitespace)
-	      (beginning-of-line)
+	      (forward-line 0)
 	      (insert ":" drawer ":\n")
 	      (forward-line -1)
 	      (indent-for-tab-command)
@@ -13207,7 +13208,7 @@ completion."
     (org-at-property-p)
     (replace-match (concat " :" key ": " nval) t t)
     (org-indent-line)
-    (beginning-of-line 1)
+    (forward-line 0)
     (skip-chars-forward " \t")
     (when (equal prop org-effort-property)
       (when (string= org-clock-current-task heading)
@@ -16708,10 +16709,10 @@ this function returns t, nil otherwise."
       (catch 'exit
 	(unless (org-region-active-p)
           (setq beg (line-beginning-position))
-	  (beginning-of-line 2)
+	  (forward-line 1)
 	  (while (and (not (eobp)) ;; this is like `next-line'
 		      (org-invisible-p (1- (point))))
-	    (beginning-of-line 2))
+	    (forward-line 1))
 	  (setq end (point))
 	  (goto-char beg)
           (goto-char (line-end-position))
@@ -16748,7 +16749,7 @@ for more information."
                     ;; Search previous subtree.
                     (progn
                       (goto-char beg)
-                      (beginning-of-line)
+                      (forward-line 0)
                       (not (re-search-backward (format "^\\*\\{%s\\} " level) nil t))))
             (user-error "Cannot move past superior level or buffer limit"))
           ;; Drag first subtree above below the selected.
@@ -17485,7 +17486,7 @@ ignoring region."
           end (line-end-position (if arg 2 1))))
   (if (save-excursion
         (goto-char beg)
-        (beginning-of-line)
+        (forward-line 0)
         (and (< (line-end-position) end)
              (let ((case-fold-search nil))
 	       (looking-at org-complex-heading-regexp))))
@@ -18335,7 +18336,7 @@ and :keyword."
                   (line-end-position))
             clist)
       (when (progn
-	      (beginning-of-line 1)
+	      (forward-line 0)
 	      (looking-at org-todo-line-tags-regexp))
 	(push (org-point-in-group p 1 :headline-stars) clist)
 	(push (org-point-in-group p 2 :todo-keyword) clist)
@@ -18535,7 +18536,7 @@ Returns the number of empty lines passed."
 	(skip-chars-backward " \t\n\r")
       (unless (eobp)
 	(forward-line -1)))
-    (beginning-of-line 2)
+    (forward-line 1)
     (goto-char (min (point) pos))
     (count-lines (point) pos)))
 
@@ -18583,7 +18584,7 @@ the end.  If a numeric prefix UP is given, move up into the
 hierarchy of headlines by UP levels before marking the subtree."
   (interactive "P")
   (org-with-limited-levels
-   (cond ((org-at-heading-p) (beginning-of-line))
+   (cond ((org-at-heading-p) (forward-line 0))
 	 ((org-before-first-heading-p) (user-error "Not in a subtree"))
 	 (t (outline-previous-visible-heading 1))))
   (when up (while (and (> up 0) (org-up-heading-safe)) (cl-decf up)))
@@ -18698,7 +18699,7 @@ ELEMENT."
 			     (org-element-parent previous) t))))))))))
       ;; Otherwise, move to the first non-blank line above.
       (t
-       (beginning-of-line)
+       (forward-line 0)
        (let ((pos (point)))
 	 (skip-chars-backward " \r\t\n")
 	 (cond
@@ -18747,7 +18748,7 @@ ELEMENT."
   "Align node property at point.
 Alignment is done according to `org-property-format', which see."
   (when (save-excursion
-	  (beginning-of-line)
+	  (forward-line 0)
 	  (looking-at org-property-re))
     (org-combine-change-calls (match-beginning 0) (match-end 0)
       (let ((newtext (concat (match-string 4)
@@ -18802,7 +18803,7 @@ list structure.  Instead, use \\<org-mode-map>`\\[org-shiftmetaleft]' or \
 
 Also align node properties according to `org-property-format'."
   (interactive)
-  (let* ((element (save-excursion (beginning-of-line) (org-element-at-point-no-context)))
+  (let* ((element (save-excursion (forward-line 0) (org-element-at-point-no-context)))
 	 (type (org-element-type element)))
     (unless (or (org-at-heading-p)
                 (and (eq org-adapt-indentation 'headline-data)
@@ -18867,7 +18868,7 @@ assumed to be significant there."
   (save-excursion
     (goto-char start)
     (skip-chars-forward " \r\t\n")
-    (unless (eobp) (beginning-of-line))
+    (unless (eobp) (forward-line 0))
     (let ((indent-to
 	   (lambda (ind pos)
 	     ;; Set IND as indentation for all lines between point and
@@ -18907,10 +18908,10 @@ assumed to be significant there."
 	     ;; specially later.
 	     ((or (memq type '(paragraph table table-row))
 		  (not (or (org-element-contents-begin element)
-			   (memq type '(example-block src-block)))))
+			 (memq type '(example-block src-block)))))
 	      (when (eq type 'node-property)
 		(org--align-node-property)
-		(beginning-of-line))
+		(forward-line 0))
 	      (funcall indent-to ind (min element-end end)))
 	     ;; Elements consisting of three parts: before the
 	     ;; contents, the contents, and after the contents.  The
@@ -19074,7 +19075,7 @@ matches in paragraphs or comments, use it."
    (unless (org-at-heading-p)
      (let* ((p (line-beginning-position))
 	    (element (save-excursion
-		       (beginning-of-line)
+		       (forward-line 0)
 		       (org-element-at-point)))
 	    (type (org-element-type element))
 	    (post-affiliated (org-element-post-affiliated element)))
@@ -19082,7 +19083,7 @@ matches in paragraphs or comments, use it."
 	 (cl-case type
 	   (comment
 	    (save-excursion
-	      (beginning-of-line)
+	      (forward-line 0)
 	      (looking-at "[ \t]*")
 	      (concat (match-string 0) "# ")))
 	   (footnote-definition "")
@@ -19093,7 +19094,7 @@ matches in paragraphs or comments, use it."
 	    ;; unless the paragraph is at the beginning of an item.
 	    (let ((parent (org-element-parent element)))
 	      (save-excursion
-		(beginning-of-line)
+		(forward-line 0)
 		(cond ((org-element-type-p parent 'item)
 		       (make-string (org-list-item-body-column
 				     (org-element-begin parent))
@@ -19119,7 +19120,7 @@ matches in paragraphs or comments, use it."
 			   (skip-chars-backward " \r\t\n")
 			   (line-beginning-position))))
 	      (when (and (>= p cbeg) (< p cend))
-		(if (save-excursion (beginning-of-line) (looking-at "[ \t]+"))
+		(if (save-excursion (forward-line 0) (looking-at "[ \t]+"))
 		    (match-string 0)
 		  ""))))))))))
 
@@ -19207,7 +19208,7 @@ a footnote definition, try to fill the first paragraph within."
 	      (save-excursion (end-of-line)
 			      (re-search-backward "^[ \t]*$" beg 'move)
 			      (line-beginning-position))
-	      (save-excursion (beginning-of-line)
+	      (save-excursion (forward-line 0)
 			      (re-search-forward "^[ \t]*$" end 'move)
 			      (line-beginning-position))
 	      justify))))
@@ -19231,7 +19232,7 @@ a footnote definition, try to fill the first paragraph within."
 	       (when (> end begin)
 		 (let ((fill-prefix
 			(save-excursion
-			  (beginning-of-line)
+			  (forward-line 0)
 			  (looking-at "[ \t]*#")
 			  (let ((comment-prefix (match-string 0)))
 			    (goto-char (match-end 0))
@@ -19352,7 +19353,7 @@ region only contains such lines."
       ;; elements or at the beginning of a headline or an inlinetask,
       ;; and before any one-line elements (e.g., a clock).
       (progn
-        (beginning-of-line)
+        (forward-line 0)
         (let* ((element (org-element-at-point))
                (type (org-element-type element)))
           (cond
@@ -19382,7 +19383,7 @@ region only contains such lines."
            (end (copy-marker
                  (save-excursion
                    (goto-char (region-end))
-                   (unless (eolp) (beginning-of-line))
+                   (unless (eolp) (forward-line 0))
                    (if (save-excursion (re-search-backward "\\S-" begin t))
                        (progn (skip-chars-backward " \r\t\n") (point))
                      (point)))))
@@ -19486,7 +19487,8 @@ Throw an error if no block is found."
 	(count (or arg 1))
 	(origin (point))
 	last-element)
-    (if backward (beginning-of-line) (end-of-line))
+    (if backward (forward-line 0)
+      (let ((inhibit-field-text-motion t)) (end-of-line)))
     (while (and (> count 0) (funcall search-fn re nil t))
       (let ((element (save-excursion
 		       (goto-char (match-beginning 0))
@@ -19558,7 +19560,7 @@ major mode."
 		  (line-beginning-position))
 		(point))))
       (org-babel-do-in-edit-buffer (call-interactively 'comment-dwim))
-    (beginning-of-line)
+    (forward-line 0)
     (if (looking-at "\\s-*$") (delete-region (point) (line-end-position))
       (open-line 1))
     (org-indent-line)
@@ -19827,7 +19829,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
       ;; characters if line starts with such of these (e.g., with
       ;; a link at column 0).  Really move to the beginning of the
       ;; current visible line.
-      (beginning-of-line))
+      (forward-line 0))
     (cond
      ;; No special behavior.  Point is already at the beginning of
      ;; a line, logical or visual.
@@ -19891,7 +19893,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
      ;; At a headline, with tags.
      ((and special
 	   (save-excursion
-	     (beginning-of-line)
+	     (forward-line 0)
 	     (let ((case-fold-search nil))
 	       (looking-at org-complex-heading-regexp)))
 	   (match-end 5))
@@ -20073,7 +20075,7 @@ interactive command with similar behavior."
 	  (goto-char beg)
 	  (when (and (bolp) subtreep
 		     (not (setq swallowp
-				(org-yank-folding-would-swallow-text beg end))))
+			      (org-yank-folding-would-swallow-text beg end))))
 	    (org-with-limited-levels
 	     (or (looking-at org-outline-regexp)
 		 (re-search-forward org-outline-regexp-bol end t))
@@ -20089,7 +20091,7 @@ interactive command with similar behavior."
 
 	  (goto-char end)
 	  (skip-chars-forward " \t\n\r")
-	  (beginning-of-line 1)
+	  (forward-line 0)
 	  (push-mark beg 'nomsg)))
        ((and subtreep org-yank-adjusted-subtrees)
         (let ((beg (line-beginning-position)))
@@ -20115,7 +20117,7 @@ interactive command with similar behavior."
 
 (defun org-back-to-heading (&optional invisible-ok)
   "Go back to beginning of heading or inlinetask."
-  (beginning-of-line)
+  (forward-line 0)
   (or (and (org-at-heading-p (not invisible-ok))
            (not (and (featurep 'org-inlinetask)
                    (fboundp 'org-inlinetask-end-p)
@@ -20157,7 +20159,7 @@ Respect narrowing."
   "Return t if point is on a (possibly invisible) heading line.
 If INVISIBLE-NOT-OK is non-nil, an invisible heading line is not ok."
   (save-excursion
-    (beginning-of-line)
+    (forward-line 0)
     (and (or (not invisible-not-ok) (not (org-fold-folded-p)))
 	 (looking-at outline-regexp))))
 
@@ -20197,7 +20199,7 @@ Optional argument ELEMENT contains element at point."
   "Return t if cursor is in a commented line."
   (save-excursion
     (save-match-data
-      (beginning-of-line)
+      (forward-line 0)
       (looking-at org-comment-regexp))))
 
 (defun org-at-keyword-p nil
@@ -20226,7 +20228,7 @@ empty."
     (and (looking-at "[ \t]*$")
 	 org-todo-line-regexp
 	 (save-excursion
-	   (beginning-of-line)
+	   (forward-line 0)
 	   (looking-at org-todo-line-regexp)
 	   (string= (match-string 3) "")))))
 
@@ -20460,7 +20462,7 @@ non-nil it will also look at invisible ones."
 		   (cl-decf count)
 		   (when (= l level) (setq result (point)))))))
 	(goto-char result))
-      (beginning-of-line))))
+      (forward-line 0))))
 
 (defun org-backward-heading-same-level (arg &optional invisible-ok)
   "Move backward to the ARG'th subheading at same level as this one.
@@ -20474,7 +20476,7 @@ With ARG, repeats or can move backward if negative."
   (interactive "p")
   (let ((regexp (concat "^" (org-get-limited-outline-regexp))))
     (if (< arg 0)
-	(beginning-of-line)
+	(forward-line 0)
       (end-of-line))
     (while (and (< arg 0) (re-search-backward regexp nil :move))
       (unless (bobp)
@@ -20489,7 +20491,7 @@ With ARG, repeats or can move backward if negative."
         (skip-chars-forward " \t\n")
 	(end-of-line))
       (cl-decf arg))
-    (if (> arg 0) (goto-char (point-max)) (beginning-of-line))))
+    (if (> arg 0) (goto-char (point-max)) (forward-line 0))))
 
 (defun org-previous-visible-heading (arg)
   "Move to the previous visible heading.
@@ -20951,11 +20953,11 @@ Move to the previous element at the same level, when possible."
     (let ((c (current-column)))
       (if (< 0 arg)
 	  (progn
-	    (beginning-of-line 2)
+	    (forward-line 1)
 	    (transpose-lines 1)
-	    (beginning-of-line 0))
+	    (forward-line -1))
 	(transpose-lines 1)
-	(beginning-of-line -1))
+	(forward-line -2))
       (org-move-to-column c))))
 
 (defun org-drag-line-backward (arg)
