@@ -1413,7 +1413,7 @@ Assume point is at beginning of the inline task."
              nil #'org-element--headline-parse-title raw-secondary-p))
            (begin (point))
 	   (task-end (save-excursion
-		       (end-of-line)
+		       (forward-line 1)
 		       (and (re-search-forward org-element-headline-re limit t)
 			    (looking-at-p "[ \t]*END[ \t]*$")
 			    (line-beginning-position))))
@@ -2055,7 +2055,7 @@ Return a new syntax node of `clock' type containing `:status',
 	   (post-blank (let ((before-blank (progn (forward-line) (point))))
 			 (skip-chars-forward " \r\t\n" limit)
 			 (skip-chars-backward " \t")
-			 (unless (bolp) (end-of-line))
+			 (unless (bolp) (skip-chars-forward " \t"))
 			 (count-lines before-blank (point))))
 	   (end (point)))
       (org-element-create
@@ -2689,7 +2689,7 @@ Return a new syntax node of `planning' type containing `:closed',
 	   (post-blank (let ((before-blank (progn (forward-line) (point))))
 			 (skip-chars-forward " \r\t\n" limit)
 			 (skip-chars-backward " \t")
-			 (unless (bolp) (end-of-line))
+			 (unless (bolp) (skip-chars-forward " \t"))
 			 (count-lines before-blank (point))))
 	   (end (point))
 	   closed deadline scheduled)
@@ -6558,7 +6558,7 @@ the expected result."
       (org-with-wide-buffer
        (goto-char pos)
        (save-excursion
-         (end-of-line)
+         (forward-line 1)
          (skip-chars-backward " \r\t\n")
          ;; Within blank lines at the beginning of buffer, return nil.
          (when (bobp) (throw 'exit nil)))
@@ -6584,7 +6584,7 @@ the expected result."
           ;; Parse from previous heading to avoid re-parsing the whole
           ;; buffer above.  Arrange `:parent' to be calculated on demand.
           ((not cached)
-           (end-of-line) ; ensure the end of current heading.
+           (forward-line 1) ; ensure the end of current heading.
            (if (re-search-backward
                 (org-get-limited-outline-regexp t)
                 nil 'move)
