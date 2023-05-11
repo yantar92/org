@@ -33,6 +33,177 @@ Return interpreted string."
     (insert text)
     (org-element-interpret-data (org-element-parse-buffer))))
 
+
+;;; Test getters.
+
+(ert-deftest test-org-element/type ()
+  "Test `org-element-type' specifications."
+  (should (eq 'plain-text (org-element-type "string")))
+  (should-not (org-element-type nil))
+  (should-not (org-element-type 1))
+  (should (eq 'dummy (org-element-type '(dummy))))
+  (should (eq 'dummy (org-element-type '(dummy nil 'foo))))
+  (should (eq 'dummy (org-element-type '(dummy (:a a :b b) 'foo))))
+  ;; anonymous node.
+  (should-not (org-element-type '((dummy))))
+  (should (eq 'anonymous (org-element-type '((dummy)) t)))
+  (should (eq 'anonymous (org-element-type '("string") t)))
+  (should-not (org-element-type '(1 2) t)))
+
+(ert-deftest test-org-element/type-p ()
+  "Test `org-element-type-p' specifications."
+  (should (org-element-type-p '(foo) 'foo))
+  (should (org-element-type-p '(foo) '(foo)))
+  (should (org-element-type-p '(foo) '(foo bar)))
+  (should-not (org-element-type-p '(foo) 'bar))
+  (should-not (org-element-type-p '(foo) '(bar baz)))
+  (should (org-element-type-p "string" 'plain-text))
+  (should (org-element-type-p '((foo)) 'anonymous)))
+
+(ert-deftest test-org-element/org-element-property-1 ()
+  "Test `org-element-property-1' specifications."
+  ;; No properties.
+  (dolist (element `( nil
+                      (headline nil)
+                      (headline nil (headline))
+                      "string"))
+    (should-not (org-element-property-1 :begin element))
+    (should (eq 'default (org-element-property-1 :begin element 'default)))
+    (should-not (org-element-property-1 :begin1 element))
+    (should (eq 'default (org-element-property-1 :begin1 element 'default)))
+    (dolist (prop '(:begin))
+      (should-not (org-element-property-1 prop element))
+      (should (eq 'default (org-element-property-1 prop element 'default))))
+    (dolist (prop '(:begin1))
+      (should-not (org-element-property-1 prop element))
+      (should (eq 'default (org-element-property-1 prop element 'default)))))
+  ;; Only non-standard properties.
+  (dolist (element `((headline (:begin1 1))
+                     (headline (:begin1 1) (headline))
+                     ,(propertize "string" :begin1 1)))
+    (should-not (org-element-property-1 :begin element))
+    (should (eq 'default (org-element-property-1 :begin element 'default)))
+    (should (= 1 (org-element-property-1 :begin1 element)))
+    (should (= 1 (org-element-property-1 :begin1 element 'default)))
+    (dolist (prop '(:begin))
+      (should-not (org-element-property-1 prop element))
+      (should (eq 'default (org-element-property-1 prop element 'default))))
+    (dolist (prop '(:begin1))
+      (should (= 1 (org-element-property-1 prop element)))
+      (should (= 1 (org-element-property-1 prop element 'default)))))
+  ;; Only standard properties.
+  (dolist (element `((headline (:standard-properties ,(make-vector 10 'test)))
+                     (headline (:standard-properties ,(make-vector 10 'test)) (headline))))
+    (should (eq 'test (org-element-property-1 :begin element)))
+    (should (eq 'test (org-element-property-1 :begin element 'default)))
+    (should-not (org-element-property-1 :begin1 element))
+    (should (eq 'default (org-element-property-1 :begin1 element 'default)))
+    (dolist (prop '(:begin))
+      (should (eq 'test (org-element-property-1 prop element)))
+      (should (eq 'test (org-element-property-1 prop element 'default))))
+    (dolist (prop '(:begin1))
+      (should-not (org-element-property-1 prop element))
+      (should (eq 'default (org-element-property-1 prop element 'default)))))
+  ;; Standard properties in the plist.
+  (dolist (element `((headline (:begin 1))
+                     (headline (:begin 1) (headline))
+                     ,(propertize "string" :begin 1)))
+    (should (= 1 (org-element-property-1 :begin element)))
+    (should (= 1 (org-element-property-1 :begin element 'default)))
+    (should-not (org-element-property-1 :begin1 element))
+    (should (eq 'default (org-element-property-1 :begin1 element 'default)))
+    (dolist (prop '(:begin))
+      (should (= 1 (org-element-property-1 prop element)))
+      (should (= 1 (org-element-property-1 prop element 'default))))
+    (dolist (prop '(:begin1))
+      (should-not (org-element-property-1 prop element))
+      (should (eq 'default (org-element-property-1 prop element 'default)))))
+  ;; Standard properties mixed in the plist and standard array.
+  (dolist (element `((headline (:standard-properties ,(make-vector 10 'test) :begin 1))
+                     (headline (:begin 1 :standard-properties ,(make-vector 10 'test)))
+                     (headline (:standard-properties ,(make-vector 10 'test) :begin 1) (headline))))
+    (should (eq 'test (org-element-property-1 :begin element)))
+    (should (eq 'test (org-element-property-1 :begin element 'default)))
+    (should-not (org-element-property-1 :begin1 element))
+    (should (eq 'default (org-element-property-1 :begin1 element 'default)))
+    (dolist (prop '(:begin))
+      (should (eq 'test (org-element-property-1 prop element)))
+      (should (eq 'test (org-element-property-1 prop element 'default))))
+    (dolist (prop '(:begin1))
+      (should-not (org-element-property-1 prop element))
+      (should (eq 'default (org-element-property-1 prop element 'default)))))
+  ;; General case.
+  (dolist (element `((headline (:standard-properties ,(make-vector 10 'test) :begin1 1))
+                     (headline (:begin1 1 :standard-properties ,(make-vector 10 'test)))
+                     (headline (:standard-properties ,(make-vector 10 'test) :begin1 1) (headline))))
+    (should (eq 'test (org-element-property-1 :begin element)))
+    (should (eq 'test (org-element-property-1 :begin element 'default)))
+    (should (= 1 (org-element-property-1 :begin1 element)))
+    (should (= 1 (org-element-property-1 :begin1 element 'default)))
+    (dolist (prop '(:begin))
+      (should (eq 'test (org-element-property-1 prop element)))
+      (should (eq 'test (org-element-property-1 prop element 'default))))
+    (dolist (prop '(:begin1))
+      (should (= 1 (org-element-property-1 prop element)))
+      (should (= 1 (org-element-property-1 prop element 'default))))))
+
+(ert-deftest test-org-element/secondary-p ()
+  "Test `org-element-secondary-p' specifications."
+  ;; In a secondary string, return property name.
+  (should
+   (eq :title
+       (org-test-with-temp-text "* Headline *object*"
+	 (org-element-map (org-element-parse-buffer) 'bold
+	   (lambda (object) (org-element-secondary-p object))
+	   nil t))))
+  (should
+   (eq :foo
+       (org-element-secondary-p
+        (let* ((el (org-element-create
+                    'dummy '(:secondary (:foo))))
+               (child (org-element-create "string" `(:parent ,el))))
+          (org-element-put-property
+           el :foo (list child))
+          child))))
+  ;; Outside a secondary string, return nil.
+  (should-not
+   (org-test-with-temp-text "Paragraph *object*"
+     (org-element-map (org-element-parse-buffer) 'bold
+       (lambda (object) (org-element-type (org-element-secondary-p object)))
+       nil t)))
+  (should-not
+   (eq :foo
+       (org-element-secondary-p
+        (let* ((el (org-element-create
+                    'dummy '(:secondary (:foo))))
+               (child (org-element-create "string" `(:parent ,el))))
+          (org-element-put-property
+           el :bar (list child))
+          child)))))
+
+(ert-deftest test-org-element/class ()
+  "Test `org-element-class' specifications."
+  ;; Regular tests.
+  (should (eq 'element (org-element-class '(paragraph nil) nil)))
+  (should (eq 'object (org-element-class '(target nil) nil)))
+  ;; Special types.
+  (should (eq 'element (org-element-class '(org-data nil) nil)))
+  (should (eq 'object (org-element-class "text" nil)))
+  (should (eq 'object (org-element-class '("secondary " "string") nil)))
+  ;; Pseudo elements.
+  (should (eq 'element (org-element-class '(foo nil) nil)))
+  (should (eq 'element (org-element-class '(foo nil) '(center-block nil))))
+  (should (eq 'element (org-element-class '(foo nil) '(org-data nil))))
+  ;; Pseudo objects.
+  (should (eq 'object (org-element-class '(foo nil) '(bold nil))))
+  (should (eq 'object (org-element-class '(foo nil) '(paragraph nil))))
+  (should (eq 'object (org-element-class '(foo nil) '("secondary"))))
+  (should
+   (eq 'object
+       (let* ((datum '(foo nil))
+	      (headline `(headline (:title (,datum) :secondary (:title)))))
+	 (org-element-put-property datum :parent headline)
+	 (org-element-class datum)))))
 
 
 ;;; Test `org-element-map'
@@ -48,8 +219,8 @@ Some other text
 #+END_CENTER"
 	(let ((count 0))
 	  (org-element-map
-	   (org-element-parse-buffer) 'plain-text
-	   (lambda (s) (when (string-match "text" s) (cl-incf count))))
+	      (org-element-parse-buffer) 'plain-text
+	    (lambda (s) (when (string-match "text" s) (cl-incf count))))
 	  count))))
   ;; Applies to secondary strings
   (should
@@ -66,18 +237,37 @@ Some other text
   (should-not
    (org-test-with-temp-text "#+BEGIN_CENTER\n\\alpha\n#+END_CENTER"
      (org-element-map
-      (org-element-parse-buffer) 'entity 'identity nil nil 'center-block)))
+         (org-element-parse-buffer) 'entity 'identity nil nil 'center-block)))
   ;; Use WITH-AFFILIATED argument.
   (should
    (equal
     '("1" "a" "2" "b")
     (org-test-with-temp-text "#+CAPTION[a]: 1\n#+CAPTION[b]: 2\nParagraph"
       (org-element-map
-       (org-element-at-point) 'plain-text 'identity nil nil nil t)))))
+          (org-element-at-point) 'plain-text 'identity nil nil nil t)))))
 
 
 
 ;;; Test Setters
+
+(ert-deftest test-org-element/org-element-create ()
+  "Test `org-element-create' specifications."
+  (should
+   (pcase (org-element-create 'foo '(:a 1 :b 2))
+     (`(foo (:standard-properties ,_ :a 1 :b 2)) t)))
+  (should
+   (pcase (org-element-create 'foo '(:begin 10))
+     (`(foo (:standard-properties ,vec))
+      (= 10 (aref vec (org-element--property-idx :begin))))))
+  ;; Strings
+  (should (equal "foo" (org-element-create "foo")))
+  (should (equal "foo" (org-element-create 'plain-text nil "foo")))
+  (should (get-text-property 0 :a (org-element-create 'plain-text '(:a 1) "foo")))
+  (should (get-text-property 0 :begin (org-element-create 'plain-text '(:begin 1) "foo")))
+  ;; Children
+  (let ((children '("a" "b" (org-element-create 'foo))))
+    (should (equal (cddr (apply #'org-element-create 'bar nil children))
+                   children))))
 
 (ert-deftest test-org-element/put-property ()
   "Test `org-element-put-property' specifications."
@@ -90,7 +280,47 @@ Some other text
 	       :test (org-element-map tree 'bold 'identity nil t)))))
   ;; Put property on a string.
   (should
-   (org-element-property :test (org-element-put-property "Paragraph" :test t))))
+   (org-element-property :test (org-element-put-property "Paragraph" :test t)))
+  ;; No properties.
+  (let ((element (list 'heading nil))
+        vec)
+    (setq vec (make-vector (length org-element--standard-properties) nil))
+    (aset vec 0 1)
+    (should
+     (equal
+      (list 'heading (list :standard-properties vec))
+      (org-element-put-property element :begin 1))))
+  (let ((element (list 'heading nil)))
+    (should
+     (equal
+      (list 'heading (list :begin1 1))
+      (org-element-put-property element :begin1 1))))
+  ;; Standard properties.
+  (let ((element (list 'heading (list :standard-properties (make-vector (length org-element--standard-properties) 'foo)))))
+    (should
+     (= 1
+        (org-element-property-1 :begin (org-element-put-property element :begin 1)))))
+  ;; Adding standard properties when other standard properties are defined manually in the plist.
+  (let ((element (list 'heading (list :begin 1 :end 20 :foo 'foo))))
+    (should
+     (= 2
+        (org-element-property-1 :begin (org-element-put-property element :begin 2))))
+    ;; Check setter.
+    (cl-incf (org-element-property-1 :begin element))
+    (should
+     (= 3 (org-element-property-1 :begin element)))
+    (should
+     (= 20
+        (org-element-property-1 :end element)))
+    (should
+     (eq 'foo
+         (org-element-property-1 :foo element)))))
+
+(ert-deftest test-org-element/put-property-2 ()
+  "Test `org-element-put-property-2' specifications."
+  (should
+   (equal (org-element-put-property (org-element-create 'foo) :test 'value)
+          (org-element-put-property-2 :test 'value  (org-element-create 'foo)))))
 
 (ert-deftest test-org-element/set-contents ()
   "Test `org-element-set-contents' specifications."
@@ -132,46 +362,6 @@ Some other text
           (let ((element '#1=((a (:parent #1#)) (b (:parent #1#)))))
             (org-element-set-contents element `(b (:parent ,element)))
             element))))
-
-(ert-deftest test-org-element/secondary-p ()
-  "Test `org-element-secondary-p' specifications."
-  ;; In a secondary string, return property name.
-  (should
-   (eq :title
-       (org-test-with-temp-text "* Headline *object*"
-	 (org-element-map (org-element-parse-buffer) 'bold
-	   (lambda (object) (org-element-secondary-p object))
-	   nil t))))
-  ;; Outside a secondary string, return nil.
-  (should-not
-   (org-test-with-temp-text "Paragraph *object*"
-     (org-element-map (org-element-parse-buffer) 'bold
-       (lambda (object) (org-element-type (org-element-secondary-p object)))
-       nil t))))
-
-(ert-deftest test-org-element/class ()
-  "Test `org-element-class' specifications."
-  ;; Regular tests.
-  (should (eq 'element (org-element-class '(paragraph nil) nil)))
-  (should (eq 'object (org-element-class '(target nil) nil)))
-  ;; Special types.
-  (should (eq 'element (org-element-class '(org-data nil) nil)))
-  (should (eq 'object (org-element-class "text" nil)))
-  (should (eq 'object (org-element-class '("secondary " "string") nil)))
-  ;; Pseudo elements.
-  (should (eq 'element (org-element-class '(foo nil) nil)))
-  (should (eq 'element (org-element-class '(foo nil) '(center-block nil))))
-  (should (eq 'element (org-element-class '(foo nil) '(org-data nil))))
-  ;; Pseudo objects.
-  (should (eq 'object (org-element-class '(foo nil) '(bold nil))))
-  (should (eq 'object (org-element-class '(foo nil) '(paragraph nil))))
-  (should (eq 'object (org-element-class '(foo nil) '("secondary"))))
-  (should
-   (eq 'object
-       (let* ((datum '(foo nil))
-	      (headline `(headline (:title (,datum) :secondary (:title)))))
-	 (org-element-put-property datum :parent headline)
-	 (org-element-class datum)))))
 
 (ert-deftest test-org-element/adopt-elements ()
   "Test `org-element-adopt' specifications."
