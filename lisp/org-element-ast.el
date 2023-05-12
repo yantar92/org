@@ -562,8 +562,9 @@ When NO-STANDARD is non-nil, do no map over
 `org-element--standard-properties'.
 
 When COLLECT is symbol `set', set the property values to the return
-values and finally return nil.  When COLLECT is non-nil and not symbol
-`set', collect the return values into a list and return it.
+values (except the values equal to `org-element-ast--nil') and finally
+return nil.  When COLLECT is non-nil and not symbol `set', collect the
+return values into a list and return it.
 Otherwise, return nil."
   (let (acc rtn)
     (pcase (org-element-type node)
@@ -587,7 +588,7 @@ Otherwise, return nil."
                  node))
                (when collect
                  (unless (eq rtn (aref parray (cadr standard-idxs)))
-                   (if (eq collect 'set)
+                   (if (and (eq collect 'set) (not eq rtn 'org-element-ast--nil))
                        (setf (aref parray (cadr standard-idxs)) rtn)
                      (push rtn acc))))
                (setq standard-idxs (cddr standard-idxs))))))
@@ -599,7 +600,7 @@ Otherwise, return nil."
          (while props
            (setq rtn (funcall fun (car props) (cadr props) node))
            (when collect
-             (if (eq collect 'set)
+             (if (and (eq collect 'set) (not (eq rtn 'org-element-ast--nil)))
                  (unless (eq rtn (cadr props))
                    (if (eq type 'plain-text)
                        (org-add-props node nil (car props) rtn)
@@ -618,12 +619,11 @@ Otherwise, return nil."
     (org-element-property property node nil t)))
 
 (defun org-element--deferred-resolve-rec (property val node)
-  "Resolve deferred PROPERTY VAL in NODE recursively."
+  "Resolve deferred PROPERTY VAL in NODE recursively.
+Return the value to be stored."
   (catch :found
     (catch :org-element-deferred-retry
-      (throw :found (pcase (org-element--deferred-resolve val node)
-                      (`(,val . org-element-ast--nil) val)
-                      (`(_ . ,to-store) to-store))))
+      (throw :found (cdr (org-element--deferred-resolve val node))))
     ;; Caught `:org-element-deferred-retry'.  Go long way.
     (org-element-property property node)))
 

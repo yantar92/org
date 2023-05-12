@@ -228,6 +228,26 @@ Return interpreted string."
     (should (eq (org-element-property :parent el)
                 (org-element-parent el)))))
 
+(ert-deftest test-org-element/properties-resolve ()
+  "Test `org-element-properties-resolve' specifications."
+  (let ((el (org-element-create
+             'dummy
+             `( :foo ,(org-element-deferred-create t (lambda (_) 1))
+                :bar ,(org-element-deferred-create nil (lambda (_) 2))
+                :deferred
+                ,(org-element-deferred-create
+                  nil (lambda (el)
+                      (org-element-put-property el :baz 3)))))))
+    ;; Resolve conditionally.
+    (setq el (org-element-properties-resolve el))
+    (should (eq 1 (org-element-property-1 :foo el)))
+    (should-not (eq 2 (org-element-property-1 :bar el)))
+    (should (eq 2 (org-element-property :bar el)))
+    (should (eq 3 (org-element-property-1 :baz el)))
+    ;; Resolve unconditionally.
+    (setq el (org-element-properties-resolve el 'force))
+    (should (eq 2 (org-element-property-1 :bar el)))))
+
 (ert-deftest test-org-element/secondary-p ()
   "Test `org-element-secondary-p' specifications."
   ;; In a secondary string, return property name.
