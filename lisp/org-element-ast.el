@@ -557,6 +557,7 @@ FUN will be called with three arguments: property name, property
 value, and node.
 
 Do not resolve deferred values, except `:deferred'.
+`:standard-properties' internal property will be skipped.
 
 When NO-STANDARD is non-nil, do no map over
 `org-element--standard-properties'.
@@ -598,14 +599,15 @@ Otherwise, return nil."
                   (text-properties-at 0 node)
                 (nth 1 node))))
          (while props
-           (setq rtn (funcall fun (car props) (cadr props) node))
-           (when collect
-             (if (and (eq collect 'set) (not (eq rtn 'org-element-ast--nil)))
-                 (unless (eq rtn (cadr props))
-                   (if (eq type 'plain-text)
-                       (org-add-props node nil (car props) rtn)
-                     (setf (cadr props) rtn)))
-               (push rtn acc)))
+           (unless (eq :standard-properties (car props))
+             (setq rtn (funcall fun (car props) (cadr props) node))
+             (when collect
+               (if (and (eq collect 'set) (not (eq rtn 'org-element-ast--nil)))
+                   (unless (eq rtn (cadr props))
+                     (if (eq type 'plain-text)
+                         (org-add-props node nil (car props) rtn)
+                       (setf (cadr props) rtn)))
+                 (push rtn acc))))
            (setq props (cddr props))))))
     ;; Return.
     (when collect (nreverse acc))))
