@@ -147,6 +147,87 @@ Return interpreted string."
       (should (= 1 (org-element-property-1 prop element)))
       (should (= 1 (org-element-property-1 prop element 'default))))))
 
+(ert-deftest test-org-element/property ()
+  "Test resolving deferred properties."
+  ;; Resolve `:deferred' property.
+  (let ((el (org-element-create
+             'dummy
+             `(:deferred
+               ,(org-element-deferred-create
+                 t (lambda (el) (org-element-put-property el :foo 'bar) nil))))))
+    (should (eq 'bar (org-element-property :foo el)))
+    (should-not (org-element-property :foo2 el)))
+  ;; Deferred value.
+  (let ((el (org-element-create
+             'dummy
+             `(:foo
+               ,(org-element-deferred-create
+                 nil (lambda (_) 'bar))))))
+    (should (eq 'bar (org-element-property :foo el))))
+  ;; Auto-undefer.
+  (let ((el (org-element-create
+             'dummy
+             `(:foo
+               ,(org-element-deferred-create
+                 t (lambda (_) 'bar))))))
+    (should (eq 'bar (org-element-property :foo el)))
+    (should (eq 'bar (org-element-property-1 :foo el))))
+  ;; Force undefer.
+  (let ((el (org-element-create
+             'dummy
+             `(:foo
+               ,(org-element-deferred-create
+                 nil (lambda (_) 'bar))))))
+    (should (eq 'bar (org-element-property :foo el)))
+    (should-not (eq 'bar (org-element-property-1 :foo el)))
+    (should (eq 'bar (org-element-property :foo el nil 'force)))
+    (should (eq 'bar (org-element-property-1 :foo el))))
+  ;; Test deferred alias.
+  (let ((el (org-element-create
+             'dummy
+             `( :foo 1
+                :bar
+                ,(org-element-deferred-create-alias :foo)))))
+    (should (equal 1 (org-element-property :foo el)))
+    (should (equal 1 (org-element-property :bar el))))
+  ;; Test deferred list.
+  (let ((el (org-element-create
+             'dummy
+             `(:foo
+               ,(org-element-deferred-create-list
+                 (list 1 2 (org-element-deferred-create nil (lambda (_) 3))))))))
+    (should (equal '(1 2 3) (org-element-property :foo el))))
+  ;; Test deferred property with side effects.
+  (let ((el (org-element-create
+             'dummy
+             `(:foo
+               ,(org-element-deferred-create
+                 nil (lambda (el)
+                     (org-element-put-property el :foo 1)
+                     (throw :org-element-deferred-retry nil)))))))
+    (should (eq 1 (org-element-property :foo el))))
+  ;; Test recursive undefer.
+  (let ((el (org-element-create
+             'dummy
+             `(:foo
+               ,(org-element-deferred-create
+                 nil (lambda (el)
+                     (org-element-deferred-create
+                      nil (lambda (_) 1))))))))
+    (should (eq 1 (org-element-property :foo el)))))
+
+(ert-deftest test-org-element/property-2 ()
+  "Test `org-element-property-2' specifications."
+  (let ((el (org-element-create 'dummy '(:foo bar))))
+    (should (eq (org-element-property :foo el)
+                (org-element-property-2 el :foo)))))
+
+(ert-deftest test-org-element/parent ()
+  "Test `org-element-parent' specifications."
+  (let ((el (org-element-create 'dummy '(:parent bar))))
+    (should (eq (org-element-property :parent el)
+                (org-element-parent el)))))
+
 (ert-deftest test-org-element/secondary-p ()
   "Test `org-element-secondary-p' specifications."
   ;; In a secondary string, return property name.

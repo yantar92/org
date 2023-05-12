@@ -254,22 +254,21 @@ Return value is the containing property name, as a keyword, or nil."
 
 ;;;; Deferred values
 
-(cl-defstruct
-    (org-element-deferred
-     (:constructor nil)
-     (:constructor org-element-deferred-create
-                   ( auto-undefer-p function &rest arg-value
-                     &aux (args arg-value)))
-     (:constructor org-element-deferred-create-alias
-                   ( keyword &optional auto-undefer-p
-                     &aux
-                     (function #'org-element-property-2)
-                     (args (list keyword))))
-     (:constructor org-element-deferred-create-list
-                   ( args &optional auto-undefer-p
-                     &aux
-                     (function #'org-element--deferred-resolve-list)))
-     (:type vector) :named)
+(cl-defstruct (org-element-deferred
+               (:constructor nil)
+               (:constructor org-element-deferred-create
+                             ( auto-undefer-p function &rest arg-value
+                               &aux (args arg-value)))
+               (:constructor org-element-deferred-create-alias
+                             ( keyword &optional auto-undefer-p
+                               &aux
+                               (function #'org-element-property-2)
+                               (args (list keyword))))
+               (:constructor org-element-deferred-create-list
+                             ( args &optional auto-undefer-p
+                               &aux
+                               (function #'org-element--deferred-resolve-list)))
+               (:type vector) :named)
   "Dynamically computed value.
 
 The value can be obtained by calling FUNCTION with containing syntax
