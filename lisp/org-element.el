@@ -7246,7 +7246,7 @@ Return non-nil when verification failed."
            org-element--cache-self-verify-frequency)))
     ;; Verify correct parent for the element.
     (unless (or (not org-element--cache-self-verify)
-                (org-element-property-1 :parent element)
+                (org-element-property :parent element)
                 (org-element-type-p element 'org-data))
       (org-element--cache-warn "Got element without parent (cache active?: %S). Please report it to Org mode mailing list (M-x org-submit-bug-report).\n%S" (org-element--cache-active-p)  element)
       (org-element-cache-reset))
@@ -7259,7 +7259,7 @@ Return non-nil when verification failed."
         (org-element-with-disabled-cache (org-up-heading-or-point-min))
         (unless (or (= (point)
                        (org-element-begin
-                        (org-element-property-1 :parent element)))
+                        (org-element-property :parent element)))
                     (eq (point) (point-min)))
           (org-element--cache-warn
            "Cached element has wrong parent in %s. Resetting.
@@ -7267,13 +7267,13 @@ If this warning appears regularly, please report the warning text to Org mode ma
 The element is: %S\n The parent is: %S\n The real parent is: %S"
            (buffer-name (current-buffer))
            (org-element--format-element element)
-           (org-element--format-element (org-element-property-1 :parent element))
+           (org-element--format-element (org-element-property :parent element))
            (org-element--format-element
             (org-element--current-element
-             (org-element-end (org-element-property-1 :parent element)))))
+             (org-element-end (org-element-property :parent element)))))
           (org-element-cache-reset))
         (org-element--cache-verify-element
-         (org-element-property-1 :parent element))))
+         (org-element-property :parent element))))
     ;; Verify the element itself.
     (when (and org-element--cache-self-verify
                (org-element--cache-active-p)
