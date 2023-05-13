@@ -705,7 +705,7 @@ Some other text
 	(org-element-map (org-element-property :title headline) '(entity italic)
 	  #'org-element-type))))))
 
-(ert-deftest test-org-element/set-element ()
+(ert-deftest test-org-element/set ()
   "Test `org-element-set' specifications."
   ;; Check if new element is inserted.
   (should
@@ -754,7 +754,15 @@ Some other text
 	    (let* ((tree (org-element-parse-buffer))
 		   (text (org-element-map tree 'plain-text 'identity nil t)))
 	      (org-element-set text "b")
-	      (org-element-map tree 'plain-text 'identity nil t))))))
+	      (org-element-map tree 'plain-text 'identity nil t)))))
+  ;; KEEP-PROPS
+  (should
+   (org-element-property
+    :foo
+    (org-element-set
+     (org-element-create 'dummy '(:foo bar))
+     (org-element-create 'dummy '(:foo2 bar2))
+     '(:foo)))))
 
 (ert-deftest test-org-element/copy ()
   "Test `org-element-copy' specifications."

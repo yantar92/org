@@ -1115,6 +1115,8 @@ Parse tree is modified by side effect."
 When KEEP-PROPS is non-nil, keep OLD values of the listed property
 names.
 
+Return the modified element.
+
 The function takes care of setting `:parent' property for NEW."
   ;; Ensure OLD and NEW have the same parent.
   (org-element-put-property new :parent (org-element-parent old))
@@ -1136,7 +1138,8 @@ The function takes care of setting `:parent' property for NEW."
         (org-element-put-property blob :parent old))
       ;; Both OLD and NEW are lists.
       (setcar old (car new))
-      (setcdr old (cdr new)))))
+      (setcdr old (cdr new))))
+  old)
 
 (provide 'org-element-ast)
 ;;; org-element-ast.el ends here
