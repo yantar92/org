@@ -715,227 +715,7 @@ If NODE cannot have contents, return CONTENTS."
 
 (defalias 'org-element-resolve-deferred #'org-element-properties-resolve)
 
-;;;; AST modification
-
-(defalias 'org-element-adopt-elements #'org-element-adopt)
-(defun org-element-adopt (parent &rest children)
-  "Append CHILDREN to the contents of PARENT.
-
-PARENT is a syntax node.  CHILDREN can be elements, objects, or
-strings.
-
-If PARENT is nil, create a new anonymous node containing CHILDREN.
-
-The function takes care of setting `:parent' property for each child.
-Return the modified PARENT."
-  (declare (indent 1))
-  (if (not children) parent
-    ;; Link every child to PARENT. If PARENT is nil, it is a secondary
-    ;; string: parent is the list itself.
-    (dolist (child children)
-      (when child
-        (org-element-put-property child :parent (or parent children))))
-    ;; Add CHILDREN at the end of PARENT contents.
-    (when parent
-      (apply #'org-element-set-contents
-	     parent
-	     (nconc (org-element-contents parent) children)))
-    ;; Return modified PARENT element.
-    (or parent children)))
-
-(defalias 'org-element-extract-element #'org-element-extract)
-(defun org-element-extract (node)
-  "Extract NODE from parse tree.
-Remove NODE from the parse tree by side-effect, and return it
-with its `:parent' property stripped out."
-  (let ((parent (org-element-parent node))
-	(secondary (org-element-secondary-p node)))
-    (if secondary
-        (org-element-put-property
-	 parent secondary
-	 (delq node (org-element-property secondary parent)))
-      (apply #'org-element-set-contents
-	     parent
-	     (delq node (org-element-contents parent))))
-    ;; Return NODE with its :parent removed.
-    (org-element-put-property node :parent nil)))
-
-(defun org-element-insert-before (node location)
-  "Insert NODE before LOCATION in parse tree.
-LOCATION is an element, object or string within the parse tree.
-Parse tree is modified by side effect."
-  (let* ((parent (org-element-parent location))
-	 (property (org-element-secondary-p location))
-	 (siblings (if property (org-element-property property parent)
-		     (org-element-contents parent)))
-	 ;; Special case: LOCATION is the first element of an
-	 ;; independent secondary string (e.g. :title property).  Add
-	 ;; NODE in-place.
-	 (specialp (and (not property)
-			(eq siblings parent)
-			(eq (car parent) location))))
-    ;; Install NODE at the appropriate LOCATION within SIBLINGS.
-    (cond (specialp)
-	  ((or (null siblings) (eq (car siblings) location))
-	   (push node siblings))
-	  ((null location) (nconc siblings (list node)))
-	  (t
-	   (let ((index (cl-position location siblings)))
-	     (unless index (error "No location found to insert node"))
-	     (push node (cdr (nthcdr (1- index) siblings))))))
-    ;; Store SIBLINGS at appropriate place in parse tree.
-    (cond
-     (specialp (setcdr parent (copy-sequence parent)) (setcar parent node))
-     (property (org-element-put-property parent property siblings))
-     (t (apply #'org-element-set-contents parent siblings)))
-    ;; Set appropriate :parent property.
-    (org-element-put-property node :parent parent)))
-
-(defalias 'org-element-set-element #'org-element-set)
-(defun org-element-set (old new &optional keep-props)
-  "Replace element or object OLD with element or object NEW.
-When KEEP-PROPS is non-nil, keep OLD values of the listed property
-names.
-
-The function takes care of setting `:parent' property for NEW."
-  ;; Ensure OLD and NEW have the same parent.
-  (org-element-put-property new :parent (org-element-parent old))
-  ;; Handle KEEP-PROPS.
-  (dolist (p keep-props)
-    (org-element-put-property new p (org-element-property p old)))
-  (let ((old-type (org-element-type old))
-        (new-type (org-element-type new)))
-    (if (or (eq old-type 'plain-text)
-	    (eq new-type 'plain-text))
-        ;; We cannot replace OLD with NEW since strings are not mutable.
-        ;; We take the long path.
-        (progn (org-element-insert-before new old)
-	       (org-element-extract old))
-      ;; Since OLD is going to be changed into NEW by side-effect, first
-      ;; make sure that every element or object within NEW has OLD as
-      ;; parent.
-      (dolist (blob (org-element-contents new))
-        (org-element-put-property blob :parent old))
-      ;; Both OLD and NEW are lists.
-      (setcar old (car new))
-      (setcdr old (cdr new)))))
-
-(defun org-element-ast-map
-    ( data types fun
-      &optional
-      ignore first-match no-recursion
-      with-properties no-secondary no-undefer)
-  "Map a function on selected syntax nodes.
-
-DATA is a syntax tree.  TYPES is a symbol or list of symbols of
-node types.  FUN is the function called on the matching nodes.
-It has to accept one argument: the node itself.
-
-When TYPES is t, call FUN for all the node types.
-
-FUN can also be a Lisp form.  The form will be evaluated as function
-with symbol `node' bound to the current node.
-
-When optional argument IGNORE is non-nil, it should be a list holding
-nodes to be skipped.  In that case, the listed nodes and their
-contents will be skipped.
-
-When optional argument FIRST-MATCH is non-nil, stop at the first
-match for which FUN doesn't return nil, and return that value.
-
-Optional argument NO-RECURSION is a symbol or a list of symbols
-representing node types.  `org-element-map' won't enter any recursive
-element or object whose type belongs to that list.  Though, FUN can
-still be applied on them.
-
-When optional argument WITH-PROPERTIES is non-nil, it should hold a list
-of property names.  These properties will be treated as additional
-secondary properties.
-
-When optional argument NO-SECONDARY is non-nil, do not recurse into
-secondary strings.
-
-When optional argument NO-UNDEFER is non-nil, do not resolve deferred
-values.
-
-FUN may also throw `:org-element-skip' signal.  Then,
-`org-element-ast-map' will not recurse into the current node.
-
-Nil values returned from FUN do not appear in the results."
-  (declare (indent 2))
-  ;; Ensure TYPES and NO-RECURSION are a list, even of one node.
-  (when types
-    (let* ((types (pcase types
-                    ((pred listp) types)
-                    (`t t)
-                    (_ (list types))))
-	   (no-recursion (if (listp no-recursion) no-recursion
-			   (list no-recursion)))
-           (fun (if (functionp fun) fun `(lambda (node) ,fun)))
-	   --acc)
-      (letrec ((--walk-tree
-	        (lambda (--data)
-		  ;; Recursively walk DATA.  INFO, if non-nil, is a plist
-		  ;; holding contextual information.
-		  (let ((--type (org-element-type --data t))
-                        recurse)
-		    (cond
-		     ((not --data))
-                     ((not --type))
-		     ;; Ignored node in an export context.
-		     ((and ignore (memq --data ignore)))
-		     ;; List of elements or objects.
-		     ((eq --type 'anonymous)
-                      (mapc
-                       --walk-tree
-                       (if no-undefer
-                           (org-element-contents-1 --data)
-                         (org-element-contents --data))))
-		     (t
-		      ;; Check if TYPE is matching among TYPES.  If so,
-		      ;; apply FUN to --DATA and accumulate return value
-		      ;; into --ACC (or exit if FIRST-MATCH is non-nil).
-                      (setq recurse t)
-		      (when (or (eq types t) (memq --type types))
-		        (let ((result
-                               (catch :org-element-skip
-                                 (setq recurse nil)
-                                 (prog1 (funcall fun --data)
-                                   (setq recurse t)))))
-			  (cond ((not result))
-			        (first-match (throw :--map-first-match result))
-			        (t (push result --acc)))))
-		      ;; Determine if a recursion into --DATA is possible.
-		      (cond
-                       ;; No recursion requested.
-                       ((not recurse))
-		       ;; --TYPE is explicitly removed from recursion.
-		       ((memq --type no-recursion))
-		       ;; In any other case, map secondary, affiliated, and contents.
-		       (t
-		        (when with-properties
-		          (dolist (p with-properties)
-                            (funcall
-                             --walk-tree
-                             (if no-undefer
-                                 (org-element-property-1 p --data)
-                               (org-element-property p --data)))))
-                        (unless no-secondary
-		          (dolist (p (org-element-property :secondary --data))
-			    (funcall
-                             --walk-tree
-                             (if no-undefer
-                                 (org-element-property-1 p --data)
-                               (org-element-property p --data)))))
-                        (mapc
-                         --walk-tree
-                         (if no-undefer
-                             (org-element-contents-1 --data)
-                           (org-element-contents --data)))))))))))
-        (catch :--map-first-match
-	  (funcall --walk-tree data)
-	  ;; Return value in a proper order.
-	  (nreverse --acc))))))
+;;;; Constructor and copier
 
 (defun org-element-create (type &optional props &rest children)
   "Create a new syntax node of TYPE.
@@ -1042,6 +822,117 @@ When DATUM is `plain-text', all the properties are removed."
                (setq contents (cdr contents)))))
          node-copy)))))
 
+;;;; AST queries
+
+(defun org-element-ast-map
+    ( data types fun
+      &optional
+      ignore first-match no-recursion
+      with-properties no-secondary no-undefer)
+  "Map a function on selected syntax nodes.
+
+DATA is a syntax tree.  TYPES is a symbol or list of symbols of
+node types.  FUN is the function called on the matching nodes.
+It has to accept one argument: the node itself.
+
+When TYPES is t, call FUN for all the node types.
+
+FUN can also be a Lisp form.  The form will be evaluated as function
+with symbol `node' bound to the current node.
+
+When optional argument IGNORE is non-nil, it should be a list holding
+nodes to be skipped.  In that case, the listed nodes and their
+contents will be skipped.
+
+When optional argument FIRST-MATCH is non-nil, stop at the first
+match for which FUN doesn't return nil, and return that value.
+
+Optional argument NO-RECURSION is a symbol or a list of symbols
+representing node types.  `org-element-map' won't enter any recursive
+element or object whose type belongs to that list.  Though, FUN can
+still be applied on them.
+
+When optional argument WITH-PROPERTIES is non-nil, it should hold a list
+of property names.  These properties will be treated as additional
+secondary properties.
+
+When optional argument NO-SECONDARY is non-nil, do not recurse into
+secondary strings.
+
+When optional argument NO-UNDEFER is non-nil, do not resolve deferred
+values.
+
+FUN may also throw `:org-element-skip' signal.  Then,
+`org-element-ast-map' will not recurse into the current node.
+
+Nil values returned from FUN do not appear in the results."
+  (declare (indent 2))
+  ;; Ensure TYPES and NO-RECURSION are a list, even of one node.
+  (when types
+    (let* ((types (pcase types
+                    ((pred listp) types)
+                    (`t t)
+                    (_ (list types))))
+	   (no-recursion (if (listp no-recursion) no-recursion
+			   (list no-recursion)))
+           (fun (if (functionp fun) fun `(lambda (node) ,fun)))
+	   --acc)
+      (letrec ((--walk-tree
+	        (lambda (--data)
+		  ;; Recursively walk DATA.  INFO, if non-nil, is a plist
+		  ;; holding contextual information.
+		  (let ((--type (org-element-type --data t))
+                        recurse)
+		    (cond
+		     ((not --data))
+                     ((not --type))
+		     ;; Ignored node in an export context.
+		     ((and ignore (memq --data ignore)))
+		     ;; List of elements or objects.
+		     ((eq --type 'anonymous)
+                      (mapc --walk-tree (org-element-contents --data)))
+		     (t
+		      ;; Check if TYPE is matching among TYPES.  If so,
+		      ;; apply FUN to --DATA and accumulate return value
+		      ;; into --ACC (or exit if FIRST-MATCH is non-nil).
+                      (setq recurse t)
+		      (when (or (eq types t) (memq --type types))
+		        (let ((result
+                               (catch :org-element-skip
+                                 (setq recurse nil)
+                                 (prog1 (funcall fun --data)
+                                   (setq recurse t)))))
+			  (cond ((not result))
+			        (first-match (throw :--map-first-match result))
+			        (t (push result --acc)))))
+		      ;; Determine if a recursion into --DATA is possible.
+		      (cond
+                       ;; No recursion requested.
+                       ((not recurse))
+		       ;; --TYPE is explicitly removed from recursion.
+		       ((memq --type no-recursion))
+		       ;; In any other case, map secondary, affiliated, and contents.
+		       (t
+		        (when with-properties
+		          (dolist (p with-properties)
+                            (funcall
+                             --walk-tree
+                             (if no-undefer
+                                 (org-element-property-1 p --data)
+                               (org-element-property p --data)))))
+                        (unless no-secondary
+		          (dolist (p (org-element-property :secondary --data))
+			    (funcall
+                             --walk-tree
+                             (if no-undefer
+                                 (org-element-property-1 p --data)
+                               (org-element-property p --data)))))
+                        (mapc --walk-tree (org-element-contents --data))))))))))
+        (catch :--map-first-match
+	  (funcall --walk-tree data)
+	  ;; Return value in a proper order.
+	  (nreverse --acc))))))
+
 (defun org-element-lineage (datum &optional types with-self)
   "List all ancestors of a given element or object.
 
@@ -1138,6 +1029,111 @@ When INCLUDE-NIL is non-nil, include present properties with value nil."
       (if (and (stringp accumulate) acc)
           (mapconcat #'identity acc accumulate)
         acc))))
+
+;;;; AST modification
+
+(defalias 'org-element-adopt-elements #'org-element-adopt)
+(defun org-element-adopt (parent &rest children)
+  "Append CHILDREN to the contents of PARENT.
+
+PARENT is a syntax node.  CHILDREN can be elements, objects, or
+strings.
+
+If PARENT is nil, create a new anonymous node containing CHILDREN.
+
+The function takes care of setting `:parent' property for each child.
+Return the modified PARENT."
+  (declare (indent 1))
+  (if (not children) parent
+    ;; Link every child to PARENT. If PARENT is nil, it is a secondary
+    ;; string: parent is the list itself.
+    (dolist (child children)
+      (when child
+        (org-element-put-property child :parent (or parent children))))
+    ;; Add CHILDREN at the end of PARENT contents.
+    (when parent
+      (apply #'org-element-set-contents
+	     parent
+	     (nconc (org-element-contents parent) children)))
+    ;; Return modified PARENT element.
+    (or parent children)))
+
+(defalias 'org-element-extract-element #'org-element-extract)
+(defun org-element-extract (node)
+  "Extract NODE from parse tree.
+Remove NODE from the parse tree by side-effect, and return it
+with its `:parent' property stripped out."
+  (let ((parent (org-element-parent node))
+	(secondary (org-element-secondary-p node)))
+    (if secondary
+        (org-element-put-property
+	 parent secondary
+	 (delq node (org-element-property secondary parent)))
+      (apply #'org-element-set-contents
+	     parent
+	     (delq node (org-element-contents parent))))
+    ;; Return NODE with its :parent removed.
+    (org-element-put-property node :parent nil)))
+
+(defun org-element-insert-before (node location)
+  "Insert NODE before LOCATION in parse tree.
+LOCATION is an element, object or string within the parse tree.
+Parse tree is modified by side effect."
+  (let* ((parent (org-element-parent location))
+	 (property (org-element-secondary-p location))
+	 (siblings (if property (org-element-property property parent)
+		     (org-element-contents parent)))
+	 ;; Special case: LOCATION is the first element of an
+	 ;; independent secondary string (e.g. :title property).  Add
+	 ;; NODE in-place.
+	 (specialp (and (not property)
+			(eq siblings parent)
+			(eq (car parent) location))))
+    ;; Install NODE at the appropriate LOCATION within SIBLINGS.
+    (cond (specialp)
+	  ((or (null siblings) (eq (car siblings) location))
+	   (push node siblings))
+	  ((null location) (nconc siblings (list node)))
+	  (t
+	   (let ((index (cl-position location siblings)))
+	     (unless index (error "No location found to insert node"))
+	     (push node (cdr (nthcdr (1- index) siblings))))))
+    ;; Store SIBLINGS at appropriate place in parse tree.
+    (cond
+     (specialp (setcdr parent (copy-sequence parent)) (setcar parent node))
+     (property (org-element-put-property parent property siblings))
+     (t (apply #'org-element-set-contents parent siblings)))
+    ;; Set appropriate :parent property.
+    (org-element-put-property node :parent parent)))
+
+(defalias 'org-element-set-element #'org-element-set)
+(defun org-element-set (old new &optional keep-props)
+  "Replace element or object OLD with element or object NEW.
+When KEEP-PROPS is non-nil, keep OLD values of the listed property
+names.
+
+The function takes care of setting `:parent' property for NEW."
+  ;; Ensure OLD and NEW have the same parent.
+  (org-element-put-property new :parent (org-element-parent old))
+  ;; Handle KEEP-PROPS.
+  (dolist (p keep-props)
+    (org-element-put-property new p (org-element-property p old)))
+  (let ((old-type (org-element-type old))
+        (new-type (org-element-type new)))
+    (if (or (eq old-type 'plain-text)
+	    (eq new-type 'plain-text))
+        ;; We cannot replace OLD with NEW since strings are not mutable.
+        ;; We take the long path.
+        (progn (org-element-insert-before new old)
+	       (org-element-extract old))
+      ;; Since OLD is going to be changed into NEW by side-effect, first
+      ;; make sure that every element or object within NEW has OLD as
+      ;; parent.
+      (dolist (blob (org-element-contents new))
+        (org-element-put-property blob :parent old))
+      ;; Both OLD and NEW are lists.
+      (setcar old (car new))
+      (setcdr old (cdr new)))))
 
 (provide 'org-element-ast)
 ;;; org-element-ast.el ends here
