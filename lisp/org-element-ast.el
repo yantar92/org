@@ -768,7 +768,7 @@ string.  Alternatively, TYPE can be a string.  When TYPE is nil or
   "Return a copy of DATUM.
 DATUM is an element, object, string or nil.  `:parent' property
 is cleared and contents are removed in the process.
-Secondary objects are also copied and their `:parent' gets re-assigned.
+Secondary objects are also copied and their `:parent' is re-assigned.
 
 When optional argument KEEP-CONTENTS is non-nil, do not remove the
 contents.  Instead, copy the children recursively, updating their
@@ -779,48 +779,48 @@ removed.  The contained children are copied recursively, updating
 their `:parent' property to the copied `anonymous' node.
 
 When DATUM is `plain-text', all the properties are removed."
-  (when datum
-    (pcase (org-element-type datum t)
-      (`plain-text (substring-no-properties datum))
-      (`nil (error "Not an Org syntax node: %S" datum))
-      (`anonymous
-       (let* ((node-copy (copy-sequence datum))
-              (tail node-copy))
-         (while tail
-           (setcar tail (org-element-copy (car tail) t))
-           (org-element-put-property (car tail) :parent node-copy)
-           (setq tail (cdr tail)))
-         node-copy))
-      (_
-       (let ((node-copy (copy-sequence datum)))
-         ;; Copy `:standard-properties'
-         (when-let ((parray (org-element-property-1 :standard-properties node-copy)))
-           (org-element-put-property node-copy :standard-properties (copy-sequence parray)))
-         ;; Clear `:parent'.
-         (org-element-put-property node-copy :parent nil)
-         ;; We cannot simply return the copied property list.  When
-         ;; DATUM is i.e. a headline, it's property list `:title' can
-         ;; contain parsed objects.  The objects will contain
-         ;; `:parent' property set to the DATUM itself.  When copied,
-         ;; these inner `:parent' property values will contain
-         ;; incorrect object decoupled from DATUM.  Changes to the
-         ;; DATUM copy will no longer be reflected in the `:parent'
-         ;; properties.  So, we need to reassign inner `:parent'
-         ;; properties to the DATUM copy explicitly.
-         (dolist (secondary-prop (org-element-property :secondary node-copy))
-           (when-let ((secondary-value (org-element-property secondary-prop node-copy)))
-             (setq secondary-value (org-element-copy secondary-value t))
-             (if (org-element-type secondary-value)
-                 (org-element-put-property secondary-value :parent node-copy)
-               (dolist (el secondary-value)
-                 (org-element-put-property el :parent node-copy)))
-             (org-element-put-property node-copy secondary-prop secondary-value)))
-         (when keep-contents
-           (let ((contents (org-element-contents node-copy)))
-             (while contents
-               (setcar contents (org-element-copy (car contents) t))
-               (setq contents (cdr contents)))))
-         node-copy)))))
+  (pcase (org-element-type datum t)
+    ((guard (null datum)) nil)
+    (`plain-text (substring-no-properties datum))
+    (`nil (error "Not an Org syntax node: %S" datum))
+    (`anonymous
+     (let* ((node-copy (copy-sequence datum))
+            (tail node-copy))
+       (while tail
+         (setcar tail (org-element-copy (car tail) t))
+         (org-element-put-property (car tail) :parent node-copy)
+         (setq tail (cdr tail)))
+       node-copy))
+    (_
+     (let ((node-copy (copy-sequence datum)))
+       ;; Copy `:standard-properties'
+       (when-let ((parray (org-element-property-1 :standard-properties node-copy)))
+         (org-element-put-property node-copy :standard-properties (copy-sequence parray)))
+       ;; Clear `:parent'.
+       (org-element-put-property node-copy :parent nil)
+       ;; We cannot simply return the copied property list.  When
+       ;; DATUM is i.e. a headline, it's property list `:title' can
+       ;; contain parsed objects.  The objects will contain
+       ;; `:parent' property set to the DATUM itself.  When copied,
+       ;; these inner `:parent' property values will contain
+       ;; incorrect object decoupled from DATUM.  Changes to the
+       ;; DATUM copy will no longer be reflected in the `:parent'
+       ;; properties.  So, we need to reassign inner `:parent'
+       ;; properties to the DATUM copy explicitly.
+       (dolist (secondary-prop (org-element-property :secondary node-copy))
+         (when-let ((secondary-value (org-element-property secondary-prop node-copy)))
+           (setq secondary-value (org-element-copy secondary-value t))
+           (if (org-element-type secondary-value)
+               (org-element-put-property secondary-value :parent node-copy)
+             (dolist (el secondary-value)
+               (org-element-put-property el :parent node-copy)))
+           (org-element-put-property node-copy secondary-prop secondary-value)))
+       (when keep-contents
+         (let ((contents (org-element-contents node-copy)))
+           (while contents
+             (setcar contents (org-element-copy (car contents) t))
+             (setq contents (cdr contents)))))
+       node-copy))))
 
 ;;;; AST queries
 
