@@ -967,6 +967,8 @@ in the results.
 DATUM is an object or element.
 
 FUN is a function accepting a single argument: syntax node.
+FUN can also be a Lisp form.  The form will be evaluated as function
+with symbol `node' bound to the current node.
 
 When optional argument TYPES is a list of symbols, only map across
 nodes with the listed types.
@@ -978,6 +980,7 @@ apply to it.
 When optional argument FIRST-MATCH is non-nil, stop at the first
 match for which FUN doesn't return nil, and return that value."
   (declare (indent 2))
+  (setq fun (if (functionp fun) fun `(lambda (node) ,fun)))
   (let ((up (if with-self datum (org-element-parent datum)))
 	acc rtn)
     (catch :--first-match

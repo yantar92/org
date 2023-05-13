@@ -4427,6 +4427,36 @@ Text
        "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
      (org-element-lineage (org-element-context) '(bold) t))))
 
+(ert-deftest test-org-element/lineage-map ()
+  "Test `org-element-lineage-map' specifications."
+  (should
+   (equal '(paragraph center-block section headline headline org-data)
+	  (org-test-with-temp-text
+	      "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
+	    (org-element-lineage-map (org-element-context) #'org-element-type))))
+  ;; WITH-SELF.
+  (should
+   (equal '(bold paragraph center-block section headline headline org-data)
+	  (org-test-with-temp-text
+	      "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
+	    (org-element-lineage-map (org-element-context) #'org-element-type nil t))))
+  ;; FUN as a Lisp form.
+  (should
+   (equal '("H2" "H1")
+	  (org-test-with-temp-text
+	      "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
+	    (org-element-lineage-map
+                (org-element-context)
+                '(org-element-property :raw-value node)))))
+  ;; FIRST-MATCH
+  (should
+   (equal "H2"
+	  (org-test-with-temp-text
+	      "* H1\n** H2\n#+BEGIN_CENTER\n*bold<point>*\n#+END_CENTER"
+	    (org-element-lineage-map
+                (org-element-context)
+                '(org-element-property :raw-value node)
+              nil nil t)))))
 
 
 ;;; Test Cache.
