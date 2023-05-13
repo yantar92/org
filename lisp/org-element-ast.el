@@ -689,7 +689,7 @@ values with undeferred values."
 
 ;;;; Node contents.
 
-(defsubst org-element-contents-1 (node)
+(defsubst org-element-contents (node)
   "Extract contents from NODE.
 Do not resolve deferred values."
   (declare (pure t))
@@ -713,38 +713,7 @@ If NODE cannot have contents, return CONTENTS."
     (_ (setf (cddr node) contents)
        node)))
 
-(defsubst org-element-contents (node)
-  "Extract contents from NODE.
-Resolve contents value unconditionally, if it is deferred."
-  (let ((contents (org-element-contents-1 node))
-        (retry t))
-    (while retry
-      (catch :org-element-deferred-retry
-        (when (org-element-deferred-p contents)
-          (setq contents
-                (org-element--deferred-resolve-force
-                 contents node))
-          (org-element-set-contents node contents))
-        (while contents
-          (when (org-element-deferred-p (car contents))
-            (setcar
-             contents
-             (org-element--deferred-resolve-force
-              (car contents) node)))
-          (setq contents (cdr contents)))
-        (setq retry nil)))
-    (org-element-contents-1 node)))
-
-(defsubst org-element-resolve-deferred (node &optional force-undefer)
-  "Resolve all the deferred properties in NODE.
-Return the modified NODE.
-When FORCE-UNDEFER is non-nil, unconditionally replace deferred
-properties with their values."
-  ;; Resolve properties.
-  (org-element-properties-resolve node force-undefer)
-  ;; Resolve contents.
-  (org-element-contents node)
-  node)
+(defalias 'org-element-resolve-deferred #'org-element-properties-resolve)
 
 ;;;; AST modification
 
