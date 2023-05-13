@@ -347,6 +347,91 @@ Some other text
       (org-element-map
           (org-element-at-point) 'plain-text 'identity nil nil nil t)))))
 
+(ert-deftest test-org-element/ast-map ()
+  "Test `org-element-ast-map' specifications."
+  ;; TYPES = t
+  (should
+   (equal
+    '(plain-text plain-text bold)
+    (org-element-ast-map
+        (org-element-create 'anonymous nil "a" "b" (org-element-create 'bold))
+        t #'org-element-type)))
+  ;; IGNORE
+  (should
+   (equal
+    '(plain-text plain-text)
+    (let ((bold (org-element-create 'bold)))
+      (org-element-ast-map
+          (org-element-create 'anonymous nil "a" "b" bold)
+          t #'org-element-type (list bold)))))
+  ;; FUN as a list form
+  (org-test-with-temp-text "* H1\n* H2"
+    (should
+     (equal
+      '("H1" "H2")
+      (org-element-map
+          (org-element-parse-buffer)
+          t '(org-element-property :raw-value node)))))
+  ;; Extra secondary properties.
+  (should
+   (equal
+    '(bold bold)
+    (org-element-ast-map
+        (org-element-create
+         'dummy
+         `(:foo ,(org-element-create 'bold))
+         (org-element-create 'bold))
+        'bold #'org-element-type
+        nil nil nil '(:foo))))
+  (should-not
+   (equal
+    '(bold bold)
+    (org-element-ast-map
+        (org-element-create
+         'dummy
+         `(:foo ,(org-element-create 'bold))
+         (org-element-create 'bold))
+        'bold #'org-element-type)))
+  ;; No secondary.
+  (should-not
+   (equal
+    '(bold bold)
+    (org-element-ast-map
+        (org-element-create
+         'dummy
+         `(:secondary (:foo) :foo ,(org-element-create 'bold))
+         (org-element-create 'bold))
+        'bold #'org-element-type
+        nil nil nil nil 'no-secondary)))
+  (should
+   (equal
+    '(bold bold)
+    (org-element-ast-map
+        (org-element-create
+         'dummy
+         `(:secondary (:foo) :foo ,(org-element-create 'bold))
+         (org-element-create 'bold))
+        'bold #'org-element-type)))
+  ;; Deferred values.
+  (should
+   (equal
+    '(dummy bold)
+    (org-element-ast-map
+        (org-element-create
+         'dummy
+         `(:secondary (:foo) :foo ,(org-element-deferred-create nil (lambda (_) "a")))
+         (org-element-create 'bold))
+        t #'org-element-type
+        nil nil nil nil nil 'no-undefer)))
+  (should
+   (equal
+    '(dummy plain-text bold)
+    (org-element-ast-map
+        (org-element-create
+         'dummy
+         `(:secondary (:foo) :foo ,(org-element-deferred-create nil (lambda (_) "a")))
+         (org-element-create 'bold))
+        t #'org-element-type))))
 
 (ert-deftest test-org-element/properties-mapc ()
   "Test `org-element-properties-mapc' specifications."
