@@ -271,6 +271,7 @@ Return interpreted string."
 
 (ert-deftest test-org-element/properties-mapcar ()
   "Test `org-element-properties-mapcar' specifications."
+  ;; Check resolving deferred properties.
   (let ((el (org-element-create
              'dummy
              `( :foo ,(org-element-deferred-create t (lambda (_) 1))
@@ -287,7 +288,27 @@ Return interpreted string."
     (should
      (equal '(1 2)
             (org-element-properties-mapcar
-             (lambda (_ val _) val) el 'undefer)))))
+             (lambda (_ val _) val) el 'undefer))))
+  ;; Check functions with different arity.
+  (let ((el (org-element-create 'dummy '(:foo 1 :bar 2 :baz 3))))
+    (should
+     ;; Single argument.
+     (equal '(1 2 3)
+            (org-element-properties-mapcar #'identity el)))
+    ;; Two arguments.
+    (should
+     (equal '(1 2 nil)
+            (org-element-properties-mapcar
+             (lambda (prop val) (unless (eq prop :baz) val)) el)))
+    ;; Three arguments.
+    (should
+     (equal '(1 2 4)
+            (org-element-properties-mapcar
+             (lambda (prop val node)
+               (if (eq prop :baz)
+                   (1+ (org-element-property-1 :baz node))
+                 val))
+             el)))))
 
 (ert-deftest test-org-element/secondary-p ()
   "Test `org-element-secondary-p' specifications."

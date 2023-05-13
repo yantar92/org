@@ -554,7 +554,10 @@ except `:deferred', may not be resolved."
 (defun org-element--properties-mapc (fun node &optional collect no-standard)
   "Apply FUN for each property of NODE.
 FUN will be called with three arguments: property name, property
-value, and node.
+value, and node.  If FUN accepts only 2 arguments, it will be called
+with two arguments: property name and property value.  If FUN accepts
+only a single argument, it will be called with a single argument -
+property value.
 
 Do not resolve deferred values, except `:deferred'.
 `:standard-properties' internal property will be skipped.
@@ -567,7 +570,7 @@ values (except the values equal to `org-element-ast--nil') and finally
 return nil.  When COLLECT is non-nil and not symbol `set', collect the
 return values into a list and return it.
 Otherwise, return nil."
-  (let (acc rtn)
+  (let (acc rtn (fun-arity (cdr (func-arity fun))))
     (pcase (org-element-type node)
       (`nil nil)
       (type
@@ -582,11 +585,17 @@ Otherwise, return nil."
              (while standard-idxs
                (setq
                 rtn
-                (funcall
-                 fun
-                 (car standard-idxs)
-                 (aref parray (cadr standard-idxs))
-                 node))
+                (pcase fun-arity
+                  (1 (funcall fun (aref parray (cadr standard-idxs))))
+                  (2 (funcall
+                      fun
+                      (car standard-idxs)
+                      (aref parray (cadr standard-idxs))))
+                  (_ (funcall
+                      fun
+                      (car standard-idxs)
+                      (aref parray (cadr standard-idxs))
+                      node))))
                (when collect
                  (unless (eq rtn (aref parray (cadr standard-idxs)))
                    (if (and (eq collect 'set) (not eq rtn 'org-element-ast--nil))
@@ -600,7 +609,11 @@ Otherwise, return nil."
                 (nth 1 node))))
          (while props
            (unless (eq :standard-properties (car props))
-             (setq rtn (funcall fun (car props) (cadr props) node))
+             (setq rtn
+                   (pcase fun-arity
+                     (1 (funcall fun (cadr props)))
+                     (2 (funcall fun (car props) (cadr props)))
+                     (_ (funcall fun (car props) (cadr props) node))))
              (when collect
                (if (and (eq collect 'set) (not (eq rtn 'org-element-ast--nil)))
                    (unless (eq rtn (cadr props))
@@ -645,7 +658,10 @@ Return the modified NODE."
 (defsubst org-element-properties-mapc (fun node &optional undefer)
   "Apply FUN for each property of NODE for side effect.
 FUN will be called with three arguments: property name, property
-value, and NODE.
+value, and node.  If FUN accepts only 2 arguments, it will be called
+with two arguments: property name and property value.  If FUN accepts
+only a single argument, it will be called with a single argument -
+property value.
 
 When UNDEFER is non-nil, undefer deferred properties.
 When UNDEFER is symbol `force', unconditionally replace the property
@@ -659,7 +675,10 @@ Return nil."
 (defsubst org-element-properties-mapcar (fun node &optional undefer)
   "Apply FUN for each property of NODE and return a list of the results.
 FUN will be called with three arguments: property name, property
-value, and NODE.
+value, and node.  If FUN accepts only 2 arguments, it will be called
+with two arguments: property name and property value.  If FUN accepts
+only a single argument, it will be called with a single argument -
+property value.
 
 When UNDEFER is non-nil, undefer deferred properties unconditionally.
 When UNDEFER is symbol `force', unconditionally replace the property
