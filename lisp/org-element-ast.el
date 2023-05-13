@@ -1006,12 +1006,12 @@ When optional argument ACCUMULATE is nil, return the first non-nil value
 When ACCUMULATE is non-nil, extract all the values, starting from the
 outermost ancestor and accumulate them into a single list.  The values
 that are lists are appended.
-When ACCUMULATE is a string, join the resulting list elements into a
-string, using string value as separator.
 
 When LITERAL-NIL is non-nil, treat property values \"nil\" and nil.
 
-When INCLUDE-NIL is non-nil, include present properties with value nil."
+When INCLUDE-NIL is non-nil, do not skip properties with value nil.  The
+properties that are missing from the property list will still be
+skipped."
   (setq property (ensure-list property))
   (let (acc local val)
     (catch :found
@@ -1025,13 +1025,13 @@ When INCLUDE-NIL is non-nil, include present properties with value nil."
             (when (and (not accumulate) (or val include-nil))
               (throw :found val))
             ;; Append to the end.
-            (setq local (append local (ensure-list val)))))
+            (if (and include-nil (not val))
+                (setq local (append local '(nil)))
+              (setq local (append local (ensure-list val))))))
         ;; Append parent to front.
         (setq acc (append local acc))
         (setq node (org-element-parent node)))
-      (if (and (stringp accumulate) acc)
-          (mapconcat #'identity acc accumulate)
-        acc))))
+      acc)))
 
 ;;;; AST modification
 

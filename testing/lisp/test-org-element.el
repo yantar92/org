@@ -4458,6 +4458,109 @@ Text
                 '(org-element-property :raw-value node)
               nil nil t)))))
 
+(ert-deftest test-org-element/property-inherited ()
+  "Test `org-element-property-inherited' specifications."
+  ;; Property without self.
+  (should
+   (equal
+    'bar
+    (org-element-property-inherited
+     :foo
+     (car (org-element-contents
+           (org-element-create
+            'parent '(:foo bar)
+            (org-element-create 'child '(:foo baz))))))))
+  ;; With self
+  (should
+   (equal
+    'baz
+    (org-element-property-inherited
+     :foo
+     (car (org-element-contents
+           (org-element-create
+            'parent '(:foo bar)
+            (org-element-create 'child '(:foo baz)))))
+     'with-self)))
+  ;; ACCUMULATE non-nil.
+  (should
+   (equal
+    '(bar baz)
+    (org-element-property-inherited
+     :foo
+     (car (org-element-contents
+           (org-element-create
+            'parent '(:foo bar)
+            (org-element-create 'child '(:foo baz)))))
+     'with-self 'accumulate)))
+  ;; LITERAL-NIL.
+  (should-not
+   (org-element-property-inherited
+    :foo
+    (org-element-create 'child '(:foo "nil"))
+    'with-self nil t))
+  (should
+   (org-element-property-inherited
+    :foo
+    (org-element-create 'child '(:foo "nil"))
+    'with-self))
+  ;; INCLUDE-NIL
+  (should-not
+   (org-element-property-inherited
+    :foo
+    (org-element-map
+        (thread-last
+          (org-element-create 'grandchild '(:foo baz))
+          (org-element-create 'child '(:foo nil))
+          (org-element-create 'parent '(:foo bar)))
+        'grandchild #'identity nil t)
+    nil nil nil t))
+  (should
+   (eq
+    'bar
+    (org-element-property-inherited
+     :foo
+     (org-element-map
+         (thread-last
+           (org-element-create 'grandchild '(:foo baz))
+           (org-element-create 'child '(:foo nil))
+           (org-element-create 'parent '(:foo bar)))
+         'grandchild #'identity nil t))))
+  ;; INCLUDE-NIL in accumulated.
+  (should
+   (equal
+    '(bar nil baz)
+    (org-element-property-inherited
+     :foo
+     (org-element-map
+         (thread-last
+           (org-element-create 'grandchild '(:foo baz))
+           (org-element-create 'child '(:foo nil))
+           (org-element-create 'parent '(:foo bar)))
+         'grandchild #'identity nil t)
+     'with-self 'accumulate nil t)))
+  ;; PROPERTY as a list.
+  (should
+   (equal
+    '(bar value)
+    (org-element-property-inherited
+     '(:foo :extra)
+     (car (org-element-contents
+           (org-element-create
+            'parent '(:foo bar :extra value)
+            (org-element-create 'child '(:foo baz)))))
+     nil 'accumulate)))
+  ;; Append list values
+  (should
+   (equal
+    '(bar value value2)
+    (org-element-property-inherited
+     '(:foo :extra)
+     (car (org-element-contents
+           (org-element-create
+            'parent '(:foo bar :extra (value value2))
+            (org-element-create 'child '(:foo baz)))))
+     nil 'accumulate))))
+
 
 ;;; Test Cache.
 
