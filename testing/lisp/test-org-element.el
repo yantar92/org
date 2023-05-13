@@ -248,68 +248,6 @@ Return interpreted string."
     (setq el (org-element-properties-resolve el 'force))
     (should (eq 2 (org-element-property-1 :bar el)))))
 
-(ert-deftest test-org-element/properties-mapc ()
-  "Test `org-element-properties-mapc' specifications."
-  (let ((el (org-element-create
-             'dummy
-             `( :foo ,(org-element-deferred-create t (lambda (_) 1))
-                :bar 2))))
-    (should
-     (catch :found
-       (org-element-properties-mapc
-        (lambda (_ val _)
-          (when (org-element-deferred-p val)
-            (throw :found t)))
-        el)))
-    (should
-     (catch :found
-       (org-element-properties-mapc
-        (lambda (prop val _)
-          (when (and (eq prop :foo) (eq 1 val))
-            (throw :found t)))
-        el 'undefer)))))
-
-(ert-deftest test-org-element/properties-mapcar ()
-  "Test `org-element-properties-mapcar' specifications."
-  ;; Check resolving deferred properties.
-  (let ((el (org-element-create
-             'dummy
-             `( :foo ,(org-element-deferred-create t (lambda (_) 1))
-                :bar 2))))
-    (should
-     (equal '(2)
-            (cdr
-             (org-element-properties-mapcar
-              (lambda (_ val _) val) el))))
-    (should-not
-     (equal '(1 2)
-            (org-element-properties-mapcar
-             (lambda (_ val _) val) el)))
-    (should
-     (equal '(1 2)
-            (org-element-properties-mapcar
-             (lambda (_ val _) val) el 'undefer))))
-  ;; Check functions with different arity.
-  (let ((el (org-element-create 'dummy '(:foo 1 :bar 2 :baz 3))))
-    (should
-     ;; Single argument.
-     (equal '(1 2 3)
-            (org-element-properties-mapcar #'identity el)))
-    ;; Two arguments.
-    (should
-     (equal '(1 2 nil)
-            (org-element-properties-mapcar
-             (lambda (prop val) (unless (eq prop :baz) val)) el)))
-    ;; Three arguments.
-    (should
-     (equal '(1 2 4)
-            (org-element-properties-mapcar
-             (lambda (prop val node)
-               (if (eq prop :baz)
-                   (1+ (org-element-property-1 :baz node))
-                 val))
-             el)))))
-
 (ert-deftest test-org-element/secondary-p ()
   "Test `org-element-secondary-p' specifications."
   ;; In a secondary string, return property name.
@@ -369,7 +307,7 @@ Return interpreted string."
 	 (org-element-class datum)))))
 
 
-;;; Test `org-element-map'
+;;; Test `org-element-map' and `org-element-properties-map'
 
 (ert-deftest test-org-element/map ()
   "Test `org-element-map'."
@@ -409,6 +347,68 @@ Some other text
       (org-element-map
           (org-element-at-point) 'plain-text 'identity nil nil nil t)))))
 
+
+(ert-deftest test-org-element/properties-mapc ()
+  "Test `org-element-properties-mapc' specifications."
+  (let ((el (org-element-create
+             'dummy
+             `( :foo ,(org-element-deferred-create t (lambda (_) 1))
+                :bar 2))))
+    (should
+     (catch :found
+       (org-element-properties-mapc
+        (lambda (_ val _)
+          (when (org-element-deferred-p val)
+            (throw :found t)))
+        el)))
+    (should
+     (catch :found
+       (org-element-properties-mapc
+        (lambda (prop val _)
+          (when (and (eq prop :foo) (eq 1 val))
+            (throw :found t)))
+        el 'undefer)))))
+
+(ert-deftest test-org-element/properties-map ()
+  "Test `org-element-properties-map' specifications."
+  ;; Check resolving deferred properties.
+  (let ((el (org-element-create
+             'dummy
+             `( :foo ,(org-element-deferred-create t (lambda (_) 1))
+                :bar 2))))
+    (should
+     (equal '(2)
+            (cdr
+             (org-element-properties-map
+              (lambda (_ val _) val) el))))
+    (should-not
+     (equal '(1 2)
+            (org-element-properties-map
+             (lambda (_ val _) val) el)))
+    (should
+     (equal '(1 2)
+            (org-element-properties-map
+             (lambda (_ val _) val) el 'undefer))))
+  ;; Check functions with different arity.
+  (let ((el (org-element-create 'dummy '(:foo 1 :bar 2 :baz 3))))
+    (should
+     ;; Single argument.
+     (equal '(1 2 3)
+            (org-element-properties-map #'identity el)))
+    ;; Two arguments.
+    (should
+     (equal '(1 2 nil)
+            (org-element-properties-map
+             (lambda (prop val) (unless (eq prop :baz) val)) el)))
+    ;; Three arguments.
+    (should
+     (equal '(1 2 4)
+            (org-element-properties-map
+             (lambda (prop val node)
+               (if (eq prop :baz)
+                   (1+ (org-element-property-1 :baz node))
+                 val))
+             el)))))
 
 
 ;;; Test Setters

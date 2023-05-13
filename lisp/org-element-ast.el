@@ -672,7 +672,7 @@ Return nil."
     (org-element-properties-resolve node (eq 'force undefer)))
   (org-element--properties-mapc fun node))
 
-(defsubst org-element-properties-mapcar (fun node &optional undefer)
+(defsubst org-element-properties-map (fun node &optional undefer)
   "Apply FUN for each property of NODE and return a list of the results.
 FUN will be called with three arguments: property name, property
 value, and node.  If FUN accepts only 2 arguments, it will be called
