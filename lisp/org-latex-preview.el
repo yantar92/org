@@ -2119,8 +2119,7 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
       (org-latex--remove-cached-preamble
        compiler org-latex-preview--preamble-content nil)
       (org-latex--remove-cached-preamble
-       compiler org-latex-preview--preamble-content t))
-    (org-latex-preview--clear-preamble-cache))
+       compiler org-latex-preview--preamble-content t)))
   (org-latex-preview-clear-overlays beg end)
   (if clear-entire-cache
       (let ((n 0))
@@ -2162,7 +2161,9 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
             org-latex-preview--preamble-content
             value imagetype fg bg number))))
       (message "Cleared LaTeX preview cache for %s."
-               (if (or beg end) "region" "buffer")))))
+               (if (or beg end) "region" "buffer"))))
+  (when (or clear-entire-cache (not (or beg end)))
+    (org-latex-preview--clear-preamble-cache)))
 
 (defun org-latex-preview-precompile (processing-info preamble &optional tempfile-p)
   "Precompile/dump LaTeX PREAMBLE text.
