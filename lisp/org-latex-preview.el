@@ -1151,10 +1151,12 @@ NUMBER is the equation number that should be used, if applicable."
   (sha1 (prin1-to-string
          (list processing-type
                preamble
-               org-latex-preview-options
                string
                (if (equal imagetype "svg")
-                   'svg fg)
+                   'svg
+                 (list (plist-get
+                        org-latex-preview-options :scale)
+                       fg))
                bg
                number))))
 
