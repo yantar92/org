@@ -755,7 +755,7 @@ image.  The preview image is regenerated if necessary."
           ;; delay is reduced.  Setting an 0.05s timer isn't
           ;; necesarily the optimal duration, but from a little
           ;; testing it appears to be fairly reasonable.
-          (run-at-time 0.05 nil #'org-latex-preview-auto--regenerate-overlay ov)
+          (run-at-time 0.01 nil #'org-latex-preview-auto--regenerate-overlay ov)
         (when-let (f (overlay-get ov 'hidden-face))
           (unless (eq f 'org-latex-preview-processing-face)
             (overlay-put ov 'face f))
