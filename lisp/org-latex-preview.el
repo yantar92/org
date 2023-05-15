@@ -277,22 +277,29 @@ overlay that was updated."
   :group 'org-latex-preview
   :type 'hook)
 
-(defcustom org-latex-preview-close-hook nil
-  "Hook run after placing a LaTeX preview image.
+(defcustom org-latex-preview-close-functions nil
+  "Abnormal hook run after placing a LaTeX preview image.
 
 This hook typically runs when the cursor is moved out of a LaTeX
 fragment or environment with `org-latex-preview-auto-mode'
 active, causing the display of text contents to be replaced by
-the corresponding preview image."
+the corresponding preview image.
+
+Functions in this hook are called with one argument, the overlay
+that the cursor moved out of."
   :group 'org-latex-preview
   :type 'hook)
-(defcustom org-latex-preview-open-hook nil
+
+(defcustom org-latex-preview-open-functions nil
   "Hook run after hiding a LaTeX preview image.
 
 This hook typically runs when the cursor is moved into a LaTeX
 fragment or environment with `org-latex-preview-auto-mode'
 active, causing the display of the preview image to be replaced
-by the corresponding LaTeX fragment text."
+by the corresponding LaTeX fragment text.
+
+Functions in this hook are called with one argument, the overlay
+that the cursor moved into."
   :group 'org-latex-preview
   :type 'hook)
 
@@ -730,7 +737,7 @@ image and display its text."
         (overlay-put ov 'face nil))
       (org-latex-preview-auto--move-into ov)
       (setq org-latex-preview-auto--from-overlay nil)
-      (run-hooks 'org-latex-preview-open-hook))))
+      (run-hook-with-args 'org-latex-preview-open-functions ov))))
 
 (defun org-latex-preview-auto--close-previous-overlay ()
   "Close Org latex preview image overlays.
@@ -754,7 +761,7 @@ image.  The preview image is regenerated if necessary."
             (overlay-put ov 'face f))
           (overlay-put ov 'hidden-face nil))
         (overlay-put ov 'display (overlay-get ov 'preview-image)))
-      (run-hooks 'org-latex-preview-close-hook))))
+      (run-hook-with-args 'org-latex-preview-close-functions ov))))
 
 (defun org-latex-preview-auto--regenerate-overlay (ov)
   "Regenerate the LaTeX fragment under overlay OV."
