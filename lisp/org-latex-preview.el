@@ -1474,6 +1474,10 @@ previews."
           (and (not org-latex-preview-numbered)
                org-latex-preview--single-eqn-format)))))))
 
+(defconst org-latex-preview--include-preview-string
+  "\n\\usepackage[active,tightpage,auctex]{preview}\n"
+  "A LaTeX preamble snippet that includes preview.sty for previews.")
+
 (defun org-latex-preview--create-tex-file (processing-info fragments)
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
 
@@ -1490,13 +1494,14 @@ The path of the created LaTeX file is returned."
   (let* ((header
           (concat
            (plist-get processing-info :latex-header)
-           (let ((w org-latex-preview-width))
-             (cond
-              ((stringp w)
-               (format "\n\\setlength{\\textwidth}{%s}\n" w))
-              ((and (floatp w) (<= 0.0 w 1.0))
-               (format "\n\\setlength{\\textwidth}{%s\\paperwidth}\n" w))))
-           "\n\\usepackage[active,tightpage,auctex]{preview}\n"))
+           org-latex-preview--include-preview-string))
+         (textwidth
+          (let ((w org-latex-preview-width))
+            (cond
+             ((stringp w)
+              (format "\n\\setlength{\\textwidth}{%s}\n" w))
+             ((and (floatp w) (<= 0.0 w 1.0))
+              (format "\n\\setlength{\\textwidth}{%s\\paperwidth}\n" w)))))
          (relative-file-p
           (string-match-p "\\(?:\\\\input{\\|\\\\include{\\)[^/]" header))
          (remote-file-p (file-remote-p default-directory))
@@ -1530,7 +1535,8 @@ The path of the created LaTeX file is returned."
       ;; it is usually set during the font size intialisation that occurs at
       ;; \begin{document}.  We can either modify the \normalsize command to set
       ;; the \abovedisplayskip length, or just set it after \begin{document}.
-      (insert "\n\\begin{document}\n\n"
+      (insert textwidth
+              "\n\\begin{document}\n\n"
               "\\setlength\\abovedisplayskip{0pt}"
               " % Remove padding before equation environments.\n\n")
       (dolist (fragment-info fragments)
@@ -2124,11 +2130,12 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
     (or org-latex-preview--preamble-content
         (setq org-latex-preview--preamble-content
               (org-latex-preview--get-preamble)))
-    (dolist (compiler org-latex-compilers)
-      (org-latex--remove-cached-preamble
-       compiler org-latex-preview--preamble-content nil)
-      (org-latex--remove-cached-preamble
-       compiler org-latex-preview--preamble-content t)))
+    (let ((full-preamble
+           (concat org-latex-preview--preamble-content
+                   org-latex-preview--include-preview-string)))
+      (dolist (compiler org-latex-compilers)
+        (org-latex--remove-cached-preamble compiler full-preamble nil)
+        (org-latex--remove-cached-preamble compiler full-preamble t))))
   (org-latex-preview-clear-overlays beg end)
   (if clear-entire-cache
       (let ((n 0))
