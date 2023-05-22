@@ -113,6 +113,11 @@ accept the INFO channel and return a string.  This makes it possible
 to dynamically generate the content of the resulting ~<head>~ tag in
 the resulting HTML document.
 
+*** ~org-toggle-inline-images~ implement conditionally inline images displaying logic
+
+You can display or hide inline images at point, region, or current
+section through universal-argument.
+
 ** Miscellaneous
 *** ~ob-R~ and ~ob-julia~ no longer use ESS settings for working directory
 

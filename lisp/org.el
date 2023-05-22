@@ -16667,22 +16667,109 @@ SNIPPETS-P indicates if this is run to create snippet images for HTML."
       (when (memq ov org-inline-image-overlays)
         (push ov result)))))
 
-(defun org-toggle-inline-images (&optional include-linked beg end)
-  "Toggle the display of inline images.
-INCLUDE-LINKED is passed to `org-display-inline-images'."
+(defun org-toggle-inline-images (&optional arg beg end)
+  "Toggle the display of inline images at point.
+
+The parameter ARG from `\\[universal-argument]' is used as condition in bellowing \"argument\".
+
+1. No argument, no region selected :: toggle (display or hide dwim) images in current section or image link at point
+2. No argument, region selected :: toggle images in region
+3. C-u argument :: toggle images in the whole buffer
+4. C-u C-u argument, no region selected :: unconditionally hide images in the buffer
+5. M-1 argument, no region selected :: display images in current section with INCLUDE-LINKED
+6. M-1 argument, region selected :: ... in region ...
+7. M-11 argument :: ... in the whole buffer ...
+8. Any other argument :: treat as INCLUDE-LINKED = t"
   (interactive "P")
-  (if (org--inline-image-overlays beg end)
-      (progn
-        (org-remove-inline-images beg end)
-        (when (called-interactively-p 'interactive)
-	  (message "Inline image display turned off")))
-    (org-display-inline-images include-linked nil beg end)
-    (when (called-interactively-p 'interactive)
-      (let ((new (org--inline-image-overlays beg end)))
-        (message (if new
-		     (format "%d images displayed inline"
-			     (length new))
-		   "No images to display inline"))))))
+  (cond
+   ((not (display-graphic-p)) (message "Your Emacs does not support displaying images!"))
+   ;; 1. No argument, no region selected :: toggle (display or hide dwim) images in current section or image link at point.
+   ((and (null arg) (not (use-region-p)))
+    (let ((context (org-element-context))
+          (beg (if (org-before-first-heading-p) (point-min)
+	         (save-excursion
+	           (org-with-limited-levels (org-back-to-heading t) (point)))))
+          (end (org-with-limited-levels (org-entry-end-position)))
+          (include-linked nil))
+      ;; toggle display of inline image link at point.
+      (if (memq (org-element-type context) '(link))
+          (let ((beg (org-element-property :begin context))
+		(end (org-element-property :end context)))
+	    (if (org--inline-image-overlays beg end)
+                (progn
+                  (org-remove-inline-images beg end)
+	          (message "Remove inline image at point."))
+	      (org-display-inline-images include-linked t beg end)
+	      (message "Display inline image at point ... done.")))
+        (if (org--inline-image-overlays beg end)
+            (org-remove-inline-images beg end)
+          (message "Display inline images in section...")
+          (org-display-inline-images include-linked t beg end)
+          (message "Display inline images in section... done.")))))
+   ;; 2. No argument, region selected :: toggle images in region.
+   ((and (null arg) (use-region-p))
+    (let* ((beg (region-beginning))
+           (end (region-end))
+           (include-linked nil)
+           (inline-images (org--inline-image-overlays beg end)))
+      (if (org--inline-image-overlays beg end)
+          (progn
+            (org-remove-inline-images beg end)
+            (message "%d inline images display removed." (length inline-images)))
+        (message "Display inline images displayed in region...")
+        (org-display-inline-images include-linked t beg end)
+        (message "Display inline images displayed in region... done."))))
+   ;; 3. C-u argument :: toggle images in the whole buffer.
+   ((equal arg '(4))
+    (let ((include-linked nil))
+      (if (org--inline-image-overlays (point-min) (point-max))
+          (org-remove-inline-images (point-min) (point-max))
+        (message "Display all inline images in buffer...")
+        (org-display-inline-images include-linked nil (point-min) (point-max))
+        (message "Display all inline images in buffer... done."))))
+   ;; 4. C-u C-u argument, no region selected :: unconditionally hide images in the buffer.
+   ((and (equal arg '(16)) (not (use-region-p)))
+    (org-remove-inline-images (point-min) (point-max))
+    (message "Remove all inline images in buffer displaying."))
+   ;; 5. M-1 argument, no region selected :: display images in current section with `INCLUDE-LINKED'.
+   ((and (equal arg 1) (not (use-region-p)))
+    (let ((context (org-element-context))
+          (beg (if (org-before-first-heading-p) (point-min)
+	         (save-excursion
+	           (org-with-limited-levels (org-back-to-heading t) (point)))))
+          (end (org-with-limited-levels (org-entry-end-position)))
+          (include-linked t))
+      (message "Display inline images in section...")
+      (org-display-inline-images include-linked t beg end)
+      (message "Display inline images in section... done.")))
+   ;; 6. M-1 argument, region selected :: ... in region ...
+   ;; [M-1] / [C-1] argument for linked images like:
+   ;; [[https://orgmode.org/resources/img/org-mode-unicorn.svg][description]]
+   ((and (equal arg 1) (use-region-p))
+    (let* ((beg (region-beginning))
+	   (end (region-end))
+           (include-linked t)
+           (inline-images (org--inline-image-overlays beg end)))
+      (org-display-inline-images include-linked t beg end)
+      (message "%d inline images displayed in region... done."  (length inline-images))))
+   ;; 7. M-11 argument :: ... in the whole buffer ...
+   ((equal arg '11)
+    (let ((beg (point-min))
+          (end (point-max))
+          (include-linked t))
+      (message "Display inline images in buffer...")
+      (org-display-inline-images include-linked t beg end)
+      (message "Display inline images in buffer... done.")))
+   ;; 8. Any other argument :: treat ARG as INCLUDE-LINKED = t
+   ((not (null arg))
+    (let ((beg (if (org-before-first-heading-p) (point-min)
+	         (save-excursion
+	           (org-with-limited-levels (org-back-to-heading t) (point)))))
+          (end (org-with-limited-levels (org-entry-end-position)))
+          (include-linked arg))
+      (message "Display inline images in section...")
+      (org-display-inline-images include-linked t beg end)
+      (message "Display inline images in section... done.")))))
 
 (defun org-redisplay-inline-images ()
   "Assure display of inline images and refresh them."
