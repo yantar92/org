@@ -332,7 +332,7 @@ This option controls the width of text in preview images.  This is
 relevant for displaymath-type LaTeX environments, and can be specified
 in multiple ways.
 
-***** New option ~org-latex-preview-use-precompilation~ to control LaTeX precompilation
+***** New option ~org-latex-preview-precompile~ to control LaTeX precompilation
 
 This option controls whether LaTeX headers for buffers are precompiled
 when generating the first preview for the buffer.  Precompilation can

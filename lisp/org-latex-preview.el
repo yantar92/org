@@ -343,7 +343,7 @@ This can take a few forms, namely:
           (float :tag "Proportional width")
           (const :tag "Unset" nil)))
 
-(defcustom org-latex-preview-use-precompilation t
+(defcustom org-latex-preview-precompile t
   "Use LaTeX header precompilation when previewing fragments.
 This causes a slight delay the first time `org-latex-pdf-process'
 is called in a buffer, but subsequent calls will be faster.
@@ -1482,7 +1482,7 @@ previews."
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
 
 More specifically, a preamble will be generated based on
-PROCESSING-INFO.  Then, if `org-latex-preview-use-precompilation' is
+PROCESSING-INFO.  Then, if `org-latex-preview-precompile' is
 non-nil, a precompiled format file will be generated if needed
 and used.  Otherwise the preamble is used normally.
 
@@ -1513,8 +1513,8 @@ The path of the created LaTeX file is returned."
          (coding-system-for-write buffer-file-coding-system))
     (when (and relative-file-p remote-file-p)
       (error "Org LaTeX Preview does not currently support \\input/\\include in remote files"))
-    (when org-latex-preview-use-precompilation
-      (if-let ((format-file (org-latex-preview-precompile processing-info header)))
+    (when org-latex-preview-precompile
+      (if-let ((format-file (org-latex-preview--precompile processing-info header)))
           ;; Replace header with .fmt file path.
           (setq header (concat "%& " (file-name-sans-extension format-file)))
         (display-warning
@@ -1781,7 +1781,7 @@ fragments in EXTENDED-INFO."
       ;; as it is currently known to cause issues.
       (save-excursion
         (goto-char (point-min))
-        (when (if (and org-latex-preview-use-precompilation
+        (when (if (and org-latex-preview-precompile
                        (re-search-forward "^PRELOADED FILES:" nil t))
                   (re-search-forward "^ *hyperref\\.sty" nil t)
                 (re-search-forward "^(.*hyperref/hyperref\\.sty" nil t))
@@ -2181,7 +2181,7 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
   (when (or clear-entire-cache (not (or beg end)))
     (org-latex-preview--clear-preamble-cache)))
 
-(defun org-latex-preview-precompile (processing-info preamble &optional tempfile-p)
+(defun org-latex-preview--precompile (processing-info preamble &optional tempfile-p)
   "Precompile/dump LaTeX PREAMBLE text.
 
 The path to the format file (.fmt) is returned.  If the format
