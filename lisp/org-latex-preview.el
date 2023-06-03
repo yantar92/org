@@ -1510,25 +1510,30 @@ The path of the created LaTeX file is returned."
            (concat (make-temp-name "org-tex-") ".tex")
            (and remote-file-p temporary-file-directory)))
          (write-region-inhibit-fsync t)
-         (coding-system-for-write buffer-file-coding-system))
+         (coding-system-for-write buffer-file-coding-system)
+         (precompile-failed-msg))
     (when (and relative-file-p remote-file-p)
       (error "Org LaTeX Preview does not currently support \\input/\\include in remote files"))
     (when org-latex-preview-precompile
-      (if-let ((format-file (org-latex-preview--precompile processing-info header)))
-          ;; Replace header with .fmt file path.
-          (setq header (concat "%& " (file-name-sans-extension format-file)))
+      (pcase (plist-get processing-info :latex-processor)
+        ("pdflatex"
+         (if-let ((format-file (org-latex-preview--precompile processing-info header
+                                                             (not relative-file-p))))
+             (setq header (concat "%& " (file-name-sans-extension format-file)))
+           (setq precompile-failed-msg
+                 "Precompile failed.")))
+        ((or "xelatex" "lualatex")
+         (setq precompile-failed-msg
+               (concat
+                (plist-get processing-info :latex-processor)
+                " does not support precompilation."))))
+      (when precompile-failed-msg
         (display-warning
          '(org latex-preview disable-local-precompile)
-         (concat "Precompile failed, disabling LaTeX preview precompile in this buffer."
-                 "\n  To renable, run `(setq-local org-latex-preview-use-precompilation t)' or reopen this buffer."
-                 (pcase (plist-get processing-info :latex-processor)
-                   ("lualatex"
-                    "\n  LuaLaTeX is known to be problematic, if you might be able to help please get in touch with emacs-orgmode@gnu.org.")
-                   ("xelatex"
-                    ;; Note: <https://tex.stackexchange.com/questions/395965/precompile-with-xelatex-and-fontspec> might be helpful.
-                    "\n  The current XeTeX approach does not support fontspec, if you might be able to help please get in touch with emacs-orgmode@gnu.org."))
-                 "\n "))
-        (setq-local org-latex-preview-use-precompilation nil)))
+         (concat
+          precompile-failed-msg
+          " Disabling LaTeX preview precompile in this buffer.\n To re-enable, run `(setq-local org-latex-preview-precompile t)' or reopen this buffer."))
+        (setq-local org-latex-preview-precompile nil)))
     (with-temp-file tex-temp-name
       (insert header)
       ;; The \abovedisplayskip length must be set after \begin{document} because
