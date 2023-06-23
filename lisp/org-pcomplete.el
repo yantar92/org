@@ -26,7 +26,7 @@
 
 ;;;; Require other packages
 
-(require 'org-macs)
+(require 'org-load)
 (org-assert-version)
 
 (require 'org-macs)

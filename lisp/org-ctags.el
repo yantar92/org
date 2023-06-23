@@ -135,7 +135,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
+(require 'org-load)
 (org-assert-version)
 
 (eval-when-compile (require 'cl-lib))

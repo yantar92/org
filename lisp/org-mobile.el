@@ -31,7 +31,7 @@
 ;; iPhone and Android - any external viewer/flagging/editing
 ;; application that uses the same conventions could be used.
 
-(require 'org-macs)
+(require 'org-load)
 (org-assert-version)
 
 (require 'cl-lib)

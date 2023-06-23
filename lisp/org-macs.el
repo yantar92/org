@@ -34,72 +34,6 @@
 (require 'cl-lib)
 (require 'format-spec)
 
-;;; Org version verification.
-
-(defvar org--inhibit-version-check nil
-  "When non-nil, skip the detection of mixed-versions situations.
-For internal use only.  See Emacs bug #62762.
-This variable is only supposed to be changed by Emacs build scripts.
-When nil, Org tries to detect when Org source files were compiled with
-a different version of Org (which tends to lead to incorrect `.elc' files),
-or when the current Emacs session has loaded a mix of files from different
-Org versions (typically the one bundled with Emacs and another one installed
-from GNU ELPA), which can happen if some parts of Org were loaded before
-`load-path' was changed (e.g. before the GNU-ELPA-installed Org is activated
-by `package-activate-all').")
-(defmacro org-assert-version ()
-  "Assert compile time and runtime version match."
-  ;; We intentionally use a more permissive `org-release' instead of
-  ;; `org-git-version' to work around deficiencies in Elisp
-  ;; compilation after pulling latest changes.  Unchanged files will
-  ;; not be re-compiled and thus their macro-expanded
-  ;; `org-assert-version' calls would fail using strict
-  ;; `org-git-version' check because the generated Org version strings
-  ;; will not match.
-  `(unless (or org--inhibit-version-check (equal (org-release) ,(org-release)))
-     (warn "Org version mismatch.  Org loading aborted.
-This warning usually appears when a built-in Org version is loaded
-prior to the more recent Org version.
-
-Version mismatch is commonly encountered in the following situations:
-
-1. Emacs is loaded using literate Org config and more recent Org
-   version is loaded inside the file loaded by `org-babel-load-file'.
-   `org-babel-load-file' triggers the built-in Org version clashing
-   the newer Org version attempt to be loaded later.
-
-   It is recommended to move the Org loading code before the
-   `org-babel-load-file' call.
-
-2. New Org version is loaded manually by setting `load-path', but some
-   other package depending on Org is loaded before the `load-path' is
-   configured.
-   This \"other package\" is triggering built-in Org version, again
-   causing the version mismatch.
-
-   It is recommended to set `load-path' as early in the config as
-   possible.
-
-3. New Org version is loaded using straight.el package manager and
-   other package depending on Org is loaded before straight triggers
-   loading of the newer Org version.
-
-   It is recommended to put
-
-    %s
-
-   early in the config.  Ideally, right after the straight.el
-   bootstrap.  Moving `use-package' :straight declaration may not be
-   sufficient if the corresponding `use-package' statement is
-   deferring the loading."
-           ;; Avoid `warn' replacing "'" with "’" (see `format-message').
-           "(straight-use-package 'org)")
-     (error "Org version mismatch.  Make sure that correct `load-path' is set early in init.el")))
-
-;; We rely on org-macs when generating Org version.  Checking Org
-;; version here will interfere with Org build process.
-;; (org-assert-version)
-
 (declare-function org-mode "org" ())
 (declare-function org-agenda-files "org" (&optional unrestricted archives))
 (declare-function org-time-string-to-seconds "org" (s))
@@ -234,6 +168,9 @@ This function is only useful when called from org-agenda buffer."
 (defmacro org-eval-in-environment (environment form)
   (declare (debug (form form)) (indent 1) (obsolete cl-progv "2021"))
   `(eval (list 'let ,environment ',form)))
+
+(defmacro org-find-library-dir (library)
+  `(file-name-directory (or (locate-library ,library) "")))
 
 ;;;###autoload
 (defmacro org-load-noerror-mustsuffix (file)

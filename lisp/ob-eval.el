@@ -28,7 +28,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
+(require 'org-load)
 (org-assert-version)
 
 (eval-when-compile (require 'subr-x))  ; For `string-empty-p', Emacs < 29

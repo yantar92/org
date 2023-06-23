@@ -1247,9 +1247,6 @@ Pass COLUMN and FORCE to `move-to-column'."
            buffer-invisibility-spec)))
     (move-to-column column force)))
 
-(defmacro org-find-library-dir (library)
-  `(file-name-directory (or (locate-library ,library) "")))
-
 (defun org-count-lines (s)
   "How many lines in string S?"
   (let ((start 0) (n 1))

@@ -86,7 +86,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
+(require 'org-load)
 (org-assert-version)
 
 (require 'cl-lib)

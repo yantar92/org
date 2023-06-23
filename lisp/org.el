@@ -71,7 +71,7 @@
 
 ;;;; Require other packages
 
-(require 'org-compat)
+(require 'org-load)
 (org-assert-version)
 
 (require 'cl-lib)
@@ -18571,89 +18571,6 @@ Your bug report will be posted to the Org mailing list.
 	  (mapcar 'org-file-menu-entry
 		  ;; Prevent initialization from failing.
 		  (ignore-errors (org-agenda-files t)))))))))
-
-;;;; Documentation
-
-(defun org-require-autoloaded-modules ()
-  (interactive)
-  (mapc #'require
-	'(org-agenda org-archive org-attach org-clock org-colview org-id
-		     org-table org-timer)))
-
-;;;###autoload
-(defun org-reload (&optional uncompiled)
-  "Reload all Org Lisp files.
-With prefix arg UNCOMPILED, load the uncompiled versions."
-  (interactive "P")
-  (require 'loadhist)
-  (let* ((org-dir     (org-find-library-dir "org"))
-	 (contrib-dir (or (org-find-library-dir "org-contribdir") org-dir))
-	 (feature-re "^\\(org\\|ob\\|ox\\|ol\\|oc\\)\\(-.*\\)?")
-	 (remove-re (format "\\`%s\\'"
-			    (regexp-opt '("org" "org-loaddefs" "org-version"))))
-	 (feats (delete-dups
-		 (mapcar 'file-name-sans-extension
-			 (mapcar 'file-name-nondirectory
-				 (delq nil
-				       (mapcar 'feature-file
-					       features))))))
-	 (lfeat (append
-		 (sort
-		  (setq feats
-			(delq nil (mapcar
-				   (lambda (f)
-				     (if (and (string-match feature-re f)
-					      (not (string-match remove-re f)))
-					 f nil))
-				   feats)))
-		  'string-lessp)
-		 (list "org-version" "org")))
-	 (load-suffixes (if uncompiled (reverse load-suffixes) load-suffixes))
-	 load-uncore load-misses)
-    (setq load-misses
-	  (delq t
-		(mapcar (lambda (f)
-			  (or (org-load-noerror-mustsuffix (concat org-dir f))
-			      (and (string= org-dir contrib-dir)
-				   (org-load-noerror-mustsuffix (concat contrib-dir f)))
-			      (and (org-load-noerror-mustsuffix (concat (org-find-library-dir f) f))
-				   (push f load-uncore)
-				   t)
-			      f))
-			lfeat)))
-    (when load-uncore
-      (message "The following feature%s found in load-path, please check if that's correct:\n%s"
-	       (if (> (length load-uncore) 1) "s were" " was")
-               (reverse load-uncore)))
-    (if load-misses
-	(message "Some error occurred while reloading Org feature%s\n%s\nPlease check *Messages*!\n%s"
-		 (if (> (length load-misses) 1) "s" "") load-misses (org-version nil 'full))
-      (message "Successfully reloaded Org\n%s" (org-version nil 'full)))))
-
-;;;###autoload
-(defun org-customize ()
-  "Call the customize function with org as argument."
-  (interactive)
-  (org-load-modules-maybe)
-  (org-require-autoloaded-modules)
-  (customize-browse 'org))
-
-(defun org-create-customize-menu ()
-  "Create a full customization menu for Org mode, insert it into the menu."
-  (interactive)
-  (org-load-modules-maybe)
-  (org-require-autoloaded-modules)
-  (easy-menu-change
-   '("Org") "Customize"
-   `(["Browse Org group" org-customize t]
-     "--"
-     ,(customize-menu-create 'org)
-     ["Set" Custom-set t]
-     ["Save" Custom-save t]
-     ["Reset to Current" Custom-reset-current t]
-     ["Reset to Saved" Custom-reset-saved t]
-     ["Reset to Standard Settings" Custom-reset-standard t]))
-  (message "\"Org\"-menu now contains full customization menu"))
 
 ;;;; Miscellaneous stuff
 
