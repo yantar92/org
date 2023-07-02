@@ -170,6 +170,9 @@ This function is only useful when called from org-agenda buffer."
   `(eval (list 'let ,environment ',form)))
 
 (defmacro org-find-library-dir (library)
+"Find LIBRARY file path.
+LIBRARY should be a string passed to `locate-library'.
+Return empty string when no library is found."
   `(file-name-directory (or (locate-library ,library) "")))
 
 ;;;###autoload
