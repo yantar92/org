@@ -30,9 +30,9 @@
 
 (require 'cl-lib)
 (require 'format-spec)
-(require 'org-compat)
-(require 'org-macs)
-(require 'ox)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'ox)
 (require 'table nil 'noerror)
 
 (declare-function org-at-heading-p "org" (&optional _))

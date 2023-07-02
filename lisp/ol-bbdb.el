@@ -97,9 +97,9 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-compat)
-(require 'org-macs)
-(require 'ol)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'ol)
 
 ;;; Declare functions and variables
 

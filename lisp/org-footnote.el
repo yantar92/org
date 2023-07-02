@@ -34,8 +34,8 @@
 ;;;; Declarations
 
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
 
 (declare-function org-at-comment-p "org" ())
 (declare-function org-at-heading-p "org" (&optional ignored))

@@ -34,7 +34,7 @@
 
 (defvar org-outline-regexp)
 
-(require 'oc)
+(org-require-with-shadowcheck 'oc)
 
 (declare-function org-add-note "org" ())
 (declare-function org-agenda "org" (&optional arg org-keys restriction))

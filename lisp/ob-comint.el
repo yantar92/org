@@ -34,8 +34,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob-core)
-(require 'org-compat)
+(org-require-with-shadowcheck 'ob-core)
+(org-require-with-shadowcheck 'org-compat)
 (require 'comint)
 
 (defun org-babel-comint-buffer-livep (buffer)

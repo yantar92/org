@@ -36,7 +36,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (declare-function org-fold-show-all "org-fold" (&optional types))
 

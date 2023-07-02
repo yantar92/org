@@ -81,7 +81,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (defgroup org-inlinetask nil
   "Options concerning inline tasks in Org mode."

@@ -36,8 +36,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
 
 (declare-function forth-proc "ext:gforth" ())
 

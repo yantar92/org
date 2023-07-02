@@ -32,7 +32,8 @@
 
 (require 'cl-lib)
 (require 'seq)
-(require 'org-macs)
+(require 'org-load)
+(org-require-with-shadowcheck 'org-macs)
 
 (eval-when-compile (require 'subr-x))  ; Emacs < 28
 

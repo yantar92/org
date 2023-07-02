@@ -32,8 +32,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'org-fold)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-fold)
 
 (declare-function org-element-type-p "org-element-ast" (node types))
 (declare-function org-element-property "org-element-ast" (property node))

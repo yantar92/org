@@ -28,7 +28,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ox)
+(org-require-with-shadowcheck 'ox)
 (declare-function htmlize-buffer "ext:htmlize" (&optional buffer))
 (defvar htmlize-output-type)
 

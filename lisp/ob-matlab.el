@@ -39,8 +39,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'ob-octave)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'ob-octave)
 
 ;; see ob-octave for matlab implementation
 

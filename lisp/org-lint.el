@@ -90,13 +90,13 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob)
-(require 'oc)
-(require 'ol)
-(require 'org-attach)
-(require 'org-macro)
-(require 'org-fold)
-(require 'ox)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'oc)
+(org-require-with-shadowcheck 'ol)
+(org-require-with-shadowcheck 'org-attach)
+(org-require-with-shadowcheck 'org-macro)
+(org-require-with-shadowcheck 'org-fold)
+(org-require-with-shadowcheck 'ox)
 (require 'seq)
 
 

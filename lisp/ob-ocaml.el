@@ -39,9 +39,9 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 (require 'comint)
-(require 'org-macs)
+(org-require-with-shadowcheck 'org-macs)
 
 (declare-function tuareg-run-caml "ext:tuareg" ())
 (declare-function tuareg-run-ocaml "ext:tuareg" ())

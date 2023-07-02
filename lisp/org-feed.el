@@ -91,7 +91,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
+(org-require-with-shadowcheck 'org)
 (require 'sha1)
 
 (declare-function url-retrieve-synchronously "url"

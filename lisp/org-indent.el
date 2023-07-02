@@ -39,9 +39,9 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'org-compat)
-(require 'org)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org)
 
 (require 'cl-lib)
 

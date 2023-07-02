@@ -38,9 +38,9 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
-(require 'ol)
-(require 'org-id)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'ol)
+(org-require-with-shadowcheck 'org-id)
 
 (declare-function dired-dwim-target-directory "dired-aux")
 (declare-function dired-get-marked-files "dired" (&optional localp arg filter distinguish-one-marked error))

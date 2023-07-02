@@ -28,11 +28,11 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob-eval)
-(require 'org-macs)
-(require 'org-fold)
-(require 'org-compat)
-(require 'org-cycle)
+(org-require-with-shadowcheck 'ob-eval)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-fold)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-cycle)
 
 (defconst org-babel-exeext
   (if (memq system-type '(windows-nt cygwin))

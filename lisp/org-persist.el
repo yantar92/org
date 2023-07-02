@@ -258,7 +258,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-compat)
+(org-require-with-shadowcheck 'org-compat)
 (require 'xdg nil t)
 
 (declare-function org-back-to-heading "org" (&optional invisible-ok))

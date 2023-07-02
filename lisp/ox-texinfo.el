@@ -30,7 +30,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ox)
+(org-require-with-shadowcheck 'ox)
 
 (eval-when-compile (require 'subr-x))
 

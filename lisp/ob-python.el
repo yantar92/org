@@ -32,8 +32,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
 (require 'python)
 
 (defvar org-babel-tangle-lang-exts)

@@ -36,8 +36,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-compat)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-compat)
 
 (declare-function org-babel-ref-resolve "ob-ref" (ref))
 (declare-function orgtbl-to-generic "org-table" (table params))

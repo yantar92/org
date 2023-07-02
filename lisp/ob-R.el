@@ -33,7 +33,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (declare-function orgtbl-to-tsv "org-table" (table params))
 (declare-function run-ess-r "ext:ess-r-mode" (&optional start-args))

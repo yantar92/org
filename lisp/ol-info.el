@@ -33,7 +33,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ol)
+(org-require-with-shadowcheck 'ol)
 
 ;; Declare external functions and variables
 

@@ -65,8 +65,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org) ;Otherwise `org-num--comment-re' burps on `org-comment-string'
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org) ;Otherwise `org-num--comment-re' burps on `org-comment-string'
 
 (defvar org-comment-string)
 (defvar org-complex-heading-regexp)

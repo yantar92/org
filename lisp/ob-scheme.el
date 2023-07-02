@@ -42,7 +42,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 (require 'geiser nil t)
 (require 'geiser-impl nil t)
 (defvar geiser-repl--repl)             ; Defined in geiser-repl.el

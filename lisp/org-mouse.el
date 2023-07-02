@@ -139,7 +139,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
+(org-require-with-shadowcheck 'org)
 (require 'cl-lib)
 
 (defvar org-agenda-allow-remote-undo)

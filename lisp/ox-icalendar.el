@@ -36,8 +36,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-agenda)
-(require 'ox-ascii)
+(org-require-with-shadowcheck 'org-agenda)
+(org-require-with-shadowcheck 'ox-ascii)
 (declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))

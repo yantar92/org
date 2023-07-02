@@ -39,7 +39,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-clock)
+(org-require-with-shadowcheck 'org-clock)
 
 (declare-function org-agenda-error "org-agenda" ())
 

@@ -35,8 +35,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
-(require 'org-table)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-table)
 
 (declare-function gnuplot-delchar-or-maybe-eof "ext:gnuplot" (arg))
 (declare-function gnuplot-mode "ext:gnuplot" ())

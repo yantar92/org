@@ -50,7 +50,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (declare-function cider-current-connection "ext:cider-client" (&optional type))
 (declare-function cider-current-ns "ext:cider-client" ())

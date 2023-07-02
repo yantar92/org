@@ -44,7 +44,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ol)
+(org-require-with-shadowcheck 'ol)
 
 (defvar w3m-current-url)
 (defvar w3m-current-title)

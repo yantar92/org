@@ -119,7 +119,7 @@
 (require 'map)
 (require 'bibtex)
 (require 'json)
-(require 'oc)
+(org-require-with-shadowcheck 'oc)
 
 (require 'citeproc nil t)
 (declare-function citeproc-style-cite-note "ext:citeproc")

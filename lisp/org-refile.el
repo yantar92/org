@@ -28,7 +28,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 

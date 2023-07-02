@@ -33,7 +33,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (defvar org-datetree-base-level 1
   "The level at which years should be placed in the date tree.

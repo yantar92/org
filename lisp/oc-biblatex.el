@@ -67,8 +67,8 @@
 (org-assert-version)
 
 (require 'map)
-(require 'org-macs)
-(require 'oc)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'oc)
 
 (declare-function org-element-property "org-element-ast" (property node))
 (declare-function org-element-parent "org-element-ast" (node))

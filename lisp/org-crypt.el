@@ -57,8 +57,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
 
 (declare-function epg-decrypt-string "epg" (context cipher))
 (declare-function epg-list-keys "epg" (context &optional name mode))

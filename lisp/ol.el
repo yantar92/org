@@ -30,9 +30,9 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-compat)
-(require 'org-macs)
-(require 'org-fold)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-fold)
 
 (defvar clean-buffer-list-kill-buffer-names)
 (defvar org-agenda-buffer-name)

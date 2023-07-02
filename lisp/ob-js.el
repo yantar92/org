@@ -42,7 +42,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (declare-function run-mozilla "ext:moz" (arg))
 (declare-function httpd-start "ext:simple-httpd" ())

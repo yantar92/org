@@ -35,10 +35,10 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob-comint)
-(require 'org-macs)
-(require 'org-compat)
-(require 'org-keys)
+(org-require-with-shadowcheck 'ob-comint)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-keys)
 (require 'sh-script)
 
 (declare-function org--get-expected-indentation "org" (element contentsp))

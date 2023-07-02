@@ -30,7 +30,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob-core)
+(org-require-with-shadowcheck 'ob-core)
 
 (declare-function org-babel--get-vars "ob" (params))
 (declare-function org-babel-result-cond "ob" (result-params scalar-form &rest table-forms))

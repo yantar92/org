@@ -72,7 +72,7 @@
 (require 'bibtex)
 (require 'json)
 (require 'map)
-(require 'oc)
+(org-require-with-shadowcheck 'oc)
 (require 'seq)
 
 (declare-function org-open-at-point "org" (&optional arg))

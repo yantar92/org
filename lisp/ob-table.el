@@ -57,8 +57,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob-core)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob-core)
+(org-require-with-shadowcheck 'org-macs)
 
 (defun org-babel-table-truncate-at-newline (string)
   "Replace newline character with ellipses.

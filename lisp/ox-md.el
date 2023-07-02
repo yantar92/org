@@ -33,8 +33,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ox-html)
-(require 'ox-publish)
+(org-require-with-shadowcheck 'ox-html)
+(org-require-with-shadowcheck 'ox-publish)
 
 
 ;;; User-Configurable Variables

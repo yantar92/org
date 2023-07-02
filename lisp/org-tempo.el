@@ -43,7 +43,7 @@
 
 (require 'tempo)
 (require 'cl-lib)
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (defvar org-structure-template-alist)
 

@@ -39,8 +39,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
 
 (declare-function run-ruby-or-pop-to-buffer "ext:inf-ruby" (command &optional name buffer))
 (declare-function inf-ruby-buffer "ext:inf-ruby" ())

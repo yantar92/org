@@ -43,7 +43,7 @@
 
 (require 'cl-lib)
 (require 'format-spec)
-(require 'ox)
+(org-require-with-shadowcheck 'ox)
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))

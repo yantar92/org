@@ -34,8 +34,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
 
 (declare-function org-create-formula-image "org" (string tofile options buffer &optional type))
 (declare-function org-latex-compile "ox-latex" (texfile &optional snippet))

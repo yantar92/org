@@ -31,7 +31,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
+(org-require-with-shadowcheck 'org)
 (require 'cl-lib)
 
 (declare-function org-datetree-find-date-create "org-datetree" (date &optional keep-restriction))

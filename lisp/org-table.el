@@ -38,10 +38,10 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
-(require 'org-keys)
-(require 'org-fold-core)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-keys)
+(org-require-with-shadowcheck 'org-fold-core)
 
 (declare-function calc-eval "calc" (str &optional separator &rest args))
 (declare-function face-remap-remove-relative "face-remap" (cookie))
@@ -5109,7 +5109,6 @@ When LOCAL is non-nil, show references for the table at point."
 ;;;###autoload
 (defun turn-on-orgtbl ()
   "Unconditionally turn on `orgtbl-mode'."
-  (require 'org-table)
   (orgtbl-mode 1))
 
 ;; Install it as a minor mode.

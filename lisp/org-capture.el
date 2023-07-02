@@ -51,8 +51,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
-(require 'org-refile)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-refile)
 
 (declare-function org-at-encrypted-entry-p "org-crypt" ())
 (declare-function org-at-table-p "org-table" (&optional table-type))

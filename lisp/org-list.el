@@ -80,10 +80,10 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
-(require 'org-fold-core)
-(require 'org-footnote)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-fold-core)
+(org-require-with-shadowcheck 'org-footnote)
 
 (defvar org-M-RET-may-split-line)
 (defvar org-adapt-indentation)

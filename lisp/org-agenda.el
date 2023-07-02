@@ -49,12 +49,12 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ol)
-(require 'org-fold-core)
-(require 'org)
-(require 'org-macs)
-(require 'org-refile)
-(require 'org-element)
+(org-require-with-shadowcheck 'ol)
+(org-require-with-shadowcheck 'org-fold-core)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-refile)
+(org-require-with-shadowcheck 'org-element)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))

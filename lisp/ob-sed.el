@@ -44,7 +44,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (defvar org-babel-sed-command "sed"
   "Name of the sed executable command.")

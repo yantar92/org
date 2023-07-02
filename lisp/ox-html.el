@@ -36,8 +36,8 @@
 
 (require 'cl-lib)
 (require 'format-spec)
-(require 'ox)
-(require 'ox-publish)
+(org-require-with-shadowcheck 'ox)
+(org-require-with-shadowcheck 'ox-publish)
 (require 'table)
 
 

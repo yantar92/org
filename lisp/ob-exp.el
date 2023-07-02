@@ -27,7 +27,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob-core)
+(org-require-with-shadowcheck 'ob-core)
 
 (declare-function org-babel-lob-get-info "ob-lob" (&optional datum no-eval))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))

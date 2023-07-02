@@ -43,9 +43,9 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-macs)
-(require 'ox-ascii)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'ox-ascii)
 
 (declare-function org-time-string-to-time "org" (s))
 (declare-function orgtbl-to-generic "org-table" (table params))

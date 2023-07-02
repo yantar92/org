@@ -273,8 +273,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 

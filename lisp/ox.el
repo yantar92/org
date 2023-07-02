@@ -76,11 +76,11 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob-exp)
-(require 'oc)
-(require 'ol)
-(require 'org-element)
-(require 'org-macro)
+(org-require-with-shadowcheck 'ob-exp)
+(org-require-with-shadowcheck 'oc)
+(org-require-with-shadowcheck 'ol)
+(org-require-with-shadowcheck 'org-element)
+(org-require-with-shadowcheck 'org-macro)
 (require 'tabulated-list)
 
 (declare-function org-src-coderef-format "org-src" (&optional element))
@@ -5361,7 +5361,7 @@ Possible values are `left', `right' and `center'."
 		;; Treat an empty cell as a number if it follows
 		;; a number.
 		(if (not (or (string-match org-table-number-regexp value)
-			     (and (string= value "") previous-cell-number-p)))
+			   (and (string= value "") previous-cell-number-p)))
 		    (setq previous-cell-number-p nil)
 		  (setq previous-cell-number-p t)
 		  (cl-incf number-cells))))))

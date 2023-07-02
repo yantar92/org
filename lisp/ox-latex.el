@@ -31,8 +31,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ox)
-(require 'ox-publish)
+(org-require-with-shadowcheck 'ox)
+(org-require-with-shadowcheck 'ox-publish)
 
 ;;; Function Declarations
 

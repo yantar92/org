@@ -28,8 +28,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob-core)
-(require 'ob-table)
+(org-require-with-shadowcheck 'ob-core)
+(org-require-with-shadowcheck 'ob-table)
 
 (declare-function org-babel-ref-split-args "ob-ref" (arg-string))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))

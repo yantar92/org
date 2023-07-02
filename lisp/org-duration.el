@@ -55,7 +55,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-macs)
+(org-require-with-shadowcheck 'org-macs)
 
 
 ;;; Public variables

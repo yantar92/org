@@ -53,8 +53,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob-core)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob-core)
+(org-require-with-shadowcheck 'org-macs)
 (require 'cl-lib)
 
 (declare-function org-babel-lob-get-info "ob-lob" (&optional datum no-eval))

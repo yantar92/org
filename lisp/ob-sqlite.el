@@ -31,8 +31,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'ob-sql)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'ob-sql)
 
 (declare-function org-table-convert-region "org-table"
 		  (beg0 end0 &optional separator))

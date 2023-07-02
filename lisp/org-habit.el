@@ -32,8 +32,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
-(require 'org-agenda)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-agenda)
 
 (defgroup org-habit nil
   "Options concerning habit tracking in Org mode."

@@ -35,9 +35,9 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
-(require 'org-agenda)
-(require 'ol)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-agenda)
+(org-require-with-shadowcheck 'ol)
 
 ;;; Code:
 

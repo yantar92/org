@@ -39,7 +39,7 @@
 (require 'nnheader)
 (or (require 'nnselect nil t)           ; Emacs >= 28
     (require 'nnir nil t))              ; Emacs < 28
-(require 'ol)
+(org-require-with-shadowcheck 'ol)
 
 
 ;;; Declare external functions and variables

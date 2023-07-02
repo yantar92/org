@@ -46,7 +46,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'oc)
+(org-require-with-shadowcheck 'oc)
 
 (declare-function org-element-property "org-element-ast" (property node))
 

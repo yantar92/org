@@ -131,8 +131,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
-(require 'ol)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'ol)
 
 (declare-function org-publish-get-project-from-filename "ox-publish"
 		  (filename &optional up))

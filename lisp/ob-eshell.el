@@ -31,7 +31,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 (require 'eshell)
 
 (declare-function eshell-send-input "esh-mode"

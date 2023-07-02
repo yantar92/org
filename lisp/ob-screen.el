@@ -38,7 +38,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (defvar org-babel-screen-location "screen"
   "The command location for screen.

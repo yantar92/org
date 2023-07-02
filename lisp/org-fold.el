@@ -45,8 +45,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'org-fold-core)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-fold-core)
 
 (defvar org-inlinetask-min-level)
 (defvar org-link--link-folding-spec)

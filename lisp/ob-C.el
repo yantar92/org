@@ -37,8 +37,8 @@
 (org-assert-version)
 
 (require 'cc-mode)
-(require 'ob)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
 
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 

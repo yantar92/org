@@ -33,8 +33,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'ol)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'ol)
 
 ;; Customization variables
 

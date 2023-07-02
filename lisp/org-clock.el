@@ -32,7 +32,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (declare-function calendar-iso-to-absolute "cal-iso" (date))
 (declare-function notifications-notify "notifications" (&rest params))

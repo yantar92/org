@@ -25,8 +25,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
-(require 'org-refile)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-refile)
 
 (defvar org-goto-exit-command nil)
 (defvar org-goto-map nil)

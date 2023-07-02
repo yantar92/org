@@ -51,8 +51,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
+(org-require-with-shadowcheck 'org-macs)
+(org-require-with-shadowcheck 'org-compat)
 
 (declare-function org-collect-keywords "org" (keywords &optional unique directory))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))

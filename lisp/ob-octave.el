@@ -33,7 +33,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 (require 'org-macs)
 
 (declare-function matlab-shell "ext:matlab-mode")

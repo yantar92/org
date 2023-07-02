@@ -32,7 +32,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (declare-function org-agenda-redo "org-agenda" (&optional all))
 (declare-function org-agenda-do-context-action "org-agenda" ())

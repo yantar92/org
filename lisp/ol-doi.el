@@ -29,7 +29,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ol)
+(org-require-with-shadowcheck 'ol)
 
 (defcustom org-link-doi-server-url "https://doi.org/"
   "The URL of the DOI server."

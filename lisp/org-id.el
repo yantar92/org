@@ -73,10 +73,10 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org)
-(require 'org-element-ast)
-(require 'org-refile)
-(require 'ol)
+(org-require-with-shadowcheck 'org)
+(org-require-with-shadowcheck 'org-element-ast)
+(org-require-with-shadowcheck 'org-refile)
+(org-require-with-shadowcheck 'ol)
 
 (declare-function message-make-fqdn "message" ())
 (declare-function org-goto-location "org-goto" (&optional _buf help))

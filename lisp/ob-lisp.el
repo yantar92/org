@@ -40,8 +40,8 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
-(require 'org-macs)
+(org-require-with-shadowcheck 'ob)
+(org-require-with-shadowcheck 'org-macs)
 
 (declare-function sly-eval "ext:sly" (sexp &optional package))
 (declare-function slime-eval "ext:slime" (sexp &optional package))

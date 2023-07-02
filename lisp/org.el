@@ -92,15 +92,15 @@
    (message "You need to run \"make\" or \"make autoloads\" from Org lisp directory")
    (sit-for 3)))
 
-(eval-and-compile (require 'org-macs))
-(require 'org-compat)
-(require 'org-keys)
-(require 'ol)
-(require 'oc)
-(require 'org-table)
-(require 'org-fold)
+(eval-and-compile (org-require-with-shadowcheck 'org-macs))
+(org-require-with-shadowcheck 'org-compat)
+(org-require-with-shadowcheck 'org-keys)
+(org-require-with-shadowcheck 'ol)
+(org-require-with-shadowcheck 'oc)
+(org-require-with-shadowcheck 'org-table)
+(org-require-with-shadowcheck 'org-fold)
 
-(require 'org-cycle)
+(org-require-with-shadowcheck 'org-cycle)
 (defvaralias 'org-hide-block-startup 'org-cycle-hide-block-startup)
 (defvaralias 'org-hide-drawer-startup 'org-cycle-hide-drawer-startup)
 (defvaralias 'org-pre-cycle-hook 'org-cycle-pre-hook)
@@ -4789,16 +4789,16 @@ This is for getting out of special buffers like capture.")
 (when (< emacs-major-version 28)  ; preloaded in Emacs 28
   (require 'easymenu))
 
-(require 'org-entities)
-(require 'org-faces)
-(require 'org-list)
-(require 'org-pcomplete)
-(require 'org-src)
-(require 'org-footnote)
-(require 'org-macro)
+(org-require-with-shadowcheck 'org-entities)
+(org-require-with-shadowcheck 'org-faces)
+(org-require-with-shadowcheck 'org-list)
+(org-require-with-shadowcheck 'org-pcomplete)
+(org-require-with-shadowcheck 'org-src)
+(org-require-with-shadowcheck 'org-footnote)
+(org-require-with-shadowcheck 'org-macro)
 
 ;; babel
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (defvar org-element-cache-persistent); Defined in org-element.el
 (defvar org-element-use-cache); Defined in org-element.el
@@ -8690,7 +8690,7 @@ or to another Org file, automatically push the old position onto the ring."
       (let ((org-agenda-buffer-tmp-name
 	     (format "*Org Agenda(a:%s)" (substring (match-string 1) 0 10))))
 	(org-agenda-list nil (time-to-days (org-time-string-to-time
-					    (substring (match-string 1) 0 10)))
+					  (substring (match-string 1) 0 10)))
 			 1)))
      (t (error "This should not happen")))))
 

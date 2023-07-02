@@ -39,7 +39,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 (require 'org-macs)
 (require 'cl-lib)
 

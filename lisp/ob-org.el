@@ -31,7 +31,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (declare-function org-export-string-as "ox"
 		  (string backend &optional body-only ext-plist))

@@ -36,7 +36,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (declare-function orgtbl-to-csv "org-table" (table params))
 (declare-function julia "ext:ess-julia" (&optional start-args))

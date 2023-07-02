@@ -34,7 +34,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ox-latex)
+(org-require-with-shadowcheck 'ox-latex)
 
 ;; Install a default set-up for Beamer export.
 (unless (assoc "beamer" org-latex-classes)

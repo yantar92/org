@@ -32,7 +32,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'org-attach)
+(org-require-with-shadowcheck 'org-attach)
 (require 'vc-git)
 
 (defcustom org-attach-git-annex-cutoff (* 32 1024)

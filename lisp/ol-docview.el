@@ -46,7 +46,7 @@
 (org-assert-version)
 
 (require 'doc-view)
-(require 'ol)
+(org-require-with-shadowcheck 'ol)
 
 (declare-function doc-view-goto-page "doc-view" (page))
 (declare-function image-mode-window-get "image-mode" (prop &optional winprops))

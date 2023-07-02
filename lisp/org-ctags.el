@@ -139,7 +139,7 @@
 (org-assert-version)
 
 (eval-when-compile (require 'cl-lib))
-(require 'org)
+(org-require-with-shadowcheck 'org)
 
 (defgroup org-ctags nil
   "Options concerning use of ctags within org mode."
