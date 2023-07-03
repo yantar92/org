@@ -114,6 +114,8 @@ with {{{kbd(M-x list-packages)}}}.  See [[info:emacs::Package Menu][Package Menu
 You need to do this in a session where no =.org= file has been
 visited, i.e., where no Org built-in function have been loaded.
 Otherwise autoload Org functions will mess up the installation.
+Check [[*Interaction between built-in and manually installed Org]] for
+more details.
 #+end_quote
 
 *** Using Org's git repository
@@ -20406,6 +20408,77 @@ Org evaluates code in the following circumstances:
 
   Formulas in tables (see [[*The Spreadsheet]]) are code that is evaluated
   either by the Calc interpreter, or by the Emacs Lisp interpreter.
+** Interaction between built-in and manually installed Org
+:PROPERTIES:
+:ALT_TITLE: Mixed Org mode installation
+:DESCRIPTION: Dealing with multiple mixed Org versions
+:END:
+#+cindex: mixed installation, installation error, installation failure, straight.el
+
+When Org mode is installed using ELPA package archive or from Git
+sources, multiple versions of Org mode will be present available to
+Emacs.  Then, depending on the specifics of Emacs configuration,
+package manager being used, and Org installation procedure, Emacs may
+sometimes load some Org libraries from built-in Org and some Org
+libraries from the manually installed Org version.  Such scenario is
+called "mixed installation".
+
+Mixed installation may lead to random errors caused by incompatible
+library versions.
+
+Org will raise a warning if mixed installation is detected.
+Alternatively, running =M-x org-version= may also detect and indicate
+mixed installation (a message containing "mixed installation!" will be
+printed in the echo area).
+
+Below, we list some known scenarios when mixed installation may happen
+and suggestions how to deal with the problem.
+
+- Some compiled Org libraries are not re-compiled after Org update.
+
+  It is recommended to re-install Org, or, if Org is loaded from git
+  repo, to run
+
+  : make clean; make autoloads
+
+  In Emacs 28 and earlier, it may also be necessary to re-install Org
+  using Emacs with minimal configuration (=emacs -Q=):
+
+  1. Uninstall Org
+  2. Make sure that Org ELPA directory is deleted (defaults to
+     =.emacs.d/elpa=)
+  3. Start Emacs with -Q option
+  4. Install Org using M-x list-packages
+  5. Quit Emacs and restart it
+
+- Emacs is loaded using literate Org config and more recent Org mode
+  version is loaded inside the file loaded by ~org-babel-load-file~.
+  ~org-babel-load-file~ triggers the built-in Org version clashing
+  the newer Org mode version attempt to be loaded later.
+
+  It is recommended to move the Org loading code before the
+  ~org-babel-load-file~ call.
+
+- New Org mode version is loaded manually by setting ~load-path~, but
+  some other package depending on Org is loaded before the
+  ~load-path~ is configured.  This "other package" is triggering
+  built-in Org mode version, again causing the version mismatch.
+
+  It is recommended to set ~load-path~ as early in the config as
+  possible.
+
+- New Org mode version is loaded using straight.el package manager
+  and other package depending on Org mode is loaded before straight
+  triggers loading of the newer Org version.
+
+  It is recommended to put
+
+  : (straight-use-package 'org)
+
+  early in the config.  Ideally, right after the straight.el
+  bootstrap.  Moving ~use-package~ =:straight= declaration may not be
+  sufficient if the corresponding ~use-package~ statement is
+  deferring the loading.
 
 ** Interaction with Other Packages
 :PROPERTIES:
