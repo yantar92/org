@@ -127,6 +127,7 @@ You can clone Org's repository and install Org like this:
 $ cd ~/src/
 $ git clone https://git.savannah.gnu.org/git/emacs/org-mode.git
 $ cd org-mode/
+$ make clean
 $ make autoloads
 #+end_example
 
