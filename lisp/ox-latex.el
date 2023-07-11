@@ -48,6 +48,7 @@
 (defvar engrave-faces-latex-output-style)
 (defvar engrave-faces-current-preset-style)
 (defvar engrave-faces-latex-mathescape)
+(defvar engrave-faces-latex-colorbox-strut)
 
 
 ;;; Define Backend
@@ -1410,7 +1411,19 @@ default values of which are given by `org-latex-engraved-preamble' and
                (alist-get 'default
                           (if theme
                               (engrave-faces-get-theme (intern theme))
-                            engrave-faces-current-preset-style)))))))
+                            engrave-faces-current-preset-style))))))
+         (gen-theme-command
+          (lambda (theme)
+            (format "\n\\newcommand{\\engravedtheme%s}{%%\n%s\n}"
+                    (replace-regexp-in-string
+                     "[^A-Za-z]" "" (symbol-name theme))
+                    (replace-regexp-in-string
+                     "\\\\newcommand\\\\efstrut[^\n]*\n" ""
+                     (replace-regexp-in-string
+                      "\\\\newcommand{\\(.+?\\)}\\[1\\]" "\\\\long\\\\def\\1##1"
+                      (replace-regexp-in-string
+                       "#1" "##1"
+                       (funcall gen-theme-spec theme))))))))
     (when (stringp engraved-theme)
       (setq engraved-theme (intern engraved-theme)))
     (when (string-match "^[ \t]*\\[FVEXTRA-SETUP\\][ \t]*\n?" engraved-preamble)
@@ -1446,26 +1459,24 @@ default values of which are given by `org-latex-engraved-preamble' and
      (if (require 'engrave-faces-latex nil t)
          (if engraved-themes
              (concat
+              ;; We don't want to re-define the efstrut, so we now need to
+              ;; define it seperately.
+              (format "\\newcommand\\efstrut{%s}\n\n"
+                      engrave-faces-latex-colorbox-strut)
+              ;; Define default theme
+              (funcall gen-theme-command engraved-theme)
+              "\n"
+              ;; Define other themes
               (mapconcat
-               (lambda (theme)
-                 (format
-                  "\n\\newcommand{\\engravedtheme%s}{%%\n%s\n}"
-                  (replace-regexp-in-string "[^A-Za-z]" "" (symbol-name theme))
-                  (replace-regexp-in-string
-                   "newcommand" "renewcommand"
-                   (replace-regexp-in-string
-                    "#" "##"
-                    (funcall gen-theme-spec theme)))))
-               engraved-themes
+               gen-theme-command
+               (cl-remove-if (lambda (theme) (string= theme (symbol-name engraved-theme)))
+                             engraved-themes)
                "\n")
-              "\n\n"
-              (cond
-               ((memq engraved-theme engraved-themes)
-                (concat "\\engravedtheme"
-                        (replace-regexp-in-string
-                         "[^A-Za-z]" "" engraved-theme)
-                        "\n"))
-               (t (funcall gen-theme-spec engraved-theme))))
+              ;; Load the default theme
+              "\n\n\\engravedtheme"
+              (replace-regexp-in-string
+               "[^A-Za-z]" "" (symbol-name engraved-theme))
+              "\n")
            (funcall gen-theme-spec engraved-theme))
        (warn "Cannot engrave source blocks.  Consider installing `engrave-faces'.")
        "% WARNING syntax highlighting unavailable as engrave-faces-latex was missing.\n")
