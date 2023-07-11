@@ -3866,12 +3866,12 @@ to the Verbatim environment or Verb command."
                 (concat "\\begin{Code}\n\\begin{Verbatim}" engraved-options "\n"
                         engraved-code "\n\\end{Verbatim}\n\\end{Code}"))))
         (kill-buffer engraved-buffer)
-            (concat "{\\engravedtheme"
         (if (and theme explicit-theme-p)
+            (concat "\\begingroup\\engravedtheme"
                     (replace-regexp-in-string "[^A-Za-z]" ""
                                               (symbol-name theme))
                     engraved-wrapped
-                    "}")
+                    "\\endgroup")
           engraved-wrapped))
     (user-error "Cannot engrave code as `engrave-faces-latex' is unavailable")))
 
