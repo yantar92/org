@@ -110,6 +110,11 @@ function ~org-element-resolve-deferred~ and new optional argument for
 ~org-element-parse-buffer~ and ~org-element-parse-secondary-string~
 will resolve all the deferred values by default.  No adjustment is
 needed for their users.
+**** New element properties ~:value-begin~ and ~:value-end~
+
+The properties provide information about position of the beginning/end
+of the contents in verbatim blocks of types: ~comment-block~,
+~example-block~, ~export-block~, ~latex-environment~, ~src-block~.
 
 **** New API functions and macros
 ***** New property accessors and setters
@@ -119,6 +124,8 @@ New functions to retrieve and set (via ~setf~) commonly used element properties:
 - =:end= :: ~org-element-end~
 - =:contents-begin= :: ~org-element-contents-begin~
 - =:contents-end= :: ~org-element-contents-end~
+- =:value-begin= :: ~org-element-value-begin~
+- =:value-end= :: ~org-element-value-end~
 - =:post-affiliated= :: ~org-element-post-affiliated~
 - =:post-blank= :: ~org-element-post-blank~
 - =:parent= :: ~org-element-parent~

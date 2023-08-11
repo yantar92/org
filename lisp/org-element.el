@@ -589,6 +589,20 @@ OBJECT is the object to consider."
 (gv-define-setter org-element-contents-end (value node)
   `(org-element-put-property ,node :contents-end ,value))
 
+(defsubst org-element-value-begin (node)
+  "Get `:value-begin' property of NODE."
+  (org-element-property :value-begin node))
+
+(gv-define-setter org-element-value-begin (value node)
+  `(org-element-put-property ,node :value-begin ,value))
+
+(defsubst org-element-value-end (node)
+  "Get `:value-end' property of NODE."
+  (org-element-property :value-end node))
+
+(gv-define-setter org-element-value-end (value node)
+  `(org-element-put-property ,node :value-end ,value))
+
 (defsubst org-element-post-affiliated (node)
   "Get `:post-affiliated' property of NODE."
   (org-element-property :post-affiliated node))
@@ -2164,15 +2178,15 @@ Return a new syntax node of `comment-block' type containing `:begin',
 Assume point is at comment block beginning."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_COMMENT[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_COMMENT[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
-      (let ((contents-end (match-beginning 0)))
+      (let ((value-end (match-beginning 0)))
 	(save-excursion
 	  (let* ((begin (car affiliated))
 		 (post-affiliated (point))
-		 (contents-begin (progn (forward-line) (point)))
-		 (pos-before-blank (progn (goto-char contents-end)
+		 (value-begin (progn (forward-line) (point)))
+		 (pos-before-blank (progn (goto-char value-end)
 					  (forward-line)
 					  (point)))
 		 (end (progn (skip-chars-forward " \r\t\n" limit)
@@ -2180,14 +2194,16 @@ Assume point is at comment block beginning."
 		 (value
                   (org-element-deferred-create
                    nil #'org-element--substring
-                   (- contents-begin begin)
-                   (- contents-end begin))))
+                   (- value-begin begin)
+                   (- value-end begin))))
 	    (org-element-create
              'comment-block
 	     (nconc
 	      (list :begin begin
 		    :end end
 		    :value value
+                    :value-begin value-begin
+                    :value-end value-end
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -2251,10 +2267,10 @@ Return a new syntax node of `example-block' type containing `:begin',
 `:post-affiliated' properties."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_EXAMPLE[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_EXAMPLE[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
-      (let ((contents-end (match-beginning 0)))
+      (let ((value-end (match-beginning 0)))
 	(save-excursion
 	  (let* ((switches
 		  (progn
@@ -2294,13 +2310,13 @@ Return a new syntax node of `example-block' type containing `:begin',
 		 ;; Standard block parsing.
 		 (begin (car affiliated))
 		 (post-affiliated (point))
-		 (contents-begin (line-beginning-position 2))
+		 (value-begin (line-beginning-position 2))
 		 (value
                   (org-element-deferred-create
                    nil #'org-element--unescape-substring
-                   (- contents-begin begin)
-                   (- contents-end begin)))
-		 (pos-before-blank (progn (goto-char contents-end)
+                   (- value-begin begin)
+                   (- value-end begin)))
+		 (pos-before-blank (progn (goto-char value-end)
 					  (forward-line)
 					  (point)))
 		 (end (progn (skip-chars-forward " \r\t\n" limit)
@@ -2311,6 +2327,8 @@ Return a new syntax node of `example-block' type containing `:begin',
 	      (list :begin begin
 		    :end end
 		    :value value
+                    :value-begin value-begin
+                    :value-end value-end
 		    :switches switches
 		    :number-lines number-lines
 		    :preserve-indent preserve-indent
@@ -2357,11 +2375,11 @@ properties.
 Assume point is at export-block beginning."
   (let* ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_EXPORT[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_EXPORT[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (save-excursion
-	(let* ((contents-end (match-beginning 0))
+	(let* ((value-end (match-beginning 0))
 	       (backend
 		(progn
 		  (looking-at
@@ -2369,8 +2387,8 @@ Assume point is at export-block beginning."
 		  (match-string-no-properties 1)))
 	       (begin (car affiliated))
 	       (post-affiliated (point))
-	       (contents-begin (progn (forward-line) (point)))
-	       (pos-before-blank (progn (goto-char contents-end)
+	       (value-begin (progn (forward-line) (point)))
+	       (pos-before-blank (progn (goto-char value-end)
 					(forward-line)
 					(point)))
 	       (end (progn (skip-chars-forward " \r\t\n" limit)
@@ -2378,8 +2396,8 @@ Assume point is at export-block beginning."
 	       (value
                 (org-element-deferred-create
                  nil #'org-element--unescape-substring
-                 (- contents-begin begin)
-                 (- contents-end begin))))
+                 (- value-begin begin)
+                 (- value-end begin))))
 	  (org-element-create
            'export-block
 	   (nconc
@@ -2387,6 +2405,8 @@ Assume point is at export-block beginning."
 		  :begin begin
 		  :end end
 		  :value value
+                  :value-begin value-begin
+                  :value-end value-end
 		  :post-blank (count-lines pos-before-blank end)
 		  :post-affiliated post-affiliated)
 	    (cdr affiliated))))))))
@@ -2576,6 +2596,8 @@ Assume point is at the beginning of the latex environment."
 	    (list :begin begin
 		  :end end
 		  :value value
+                  :value-begin code-begin
+                  :value-end code-end
 		  :post-blank (count-lines code-end end)
 		  :post-affiliated code-begin)
 	    (cdr affiliated))))))))
@@ -2768,10 +2790,10 @@ Return a new syntax node of `src-block' type containing `:language',
 Assume point is at the beginning of the block."
   (let ((case-fold-search t))
     (if (not (save-excursion (re-search-forward "^[ \t]*#\\+END_SRC[ \t]*$"
-						limit t)))
+					      limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
-      (let ((contents-end (match-beginning 0)))
+      (let ((value-end (match-beginning 0)))
 	(save-excursion
 	  (let* ((begin (car affiliated))
 		 (post-affiliated (point))
@@ -2821,12 +2843,13 @@ Assume point is at the beginning of the block."
 		      (and retain-labels
 			   (not (string-match-p "-k\\>" switches)))))
 		 ;; Retrieve code.
+                 (value-begin (line-beginning-position 2))
 		 (value
                   (org-element-deferred-create
                    nil #'org-element--unescape-substring
-                   (- (line-beginning-position 2) begin)
-                   (- contents-end begin)))
-		 (pos-before-blank (progn (goto-char contents-end)
+                   (- value-begin begin)
+                   (- value-end begin)))
+		 (pos-before-blank (progn (goto-char value-end)
 					  (forward-line)
 					  (point)))
 		 ;; Get position after ending blank lines.
@@ -2848,6 +2871,8 @@ Assume point is at the beginning of the block."
 		    :use-labels use-labels
 		    :label-fmt label-fmt
 		    :value value
+                    :value-begin value-begin
+                    :value-end value-end
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
