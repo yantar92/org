@@ -1326,7 +1326,7 @@ Otherwise, evaluate RESULT as an sexp and return its result."
 	      (org-indent-region (point-min) (point-max))
 	      (buffer-string)))))
   ;; Indent according to mode if `org-src-tab-acts-natively' is
-  ;; non-nil.  Otherwise, do not indent code at all.
+  ;; non-nil.  Otherwise, indent according to #+BEGIN_SRC line.
   (should
    (equal "#+BEGIN_SRC emacs-lisp\n(and A\n     B)\n#+END_SRC"
 	  (org-test-with-temp-text
@@ -1340,6 +1340,25 @@ Otherwise, evaluate RESULT as an sexp and return its result."
 	  (org-test-with-temp-text
 	      "#+BEGIN_SRC emacs-lisp\n (and A\nB)\n#+END_SRC"
 	    (let ((org-src-tab-acts-natively nil)
+		  (org-edit-src-content-indentation 0))
+	      (org-indent-region (point-min) (point-max)))
+	    (buffer-string))))
+  (should
+   (equal "
+- item
+  #+BEGIN_SRC emacs-lisp
+  (and A
+  B)
+  #+END_SRC"
+	  (org-test-with-temp-text
+	      "
+- item
+  #+BEGIN_SRC emacs-lisp
+(and A
+B)
+#+END_SRC"
+	    (let ((org-src-tab-acts-natively nil)
+                  (org-src-preserve-indentation nil)
 		  (org-edit-src-content-indentation 0))
 	      (org-indent-region (point-min) (point-max)))
 	    (buffer-string))))
@@ -1456,6 +1475,48 @@ CLOCK: [2022-09-17 sam. 11:00]--[2022-09-17 sam. 11:46] =>  0:46"
   (should
    (equal "[fn:1] Definition\n\nDefinition"
 	  (org-test-with-temp-text "[fn:1] Definition\n\n  Definition"
+	    (org-indent-region (point-min) (point-max))
+	    (buffer-string))))
+  ;; Do not convert footnotes into footnote definitions.
+  (should-not
+   (equal "[fn:1] Definition"
+	  (org-test-with-temp-text " [fn:1] Definition"
+	    (org-indent-region (point-min) (point-max))
+	    (buffer-string))))
+  ;; Do not convert "* item" lists into headings.
+  (should-not
+   (equal "* item"
+	  (org-test-with-temp-text " * item"
+	    (org-indent-region (point-min) (point-max))
+	    (buffer-string))))
+  ;; Ignore indentation of unindentable previous "* item" and "
+  ;; [fn:foo] text" elements.
+  (should
+   (equal "
+First
+ [fn:1] Definition
+
+Second"
+	  (org-test-with-temp-text "
+First
+ [fn:1] Definition
+
+  Second"
+	    (org-indent-region (point-min) (point-max))
+	    (buffer-string))))
+  (should
+   (equal "
+First
+ * item
+
+
+Second"
+	  (org-test-with-temp-text "
+First
+ * item
+
+
+  Second"
 	    (org-indent-region (point-min) (point-max))
 	    (buffer-string))))
   ;; Special case: Start indenting on a blank line.

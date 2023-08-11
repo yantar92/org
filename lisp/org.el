@@ -19087,7 +19087,7 @@ ELEMENT."
        (org--get-expected-indentation
 	(org-element-parent element) t))
       ;; At first line: indent according to previous sibling, if any,
-      ;; ignoring footnote definitions and inline tasks, or parent's
+      ;; ignoring footnote definitions, and inline tasks, or parent's
       ;; contents.  If `org-adapt-indentation' is `headline-data', ignore
       ;; previous headline data siblings.
       ((= (line-beginning-position) start)
@@ -19106,6 +19106,19 @@ ELEMENT."
 		 (throw 'exit (org--get-expected-indentation previous t)))
 		((org-element-type-p
                   previous '(footnote-definition inlinetask))
+		 (setq start (org-element-begin previous)))
+                ;; Skip over * list items that cannot be indented to 0
+                ;; column without breaking structure.
+		((and (org-element-type-p previous 'plain-list)
+                      (org-with-point-at (1+ (org-element-contents-begin previous))
+                        (equal "* " (org-element-property :bullet (org-element-context)))))
+		 (setq start (org-element-begin previous)))
+                ;; Skip over paragraphs starting from footnote
+                ;; reference.  They cannot be indented without making
+                ;; them into footnote definition.
+                ((and (org-element-type-p previous 'paragraph)
+                      (org-with-point-at (org-element-post-affiliated previous)
+                        (org-element-type-p (org-element-context) 'footnote-reference)))
 		 (setq start (org-element-begin previous)))
                 ;; Do not indent like previous when the previous
                 ;; element is headline data and `org-adapt-indentation'
@@ -19192,17 +19205,25 @@ Indentation is done according to the following rules:
   - Footnote definitions, diary sexps, headlines and inline tasks
     have to start at column 0.
 
+  - Do not indent latex environments.  Spaces may be significant
+    there.
+
   - On the very first line of an element, consider, in order, the
     next rules until one matches:
 
-    1. If there's a sibling element before, ignoring footnote
+    1. Plain lists and items are not indented as indentation could
+       break the whole list structure.  Users should use
+       \\<org-mode-map>`\\[org-shiftmetaleft]' or
+       `\\[org-shiftmetaright]' instead.
+
+    2. If there's a sibling element before, ignoring footnote
        definitions and inline tasks, indent like its first line.
 
-    2. If element has a parent, indent like its contents.  More
+    3. If element has a parent, indent like its contents.  More
        precisely, if parent is an item, indent after the bullet.
        Else, indent like parent's first line.
 
-    3. Otherwise, indent relatively to current level, if
+    4. Otherwise, indent relatively to current level, if
        `org-adapt-indentation' is t, or to left margin.
 
   - On a blank line at the end of an element, indent according to
@@ -19218,66 +19239,93 @@ Indentation is done according to the following rules:
 
   - In the code part of a source block, use language major mode
     to indent current line if `org-src-tab-acts-natively' is
-    non-nil.  If it is nil, do nothing.
+    non-nil.  Additionally, unless src block should preserve
+    indentation, indent according to
+    `org-edit-src-content-indentation' and #+begin_src line.
 
   - Otherwise, indent like the first non-blank line above.
 
-The function doesn't indent an item as it could break the whole
-list structure.  Instead, use \\<org-mode-map>`\\[org-shiftmetaleft]' or \
-`\\[org-shiftmetaright]'.
-
 Also align node properties according to `org-property-format'."
   (interactive)
-  (let* ((element (save-excursion (forward-line 0) (org-element-at-point-no-context)))
+  (let* ((element (save-excursion (forward-line 0) (org-element-at-point)))
 	 (type (org-element-type element)))
-    (unless (or (org-at-heading-p) ; headline has no indent ever.
-                ;; Do not indent first element after headline data.
-                (and (eq org-adapt-indentation 'headline-data)
-                     (not (org--at-headline-data-p nil element))
-                     ;; Not at headline data and previous is headline data/headline.
-                     (or (memq type '(headline inlinetask)) ; blank lines after heading
-                         (save-excursion
-                           (goto-char (1- (org-element-begin element)))
-                           (or (org-at-heading-p)
-                               (org--at-headline-data-p))))))
-      (cond ((and (memq type '(plain-list item))
-		  (= (line-beginning-position)
-		     (org-element-post-affiliated element)))
-	     nil)
-	    ((and (eq type 'latex-environment)
-		  (>= (point) (org-element-post-affiliated element))
-		  (< (point)
-		     (org-with-point-at (org-element-end element)
-		       (skip-chars-backward " \t\n")
-		       (line-beginning-position 2))))
-	     nil)
-	    ((and (eq type 'src-block)
-		  org-src-tab-acts-natively
-		  (> (line-beginning-position)
-		     (org-element-post-affiliated element))
-		  (< (line-beginning-position)
-		     (org-with-point-at (org-element-end element)
-		       (skip-chars-backward " \t\n")
-		       (line-beginning-position))))
-             (let ((block-content-ind
-                    (when (not (org-src-preserve-indentation-p element))
-                      (org-with-point-at (org-element-property :begin element)
-                        (+ (org-current-text-indentation)
-                           org-edit-src-content-indentation)))))
-               (org-babel-do-key-sequence-in-edit-buffer (kbd "TAB"))
-               (when (and block-content-ind (looking-at-p "^$"))
-                 (indent-line-to block-content-ind))))
-	    (t
-	     (let ((column (org--get-expected-indentation element nil)))
-	       ;; Preserve current column.
-	       (if (<= (current-column) (current-indentation))
-		   (indent-line-to column)
-		 (save-excursion (indent-line-to column))))
-	     ;; Align node property.  Also preserve current column.
-	     (when (eq type 'node-property)
-	       (let ((column (current-column)))
-		 (org--align-node-property)
-		 (org-move-to-column column))))))))
+    (cond
+     ((and (eq type 'latex-environment)
+           (<= (org-element-begin element)
+              (line-beginning-position)
+              (org-element-value-end element)))
+      nil)
+     ((and (memq type '(plain-list item))
+	   (= (line-beginning-position)
+	      (org-element-post-affiliated element)))
+      nil)
+     ;; Do not indent first element after headline data.
+     ((and (eq org-adapt-indentation 'headline-data)
+           (not (org--at-headline-data-p nil element))
+           ;; Not at headline data and previous is headline data/headline.
+           (or (memq type '(headline inlinetask)) ; blank lines after heading
+               (save-excursion
+                 (goto-char (1- (org-element-begin element)))
+                 (or (org-at-heading-p)
+                     (org--at-headline-data-p)))))
+      nil)
+     ((and (eq type 'src-block)
+           org-src-tab-acts-natively
+           (<= (org-element-value-begin element)
+              (point)
+              (1- (org-element-value-end element))))
+      (let ((block-content-ind
+             (org--get-expected-indentation element 'contents)))
+        (org-babel-do-key-sequence-in-edit-buffer (kbd "TAB"))
+        (when (and block-content-ind (looking-at-p "^$"))
+          (indent-line-to block-content-ind))))
+     (t
+      (let ((column (org--get-expected-indentation element nil)))
+	;; Preserve current column.
+	(if (<= (current-column) (current-indentation))
+	    (indent-line-to column)
+	  (save-excursion (indent-line-to column))))
+      ;; Align node property.  Also preserve current column.
+      (when (eq type 'node-property)
+	(let ((column (current-column)))
+	  (org--align-node-property)
+	  (org-move-to-column column)))))))
+
+(defun org--indent-to-safely (ind pos element &optional rigidly)
+  "Set IND as indentation for all lines between point and POS.
+
+Blank lines are ignored.
+
+Leave point after POS once done.
+
+Undo the indent when indentation alters syntax structure, by modifying
+ELEMENT.
+
+When RIGIDLY is non-nil, treat IND as indentation delta."
+  (let ((end-marker (copy-marker (org-element-end element)))
+        (undo-disabled (eq buffer-undo-list t)))
+    (when undo-disabled (buffer-enable-undo))
+    (unwind-protect
+        (progn
+          (undo-boundary)
+          (with-undo-amalgamate
+            (if rigidly
+                (indent-rigidly (point) pos ind)
+	      (let ((limit (copy-marker pos)))
+	        (while (< (point) limit)
+		  (unless (looking-at-p "[ \t]*$")
+                    (indent-line-to ind))
+		  (forward-line))
+	        (set-marker limit nil))))
+          ;; Revert changes if we altered syntax structure.
+          (let ((new-element (org-element-at-point (org-element-begin element))))
+            (unless (and (equal (org-element-type element) (org-element-type new-element))
+                         (equal (marker-position end-marker) (org-element-end new-element)))
+              (primitive-undo 1 buffer-undo-list)
+              ;; Go to the end.
+              (goto-char pos))))
+      (when undo-disabled (buffer-disable-undo)))))
+
 (defun org-preserve-indentation-p (&optional node)
   "Non-nil when indentation should be preserved within NODE.
 When NODE is not passed, assume element at point."
@@ -19289,124 +19337,158 @@ When NODE is not passed, assume element at point."
 
 (defun org-indent-region (start end)
   "Indent each non-blank line in the region.
-Called from a program, START and END specify the region to
-indent.  The function will not indent contents of example blocks,
-verse blocks and export blocks as leading white spaces are
-assumed to be significant there."
+
+In addition, re-align all the node properties.
+
+Called from a program, START and END specify the region to indent."
   (interactive "r")
-  (save-excursion
-    (goto-char start)
-    (skip-chars-forward " \r\t\n")
-    (unless (eobp) (forward-line 0))
-    (let ((indent-to
-	   (lambda (ind pos)
-	     ;; Set IND as indentation for all lines between point and
-	     ;; POS.  Blank lines are ignored.  Leave point after POS
-	     ;; once done.
-	     (let ((limit (copy-marker pos)))
-	       (while (< (point) limit)
-		 (unless (looking-at-p "[ \t]*$") (indent-line-to ind))
-		 (forward-line))
-	       (set-marker limit nil))))
-	  (end (copy-marker end)))
-      (while (< (point) end)
-	(if (or (looking-at-p " \r\t\n") (org-at-heading-p)) (forward-line)
-	  (let* ((element (org-element-at-point))
-		 (type (org-element-type element))
-		 (element-end (copy-marker (org-element-end element)))
-		 (ind (org--get-expected-indentation element nil)))
-	    (cond
-	     ;; Element indented as a single block.  Example blocks
-	     ;; preserving indentation are a special case since the
-	     ;; "contents" must not be indented whereas the block
-	     ;; boundaries can.
-	     ((or (memq type '(export-block latex-environment))
-		  (and (eq type 'example-block)
-		       (not (org-src-preserve-indentation-p element))))
-	      (let ((offset (- ind (current-indentation))))
-		(unless (zerop offset)
-		  (indent-rigidly (org-element-begin element)
-				  (org-element-end element)
-				  offset)))
-	      (goto-char element-end))
-	     ;; Elements indented line wise.  Be sure to exclude
-	     ;; example blocks (preserving indentation) and source
-	     ;; blocks from this category as they are treated
-	     ;; specially later.
-	     ((or (memq type '(paragraph table table-row))
-		  (not (or (org-element-contents-begin element)
-			 (memq type '(example-block src-block)))))
-	      (when (eq type 'node-property)
-		(org--align-node-property)
-		(forward-line 0))
-	      (funcall indent-to ind (min element-end end)))
-	     ;; Elements consisting of three parts: before the
-	     ;; contents, the contents, and after the contents.  The
-	     ;; contents are treated specially, according to the
-	     ;; element type, or not indented at all.  Other parts are
-	     ;; indented as a single block.
-	     (t
-	      (let* ((post (copy-marker
-			    (org-element-post-affiliated element)))
-		     (cbeg
-		      (copy-marker
-		       (cond
-			((not (org-element-contents-begin element))
-			 ;; Fake contents for source blocks.
-			 (org-with-wide-buffer
-			  (goto-char post)
-			  (line-beginning-position 2)))
-			((memq type '(footnote-definition item plain-list))
-			 ;; Contents in these elements could start on
-			 ;; the same line as the beginning of the
-			 ;; element.  Make sure we start indenting
-			 ;; from the second line.
-			 (org-with-wide-buffer
-			  (goto-char post)
-			  (end-of-line)
-			  (skip-chars-forward " \r\t\n")
-			  (if (eobp) (point) (line-beginning-position))))
-			(t (org-element-contents-begin element)))))
-		     (cend (copy-marker
-			    (or (org-element-contents-end element)
-				;; Fake contents for source blocks.
-				(org-with-wide-buffer
-				 (goto-char element-end)
-				 (skip-chars-backward " \r\t\n")
-				 (line-beginning-position)))
-			    t)))
-		;; Do not change items indentation individually as it
-		;; might break the list as a whole.  On the other
-		;; hand, when at a plain list, indent it as a whole.
-		(cond ((eq type 'plain-list)
-		       (let ((offset (- ind (org-current-text-indentation))))
-			 (unless (zerop offset)
-			   (indent-rigidly (org-element-begin element)
-					   (org-element-end element)
-					   offset))
-			 (goto-char cbeg)))
-		      ((eq type 'item) (goto-char cbeg))
-		      (t (funcall indent-to ind (min cbeg end))))
-		(when (< (point) end)
-		  (cl-case type
-		    ((example-block verse-block))
-		    (src-block
+  ;; Sometimes, we need to indent beyond START..END.  Make sure that
+  ;; we can access element boundaries, even if they are beyond the
+  ;; narrowing.
+  (org-with-wide-buffer
+   (goto-char start)
+   (skip-chars-forward " \r\t\n")
+   (unless (eobp) (forward-line 0))
+   (let ((end (copy-marker end t)))
+     (with-undo-amalgamate
+       (while (< (point) end)
+	 (if (or (looking-at-p " \r\t\n") (org-at-heading-p))
+             (forward-line)
+	   (let* ((element (org-element-at-point))
+		  (type (org-element-type element))
+		  (element-end (copy-marker (org-element-end element) t))
+		  (ind (org--get-expected-indentation element nil)))
+	     (cond
+	      ;; Element indented as a single block, keeping extra
+	      ;; indentation inside its contents, if any.
+              ;;
+              ;; We are free to add any common indentation -
+              ;; exporters and other users are responsible for
+              ;; calling `org-remove-indentation' as needed.
+              ;;
+              ;; However, the existing additional indentation inside
+              ;; body should not be altered.  So, we need to use
+              ;; "rigid" indentation that do not alter existing
+              ;; spaces and tabs.
+	      ((and (org-element-value-begin element) ; Contents is not parsed.
+                    ;; Source blocks are treated specially, using
+                    ;; extra indentation and possibly delegating
+                    ;; indentation to the block's major mode.
+                    (not (eq type 'src-block))
+                    ;; Even "rigid" indentation may be suppressed in
+                    ;; some blocks by users, customizing
+                    ;; `org-src-preserve-indentation' or using
+                    ;; switches.
+                    (not (org-preserve-indentation-p element)))
+               ;; Use the first line as reference.
+               (goto-char (org-element-begin element))
+	       (let ((offset (- ind (current-indentation))))
+		 (unless (zerop offset)
+		   (org--indent-to-safely
+                    offset
+		    (org-element-end element)
+                    element
+		    'rigidly)))
+	       (goto-char element-end))
+	      ;; Elements indented line wise.  Be sure to exclude
+	      ;; blocks that consist of three parts: "BEGIN" line,
+	      ;; contents, and "END" line.
+	      ((or
+                ;; Standalone element without contents/value.
+		(not (or (org-element-contents-begin element)
+                       (org-element-value-begin element)))
+                ;; Elements that have contents but no begin/end lines.
+                (memq type '(paragraph table table-row)))
+               ;; Re-align node property values in addition to
+               ;; indentation.
+	       (when (eq type 'node-property)
+		 (org--align-node-property)
+		 (forward-line 0))
+               ;; Indent modifying the existing leading tabs/spaces as
+               ;; needed to reach IND.
+	       (org--indent-to-safely ind (min element-end end) element))
+	      ;; Elements consisting of three parts: before the
+	      ;; contents, the contents, and after the contents.  The
+	      ;; contents are treated specially, according to the
+	      ;; element type, or not indented at all.  Other parts are
+	      ;; indented as a single block.
+	      (t
+	       (let* ((post (copy-marker
+			     (org-element-post-affiliated element)))
+		      (cbeg
+		       (copy-marker
+		        (cond
+			 ((memq type '(footnote-definition item plain-list))
+			  ;; Contents in these elements could start on
+			  ;; the same line as the beginning of the
+			  ;; element.  Make sure we start indenting
+			  ;; from the second line.
+			  (org-with-wide-buffer
+			   (goto-char post)
+			   (end-of-line)
+			   (skip-chars-forward " \r\t\n")
+			   (if (eobp) (point) (line-beginning-position))))
+			 (t (or (org-element-contents-begin element)
+                                (org-element-value-begin element))))))
+		      (cend (copy-marker
+			     (or (org-element-contents-end element)
+                                 (org-element-value-end element))
+			     t)))
+                 ;; 1. Indent the first "begin" line.
+                 ;;
+		 ;; Do not change items indentation individually as it
+		 ;; might break the list as a whole.  On the other
+		 ;; hand, when at a plain list, indent it as a whole.
+                 (when (< (point) cbeg)
+		   (cond ((eq type 'plain-list)
+		          (let ((offset (- ind (org-current-text-indentation))))
+			    (unless (zerop offset)
+                              (goto-char (org-element-begin element))
+			      (org--indent-to-safely
+                               offset
+			       (org-element-end element)
+                               element
+			       'rigidly))
+                            ;; Now indent inside.
+			    (goto-char cbeg)))
+		         ((eq type 'item) (goto-char cbeg))
+		         (t (org--indent-to-safely ind cbeg element))))
+		 (when (< (point) end)
+                   ;; 2. Indent body.
+		   (cond
+		    ((eq type 'src-block)
 		     ;; In a source block, indent source code
 		     ;; according to language major mode, but only if
 		     ;; `org-src-tab-acts-natively' is non-nil.
-		     (when (and (< (point) end) org-src-tab-acts-natively)
-		       (ignore-errors
-			 (org-babel-do-in-edit-buffer
-			  (indent-region (point-min) (point-max))))))
+                     ;;
+                     ;; If `org-src-tab-acts-natively' is nil, indent
+                     ;; according to the #+begin line indentation,
+                     ;; `org-src-preserve-indentation', and
+                     ;; `org-edit-src-content-indentation' - all
+                     ;; handled by `org-babel-do-in-edit-buffer' ->
+                     ;; `org-edit-src-save'.
+		     (ignore-errors
+		       (org-babel-do-in-edit-buffer
+                        (when org-src-tab-acts-natively
+                          (indent-region (point-min) (point-max))))))
+                    ((org-preserve-indentation-p element)
+                     ;; Do not indent body when we are preserving indentation.
+                     nil)
+                    ;; We are inside a greater element.  Indent
+                    ;; recursively, according to elements inside
+                    ;; contents.
 		    (t (org-indent-region (point) (min cend end))))
-		  (goto-char (min cend end))
-		  (when (< (point) end)
-		    (funcall indent-to ind (min element-end end))))
-		(set-marker post nil)
-		(set-marker cbeg nil)
-		(set-marker cend nil))))
-	    (set-marker element-end nil))))
-      (set-marker end nil))))
+                   ;; 3. Indent the last "end" line.
+		   (goto-char (min cend end))
+		   (when (< (point) end)
+		     (org--indent-to-safely
+                      ind (min element-end end)
+                      (org-element-at-point))))
+		 (set-marker post nil)
+		 (set-marker cbeg nil)
+		 (set-marker cend nil))))
+	     (set-marker element-end nil)))))
+     (set-marker end nil))))
 
 (defun org-indent-drawer ()
   "Indent the drawer at point."
