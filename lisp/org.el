@@ -19068,6 +19068,11 @@ ELEMENT."
 	    (let ((level (org-current-level)))
 	      (if level (1+ level) 0))))
 	 ((item plain-list) (org-list-item-body-column post-affiliated))
+         (src-block
+          (if (org-preserve-indentation-p element) 0
+            (goto-char start)
+            (+ (org-current-text-indentation)
+               org-edit-src-content-indentation)))
 	 (t
 	  (goto-char start)
 	  (current-indentation))))

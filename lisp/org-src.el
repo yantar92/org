@@ -732,10 +732,8 @@ as `org-src-fontify-natively' is non-nil."
     (save-excursion
       (goto-char start)
       (let ((indent-offset
-	     (if (org-src-preserve-indentation-p) 0
-	       (+ (progn (backward-char)
-                         (org-current-text-indentation))
-	          org-edit-src-content-indentation))))
+             (org--get-expected-indentation
+              (org-element-at-point) 'contents)))
         (while (re-search-forward "^[ ]*\t" end t)
           (let* ((b (and (eq indent-offset (move-to-column indent-offset))
                          (point)))
