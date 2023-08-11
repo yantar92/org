@@ -59,7 +59,7 @@
 (declare-function org-cycle "org-cycle" (&optional arg))
 (declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
 (declare-function org-edit-src-exit "org-src"  ())
-(declare-function org-src-preserve-indentation-p "org-src" (node))
+(declare-function org-preserve-indentation-p "org" (node))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-element-at-point-no-context "org-element" (&optional pom))
 (declare-function org-element-context "org-element" (&optional element))
@@ -665,7 +665,7 @@ Remove final newline character and spurious indentation."
 	   ;; src-block are not meaningful, since they could come from
 	   ;; some paragraph filling.  Treat them as a white space.
 	   (replace-regexp-in-string "\n[ \t]*" " " body))
-	  ((org-src-preserve-indentation-p datum) body)
+	  ((org-preserve-indentation-p datum) body)
 	  (t (org-remove-indentation body)))))
 
 ;;; functions
@@ -2272,7 +2272,7 @@ Return nil if ELEMENT cannot be read."
      (`plain-list (org-babel-read-list))
      ((or `example-block `src-block)
       (let ((v (org-element-property :value element)))
-	(if (org-src-preserve-indentation-p element) v
+	(if (org-preserve-indentation-p element) v
 	  (org-remove-indentation v))))
      (`export-block
       (org-remove-indentation (org-element-property :value element)))
@@ -2842,7 +2842,7 @@ specified as an an \"attachment:\" style link."
     (let* ((ind (org-current-text-indentation))
 	   (body-start (line-beginning-position 2))
 	   (body (org-element-normalize-string
-		  (if (org-src-preserve-indentation-p element) new-body
+		  (if (org-preserve-indentation-p element) new-body
 		    (with-temp-buffer
 		      (insert (org-remove-indentation new-body))
 		      (indent-rigidly

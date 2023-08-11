@@ -5021,7 +5021,7 @@ reference on that line (string)."
 	 ;; to the code proper.
 	 (code (replace-regexp-in-string
 		"\n\\'" ""
-		(if (org-src-preserve-indentation-p element) value
+		(if (org-preserve-indentation-p element) value
 		  (org-remove-indentation value))))
 	 ;; Build a regexp matching a loc with a reference.
 	 (ref-re (org-src-coderef-regexp (org-src-coderef-format element))))

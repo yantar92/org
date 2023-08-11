@@ -77,7 +77,7 @@
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-escape-code-in-string "org-src" (s))
-(declare-function org-src-preserve-indentation-p "org-src" (node))
+(declare-function org-preserve-indentation-p "org" (node))
 (declare-function org-macro-escape-arguments "org-macro" (&rest args))
 (declare-function org-macro-extract-arguments "org-macro" (s))
 (declare-function org-reduced-level "org" (l))
@@ -2345,7 +2345,7 @@ Return a new syntax node of `example-block' type containing `:begin',
 	(value
 	 (let ((val (org-element-property :value example-block)))
 	   (cond
-	    ((org-src-preserve-indentation-p example-block) val)
+	    ((org-preserve-indentation-p example-block) val)
 	    ((= 0 org-edit-src-content-indentation)
 	     (org-remove-indentation val))
 	    (t
@@ -2885,7 +2885,7 @@ Assume point is at the beginning of the block."
 	(value
 	 (let ((val (org-element-property :value src-block)))
 	   (cond
-	    ((org-src-preserve-indentation-p src-block) val)
+	    ((org-preserve-indentation-p src-block) val)
 	    ((zerop org-edit-src-content-indentation)
 	     (org-remove-indentation val))
 	    (t

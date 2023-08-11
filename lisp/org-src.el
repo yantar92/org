@@ -461,14 +461,6 @@ spaces after it as being outside."
 	       (line-end-position)
 	     (point))))))
 
-(defun org-src-preserve-indentation-p (&optional node)
-  "Non-nil when indentation should be preserved within NODE.
-When NODE is not passed, assume element at point."
-  (let ((node (or node (org-element-at-point))))
-    (and (org-element-type-p node '(example-block src-block))
-         (or (org-element-property :preserve-indent node)
-	     org-src-preserve-indentation))))
-
 (defun org-src--contents-for-write-back-1
     ( write-back-buf contents
       &optional indentation-offset preserve-fl source-tab-width write-back)
@@ -585,7 +577,7 @@ Leave point in edit buffer."
                              (org-element-parent datum) nil))
                            (t (org-current-text-indentation)))))
 	     (content-ind org-edit-src-content-indentation)
-	     (preserve-ind (org-src-preserve-indentation-p datum))
+	     (preserve-ind (org-preserve-indentation-p datum))
 	     ;; Store relative positions of mark (if any) and point
 	     ;; within the edited area.
 	     (point-coordinates (and (not remote)

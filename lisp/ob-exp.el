@@ -43,7 +43,7 @@
                              drop-locals))
 (declare-function org-in-commented-heading-p "org" (&optional no-inheritance element))
 (declare-function org-in-archived-heading-p "org" (&optional no-inheritance element))
-(declare-function org-src-preserve-indentation-p "org-src" (node))
+(declare-function org-preserve-indentation-p "org" (node))
 
 (defcustom org-export-use-babel t
   "Switch controlling code evaluation and header processing during export.
@@ -281,7 +281,7 @@ this template."
 				  (forward-line 0)
 				  (delete-region begin (point)))
 				 (t
-				  (if (org-src-preserve-indentation-p element)
+				  (if (org-preserve-indentation-p element)
 				      ;; Indent only code block
 				      ;; markers.
 				      (with-temp-buffer

@@ -172,6 +172,8 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (declare-function org-element-cache-reset "org-element" (&optional all no-persistence))
 (declare-function org-element-cache-map "org-element" (func &rest keys))
 (declare-function org-element-contents "org-element-ast" (node))
+(declare-function org-element-value-begin "org-element" (node))
+(declare-function org-element-value-end "org-element" (node))
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-copy "org-element-ast" (datum))
 (declare-function org-element-create "org-element-ast" (type &optional props &rest children))
@@ -6898,11 +6900,8 @@ Assume point is at a heading or an inlinetask beginning."
 		 (forward-line 0)
 		 (or (and (looking-at-p "[ \t]*#\\+BEGIN_\\(EXAMPLE\\|SRC\\)")
 			  (let ((e (org-element-at-point)))
-			    (and (org-src-preserve-indentation-p e)
-			         (goto-char (org-element-end e))
-			         (progn (skip-chars-backward " \r\t\n")
-				        (forward-line 0)
-				        t))))
+			    (and (org-preserve-indentation-p e)
+			         (goto-char (org-element-value-end e)))))
 		     (forward-line))))))))
        ;; Shift lines but footnote definitions, inlinetasks boundaries
        ;; by DIFF.  Also skip contents of source or example blocks
@@ -6920,11 +6919,8 @@ Assume point is at a heading or an inlinetask beginning."
 	   (forward-line 0)
 	   (or (and (looking-at-p "[ \t]*#\\+BEGIN_\\(EXAMPLE\\|SRC\\)")
 		    (let ((e (org-element-at-point)))
-		      (and (org-src-preserve-indentation-p e)
-			   (goto-char (org-element-end e))
-			   (progn (skip-chars-backward " \r\t\n")
-				  (forward-line 0)
-				  t))))
+		      (and (org-preserve-indentation-p e)
+			   (goto-char (org-element-value-end e)))))
 	       (forward-line)))))))))
 
 (defun org-convert-to-odd-levels ()
@@ -19277,6 +19273,14 @@ Also align node properties according to `org-property-format'."
 	       (let ((column (current-column)))
 		 (org--align-node-property)
 		 (org-move-to-column column))))))))
+(defun org-preserve-indentation-p (&optional node)
+  "Non-nil when indentation should be preserved within NODE.
+When NODE is not passed, assume element at point."
+  (let ((node (or node (org-element-at-point))))
+    (or (org-element-type-p node 'verse-block)
+        (and (org-element-type-p node '(example-block src-block))
+             (or (org-element-property :preserve-indent node)
+	         org-src-preserve-indentation)))))
 
 (defun org-indent-region (start end)
   "Indent each non-blank line in the region.
