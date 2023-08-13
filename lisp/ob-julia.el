@@ -32,11 +32,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function orgtbl-to-csv "org-table" (table params))
 (declare-function julia "ext:ess-julia" (&optional start-args))
@@ -339,5 +336,6 @@ Insert hline if column names in output have been requested."
     result))
 
 (provide 'ob-julia)
+(provide 'ob-julia-9.7-pre)
 
 ;;; ob-julia.el ends here

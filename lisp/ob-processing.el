@@ -52,10 +52,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 (require 'sha1)
 
 (declare-function processing-sketch-run "ext:processing-mode" ())
@@ -196,5 +193,6 @@ Otherwise, it is either `float', if some elements are floats, or
     (catch 'exit (funcall find-type data))))
 
 (provide 'ob-processing)
+(provide 'ob-processing-9.7-pre)
 
 ;;; ob-processing.el ends here

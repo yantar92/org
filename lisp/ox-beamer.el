@@ -30,11 +30,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ox-latex)
+(require 'ox-latex-9.7-pre "ox-latex")
 
 ;; Install a default set-up for Beamer export.
 (unless (assoc "beamer" org-latex-classes)
@@ -1171,6 +1168,7 @@ Return output file name."
 
 
 (provide 'ox-beamer)
+(provide 'ox-beamer-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

@@ -33,11 +33,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-compat)
+(require 'ob-9.7-pre "ob")
+(require 'org-compat-9.7-pre "org-compat")
 
 (declare-function org-babel-ref-resolve "ob-ref" (ref))
 (declare-function orgtbl-to-generic "org-table" (table params))
@@ -113,5 +110,6 @@ table."
      (t (funcall echo-var var)))))
 
 (provide 'ob-awk)
+(provide 'ob-awk-9.7-pre)
 
 ;;; ob-awk.el ends here

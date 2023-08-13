@@ -63,12 +63,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'map)
-(require 'org-macs)
-(require 'oc)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'oc-9.7-pre "oc")
 
 (declare-function org-element-property "org-element-ast" (property node))
 (declare-function org-element-parent "org-element-ast" (node))
@@ -434,4 +431,5 @@ to the document, and set styles."
   :cite-styles #'org-cite-biblatex-list-styles)
 
 (provide 'oc-biblatex)
+(provide 'oc-biblatex-9.7-pre)
 ;;; oc-biblatex.el ends here

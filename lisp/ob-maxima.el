@@ -32,10 +32,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("maxima" . "max"))
@@ -131,5 +128,6 @@ of the same value."
     (format "%s" val)))
 
 (provide 'ob-maxima)
+(provide 'ob-maxima-9.7-pre)
 
 ;;; ob-maxima.el ends here

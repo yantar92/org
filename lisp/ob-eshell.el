@@ -28,10 +28,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 (require 'eshell)
 
 (declare-function eshell-send-input "esh-mode"
@@ -111,5 +108,6 @@ The PARAMS are variables assignments."
       buffer)))
 
 (provide 'ob-eshell)
+(provide 'ob-eshell-9.7-pre)
 
 ;;; ob-eshell.el ends here

@@ -28,9 +28,6 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (eval-when-compile (require 'subr-x))  ; For `string-empty-p', Emacs < 29
 
 (defvar org-babel-error-buffer-name "*Org-Babel Error Output*")
@@ -171,5 +168,6 @@ handlers.  Therefore, we could use it in the local case only."
 	("/bin/sh")))
 
 (provide 'ob-eval)
+(provide 'ob-eval-9.7-pre)
 
 ;;; ob-eval.el ends here

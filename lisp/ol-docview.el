@@ -42,11 +42,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'doc-view)
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 (declare-function doc-view-goto-page "doc-view" (page))
 (declare-function image-mode-window-get "image-mode" (prop &optional winprops))
@@ -103,5 +100,6 @@ and append it."
 	  (read-from-minibuffer "Page:" "1")))
 
 (provide 'ol-docview)
+(provide 'ol-docview-9.7-pre)
 
 ;;; ol-docview.el ends here

@@ -32,10 +32,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-tangle-lang-exts) ;; Autoloaded
 (add-to-list 'org-babel-tangle-lang-exts '("groovy" . "groovy"))
@@ -113,5 +110,6 @@ supported in Groovy."
   nil)
 
 (provide 'ob-groovy)
+(provide 'ob-groovy-9.7-pre)
 
 ;;; ob-groovy.el ends here

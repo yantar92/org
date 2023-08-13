@@ -40,10 +40,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-default-header-args:dot
   '((:results . "file") (:exports . "results"))
@@ -91,5 +88,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "Dot does not support sessions"))
 
 (provide 'ob-dot)
+(provide 'ob-dot-9.7-pre)
 
 ;;; ob-dot.el ends here

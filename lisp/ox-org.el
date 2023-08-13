@@ -25,10 +25,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ox)
+(require 'ox-9.7-pre "ox")
 (declare-function htmlize-buffer "ext:htmlize" (&optional buffer))
 (defvar htmlize-output-type)
 
@@ -349,6 +346,7 @@ Return output file name."
 
 
 (provide 'ox-org)
+(provide 'ox-org-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

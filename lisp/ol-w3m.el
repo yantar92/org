@@ -41,10 +41,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 (defvar w3m-current-url)
 (defvar w3m-current-title)
@@ -220,5 +217,6 @@ Return t if there is no previous link; otherwise, return nil."
    (define-key w3m-minor-mode-map "\C-c\C-x\C-w" 'org-w3m-copy-for-org-mode)))
 
 (provide 'ol-w3m)
+(provide 'ol-w3m-9.7-pre)
 
 ;;; ol-w3m.el ends here

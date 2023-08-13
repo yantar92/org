@@ -71,10 +71,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function org-table-import "org-table" (file arg))
 (declare-function orgtbl-to-csv "org-table" (table params))
@@ -422,5 +419,6 @@ argument mechanism."
   (error "SQL sessions not yet implemented"))
 
 (provide 'ob-sql)
+(provide 'ob-sql-9.7-pre)
 
 ;;; ob-sql.el ends here

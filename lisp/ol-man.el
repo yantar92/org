@@ -24,10 +24,7 @@
 ;;
 ;;; Commentary:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 (org-link-set-parameters "man"
 			 :follow #'org-man-open
@@ -95,5 +92,6 @@ matched strings in man buffer."
      (t path))))
 
 (provide 'ol-man)
+(provide 'ol-man-9.7-pre)
 
 ;;; ol-man.el ends here

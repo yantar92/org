@@ -36,12 +36,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 (require 'comint)
-(require 'org-macs)
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function tuareg-run-caml "ext:tuareg" ())
 (declare-function tuareg-run-ocaml "ext:tuareg" ())
@@ -169,5 +166,6 @@ Emacs-lisp table, otherwise return the results as a string."
 			    "; " "," results)))))
 
 (provide 'ob-ocaml)
+(provide 'ob-ocaml-9.7-pre)
 
 ;;; ob-ocaml.el ends here

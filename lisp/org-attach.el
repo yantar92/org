@@ -34,13 +34,10 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
-(require 'ol)
-(require 'org-id)
+(require 'org-9.7-pre "org")
+(require 'ol-9.7-pre "ol")
+(require 'org-id-9.7-pre "org-id")
 
 (declare-function dired-dwim-target-directory "dired-aux")
 (declare-function dired-get-marked-files "dired" (&optional localp arg filter distinguish-one-marked error))
@@ -838,6 +835,7 @@ Idea taken from `gnus-dired-attach'."
 (add-hook 'org-export-before-parsing-functions 'org-attach-expand-links)
 
 (provide 'org-attach)
+(provide 'org-attach-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

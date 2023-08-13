@@ -39,10 +39,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-default-header-args:sass '())
 
@@ -68,5 +65,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "Sass does not support sessions"))
 
 (provide 'ob-sass)
+(provide 'ob-sass-9.7-pre)
 
 ;;; ob-sass.el ends here

@@ -28,10 +28,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function org-export-string-as "ox"
 		  (string backend &optional body-only ext-plist))
@@ -70,5 +67,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "Org does not support sessions"))
 
 (provide 'ob-org)
+(provide 'ob-org-9.7-pre)
 
 ;;; ob-org.el ends here

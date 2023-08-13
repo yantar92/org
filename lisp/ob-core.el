@@ -24,15 +24,12 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob-eval)
-(require 'org-macs)
-(require 'org-fold)
-(require 'org-compat)
-(require 'org-cycle)
+(require 'ob-eval-9.7-pre "ob-eval")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-fold-9.7-pre "org-fold")
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-cycle-9.7-pre "org-cycle")
 
 (defconst org-babel-exeext
   (if (memq system-type '(windows-nt cygwin))
@@ -3540,6 +3537,7 @@ Callers of this function will probably want to add an entry to
 	(defvaralias (intern (concat "org-babel-" var ":" new)) sym)))))
 
 (provide 'ob-core)
+(provide 'ob-core-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

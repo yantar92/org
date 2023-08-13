@@ -36,11 +36,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function run-ruby-or-pop-to-buffer "ext:inf-ruby" (command &optional name buffer))
 (declare-function inf-ruby-buffer "ext:inf-ruby" ())
@@ -278,5 +275,6 @@ return the value of the last statement in BODY, as elisp."
 	 (org-babel-eval-read-file tmp-file))))))
 
 (provide 'ob-ruby)
+(provide 'ob-ruby-9.7-pre)
 
 ;;; ob-ruby.el ends here

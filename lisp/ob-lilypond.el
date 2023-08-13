@@ -33,10 +33,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function org-fold-show-all "org-fold" (&optional types))
 
@@ -447,5 +444,6 @@ dependent on ORG-BABEL-LILYPOND-ARRANGE-MODE."
         (org-babel-lilypond-get-header-args mode)))
 
 (provide 'ob-lilypond)
+(provide 'ob-lilypond-9.7-pre)
 
 ;;; ob-lilypond.el ends here

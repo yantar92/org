@@ -51,11 +51,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-macs)
+(require 'org-macs-9.7-pre "org-macs")
 
 
 ;;; Public variables
@@ -456,6 +453,7 @@ with \"H:MM:SS\" format, return `h:mm:ss'.  Otherwise, return
 (org-duration-set-regexps)
 
 (provide 'org-duration)
+(provide 'org-duration-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

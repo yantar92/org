@@ -25,14 +25,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
 (require 'format-spec)
-(require 'org-compat)
-(require 'org-macs)
-(require 'ox)
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'ox-9.7-pre "ox")
 (require 'table nil 'noerror)
 
 (declare-function org-at-heading-p "org" (&optional _))
@@ -4357,6 +4354,7 @@ is non-nil then the newly converted file is opened using
 	       (cons (concat  "\\." (car desc) "\\'") 'archive-mode)))
 
 (provide 'ox-odt)
+(provide 'ox-odt-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

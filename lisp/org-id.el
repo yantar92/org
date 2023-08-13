@@ -70,13 +70,10 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
-(require 'org-element-ast)
-(require 'org-refile)
-(require 'ol)
+(require 'org-9.7-pre "org")
+(require 'org-element-ast-9.7-pre "org-element-ast")
+(require 'org-refile-9.7-pre "org-refile")
+(require 'ol-9.7-pre "ol")
 
 (declare-function message-make-fqdn "message" ())
 (declare-function org-goto-location "org-goto" (&optional _buf help))
@@ -758,6 +755,7 @@ or filename if no title."
 (org-link-set-parameters "id" :follow #'org-id-open)
 
 (provide 'org-id)
+(provide 'org-id-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

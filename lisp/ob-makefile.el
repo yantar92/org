@@ -28,10 +28,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-default-header-args:makefile '())
 
@@ -45,5 +42,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "Makefile sessions are nonsensical"))
 
 (provide 'ob-makefile)
+(provide 'ob-makefile-9.7-pre)
 
 ;;; ob-makefile.el ends here

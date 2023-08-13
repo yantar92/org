@@ -30,10 +30,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 ;; Declare external functions and variables
 
@@ -188,5 +185,6 @@ See `org-link-parameters' for details about PATH, DESC and FORMAT."
       (_ nil))))
 
 (provide 'ol-info)
+(provide 'ol-info-9.7-pre)
 
 ;;; ol-info.el ends here

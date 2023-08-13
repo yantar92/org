@@ -41,10 +41,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-sed-command "sed"
   "Name of the sed executable command.")
@@ -106,5 +103,6 @@ function is called by `org-babel-execute-src-block'."
       (cdr (assq :rowname-names params)) (cdr (assq :rownames params))))))
 
 (provide 'ob-sed)
+(provide 'ob-sed-9.7-pre)
 
 ;;; ob-sed.el ends here

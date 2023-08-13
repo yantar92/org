@@ -76,14 +76,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
-(require 'org-fold-core)
-(require 'org-footnote)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-fold-core-9.7-pre "org-fold-core")
+(require 'org-footnote-9.7-pre "org-footnote")
 
 (defvar org-M-RET-may-split-line)
 (defvar org-adapt-indentation)
@@ -3690,6 +3687,7 @@ overruling parameters for `org-list-to-generic'."
       params))))
 
 (provide 'org-list)
+(provide 'org-list-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

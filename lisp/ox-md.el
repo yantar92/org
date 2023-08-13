@@ -29,12 +29,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ox-html)
-(require 'ox-publish)
+(require 'ox-html-9.7-pre "ox-html")
+(require 'ox-publish-9.7-pre "ox-publish")
 
 
 ;;; User-Configurable Variables
@@ -803,6 +800,7 @@ Return output file name."
   (org-publish-org-to 'md filename ".md" plist pub-dir))
 
 (provide 'ox-md)
+(provide 'ox-md-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

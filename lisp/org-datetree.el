@@ -30,10 +30,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (defvar org-datetree-base-level 1
   "The level at which years should be placed in the date tree.
@@ -281,6 +278,7 @@ before running this command, even though the command tries to be smart."
 		(org-datetree-file-entry-under (current-kill 0) date)))))))))
 
 (provide 'org-datetree)
+(provide 'org-datetree-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

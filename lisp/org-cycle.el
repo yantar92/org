@@ -29,11 +29,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-fold)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-fold-9.7-pre "org-fold")
 
 (declare-function org-element-type-p "org-element-ast" (node types))
 (declare-function org-element-property "org-element-ast" (property node))
@@ -822,5 +819,6 @@ It works when `org-cycle-inline-images-display' is non-nil."
           (ignore)))))))
 
 (provide 'org-cycle)
+(provide 'org-cycle-9.7-pre)
 
 ;;; org-cycle.el ends here

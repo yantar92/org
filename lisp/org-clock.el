@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (declare-function calendar-iso-to-absolute "cal-iso" (date))
 (declare-function notifications-notify "notifications" (&rest params))
@@ -3255,6 +3252,7 @@ This function is added to `kill-emacs-query-functions'."
 (org-defkey org-mode-map "\C-c\C-x\C-e" 'org-clock-modify-effort-estimate)
 
 (provide 'org-clock)
+(provide 'org-clock-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

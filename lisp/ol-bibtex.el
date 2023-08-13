@@ -107,14 +107,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'bibtex)
 (require 'cl-lib)
-(require 'org-compat)
-(require 'org-macs)
-(require 'ol)
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'ol-9.7-pre "ol")
 
 (defvar org-agenda-overriding-header)
 (defvar org-agenda-search-view-always-boolean)
@@ -801,5 +798,6 @@ This function relies `org-search-view' to locate results."
 			     org-bibtex-type-property-name))))
 
 (provide 'ol-bibtex)
+(provide 'ol-bibtex-9.7-pre)
 
 ;;; ol-bibtex.el ends here

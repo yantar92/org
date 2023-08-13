@@ -23,12 +23,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'eshell)
 (require 'esh-mode)
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 (declare-function eshell/pwd "em-dirs.el" (&rest args))
 
@@ -71,5 +68,6 @@ and the current working directory."
        :description command))))
 
 (provide 'ol-eshell)
+(provide 'ol-eshell-9.7-pre)
 
 ;;; ol-eshell.el ends here

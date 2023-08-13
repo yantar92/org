@@ -136,10 +136,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
+(require 'org-9.7-pre "org")
 (require 'cl-lib)
 
 (defvar org-agenda-allow-remote-undo)
@@ -1104,5 +1101,6 @@ This means, between the beginning of line and the point."
 			    (:right (org-agenda-later 1)))))))
 
 (provide 'org-mouse)
+(provide 'org-mouse-9.7-pre)
 
 ;;; org-mouse.el ends here

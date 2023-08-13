@@ -32,13 +32,9 @@
 
 (require 'cl-lib)
 (require 'seq)
-(require 'org-macs)
+(require 'org-macs-9.7-pre "org-macs")
 
 (eval-when-compile (require 'subr-x))  ; Emacs < 28
-
-;; We rely on org-compat when generating Org version.  Checking Org
-;; version here will interfere with Org build process.
-;; (org-assert-version)
 
 (declare-function org-agenda-diary-entry "org-agenda")
 (declare-function org-agenda-maybe-redo "org-agenda" ())
@@ -1684,6 +1680,7 @@ key."
 (make-obsolete-variable 'org-speed-commands-user
                         "configure `org-speed-commands' instead." "9.5")
 (provide 'org-compat)
+(provide 'org-compat-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

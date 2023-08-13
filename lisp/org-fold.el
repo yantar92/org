@@ -42,11 +42,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-fold-core)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-fold-core-9.7-pre "org-fold-core")
 
 (defvar org-inlinetask-min-level)
 (defvar org-link--link-folding-spec)
@@ -950,5 +947,6 @@ The advices are installed in current buffer."
     (advice-add command :before #'org-fold-check-before-invisible-edit-maybe)))
 
 (provide 'org-fold)
+(provide 'org-fold-9.7-pre)
 
 ;;; org-fold.el ends here

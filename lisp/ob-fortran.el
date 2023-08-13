@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'cc-mode)
 (require 'cl-lib)
 
@@ -170,5 +167,6 @@ of the same value."
     (format "%S" val)))
 
 (provide 'ob-fortran)
+(provide 'ob-fortran-9.7-pre)
 
 ;;; ob-fortran.el ends here

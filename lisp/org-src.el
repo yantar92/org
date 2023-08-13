@@ -31,14 +31,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob-comint)
-(require 'org-macs)
-(require 'org-compat)
-(require 'org-keys)
+(require 'ob-comint-9.7-pre "ob-comint")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-keys-9.7-pre "org-keys")
 (require 'sh-script)
 
 (declare-function org--get-expected-indentation "org" (element contentsp))
@@ -1496,5 +1493,6 @@ EVENT is passed to `mouse-set-point'."
 	(setq org-src--saved-temp-window-config nil)))))
 
 (provide 'org-src)
+(provide 'org-src-9.7-pre)
 
 ;;; org-src.el ends here

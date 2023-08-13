@@ -61,11 +61,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-compat)
-(require 'org-macs)
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'seq)
 
 (declare-function org-at-heading-p "org" (&optional _))
@@ -1732,4 +1729,5 @@ ARG is the prefix argument received when calling interactively the function."
           (user-error "Cannot insert a citation here"))))))))
 
 (provide 'oc)
+(provide 'oc-9.7-pre)
 ;;; oc.el ends here

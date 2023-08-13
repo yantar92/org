@@ -47,10 +47,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function cider-current-connection "ext:cider-client" (&optional type))
 (declare-function cider-current-ns "ext:cider-client" ())
@@ -348,5 +345,6 @@ or set the `:backend' header argument"
   (org-babel-execute:clojure body params t))
 
 (provide 'ob-clojure)
+(provide 'ob-clojure-9.7-pre)
 
 ;;; ob-clojure.el ends here

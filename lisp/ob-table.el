@@ -54,11 +54,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob-core)
-(require 'org-macs)
+(require 'ob-core-9.7-pre "ob-core")
+(require 'org-macs-9.7-pre "org-macs")
 
 (defun org-babel-table-truncate-at-newline (string)
   "Replace newline character with ellipses.
@@ -153,5 +150,6 @@ example below.
          (org-trim (if (stringp result) result (format "%S" result)))))))
 
 (provide 'ob-table)
+(provide 'ob-table-9.7-pre)
 
 ;;; ob-table.el ends here

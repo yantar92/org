@@ -47,12 +47,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
 
 (declare-function org-collect-keywords "org" (keywords &optional unique directory))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
@@ -437,5 +434,6 @@ Any other non-empty string resets the counter to 1."
              org-macro--counter-table)))
 
 (provide 'org-macro)
+(provide 'org-macro-9.7-pre)
 
 ;;; org-macro.el ends here

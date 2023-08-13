@@ -33,11 +33,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function forth-proc "ext:gforth" ())
 
@@ -88,5 +85,6 @@ This function is called by `org-babel-execute-src-block'."
 			    'omit-nulls)))))
 
 (provide 'ob-forth)
+(provide 'ob-forth-9.7-pre)
 
 ;;; ob-forth.el ends here

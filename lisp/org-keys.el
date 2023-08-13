@@ -27,14 +27,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
 
 (defvar org-outline-regexp)
 
-(require 'oc)
+(require 'oc-9.7-pre "oc")
 
 (declare-function org-add-note "org" ())
 (declare-function org-agenda "org" (&optional arg org-keys restriction))
@@ -924,6 +921,7 @@ a-list placed behind the generic `org-babel-key-prefix'.")
   (describe-bindings org-babel-key-prefix))
 
 (provide 'org-keys)
+(provide 'org-keys-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

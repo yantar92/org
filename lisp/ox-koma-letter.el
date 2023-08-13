@@ -165,11 +165,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ox-latex)
+(require 'ox-latex-9.7-pre "ox-latex")
 
 ;; Install a default letter class.
 (unless (assoc "default-koma-letter" org-latex-classes)
@@ -989,4 +986,5 @@ Return PDF file's name."
 
 
 (provide 'ox-koma-letter)
+(provide 'ox-koma-letter-9.7-pre)
 ;;; ox-koma-letter.el ends here

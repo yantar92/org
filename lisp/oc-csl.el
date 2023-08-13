@@ -112,14 +112,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
 (require 'map)
 (require 'bibtex)
 (require 'json)
-(require 'oc)
+(require 'oc-9.7-pre "oc")
 
 (require 'citeproc nil t)
 (declare-function citeproc-style-cite-note "ext:citeproc")
@@ -878,4 +875,5 @@ property list."
     (("locators" "l") ("bare" "b"))))
 
 (provide 'oc-csl)
+(provide 'oc-csl-9.7-pre)
 ;;; oc-csl.el ends here

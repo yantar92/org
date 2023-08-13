@@ -28,10 +28,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-default-header-args:css '())
 
@@ -46,5 +43,6 @@ CSS does not support sessions."
   (error "CSS sessions are nonsensical"))
 
 (provide 'ob-css)
+(provide 'ob-css-9.7-pre)
 
 ;;; ob-css.el ends here

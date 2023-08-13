@@ -28,12 +28,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
-(require 'org-agenda)
+(require 'org-9.7-pre "org")
+(require 'org-agenda-9.7-pre "org-agenda")
 
 (defgroup org-habit nil
   "Options concerning habit tracking in Org mode."
@@ -475,5 +472,6 @@ See `org-habit-show-all-today'."
 (org-defkey org-agenda-mode-map "K" 'org-habit-toggle-display-in-agenda)
 
 (provide 'org-habit)
+(provide 'org-habit-9.7-pre)
 
 ;;; org-habit.el ends here

@@ -27,12 +27,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-compat)
-(require 'org-macs)
-(require 'org-fold)
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-fold-9.7-pre "org-fold")
 
 (defvar clean-buffer-list-kill-buffer-names)
 (defvar org-agenda-buffer-name)
@@ -2111,6 +2108,7 @@ Also refresh fontification if needed."
 (org-link-make-regexps)
 
 (provide 'ol)
+(provide 'ol-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

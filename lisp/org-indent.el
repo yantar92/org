@@ -36,12 +36,9 @@
 ;;
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-compat)
-(require 'org)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-9.7-pre "org")
 
 (require 'cl-lib)
 
@@ -429,6 +426,7 @@ This function is meant to be called by `after-change-functions'."
 	 (org-indent-add-properties beg end))))))
 
 (provide 'org-indent)
+(provide 'org-indent-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

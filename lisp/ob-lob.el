@@ -24,12 +24,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob-core)
-(require 'ob-table)
+(require 'ob-core-9.7-pre "ob-core")
+(require 'ob-table-9.7-pre "ob-table")
 
 (declare-function org-babel-ref-split-args "ob-ref" (arg-string))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
@@ -166,6 +163,7 @@ see."
 	(_ nil)))))
 
 (provide 'ob-lob)
+(provide 'ob-lob-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

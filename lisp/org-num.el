@@ -61,12 +61,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org) ;Otherwise `org-num--comment-re' burps on `org-comment-string'
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-9.7-pre "org") ;Otherwise `org-num--comment-re' burps on `org-comment-string'
 
 (defvar org-comment-string)
 (defvar org-complex-heading-regexp)
@@ -473,6 +470,7 @@ NUMBERING is a list of numbers."
     (remove-hook 'change-major-mode-hook #'org-num--clear t))))
 
 (provide 'org-num)
+(provide 'org-num-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

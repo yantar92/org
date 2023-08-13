@@ -25,10 +25,7 @@
 ;; Org Refile allows you to refile subtrees to various locations.
 
 ;;; Code:
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 
@@ -774,6 +771,7 @@ this function appends the default value from
 	   args)))
 
 (provide 'org-refile)
+(provide 'org-refile-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

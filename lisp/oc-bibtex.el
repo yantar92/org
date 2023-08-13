@@ -36,10 +36,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'oc)
+(require 'oc-9.7-pre "oc")
 
 (declare-function org-element-property "org-element-ast" (property node))
 
@@ -84,4 +81,5 @@ state, as a property list."
     (("nil"))))
 
 (provide 'oc-bibtex)
+(provide 'oc-bibtex-9.7-pre)
 ;;; oc-bibtex.el ends here

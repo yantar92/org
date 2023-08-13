@@ -39,10 +39,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function run-mozilla "ext:moz" (arg))
 (declare-function httpd-start "ext:simple-httpd" ())
@@ -209,5 +206,6 @@ Return the initialized session."
     (error "Sessions are only supported with mozrepl add \":cmd mozrepl\""))))
 
 (provide 'ob-js)
+(provide 'ob-js-9.7-pre)
 
 ;;; ob-js.el ends here

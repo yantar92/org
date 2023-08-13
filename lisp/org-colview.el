@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (declare-function org-agenda-redo "org-agenda" (&optional all))
 (declare-function org-agenda-do-context-action "org-agenda" ())
@@ -1751,6 +1748,7 @@ This will add overlays to the date lines, to show the summary for each day."
 
 
 (provide 'org-colview)
+(provide 'org-colview-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

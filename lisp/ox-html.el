@@ -31,13 +31,10 @@
 
 ;;; Dependencies
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
 (require 'format-spec)
-(require 'ox)
-(require 'ox-publish)
+(require 'ox-9.7-pre "ox")
+(require 'ox-publish-9.7-pre "ox-publish")
 (require 'table)
 
 
@@ -4029,6 +4026,7 @@ Return output file name."
 
 
 (provide 'ox-html)
+(provide 'ox-html-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

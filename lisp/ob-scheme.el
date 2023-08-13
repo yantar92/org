@@ -39,10 +39,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 (require 'geiser nil t)
 (require 'geiser-impl nil t)
 (defvar geiser-repl--repl)             ; Defined in geiser-repl.el
@@ -266,5 +263,6 @@ This function is called by `org-babel-execute-src-block'."
 	    (org-babel-scheme--table-or-string table)))))))
 
 (provide 'ob-scheme)
+(provide 'ob-scheme-9.7-pre)
 
 ;;; ob-scheme.el ends here

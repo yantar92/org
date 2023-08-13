@@ -48,10 +48,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 (declare-function erc-buffer-filter "erc" (predicate &optional proc))
 (declare-function erc-channel-p "erc" (channel))
@@ -264,6 +261,7 @@ FORMAT."
       (_ nil))))
 
 (provide 'ol-irc)
+(provide 'ol-irc-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

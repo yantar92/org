@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'ob-sql)
+(require 'ob-9.7-pre "ob")
+(require 'ob-sql-9.7-pre "ob-sql")
 
 (declare-function org-table-convert-region "org-table"
 		  (beg0 end0 &optional separator))
@@ -147,5 +144,6 @@ Prepare SESSION according to the header arguments specified in PARAMS."
   (org-babel-read cell t))
 
 (provide 'ob-sqlite)
+(provide 'ob-sqlite-9.7-pre)
 
 ;;; ob-sqlite.el ends here

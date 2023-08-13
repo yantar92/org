@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'calc)
 (require 'calc-trail)
 (require 'calc-store)
@@ -111,5 +108,6 @@ EL is taken from the output of `math-read-exprs'."
     el))
 
 (provide 'ob-calc)
+(provide 'ob-calc-9.7-pre)
 
 ;;; ob-calc.el ends here

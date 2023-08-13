@@ -26,11 +26,8 @@
 
 ;;;; Require other packages
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-compat)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
 (require 'pcomplete)
 
 (declare-function org-at-heading-p "org" (&optional ignored))
@@ -454,5 +451,6 @@ switches."
 ;;; Finish up
 
 (provide 'org-pcomplete)
+(provide 'org-pcomplete-9.7-pre)
 
 ;;; org-pcomplete.el ends here

@@ -43,10 +43,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'oc)
+(require 'oc-9.7-pre "oc")
 
 (declare-function org-element-property "org-element-ast" (property node))
 
@@ -205,4 +202,5 @@ OUTPUT is the final output of the export process."
      ("bare-full" "bf") ("caps-full" "cf") ("bare-caps-full" "bcf"))))
 
 (provide 'oc-natbib)
+(provide 'oc-natbib-9.7-pre)
 ;;; oc-natbib.el ends here

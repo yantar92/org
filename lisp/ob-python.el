@@ -29,11 +29,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'python)
 
 (defvar org-babel-tangle-lang-exts)
@@ -427,5 +424,6 @@ by `org-babel-comint-async-filter'."
        tmp-results-file))))
 
 (provide 'ob-python)
+(provide 'ob-python-9.7-pre)
 
 ;;; ob-python.el ends here

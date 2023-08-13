@@ -40,12 +40,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
-(require 'ox-ascii)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'ox-ascii-9.7-pre "ox-ascii")
 
 (declare-function org-time-string-to-time "org" (s))
 (declare-function orgtbl-to-generic "org-table" (table params))
@@ -323,5 +320,6 @@ Pass PARAMS through to `orgtbl-to-generic' when exporting TABLE."
   data-file)
 
 (provide 'ob-gnuplot)
+(provide 'ob-gnuplot-9.7-pre)
 
 ;;; ob-gnuplot.el ends here

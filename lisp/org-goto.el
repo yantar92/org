@@ -22,11 +22,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
-(require 'org-refile)
+(require 'org-9.7-pre "org")
+(require 'org-refile-9.7-pre "org-refile")
 
 (defvar org-goto-exit-command nil)
 (defvar org-goto-map nil)
@@ -284,6 +281,7 @@ With a prefix argument, use the alternative interface: e.g., if
       (message "Quit"))))
 
 (provide 'org-goto)
+(provide 'org-goto-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

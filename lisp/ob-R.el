@@ -29,11 +29,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (declare-function orgtbl-to-tsv "org-table" (table params))
 (declare-function run-ess-r "ext:ess-r-mode" (&optional start-args))
@@ -560,5 +557,6 @@ comint buffers used for asynchronous Babel evaluation."
 
 
 (provide 'ob-R)
+(provide 'ob-R-9.7-pre)
 
 ;;; ob-R.el ends here

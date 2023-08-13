@@ -31,12 +31,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
-(require 'org-table)
+(require 'org-9.7-pre "org")
+(require 'org-table-9.7-pre "org-table")
 
 (declare-function gnuplot-delchar-or-maybe-eof "ext:gnuplot" (arg))
 (declare-function gnuplot-mode "ext:gnuplot" ())
@@ -734,6 +731,7 @@ line directly before or after the table."
         (org-plot/redisplay-img-in-buffer (expand-file-name (plist-get params :file)))))))
 
 (provide 'org-plot)
+(provide 'org-plot-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

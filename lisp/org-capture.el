@@ -47,12 +47,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
-(require 'org-refile)
+(require 'org-9.7-pre "org")
+(require 'org-refile-9.7-pre "org-refile")
 
 (declare-function org-at-encrypted-entry-p "org-crypt" ())
 (declare-function org-at-table-p "org-table" (&optional table-type))
@@ -2021,5 +2018,6 @@ Assume sexps have been marked with
 
 
 (provide 'org-capture)
+(provide 'org-capture-9.7-pre)
 
 ;;; org-capture.el ends here

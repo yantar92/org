@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ox)
-(require 'ox-publish)
+(require 'ox-9.7-pre "ox")
+(require 'ox-publish-9.7-pre "ox-publish")
 (require 'cl-lib)
 
 ;;; Function Declarations
@@ -2220,6 +2217,7 @@ Return output file name."
 
 
 (provide 'ox-ascii)
+(provide 'ox-ascii-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

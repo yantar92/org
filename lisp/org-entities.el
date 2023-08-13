@@ -27,9 +27,6 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (declare-function org-mode "org" ())
 (declare-function org-toggle-pretty-entities "org"       ())
 (declare-function org-table-align            "org-table" ())
@@ -598,6 +595,7 @@ This first checks the user list, then the built-in list."
 
 
 (provide 'org-entities)
+(provide 'org-entities-9.7-pre)
 
 ;; Local variables:
 ;; coding: utf-8

@@ -28,9 +28,6 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (defgroup org-faces nil
   "Faces in Org mode."
   :tag "Org Faces"
@@ -733,5 +730,6 @@ level org-n-level-faces."
   :group 'org-faces)
 
 (provide 'org-faces)
+(provide 'org-faces-9.7-pre)
 
 ;;; org-faces.el ends here

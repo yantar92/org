@@ -35,10 +35,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-screen-location "screen"
   "The command location for screen.
@@ -143,5 +140,6 @@ The terminal should shortly flicker."
 		       "DOESN'T work.")))))
 
 (provide 'ob-screen)
+(provide 'ob-screen-9.7-pre)
 
 ;;; ob-screen.el ends here

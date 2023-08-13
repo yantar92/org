@@ -32,12 +32,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-agenda)
-(require 'ox-ascii)
+(require 'org-agenda-9.7-pre "org-agenda")
+(require 'ox-ascii-9.7-pre "ox-ascii")
 (declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
@@ -1205,6 +1202,7 @@ FILES is a list of files to build the calendar from."
 
 
 (provide 'ox-icalendar)
+(provide 'ox-icalendar-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

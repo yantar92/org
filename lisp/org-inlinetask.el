@@ -78,10 +78,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (defgroup org-inlinetask nil
   "Options concerning inline tasks in Org mode."
@@ -356,5 +353,6 @@ This function is meant to be used in `org-cycle-hook'."
 (add-hook 'org-cycle-hook 'org-inlinetask-hide-tasks)
 
 (provide 'org-inlinetask)
+(provide 'org-inlinetask-9.7-pre)
 
 ;;; org-inlinetask.el ends here

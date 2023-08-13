@@ -86,17 +86,14 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob)
-(require 'oc)
-(require 'ol)
-(require 'org-attach)
-(require 'org-macro)
-(require 'org-fold)
-(require 'ox)
+(require 'ob-9.7-pre "ob")
+(require 'oc-9.7-pre "oc")
+(require 'ol-9.7-pre "ol")
+(require 'org-attach-9.7-pre "org-attach")
+(require 'org-macro-9.7-pre "org-macro")
+(require 'org-fold-9.7-pre "org-fold")
+(require 'ox-9.7-pre "ox")
 (require 'seq)
 
 
@@ -1725,6 +1722,7 @@ AST is the buffer parse tree."
   :categories '(timestamp) :trust 'high)
 
 (provide 'org-lint)
+(provide 'org-lint-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

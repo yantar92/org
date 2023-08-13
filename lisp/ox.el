@@ -72,15 +72,12 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ob-exp)
-(require 'oc)
-(require 'ol)
-(require 'org-element)
-(require 'org-macro)
+(require 'ob-exp-9.7-pre "ob-exp")
+(require 'oc-9.7-pre "oc")
+(require 'ol-9.7-pre "ol")
+(require 'org-element-9.7-pre "org-element")
+(require 'org-macro-9.7-pre "org-macro")
 (require 'tabulated-list)
 
 (declare-function org-src-coderef-format "org-src" (&optional element))
@@ -7461,6 +7458,7 @@ options as CDR."
 
 
 (provide 'ox)
+(provide 'ox-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

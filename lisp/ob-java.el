@@ -29,10 +29,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("java" . "java"))
@@ -493,5 +490,6 @@ for `value' RESULT-TYPE.  Not used for `output' RESULT-TYPE."
                            (org-babel-java-table-or-string raw))))
 
 (provide 'ob-java)
+(provide 'ob-java-9.7-pre)
 
 ;;; ob-java.el ends here

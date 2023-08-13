@@ -31,11 +31,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function org-create-formula-image "org" (string tofile options buffer &optional type))
 (declare-function org-latex-compile "ox-latex" (texfile &optional snippet))
@@ -289,5 +286,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "LaTeX does not support sessions"))
 
 (provide 'ob-latex)
+(provide 'ob-latex-9.7-pre)
 
 ;;; ob-latex.el ends here

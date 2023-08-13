@@ -270,11 +270,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-compat)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
 
 (declare-function isearch-filter-visible "isearch" (beg end))
 
@@ -1554,5 +1551,6 @@ See `org-fold-core--optimise-for-huge-buffers'."
         (setq pos (org-fold-core-next-folding-state-change (caar org-fold-core--specs) pos end))))))
 
 (provide 'org-fold-core)
+(provide 'org-fold-core-9.7-pre)
 
 ;;; org-fold-core.el ends here

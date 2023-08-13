@@ -37,11 +37,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ox)
+(require 'ox-9.7-pre "ox")
 
 ;;; Function Declarations
 
@@ -1139,5 +1136,6 @@ Return PDF file name or an error if it couldn't be produced."
     output))
 
 (provide 'ox-man)
+(provide 'ox-man-9.7-pre)
 
 ;;; ox-man.el ends here

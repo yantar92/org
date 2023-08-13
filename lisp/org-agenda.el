@@ -45,16 +45,13 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ol)
-(require 'org-fold-core)
-(require 'org)
-(require 'org-macs)
-(require 'org-refile)
-(require 'org-element)
+(require 'ol-9.7-pre "ol")
+(require 'org-fold-core-9.7-pre "org-fold-core")
+(require 'org-9.7-pre "org")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-refile-9.7-pre "org-refile")
+(require 'org-element-9.7-pre "org-element")
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))
@@ -11166,5 +11163,6 @@ when defining today."
   (org-agenda-set-tags))
 
 (provide 'org-agenda)
+(provide 'org-agenda-9.7-pre)
 
 ;;; org-agenda.el ends here

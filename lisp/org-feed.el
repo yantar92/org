@@ -88,10 +88,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
+(require 'org-9.7-pre "org")
 (require 'sha1)
 
 (declare-function url-retrieve-synchronously "url"
@@ -714,6 +711,7 @@ formatted as a string, not the original XML data."
     entry))
 
 (provide 'org-feed)
+(provide 'org-feed-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

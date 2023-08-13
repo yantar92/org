@@ -37,11 +37,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function sly-eval "ext:sly" (sexp &optional package))
 (declare-function slime-eval "ext:slime" (sexp &optional package))
@@ -128,5 +125,6 @@ a property list containing the parameters of the block."
   (replace-regexp-in-string "#(" "(" results))
 
 (provide 'ob-lisp)
+(provide 'ob-lisp-9.7-pre)
 
 ;;; ob-lisp.el ends here

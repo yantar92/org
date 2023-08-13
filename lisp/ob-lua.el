@@ -36,11 +36,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'cl-lib)
 
 (declare-function lua-shell "ext:lua-mode" (&optional argprompt))
@@ -403,5 +400,6 @@ fd:close()"
   (org-unbracket-string "'" "'" string))
 
 (provide 'ob-lua)
+(provide 'ob-lua-9.7-pre)
 
 ;;; ob-lua.el ends here

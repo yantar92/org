@@ -66,13 +66,10 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'bibtex)
 (require 'json)
 (require 'map)
-(require 'oc)
+(require 'oc-9.7-pre "oc")
 (require 'seq)
 
 (declare-function org-open-at-point "org" (&optional arg))
@@ -867,4 +864,5 @@ Raise an error when no bibliography is set in the buffer."
     (("nil") ("bare" "b") ("bare-caps" "bc") ("caps" "c"))))
 
 (provide 'oc-basic)
+(provide 'oc-basic-9.7-pre)
 ;;; oc-basic.el ends here

@@ -36,14 +36,12 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'ob-octave)
+(require 'ob-9.7-pre "ob")
+(require 'ob-octave-9.7-pre "ob-octave")
 
 ;; see ob-octave for matlab implementation
 
 (provide 'ob-matlab)
+(provide 'ob-matlab-9.7-pre)
 
 ;;; ob-matlab.el ends here

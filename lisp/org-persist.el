@@ -255,10 +255,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-compat)
+(require 'org-compat-9.7-pre "org-compat")
 (require 'xdg nil t)
 
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
@@ -1260,5 +1257,6 @@ such scenario."
 (add-hook 'after-init-hook #'org-persist-load-all)
 
 (provide 'org-persist)
+(provide 'org-persist-9.7-pre)
 
 ;;; org-persist.el ends here

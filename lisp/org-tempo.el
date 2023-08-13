@@ -38,12 +38,9 @@
 ;;
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'tempo)
 (require 'cl-lib)
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (defvar org-structure-template-alist)
 
@@ -193,5 +190,6 @@ didn't succeed."
   (with-current-buffer b (org-tempo-setup)))
 
 (provide 'org-tempo)
+(provide 'org-tempo-9.7-pre)
 
 ;;; org-tempo.el ends here

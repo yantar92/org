@@ -38,12 +38,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
 (require 'format-spec)
-(require 'ox)
+(require 'ox-9.7-pre "ox")
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
@@ -1379,6 +1376,7 @@ does not exist."
 
 
 (provide 'ox-publish)
+(provide 'ox-publish-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

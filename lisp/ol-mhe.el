@@ -30,11 +30,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'ol)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'ol-9.7-pre "ol")
 
 ;; Customization variables
 
@@ -218,5 +215,6 @@ folders."
       (error "Message not found"))))
 
 (provide 'ol-mhe)
+(provide 'ol-mhe-9.7-pre)
 
 ;;; ol-mhe.el ends here

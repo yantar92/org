@@ -71,9 +71,6 @@
 
 ;;;; Require other packages
 
-(require 'org-compat)
-(org-assert-version)
-
 (require 'cl-lib)
 
 (eval-when-compile (require 'gnus-sum))
@@ -92,15 +89,15 @@
    (message "You need to run \"make\" or \"make autoloads\" from Org lisp directory")
    (sit-for 3)))
 
-(eval-and-compile (require 'org-macs))
-(require 'org-compat)
-(require 'org-keys)
-(require 'ol)
-(require 'oc)
-(require 'org-table)
-(require 'org-fold)
+(eval-and-compile (require 'org-macs-9.7-pre "org-macs"))
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-keys-9.7-pre "org-keys")
+(require 'ol-9.7-pre "ol")
+(require 'oc-9.7-pre "oc")
+(require 'org-table-9.7-pre "org-table")
+(require 'org-fold-9.7-pre "org-fold")
 
-(require 'org-cycle)
+(require 'org-cycle-9.7-pre "org-cycle")
 (defvaralias 'org-hide-block-startup 'org-cycle-hide-block-startup)
 (defvaralias 'org-hide-drawer-startup 'org-cycle-hide-drawer-startup)
 (defvaralias 'org-pre-cycle-hook 'org-cycle-pre-hook)
@@ -4789,16 +4786,16 @@ This is for getting out of special buffers like capture.")
 (when (< emacs-major-version 28)  ; preloaded in Emacs 28
   (require 'easymenu))
 
-(require 'org-entities)
-(require 'org-faces)
-(require 'org-list)
-(require 'org-pcomplete)
-(require 'org-src)
-(require 'org-footnote)
-(require 'org-macro)
+(require 'org-entities-9.7-pre "org-entities")
+(require 'org-faces-9.7-pre "org-faces")
+(require 'org-list-9.7-pre "org-list")
+(require 'org-pcomplete-9.7-pre "org-pcomplete")
+(require 'org-src-9.7-pre "org-src")
+(require 'org-footnote-9.7-pre "org-footnote")
+(require 'org-macro-9.7-pre "org-macro")
 
 ;; babel
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-element-cache-persistent); Defined in org-element.el
 (defvar org-element-use-cache); Defined in org-element.el
@@ -21536,6 +21533,7 @@ Started from `gnus-info-find-node'."
 			  'org-fold-show-all 'append 'local)))
 
 (provide 'org)
+(provide 'org-9.7-pre)
 
 (run-hooks 'org-load-hook)
 

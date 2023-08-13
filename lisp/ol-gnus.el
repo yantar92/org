@@ -31,15 +31,12 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'gnus-sum)
 (require 'gnus-util)
 (require 'nnheader)
 (or (require 'nnselect nil t)           ; Emacs >= 28
     (require 'nnir nil t))              ; Emacs < 28
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 
 ;;; Declare external functions and variables
@@ -267,5 +264,6 @@ If `org-store-link' was called with a prefix arg the meaning of
 	(t (gnus))))
 
 (provide 'ol-gnus)
+(provide 'ol-gnus-9.7-pre)
 
 ;;; ol-gnus.el ends here

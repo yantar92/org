@@ -27,13 +27,10 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-src)
-(require 'org-macs)
-(require 'ol)
+(require 'org-src-9.7-pre "org-src")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'ol-9.7-pre "ol")
 
 (declare-function make-directory "files" (dir &optional parents))
 (declare-function org-at-heading-p "org" (&optional ignored))
@@ -690,6 +687,7 @@ which enable the original code blocks to be found."
     body))
 
 (provide 'ob-tangle)
+(provide 'ob-tangle-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

@@ -203,7 +203,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
+(require 'org-macs-9.7-pre "org-macs")
 (require 'inline) ; load indentation rules
 
 ;;;; Syntax node type
@@ -1154,4 +1154,5 @@ The function takes care of setting `:parent' property for NEW."
   old)
 
 (provide 'org-element-ast)
+(provide 'org-element-ast-9.7-pre)
 ;;; org-element-ast.el ends here

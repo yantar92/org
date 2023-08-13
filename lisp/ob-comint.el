@@ -31,11 +31,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob-core)
-(require 'org-compat)
+(require 'ob-core-9.7-pre "ob-core")
+(require 'org-compat-9.7-pre "org-compat")
 (require 'comint)
 
 (defun org-babel-comint-buffer-livep (buffer)
@@ -328,6 +325,7 @@ result is delegated to `org-babel-comint-async-filter'."
      ,@body))
 
 (provide 'ob-comint)
+(provide 'ob-comint-9.7-pre)
 
 
 

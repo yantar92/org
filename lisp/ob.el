@@ -23,22 +23,20 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-compat)
-(require 'org-keys)
-(require 'ob-eval)
-(require 'ob-core)
-(require 'ob-comint)
-(require 'ob-exp)
-(require 'ob-table)
-(require 'ob-lob)
-(require 'ob-ref)
-(require 'ob-tangle)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-keys-9.7-pre "org-keys")
+(require 'ob-eval-9.7-pre "ob-eval")
+(require 'ob-core-9.7-pre "ob-core")
+(require 'ob-comint-9.7-pre "ob-comint")
+(require 'ob-exp-9.7-pre "ob-exp")
+(require 'ob-table-9.7-pre "ob-table")
+(require 'ob-lob-9.7-pre "ob-lob")
+(require 'ob-ref-9.7-pre "ob-ref")
+(require 'ob-tangle-9.7-pre "ob-tangle")
 
 (provide 'ob)
+(provide 'ob-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

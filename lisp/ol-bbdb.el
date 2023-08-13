@@ -93,13 +93,10 @@
 ;;
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-compat)
-(require 'org-macs)
-(require 'ol)
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'ol-9.7-pre "ol")
 
 ;;; Declare functions and variables
 
@@ -541,6 +538,7 @@ END:VEVENT\n"
 		     categ)))))
 
 (provide 'ol-bbdb)
+(provide 'ol-bbdb-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

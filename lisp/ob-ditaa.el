@@ -37,11 +37,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-compat)
+(require 'ob-9.7-pre "ob")
+(require 'org-compat-9.7-pre "org-compat")
 
 (defvar org-babel-default-header-args:ditaa
   '((:results . "file")
@@ -122,5 +119,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "Ditaa does not support sessions"))
 
 (provide 'ob-ditaa)
+(provide 'ob-ditaa-9.7-pre)
 
 ;;; ob-ditaa.el ends here

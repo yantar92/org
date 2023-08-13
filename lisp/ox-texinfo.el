@@ -26,11 +26,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'ox)
+(require 'ox-9.7-pre "ox")
 
 (eval-when-compile (require 'subr-x))
 
@@ -2050,6 +2047,7 @@ Once computed, the results remain cached."
   org-texinfo-supports-math--cache)
 
 (provide 'ox-texinfo)
+(provide 'ox-texinfo-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

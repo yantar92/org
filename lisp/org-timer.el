@@ -35,11 +35,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org-clock)
+(require 'org-clock-9.7-pre "org-clock")
 
 (declare-function org-agenda-error "org-agenda" ())
 
@@ -488,6 +485,7 @@ Try to use an Org header, otherwise use the buffer name."
    (t (buffer-name (buffer-base-buffer)))))
 
 (provide 'org-timer)
+(provide 'org-timer-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

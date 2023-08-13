@@ -128,11 +128,8 @@
 ;;
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
-(require 'ol)
+(require 'org-9.7-pre "org")
+(require 'ol-9.7-pre "ol")
 
 (declare-function org-publish-get-project-from-filename "ox-publish"
 		  (filename &optional up))
@@ -771,5 +768,6 @@ the cdr of an element in `org-publish-project-alist', reuse
       (customize-save-variable 'org-protocol-project-alist org-protocol-project-alist))))
 
 (provide 'org-protocol)
+(provide 'org-protocol-9.7-pre)
 
 ;;; org-protocol.el ends here

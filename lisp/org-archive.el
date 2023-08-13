@@ -28,10 +28,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org)
+(require 'org-9.7-pre "org")
 (require 'cl-lib)
 
 (declare-function org-datetree-find-date-create "org-datetree" (date &optional keep-restriction))
@@ -640,6 +637,7 @@ This command is set with the variable `org-archive-default-command'."
     (error "Abort")))
 
 (provide 'org-archive)
+(provide 'org-archive-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

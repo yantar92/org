@@ -27,10 +27,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob-core)
+(require 'ob-core-9.7-pre "ob-core")
 
 (declare-function org-babel--get-vars "ob" (params))
 (declare-function org-babel-result-cond "ob" (result-params scalar-form &rest table-forms))
@@ -109,5 +106,6 @@ corresponding :lexical source block argument."
 (org-babel-make-language-alias "elisp" "emacs-lisp")
 
 (provide 'ob-emacs-lisp)
+(provide 'ob-emacs-lisp-9.7-pre)
 
 ;;; ob-emacs-lisp.el ends here

@@ -54,11 +54,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-macs)
-(require 'org-compat)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
 
 (declare-function epg-decrypt-string "epg" (context cipher))
 (declare-function epg-list-keys "epg" (context &optional name mode))
@@ -329,5 +326,6 @@ Assume `epg-context' is set."
 (add-hook 'org-fold-reveal-start-hook 'org-decrypt-entry)
 
 (provide 'org-crypt)
+(provide 'org-crypt-9.7-pre)
 
 ;;; org-crypt.el ends here

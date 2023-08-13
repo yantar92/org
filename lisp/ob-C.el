@@ -33,12 +33,9 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cc-mode)
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 
@@ -508,5 +505,6 @@ specifying a variable with the name of the table."
          typename table table table))))))
 
 (provide 'ob-C)
+(provide 'ob-C-9.7-pre)
 
 ;;; ob-C.el ends here

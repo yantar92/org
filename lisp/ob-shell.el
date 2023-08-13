@@ -28,11 +28,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'shell)
 (require 'cl-lib)
 
@@ -381,5 +378,6 @@ return the value of the last statement in BODY."
   string)
 
 (provide 'ob-shell)
+(provide 'ob-shell-9.7-pre)
 
 ;;; ob-shell.el ends here

@@ -50,11 +50,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob-core)
-(require 'org-macs)
+(require 'ob-core-9.7-pre "ob-core")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'cl-lib)
 
 (declare-function org-babel-lob-get-info "ob-lob" (&optional datum no-eval))
@@ -249,5 +246,6 @@ to \"0:-1\"."
   (mapcar #'org-trim (org-babel-balanced-split arg-string 44)))
 
 (provide 'ob-ref)
+(provide 'ob-ref-9.7-pre)
 
 ;;; ob-ref.el ends here

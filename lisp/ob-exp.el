@@ -24,10 +24,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob-core)
+(require 'ob-core-9.7-pre "ob-core")
 
 (declare-function org-babel-lob-get-info "ob-lob" (&optional datum no-eval))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
@@ -458,5 +455,6 @@ inhibit insertion of results into the buffer."
 	     (org-babel-execute-src-block nil info))))))))
 
 (provide 'ob-exp)
+(provide 'ob-exp-9.7-pre)
 
 ;;; ob-exp.el ends here

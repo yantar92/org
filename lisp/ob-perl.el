@@ -29,10 +29,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("perl" . "pl"))
@@ -156,5 +153,6 @@ return the value of the last statement in BODY, as elisp."
           (org-babel-import-elisp-from-file tmp-file '(16)))))))
 
 (provide 'ob-perl)
+(provide 'ob-perl-9.7-pre)
 
 ;;; ob-perl.el ends here

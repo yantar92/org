@@ -24,7 +24,7 @@
 ;;
 ;;; Commentary:
 
-(require 'org-compat "org-compat.el")
+(require 'org-compat-9.7-pre "org-compat.el")
 
 (defun org-make-manual ()
   "Generate the Texinfo file out of the Org manual."
@@ -213,6 +213,7 @@ oldorg:	# do what the old Makefile did by default.
        (defun org-git-version () ,org-git-version))))
 
 (provide 'org-fixup)
+(provide 'org-fixup-9.7-pre)
 
 ;; Local Variables:
 ;; no-byte-compile: t

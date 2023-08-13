@@ -30,10 +30,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 ;; Declare external functions and variables
 (declare-function rmail-show-message  "rmail" (&optional n no-summary))
@@ -116,5 +113,6 @@
       (error "Message not found"))))
 
 (provide 'ol-rmail)
+(provide 'ol-rmail-9.7-pre)
 
 ;;; ol-rmail.el ends here

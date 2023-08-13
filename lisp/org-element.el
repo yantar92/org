@@ -58,21 +58,18 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'avl-tree)
 (require 'ring)
 (require 'cl-lib)
-(require 'ol)
-(require 'org-persist)
-(require 'org-compat)
-(require 'org-entities)
-(require 'org-footnote)
-(require 'org-list)
-(require 'org-macs)
-(require 'org-table)
-(require 'org-fold-core)
+(require 'ol-9.7-pre "ol")
+(require 'org-persist-9.7-pre "org-persist")
+(require 'org-compat-9.7-pre "org-compat")
+(require 'org-entities-9.7-pre "org-entities")
+(require 'org-footnote-9.7-pre "org-footnote")
+(require 'org-list-9.7-pre "org-list")
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-table-9.7-pre "org-table")
+(require 'org-fold-core-9.7-pre "org-fold-core")
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-escape-code-in-string "org-src" (s))
@@ -519,7 +516,7 @@ past the brackets."
 ;; object, stripping its parent property and resolving deferred values
 ;; in the process.
 
-(require 'org-element-ast)
+(require 'org-element-ast-9.7-pre "org-element-ast")
 
 (defsubst org-element-restriction (element)
   "Return restriction associated to ELEMENT.
@@ -8295,6 +8292,7 @@ end of ELEM-A."
         (goto-char (org-element-end elem-B))))))
 
 (provide 'org-element)
+(provide 'org-element-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

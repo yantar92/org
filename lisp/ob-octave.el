@@ -30,11 +30,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 
 (declare-function matlab-shell "ext:matlab-mode")
 (declare-function matlab-shell-run-region "ext:matlab-mode")
@@ -266,5 +263,6 @@ This removes initial blank and comment lines and then calls
     (org-babel-import-elisp-from-file temp-file '(16))))
 
 (provide 'ob-octave)
+(provide 'ob-octave-9.7-pre)
 
 ;;; ob-octave.el ends here

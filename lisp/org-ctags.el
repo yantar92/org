@@ -135,11 +135,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 (eval-when-compile (require 'cl-lib))
-(require 'org)
+(require 'org-9.7-pre "org")
 
 (defgroup org-ctags nil
   "Options concerning use of ctags within org mode."
@@ -527,5 +524,6 @@ a new topic."
 (org-ctags-enable)
 
 (provide 'org-ctags)
+(provide 'org-ctags-9.7-pre)
 
 ;;; org-ctags.el ends here

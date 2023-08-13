@@ -35,10 +35,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
+(require 'ob-9.7-pre "ob")
 
 (defvar org-babel-default-header-args:plantuml
   '((:results . "file") (:exports . "results"))
@@ -172,5 +169,6 @@ This function is called by `org-babel-execute-src-block'."
   (error "Plantuml does not support sessions"))
 
 (provide 'ob-plantuml)
+(provide 'ob-plantuml-9.7-pre)
 
 ;;; ob-plantuml.el ends here

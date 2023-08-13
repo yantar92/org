@@ -40,11 +40,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ob)
-(require 'org-macs)
+(require 'ob-9.7-pre "ob")
+(require 'org-macs-9.7-pre "org-macs")
 (require 'comint)
 
 (declare-function haskell-mode "ext:haskell-mode" ())
@@ -259,7 +256,7 @@ constructs (header arguments, no-web syntax etc...) are ignored."
       (unwind-protect
           (with-temp-buffer
             ;; Export to latex w/org and save as .lhs
-            (require 'ox-latex)
+            (require 'ox-latex-9.7-pre "ox-latex")
             (insert-file-contents tmp-org-file)
             ;; Ensure we do not clutter kill ring with incomplete results.
             (let (org-export-copy-to-kill-ring)
@@ -283,5 +280,6 @@ constructs (header arguments, no-web syntax etc...) are ignored."
       (message "running %s" command) (shell-command command) (find-file tex-file))))
 
 (provide 'ob-haskell)
+(provide 'ob-haskell-9.7-pre)
 
 ;;; ob-haskell.el ends here

@@ -31,13 +31,10 @@
 ;; iPhone and Android - any external viewer/flagging/editing
 ;; application that uses the same conventions could be used.
 
-(require 'org-macs)
-(org-assert-version)
-
 (require 'cl-lib)
-(require 'org)
-(require 'org-agenda)
-(require 'ol)
+(require 'org-9.7-pre "org")
+(require 'org-agenda-9.7-pre "org-agenda")
+(require 'ol-9.7-pre "ol")
 
 ;;; Code:
 
@@ -1136,6 +1133,7 @@ A and B must be strings or nil."
       (equal a b))))
 
 (provide 'org-mobile)
+(provide 'org-mobile-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

@@ -45,10 +45,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 (require 'cl-lib)
 (require 'eww)
 
@@ -173,5 +170,6 @@ keep the structure of the Org file."
 
 
 (provide 'ol-eww)
+(provide 'ol-eww-9.7-pre)
 
 ;;; ol-eww.el ends here

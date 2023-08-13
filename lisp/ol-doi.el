@@ -26,10 +26,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'ol)
+(require 'ol-9.7-pre "ol")
 
 (defcustom org-link-doi-server-url "https://doi.org/"
   "The URL of the DOI server."
@@ -71,5 +68,7 @@ export.  INFO is a plist containing the export parameters."
 
 
 (provide 'org-link-doi)
+(provide 'org-link-doi-9.7-pre)
 (provide 'ol-doi)
+(provide 'ol-doi-9.7-pre)
 ;;; ol-doi.el ends here

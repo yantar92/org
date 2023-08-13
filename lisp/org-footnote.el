@@ -28,14 +28,11 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
 ;;;; Declarations
 
 (require 'cl-lib)
-(require 'org-macs)
-(require 'org-compat)
+(require 'org-macs-9.7-pre "org-macs")
+(require 'org-compat-9.7-pre "org-compat")
 
 (declare-function org-at-comment-p "org" ())
 (declare-function org-at-heading-p "org" (&optional ignored))
@@ -1022,6 +1019,7 @@ offer additional commands in a menu."
 
 
 (provide 'org-footnote)
+(provide 'org-footnote-9.7-pre)
 
 ;; Local variables:
 ;; generated-autoload-file: "org-loaddefs.el"

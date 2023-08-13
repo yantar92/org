@@ -29,10 +29,7 @@
 
 ;;; Code:
 
-(require 'org-macs)
-(org-assert-version)
-
-(require 'org-attach)
+(require 'org-attach-9.7-pre "org-attach")
 (require 'vc-git)
 
 (defcustom org-attach-git-annex-cutoff (* 32 1024)
@@ -142,5 +139,6 @@ with hook `org-attach-after-change-hook'."
 (add-hook 'org-attach-open-hook 'org-attach-git-annex-get-maybe)
 
 (provide 'org-attach-git)
+(provide 'org-attach-git-9.7-pre)
 
 ;;; org-attach-git.el ends here
