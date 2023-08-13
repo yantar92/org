@@ -19340,7 +19340,9 @@ When NODE is not passed, assume element at point."
 
 In addition, re-align all the node properties.
 
-Called from a program, START and END specify the region to indent."
+Called from a program, START and END specify the region to indent.
+The indentation may be done outside START..END region when necessary
+to preserve syntax structure."
   (interactive "r")
   ;; Sometimes, we need to indent beyond START..END.  Make sure that
   ;; we can access element boundaries, even if they are beyond the
