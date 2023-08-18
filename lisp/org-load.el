@@ -135,6 +135,7 @@ re-load it."
 	;; that we're loading a mix of files from different versions.
 	;; That can spell trouble.
         (load file nil t t)))))
+(put 'org-require-with-shadowcheck 'byte-hunk-handler 'byte-compile-file-form-require)
 
 (defmacro org-assert-version ()
   "Check compile time and runtime version match.
