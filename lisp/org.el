@@ -376,8 +376,7 @@ FULL is given."
 	(load-suffixes (list ".el"))
 	(org-install-dir
 	 (ignore-errors (org-find-library-dir "org-loaddefs"))))
-    (unless (and (fboundp 'org-release) (fboundp 'org-git-version))
-      (org-load-noerror-mustsuffix (concat org-dir "org-version")))
+    (org-load-noerror-mustsuffix (concat org-dir "org-version"))
     (let* ((load-suffixes save-load-suffixes)
 	   (release (org-release))
 	   (git-version (org-git-version))
