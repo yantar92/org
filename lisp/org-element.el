@@ -519,7 +519,8 @@ past the brackets."
 ;; object, stripping its parent property and resolving deferred values
 ;; in the process.
 
-(require 'org-element-ast)
+(require 'org-load)
+(org-require-with-shadowcheck 'org-element-ast)
 
 (defsubst org-element-restriction (element)
   "Return restriction associated to ELEMENT.

@@ -43,7 +43,7 @@
 (require 'org-load)
 (org-assert-version)
 
-(require 'ob)
+(org-require-with-shadowcheck 'ob)
 
 (defvar org-babel-default-header-args:dot
   '((:results . "file") (:exports . "results"))

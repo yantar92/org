@@ -203,7 +203,8 @@
 
 ;;; Code:
 
-(require 'org-macs)
+(require 'org-load)
+(org-require-with-shadowcheck 'org-macs)
 (require 'inline) ; load indentation rules
 
 ;;;; Syntax node type

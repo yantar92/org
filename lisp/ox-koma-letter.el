@@ -169,7 +169,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ox-latex)
+(org-require-with-shadowcheck 'ox-latex)
 
 ;; Install a default letter class.
 (unless (assoc "default-koma-letter" org-latex-classes)

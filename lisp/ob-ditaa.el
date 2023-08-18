@@ -41,7 +41,7 @@
 (org-assert-version)
 
 (org-require-with-shadowcheck 'ob)
-(require 'org-compat)
+(org-require-with-shadowcheck 'org-compat)
 
 (defvar org-babel-default-header-args:ditaa
   '((:results . "file")
