@@ -121,21 +121,20 @@ from GNU ELPA), which can happen if some parts of Org were loaded before
 `load-path' was changed (e.g. before the GNU-ELPA-installed Org is activated
 by `package-activate-all').")
 
-(defmacro org-require-with-shadowcheck (feature)
+(defun org-require-with-shadowcheck (feature)
   "Load FEATURE making sure that it is loaded using current `load-path'.
 When FEATURE is not yet loaded, act like `require' does.  When FEATURE
 is loaded, but not consistent with the current value of `load-path',
 re-load it."
-  `(eval-and-compile
-     (if (not (featurep ,feature)) (require ,feature)
-       (let ((file (locate-library (symbol-name ,feature))))
-         (unless (equal (feature-file ,feature) file)
-	   ;; The feature is already provided, but from some other file
-	   ;; than expected.  Presumably because `load-path` has been
-	   ;; changed since the file was loaded.  This is likely a sign
-	   ;; that we're loading a mix of files from different versions.
-	   ;; That can spell trouble.
-           (load file nil t t))))))
+  (if (not (featurep feature)) (require feature)
+    (let ((file (locate-library (symbol-name feature))))
+      (unless (equal (feature-file feature) file)
+	;; The feature is already provided, but from some other file
+	;; than expected.  Presumably because `load-path` has been
+	;; changed since the file was loaded.  This is likely a sign
+	;; that we're loading a mix of files from different versions.
+	;; That can spell trouble.
+        (load file nil t t)))))
 
 (defmacro org-assert-version ()
   "Check compile time and runtime version match.
