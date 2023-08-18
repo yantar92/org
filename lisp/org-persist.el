@@ -259,7 +259,6 @@
 (org-assert-version)
 
 (require 'org-compat)
-(require 'org-id)
 (require 'xdg nil t)
 
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
