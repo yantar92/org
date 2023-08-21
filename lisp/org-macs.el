@@ -1624,6 +1624,54 @@ When COUNTER is non-nil, return safe hash for (COUNTER . OBJ)."
 	  (puthash hash obj org-sxhash-objects)
 	  (puthash obj hash org-sxhash-hashes)))))
 
+;; We use `gensym' to avoid malicious code know in advance the symbol
+;; used to prevent escaping.
+(defconst org--shell-arg-tag-unescaped (gensym "literal")
+  "Symbol to be used to mark shell arguments that should not be escaped.
+See `org-make-shell-command'.")
+(defsubst org-shell-arg-unescaped (string-arg)
+  "Mark STRING-ARG argument to be unescaped in `org-make-shell-command'."
+  (list org--shell-arg-tag-unescaped string-arg))
+(defun org-make-shell-command (command &rest args)
+  "Build safe shell command string to run COMMAND with ARGS.
+
+The resulting shell command is safe against malicious shell expansion.
+
+This function is used to avoid unexpected shell expansion when
+building shell command using header arguments from Org babel blocks.
+
+ARGS can be nil, strings, the return value of (org-shell-arg-unescaped
+STRING), or a list of such elements.
+
+Example:
+
+  (org-make-shell-command
+   \"chromium\"
+   ;; $HOME should be expanded by shell.
+   (org-shell-arg-unescaped \"--user-data-dir=\\\"$HOME/chromium-dev/\\\"\")
+   ;; & in the URL should not be interpreted by shell.
+   \"https://packages.debian.org/search?searchon=contents&keywords=org.el\")
+
+COMMAND itself can contain shell expansion constructs - no escaping
+will be performed."
+  (concat
+   command (when command " ")
+   (mapconcat
+    #'identity
+    (delq
+     nil
+     (mapcar
+      (lambda (str-def)
+        (pcase str-def
+          (`nil nil)
+          ((pred stringp) (shell-quote-argument str-def))
+          (`(,(pred (eq org--shell-arg-tag-unescaped)) ,(and (pred stringp) str))
+           str)
+          ((pred listp) (apply #'org-make-shell-command nil str-def))
+          (_ (error "Unknown ARG specification: %S" str-def))))
+      args))
+    " ")))
+
 (defun org-compile-file (source process ext &optional err-msg log-buf spec)
   "Compile a SOURCE file using PROCESS.
 
