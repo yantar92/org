@@ -84,26 +84,20 @@ This function is called by `org-babel-execute-src-block'."
     (with-temp-buffer
       (insert
        (org-babel-eval
-	(org-fill-template
-	 "%cmd %header %separator %nullvalue %others %csv %db "
-	 (list
-	  (cons "cmd" org-babel-sqlite3-command)
-	  (cons "header" (if headers-p "-header" "-noheader"))
-	  (cons "separator"
-		(if separator (format "-separator %s" separator) ""))
-	  (cons "nullvalue"
-		(if nullvalue (format "-nullvalue %s" nullvalue) ""))
-	  (cons "others"
-		(mapconcat
-		 (lambda (arg) (format "-%s" (substring (symbol-name arg) 1)))
-		 others " "))
-	  ;; for easy table parsing, default header type should be -csv
-	  (cons "csv" (if (or (member :csv others) (member :column others)
-			      (member :line others) (member :list others)
-			      (member :html others) separator)
-			  ""
-			"-csv"))
-          (cons "db" (or db ""))))
+        (org-make-shell-command
+         org-babel-sqlite3-command
+         (if headers-p "-header" "-noheader")
+         (when separator (list "-separator" separator))
+         (when nullvalue (list "-nullvalue" nullvalue))
+         (mapcar
+	  (lambda (arg) (format "-%s" (substring (symbol-name arg) 1)))
+	  others)
+         ;; for easy table parsing, default header type should be -csv
+         (unless (or (member :csv others) (member :column others)
+		     (member :line others) (member :list others)
+		     (member :html others) separator)
+	   "-csv")
+         db)
 	;; body of the code block
 	(org-babel-expand-body:sqlite body params)))
       (org-babel-result-cond result-params
