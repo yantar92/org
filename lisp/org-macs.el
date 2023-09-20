@@ -287,8 +287,7 @@ This function is only useful when called from Agenda buffer."
 (defun org-find-base-buffer-visiting (file)
   "Like `find-buffer-visiting' but always return the base buffer.
 FILE is the file name passed to `find-buffer-visiting'."
-  (let ((buf (or (get-file-buffer file)
-		 (find-buffer-visiting file))))
+  (let ((buf (find-buffer-visiting file)))
     (org-base-buffer buf)))
 
 (defvar-local org-file-buffer-created nil
