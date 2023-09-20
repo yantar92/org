@@ -53,7 +53,23 @@ If EXIT-CODE is nil, display the message without a code."
       (message "Babel evaluation exited with code %S" exit-code)
     (message "Babel evaluation exited abnormally")))
 
-(defun org-babel-eval (command query)
+(defun org-babel-eval-safe (command query &rest args)
+  "Run COMMAND with QUERY as input.
+
+ARGS is a list of arguments supplied to COMMAND, via
+`org-make-shell-command', which see.  By default, COMMADN and all the
+ARGS will be shell-escaped to prevent expansion.
+
+Return standard output produced by COMMAND.  If COMMAND exits
+with a non-zero code or produces error output, show it with
+`org-babel-eval-error-notify'.
+
+Writes QUERY into a temp-buffer that is processed with
+`org-babel--shell-command-on-region'."
+  (org-babel-eval (apply #'org-make-shell-command command args) query))
+
+(make-obsolete 'org-babel-eval 'org-babel-eval-safe "9.7")
+(defun org-babel--eval (command query)
   "Run COMMAND on QUERY.
 Return standard output produced by COMMAND.  If COMMAND exits
 with a non-zero code or produces error output, show it with
