@@ -83,8 +83,8 @@ This function is called by `org-babel-execute-src-block'."
 				 :csv :html :line :list)))))
     (with-temp-buffer
       (insert
-       (org-babel-eval
-        (org-make-shell-command
+       (org-babel-eval-safe
+        (list
          org-babel-sqlite3-command
          (if headers-p "-header" "-noheader")
          (when separator (list "-separator" separator))
