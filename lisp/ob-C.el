@@ -159,15 +159,18 @@ This function should only be called by `org-babel-execute:C' or
     (with-temp-file tmp-src-file (insert full-body))
     (pcase org-babel-c-variant
       ((or `c `cpp)
-       (org-babel-eval
-	(format "%s -o %s %s %s %s"
-		(pcase org-babel-c-variant
-		  (`c org-babel-C-compiler)
-		  (`cpp org-babel-C++-compiler))
-		tmp-bin-file
-		flags
-		(org-babel-process-file-name tmp-src-file)
-		libs)
+       (org-babel-eval-safe
+        `((pcase org-babel-c-variant
+	    (`c org-babel-C-compiler)
+	    (`cpp org-babel-C++-compiler))
+          "-o"
+          tmp-bin-file
+          ;; FIXME: Unsafe expansion kept for backward compatibility.
+          ;; Should ideally ask for user confirmation before eval.
+          (org-shell-arg-unescaped flags)
+          (org-babel-process-file-name tmp-src-file)
+          ;; FIXME: Unsafe expansion kept for backward compatibility.
+          (org-shell-arg-unescaped libs))
 	""))
       (`d nil)) ;; no separate compilation for D
     (let ((results
