@@ -1475,8 +1475,24 @@ previews."
                org-latex-preview--single-eqn-format)))))))
 
 (defconst org-latex-preview--include-preview-string
-  "\n\\usepackage[active,tightpage,auctex]{preview}\n"
-  "A LaTeX preamble snippet that includes preview.sty for previews.")
+  "\n\\usepackage[active,tightpage,auctex,dvips]{preview}\n"
+  "A LaTeX preamble snippet that includes preview.sty for previews.
+
+The options passed to preview.sty are:
+- active: activate preview package
+
+- auctex: Produce fake error messages at the start and end of
+  every preview environment.  We use this to help with parsing
+  the tex compilation stdout using regexes.
+
+- tightpage: (effectively) shrink page sizes to fit each
+  previewed math environment.
+
+- dvips: Only required for xelatex runs.  Add (as a side effect)
+  preview geometry data to the output XDV file.
+
+This is an abridged summary.  See the documentation of
+preview.sty for more details.")
 
 (defun org-latex-preview--create-tex-file (processing-info fragments)
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
@@ -1812,11 +1828,7 @@ fragments in EXTENDED-INFO."
     (setq preview-marks (nreverse preview-marks))
     (while preview-marks
       (goto-char (caar preview-marks))
-      ;; Check for tightpage-info, as long as XeLaTeX is not being used,
-      ;; as it seems to behave differently to pdfLaTeX and luaLaTeX and
-      ;; produces an image without the margins that tightpage reports.
-      (unless (or tightpage-info (equal (plist-get extended-info :latex-processor)
-                                        "xelatex"))
+      (unless tightpage-info
         (save-excursion
           (when (re-search-forward
                  "^Preview: Tightpage \\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\)"
