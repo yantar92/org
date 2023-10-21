@@ -1332,7 +1332,8 @@ Returns a list of async tasks started."
     ;;
     ;; ⟶ stdout to `org-latex-preview--latex-preview-filter'
     ;;   ├─ read preview fontsize
-    ;;   └─ capture compilation errors
+    ;;   ├─ capture compilation errors
+    ;;   └─ (conditionally) update overlays in buffer with png images and metadata
     ;;
     ;; ⟶ stdout to `org-latex-preview--dvisvgm-filter'
     ;;   ├─ read preview image metadata
@@ -1817,7 +1818,8 @@ fragments in EXTENDED-INFO."
          "\\(?:^Preview: Tightpage.*$\\)?\n! Preview: Snippet [0-9]+ ended.(\\([0-9]+\\)\\+\\([0-9]+\\)x\\([0-9]+\\))")
         (fragments (plist-get extended-info :fragments))
         (tightpage-info (plist-get extended-info :tightpage))
-        preview-marks)
+        (concurrentp (eq (plist-get extended-info :processor) 'dvipng))
+        preview-marks fragments-to-show)
     (beginning-of-line)
     (save-excursion
       (while (re-search-forward preview-start-re nil t)
@@ -1893,9 +1895,15 @@ fragments in EXTENDED-INFO."
                                (format "l.%d"
                                        (- (string-to-number (substring linum 2))
                                           (nth 3 (car preview-marks)))))
-                             errors-substring))))
+                             errors-substring)))
+            (when (and concurrentp (plist-get fragment-info :path))
+              ;; path has been recorded by dvipng filter, can display image
+              (push fragment-info fragments-to-show)))
         (goto-char (caar preview-marks)))
-      (setq preview-marks (cdr preview-marks)))))
+      (setq preview-marks (cdr preview-marks)))
+    (when fragments-to-show
+      (org-latex-preview--place-images
+       extended-info (nreverse fragments-to-show)))))
 
 (defun org-latex-preview--dvisvgm-filter (_proc _string extended-info)
   "Look for newly created images in the dvisvgm stdout buffer.
@@ -1932,14 +1940,7 @@ EXTENDED-INFO, and displayed in the buffer."
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
       (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show)
-      (if (plist-get extended-info :place-preview-p)
-          (org-latex-preview--place-images extended-info fragments-to-show)
-        (dolist (fragment-info fragments-to-show)
-          (org-latex-preview--cache-image
-           (plist-get fragment-info :key)
-           (plist-get fragment-info :path)
-           (org-latex-preview--display-info
-            extended-info fragment-info)))))))
+      (org-latex-preview--place-images extended-info fragments-to-show))))
 
 (defun org-latex-preview--svg-make-fg-currentColor (svg-fragment)
   "Replace the foreground color in SVG-FRAGMENT's file with \"currentColor\".
@@ -1998,44 +1999,51 @@ EXTENDED-INFO, and displayed in the buffer."
         (fragments (plist-get extended-info :fragments))
         fragments-to-show page-info-end)
     (while (search-forward "]" nil t)
-      (setq page-info-end (point))
-      (save-excursion
-        (backward-list)
-        (if (re-search-forward "\\=\\[\\([0-9]+\\) " page-info-end t)
-            (let* ((page (string-to-number (match-string 1)))
-                   (fragment-info (nth (1- page) fragments)))
-              (plist-put fragment-info :path
-                         (format "%s-%09d.png" outputs-no-ext page))
-              (push fragment-info fragments-to-show)))))
+        (setq page-info-end (point))
+        (save-excursion
+          (backward-list)
+          (if (re-search-forward "\\=\\[\\([0-9]+\\) " page-info-end t)
+              (let* ((page (string-to-number (match-string 1)))
+                     (fragment-info (nth (1- page) fragments)))
+                (plist-put fragment-info :path
+                           (format "%s-%09d.png" outputs-no-ext page))
+                (when (plist-get fragment-info :height)
+                  ;; geometry has been recorded by latex filter, can display image
+                  (push fragment-info fragments-to-show))))))
     (when fragments-to-show
-      (setq fragments-to-show (nreverse fragments-to-show))
-      (if (plist-get extended-info :place-preview-p)
-          (org-latex-preview--place-images extended-info fragments-to-show)
-        (dolist (fragment-info fragments-to-show)
-          (org-latex-preview--cache-image
-           (plist-get fragment-info :key)
-           (plist-get fragment-info :path)
-           (org-latex-preview--display-info
-            extended-info fragment-info)))))))
+      (org-latex-preview--place-images
+       extended-info (nreverse fragments-to-show)))))
+
 
 (defun org-latex-preview--place-images (extended-info &optional fragments)
-  "Place images for each of FRAGMENTS, according to their data and EXTENDED-INFO.
+  "Cache and place images for FRAGMENTS, according to their data and EXTENDED-INFO.
 Should FRAGMENTS not be explicitly provided, all of the fragments
-listed in EXTENDED-INFO will be used."
+listed in EXTENDED-INFO will be used.
+
+If this is an export run, images will only be cached, not placed."
   (let ((fragments (or fragments (plist-get extended-info :fragments))))
-    (with-current-buffer (plist-get extended-info :org-buffer)
-      (save-excursion
-        (cl-loop
-         for fragment-info in fragments
-         for image-file = (plist-get fragment-info :path)
-         for ov = (plist-get fragment-info :overlay)
-         do (org-latex-preview--update-overlay
-             ov
-             (org-latex-preview--cache-image
-              (plist-get fragment-info :key)
-              image-file
-              (org-latex-preview--display-info
-               extended-info fragment-info))))))))
+    (if (plist-get extended-info :place-preview-p)
+        (with-current-buffer (plist-get extended-info :org-buffer)
+          (save-excursion
+            (cl-loop
+             for fragment-info in fragments
+             for image-file = (plist-get fragment-info :path)
+             for ov = (plist-get fragment-info :overlay)
+             do (unless (overlay-buffer ov)
+                  (message "Offending overlay for fragment %S" fragment-info))
+             do (org-latex-preview--update-overlay
+                 ov
+                 (org-latex-preview--cache-image
+                  (plist-get fragment-info :key)
+                  image-file
+                  (org-latex-preview--display-info
+                   extended-info fragment-info))))))
+      (dolist (fragment-info fragments)
+        (org-latex-preview--cache-image
+         (plist-get fragment-info :key)
+         (plist-get fragment-info :path)
+         (org-latex-preview--display-info
+          extended-info fragment-info))))))
 
 (defconst org-latex-preview--cache-name "LaTeX preview cached image data"
   "The name used for Org LaTeX Preview objects in the org-persist cache.")
