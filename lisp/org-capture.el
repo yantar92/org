@@ -1217,11 +1217,11 @@ may have been stored before."
       (setq level (org-get-valid-level
 		   (if (org-at-heading-p) (org-outline-level) 1)
 		   1))
-      (if reversed? (outline-next-heading) (org-end-of-subtree t t)))
+      (if reversed? (org-next-heading) (org-end-of-subtree t t)))
      ;; Insert as a top-level entry at the beginning of the file.
      (reversed?
       (goto-char (point-min))
-      (unless (org-at-heading-p) (outline-next-heading)))
+      (unless (org-at-heading-p) (org-next-heading)))
      ;; Otherwise, insert as a top-level entry at the end of the file.
      (t (goto-char (point-max))
         ;; Make sure that last point is not folded.
@@ -1236,7 +1236,7 @@ may have been stored before."
 	  (org-paste-subtree level template 'for-yank))
 	(org-capture-position-for-last-stored beg)
 	(org-capture-empty-lines-after)
-	(unless (org-at-heading-p) (outline-next-heading))
+	(unless (org-at-heading-p) (org-next-heading))
 	(org-capture-mark-kill-region origin (point))
 	(org-capture-narrow beg (if (eobp) (point) (1- (point))))
 	(org-capture--position-cursor beg (point))))))
@@ -1376,7 +1376,7 @@ may have been stored before."
      (t
       ;; We are at a heading, limit search to the body.
       (setq beg (line-beginning-position 2))
-      (setq end (save-excursion (outline-next-heading) (point)))))
+      (setq end (save-excursion (org-next-heading) (point)))))
     (goto-char beg)
     ;; Narrow to the table, possibly creating one if necessary.
     (catch :found
@@ -1450,7 +1450,7 @@ Of course, if exact position has been required, just put it there."
 	;; Skip meta data and drawers.
 	(org-end-of-meta-data t)
       ;; Go to end of the entry text, before the next headline.
-      (outline-next-heading)))
+      (org-next-heading)))
    (t
     ;; Beginning or end of file.
     (goto-char (if (org-capture-get :prepend) (point-min) (point-max)))))

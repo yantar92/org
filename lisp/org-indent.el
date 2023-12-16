@@ -421,7 +421,7 @@ This function is meant to be called by `after-change-functions'."
                   t)))
 	   (let ((end (save-excursion
 			(goto-char end)
-			(org-with-limited-levels (outline-next-heading))
+			(org-with-limited-levels (org-next-heading))
 			(point))))
 	     (setq org-indent-modified-headline-flag nil)
 	     (org-indent-add-properties beg end))

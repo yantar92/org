@@ -785,7 +785,7 @@ the subtree.  This is a function that can be put into
 use of this function is for the stuck project list."
   (declare (obsolete "use `org-agenda-skip-if' instead." "9.1"))
   (let ((end (save-excursion (org-end-of-subtree t)))
-	(entry-end (save-excursion (outline-next-heading) (1- (point))))
+	(entry-end (save-excursion (org-next-heading) (1- (point))))
 	skip)
     (save-excursion
       (setq skip (re-search-forward org-agenda-skip-regexp end t)))
@@ -1348,7 +1348,7 @@ This also applied for speedbar access."
 	  (subs (make-vector (1+ org-imenu-depth) nil))
 	  (last-level 0))
      (while (re-search-backward re nil t)
-       (let ((level (org-reduced-level (funcall outline-level)))
+       (let ((level (org-reduced-level (org-outline-level)))
 	     (headline (org-no-properties
 			(org-link-display-format (org-get-heading t t t t)))))
 	 (when (and (<= level org-imenu-depth) (org-string-nw-p headline))

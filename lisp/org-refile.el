@@ -572,7 +572,7 @@ prefix argument (`C-u C-u C-u C-c C-w')."
 		       (setq level (org-get-valid-level (funcall outline-level) 1))
 		       (goto-char
 		        (if reversed
-			    (or (outline-next-heading) (point-max))
+			    (or (org-next-heading) (point-max))
 			  (or (save-excursion (org-get-next-sibling))
 			      (org-end-of-subtree t t)
 			      (point-max)))))
@@ -580,7 +580,7 @@ prefix argument (`C-u C-u C-u C-c C-w')."
 		   (if (not reversed)
 		       (goto-char (point-max))
 		     (goto-char (point-min))
-		     (or (outline-next-heading) (goto-char (point-max)))))
+		     (or (org-next-heading) (goto-char (point-max)))))
 	         (unless (bolp) (newline))
 	         (org-paste-subtree level nil nil t)
 	         ;; Record information, according to `org-log-refile'.
@@ -751,7 +751,7 @@ this function appends the default value from
 	 (goto-char (point-max))
 	 (unless (bolp) (newline)))
        (when (looking-at org-outline-regexp)
-	 (setq level (funcall outline-level))
+	 (setq level (org-outline-level))
 	 (org-end-of-subtree t t))
        (org-back-over-empty-lines)
        (insert "\n" (make-string

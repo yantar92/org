@@ -86,7 +86,6 @@
 (declare-function outline-hide-sublevels "outline" (levels))
 (declare-function outline-get-next-sibling "outline" ())
 (declare-function outline-invisible-p "outline" (&optional pos))
-(declare-function outline-next-heading "outline" ())
 
 ;;; Customization
 
@@ -324,7 +323,7 @@ When optional argument TYPES is a list of symbols among `blocks',
 Move point to the beginning of first heading or end of buffer."
   (goto-char (point-min))
   (unless (org-at-heading-p)
-    (outline-next-heading))
+    (org-next-heading))
   (unless (bobp)
     (org-fold-region 1 (1- (point)) (not arg) 'outline)))
 
@@ -342,7 +341,7 @@ When ENTRY is non-nil, show the entire entry."
       (org-fold-show-entry)
       (save-excursion
 	;; FIXME: potentially catches inlinetasks
-	(and (outline-next-heading)
+	(and (org-next-heading)
 	     (org-fold-heading nil))))))
 
 (defun org-fold-hide-entry ()
@@ -390,8 +389,8 @@ of the current heading, or to 1 if the current line is not a heading."
 		(cond
 		 (current-prefix-arg (prefix-numeric-value current-prefix-arg))
 		 ((save-excursion (forward-line 0)
-				  (looking-at outline-regexp))
-		  (funcall outline-level))
+				  (looking-at org-outline-regexp))
+		  (org-outline-level))
 		 (t 1))))
   (if (< levels 1)
       (error "Must keep at least one level of headers"))
@@ -399,7 +398,7 @@ of the current heading, or to 1 if the current line is not a heading."
     (let* ((beg (progn
                   (goto-char (point-min))
                   ;; Skip the prelude, if any.
-                  (unless (org-at-heading-p) (outline-next-heading))
+                  (unless (org-at-heading-p) (org-next-heading))
                   (point)))
            (end (progn
                   (goto-char (point-max))
@@ -412,12 +411,12 @@ of the current heading, or to 1 if the current line is not a heading."
       ;; Then unhide the top level headers.
       (org-map-region
        (lambda ()
-	 (when (<= (funcall outline-level) levels)
+	 (when (<= (org-outline-level) levels)
            (org-fold-heading nil)))
        beg end)
       ;; Finally unhide any trailing newline.
       (goto-char (point-max))
-      (if (and (bolp) (not (bobp)) (outline-invisible-p (1- (point))))
+      (if (and (bolp) (not (bobp)) (org-invisible-p (1- (point))))
           (org-fold-region (max (point-min) (1- (point))) (point) nil)))))
 
 (defun org-fold-show-entry (&optional hide-drawers)
@@ -457,7 +456,7 @@ displayed."
   (unless (org-before-first-heading-p)
     (save-excursion
       (org-with-limited-levels (org-back-to-heading t))
-      (let* ((current-level (funcall outline-level))
+      (let* ((current-level (org-outline-level))
              (parent-level current-level)
              (max-level (org-get-valid-level
                          parent-level
@@ -480,7 +479,7 @@ displayed."
         ;; MAX-LEVEL.  Since we want to display it anyway, adjust
         ;; MAX-LEVEL accordingly.
         (while (re-search-forward re end t)
-          (setq current-level (funcall outline-level))
+          (setq current-level (org-outline-level))
           (when (< current-level min-level-direct-child)
             (setq min-level-direct-child current-level
                   re (format regexp-fmt
@@ -694,7 +693,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
 	 ((tree canonical t) (org-fold-show-children))
 	 ((nil minimal ancestors ancestors-full))
 	 (t (save-excursion
-	      (outline-next-heading)
+	      (org-next-heading)
 	      (org-fold-heading nil)))))))
   ;; Show whole subtree.
   (when (eq detail 'ancestors-full) (org-fold-show-subtree))

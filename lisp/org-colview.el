@@ -1076,7 +1076,7 @@ the current buffer."
 	      ;; No COLUMNS keyword in the buffer.  Insert one at the
 	      ;; beginning, right before the first heading, if any.
 	      (goto-char (point-min))
-	      (unless (org-at-heading-p) (outline-next-heading))
+	      (unless (org-at-heading-p) (org-next-heading))
 	      (let ((inhibit-read-only t))
 		(insert-before-markers "#+COLUMNS: " fmt "\n"))))
 	  (setq-local org-columns-default-format fmt))))))

@@ -3730,7 +3730,7 @@ removed from the entry content.  Currently only `planning' is allowed here."
 	   (end-of-line 1)
 	   (setq txt (buffer-substring
 		      (min (1+ (point)) (point-max))
-		      (progn (outline-next-heading) (point)))
+		      (progn (org-next-heading) (point)))
 		 drawer-re org-drawer-regexp
 		 kwd-time-re (concat "^[ \t]*" org-keyword-time-regexp
 				     ".*\n?"))
@@ -4824,7 +4824,7 @@ is active."
 		      (widen))
 		    (goto-char (point-min))
 		    (unless (or (org-at-heading-p)
-				(outline-next-heading))
+				(org-next-heading))
 		      (throw 'nextfile t))
 		    (goto-char (max (point-min) (1- (point))))
 		    (while (re-search-forward regexp nil t)
@@ -4839,12 +4839,12 @@ is active."
                       (setq beg (line-beginning-position)
 			    beg1 (point)
 			    end (progn
-				  (outline-next-heading)
+				  (org-next-heading)
 				  (while (and (not (zerop org-agenda-search-view-max-outline-level))
 					      (> (org-reduced-level (org-outline-level))
 						 org-agenda-search-view-max-outline-level)
 					      (forward-line 1)
-					      (outline-next-heading)))
+					      (org-next-heading)))
 				  (point)))
 
 		      (catch :skip
@@ -5327,7 +5327,7 @@ of what a project is and how to check if it stuck, customize the variable
 		   (let ((case-fold-search nil))
 		     (re-search-forward
 		      skip-re (save-excursion (org-end-of-subtree t)) t)))
-		 (progn (outline-next-heading) (point))))))
+		 (progn (org-next-heading) (point))))))
     (org-tags-view nil matcher)
     (setq org-agenda-buffer-name (buffer-name))
     (with-current-buffer org-agenda-buffer-name
@@ -5657,7 +5657,7 @@ timestamp and the timestamp type relevant for the sorting strategy in
 	(save-match-data
 	  (forward-line 0)
 	  (org-agenda-skip)
-	  (setq beg (point) end (save-excursion (outline-next-heading) (point)))
+	  (setq beg (point) end (save-excursion (org-next-heading) (point)))
 	  (unless (and (setq todo-state (org-get-todo-state))
 		       (setq todo-state-end-pos (match-end 2)))
 	    (goto-char end)
@@ -5726,7 +5726,7 @@ This function is invoked if `org-agenda-todo-ignore-deadlines',
 	    org-agenda-todo-ignore-scheduled
 	    org-agenda-todo-ignore-deadlines
 	    org-agenda-todo-ignore-timestamp)
-    (setq end (or end (save-excursion (outline-next-heading) (point))))
+    (setq end (or end (save-excursion (org-next-heading) (point))))
     (save-excursion
       (or (and org-agenda-todo-ignore-with-date
 	       (re-search-forward org-ts-regexp end t))
@@ -5942,7 +5942,7 @@ displayed in agenda view."
 		'type "timestamp")
 	      (push item timestamp-items))))
 	(when org-agenda-skip-additional-timestamps-same-entry
-	  (outline-next-heading))))
+	  (org-next-heading))))
     (nreverse timestamp-items)))
 
 (defun org-agenda-get-sexps ()
@@ -10355,10 +10355,10 @@ the resulting entry will not be shown.  When TEXT is empty, switch to
 	   (progn
 	     (or (org-at-heading-p)
 		 (progn
-		   (outline-next-heading)
+		   (org-next-heading)
 		   (insert "* Anniversaries\n\n")
 		   (forward-line -2)))))
-       (outline-next-heading)
+       (org-next-heading)
        (org-back-over-empty-lines)
        (backward-char 1)
        (insert "\n")
@@ -10439,7 +10439,7 @@ a timestamp can be added there."
     (org-insert-heading '(4) t)
     (org-do-demote))
    (t
-    (outline-next-heading)
+    (org-next-heading)
     (org-back-over-empty-lines)
     (unless (looking-at "[ \t]*$") (save-excursion (insert "\n")))
     (org-insert-heading nil t)

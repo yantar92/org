@@ -874,11 +874,11 @@ If BEG and END are given, only do this in that region."
 	  (if (re-search-forward "^\\** Old value[ \t]*$" eos t)
 	      (setq old (buffer-substring
 			 (1+ (match-end 0))
-			 (progn (outline-next-heading) (point)))))
+			 (progn (org-next-heading) (point)))))
 	  (if (re-search-forward "^\\** New value[ \t]*$" eos t)
 	      (setq new (buffer-substring
 			 (1+ (match-end 0))
-			 (progn (outline-next-heading)
+			 (progn (org-next-heading)
 				(if (eobp) (org-back-over-empty-lines))
 				(point)))))
 	  (setq old (org-string-nw-p old))
@@ -1080,7 +1080,7 @@ be returned that indicates what went wrong."
       (org-with-point-at (org-mobile-locate-entry new)
 	(if (org-at-heading-p)	; if false we are in top-level of file
 	    (progn
-	      (setq level (org-get-valid-level (funcall outline-level) 1))
+	      (setq level (org-get-valid-level (org-outline-level) 1))
 	      (org-end-of-subtree t t)
 	      (org-paste-subtree level))
 	  (org-paste-subtree 1)))
@@ -1097,7 +1097,7 @@ be returned that indicates what went wrong."
 
      ((eq what 'body)
       (setq current (buffer-substring (min (1+ (line-end-position)) (point-max))
-				      (save-excursion (outline-next-heading)
+				      (save-excursion (org-next-heading)
 						      (point))))
       (if (not (string-match "\\S-" current)) (setq current nil))
       (cond
@@ -1110,7 +1110,7 @@ be returned that indicates what went wrong."
 	  (insert "\n" new)
 	  (or (bolp) (insert "\n"))
 	  (delete-region (point) (progn (org-back-to-heading t)
-					(outline-next-heading)
+					(org-next-heading)
 					(point))))
 	t)
        (t (error

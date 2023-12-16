@@ -247,7 +247,7 @@ return `:middle'."
 (defun org-mouse-next-heading ()
   "Go to the next heading.
 If there is none, ensure that the point is at the beginning of an empty line."
-  (unless (outline-next-heading)
+  (unless (org-next-heading)
     (forward-line 0)
     (unless (org-mouse-empty-line)
       (end-of-line)
@@ -1013,7 +1013,7 @@ This means, between the beginning of line and the point."
 	      (goto-char pos)
 	      (org-fold-show-hidden-entry)
 	      (save-excursion
-		(and (outline-next-heading)
+		(and (org-next-heading)
 		     (org-fold-heading nil)))   ; show the next heading
 	      (org-back-to-heading)
 	      (setq marker (point-marker))

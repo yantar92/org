@@ -108,6 +108,8 @@
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
 (declare-function org-before-first-heading-p "org" ())
 (declare-function org-current-level "org" ())
+(declare-function org-next-heading "org" ())
+(declare-function org-previous-heading "org" ())
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-element-context "org-element" (&optional element))
 (declare-function org-element-interpret-data "org-element" (data))
@@ -156,8 +158,6 @@
 (declare-function org-time-string-to-seconds "org" (s))
 (declare-function org-timer-hms-to-secs "org-timer" (hms))
 (declare-function org-timer-item "org-timer" (&optional arg))
-(declare-function outline-next-heading "outline" ())
-(declare-function outline-previous-heading "outline" ())
 
 
 
@@ -545,7 +545,7 @@ Contexts `block' and `invalid' refer to `org-list-forbidden-blocks'."
 	     (lim-up (or (save-excursion (and (ignore-errors (org-back-to-heading t))
 					      (point)))
 			 (point-min)))
-	     (lim-down (or (save-excursion (outline-next-heading)) (point-max))))
+	     (lim-down (or (save-excursion (org-next-heading)) (point-max))))
 	 ;; Is point inside a drawer?
 	 (let ((end-re "^[ \t]*:END:")
 	       (beg-re org-drawer-regexp))
@@ -2439,7 +2439,7 @@ subtree, ignoring planning line and any drawer following it."
 	       ((org-at-heading-p)
 		;; On a heading, start at first item after drawers and
 		;; timestamps (scheduled, etc.).
-		(let ((limit (save-excursion (outline-next-heading) (point))))
+		(let ((limit (save-excursion (org-next-heading) (point))))
 		  (org-end-of-meta-data t)
 		  (if (org-list-search-forward (org-item-beginning-re) limit t)
                       (setq lim-up (line-beginning-position))
@@ -3158,7 +3158,7 @@ With a prefix argument ARG, change the region in a single item."
 		(start-ind (save-excursion
 			     (cond
 			      ((not org-adapt-indentation) 0)
-			      ((not (outline-previous-heading)) 0)
+			      ((not (org-previous-heading)) 0)
 			      (t (length (match-string 0))))))
 		;; Level of first heading.  Further headings will be
 		;; compared to it to determine hierarchy in the list.
@@ -3198,7 +3198,7 @@ With a prefix argument ARG, change the region in a single item."
 	       ;; Ensure all text down to END (or SECTION-END) belongs
 	       ;; to the newly created item.
 	       (let ((section-end (save-excursion
-				    (or (outline-next-heading) (point)))))
+				    (or (org-next-heading) (point)))))
 		 (forward-line)
 		 (funcall shift-text
 			  (+ start-ind (* (1+ delta) bul-len))
@@ -3227,7 +3227,7 @@ With a prefix argument ARG, change the region in a single item."
 		 ;; still get included in item body.
 		 (funcall shift-text
 			  (+ ref-ind bul-len)
-			  (min end (save-excursion (or (outline-next-heading)
+			  (min end (save-excursion (or (org-next-heading)
 						       (point)))))
 		 (forward-line))
                (when footnote-definitions
@@ -3671,7 +3671,7 @@ overruling parameters for `org-list-to-generic'."
   (let* ((blank (pcase (cdr (assq 'heading org-blank-before-new-entry))
 		  (`t t)
 		  (`auto (save-excursion
-			   (org-with-limited-levels (outline-previous-heading))
+			   (org-with-limited-levels (org-previous-heading))
 			   (org-previous-line-empty-p)))))
 	 (level (or start-level 1))
 	 (make-stars

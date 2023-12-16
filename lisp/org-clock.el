@@ -1627,7 +1627,7 @@ line and position cursor in that line."
   (org-back-to-heading t)
   (catch 'exit
     (let* ((beg (line-beginning-position))
-	   (end (save-excursion (outline-next-heading) (point)))
+	   (end (save-excursion (org-next-heading) (point)))
 	   (org-clock-into-drawer (org-clock-into-drawer))
 	   (drawer (org-clock-drawer-name)))
       ;; Look for a running clock if FIND-UNCLOSED in non-nil.
@@ -1843,7 +1843,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 	     (case-fold-search t))
 	 (when drawer
 	   (let ((re (format "^[ \t]*:%s:[ \t]*$" (regexp-quote drawer)))
-		 (end (save-excursion (outline-next-heading))))
+		 (end (save-excursion (org-next-heading))))
 	     (while (re-search-forward re end t)
 	       (org-remove-empty-drawer-at (point))))))))))
 
@@ -2674,8 +2674,8 @@ the currently selected interval size."
 		     (catch 'exit
 		       (while (org-up-heading-safe)
 			 (looking-at org-outline-regexp)
-			 (when (<= (org-reduced-level (funcall outline-level))
-				   level)
+			 (when (<= (org-reduced-level (org-outline-level))
+				  level)
 			   (throw 'exit nil))))
 		     (org-narrow-to-subtree))))
 		 (list (org-clock-get-table-data nil params)))))

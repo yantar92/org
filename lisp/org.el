@@ -5975,7 +5975,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		   (overlay-put o 'org-custom-property t)
 		   (push o org-custom-properties-overlays)))))
 	   ;; Each entry is limited to a single property drawer.
-	   (outline-next-heading)))))))
+	   (org-next-heading)))))))
 
 (defun org-fontify-entities (limit)
   "Find an entity to fontify."
@@ -6189,7 +6189,7 @@ open and agenda-wise Org files."
 
 (defsubst org-entry-end-position ()
   "Return the end position of the current entry."
-  (save-excursion (outline-next-heading) (point)))
+  (save-excursion (org-next-heading) (point)))
 
 (defun org-subtree-end-visible-p ()
   "Is the end of the current subtree visible?"
@@ -6317,12 +6317,12 @@ headline instead of current one."
      (save-excursion
        (org-with-limited-levels
         (unless (and (org-before-first-heading-p)
-                     (not (outline-next-heading)))
+                     (not (org-next-heading)))
           (org-back-to-heading t)
           (when parent (org-up-heading-safe))
           (cond ((not (bobp))
                  (org-previous-line-empty-p))
-		((outline-next-heading)
+		((org-next-heading)
 		 (org-previous-line-empty-p))
 		;; Ignore trailing spaces on last buffer line.
 		((progn (skip-chars-backward " \t") (bolp))
@@ -6374,7 +6374,7 @@ unconditionally."
       ;; Position point at the location of insertion.  Make sure we
       ;; end up on a visible headline if INVISIBLE-OK is nil.
       (org-with-limited-levels
-       (if (not level) (outline-next-heading) ;before first headline
+       (if (not level) (org-next-heading) ;before first headline
 	 (org-back-to-heading invisible-ok)
 	 (when (equal arg '(16)) (org-up-heading-safe))
 	 (org-end-of-subtree invisible-ok 'to-heading)))
@@ -6733,7 +6733,7 @@ odd number.  Returns values greater than 0."
    (org-back-to-heading t)
    (let* ((after-change-functions (remq 'flyspell-after-change-function
 					after-change-functions))
-	  (level (save-match-data (funcall outline-level)))
+	  (level (save-match-data (org-outline-level)))
 	  (up-head (concat (make-string (org-get-valid-level level -1) ?*) " "))
 	  (diff (abs (- level (length up-head) -1))))
      (cond
@@ -6753,7 +6753,7 @@ odd number.  Returns values greater than 0."
    (org-back-to-heading t)
    (let* ((after-change-functions (remq 'flyspell-after-change-function
 					after-change-functions))
-	  (level (save-match-data (funcall outline-level)))
+	  (level (save-match-data (org-outline-level)))
 	  (down-head (concat (make-string (org-get-valid-level level 1) ?*) " "))
 	  (diff (abs (- level (length down-head) -1))))
      (org-fold-core-ignore-fragility-checks
@@ -6803,12 +6803,12 @@ After top level, it switches back to sibling level."
 (defun org-map-tree (fun)
   "Call FUN for every heading underneath the current one."
   (org-back-to-heading t)
-  (let ((level (funcall outline-level)))
+  (let ((level (org-outline-level)))
     (save-excursion
       (funcall fun)
       (while (and (progn
-		    (outline-next-heading)
-		    (> (funcall outline-level) level))
+		    (org-next-heading)
+		    (> (org-outline-level) level))
 		  (not (eobp)))
 	(funcall fun)))))
 
@@ -6822,7 +6822,7 @@ After top level, it switches back to sibling level."
 		 (< (point) end))
 	(funcall fun))
       (while (and (progn
-		    (outline-next-heading)
+		    (org-next-heading)
 		    (< (point) end))
 		  (not (eobp)))
 	(funcall fun)))))
@@ -6851,7 +6851,7 @@ Assume point is at a heading or an inlinetask beginning."
    (narrow-to-region (line-beginning-position)
 		     (save-excursion
 		       (if (org-with-limited-levels (org-at-heading-p))
-			   (org-with-limited-levels (outline-next-heading))
+			   (org-with-limited-levels (org-next-heading))
 			 (org-inlinetask-goto-end))
 		       (point)))
    (forward-line)
@@ -6943,8 +6943,7 @@ This will leave level 1 alone, convert level 2 to level 3, level 3 to
 level 5 etc."
   (interactive)
   (when (yes-or-no-p "Are you sure you want to globally change levels to odd? ")
-    (let ((outline-level 'org-outline-level)
-	  (org-odd-levels-only nil) n)
+    (let ((org-odd-levels-only nil) n)
       (save-excursion
 	(goto-char (point-min))
 	(while (re-search-forward "^\\*\\*+ " nil t)
@@ -6966,9 +6965,7 @@ case."
     (org-fold-show-set-visibility 'canonical)
     (error "Not all levels are odd in this file.  Conversion not possible"))
   (when (yes-or-no-p "Are you sure you want to globally change levels to odd-even? ")
-    (let ((outline-regexp org-outline-regexp)
-	  (outline-level 'org-outline-level)
-	  (org-odd-levels-only nil) n)
+    (let ((org-odd-levels-only nil) n)
       (save-excursion
 	(goto-char (point-min))
 	(while (re-search-forward "^\\*\\*+ " nil t)
@@ -7033,11 +7030,12 @@ case."
      (org-back-to-heading)
      (setq beg (point))
      (save-match-data
-       (save-excursion (outline-end-of-heading)
-		       (setq folded (org-invisible-p)))
+       (save-excursion
+         (re-search-forward (rx eol))
+	 (setq folded (org-invisible-p)))
        (progn (org-end-of-subtree nil t)
 	      (unless (eobp) (backward-char))))
-     (outline-next-heading)
+     (org-next-heading)
      (setq end (point))
      (goto-char beg)
      ;; Find insertion point, with error handling
@@ -7113,8 +7111,8 @@ useful if the caller implements cut-and-paste as copy-then-paste-then-cut."
      (skip-chars-forward " \t\r\n")
      (save-match-data
        (if nosubtrees
-	   (outline-next-heading)
-	 (save-excursion (outline-end-of-heading)
+	   (org-next-heading)
+	 (save-excursion (re-search-forward (rx eol))
 			 (setq folded (org-invisible-p)))
 	 (ignore-errors (org-forward-heading-same-level (1- n) t))
 	 (org-end-of-subtree t t)))
@@ -7733,11 +7731,11 @@ function is being called interactively."
 	    what "children")
       (goto-char start)
       (org-fold-show-subtree)
-      (outline-next-heading))
+      (org-next-heading))
      (t
       ;; we will sort the top-level entries in this file
       (goto-char (point-min))
-      (or (org-at-heading-p) (outline-next-heading))
+      (or (org-at-heading-p) (org-next-heading))
       (setq start (point))
       (goto-char (point-max))
       (forward-line 0)
@@ -7839,25 +7837,25 @@ function is being called interactively."
 	     ((= dcst ?k)
 	      (or (get-text-property (point) :org-clock-minutes) 0))
 	     ((= dcst ?t)
-	      (let ((end (save-excursion (outline-next-heading) (point))))
+	      (let ((end (save-excursion (org-next-heading) (point))))
 		(if (or (re-search-forward org-ts-regexp end t)
 			(re-search-forward org-ts-regexp-both end t))
 		    (org-time-string-to-seconds (match-string 0))
 		  (float-time now))))
 	     ((= dcst ?c)
-	      (let ((end (save-excursion (outline-next-heading) (point))))
+	      (let ((end (save-excursion (org-next-heading) (point))))
 		(if (re-search-forward
 		     (concat "^[ \t]*\\[" org-ts-regexp1 "\\]")
 		     end t)
 		    (org-time-string-to-seconds (match-string 0))
 		  (float-time now))))
 	     ((= dcst ?s)
-	      (let ((end (save-excursion (outline-next-heading) (point))))
+	      (let ((end (save-excursion (org-next-heading) (point))))
 		(if (re-search-forward org-scheduled-time-regexp end t)
 		    (org-time-string-to-seconds (match-string 1))
 		  (float-time now))))
 	     ((= dcst ?d)
-	      (let ((end (save-excursion (outline-next-heading) (point))))
+	      (let ((end (save-excursion (org-next-heading) (point))))
 		(if (re-search-forward org-deadline-time-regexp end t)
 		    (org-time-string-to-seconds (match-string 1))
 		  (float-time now))))
@@ -8034,7 +8032,7 @@ the value of the drawer property."
 	(while (re-search-forward property-re nil t)
 	  (when (org-at-property-p)
 	    (org-refresh-property tprop (org-entry-get (point) dprop) inherit?))
-	  (outline-next-heading))))))
+	  (org-next-heading))))))
 
 (defun org-refresh-property (tprop p &optional inherit)
   "Refresh the buffer text property TPROP from the drawer property P.
@@ -8054,7 +8052,7 @@ the whole buffer."
 			(point-max))
 		       (inherit
 			(org-end-of-subtree t t))
-		       ((outline-next-heading))
+		       ((org-next-heading))
 		       ((point-max))))))
       (with-silent-modifications
 	(if (symbolp tprop)
@@ -8585,7 +8583,7 @@ there is one, return it."
 	 (setq cnt (1- cnt) have-zero t))
        (save-excursion
 	 (org-back-to-heading t)
-	 (setq end (save-excursion (outline-next-heading) (point)))
+	 (setq end (save-excursion (org-next-heading) (point)))
 	 (while (re-search-forward org-link-any-re end t)
            ;; Only consider valid links or links openable via
            ;; `org-open-at-point'.
@@ -9228,7 +9226,7 @@ nil or a string to be used for the todo mark." )
   (save-excursion
     (org-back-to-heading t)
     (let ((bound1 (point))
-	  (bound0 (save-excursion (outline-next-heading) (point))))
+	  (bound0 (save-excursion (org-next-heading) (point))))
       (when (and (re-search-forward
 		  (concat "\\(" org-scheduled-time-regexp "\\)\\|\\("
 			  org-deadline-time-regexp "\\)\\|\\("
@@ -9529,9 +9527,9 @@ changes.  Such blocking occurs when:
       ;; If this task has children, and any are undone, it's blocked
       (save-excursion
 	(org-back-to-heading t)
-	(let ((this-level (funcall outline-level)))
-	  (outline-next-heading)
-	  (let ((child-level (funcall outline-level)))
+	(let ((this-level (org-outline-level)))
+	  (org-next-heading)
+	  (let ((child-level (org-outline-level)))
 	    (while (and (not (eobp))
 			(> child-level this-level))
 	      ;; this todo has children, check whether they are all
@@ -9540,8 +9538,8 @@ changes.  Such blocking occurs when:
 			 (org-entry-is-todo-p))
 		(setq org-block-entry-blocking (org-get-heading))
 		(throw 'dont-block nil))
-	      (outline-next-heading)
-	      (setq child-level (funcall outline-level))))))
+	      (org-next-heading)
+	      (setq child-level (org-outline-level))))))
       ;; Otherwise, if the task's parent has the :ORDERED: property, and
       ;; any previous siblings are undone, it's blocked
       (save-excursion
@@ -9626,7 +9624,7 @@ changes because there are unchecked boxes in this entry."
       (save-excursion
 	(org-back-to-heading t)
 	(let ((beg (point)) end)
-	  (outline-next-heading)
+	  (org-next-heading)
 	  (setq end (point))
 	  (goto-char beg)
 	  (when (org-list-search-forward
@@ -9671,7 +9669,7 @@ all statistics cookies in the buffer."
 	  (setq l1 (org-outline-level))
 	  (setq end
                 (save-excursion
-		  (outline-next-heading)
+		  (org-next-heading)
 		  (when (org-at-heading-p) (setq l2 (org-outline-level)))
 		  (point)))
 	  (if (and (save-excursion
@@ -9715,7 +9713,7 @@ statistics everywhere."
     (catch 'exit
       (save-excursion
 	(forward-line 0)
-	(setq ltoggle (funcall outline-level))
+	(setq ltoggle (org-outline-level))
 	;; Three situations are to consider:
 
 	;; 1. if `org-hierarchical-todo-statistics' is nil, repeat up
@@ -9740,7 +9738,7 @@ statistics everywhere."
 	    (setq cnt-all 0 cnt-done 0 cookie-present t)
 	    (setq is-percent (match-end 2) checkbox-beg (match-beginning 0))
 	    (save-match-data
-	      (unless (outline-next-heading) (throw 'exit nil))
+	      (unless (org-next-heading) (throw 'exit nil))
 	      (while (and (looking-at org-complex-heading-regexp)
 	    		  (> (setq l1 (length (match-string 1))) level))
 	    	(setq kwd (and (or recursive (= l1 ltoggle))
@@ -9771,7 +9769,7 @@ statistics everywhere."
 			       (stringp (car org-provide-todo-statistics))
 			       (member kwd org-done-keywords)))
 		  (setq cnt-done (1+ cnt-done)))
-	    	(outline-next-heading)))
+	    	(org-next-heading)))
 	    (setq new
 	    	  (if is-percent
 		      (format "[%d%%]" (floor (* 100.0 cnt-done)
@@ -10345,7 +10343,7 @@ nil."
     (save-excursion
       (org-back-to-heading t)
       (setq beg (point))
-      (outline-next-heading)
+      (org-next-heading)
       (while (re-search-backward re beg t)
 	(replace-match "")
         (if (and (string-match "\\S-" (buffer-substring (line-beginning-position) (point)))
@@ -10391,7 +10389,7 @@ WHAT entry will also be removed."
         ;; Try to get a default date/time from existing timestamp
         (save-excursion
 	  (org-back-to-heading t)
-	  (let ((end (save-excursion (outline-next-heading) (point))) ts)
+	  (let ((end (save-excursion (org-next-heading) (point))) ts)
 	    (when (re-search-forward (if (eq what 'scheduled)
 				         org-scheduled-time-regexp
 				       org-deadline-time-regexp)
@@ -10518,7 +10516,7 @@ narrowing."
        (org-end-of-meta-data)
        (let ((regexp (concat "^[ \t]*:" (regexp-quote drawer) ":[ \t]*$"))
 	     (end (if (org-at-heading-p) (point)
-		    (save-excursion (outline-next-heading) (point))))
+		    (save-excursion (org-next-heading) (point))))
 	     (case-fold-search t))
 	 (catch 'exit
 	   ;; Try to find existing drawer.
@@ -12413,13 +12411,13 @@ a *different* entry, you cannot use these techniques."
 		 (when start-level
 		   (save-excursion
 		     (goto-char (region-beginning))
-		     (unless (org-at-heading-p) (outline-next-heading))
+		     (unless (org-at-heading-p) (org-next-heading))
 		     (setq start-level (org-current-level))))
 		 (narrow-to-region (region-beginning)
 				   (save-excursion
 				     (goto-char (region-end))
 				     (unless (and (bolp) (org-at-heading-p))
-				       (outline-next-heading))
+				       (org-next-heading))
 				     (point)))
 		 (setq scope nil)))
 
@@ -12770,7 +12768,7 @@ strings."
 		  (if (= (length ts) 2) (setq props (nconc ts props))
 		    ;; Then find timestamps in the section, skipping
 		    ;; planning line.
-		    (let ((end (save-excursion (outline-next-heading))))
+		    (let ((end (save-excursion (org-next-heading))))
 		      (forward-line)
 		      (when (looking-at-p org-planning-line-re) (forward-line))
 		      (setq props (nconc (funcall find-ts end ts) props))))))))
@@ -13151,7 +13149,7 @@ COLUMN formats in the current buffer."
 			 (substring p 0 -1))
 		       props))
 	       (forward-line))))
-	 (outline-next-heading)))
+	 (org-next-heading)))
      (when columns
        (goto-char (point-min))
        (while (re-search-forward "^[ \t]*\\(?:#\\+\\|:\\)COLUMNS:" nil t)
@@ -18336,8 +18334,8 @@ an argument, unconditionally call `org-insert-heading'."
     ["New Heading" org-insert-heading t]
     ("Navigate Headings"
      ["Up" outline-up-heading t]
-     ["Next" outline-next-visible-heading t]
-     ["Previous" outline-previous-visible-heading t]
+     ["Next" org-next-visible-heading t]
+     ["Previous" org-previous-visible-heading t]
      ["Next Same Level" outline-forward-same-level t]
      ["Previous Same Level" outline-backward-same-level t]
      "--"
@@ -18960,8 +18958,8 @@ The functions returns a cons cell whose car (resp. cdr) is the
 position before START-RE (resp. after END-RE)."
   (save-match-data
     (let ((pos (point))
-	  (limit-up (or lim-up (save-excursion (outline-previous-heading))))
-	  (limit-down (or lim-down (save-excursion (outline-next-heading))))
+	  (limit-up (or lim-up (save-excursion (org-previous-heading))))
+	  (limit-down (or lim-down (save-excursion (org-next-heading))))
 	  beg end)
       (save-excursion
 	;; Point is on a block when on START-RE or if START-RE can be
@@ -18990,8 +18988,8 @@ block from point."
   (save-match-data
     (catch 'exit
       (let ((case-fold-search t)
-	    (lim-up (save-excursion (outline-previous-heading)))
-	    (lim-down (save-excursion (outline-next-heading))))
+	    (lim-up (save-excursion (org-previous-heading)))
+	    (lim-down (save-excursion (org-next-heading))))
 	(dolist (name names)
 	  (let ((n (regexp-quote name)))
 	    (when (org-between-regexps-p
@@ -19116,7 +19114,7 @@ hierarchy of headlines by UP levels before marking the subtree."
   (org-with-limited-levels
    (cond ((org-at-heading-p) (forward-line 0))
 	 ((org-before-first-heading-p) (user-error "Not in a subtree"))
-	 (t (outline-previous-visible-heading 1))))
+	 (t (org-previous-visible-heading 1))))
   (when up (while (and (> up 0) (org-up-heading-safe)) (cl-decf up)))
   (if (called-interactively-p 'any)
       (call-interactively 'org-mark-element)
@@ -21043,7 +21041,7 @@ heading of level 0 for property-inheritance.  It will return the
 level of the headline found (down to 0) or nil if already at a
 point before the first headline or at point-min."
   (when (ignore-errors (org-back-to-heading t))
-    (if (< 1 (funcall outline-level))
+    (if (< 1 (org-outline-level))
 	(or (org-up-heading-safe)
             ;; The first heading may not be level 1 heading.
             (goto-char (point-min)))
@@ -21055,11 +21053,11 @@ point before the first headline or at point-min."
 	level l)
     (unless (org-at-heading-p t)
       (user-error "Not at a heading"))
-    (setq level (funcall outline-level))
+    (setq level (org-outline-level))
     (save-excursion
       (if (not (re-search-backward re nil t))
 	  t
-	(setq l (funcall outline-level))
+	(setq l (org-outline-level))
 	(< l level)))))
 
 (defun org-goto-sibling (&optional previous)
@@ -21074,11 +21072,11 @@ move point."
     (when (ignore-errors (org-back-to-heading t))
       (when (org-element-type-p (org-element-at-point) 'inlinetask)
         (org-up-heading-safe))
-      (setq level (funcall outline-level))
+      (setq level (org-outline-level))
       (catch 'exit
 	(or previous (forward-char 1))
 	(while (funcall fun re nil t)
-	  (setq l (funcall outline-level))
+	  (setq l (org-outline-level))
 	  (when (< l level) (goto-char pos) (throw 'exit nil))
 	  (when (= l level) (goto-char (match-beginning 0)) (throw 'exit t)))
 	(goto-char pos)
@@ -21108,24 +21106,24 @@ return nil."
   "Move to next heading of the same level, and return point.
 If there is no such heading, return nil.
 This is like outline-next-sibling, but invisible headings are ok."
-  (let ((level (funcall outline-level)))
-    (outline-next-heading)
-    (while (and (not (eobp)) (> (funcall outline-level) level))
-      (outline-next-heading))
-    (unless (or (eobp) (< (funcall outline-level) level))
+  (let ((level (org-outline-level)))
+    (org-next-heading)
+    (while (and (not (eobp)) (> (org-outline-level) level))
+      (org-next-heading))
+    (unless (or (eobp) (< (org-outline-level) level))
       (point))))
 
 (defun org-get-previous-sibling ()
   "Move to previous heading of the same level, and return point.
 If there is no such heading, return nil."
   (let ((opoint (point))
-	(level (funcall outline-level)))
-    (outline-previous-heading)
+	(level (org-outline-level)))
+    (org-previous-heading)
     (when (and (/= (point) opoint) (outline-on-heading-p t))
-      (while (and (> (funcall outline-level) level)
+      (while (and (> (org-outline-level) level)
 		  (not (bobp)))
-	(outline-previous-heading))
-      (unless (< (funcall outline-level) level)
+	(org-previous-heading))
+      (unless (< (org-outline-level) level)
         (point)))))
 
 (defun org-end-of-subtree (&optional invisible-ok to-heading element)
@@ -21183,7 +21181,7 @@ properties, clocking lines and logbook drawers."
   ;; When FULL is not nil, skip more.
   (when (and full (not (org-at-heading-p)))
     (catch 'exit
-      (let ((end (save-excursion (outline-next-heading) (point)))
+      (let ((end (save-excursion (org-next-heading) (point)))
 	    (re (concat "[ \t]*$" "\\|" org-clock-line-re)))
 	(while (not (eobp))
 	  (cond ;; Skip clock lines.
@@ -21218,7 +21216,7 @@ non-nil it will also look at invisible ones."
   (interactive "p")
   (let ((backward? (and arg (< arg 0))))
     (if (org-before-first-heading-p)
-	(if backward? (goto-char (point-min)) (outline-next-heading))
+	(if backward? (goto-char (point-min)) (org-next-heading))
       (org-back-to-heading invisible-ok)
       (unless backward? (end-of-line))	;do not match current headline
       (let ((level (org-current-level))
@@ -21249,6 +21247,17 @@ non-nil it will also look at invisible ones."
 Stop at the first and last subheadings of a superior heading."
   (interactive "p")
   (org-forward-heading-same-level (if arg (- arg) -1) invisible-ok))
+
+(defun org-next-heading ()
+  "Move to the next (possibly invisible) heading line."
+  ;; Make sure we don't match the heading we're at.
+  (when (and (bolp) (not (eobp))) (forward-char 1))
+  (when (re-search-forward org-outline-regexp-bol nil 'move)
+    (goto-char (match-beginning 0))))
+
+(defun org-previous-heading ()
+  "Move to the previous (possibly invisible) heading."
+  (re-search-backward org-outline-regexp-bol nil 'move))
 
 (defun org-next-visible-heading (arg)
   "Move to the next visible heading line.

@@ -45,6 +45,8 @@
 (declare-function org-subtree-end-visible-p "org" ())
 (declare-function org-narrow-to-subtree "org" (&optional element))
 (declare-function org-next-visible-heading "org" (arg))
+(declare-function org-next-heading "org" ())
+(declare-function org-previous-heading "org" ())
 (declare-function org-at-property-p "org" ())
 (declare-function org-re-property "org" (property &optional literal allow-null value))
 (declare-function org-remove-inline-images "org" (&optional beg end))
@@ -71,8 +73,6 @@
 (declare-function org-list-struct "org-list" ())
 (declare-function org-cycle-item-indentation "org-list" ())
 
-(declare-function outline-previous-heading "outline" ())
-(declare-function outline-next-heading "outline" ())
 (declare-function outline-end-of-heading "outline" ())
 (declare-function outline-up-heading "outline" (arg &optional invisible-ok))
 
@@ -362,7 +362,7 @@ same as `S-TAB') also when called without prefix argument."
 	(save-excursion
 	  (org-back-to-heading)
 	  (outline-up-heading (if (< arg 0) (- arg)
-				(- (funcall outline-level) arg)))
+				(- (org-outline-level) arg)))
 	  (org-fold-show-subtree)))
        ;; Global cycling at BOB: delegate to `org-cycle-internal-global'.
        ((and org-cycle-global-at-bob
@@ -487,7 +487,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	    (setq eos (org-list-get-item-end-before-blank (point) struct))
 	    (setq has-children (org-list-has-child-p (point) struct)))
 	(org-back-to-heading)
-	(setq eoh (save-excursion (outline-end-of-heading) (point)))
+	(setq eoh (save-excursion (re-search-forward (rx eol)) (point)))
 	(setq eos (save-excursion
 		    (org-end-of-subtree t t)
 		    (unless (eobp) (forward-char -1))
@@ -495,10 +495,10 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	(setq has-children
 	      (or
 	       (save-excursion
-		 (let ((level (funcall outline-level)))
-		   (outline-next-heading)
+		 (let ((level (org-outline-level)))
+		   (org-next-heading)
 		   (and (org-at-heading-p)
-			(> (funcall outline-level) level))))
+			(> (org-outline-level) level))))
 	       (and (eq org-cycle-include-plain-lists 'integrate)
 		    (save-excursion
 		      (org-list-search-forward (org-item-beginning-re) eos t))))))
@@ -525,13 +525,13 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (save-excursion
 	(goto-char eos)
         (org-with-limited-levels
-	 (outline-next-heading))
+	 (org-next-heading))
 	(when (org-invisible-p) (org-fold-heading nil))))
      ((and (or (>= eol eos)
 	       (save-excursion (goto-char eol) (skip-chars-forward "[:space:]" eos) (= (point) eos)))
 	   (or has-children
 	       (not (setq children-skipped
-			org-cycle-skip-children-state-if-no-children))))
+			  org-cycle-skip-children-state-if-no-children))))
       ;; Entire subtree is hidden in one line: children view
       (unless (org-before-first-heading-p)
         (org-with-limited-levels
@@ -557,7 +557,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (save-excursion
 	(goto-char eos)
         (org-with-limited-levels
-	 (outline-next-heading))
+	 (org-next-heading))
 	(when (and
                ;; Subtree does not end at the end of visible section of the
                ;; buffer.
@@ -643,7 +643,7 @@ With a numeric prefix, show all headlines up to that level."
       (goto-char (point-min))
       (while (re-search-forward regexp nil t)
         (let ((state (match-string 3)))
-	  (if (not (org-at-property-p)) (outline-next-heading)
+	  (if (not (org-at-property-p)) (org-next-heading)
 	    (save-excursion
 	      (org-back-to-heading t)
 	      (org-fold-subtree t)
@@ -771,8 +771,8 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
   ;; Never hide empty lines at the end of the file.
   (save-excursion
     (goto-char (point-max))
-    (outline-previous-heading)
-    (outline-end-of-heading)
+    (org-previous-heading)
+    (re-search-forward (rx eol))
     (when (and (looking-at "[ \t\n]+")
                (= (match-end 0) (point-max)))
       (org-fold-region (point) (match-end 0) nil 'outline))))

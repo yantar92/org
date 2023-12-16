@@ -1460,7 +1460,7 @@
     (org-test-with-temp-text
         "* H1\n<point>#+BEGIN: columnview :id local\n#+END:\n** H1.1\n* H2"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   (should
    (equal
     "#+BEGIN: columnview :id global
@@ -1474,7 +1474,7 @@
     (org-test-with-temp-text
         "\n* H1\n<point>#+BEGIN: columnview :id global\n#+END:\n** H1.1\n* H2"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   ;; Test `:hlines' parameter.
   (should
    (equal
@@ -1495,7 +1495,7 @@
 * H2
 ** H2.1"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   (should
    (equal
     "#+BEGIN: columnview :hlines 1 :id global
@@ -1514,7 +1514,7 @@
 * H2
 ** H2.1"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   (should
    (equal
     "#+BEGIN: columnview :hlines 1 :id \"id\"
@@ -1535,7 +1535,7 @@
 :END:
 ** H2.1"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   (should
    (equal
     "#+BEGIN: columnview :hlines 1 :id id
@@ -1556,7 +1556,7 @@
 :END:
 ** H2.1"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   ;; Test `:indent' parameter.
   (should
    (equal
@@ -1570,7 +1570,7 @@
     (org-test-with-temp-text
         "* H1\n<point>#+BEGIN: columnview :indent t\n#+END:\n** H1.1"
       (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   (should
    (equal
     "#+BEGIN: columnview :indent t
@@ -1584,7 +1584,7 @@
         "* H1\n<point>#+BEGIN: columnview :indent t\n#+END:\n** H1.1"
       (let ((org-columns-default-format "%A(Prop) %ITEM(Name)"))
         (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   ;; Test `:vlines' parameter.
   (should
    (equal
@@ -1617,7 +1617,7 @@
 :A: 1
 :END:"
       (let ((org-columns-default-format "%ITEM %A")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   ;; Test `:exclude-tags' parameter.
   (should
    (equal
@@ -1637,7 +1637,7 @@
 :A: 1
 :END:"
       (let ((org-columns-default-format "%ITEM %A")) (org-update-dblock))
-      (buffer-substring-no-properties (point) (outline-next-heading)))))
+      (buffer-substring-no-properties (point) (org-next-heading)))))
   ;; Test `:format' parameter.
   (should
    (equal

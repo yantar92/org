@@ -39,6 +39,7 @@
 
 (declare-function org-at-comment-p "org" ())
 (declare-function org-at-heading-p "org" (&optional ignored))
+(declare-function org-next-heading "org" ())
 (declare-function org-back-over-empty-lines "org" ())
 (declare-function org-end-of-meta-data "org" (&optional full))
 (declare-function org-edit-footnote-reference "org-src" ())
@@ -57,7 +58,6 @@
 (declare-function org-inside-latex-macro-p "org" ())
 (declare-function org-mark-ring-push "org" (&optional pos buffer))
 (declare-function org-fold-show-context "org-fold" (&optional key))
-(declare-function outline-next-heading "outline")
 
 (defvar electric-indent-mode)
 (defvar org-blank-before-new-entry)	; defined in org.el
@@ -440,7 +440,7 @@ while collecting them."
 (defun org-footnote--goto-local-insertion-point ()
   "Find insertion point for footnote, just before next outline heading.
 Assume insertion point is within currently accessible part of the buffer."
-  (org-with-limited-levels (outline-next-heading))
+  (org-with-limited-levels (org-next-heading))
   (skip-chars-backward " \t\n")
   (unless (bobp) (forward-line))
   (unless (bolp) (insert "\n")))

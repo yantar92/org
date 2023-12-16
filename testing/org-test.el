@@ -158,7 +158,7 @@ currently executed.")
 	 (goto-char (point-min))
 	 (condition-case nil
 	     (progn
-	       (outline-next-visible-heading 1)
+	       (org-next-visible-heading 1)
 	       (org-show-subtree)
 	       (org-show-all '(blocks)))
 	   (error nil))

@@ -231,7 +231,7 @@ inserted into the buffer."
 (defun org-datetree-file-entry-under (txt d)
   "Insert a node TXT into the date tree under date D."
   (org-datetree-find-date-create d)
-  (let ((level (org-get-valid-level (funcall outline-level) 1)))
+  (let ((level (org-get-valid-level (org-outline-level) 1)))
     (org-end-of-subtree t t)
     (org-back-over-empty-lines)
     (org-paste-subtree level txt)))

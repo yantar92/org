@@ -48,7 +48,6 @@
 (declare-function org-heading-components "org" ())
 (declare-function org-in-commented-heading-p "org" (&optional no-inheritance))
 (declare-function org-in-archived-heading-p "org" (&optional no-inheritance))
-(declare-function outline-previous-heading "outline" ())
 (defvar org-id-link-to-org-use-id) ; Dynamically scoped
 
 (defgroup org-babel-tangle nil

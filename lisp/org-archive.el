@@ -346,7 +346,7 @@ direct children of this heading."
 		    (if org-archive-reversed-order
 			(progn
 			  (org-back-to-heading t)
-			  (outline-next-heading))
+			  (org-next-heading))
 		      (org-end-of-subtree t))
 		    (skip-chars-backward " \t\r\n")
 		    (and (looking-at "[ \t\r\n]*")
@@ -357,7 +357,7 @@ direct children of this heading."
 		(if org-archive-reversed-order
 		    (progn
 		      (goto-char (point-min))
-		      (unless (org-at-heading-p) (outline-next-heading)))
+		      (unless (org-at-heading-p) (org-next-heading)))
 		  (goto-char (point-max))
 		  ;; Subtree narrowing can let the buffer end on
 		  ;; a headline.  `org-paste-subtree' then deletes it.
@@ -422,7 +422,7 @@ direct children of this heading."
 		   (concat "in file: " (abbreviate-file-name afile)))))))
     (org-fold-reveal)
     (if (looking-at "^[ \t]*$")
-	(outline-next-visible-heading 1))))
+	(org-next-visible-heading 1))))
 
 ;;;###autoload
 (defun org-archive-to-archive-sibling ()
@@ -454,7 +454,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	(org-back-to-heading t)
 	(looking-at org-outline-regexp)
 	(setq leader (match-string 0)
-	      level (funcall outline-level))
+	      level (org-outline-level))
 	(setq pos (point-marker))
         ;; Advance POS upon insertion in front of it.
         (set-marker-insertion-type pos t)
@@ -481,7 +481,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	  (org-toggle-tag org-archive-tag 'on))
 	(forward-line 0)
 	(if org-archive-reversed-order
-	    (outline-next-heading)
+	    (org-next-heading)
 	  (org-end-of-subtree t t))
 	(save-excursion
 	  (goto-char pos)
@@ -500,7 +500,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	(goto-char pos)))
     (org-fold-reveal)
     (if (looking-at "^[ \t]*$")
-	(outline-next-visible-heading 1))))
+	(org-next-visible-heading 1))))
 
 (defun org-archive-all-done (&optional tag)
   "Archive sublevels of the current tree without open TODO items.

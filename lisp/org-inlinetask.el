@@ -342,7 +342,7 @@ This function is meant to be used in `org-cycle-hook'."
      (save-excursion
        (while
 	   (or (org-inlinetask-at-task-p)
-	       (and (outline-next-heading) (org-inlinetask-at-task-p)))
+	       (and (org-next-heading) (org-inlinetask-at-task-p)))
 	 (org-inlinetask-toggle-visibility 'fold)
 	 (org-inlinetask-goto-end))))))
 

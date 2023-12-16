@@ -493,7 +493,7 @@ This will find DRAWER and extract the alist."
 			   (save-excursion
 			     (and (re-search-forward "^[ \t]*:END:" nil t)
 				  (match-beginning 0)))))
-	(outline-next-heading)
+	(org-next-heading)
 	(insert "  :" drawer ":\n  :END:\n")
 	(forward-line -1))
       (insert (pp-to-string status)))))

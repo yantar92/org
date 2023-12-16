@@ -83,8 +83,6 @@
 (declare-function org-reduced-level "org" (l))
 (declare-function org-unescape-code-in-string "org-src" (s))
 (declare-function org-inlinetask-outline-regexp "org-inlinetask" ())
-(declare-function outline-next-heading "outline" ())
-(declare-function outline-previous-heading "outline" ())
 
 (defvar org-complex-heading-regexp)
 (defvar org-done-keywords)
@@ -5119,7 +5117,7 @@ Elements are accumulated into ACC."
     (goto-char beg)
     ;; When parsing only headlines, skip any text before first one.
     (when (and (eq granularity 'headline) (not (org-at-heading-p)))
-      (org-with-limited-levels (outline-next-heading)))
+      (org-with-limited-levels (org-next-heading)))
     (let (elements)
       (while (< (point) end)
 	;; Visible only: skip invisible parts due to folding.
