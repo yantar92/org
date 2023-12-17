@@ -20923,7 +20923,7 @@ If INVISIBLE-NOT-OK is non-nil, an invisible heading line is not ok."
   (save-excursion
     (forward-line 0)
     (and (or (not invisible-not-ok) (not (org-fold-folded-p)))
-	 (looking-at outline-regexp))))
+	 (looking-at org-outline-regexp-bol))))
 
 (defun org-in-commented-heading-p (&optional no-inheritance element)
   "Non-nil if point is under a commented heading.
