@@ -637,6 +637,11 @@ When nil, you can still capture using the date at point with
   :version "24.3"
   :type 'boolean)
 
+(defvar org-clock-marker)
+(defvar org-clock-hd-marker)
+(defvar org-clock-heading)
+(declare-function org-clock-is-active "org-clock" ())
+
 ;;;###autoload
 (defun org-capture (&optional goto keys)
   "Capture something.

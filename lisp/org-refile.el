@@ -421,7 +421,8 @@ first entry, and vice-versa."
 
 (defvar org-capture-last-stored-marker)
 
-
+(defvar org-clock-hd-marker)
+(defvar org-clock-heading)
 ;;;###autoload
 (defun org-refile (&optional arg default-buffer rfloc msg)
   "Move the entry or entries at point to another heading.

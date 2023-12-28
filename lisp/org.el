@@ -3767,49 +3767,10 @@ This is needed for font-lock setup.")
 (declare-function org-clock-update-mode-line "org-clock" (&optional refresh))
 (declare-function org-resolve-clocks "org-clock"
 		  (&optional also-non-dangling-p prompt last-valid))
-
-(defvar org-clock-start-time)
-(defvar org-clock-marker (make-marker)
-  "Marker recording the last clock-in.")
-(defvar org-clock-hd-marker (make-marker)
-  "Marker recording the last clock-in, but the headline position.")
-(defvar org-clock-heading ""
-  "The heading of the current clock entry.")
-(defun org-clocking-buffer ()
-  "Return the buffer where the clock is currently running.
-Return nil if no clock is running."
-  (marker-buffer org-clock-marker))
-(defalias 'org-clock-is-active #'org-clocking-buffer)
-
-(defun org-check-running-clock ()
-  "Check if the current buffer contains the running clock.
-If yes, offer to stop it and to save the buffer with the changes."
-  (when (and (equal (marker-buffer org-clock-marker) (current-buffer))
-	     (y-or-n-p (format "Clock-out in buffer %s before killing it? "
-			       (buffer-name))))
-    (org-clock-out)
-    (when (y-or-n-p "Save changed buffer?")
-      (save-buffer))))
-
-(defun org-clocktable-try-shift (dir n)
-  "Check if this line starts a clock table, if yes, shift the time block."
-  (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
-    (org-clocktable-shift dir n)))
-
-;;;###autoload
-(defun org-clock-persistence-insinuate ()
-  "Set up hooks for clock persistence."
-  (require 'org-clock)
-  (add-hook 'org-mode-hook 'org-clock-load)
-  (add-hook 'kill-emacs-hook 'org-clock-save))
-
-(defun org-clock-auto-clockout-insinuate ()
-  "Set up hook for auto clocking out when Emacs is idle.
-See `org-clock-auto-clockout-timer'.
-
-This function is meant to be added to the user configuration."
-  (require 'org-clock)
-  (add-hook 'org-clock-in-hook #'org-clock-auto-clockout t))
+(declare-function org-in-clocktable-p "org-clock" ())
+(declare-function org-clocktable-try-shift "org-clock" (dir n))
+(declare-function org-at-clock-log-p "org-clock" ())
+(declare-function org-clocking-buffer "org-clock" ())
 
 (defgroup org-archive nil
   "Options concerning archiving in Org mode."
@@ -7562,6 +7523,7 @@ When children are sorted, the cursor is in the parent line when this
 hook gets called.  When a region or a plain list is sorted, the cursor
 will be in the first entry of the sorted region/list.")
 
+(defvar org-clock-marker) ; defined in org-clock.el
 (defun org-sort-entries
     (&optional with-case sorting-type getkey-func compare-func property
 	       interactive?)
@@ -14824,13 +14786,6 @@ When matching, the match groups are the following:
       (message "Timestamp is now %sactive"
 	       (if (equal (char-after beg) ?<) "" "in")))))
 
-(defun org-at-clock-log-p ()
-  "Non-nil if point is on a clock log line."
-  (and (org-match-line org-clock-line-re)
-       (org-element-type-p
-        (save-match-data (org-element-at-point))
-        'clock)))
-
 (defvar org-clock-history)                     ; defined in org-clock.el
 (defvar org-clock-adjust-closest nil)          ; defined in org-clock.el
 (defun org-timestamp-change (n &optional what updown suppress-tmp-delay)
@@ -18714,17 +18669,6 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 ;;;; Miscellaneous stuff
 
 ;;; Generally useful functions
-
-(defun org-in-clocktable-p ()
-  "Check if the cursor is in a clocktable."
-  (let ((pos (point)) start)
-    (save-excursion
-      (end-of-line 1)
-      (and (re-search-backward "^[ \t]*#\\+BEGIN:[ \t]+clocktable" nil t)
-	   (setq start (match-beginning 0))
-	   (re-search-forward "^[ \t]*#\\+END:.*" nil t)
-	   (>= (match-end 0) pos)
-	   start))))
 
 (defun org-in-verbatim-emphasis ()
   (save-match-data

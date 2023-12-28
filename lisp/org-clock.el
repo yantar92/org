@@ -542,6 +542,13 @@ check whether the latest CLOCK line has been cleared.")
 (defvar org-clock-heading) ; defined in org.el
 (defvar org-clock-start-time "")
 
+(defvar org-clock-marker (make-marker)
+  "Marker recording the last clock-in.")
+(defvar org-clock-hd-marker (make-marker)
+  "Marker recording the last clock-in, but the headline position.")
+(defvar org-clock-heading ""
+  "The heading of the current clock entry.")
+
 (defvar org-clock-leftover-time nil
   "If non-nil, user canceled a clock; this is when leftover time started.")
 
@@ -566,6 +573,37 @@ of a different task.")
 (defvar org-clock-mode-line-map (make-sparse-keymap))
 (define-key org-clock-mode-line-map [mode-line mouse-2] #'org-clock-goto)
 (define-key org-clock-mode-line-map [mode-line mouse-1] #'org-clock-menu)
+
+(defun org-clocking-buffer ()
+  "Return the buffer where the clock is currently running.
+Return nil if no clock is running."
+  (marker-buffer org-clock-marker))
+(defalias 'org-clock-is-active #'org-clocking-buffer)
+
+(defun org-check-running-clock ()
+  "Check if the current buffer contains the running clock.
+If yes, offer to stop it and to save the buffer with the changes."
+  (when (and (equal (marker-buffer org-clock-marker) (current-buffer))
+	     (y-or-n-p (format "Clock-out in buffer %s before killing it? "
+			       (buffer-name))))
+    (org-clock-out)
+    (when (y-or-n-p "Save changed buffer?")
+      (save-buffer))))
+
+;;;###autoload
+(defun org-clock-persistence-insinuate ()
+  "Set up hooks for clock persistence."
+  (require 'org-clock)
+  (add-hook 'org-mode-hook 'org-clock-load)
+  (add-hook 'kill-emacs-hook 'org-clock-save))
+
+(defun org-clock-auto-clockout-insinuate ()
+  "Set up hook for auto clocking out when Emacs is idle.
+See `org-clock-auto-clockout-timer'.
+
+This function is meant to be added to the user configuration."
+  (require 'org-clock)
+  (add-hook 'org-clock-in-hook #'org-clock-auto-clockout t))
 
 (defun org-clock--translate (s language)
   "Translate string S into using string LANGUAGE.
@@ -644,6 +682,13 @@ markers in `org-clock-history'."
 	     (if (stringp log-drawer) log-drawer "LOGBOOK")))
 	  ((stringp drawer) drawer)
 	  (t nil))))
+
+(defun org-at-clock-log-p ()
+  "Non-nil if point is on a clock log line."
+  (and (org-match-line org-clock-line-re)
+       (org-element-type-p
+        (save-match-data (org-element-at-point))
+        'clock)))
 
 (defun org-clocking-p ()
   "Return t when clocking a task."
@@ -2606,6 +2651,22 @@ the currently selected interval size."
 	  (forward-line 0)
 	  (org-update-dblock)
 	  t)))))
+
+(defun org-in-clocktable-p ()
+  "Check if the cursor is in a clocktable."
+  (let ((pos (point)) start)
+    (save-excursion
+      (end-of-line 1)
+      (and (re-search-backward "^[ \t]*#\\+BEGIN:[ \t]+clocktable" nil t)
+	   (setq start (match-beginning 0))
+	   (re-search-forward "^[ \t]*#\\+END:.*" nil t)
+	   (>= (match-end 0) pos)
+	   start))))
+
+(defun org-clocktable-try-shift (dir n)
+  "Check if this line starts a clock table, if yes, shift the time block."
+  (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
+    (org-clocktable-shift dir n)))
 
 ;;;###autoload
 (defun org-dblock-write:clocktable (params)

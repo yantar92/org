@@ -4079,6 +4079,8 @@ agenda display, configure `org-agenda-finalize-hook'."
 	(add-hook 'kill-buffer-hook #'org-agenda-reset-markers 'append 'local))
       (run-hooks 'org-agenda-finalize-hook))))
 
+(defvar org-clock-hd-marker)
+(defvar org-clock-marker)
 (defun org-agenda-mark-clocking-task ()
   "Mark the current clock entry in the agenda if it is present."
   ;; We need to widen when `org-agenda-finalize' is called from
@@ -5757,8 +5759,8 @@ This function is invoked if `org-agenda-todo-ignore-deadlines',
 		    0))
 		((eq org-agenda-todo-ignore-deadlines 'past)
 		 (<= (org-timestamp-to-now
-		     (match-string 1) org-agenda-todo-ignore-time-comparison-use-seconds)
-		    0))
+		      (match-string 1) org-agenda-todo-ignore-time-comparison-use-seconds)
+		     0))
 		((numberp org-agenda-todo-ignore-deadlines)
 		 (org-agenda-todo-custom-ignore-p
 		  (match-string 1) org-agenda-todo-ignore-deadlines))
@@ -5792,6 +5794,8 @@ This function is invoked if `org-agenda-todo-ignore-deadlines',
 		       (org-agenda-todo-custom-ignore-p
 			(match-string 1) org-agenda-todo-ignore-timestamp))
 		      (t))))))))))
+
+(declare-function org-at-clock-log-p "org-clock" ())
 
 (defun org-agenda-get-timestamps (&optional deadlines)
   "Return the date stamp information for agenda display.
