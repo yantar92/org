@@ -48,6 +48,7 @@
 (declare-function org-inlinetask-get-task-level "org-inlinetask" ())
 (declare-function org-inlinetask-in-task-p "org-inlinetask" ())
 (declare-function org-list-item-body-column "org-list" (item))
+(declare-function org-at-clock-log-p "org-clock" ())
 (defvar org-inlinetask-show-first-star)
 
 (defgroup org-indent nil
