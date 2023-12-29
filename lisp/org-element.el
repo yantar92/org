@@ -76,7 +76,6 @@
 (require 'org-table)
 (require 'org-fold-core)
 
-(declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-escape-code-in-string "org-src" (s))
 (declare-function org-src-preserve-indentation-p "org-src" (&optional node))
 (declare-function org-macro-escape-arguments "org-macro" (&rest args))
@@ -84,8 +83,6 @@
 (declare-function org-reduced-level "org" (l))
 (declare-function org-unescape-code-in-string "org-src" (s))
 (declare-function org-inlinetask-outline-regexp "org-inlinetask" ())
-(declare-function outline-next-heading "outline" ())
-(declare-function outline-previous-heading "outline" ())
 
 (defvar org-complex-heading-regexp)
 (defvar org-done-keywords)
@@ -5208,8 +5205,10 @@ Elements are accumulated into ACC."
   (save-excursion
     (goto-char beg)
     ;; When parsing only headlines, skip any text before first one.
-    (when (and (eq granularity 'headline) (not (org-at-heading-p)))
-      (org-with-limited-levels (outline-next-heading)))
+    (while (and (eq granularity 'headline)
+                (not (looking-at-p org-element-headline-re))
+                (re-search-forward org-element-headline-re end 'move))
+      (goto-char (match-beginning 0)))
     (let (elements)
       (while (< (point) end)
 	;; Visible only: skip invisible parts due to folding.
