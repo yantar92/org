@@ -85,7 +85,6 @@
 
 (defvar org-done-keywords)
 (defvar org-edit-src-content-indentation)
-(defvar org-match-substring-regexp)
 (defvar org-odd-levels-only)
 (defvar org-property-drawer-re)
 (defvar org-property-format)
@@ -4136,6 +4135,16 @@ CONTENTS is the contents of the object."
 
 
 ;;;; Subscript
+
+(defconst org-match-substring-regexp
+  (concat
+   "\\(\\S-\\)\\([_^]\\)\\("
+   "\\(?:" (org-create-multibrace-regexp "{" "}" org-match-sexp-depth) "\\)"
+   "\\|"
+   "\\(?:" (org-create-multibrace-regexp "(" ")" org-match-sexp-depth) "\\)"
+   "\\|"
+   "\\(?:\\*\\|[+-]?[[:alnum:].,\\]*[[:alnum:]]\\)\\)")
+  "The regular expression matching a sub- or superscript.")
 
 (defun org-element-subscript-parser ()
   "Parse subscript at point, if any.
