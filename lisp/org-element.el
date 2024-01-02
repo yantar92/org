@@ -86,7 +86,6 @@
 (defvar org-done-keywords)
 (defvar org-edit-src-content-indentation)
 (defvar org-odd-levels-only)
-(defvar org-property-drawer-re)
 (defvar org-property-format)
 (defvar org-property-re)
 (defvar org-tags-column)
@@ -139,6 +138,12 @@ Style, if any, is located in match group 1.")
        (0+ (or ?\t ?\s))
        line-end)))
   "Regexp matching a clock line.")
+
+(defconst org-property-drawer-re
+  (concat "^[ \t]*:PROPERTIES:[ \t]*\n"
+	  "\\(?:[ \t]*:\\S-+:\\(?:[ \t].*\\)?[ \t]*\n\\)*?"
+	  "[ \t]*:END:[ \t]*$")
+  "Matches an entire property drawer.")
 
 (defconst org-element-comment-string "COMMENT"
   "String marker for commented headlines.")

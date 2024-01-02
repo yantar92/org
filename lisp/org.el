@@ -617,12 +617,6 @@ Group 1 contains drawer's name or \"END\".")
 	   (0+ (any "\t ")) ":END:" (0+ (any "\t ")) eol))
   "Matches an entire LOGBOOK drawer.")
 
-(defconst org-property-drawer-re
-  (concat "^[ \t]*:PROPERTIES:[ \t]*\n"
-	  "\\(?:[ \t]*:\\S-+:\\(?:[ \t].*\\)?[ \t]*\n\\)*?"
-	  "[ \t]*:END:[ \t]*$")
-  "Matches an entire property drawer.")
-
 (defconst org-clock-drawer-re
   (concat "\\(" org-clock-drawer-start-re "\\)\\(?:.\\|\n\\)*?\\("
 	  org-clock-drawer-end-re "\\)\n?")
@@ -6916,6 +6910,8 @@ After top level, it switches back to sibling level."
 		    (< (point) end))
 		  (not (eobp)))
 	(funcall fun)))))
+
+(defvar org-property-drawer-re)
 
 (defun org-fixup-indentation (diff)
   "Change the indentation in the current entry by DIFF.
