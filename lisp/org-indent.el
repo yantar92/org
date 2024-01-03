@@ -49,6 +49,7 @@
 (declare-function org-inlinetask-in-task-p "org-inlinetask" ())
 (declare-function org-list-item-body-column "org-list" (item))
 (defvar org-inlinetask-show-first-star)
+(defvar org-property-re)
 
 (defgroup org-indent nil
   "Options concerning dynamic virtual outline indentation."
