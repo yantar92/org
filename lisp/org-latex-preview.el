@@ -496,17 +496,17 @@ overlay face is set to `org-latex-preview-processing-face'."
                                'center)))))
     (overlay-put ov 'preview-image image-display)
     (cond
-       ((eq image-type 'svg)
-        (overlay-put
-         ov 'hidden-face
-         (or (and errors 'error)
-             (org-latex-preview--face-around
-              (overlay-start ov) (overlay-end ov)))))
-       (errors
-        (overlay-put
-         ov 'before-string
-         (propertize "!" 'display
-                     `(left-fringe exclamation-mark error)))))
+     ((eq image-type 'svg)
+      (overlay-put
+       ov 'hidden-face
+       (or (and errors 'error)
+           (org-latex-preview--face-around
+            (overlay-start ov) (overlay-end ov)))))
+     (errors
+      (overlay-put
+       ov 'before-string
+       (propertize "!" 'display
+                   `(left-fringe exclamation-mark error)))))
     (when org-latex-preview-processing-indicator
       (org-latex-preview--indicate-processing ov))
     ;; This is a temporary measure until a more sophisticated
@@ -660,7 +660,7 @@ This is intended to be placed in `post-command-hook'."
                        fragments))))
         ;; Find every location in the changed region where a parenthesis
         ;; or square bracket is preceeded by a backslash, and check for
-         ;; a LaTeX fragment.
+        ;; a LaTeX fragment.
         (goto-char beg)
         (unless (bobp)
           (while (re-search-forward "[][()]" end t)
@@ -695,7 +695,7 @@ This is intended to be placed in `post-command-hook'."
       (when (setq fragments (delq nil fragments))
         (when (and org-latex-preview-numbered
                    (cl-find 'latex-environment fragments
-                          :key #'org-element-type :test #'eq))
+                            :key #'org-element-type :test #'eq))
           (setq fragments
                 (append fragments
                         (org-latex-preview--get-numbered-environments
@@ -1193,7 +1193,7 @@ CALLBACK is supplied by Eldoc, see
 See `org-latex-preview-auto-generate' for details."
   (setq org-latex-preview-live--docstring " ")
   (setq-local org-latex-preview-live--generator
-                 (thread-first #'org-latex-preview-live--regenerate
+              (thread-first #'org-latex-preview-live--regenerate
                             (org-latex-preview-live--throttle
                              org-latex-preview-throttle)
                             (org-latex-preview-live--debounce
@@ -1882,8 +1882,8 @@ Returns a list of async tasks started."
                      #'org-latex-preview--check-all-fragments-produced))))
       (if (and (eq processing-type 'dvipng)
                (member "--follow" (cadr img-extract-async)))
-        (list (org-async-call tex-compile-async)
-              (org-async-call img-extract-async))
+          (list (org-async-call tex-compile-async)
+                (org-async-call img-extract-async))
         (plist-put (cddr tex-compile-async) :success img-extract-async)
         (plist-put (cddr tex-compile-async) :failure img-extract-async)
         (list (org-async-call tex-compile-async))))))
@@ -2048,7 +2048,7 @@ The path of the created LaTeX file is returned."
       (pcase (plist-get processing-info :latex-processor)
         ("pdflatex"
          (if-let ((format-file (org-latex-preview--precompile processing-info header
-                                                             (not relative-file-p))))
+                                                              (not relative-file-p))))
              (setq header (concat "%& " (file-name-sans-extension format-file)))
            (setq precompile-failed-msg
                  "Precompile failed.")))
@@ -2363,7 +2363,7 @@ fragments in EXTENDED-INFO."
         (save-excursion
           (when (re-search-forward
                  "^Preview: Tightpage \\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\) *\\(-?[0-9]+\\)"
-                                   (or (caadr preview-marks) (point-max)) t)
+                 (or (caadr preview-marks) (point-max)) t)
             (setq tightpage-info
                   (mapcar #'string-to-number
                           ;; left-margin bottom-margin
@@ -2550,17 +2550,17 @@ EXTENDED-INFO, and displayed in the buffer."
         (fragments (plist-get extended-info :fragments))
         fragments-to-show page-info-end)
     (while (search-forward "]" nil t)
-        (setq page-info-end (point))
-        (save-excursion
-          (backward-list)
-          (if (re-search-forward "\\=\\[\\([0-9]+\\) " page-info-end t)
-              (let* ((page (string-to-number (match-string 1)))
-                     (fragment-info (nth (1- page) fragments)))
-                (plist-put fragment-info :path
-                           (format "%s-%09d.png" outputs-no-ext page))
-                (when (plist-get fragment-info :height)
-                  ;; geometry has been recorded by latex filter, can display image
-                  (push fragment-info fragments-to-show))))))
+      (setq page-info-end (point))
+      (save-excursion
+        (backward-list)
+        (if (re-search-forward "\\=\\[\\([0-9]+\\) " page-info-end t)
+            (let* ((page (string-to-number (match-string 1)))
+                   (fragment-info (nth (1- page) fragments)))
+              (plist-put fragment-info :path
+                         (format "%s-%09d.png" outputs-no-ext page))
+              (when (plist-get fragment-info :height)
+                ;; geometry has been recorded by latex filter, can display image
+                (push fragment-info fragments-to-show))))))
     (when fragments-to-show
       (org-latex-preview--place-images
        extended-info (nreverse fragments-to-show)))))
