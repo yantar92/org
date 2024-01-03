@@ -1687,6 +1687,13 @@ The path of the created LaTeX file is returned."
       (user-error "No `org-latex-preview-compiler-command-map' entry found for LaTeX processor %S, it should be a member of `org-latex-compilers' %S"
                   (plist-get extended-info :latex-processor)
                   org-latex-compilers))
+    (with-current-buffer tex-process-buffer
+      (erase-buffer)
+      (insert "RUNNING: "
+              (format-spec tex-compile-command-fmt tex-command-spec)
+              "\n")
+      (add-text-properties (point-min) (1- (point))
+                           '(face ((:height 0.8) font-lock-comment-face header-line))))
     (list 'org-async-task
           tex-formatted-command
           :buffer tex-process-buffer
@@ -1742,6 +1749,13 @@ The path of the created LaTeX file is returned."
          (img-formatted-command
           (split-string-shell-command
            (format-spec img-extract-command img-command-spec))))
+    (with-current-buffer org-latex-preview--image-log
+      (erase-buffer)
+      (insert "RUNNING: "
+              (format-spec img-extract-command img-command-spec)
+              "\n")
+      (add-text-properties (point-min) (1- (point))
+                           '(face ((:height 0.8) font-lock-comment-face header-line))))
     (list 'org-async-task
           img-formatted-command
           :buffer img-process-buffer
