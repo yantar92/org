@@ -1160,12 +1160,22 @@ NUMBER is the equation number that should be used, if applicable."
                bg
                number))))
 
-(defconst org-latex-preview--numbered-environments
-  '("equation" "eqnarray" "math" "displaymath" ; latex.ltx
-    "align" "gather" "multiline" "flalign" "alignat" ; amsmath.sty
-    "xalignat" "xxalignat" "subequations" ; amsmath.sty
-    "dmath" "dseries" "dgroup" "darray" ; breqn.sty
+(defconst org-latex-preview--numbered-environments-single
+  '("equation" "math" "displaymath" ; latex.ltx
+    "dmath" ; breqn.sty
     "empheq") ; empheq.sty
+  "List of LaTeX environments that contain a single numbered equation.")
+
+(defconst org-latex-preview--numbered-environments-multi
+  '("eqnarray" ; latex.ltx
+    "align" "alignat" "flalign" "gather" "multiline" ; amsmath.sty
+    "xalignat" "xxalignat" "subequations" ; amsmath.sty
+    "dseries" "dgroup" "darray") ; breqn.sty
+  "List of LaTeX environments that contain multiple numbered equations.")
+
+(defconst org-latex-preview--numbered-environments-all
+  (append org-latex-preview--numbered-environments-single
+          org-latex-preview--numbered-environments-multi)
   "List of LaTeX environments which produce numbered equations.")
 
 (defun org-latex-preview--environment-numbering-table (&optional parse-tree)
@@ -1174,24 +1184,100 @@ If the org-element cache is active or PARSE-TREE is provided, the
 hash table will use `eq' equality, otherwise `equal' will be
 used.  When PARSE-TREE is provided, it is passed onto
 `org-latex-preview--get-numbered-environments'."
-  (let ((table (make-hash-table :test (if (or parse-tree (org-element--cache-active-p))
-                                          #'eq #'equal)))
+  (let ((table (make-hash-table
+                :test (if (or parse-tree (org-element--cache-active-p))
+                          #'eq #'equal)))
         (counter 1))
     (save-match-data
       (dolist (element (org-latex-preview--get-numbered-environments
                         nil nil parse-tree))
-        (let ((content (org-element-property :value element)))
-          (puthash element counter table)
-          (if (string-match-p "\\`\\\\begin{[^}]*align" content)
-              (let ((beg (org-element-property :begin element))
-                    (end (org-element-property :end element)))
-                (cl-incf counter (1+ (how-many "\\\\$" beg end)))
-                (cl-decf counter (how-many "\\nonumber" beg end))
-                (cl-decf counter (how-many "\\tag{" beg end)))
-            (unless (or (string-match-p "\\nonumber" content)
-                        (string-match-p "\\tag{" content))
-              (cl-incf counter))))))
+        (puthash element counter table)
+        (cl-incf counter (org-latex-preview--count-numbered-equations element))))
     table))
+
+(defvar org-latex-preview--numbering-count-buffer nil)
+
+(defun org-latex-preview--count-numbered-equations (element)
+  "Count the number of numbered equations within Org ELEMENT.
+Note: this function changes the current match data."
+  (or (org-element-cache-get-key element :latex-numbered-equation-count)
+      (let ((count 0)
+            environment-name)
+        (with-current-buffer (org-element-property :buffer element)
+          (save-excursion
+            (goto-char (org-element-property :begin element))
+            (when (looking-at "\\\\begin{\\([^}]+\\)}")
+              (setq environment-name (match-string 1)))
+            (cond
+             ((member environment-name org-latex-preview--numbered-environments-single)
+              (unless (or (search-forward "\\nonumber" (org-element-property :end element) t)
+                          (search-forward "\\tag{" (org-element-property :end element) t))
+                (cl-incf count 1)))
+             ((member environment-name org-latex-preview--numbered-environments-multi)
+              (cl-incf count (org-latex-preview--count-numbered-equations-multi
+                              element environment-name))))))
+        (org-element-cache-store-key element :latex-numbered-equation-count count)
+        count)))
+
+(defun org-latex-preview--count-numbered-equations-multi (element environment-name)
+  "Count the number of numbered equations within Org ELEMENT.
+Element is assumed to be a LaTeX ENVIRONMENT-NAME environment.
+Note: this function changes the current match data."
+  (let ((temp-buffer (or (and (buffer-live-p org-latex-preview--numbering-count-buffer)
+                              org-latex-preview--numbering-count-buffer)
+                         (setq org-latex-preview--numbering-count-buffer
+                               (get-buffer-create " *Org LaTeX preview numbering calculation*"))))
+        (count-instances
+         (lambda (needle)
+           (let ((count 0))
+             (save-excursion
+               (while (search-forward needle nil t)
+                 (cl-incf count))
+               count))))
+        (count 0))
+    (with-current-buffer temp-buffer
+      (erase-buffer)
+      (insert-buffer-substring
+       (org-element-property :buffer element)
+       (org-element-property :begin element) (org-element-property :end element))
+      (goto-char (point-min))
+      (org-skip-whitespace)
+      ;; Remove the "outer" environment, so we can then
+      ;; easily delete all inner environments.
+      (delete-region (point-min) (+ (point) 8 (length environment-name))) ; 8 = (length "\\begin{}")
+      (goto-char (point-max))
+      (when (search-backward (format "\\end{%s}" environment-name) nil t)
+        (delete-region (match-beginning 0) (match-end 0)))
+      ;; Remove all "inner" environments.  We do this since
+      ;; they can contain false-positive indicators of numbered
+      ;; equations.
+      (goto-char (point-min))
+      (while (re-search-forward "\\\\begin{\\([^}]+\\)}" nil t)
+        (let* ((start (match-beginning 0))
+               (max-end (point-max))
+               (env-name (match-string 1))
+               (begin-template (format "\\begin{%s}" env-name))
+               (end-template (format "\\end{%s}" env-name))
+               (env-depth 1))
+          (while (> env-depth 0)
+            (let ((next-begin (or (save-excursion (search-forward begin-template nil t)) max-end))
+                  (next-end (or (save-excursion (search-forward end-template nil t)) max-end)))
+              (cond
+               ((= next-begin next-end)
+                (setq env-depth 0))
+               ((< next-end next-begin)
+                (cl-decf env-depth))
+               (t (cl-incf env-depth)))
+              (goto-char (min next-begin next-end))))
+          (delete-region start (match-end 0))))
+      ;; Count all hard newlines, as they indicate the start of a new equation,
+      ;; then decrement by the number of \nonumber and \tag-d instances.
+      (goto-char (point-min))
+      (cl-incf count (1+ (funcall count-instances "\\\\")))
+      (cl-decf count (funcall count-instances "\\nonumber"))
+      (cl-decf count (funcall count-instances "\\tag{"))
+      (erase-buffer))
+    count))
 
 (defun org-latex-preview--get-numbered-environments (&optional beg end parse-tree)
   "Find all numbered environments between BEG and END.
@@ -1208,22 +1294,22 @@ If PARSE-TREE is provided, it will be used insead of
              (let* ((content (org-element-property :value datum))
                     (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
                               (match-string 1 content))))
-               (and (member env org-latex-preview--numbered-environments)
+               (and (member env org-latex-preview--numbered-environments-all)
                     datum))))))
    ((org-element--cache-active-p)
     (org-element-cache-map
-       (lambda (datum)
-         (and (<= (or beg (point-min)) (org-element-property :begin datum)
-                  (org-element-property :end datum) (or end (point-max)))
-              (let* ((content (org-element-property :value datum))
-                     (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
-                               (match-string 1 content))))
-                (and (member env org-latex-preview--numbered-environments)
-                     datum))))
-       :granularity 'element
-       :restrict-elements '(latex-environment)
-       :from-pos beg
-       :to-pos (or end (point-max-marker))))
+     (lambda (datum)
+       (and (<= (or beg (point-min)) (org-element-property :begin datum)
+                (org-element-property :end datum) (or end (point-max)))
+            (let* ((content (org-element-property :value datum))
+                   (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
+                             (match-string 1 content))))
+              (and (member env org-latex-preview--numbered-environments-all)
+                   datum))))
+     :granularity 'element
+     :restrict-elements '(latex-environment)
+     :from-pos beg
+     :to-pos (or end (point-max-marker))))
    (t
     (org-element-map
         (org-element-parse-buffer 'element)
@@ -1234,7 +1320,7 @@ If PARSE-TREE is provided, it will be used insead of
              (let* ((content (org-element-property :value datum))
                     (env (and (string-match "\\`\\\\begin{\\([^}]+\\)}" content)
                               (match-string 1 content))))
-               (and (member env org-latex-preview--numbered-environments)
+               (and (member env org-latex-preview--numbered-environments-all)
                     (save-excursion
                       (goto-char (org-element-property :begin datum))
                       (org-element-context))))))))))
