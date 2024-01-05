@@ -398,7 +398,7 @@ Each queued task is represented by a list with the following structure:
 
 (defvar org-async--counter 0)
 
-(cl-defun org-async-call (proc &key success failure filter buffer info timeout now
+(cl-defun org-async-call (proc &key success failure filter buffer info timeout now process-variables
                                (dir default-directory) (coding 'utf-8))
   "Start PROC and register it with callbacks SUCCESS and FAILURE.
 
@@ -446,7 +446,16 @@ When CODING is non-nil, both the process encode and decode system
 will be set to CODING.  If unset, UTF-8 is used.
 
 When NOW is non-nil, the PROC is started immediately, regardless
-of `org-async-process-limit'."
+of `org-async-process-limit'.
+
+For improved performance, PROCESS-VARIABLES is a list of
+let-style bindings that should be applied to the process.
+Variables are supported on an individual basis (i.e. only certain
+variables can be set), with the default value being equivalent to:
+
+  :process-variables ((process-adaptive-read-buffering nil)
+                      (process-connection-type nil)
+                      (read-process-output-max 65536))"
   (cond
    ;; Called with a task (as can be used with callbacks), so re-call
    ;; with expanded arguments.
@@ -456,7 +465,13 @@ of `org-async-process-limit'."
    ;; Start the async process now.
    ((or now (< (length org-async--stack) org-async-process-limit))
     (let ((proc
-           (let ((default-directory (or dir default-directory)))
+           (let ((default-directory (or dir default-directory))
+                 (process-adaptive-read-buffering ; No by default
+                  (cadr (or (assoc 'process-adaptive-read-buffering process-variables) nil)))
+                 (process-connection-type ; Use a pipe by default
+                  (cadr (or (assoc 'process-connection-type process-variables) nil)))
+                 (read-process-output-max ; Can be worth changing depending on the process
+                  (or (assq 'read-process-output-max process-variables) read-process-output-max)))
              (cond ((processp proc) proc)
                    ((stringp proc)
                     (start-process-shell-command
