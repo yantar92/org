@@ -1387,8 +1387,7 @@ Returns a list of async tasks started."
     ;;         │  │  which can rerun the async tree if needed.
     ;;         │  └─ Delete tempfiles (`org-latex-preview--cleanup-callback').
     ;;         └─ (failure)
-    ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
-    ;;            └─ Message "creating latex previews failed. please see %s for details".
+    ;;            └─ Run `org-latex-preview--failure-callback' (remove overlays and emit msg).
     ;;
     ;; dvipng case:
     ;; ├─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
@@ -1398,8 +1397,7 @@ Returns a list of async tasks started."
     ;;    │  │  which can rerun the async tree if needed.
     ;;    │  └─ Delete tempfiles (`org-latex-preview--cleanup-callback')
     ;;    └─ (failure)
-    ;;       ├─ Run `org-latex-preview--failure-callback' (remove overlays).
-    ;;       └─ Message "creating latex previews failed. please see %s for details".
+    ;;       └─ Run `org-latex-preview--failure-callback' (remove overlays and emit msg).
     ;;
     ;; generic case:
     ;; └─ Compile tex file ⟶ stdout to `org-latex-preview--latex-preview-filter'
@@ -1411,8 +1409,7 @@ Returns a list of async tasks started."
     ;;         │  └─ Call `org-latex-preview--check-all-fragments-produced',
     ;;         │     which can rerun the async tree if needed.
     ;;         └─ (failure)
-    ;;            ├─ Run `org-latex-preview--failure-callback' (remove overlays).
-    ;;            └─ Message "creating latex previews failed. please see %s for details".
+    ;;            └─ Run `org-latex-preview--failure-callback' (remove overlays and emit msg).
     ;;
     ;; With continuous, synchronous processing:
     ;;
@@ -1451,8 +1448,6 @@ Returns a list of async tasks started."
       (plist-put (cddr img-extract-async) :failure
                  (list
                   #'org-latex-preview--failure-callback
-                  (format "Creating LaTeX preview images failed (exit code %%d). Please see %s for details"
-                          (propertize org-latex-preview--image-log 'face 'warning))
                   #'org-latex-preview--cleanup-callback))
       (when org-latex-preview-process-finish-functions
         ;; Extra callbacks to run after image generation
@@ -1487,11 +1482,23 @@ Returns a list of async tasks started."
          'org-latex-preview-process-finish-functions
          args))
 
-(defun org-latex-preview--failure-callback (_exit _buf extended-info)
-  "Clear overlays corresponding to previews that failed to generate.
+(defun org-latex-preview--failure-callback (exit-code _buf extended-info)
+  "Clear overlays corresponding to previews that failed to generate with EXIT-CODE.
 
 EXTENDED-INFO contains the information needed to identify such
 previews."
+  (message "Creating LaTeX preview images failed (exit code %d). Please see %s for details"
+           exit-code
+           (if (pcase (plist-get extended-info :processor)
+                 ('dvisvgm (eq exit-code 252)) ; Input file does not exist.
+                 ('dvipng ; Same check, just a bit more involved.
+                  (and (eq exit-code 1)
+                       (with-current-buffer
+                           (save-excursion
+                             (goto-char (point-min))
+                             (search-forward ": No such file or directory" nil t))))))
+               (propertize org-latex-preview--latex-log 'face 'warning)
+             (propertize org-latex-preview--image-log 'face 'warning)))
   (cl-loop for fragment in (plist-get extended-info :fragments)
            for path = (plist-get fragment :path)
            when (not path)
