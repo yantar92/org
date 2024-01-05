@@ -430,21 +430,13 @@ FULL is given."
 
 ;;;; Timestamp
 
-(defconst org-ts--internal-regexp
-  (rx (seq
-       (= 4 digit) "-" (= 2 digit) "-" (= 2 digit)
-       (optional " " (*? nonl))))
-  "Regular expression matching the innards of a time stamp.")
-
-(defconst org-ts-regexp (format "<\\(%s\\)>" org-ts--internal-regexp)
-  "Regular expression for fast time stamp matching.")
-
-(defconst org-ts-regexp-inactive
-  (format "\\[\\(%s\\)\\]" org-ts--internal-regexp)
-  "Regular expression for fast inactive time stamp matching.")
-
-(defconst org-ts-regexp-both (format "[[<]\\(%s\\)[]>]" org-ts--internal-regexp)
-  "Regular expression for fast time stamp matching.")
+(defvar org-ts-regexp)
+(defvar org-ts-regexp-both)
+(defvar org-tsr-regexp-both)
+(defvar org-tr-regexp)
+(defvar org-tr-regexp-both)
+(defvar org-tsr-regexp-both)
+(defvar org-ts-regexp-inactive)
 
 (defconst org-ts-regexp0
   "\\(\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)\\( +[^]+0-9>\r\n -]+\\)?\\( +\\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\)"
@@ -460,23 +452,6 @@ on a string that terminates immediately after the date.")
 
 (defconst org-ts-regexp3 (concat "[[<]" org-ts-regexp1 "[^]>\n]\\{0,16\\}[]>]")
   "Regular expression matching time stamps (also [..]), with groups.")
-
-(defconst org-tr-regexp (concat org-ts-regexp "--?-?" org-ts-regexp)
-  "Regular expression matching a time stamp range.")
-
-(defconst org-tr-regexp-both
-  (concat org-ts-regexp-both "--?-?" org-ts-regexp-both)
-  "Regular expression matching a time stamp range.")
-
-(defconst org-tsr-regexp (concat org-ts-regexp "\\(--?-?"
-				 org-ts-regexp "\\)?")
-  "Regular expression matching a time stamp or time stamp range.")
-
-(defconst org-tsr-regexp-both
-  (concat org-ts-regexp-both "\\(--?-?"
-	  org-ts-regexp-both "\\)?")
-  "Regular expression matching a time stamp or time stamp range.
-The time stamps may be either active or inactive.")
 
 (defconst org-repeat-re
   "<[0-9]\\{4\\}-[0-9][0-9]-[0-9][0-9] [^>\n]*?\
