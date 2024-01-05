@@ -2397,14 +2397,11 @@ used it can be worth storing the results to avoid re-computing.")
   "Convert COLOR-NAME to a RGB color value."
   (or (alist-get color-name org-latex-preview--format-color-cache nil nil #'equal)
       (cdar (push (cons color-name
-                        (apply #'format "%s,%s,%s"
-                               (mapcar 'org-latex-preview--normalize-color
-                                       (color-values color-name))))
+                        (apply #'format "%.3f,%.3f,%.3f"
+                               (mapcar
+                                (lambda (v) (/ v 65535.0))
+                                (color-values color-name))))
                   org-latex-preview--format-color-cache))))
-
-(defun org-latex-preview--normalize-color (value)
-  "Return string to be used as color value for an RGB component."
-  (format "%g" (/ value 65535.0)))
 
 (provide 'org-latex-preview)
 ;;; org-latex-preview.el ends here

@@ -738,8 +738,6 @@ This constant, for example, makes the below code not err:
   'org-latex-color-format 'org-latex-preview--format-color "9.7")
 (define-obsolete-function-alias
   'org-latex-color 'org-latex-preview--attr-color "9.7")
-(define-obsolete-function-alias
-  'org-normalize-color 'org-latex-preview--normalize-color "9.7")
 ;; MathML related functions from org-latex-preview.el
 (define-obsolete-variable-alias
   'org-latex-to-mathml-jar-file 'org-mathml-converter-jar-file "9.7")
@@ -793,6 +791,12 @@ This constant, for example, makes the below code not err:
  'org-dvipng-color "to be removed" "9.7")
 (make-obsolete
  'org-dvipng-color-format "to be removed" "9.7")
+
+;; FIXME: Unused; obsoleted; to be removed.
+(defun org-normalize-color (value)
+  "Return string to be used as color value for an RGB component."
+  (format "%g" (/ value 65535.0)))
+(make-obsolete 'org-normalize-color "to be removed" "9.7")
 
 ;; FIXME: Unused; obsoleted; to be removed.
 (defcustom org-preview-latex-image-directory "ltximg/"
