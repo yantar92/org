@@ -237,6 +237,7 @@ Stars are put in group 1 and the trimmed body in group 2.")
 (defvar org-target-link-regexp)
 (defvar org-target-regexp)
 (defvar org-id-overriding-file-name)
+(defvar org-edit-src-content-indentation)
 
 ;; load languages based on value of `org-babel-load-languages'
 (defvar org-babel-load-languages)

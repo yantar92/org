@@ -132,17 +132,7 @@ and the code block is uniformly indented according to the value of
   :group 'org-edit-structure
   :type 'boolean)
 
-(defcustom org-edit-src-content-indentation 2
-  "Indentation for the content of a source code block.
-
-This should be the number of spaces added to the indentation of the #+begin
-line in order to compute the indentation of the block content after
-editing it with `\\[org-edit-src-code]'.
-
-It has no effect if `org-src-preserve-indentation' is non-nil."
-  :group 'org-edit-structure
-  :type 'integer
-  :safe #'wholenump)
+(defvar org-edit-src-content-indentation)
 
 (defcustom org-edit-src-persistent-message t
   "Non-nil means show persistent exit help message while editing src examples.
