@@ -1991,6 +1991,15 @@ fragments in EXTENDED-INFO."
       (org-latex-preview--place-images
        extended-info (nreverse fragments-to-show)))))
 
+(defvar org-latex-preview--dvisvgm-version>=3.1
+  (and (executable-find "dvisvgm")
+       (with-temp-buffer
+         (call-process "dvisvgm" nil t nil "--version")
+         (version<=
+          "3.1"
+          (string-trim (buffer-string) "dvisvgm "))))
+  "Whether dvisvgm >= 3.1 is installed.")
+
 (defun org-latex-preview--dvisvgm-filter (_proc _string extended-info)
   "Look for newly created images in the dvisvgm stdout buffer.
 Any matches found will be matched against the fragments recorded in
@@ -2025,8 +2034,21 @@ EXTENDED-INFO, and displayed in the buffer."
       (setq page-marks (cdr page-marks)))
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
-      (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show)
+      (if org-latex-preview--dvisvgm-version>=3.1
+          (mapc #'org-latex-preview--await-fragment-existance fragments-to-show)
+        (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show))
       (org-latex-preview--place-images extended-info fragments-to-show))))
+
+(defun org-latex-preview--await-fragment-existance (svg-fragment)
+  "Wait until SVG-FRAGMENT's file exists (up to 1s).
+This is needed to accomidate for asyncronicity in file writing."
+  (let ((path (plist-get svg-fragment :path)))
+    (unless (or (not path) (file-exists-p path))
+      (catch 'svg-exists
+        (dotimes (_ 1000) ; Check for svg existance over 1s.
+          (when (file-exists-p path)
+            (throw 'svg-exists t))
+          (sleep-for 0.001))))))
 
 (defun org-latex-preview--svg-make-fg-currentColor (svg-fragment)
   "Replace the foreground color in SVG-FRAGMENT's file with \"currentColor\".
@@ -2042,11 +2064,7 @@ tests with the output of dvisvgm."
         ;; `image-file-handler') from being called.
         (file-name-handler-alist nil)
         (path (plist-get svg-fragment :path)))
-    (catch 'svg-exists
-      (dotimes (_ 1000) ; Check for svg existance over 1s.
-        (when (file-exists-p path)
-          (throw 'svg-exists t))
-        (sleep-for 0.001)))
+    (org-latex-preview--await-fragment-existance svg-fragment)
     (when path
       (with-temp-buffer
         (insert-file-contents path)
@@ -2347,7 +2365,11 @@ color information for this run."
                                               ?, ?\s bg))))
                    (concat
                     (and bg (format "\\pagecolor[rgb]{%s}" bg))
-                    (and fg (format "\\color[rgb]{%s}" fg)))))
+                    (and fg (format "\\color[rgb]{%s}" fg))
+                    (and fg
+                         (eq processing-type 'dvisvgm)
+                         org-latex-preview--dvisvgm-version>=3.1
+                         "\\special{dvisvgm:currentcolor on}"))))
             (and num (format "\\setcounter{equation}{%d}" (1- num)))
             "%\n"
             value)))
