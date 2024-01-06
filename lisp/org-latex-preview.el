@@ -372,7 +372,7 @@ Note that this will also produce false postives, and
 indeed LaTeX fragments/environments.")
 
 (defconst org-latex-preview--ignored-faces
-  '(org-indent)
+  '(org-indent whitespace-face)
   "Faces that should not affect the color of preview overlays.")
 
 (defconst org-latex-preview--svg-fg-standin "#000001"
@@ -511,28 +511,24 @@ overlay face is set to `org-latex-preview-processing-face'."
     (run-hook-with-args 'org-latex-preview-update-overlay-functions ov)))
 
 (defun org-latex-preview--face-around (start end)
-  "Return the relevant face symbol around the region START to END.
+  "Return the relevant face symbol(s) around the region START to END.
 A relevant face symbol before START is prefered, with END
 examined if none could be found, and finally the default face
 used as the final fallback.
+
 Faces in `org-latex-preview--ignored-faces' are ignored."
-  (or (and (> start (point-min))
-           (not (eq (char-before start) ?\n))
-           (let ((face (get-text-property (1- start) 'face)))
-             (cond
-              ((consp face)
-               (cl-set-difference face org-latex-preview--ignored-faces))
-              ((not (memq face org-latex-preview--ignored-faces))
-               face))))
-      (and (> (point-max) end)
-           (not (eq (char-after end) ?\n))
-           (let ((face (get-text-property end 'face)))
-             (cond
-              ((consp face)
-               (cl-set-difference face org-latex-preview--ignored-faces))
-              ((not (memq face org-latex-preview--ignored-faces))
-               face))))
-      'default))
+  (let ((face (or (and (> start (point-min))
+                       (not (eq (char-before start) ?\n))
+                       (get-text-property (1- start) 'face))
+                  (and (> (point-max) end)
+                       (not (eq (char-after end) ?\n))
+                       (get-text-property end 'face)))))
+    (cond
+     ((consp face)
+      (nconc (cl-set-difference face org-latex-preview--ignored-faces) (list 'default)))
+     ((and face (not (memq face org-latex-preview--ignored-faces)))
+      (list face 'default))
+     (t 'default))))
 
 ;; Code for `org-latex-preview-auto-mode':
 ;;
