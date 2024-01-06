@@ -2153,21 +2153,21 @@ listed in EXTENDED-INFO will be used.
 If this is an export run, images will only be cached, not placed."
   (let ((fragments (or fragments (plist-get extended-info :fragments))))
     (if (plist-get extended-info :place-preview-p)
-        (with-current-buffer (plist-get extended-info :org-buffer)
-          (save-excursion
-            (cl-loop
-             for fragment-info in fragments
-             for image-file = (plist-get fragment-info :path)
-             for ov = (plist-get fragment-info :overlay)
-             do (unless (overlay-buffer ov)
-                  (message "Offending overlay for fragment %S" fragment-info))
-             do (org-latex-preview--update-overlay
-                 ov
-                 (org-latex-preview--cache-image
-                  (plist-get fragment-info :key)
-                  image-file
-                  (org-latex-preview--display-info
-                   extended-info fragment-info))))))
+        (when (buffer-live-p (plist-get extended-info :org-buffer))
+          (with-current-buffer (plist-get extended-info :org-buffer)
+            (save-excursion
+              (cl-loop
+               for fragment-info in fragments
+               for image-file = (plist-get fragment-info :path)
+               for ov = (plist-get fragment-info :overlay)
+               when (overlay-buffer ov)
+               do (org-latex-preview--update-overlay
+                   ov
+                   (org-latex-preview--cache-image
+                    (plist-get fragment-info :key)
+                    image-file
+                    (org-latex-preview--display-info
+                     extended-info fragment-info)))))))
       (dolist (fragment-info fragments)
         (org-latex-preview--cache-image
          (plist-get fragment-info :key)
