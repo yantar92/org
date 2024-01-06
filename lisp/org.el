@@ -4827,7 +4827,7 @@ The following commands are available:
     (org-unmodified
      (when org-startup-with-beamer-mode (org-beamer-mode))
      (when org-startup-with-inline-images (org-display-inline-images))
-     (when org-startup-with-latex-preview (org-latex-preview '(16)))
+     (when org-startup-with-latex-preview (org-latex-preview 'buffer))
      (unless org-inhibit-startup-visibility-stuff (org-cycle-set-startup-visibility))
      (when org-startup-truncated (setq truncate-lines t))
      (when org-startup-numerated (require 'org-num) (org-num-mode 1))

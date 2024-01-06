@@ -858,60 +858,78 @@ BEG and END are buffer positions."
    beg end))
 
 ;;;###autoload
-(defun org-latex-preview (&optional arg)
-  "Toggle preview of the LaTeX fragment at point.
+(defun org-latex-preview (&optional mode)
+  "Generate or hide LaTeX fragment previews.
 
-If the cursor is on a LaTeX fragment, create the image and
-overlay it over the source code, if there is none.  Remove it
-otherwise.  If there is no fragment at point, display images for
-all fragments in the current section.  With an active region,
-display images for all fragments in the region.
+The particular behaviour depends on MODE (which recognises a
+number of symbols and prefix arguments), or when MODE is nil the
+context of the current buffer when called.
 
-With a `\\[universal-argument]' prefix argument ARG, clear images \
-for all fragments
-in the current section.
+- point: Toggle preview of the LaTeX fragment at point
+- region: Display previews of all fragments in the selected region
+- section: Display previews of all fragments in the current section
+- buffer: Display previews of all fragments in the buffer
+- clear-region: Clear all previews in the current region
+- clear-section: Clear all previews in the current section
+- clear-buffer: Clear all previews in the buffer
 
-With a `\\[universal-argument] \\[universal-argument]' prefix \
-argument ARG, display image for all
-fragments in the buffer.
+When MODE is nil and the cursor is on a LaTeX fragment, toggle
+previewing of the LaTeX fragment at point.  If the there is no
+preview, generate a preview and overlay it on the text.  Remove
+the preview image otherwise.  If there is no fragment at point,
+display previews for all fragments in the current section, or
+active region should it exist.
 
-With a `\\[universal-argument] \\[universal-argument] \
-\\[universal-argument]' prefix argument ARG, clear image for all
-fragments in the buffer."
+Prefix arguments are handled as follows:
+- `\\[universal-argument]' is equivalent to setting MODE to clear-region (if a region
+   is currently active) or clear-section
+- `\\[universal-argument] \\[universal-argument]' is equivalent to setting MODE to buffer
+- `\\[universal-argument] \\[universal-argument] \\[universal-argument]' is equivalent to setting MODE to clear-buffer
+
+MODE can also be a org-element LaTeX environment or fragment, which
+will be treated as \"point\"."
   (interactive "P")
-  (cond
-   ((not (display-graphic-p)) nil)
-   ;; Clear whole buffer.
-   ((equal arg '(64))
-    (org-latex-preview-clear-overlays (point-min) (point-max))
-    (message "LaTeX previews removed from buffer"))
-   ;; Preview whole buffer.
-   ((equal arg '(16))
-    (org-latex-preview--preview-region (point-min) (point-max)))
-   ;; Clear current section.
-   ((equal arg '(4))
-    (org-latex-preview-clear-overlays
-     (if (use-region-p)
-         (region-beginning)
-       (if (org-before-first-heading-p) (point-min)
-         (save-excursion
-           (org-with-limited-levels (org-back-to-heading t) (point)))))
-     (if (use-region-p)
-         (region-end)
-       (org-with-limited-levels (org-entry-end-position)))))
-   ((use-region-p)
-    (org-latex-preview--preview-region (region-beginning) (region-end)))
-   ;; Toggle preview on LaTeX code at point.
-   ((let ((datum (org-element-context)))
-      (and (memq (org-element-type datum) '(latex-environment latex-fragment))
-           (org-latex-preview--auto-aware-toggle datum))))
-   ;; Preview current section.
-   (t
-    (let ((beg (if (org-before-first-heading-p) (point-min)
-                 (save-excursion
-                   (org-with-limited-levels (org-back-to-heading t) (point)))))
-          (end (org-with-limited-levels (org-entry-end-position))))
-      (org-latex-preview--preview-region beg end)))))
+  (when (display-graphic-p)
+    (when (integerp (car-safe mode)) ; Prefix argument
+      (setq mode
+            (pcase (car mode)
+              (64 'clear-buffer)
+              (16 'buffer)
+              (4 (if (use-region-p) 'clear-region 'clear-section))
+              (_ (and (use-region-p) 'region)))))
+    (unless mode ; Auto, i.e. element at point or section
+      (setq mode (if-let ((datum (org-element-context))
+                          ((memq (org-element-type datum) '(latex-environment latex-fragment))))
+                     datum 'section)))
+    (pcase mode
+      ('buffer
+       (org-latex-preview--preview-region (point-min) (point-max)))
+      ('clear-buffer
+       (org-latex-preview-clear-overlays (point-min) (point-max))
+       (message "LaTeX previews removed from buffer"))
+      ('section
+       (let ((beg (if (org-before-first-heading-p) (point-min)
+                    (save-excursion
+                      (org-with-limited-levels (org-back-to-heading t) (point)))))
+             (end (org-with-limited-levels (org-entry-end-position))))
+         (org-latex-preview--preview-region beg end)))
+      ('clear-section
+       (org-latex-preview-clear-overlays
+        (if (org-before-first-heading-p) (point-min)
+          (save-excursion
+            (org-with-limited-levels (org-back-to-heading t) (point))))
+        (org-with-limited-levels (org-entry-end-position))))
+      ('region
+       (org-latex-preview--preview-region (region-beginning) (region-end)))
+      ('clear-region
+       (org-latex-preview-clear-overlays (region-beginning) (region-end)))
+      ('point
+       (when-let ((datum (org-element-context))
+                  ((memq (org-element-type datum) '(latex-environment latex-fragment))))
+         (org-latex-preview--auto-aware-toggle datum)))
+      ((guard (memq (org-element-type mode) '(latex-environment latex-fragment)))
+       (org-latex-preview--auto-aware-toggle mode))
+      (bad-value (error "Invalid `org-latex-preview' mode argument: %S" bad-value)))))
 
 (defun org-latex-preview--auto-aware-toggle (datum)
   "Toggle the preview of the LaTeX fragment/environment DATUM.
