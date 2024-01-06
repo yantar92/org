@@ -2405,8 +2405,11 @@ color information for this run."
 The function assumes that the display has the same pixel width in
 the horizontal and vertical directions."
   (if (display-graphic-p)
-      (round (/ (display-pixel-height)
-                (/ (display-mm-height) 25.4)))
+      (let ((mm-height (or (display-mm-height) 0))
+            (mm-per-inch 25.4))
+        (if (= 0 mm-height)
+            140 ; Fallback reasonable DPI
+          (round (/ (display-pixel-height) (/ mm-height mm-per-inch)))))
     (error "Attempt to calculate the dpi of a non-graphic display")))
 
 (defun org-latex-preview--attr-color (attr)
