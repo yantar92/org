@@ -496,16 +496,16 @@ overlay face is set to `org-latex-preview-processing-face'."
                      `(left-fringe exclamation-mark error)))))
     (when org-latex-preview-processing-indicator
       (org-latex-preview--indicate-processing ov))
+    ;; This is a temporary measure until a more sophisticated
+    ;; interface for errors is available in Org.
+    (when errors
+      (overlay-put
+       ov 'help-echo
+       (if (bound-and-true-p tooltip-mode)
+           errors
+         (concat (propertize "! " 'face '(bold error))
+                 (substring (replace-regexp-in-string "[\n\r\t ]+" " " errors) 2)))))
     (unless (overlay-get ov 'view-text) ;Live previewing this element, update in background
-      ;; This is a temporary measure until a more sophisticated
-      ;; interface for errors is available in Org.
-      (when errors
-        (overlay-put
-         ov 'help-echo
-         (if (bound-and-true-p tooltip-mode)
-             errors
-           (concat (propertize "! " 'face '(bold error))
-                   (substring (replace-regexp-in-string "[\n\r\t ]+" " " errors) 2)))))
       (when image-display (overlay-put ov 'display image-display))
       (overlay-put ov 'face (overlay-get ov 'hidden-face)))
     (run-hook-with-args 'org-latex-preview-update-overlay-functions ov)))
