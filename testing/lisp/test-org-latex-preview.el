@@ -232,9 +232,9 @@
 ;;; No precompilation, no caching
 (ert-deftest test-org-latex-preview/place-previews-1 ()
   (org-test-at-id "0b3807b3-69af-40cb-a27a-b380d54879cc"
-    (let ((org-latex-preview-precompile nil)
+    (let ((org-latex-preview-process-precompiled nil)
           (org-latex-preview-persist nil)
-          (org-latex-preview-default-process 'dvisvgm))
+          (org-latex-preview-process-default 'dvisvgm))
       (org-latex-preview-auto-mode -1)
       (goto-char 255)
       (let ((element (org-element-context)))
@@ -243,7 +243,7 @@
                                        (org-element-property :end element))
         (apply #'org-async-wait-for
                (org-latex-preview--place-from-elements
-                org-latex-preview-default-process
+                org-latex-preview-process-default
                 (list element)))
         (let ((ov (cl-some (lambda (o) (and (eq (overlay-get o 'org-overlay-type)
                                            'org-latex-overlay)
@@ -267,15 +267,15 @@
 
 (ert-deftest test-org-latex-preview/place-previews-all ()
   (org-test-at-id "0b3807b3-69af-40cb-a27a-b380d54879cc"
-    (let ((org-latex-preview-precompile nil)
+    (let ((org-latex-preview-process-precompiled nil)
           (org-latex-preview-persist nil)
-          (org-latex-preview-default-process 'dvisvgm))
+          (org-latex-preview-process-default 'dvisvgm))
       (org-latex-preview-auto-mode -1)
       (org-latex-preview-clear-cache (point-min) (point-max))
       (let ((elements (org-latex-preview-collect-fragments)))
         (apply #'org-async-wait-for
                (org-latex-preview--place-from-elements
-                org-latex-preview-default-process
+                org-latex-preview-process-default
                 elements))
         (dolist (element elements)
           (let ((ov (cl-some (lambda (o) (and (eq (overlay-get o 'org-overlay-type)

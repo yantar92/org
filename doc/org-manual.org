@@ -11511,7 +11511,7 @@ lines:
 :END:
 #+cindex: @LaTeX{} fragments, preview
 
-#+vindex: org-latex-preview-default-process
+#+vindex: org-latex-preview-process-default
 If you have a working LaTeX installation and =dvipng=, =dvisvgm= or
 =convert= installed[fn:39], LaTeX fragments can be processed to
 produce images of the typeset expressions to be used for inclusion
@@ -23690,7 +23690,7 @@ used to create images, any LaTeX environment is handled.
 [fn:39] These are respectively available at
 [[https://sourceforge.net/projects/dvipng/]], [[http://dvisvgm.bplaced.net/]]
 and from the ImageMagick suite.  Choose the converter by setting the
-variable ~org-latex-preview-default-process~ accordingly.
+variable ~org-latex-preview-process-default~ accordingly.
 
 [fn:40] This works automatically for the HTML backend (it requires
 version 1.34 of the =htmlize.el= package, which you need to install).

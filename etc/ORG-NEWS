@@ -295,7 +295,7 @@ Org mode's LaTeX preview system has been rewritten with several improvements and
 
 When this mode is turned on, LaTeX preview overlays in the buffer can be temporarily disabled by moving the cursor into them.  Moving the cursor out will display the LaTeX preview image overlay again.  Additionally, editing LaTeX fragments that have previews will cause the preview images to be updated.
 
-If the option ~org-latex-preview-auto-generate~ is non-nil (which see), previews for LaTeX fragments will be auto-generated as you type.
+If the option ~org-latex-preview-auto-track-inserts~ is non-nil (which see), previews for LaTeX fragments will be auto-generated as you type.
 
 
 **** New options
@@ -316,7 +316,7 @@ This is the number of days for which LaTeX preview images will be
 cached, assuming persistence is turned on with
 ~org-latex-preview-persist~.
 
-***** New option ~org-latex-preview-processing-indicator~ to indicate preview processing for LaTeX fragments
+***** New option ~org-latex-preview-process-active-indicator~ to indicate preview processing for LaTeX fragments
 
 This option controls the style of visual indicator for LaTeX fragments
 currently being processed.
@@ -332,14 +332,14 @@ This option controls the width of text in preview images.  This is
 relevant for displaymath-type LaTeX environments, and can be specified
 in multiple ways.
 
-***** New option ~org-latex-preview-precompile~ to control LaTeX precompilation
+***** New option ~org-latex-preview-process-precompiled~ to control LaTeX precompilation
 
 This option controls whether LaTeX headers for buffers are precompiled
 when generating the first preview for the buffer.  Precompilation can
 speed up preview generation by a moderate to large amount depending on
 the complexity of the header.
 
-***** New option ~org-latex-preview-auto-generate~ to auto-generate LaTeX previews when typing
+***** New option ~org-latex-preview-auto-track-inserts~ to auto-generate LaTeX previews when typing
 
 When using ~org-latex-preview-auto-mode~ (which see), setting this option to a non-nil value will cause LaTeX previews to be rendered as you type LaTeX fragments.  This works however new text is added to the buffer, for example by yanking.  When this option is nil and ~org-latex-preview-auto-mode~ is on, existing previews for LaTeX fragments will still be auto-regenerated when edited but no new ones will be auto-generated.
 
@@ -363,7 +363,7 @@ behaves the exact same way and is renamed for consistency.
 
 ***** Mark ~org-preview-latex-default-process~ obsolete
 
-Use ~org-latex-preview-default-process~ instead.  The replacement
+Use ~org-latex-preview-process-default~ instead.  The replacement
 variable behaves the exact same way and is renamed for consistency.
 
 ***** Mark ~org-preview-latex-process-alist~ obsolete
