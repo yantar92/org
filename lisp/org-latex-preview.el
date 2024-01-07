@@ -1,6 +1,6 @@
 ;;; org-latex-preview.el --- LaTeX previews for Org -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2022 Free Software Foundation, Inc.
+;; Copyright (C) 2022-2024 Free Software Foundation, Inc.
 
 ;; Keywords: tex, extensions, tools
 
