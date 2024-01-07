@@ -249,6 +249,12 @@ There are three recognised value symbols:
           (const :tag "Fringe marker" fringe)
           (const :tag "Processing face" face)))
 
+(defcustom org-latex-preview-auto-ignored-environments '("figure")
+  "List of LaTeX environments that should not be automatically previewed."
+  :type '(repeat string)
+  :package-version '(Org . "9.7")
+  :group 'org-latex-preview)
+
 (defcustom org-latex-preview-auto-ignored-commands nil
   "List of movement commands that should not affect preview display.
 
@@ -716,6 +722,12 @@ If an org-latex-overlay is already present, nothing is done."
                                 (if (eq (char-before (org-element-property :end element))
                                         ?\n)
                                     1 0)))
+                   ((not (and (eq type 'latex-environment)
+                              (save-excursion
+                                (goto-char elem-beg)
+                                (looking-at "\\\\begin{\\([^}]+\\)}"))
+                              (member (match-string 1)
+                                      org-latex-preview-auto-ignored-environments))))
                    (ov (org-latex-preview--ensure-overlay elem-beg elem-end)))
          (overlay-put ov 'preview-state 'modified)
          (if (<= elem-beg pos elem-end)
@@ -1113,8 +1125,6 @@ This is meant to be called via `org-src-mode-hook'."
     (let* ((org-buf (marker-buffer org-src--beg-marker))
            (src-buf (current-buffer))
            (org-buf-visible-p (window-live-p (get-buffer-window org-buf)))
-           preamble
-           element
            ;; Do not use (org-element-property :begin element) to
            ;; find the bounds -- this is fragile under typos.
            (beg (save-excursion (goto-char (point-min))
@@ -1123,18 +1133,26 @@ This is meant to be called via `org-src-mode-hook'."
            (end (save-excursion (goto-char (point-max))
                                 (skip-chars-backward "\n \t\r")
                                 (point)))
-           (numbering-offsets) (ov) (orig-ov))
+           preamble element skip-env-p numbering-offsets ov orig-ov)
       (setq org-latex-preview-auto--marker (point-marker))
       ;; Copy the LaTeX preview overlay from the source Org buffer
       ;; into the org-src buffer and show a preview image over the
       ;; former:
       (with-current-buffer org-buf
         (setq element (org-element-context))
-        (when (setq orig-ov
-                    (let ((props (get-char-property-and-overlay
-                                  (point) 'org-overlay-type)))
-                      (and (eq (car props) 'org-latex-overlay)
-                           (cdr props))))
+        (when (eq (org-element-type element) 'latex-environment)
+          (setq skip-env-p
+                (and (save-excursion
+                       (goto-char (or (org-element-property :post-affiliated element)
+                                      (org-element-property :begin element)))
+                       (looking-at "\\\\begin{\\([^}]+\\)}"))
+                     (member (match-string 1) org-latex-preview-auto-ignored-environments))))
+        (when (and (not skip-env-p)
+                   (setq orig-ov
+                         (let ((props (get-char-property-and-overlay
+                                       (point) 'org-overlay-type)))
+                           (and (eq (car props) 'org-latex-overlay)
+                                (cdr props)))))
           (org-latex-preview-live--clearout orig-ov)
           (setq ov (copy-overlay orig-ov)
                 preamble (or org-latex-preview--preamble-content
@@ -1143,74 +1161,74 @@ This is meant to be called via `org-src-mode-hook'."
           (overlay-put ov 'view-text t)
           (move-overlay ov beg end src-buf))
         (org-latex-preview-auto--close-previous-overlay))
+      (unless skip-env-p
+        (or ov (setq ov (org-latex-preview--ensure-overlay beg end)))
+        ;; Adjust numbering if required
+        (when (and org-latex-preview-numbered
+                   (eq (org-element-type element) 'latex-environment))
+          (with-current-buffer org-buf
+            (when-let ((numbering-table (org-latex-preview--environment-numbering-table)))
+              (setq numbering-offsets (list (gethash element numbering-table))))))
 
-      (or ov (setq ov (org-latex-preview--ensure-overlay beg end)))
-      ;; Adjust numbering if required
-      (when (and org-latex-preview-numbered
-                 (eq (org-element-type element) 'latex-environment))
-        (with-current-buffer org-buf
-          (when-let ((numbering-table (org-latex-preview--environment-numbering-table)))
-            (setq numbering-offsets (list (gethash element numbering-table))))))
-
-      (when (buffer-local-value 'org-latex-preview-live org-buf)
-        (if org-buf-visible-p
-            ;; Source Org buffer is visible: display live previews
-            ;; over the fragment there
-            (progn
-              (setq-local org-latex-preview-live--generator
-                          (thread-first
-                            (lambda (&rest _)
-                              (let* ((content
-                                      (string-trim (buffer-substring-no-properties
-                                                    (point-min) (point-max)))))
-                                (with-current-buffer org-buf
-                                  (org-latex-preview-place
-                                   org-latex-preview-process-default
-                                   (list (list (overlay-start orig-ov)
-                                               (overlay-end orig-ov)
-                                               content))
-                                   numbering-offsets))))
+        (when (buffer-local-value 'org-latex-preview-live org-buf)
+          (if org-buf-visible-p
+              ;; Source Org buffer is visible: display live previews
+              ;; over the fragment there
+              (progn
+                (setq-local org-latex-preview-live--generator
+                            (thread-first
+                              (lambda (&rest _)
+                                (let* ((content
+                                        (string-trim (buffer-substring-no-properties
+                                                      (point-min) (point-max)))))
+                                  (with-current-buffer org-buf
+                                    (org-latex-preview-place
+                                     org-latex-preview-process-default
+                                     (list (list (overlay-start orig-ov)
+                                                 (overlay-end orig-ov)
+                                                 content))
+                                     numbering-offsets))))
                               (org-latex-preview-live--throttle)
-                            (org-latex-preview-live--debounce
-                             org-latex-preview-live-debounce)))
-              (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local))
+                              (org-latex-preview-live--debounce
+                               org-latex-preview-live-debounce)))
+                (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local))
 
-          ;; Source Org buffer not visible: display live previews in org-src buffer
-          ;; Set the element type ahead of time since we cannot call
-          ;; org-element-context in the org-src buffer
-          (setq org-latex-preview-live--element-type
-                (with-current-buffer org-buf
-                  (or (and (string-prefix-p
-                                 "\\[" (org-element-property :value element))
-                                'latex-environment)
-                           (org-element-type element))))
-          ;; Show live preview if available
-          (org-latex-preview-live--ensure-overlay ov)
-          ;; Set up hooks for live preview updates in the org-src buffer
-          (add-hook 'org-latex-preview-overlay-update-functions
-                    #'org-latex-preview-live--update-overlay
-                    nil 'local)
-          (setq-local org-latex-preview-live--generator
-                      (thread-first
-                        (lambda (&rest _)
-                          (org-latex-preview-place
-                           org-latex-preview-process-default
-                           (list (list (save-excursion (goto-char (point-min))
-                                                       (skip-chars-forward "\n \t\r")
-                                                       (point))
-                                       (save-excursion (goto-char (point-max))
-                                                       (skip-chars-backward "\n \t\r")
-                                                       (point))))
-                           numbering-offsets preamble))
+            ;; Source Org buffer not visible: display live previews in org-src buffer
+            ;; Set the element type ahead of time since we cannot call
+            ;; org-element-context in the org-src buffer
+            (setq org-latex-preview-live--element-type
+                  (with-current-buffer org-buf
+                    (or (and (string-prefix-p
+                              "\\[" (org-element-property :value element))
+                             'latex-environment)
+                        (org-element-type element))))
+            ;; Show live preview if available
+            (org-latex-preview-live--ensure-overlay ov)
+            ;; Set up hooks for live preview updates in the org-src buffer
+            (add-hook 'org-latex-preview-overlay-update-functions
+                      #'org-latex-preview-live--update-overlay
+                      nil 'local)
+            (setq-local org-latex-preview-live--generator
+                        (thread-first
+                          (lambda (&rest _)
+                            (org-latex-preview-place
+                             org-latex-preview-process-default
+                             (list (list (save-excursion (goto-char (point-min))
+                                                         (skip-chars-forward "\n \t\r")
+                                                         (point))
+                                         (save-excursion (goto-char (point-max))
+                                                         (skip-chars-backward "\n \t\r")
+                                                         (point))))
+                             numbering-offsets preamble))
                           (org-latex-preview-live--throttle)
-                        (org-latex-preview-live--debounce
-                         org-latex-preview-live-debounce)))
-          (add-hook 'org-latex-preview-overlay-open-functions #'org-latex-preview-live--ensure-overlay nil 'local)
-          (add-hook 'org-latex-preview-overlay-close-functions #'org-latex-preview-live--clearout nil 'local)
-          (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local)))
-      ;; Turn on auto-mode behavior in the org-src buffer
-      (add-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor nil 'local)
-      (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local))))
+                          (org-latex-preview-live--debounce
+                           org-latex-preview-live-debounce)))
+            (add-hook 'org-latex-preview-overlay-open-functions #'org-latex-preview-live--ensure-overlay nil 'local)
+            (add-hook 'org-latex-preview-overlay-close-functions #'org-latex-preview-live--clearout nil 'local)
+            (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local)))
+        ;; Turn on auto-mode behavior in the org-src buffer
+        (add-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor nil 'local)
+        (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local)))))
 
 ;; Eldoc support for live previews
 (defun org-latex-preview-live--display-in-eldoc (callback)
