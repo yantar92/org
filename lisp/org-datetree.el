@@ -35,6 +35,8 @@
 
 (require 'org)
 
+(defvar org-ts-regexp)
+
 (defvar org-datetree-base-level 1
   "The level at which years should be placed in the date tree.
 This is normally one, but if the buffer has an entry with a

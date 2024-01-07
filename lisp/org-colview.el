@@ -34,6 +34,8 @@
 (require 'cl-lib)
 (require 'org)
 
+(defvar org-ts-regexp)
+
 (declare-function org-agenda-redo "org-agenda" (&optional all))
 (declare-function org-agenda-do-context-action "org-agenda" ())
 (declare-function org-clock-sum-today "org-clock" (&optional headline-filter))
@@ -43,6 +45,7 @@
 (declare-function org-element-parse-secondary-string "org-element" (string restriction &optional parent))
 (declare-function org-element-property "org-element-ast" (property node))
 (declare-function org-element-restriction "org-element" (element))
+(declare-function org-reduced-level "org-element" (stars))
 (declare-function org-element-type-p "org-element-ast" (node types))
 (declare-function org-dynamic-block-define "org" (type func))
 (declare-function org-link-display-format "ol" (s))
