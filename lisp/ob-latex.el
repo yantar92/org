@@ -48,10 +48,10 @@
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("latex" . "tex"))
 
-(defvar org-latex-preview-header)	  ; From org-latex-preview.el
-(defvar org-latex-preview-options)	  ; From org-latex-preview.el
-(defvar org-latex-default-packages-alist) ; From org-latex-preview.el
-(defvar org-latex-packages-alist)	  ; From org-latex-preview.el
+(defvar org-latex-preview-header)             ; From org-latex-preview.el
+(defvar org-latex-preview-appearance-options) ; From org-latex-preview.el
+(defvar org-latex-default-packages-alist)     ; From org-latex-preview.el
+(defvar org-latex-packages-alist)             ; From org-latex-preview.el
 
 (defvar org-babel-default-header-args:latex
   '((:results . "latex") (:exports . "results"))
@@ -195,7 +195,7 @@ This function is called by `org-babel-execute-src-block'."
 		 (concat org-latex-preview-header "\n"
 			 (mapconcat #'identity headers "\n"))))
 	    (org-latex-preview-create-image
-             body out-file org-latex-preview-options in-buffer)))
+             body out-file org-latex-preview-appearance-options in-buffer)))
 	 ((string= "svg" extension)
 	  (with-temp-file tex-file
 	    (insert (concat (funcall org-babel-latex-preamble params)

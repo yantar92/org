@@ -5446,7 +5446,7 @@ Result depends on variable `org-highlight-latex-and-related'."
 	(re-latex
 	 (when (or (memq 'latex org-highlight-latex-and-related)
 		   (memq 'native org-highlight-latex-and-related))
-	   (let ((matchers (plist-get org-latex-preview-options :matchers)))
+	   (let ((matchers (plist-get org-latex-preview-appearance-options :matchers)))
 	     (delq nil
 		   (mapcar (lambda (x)
 			     (and (member (car x) matchers) (nth 1 x)))
@@ -5460,7 +5460,7 @@ Result depends on variable `org-highlight-latex-and-related'."
 			   (append re-latex re-entities re-sub)
 			   "\\|"))))
 
-(defvar org-latex-preview-options) ; Defined in org-latex-preview.el.
+(defvar org-latex-preview-appearance-options) ; Defined in org-latex-preview.el.
 (declare-function org-latex-preview--face-around "org-latex-preview" (start end))
 
 (defun org-do-latex-and-related (limit)
@@ -5504,7 +5504,7 @@ highlighting was done, nil otherwise."
 	      (add-text-properties (+ offset (match-beginning 0)) (match-end 0)
 				   '(font-lock-multiline t))
               ;; Refresh the face of LaTeX previews (when applicable).
-              (when (eq (plist-get org-latex-preview-options :foreground)
+              (when (eq (plist-get org-latex-preview-appearance-options :foreground)
                         'auto)
                 (dolist (ov (overlays-at start))
                   (when (and (eq (overlay-get ov 'org-overlay-type)

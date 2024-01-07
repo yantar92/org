@@ -1174,9 +1174,9 @@ See `format-time-string' for more information on its components."
 
 (defcustom org-html-latex-image-options
   '(:foreground "Black" :background "Transparent"
-    :scale 1.0 :inline nil)
+    :page-width 1.0 :scale 1.0 :inline nil)
   "LaTeX preview options that apply to generated images.
-This is a HTML-specific counterpart to `org-latex-preview-options', which see.
+This is a HTML-specific counterpart to `org-latex-preview-appearance-options', which see.
 
 This also supports the extra property \":inline\", which controls the
 inlining of images, it can be:
@@ -3118,7 +3118,7 @@ TODO."
                     (hash (org-latex-preview--hash
                             processing-type latex-preamble value imagetype fg bg number))
                     (options (org-combine-plists
-                              org-latex-preview-options
+                              org-latex-preview-appearance-options
                               html-options
                               (list :number number
                                     :continue-color
@@ -3132,7 +3132,7 @@ TODO."
                        :key hash)
                  fragment-info))
          (setq prev-fg fg prev-bg bg)))
-      (let ((org-latex-preview-options
+      (let ((org-latex-preview-appearance-options
              (list (plist-member html-options :scale))))
         (when fragment-info
           (apply #'org-async-wait-for

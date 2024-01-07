@@ -326,7 +326,7 @@ currently being processed.
 When non-nil, previewed LaTeX environments in the buffer are
 renumbered automatically as required.
 
-***** New option ~org-latex-preview-width~ to control the text width for LaTeX fragment previews
+***** New option =:page-width= in ~org-latex-preview-appearance-options~ to control the text width for LaTeX fragment previews
 
 This option controls the width of text in preview images.  This is
 relevant for displaymath-type LaTeX environments, and can be specified
@@ -347,13 +347,14 @@ When using ~org-latex-preview-auto-mode~ (which see), setting this option to a n
 
 ***** Mark ~org-format-latex-options~ obsolete
 
-Use ~org-latex-preview-options~ instead.  The replacement acts in the
+Use ~org-latex-preview-appearance-options~ instead.  The replacement acts in the
 same way, except that
 - the preview image render size and display size can be independently
   controlled with the =:scale= and =:zoom= plist keys, and
 - the HTML export-specific parameters =:html-scale=,
-  =:html-foreground= and =:html-background= have been
-moved to ~org-html-latex-image-options~, which see.
+  =:html-foreground= and =:html-background= have been moved to
+  ~org-html-latex-image-options~, which see.
+- the new option =:page-width= (mentioned earlier)
 
 ***** Mark ~org-format-latex-header~ obsolete
 

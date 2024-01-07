@@ -11518,9 +11518,9 @@ produce images of the typeset expressions to be used for inclusion
 while exporting to HTML (see [[*LaTeX fragments]]), or for inline
 previewing within Org mode.
 
-#+vindex: org-latex-preview-options
+#+vindex: org-latex-preview-appearance-options
 #+vindex: org-latex-preview-header
-You can customize the variables ~org-latex-preview-options~ and
+You can customize the variables ~org-latex-preview-appearance-options~ and
 ~org-latex-preview-header~ to influence some aspects of the preview.
 In particular, the ~:scale~ and ~:zoom~ properties of the former can
 be used to adjust the size of the preview images.

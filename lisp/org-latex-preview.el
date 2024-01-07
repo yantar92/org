@@ -41,29 +41,35 @@
   :group 'org)
 
 ;;;###autoload
-(defcustom org-latex-preview-options
-  '(:foreground auto :background "Transparent" :scale 1.0
-    :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")
-    :zoom 1.0)
+(defcustom org-latex-preview-appearance-options
+  '(:foreground auto :background "Transparent"
+    :scale 1.0 :zoom 1.0 :page-width 0.6
+    :matchers ("begin" "$1" "$" "$$" "\\(" "\\["))
   "Options for creating images from LaTeX fragments.
 This is a property list with the following properties:
-:foreground  the foreground color for images embedded in Emacs, e.g. \"Black\".
+:foreground  The foreground color for images embedded in Emacs, e.g. \"Black\".
              `default' means use the foreground of the default face.
              `auto' means use the foreground from the text face.
-:background  the background color, or \"Transparent\".
+:background  The background color, or \"Transparent\".
              `default' means use the background of the default face.
              `auto' means use the background from the text face.
-:scale       a scaling factor for the size of the images, to get more pixels
-:matchers    a list indicating which matchers should be used to
+:scale       A scaling factor for the size of the images, to get more pixels
+:zoom        when the image has associated font-relative height information,
+             the display size is scaled by this factor.
+:page-width  The width of the LaTeX document fragments are compiled in.
+             Either:
+             - A string giving a LaTeX dimension (e.g. \"12cm\").
+             - A floating point value between 0.0 and 1.0,
+               this sets the text width to this ratio of the page width.
+             - nil, in which case the default text width is unmodified.
+:matchers    A list indicating which matchers should be used to
              find LaTeX fragments.  Valid members of this list are:
              \"begin\" find environments
              \"$1\"    find single characters surrounded by $.$
              \"$\"     find math expressions surrounded by $...$
              \"$$\"    find math expressions surrounded by $$....$$
              \"\\(\"    find math expressions surrounded by \\(...\\)
-             \"\\=\\[\"    find math expressions surrounded by \\=\\[...\\]
-:zoom        when the image has associated font-relative height information,
-             the display size is scaled by this factor."
+             \"\\=\\[\"    find math expressions surrounded by \\=\\[...\\]"
   :group 'org-latex-preview
   :package-version '(Org . "9.7")
   :type 'plist)
@@ -329,20 +335,6 @@ header, or they will be appended."
   :group 'org-latex-preview
   :type 'string)
 
-(defcustom org-latex-preview-width 0.6
-  "The text width when compiling LaTeX fragments.
-This can take a few forms, namely:
-- A string giving a LaTeX dimension (e.g. \"12cm\").
-- A floating point value between 0.0 and 1.0,
-  this sets the text width to this ratio of the page width.
-- nil, in which case the default text width is unmodified."
-  :group 'org-latex-preview
-  :package-version '(Org . "9.7")
-  :type '(choice
-          (string :tag "LaTeX width")
-          (float :tag "Proportional width")
-          (const :tag "Unset" nil)))
-
 (defcustom org-latex-preview-precompile t
   "Use LaTeX header precompilation when previewing fragments.
 This causes a slight delay the first time `org-latex-pdf-process'
@@ -454,7 +446,7 @@ overlay face is set to `org-latex-preview-processing-face'."
 
 (defun org-latex-preview--update-overlay (ov path-info)
   "Update the overlay OV to show the image specified by PATH-INFO."
-  (let* ((zoom (or (plist-get org-latex-preview-options :zoom) 1.0))
+  (let* ((zoom (or (plist-get org-latex-preview-appearance-options :zoom) 1.0))
          (height (plist-get (cdr path-info) :height))
          (depth (plist-get (cdr path-info) :depth))
          (errors (plist-get (cdr path-info) :errors))
@@ -1082,7 +1074,7 @@ is either the substring between BEG and END or (when provided) VALUE."
                      (hash (org-latex-preview--hash
                             processing-type latex-preamble value imagetype fg bg number))
                      (options (org-combine-plists
-                               org-latex-preview-options
+                               org-latex-preview-appearance-options
                                (list :foreground fg
                                      :background bg
                                      :number number
@@ -1107,17 +1099,18 @@ is either the substring between BEG and END or (when provided) VALUE."
        processing-type
        (nreverse fragment-info)
        :latex-preamble latex-preamble
+       :appearance-options org-latex-preview-appearance-options
        :place-preview-p t))))
 
 (defun org-latex-preview--colors-around (start end)
   "Find colors for LaTeX previews occuping the region START to END."
   (let* ((face (org-latex-preview--face-around start end))
-         (fg (pcase (plist-get org-latex-preview-options :foreground)
+         (fg (pcase (plist-get org-latex-preview-appearance-options :foreground)
                ('auto
                 (org-latex-preview--resolved-faces-attr face :foreground))
                ('default (face-attribute 'default :foreground nil))
                (color color)))
-         (bg (pcase (plist-get org-latex-preview-options :background)
+         (bg (pcase (plist-get org-latex-preview-appearance-options :background)
                ('auto
                 (org-latex-preview--resolved-faces-attr face :background))
                ('default (face-attribute 'default :background nil))
@@ -1174,7 +1167,7 @@ NUMBER is the equation number that should be used, if applicable."
                (if (equal imagetype "svg")
                    'svg
                  (list (plist-get
-                        org-latex-preview-options :scale)
+                        org-latex-preview-appearance-options :scale)
                        fg))
                bg
                number))))
@@ -1344,7 +1337,7 @@ If PARSE-TREE is provided, it will be used insead of
                       (goto-char (org-element-property :begin datum))
                       (org-element-context))))))))))
 
-(cl-defun org-latex-preview--create-image-async (processing-type fragments-info &key latex-processor latex-preamble place-preview-p)
+(cl-defun org-latex-preview--create-image-async (processing-type fragments-info &key latex-processor latex-preamble appearance-options place-preview-p)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
 
 FRAGMENTS-INFO is a list of plists, each of which provides
@@ -1454,7 +1447,8 @@ Returns a list of async tasks started."
                           :fragments fragments-info
                           :org-buffer (current-buffer)
                           :texfile (org-latex-preview--create-tex-file
-                                    processing-info fragments-info)
+                                    processing-info fragments-info appearance-options)
+                          :appearance-options appearance-options
                           :place-preview-p place-preview-p)))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
@@ -1607,7 +1601,7 @@ The options passed to preview.sty are:
 This is an abridged summary.  See the documentation of
 preview.sty for more details.")
 
-(defun org-latex-preview--create-tex-file (processing-info fragments)
+(defun org-latex-preview--create-tex-file (processing-info fragments appearance-options)
   "Create a LaTeX file based on PROCESSING-INFO and FRAGMENTS.
 
 More specifically, a preamble will be generated based on
@@ -1625,7 +1619,10 @@ The path of the created LaTeX file is returned."
            (plist-get processing-info :latex-header)
            org-latex-preview--include-preview-string))
          (textwidth
-          (let ((w org-latex-preview-width))
+          ;; We can fetch width info from APPEARANCE-OPTIONS, but it's
+          ;; possible that an old config using `org-format-latex-options'
+          ;; won't have :page-width set, and so we need a default too.
+          (let ((w (or (plist-get appearance-options :page-width) 0.6)))
             (cond
              ((stringp w)
               (format "\n\\setlength{\\textwidth}{%s}\n" w))
@@ -1741,9 +1738,10 @@ The path of the created LaTeX file is returned."
               (get-buffer-create org-latex-preview--image-log)
             (erase-buffer)
             (current-buffer)))
+         (appearance-options (plist-get extended-info :appearance-options))
          (img-extract-command
           (pcase
-              (or (and (string= (plist-get org-latex-preview-options :background)
+              (or (and (string= (plist-get appearance-options :background)
                                 "Transparent")
                        (plist-get extended-info :transparent-image-converter))
                   (plist-get extended-info :image-converter))
@@ -1755,7 +1753,7 @@ The path of the created LaTeX file is returned."
              (car cmds))))
          (dpi (* 1.4 ; This factor makes it so generated PNGs are not blury
                      ; at the displayed resulution.
-                 (or (plist-get org-latex-preview-options :scale) 1.0)
+                 (or (plist-get appearance-options :scale) 1.0)
                  (if (display-graphic-p)
                      (org-latex-preview--get-display-dpi)
                    140.0)))
@@ -2374,28 +2372,29 @@ process."
    preamble
    tempfile-p))
 
-(defun org-latex-preview--tex-styled (processing-type value options)
-  "Apply LaTeX style commands to VALUE based on OPTIONS.
+(defun org-latex-preview--tex-styled (processing-type value appearance-options)
+  "Apply LaTeX style commands to VALUE based on APPEARANCE-OPTIONS.
 If PROCESSING-TYPE is dvipng, the colours are set with DVI
 \"\\special\" commands instead of \"\\color\" and
 \"\\pagecolor\".
 
 VALUE is the math fragment text to be previewed.
 
-OPTIONS is the plist `org-latex-preview-options' with customized
-color information for this run."
-  (let* ((fg (pcase (plist-get options :foreground)
+APPEARANCE-OPTIONS is the plist in the form of
+`org-latex-preview-appearance-options' with customized color
+information for this run."
+  (let* ((fg (pcase (plist-get appearance-options :foreground)
                ('default (org-latex-preview--format-color (org-latex-preview--attr-color :foreground)))
                ((pred null) (org-latex-preview--format-color "Black"))
                (color (org-latex-preview--format-color color))))
-         (bg (pcase (plist-get options :background)
+         (bg (pcase (plist-get appearance-options :background)
                ('default (org-latex-preview--attr-color :background))
                ("Transparent" nil)
                (bg (org-latex-preview--format-color bg))))
-         (num (or (plist-get options :number)
+         (num (or (plist-get appearance-options :number)
                   (and (not (eq org-latex-preview-numbered 'preview))
                        1))))
-    (concat (and (not (plist-get options :continue-color))
+    (concat (and (not (plist-get appearance-options :continue-color))
                  (if (eq processing-type 'dvipng)
                      (concat (and fg (format "\\special{color rgb %s}"
                                              (subst-char-in-string
