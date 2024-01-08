@@ -538,13 +538,15 @@ Faces in `org-latex-preview--ignored-faces' are ignored."
                        (get-text-property (1- start) 'face))
                   (and (> (point-max) end)
                        (not (eq (char-after end) ?\n))
-                       (get-text-property end 'face)))))
+                       (get-text-property end 'face))))
+        (normalising-face
+         (if (>= emacs-major-version 29) 'default '(:inherit default :extend t))))
     (cond
      ((consp face)
-      (nconc (cl-set-difference face org-latex-preview--ignored-faces) (list 'default)))
+      (nconc (cl-set-difference face org-latex-preview--ignored-faces) (list normalising-face)))
      ((and face (not (memq face org-latex-preview--ignored-faces)))
-      (list face 'default))
-     (t 'default))))
+      (list face normalising-face))
+     (t normalising-face))))
 
 ;; Code for `org-latex-preview-auto-mode':
 ;;
