@@ -1174,15 +1174,19 @@ See `format-time-string' for more information on its components."
 
 (defcustom org-html-latex-image-options
   '(:foreground "Black" :background "Transparent"
-    :page-width 1.0 :scale 1.0 :inline nil)
+    :page-width 1.0 :scale 1.0 :image-dir "ltximg" :inline nil)
   "LaTeX preview options that apply to generated images.
-This is a HTML-specific counterpart to `org-latex-preview-appearance-options', which see.
+This is a HTML-specific counterpart to
+`org-latex-preview-appearance-options', which see.
 
-This also supports the extra property \":inline\", which controls the
-inlining of images, it can be:
-- t, to inline all images
-- a extension, or list of extensions, to inline those formats (e.g. \"svg\")
-- nil, to never inline images"
+This supports two extra properties,
+:image-dir  an html-export counterpart of `org-latex-preview-cache', and
+:inline     images that should not be saved according to :image-dir,
+            but instead inlined in the generated HTML.  This can be:
+            - t, to inline all images
+            - nil, to never inline images
+            - an extension or list of extensions, for images that
+              should be inline (e.g. \"svg\")"
   :group 'org-export-html
   :package-version '(Org . "9.7")
   :type 'plist)
@@ -3082,7 +3086,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 ;;;; LaTeX Environment
 
 (defun org-html-prepare-latex-images (parse-tree _backend info)
-  "Make sure that appropriate preview images exist for all LaTeX
+  "Make sure that appropriate preview images exist for all LaTeX.
 TODO."
   (when (assq (plist-get info :with-latex) org-latex-preview-process-alist)
     (let* ((latex-preamble
@@ -3132,14 +3136,13 @@ TODO."
                        :key hash)
                  fragment-info))
          (setq prev-fg fg prev-bg bg)))
-      (let ((org-latex-preview-appearance-options
-             (list (plist-member html-options :scale))))
-        (when fragment-info
-          (apply #'org-async-wait-for
-                 (org-latex-preview--create-image-async
-                  processing-type
-                  (nreverse fragment-info)
-                  :latex-preamble latex-preamble))))
+      (when fragment-info
+        (apply #'org-async-wait-for
+               (org-latex-preview--create-image-async
+                processing-type
+                (nreverse fragment-info)
+                :latex-preamble latex-preamble
+                :appearance-options html-options)))
       (plist-put info :html-latex-preview-hash-table element-hash-table)
       nil)))
 
@@ -3232,25 +3235,43 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
   (org-html--as-latex latex-fragment info))
 
 (defun org-html-latex-image (element info)
-  "TODO"
+  "Transcode the LaTeX fragment or environment ELEMENT from Org to HTML.
+INFO is a plist holding contextual information, and it is assumed
+that an image for ELEMENT already exists within it."
   (let* ((hash (or (gethash element (plist-get info :html-latex-preview-hash-table))
                    (error "Expected LaTeX preview hash to exist for element, but none found")))
          (path-info (or (org-latex-preview--get-cached hash)
                         (error "Expected LaTeX preview %S to exist in the cache" hash)))
-         (inline-condition (plist-get (plist-get info :html-latex-image-options) :inline))
+         (image-options (plist-get info :html-latex-image-options))
+         (image-dir (plist-get image-options :image-dir))
+         (inline-condition (plist-get image-options :inline))
+         (rescale-factor (if (eq (plist-get (cdr path-info) :image-type) 'svg)
+                             (plist-get image-options :scale)
+                           1))
          (image-source
-          (if (or (eq inline-condition 't)
-                  (member (file-name-extension (car path-info))
-                          (org-ensure-list inline-condition)))
-              (let ((coding-system-for-read 'utf-8)
-                    (file-name-handler-alist nil))
-                (with-temp-buffer
-                  (insert-file-contents-literally (car path-info))
-                  (base64-encode-region (point-min) (point-max))
-                  (goto-char (point-min))
-                  (insert "data:image/svg+xml;base64,")
-                  (buffer-string)))
-              (car path-info))))
+          (cond
+           ((or (eq inline-condition 't)
+                (member (file-name-extension (car path-info))
+                        (org-ensure-list inline-condition)))
+            (let ((coding-system-for-read 'utf-8)
+                  (file-name-handler-alist nil))
+              (with-temp-buffer
+                (insert-file-contents-literally (car path-info))
+                (base64-encode-region (point-min) (point-max))
+                (goto-char (point-min))
+                (insert "data:image/svg+xml;base64,")
+                (buffer-string))))
+           ((stringp image-dir)
+            (let* ((image-dir (expand-file-name image-dir))
+                   (image-path (file-name-with-extension
+                                (file-name-concat image-dir (substring hash 0 11))
+                                (file-name-extension (car path-info)))))
+              (unless (file-directory-p image-dir)
+                (mkdir image-dir t))
+              (unless (file-exists-p image-path)
+                (copy-file (car path-info) image-path))
+              image-path))
+           (t (car path-info)))))
     (unless (and (plist-get (cdr path-info) :height)
                  (plist-get (cdr path-info) :depth))
       (error "Something went wrong during image generation"))
@@ -3262,10 +3283,10 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
                   (org-element-property :value element))
             :style (if (eq (org-element-type element) 'latex-environment)
                        (format "height: %.4fem"
-                               (plist-get (cdr path-info) :height))
+                               (* rescale-factor (plist-get (cdr path-info) :height)))
                      (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
-                             (plist-get (cdr path-info) :height)
-                             (plist-get (cdr path-info) :depth)))
+                             (* rescale-factor (plist-get (cdr path-info) :height))
+                             (* rescale-factor (plist-get (cdr path-info) :depth))))
             :class (if (eq (org-element-type element) 'latex-environment)
                        "org-latex org-latex-environment"
                      "org-latex org-latex-fragment")))
