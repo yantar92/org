@@ -305,16 +305,17 @@ If the option ~org-latex-preview-auto-track-inserts~ is non-nil (which see), pre
 This alist maps compilers in ~org-latex-compilers~ to command strings
 used for LaTeX precompilation when creating previews or LaTeX exports.
 
-***** New option ~org-latex-preview-persist~ to enable preview image caching
+***** New option ~org-latex-preview-cache~ to enable preview image caching
 
-When non-nil, images produced using ~org-latex-preview~ will be cached and
-persisted across Emacs sessions using ~org-persist~.
+When set to =persist=, images produced using ~org-latex-preview~ will
+be cached and persisted across Emacs sessions using
+~org-persist~. Temporary or custom directories can also be used.
 
 ***** New option ~org-latex-preview-persist-expiry~ to set persistence period
 
 This is the number of days for which LaTeX preview images will be
 cached, assuming persistence is turned on with
-~org-latex-preview-persist~.
+~org-latex-preview-cache~.
 
 ***** New option ~org-latex-preview-process-active-indicator~ to indicate preview processing for LaTeX fragments
 

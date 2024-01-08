@@ -192,7 +192,7 @@ is required."
   :type '(alist :tag "Compiler"
           :value-type (string :type "command")))
 
-(defcustom org-latex-preview-persist t
+(defcustom org-latex-preview-cache 'persist
   "Persist produced LaTeX previews across Emacs sessions.
 
 When non-nil, org-persist is used to cache the fragments and
@@ -201,11 +201,14 @@ the data is stored in `org-latex-preview--table' for the duration
 of the Emacs session."
   :group 'org-latex
   :package-version '(Org . "9.7")
-  :type 'boolean)
+  :type '(choice (const :tag "Use org-mode's persistent cache system" persist)
+          (const :tag "Use the system temporary directory" temp)
+          (string :tag "Path to cache directory")))
 
 (defcustom org-latex-preview-persist-expiry 7
   "A homologue of `org-persist-default-expiry' for preview data.
-This is only relevant when `org-latex-preview-persist' is non-nil."
+This is only relevant when `org-latex-preview-cache' is set to
+persist."
   :group 'org-latex
   :package-version '(Org . "9.7")
   :type '(choice (const :tag "Never" never)
@@ -2662,44 +2665,46 @@ If this is an export run, images will only be cached, not placed."
 (defvar org-latex-preview--table nil
   "Hash table to hold LaTeX preview image metadata.
 
-This is only used if image caching is disabled by setting
-`org-latex-preview-persist' to nil.")
+This is only used for non-persist image caching, used when
+`org-latex-preview-cache' is not set to persist.")
 
 (defun org-latex-preview--cache-image (key path info)
   "Save the image at PATH with associated INFO in the cache indexed by KEY.
 Return (path . info).
 
-The caching location depends on whether preview persistence is
-enabled, see `org-latex-preview-persist'."
-  (cond
-   ((not path)
-    (ignore
-     (display-warning
-      '(org latex-preview put-cache)
-      (format "Tried to cache %S without a path, skipping. This should not happen, please report it as a bug to the Org mailing list (M-x org-submit-bug-report)." key)
-      :warning)))
-   (org-latex-preview-persist
-    (let ((label-path-info
-           (or (org-persist-read org-latex-preview--cache-name
-                                 (list :key key)
-                                 nil nil :read-related t)
-               (org-persist-register `(,org-latex-preview--cache-name
-                                       (file ,path)
-                                       (elisp-data ,info))
-                                     (list :key key)
-                                     :expiry org-latex-preview-persist-expiry
-                                     :write-immediately t))))
-      (cons (cadr label-path-info) info)))
-   (t
-    (unless org-latex-preview--table
-      (setq org-latex-preview--table (make-hash-table :test 'equal :size 240)))
-    (when-let ((path)
-               (new-path (expand-file-name
-                          (concat "org-tex-" key "." (file-name-extension path))
-                          temporary-file-directory)))
-      (copy-file path new-path 'replace)
-      (puthash key (cons new-path info)
-               org-latex-preview--table)))))
+The caching location is set by CACHE, which defaults to
+`org-latex-preview-cache'.  It should be the symbol \"persist\",
+\"temp\", or an existing directory path as a string."
+  (if (not path)
+      (ignore
+       (display-warning
+        '(org latex-preview put-cache)
+        (format "Tried to cache %S without a path, skipping. This should not happen, please report it as a bug to the Org mailing list (M-x org-submit-bug-report)." key)
+        :warning))
+    (pcase org-latex-preview-cache
+      ('persist
+       (let ((label-path-info
+              (or (org-persist-read org-latex-preview--cache-name
+                                    (list :key key)
+                                    nil nil :read-related t)
+                  (org-persist-register `(,org-latex-preview--cache-name
+                                          (file ,path)
+                                          (elisp-data ,info))
+                                        (list :key key)
+                                        :expiry org-latex-preview-persist-expiry
+                                        :write-immediately t))))
+         (cons (cadr label-path-info) info)))
+      ((and dir (or 'temp (pred stringp)))
+       (unless org-latex-preview--table
+         (setq org-latex-preview--table (make-hash-table :test 'equal :size 240)))
+       (when-let ((path)
+                  (new-path (expand-file-name
+                             (concat "org-tex-" key "." (file-name-extension path))
+                             (if (eq dir 'temp) temporary-file-directory dir))))
+         (copy-file path new-path 'replace)
+         (puthash key (cons new-path info)
+                  org-latex-preview--table)))
+      (bad (error "Invalid cache location: %S (must be persist, temp, or a string)" bad)))))
 
 (defun org-latex-preview--get-cached (key)
   "Retrieve the image path and info associated with KEY.
@@ -2712,31 +2717,33 @@ Example result:
    :width 7.6
    :depth 0.2
    :errors nil)"
-  (if org-latex-preview-persist
-      (when-let ((label-path-info
-                  (org-persist-read org-latex-preview--cache-name
-                                    (list :key key)
-                                    nil nil :read-related t)))
-        (cons (cadr label-path-info)
-              (caddr label-path-info)))
-    (when org-latex-preview--table
-      (gethash key org-latex-preview--table))))
+  (cond
+   ((eq org-latex-preview-cache 'persist)
+    (when-let ((label-path-info
+                (org-persist-read org-latex-preview--cache-name
+                                  (list :key key)
+                                  nil nil :read-related t)))
+      (cons (cadr label-path-info)
+            (caddr label-path-info))))
+   (org-latex-preview--table
+    (gethash key org-latex-preview--table))))
 
 (defun org-latex-preview--remove-cached (key)
   "Remove the fragment cache associated with KEY."
-  (if org-latex-preview-persist
-      (org-persist-unregister org-latex-preview--cache-name
-                              (list :key key)
-                              :remove-related t)
-    (when org-latex-preview--table
-      (remhash key org-latex-preview--table)
-      (dolist (ext '("svg" "png"))
-        (when-let  ((image-file
-                     (expand-file-name
-                      (concat "org-tex-" key "." ext)
-                      temporary-file-directory))
-                    ((file-exists-p image-file)))
-          (delete-file image-file))))))
+  (cond
+   ((eq org-latex-preview-cache 'persist)
+    (org-persist-unregister org-latex-preview--cache-name
+                            (list :key key)
+                            :remove-related t))
+   (org-latex-preview--table
+    (remhash key org-latex-preview--table)
+    (dolist (ext '("svg" "png"))
+      (when-let  ((image-file
+                   (expand-file-name
+                    (concat "org-tex-" key "." ext)
+                    temporary-file-directory))
+                  ((file-exists-p image-file)))
+        (delete-file image-file))))))
 
 (defun org-latex-preview-clear-cache (&optional beg end clear-entire-cache)
   "Clear LaTeX preview cache for fragments between BEG and END.

@@ -233,7 +233,7 @@
 (ert-deftest test-org-latex-preview/place-previews-1 ()
   (org-test-at-id "0b3807b3-69af-40cb-a27a-b380d54879cc"
     (let ((org-latex-preview-process-precompiled nil)
-          (org-latex-preview-persist nil)
+          (org-latex-preview-cache 'temp)
           (org-latex-preview-process-default 'dvisvgm))
       (org-latex-preview-auto-mode -1)
       (goto-char 255)
@@ -268,7 +268,7 @@
 (ert-deftest test-org-latex-preview/place-previews-all ()
   (org-test-at-id "0b3807b3-69af-40cb-a27a-b380d54879cc"
     (let ((org-latex-preview-process-precompiled nil)
-          (org-latex-preview-persist nil)
+          (org-latex-preview-cache 'temp)
           (org-latex-preview-process-default 'dvisvgm))
       (org-latex-preview-auto-mode -1)
       (org-latex-preview-clear-cache (point-min) (point-max))
