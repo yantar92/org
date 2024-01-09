@@ -2331,19 +2331,25 @@ fragments are regenerated."
                              "Preview generation catastrophically failed after this fragment."))
           (org-latex-preview--remove-cached
            (plist-get bad-fragment :key))
-          (org-latex-preview--update-overlay
-           (plist-get bad-fragment :overlay)
-           (org-latex-preview--cache-image
-            (plist-get bad-fragment :key)
-            (plist-get bad-fragment :path)
-            (org-latex-preview--display-info
-             extended-info bad-fragment))))
+          (if (plist-get extended-info :place-preview-p)
+              (org-latex-preview--update-overlay
+               (plist-get bad-fragment :overlay)
+               (org-latex-preview--cache-image
+                (plist-get bad-fragment :key)
+                (plist-get bad-fragment :path)
+                (org-latex-preview--display-info
+                 extended-info bad-fragment)))
+            (org-latex-preview--cache-image
+             (plist-get bad-fragment :key)
+             (plist-get bad-fragment :path)
+             (org-latex-preview--display-info
+              extended-info bad-fragment))))
         ;; Re-generate the remaining fragments.
         (org-latex-preview--create-image-async
          (plist-get extended-info :processor)
          (cdr fragments)
          :latex-preamble (plist-get extended-info :latex-header)
-         :place-preview-p t)
+         :place-preview-p (plist-get extended-info :place-preview-p))
         (setq fragments nil)))))
 
 (defun org-latex-preview--display-info (extended-info fragment-info)
