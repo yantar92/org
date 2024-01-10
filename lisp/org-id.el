@@ -82,6 +82,7 @@
 (declare-function org-goto-location "org-goto" (&optional _buf help))
 ;; Declared inside `org-element-with-disabled-cache' macro.
 (declare-function org-element--cache-active-p "org-element.el" (&optional called-from-cache-change-func-p))
+(declare-function org-collect-keywords "org-element" (keywords &optional unique directory))
 
 ;;; Customization
 
