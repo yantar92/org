@@ -789,21 +789,34 @@ image.  The preview image is regenerated if necessary."
         (overlay-put ov 'display (overlay-get ov 'preview-image)))
       (run-hook-with-args 'org-latex-preview-overlay-close-functions ov))))
 
-(defun org-latex-preview-auto--regenerate-overlay (ov)
-  "Regenerate the LaTeX fragment under overlay OV."
+(defun org-latex-preview-auto--regenerate-overlay (ov &optional inhibit-renumbering)
+  "Regenerate the LaTeX fragment under overlay OV.
+
+When `org-latex-preview-numbered' is non-nil, and the overlay
+being updated is for an environment, other numbered environments
+will be updated should their numbering change.
+
+Numbering checking and updating can be prevented by setting
+INHIBIT-RENUMBERING to a non-nil value."
   (with-current-buffer (overlay-buffer ov)
-    (let* ((fragment (save-excursion
-                       (goto-char (overlay-start ov))
+    (let* ((start (overlay-start ov))
+           (end (overlay-end ov))
+           (fragment (save-excursion
+                       (goto-char start)
                        (org-element-context)))
            (others (and org-latex-preview-numbered
+                        (not inhibit-renumbering)
                         (eq (org-element-type fragment) 'latex-environment)
-                        (org-latex-preview--get-numbered-environments
-                         (overlay-end ov) nil))))
+                        (org-latex-preview--get-numbered-environments end nil))))
       (if (memq (org-element-type fragment)
                 '(latex-fragment latex-environment))
-          (org-latex-preview--place-from-elements
-           org-latex-preview-process-default
-           (cons fragment others))
+          (if (org-latex-preview--empty-fragment-p
+               (org-element-property :value fragment))
+              (progn (delete-overlay ov)
+                     (org-latex-preview--ensure-overlay start end))
+            (org-latex-preview--place-from-elements
+             org-latex-preview-process-default
+             (cons fragment others)))
         (delete-overlay ov)
         (when others
           (org-latex-preview--place-from-elements
@@ -1068,6 +1081,7 @@ BOX-FACE is the face to apply in addition."
                (let ((props (get-char-property-and-overlay (point) 'org-overlay-type)))
                  (and (eq (car props) 'org-latex-overlay)
                       (cdr props)))))
+       (image (overlay-get ov 'preview-image))
        (end (overlay-end ov)))
     (let ((latex-env-p
            (progn
@@ -1093,8 +1107,7 @@ BOX-FACE is the face to apply in addition."
                   (concat (and latex-env-p "\n​") " "))
             (overlay-put ov 'view-text t)
             (overlay-put ov 'after-string org-latex-preview-live--docstring)))
-        (org-latex-preview-live--update-props
-         (overlay-get ov 'preview-image) '(:box t))))))
+        (org-latex-preview-live--update-props image '(:box t))))))
 
 (defun org-latex-preview-live--update-overlay (ov)
   "Update the live LaTeX preview for overlay OV."
@@ -1476,32 +1489,45 @@ protection against placing doubled up overlays."
   "Constuct a well formatted list of entries and (optinally) numbering offsets.
 This operates by processing ELEMENTS.  When CONSTRUCT-NUMBERING-P is non-nil,
 the number offsets will also be calculated, using PARSE-TREE if given."
-  (let* ((numbering-table (and construct-numbering-p
-                               (cl-find 'latex-environment elements
-                                        :key #'org-element-type :test #'eq)
-                               (org-latex-preview--environment-numbering-table
-                                parse-tree)))
-         (numbering-offsets
-          (and numbering-table
-               (mapcar
-                (lambda (element)
-                  (and numbering-table
-                       (eq (org-element-type element) 'latex-environment)
-                       (gethash element numbering-table)))
-                elements)))
-         (entries
-          (mapcar
-           (lambda (element)
-             (list (or (org-element-property :post-affiliated element)
-                       (org-element-property :begin element))
-                   (- (org-element-property :end element)
-                      (or (org-element-property :post-blank element) 0)
-                      (if (eq (char-before (org-element-property :end element))
-                              ?\n)
-                          1 0))
-                   (org-element-property :value element)))
-           elements)))
-    (list entries numbering-offsets)))
+  (let ((numbering-table (and construct-numbering-p
+                              (cl-find 'latex-environment elements
+                                       :key #'org-element-type :test #'eq)
+                              (org-latex-preview--environment-numbering-table
+                               parse-tree)))
+        entries numbering-offsets)
+    (dolist (element elements)
+      (let ((beg (or (org-element-property :post-affiliated element)
+                     (org-element-property :begin element)))
+            (end (- (org-element-property :end element)
+                    (or (org-element-property :post-blank element) 0)
+                    (if (eq (char-before (org-element-property :end element))
+                            ?\n)
+                        1 0)))
+            (content (org-element-property :value element)))
+        (push (list beg end content) entries)
+        (when numbering-table
+          (push (and (eq (org-element-type element) 'latex-environment)
+                     (gethash element numbering-table))
+                numbering-offsets))))
+    (list (nreverse entries) (nreverse numbering-offsets))))
+
+(defun org-latex-preview--empty-fragment-p (content)
+  "Test if the LaTeX string CONTENT is an empty LaTeX fragment (e.g. \\[\\])."
+  (let ((content-point 0)
+        (content-max (1- (length content)))
+        (only-blanks t))
+    (cond
+     ((eq (aref content 0) ?$)
+      (if (eq (aref content 1) ?$)
+          (setq content-point 2 content-max (- content-max 2))
+        (setq content-point 1 content-max (- content-max 1))))
+     ((eq (aref content 0) ?\\)
+      (setq content-point 2 content-max (- content-max 2))))
+    (while (and only-blanks (<= content-point content-max))
+      (if (memq (aref content content-point) '(?\s ?\t ?\n ?\r))
+          (cl-incf content-point)
+        (setq only-blanks nil)))
+    only-blanks))
 
 (defun org-latex-preview--place-from-elements (processing-type elements)
   "Preview LaTeX math fragments ELEMENTS using PROCESSING-TYPE."
@@ -1551,11 +1577,12 @@ is either the substring between BEG and END or (when provided) VALUE."
               (org-latex-preview--update-overlay
                (org-latex-preview--ensure-overlay beg end)
                path-info)
-            (push (list :string (org-latex-preview--tex-styled
-                                 processing-type value options)
-                        :overlay (org-latex-preview--ensure-overlay beg end)
-                        :key hash)
-                  fragment-info))
+            (unless (org-latex-preview--empty-fragment-p value)
+              (push (list :string (org-latex-preview--tex-styled
+                                   processing-type value options)
+                          :overlay (org-latex-preview--ensure-overlay beg end)
+                          :key hash)
+                    fragment-info)))
           (setq prev-fg fg prev-bg bg))))
     (when fragment-info
       (org-latex-preview--create-image-async

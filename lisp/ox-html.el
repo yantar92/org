@@ -1184,6 +1184,7 @@ This supports two extra properties,
 :inline     images that should not be saved according to :image-dir,
             but instead inlined in the generated HTML.  This can be:
             - t, to inline all images
+            - svg, to inline all images, using <svg> with SVGs
             - nil, to never inline images
             - an extension or list of extensions, for images that
               should be inline (e.g. \"svg\")"
@@ -3243,54 +3244,80 @@ that an image for ELEMENT already exists within it."
          (path-info (or (org-latex-preview--get-cached hash)
                         (error "Expected LaTeX preview %S to exist in the cache" hash)))
          (image-options (plist-get info :html-latex-image-options))
-         (image-dir (plist-get image-options :image-dir))
-         (inline-condition (plist-get image-options :inline))
          (rescale-factor (if (eq (plist-get (cdr path-info) :image-type) 'svg)
                              (plist-get image-options :scale)
                            1))
          (image-source
-          (cond
-           ((or (eq inline-condition 't)
-                (member (file-name-extension (car path-info))
-                        (org-ensure-list inline-condition)))
-            (let ((coding-system-for-read 'utf-8)
-                  (file-name-handler-alist nil))
-              (with-temp-buffer
-                (insert-file-contents-literally (car path-info))
-                (base64-encode-region (point-min) (point-max))
-                (goto-char (point-min))
-                (insert "data:image/svg+xml;base64,")
-                (buffer-string))))
-           ((stringp image-dir)
-            (let* ((image-dir (expand-file-name image-dir))
-                   (image-path (file-name-with-extension
-                                (file-name-concat image-dir (substring hash 0 11))
-                                (file-name-extension (car path-info)))))
-              (unless (file-directory-p image-dir)
-                (mkdir image-dir t))
-              (unless (file-exists-p image-path)
-                (copy-file (car path-info) image-path))
-              image-path))
-           (t (car path-info)))))
+          (org-html-latex-image--data (car path-info) hash info)))
     (unless (and (plist-get (cdr path-info) :height)
                  (plist-get (cdr path-info) :depth))
       (error "Something went wrong during image generation"))
-    (org-html-close-tag
-     "img"
-     (org-html--make-attribute-string
-      (list :src image-source
-            :alt (org-html-encode-plain-text
-                  (org-element-property :value element))
-            :style (if (eq (org-element-type element) 'latex-environment)
-                       (format "height: %.4fem"
-                               (* rescale-factor (plist-get (cdr path-info) :height)))
-                     (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
-                             (* rescale-factor (plist-get (cdr path-info) :height))
-                             (* rescale-factor (plist-get (cdr path-info) :depth))))
-            :class (if (eq (org-element-type element) 'latex-environment)
-                       "org-latex org-latex-environment"
-                     "org-latex org-latex-fragment")))
-     info)))
+    (if (and (eq (plist-get image-options :inline) 'svg)
+             (string= (file-name-extension (car path-info)) "svg"))
+        image-source
+      (org-html-close-tag
+       "img"
+       (org-html--make-attribute-string
+        (list :src image-source
+              :alt (org-html-encode-plain-text
+                    (org-element-property :value element))
+              :style (if (eq (org-element-type element) 'latex-environment)
+                         (format "height: %.4fem"
+                                 (* rescale-factor (plist-get (cdr path-info) :height)))
+                       (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
+                               (* rescale-factor (plist-get (cdr path-info) :height))
+                               (* rescale-factor (plist-get (cdr path-info) :depth))))
+              :class (if (eq (org-element-type element) 'latex-environment)
+                         "org-latex org-latex-environment"
+                       "org-latex org-latex-fragment")))
+       info))))
+
+(defun org-html-latex-image--data (source-file hash info)
+  "Obtaine the image source for SOURCE-FILE as a string, based on HASH and INFO.
+This can take the form of a path, data URI, or <svg> element."
+  (let* ((image-options (plist-get info :html-latex-image-options))
+         (inline-condition (plist-get image-options :inline))
+         (image-dir (plist-get image-options :image-dir)))
+    (cond
+     ((or inline-condition
+          (member (file-name-extension source-file)
+                  (org-ensure-list inline-condition)))
+      (let ((coding-system-for-read 'utf-8)
+            (file-name-handler-alist nil))
+        (with-temp-buffer
+          (insert-file-contents-literally source-file)
+          (cond
+           ((and (eq inline-condition 'svg)
+                 (string= (file-name-extension source-file) "svg"))
+            (buffer-string))
+           ((string= (file-name-extension source-file) "svg")
+            ;; Modelled after <https://codepen.io/tigt/post/optimizing-svgs-in-data-uris>.
+            (concat "data:image/svg+xml,"
+                    (url-hexify-string
+                     (subst-char-in-string ?\" ?\' (buffer-string))
+                     '(?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m ?n
+                       ?o ?p ?q ?r ?s ?t ?u ?v ?w ?x ?y ?z ?A ?B
+                       ?C ?D ?E ?F ?G ?H ?I ?J ?K ?L ?M ?N ?O ?P
+                       ?Q ?R ?S ?T ?U ?V ?W ?X ?Y ?Z ?0 ?1 ?2 ?3
+                       ?4 ?5 ?6 ?7 ?8 ?9 ?- ?_ ?. ?~
+                       ;;Special additions
+                       ?\s ?= ?: ?/))))
+           (t
+            (base64-encode-region (point-min) (point-max))
+            (goto-char (point-min))
+            (insert "data:image/" (file-name-extension source-file) ";base64,")
+            (buffer-string))))))
+     ((stringp image-dir)
+      (let* ((image-dir (expand-file-name image-dir))
+             (image-path (file-name-with-extension
+                          (file-name-concat image-dir (substring hash 0 11))
+                          (file-name-extension source-file))))
+        (unless (file-directory-p image-dir)
+          (mkdir image-dir t))
+        (unless (file-exists-p image-path)
+          (copy-file source-file image-path))
+        image-path))
+     (t source-file))))
 
 ;;;; Line Break
 
