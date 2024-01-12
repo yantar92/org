@@ -6154,7 +6154,7 @@ indentation removed from its contents."
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
-(defconst org-element-cache-version "2.3"
+(defconst org-element-cache-version "2.4"
   "Version number for Org AST structure.
 Used to avoid loading obsolete AST representation when using
 `org-element-cache-persistent'.")
