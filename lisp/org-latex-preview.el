@@ -2731,8 +2731,17 @@ Example result:
                 (org-persist-read org-latex-preview--cache-name
                                   (list :key key)
                                   nil nil :read-related t)))
-      (cons (cadr label-path-info)
-            (caddr label-path-info))))
+      ;; While /in theory/ this check isn't needed, sometimes the
+      ;; org-persist cache can be modified outside the current Emacs
+      ;; process.  When this occurs the metadata of the fragment can
+      ;; still exist in `org-persist--index', but the image file is
+      ;; gone.  This condition can be detected by checking if the
+      ;; `cadr' is nil (indicating the image has gone AWOL).
+      (if (cadr label-path-info)
+          (cons (cadr label-path-info)
+                (caddr label-path-info))
+        (org-latex-preview--remove-cached key)
+        nil)))
    (org-latex-preview--table
     (gethash key org-latex-preview--table))))
 
