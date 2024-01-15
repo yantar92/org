@@ -39,6 +39,16 @@
 (defvar org-src-mode-hook nil)
 (defvar org-src--beg-marker nil)
 
+(defvar org-latex-preview--dvisvgm3-minor-version
+  (or (and (executable-find "dvisvgm")
+           (with-temp-buffer
+             (call-process "dvisvgm" nil t nil "--version")
+             (let ((ver (version-to-list
+                         (string-trim (buffer-string) "dvisvgm "))))
+               (and (= (car ver) 3) (cadr ver)))))
+      -1)
+  "The minor version of dvisvgm, if dvisvgm 3 is installed.  Otherwise -1.")
+
 (defgroup org-latex-preview nil
   "Options for generation of LaTeX previews in Org mode."
   :tag "Org LaTeX Preview"
@@ -89,39 +99,39 @@ All available processes and theirs documents can be found in
 
 ;;;###autoload
 (defcustom org-latex-preview-process-alist
-  '((dvipng
-     :programs ("latex" "dvipng")
-     :description "dvi > png"
-     :message "you need to install the programs: latex and dvipng."
-     :image-input-type "dvi"
-     :image-output-type "png"
-     :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
-     :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
-     :transparent-image-converter
-     ("dvipng --follow -D %D -T tight -bg Transparent --depth --height -o %B-%%09d.png %f"))
-    (dvisvgm
-     :programs ("latex" "dvisvgm")
-     :description "dvi > svg"
-     :message "you need to install the programs: latex and dvisvgm."
-     :image-input-type "dvi"
-     :image-output-type "svg"
-     :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
-     ;; The --optimise, --clipjoin, and --relative flags cause dvisvgm to
-     ;; do some extra work to tidy up the SVG output, but barely add to
-     ;; the overall dvisvgm runtime (<1% increace, from testing).
-     :image-converter ("dvisvgm --page=1- --optimize --clipjoin --relative --no-fonts --bbox=preview -o %B-%%9p.svg %f"))
-    (imagemagick
-     :programs ("pdflatex" "convert")
-     :description "pdf > png"
-     :message "you need to install the programs: latex and imagemagick."
-     :image-input-type "pdf"
-     :image-output-type "png"
-     :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
-     :latex-precompiler ("pdftex -output-directory %o -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
-     :image-converter
-     ("convert -density %D -trim -antialias %f -quality 100 %B-%%09d.png")))
+    '((dvipng
+       :programs ("latex" "dvipng")
+       :description "dvi > png"
+       :message "you need to install the programs: latex and dvipng."
+       :image-input-type "dvi"
+       :image-output-type "png"
+       :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
+       :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
+       :image-converter ("dvipng --follow -D %D -T tight --depth --height -o %B-%%09d.png %f")
+       :transparent-image-converter
+       ("dvipng --follow -D %D -T tight -bg Transparent --depth --height -o %B-%%09d.png %f"))
+      (dvisvgm
+       :programs ("latex" "dvisvgm")
+       :description "dvi > svg"
+       :message "you need to install the programs: latex and dvisvgm."
+       :image-input-type "dvi"
+       :image-output-type "svg"
+       :latex-compiler ("%l -interaction nonstopmode -output-directory %o %f")
+       :latex-precompiler ("%l -output-directory %o -ini -jobname=%b \"&%L\" mylatexformat.ltx %f")
+       ;; The --optimise, --clipjoin, and --relative flags cause dvisvgm to
+       ;; do some extra work to tidy up the SVG output, but barely add to
+       ;; the overall dvisvgm runtime (<1% increace, from testing).
+       :image-converter determined-at-runtime)
+      (imagemagick
+       :programs ("pdflatex" "convert")
+       :description "pdf > png"
+       :message "you need to install the programs: latex and imagemagick."
+       :image-input-type "pdf"
+       :image-output-type "png"
+       :latex-compiler ("pdflatex -interaction nonstopmode -output-directory %o %f")
+       :latex-precompiler ("pdftex -output-directory %o -ini -jobname=%b \"&pdflatex\" mylatexformat.ltx %f")
+       :image-converter
+       ("convert -density %D -trim -antialias %f -quality 100 %B-%%09d.png")))
   "Definitions of external processes for LaTeX previewing.
 Org mode can use some external commands to generate TeX snippet's images for
 previewing or inserting into HTML files, e.g., \"dvipng\".  This variable tells
@@ -175,6 +185,22 @@ Place-holders only used by `:image-converter':
   :package-version '(Org . "9.7")
   :type '(alist :tag "LaTeX to image backends"
           :value-type (plist)))
+
+;; This is a bit hacky, but since we can't include reference to the
+;; runtime value of `org-latex-preview--dvisvgm3-minor-version' in the
+;; default value of `org-latex-preview-process-alist', we have to
+;; resort to modifying the value at runtime like so.
+;; Theoretically only the "load" condition is needed, but some people seemed
+;; to have problems with this that are solved by adding "eval".
+(cl-eval-when (load eval)
+  (when-let ((dvisvgm (alist-get 'dvisvgm org-latex-preview-process-alist)))
+    (when (eq (plist-get dvisvgm :image-converter) 'determined-at-runtime)
+      (plist-put dvisvgm :image-converter
+                 (list
+                  (concat "dvisvgm --page=1- --optimize --clipjoin --relative --no-fonts"
+                          (if (>= org-latex-preview--dvisvgm3-minor-version 2)
+                              " -v3 --message='processing page {?pageno}: output written to {?svgfile}'" "")
+                          " --bbox=preview -o %B-%%9p.svg %f"))))))
 
 (defcustom org-latex-preview-compiler-command-map
   '(("pdflatex" . "latex")
@@ -2531,20 +2557,11 @@ fragments in EXTENDED-INFO."
       (org-latex-preview--place-images
        extended-info (nreverse fragments-to-show)))))
 
-(defvar org-latex-preview--dvisvgm-version>=3.1
-  (and (executable-find "dvisvgm")
-       (with-temp-buffer
-         (call-process "dvisvgm" nil t nil "--version")
-         (version<=
-          "3.1"
-          (string-trim (buffer-string) "dvisvgm "))))
-  "Whether dvisvgm >= 3.1 is installed.")
-
 (defun org-latex-preview--dvisvgm-filter (_proc _string extended-info)
   "Look for newly created images in the dvisvgm stdout buffer.
 Any matches found will be matched against the fragments recorded in
 EXTENDED-INFO, and displayed in the buffer."
-  (let ((dvisvgm-processing-re "^processing page \\([0-9]+\\)\n")
+  (let ((dvisvgm-processing-re "^processing page \\([0-9]+\\)[\n:]")
         (fragments (plist-get extended-info :fragments))
         page-marks fragments-to-show)
     (beginning-of-line)
@@ -2574,7 +2591,7 @@ EXTENDED-INFO, and displayed in the buffer."
       (setq page-marks (cdr page-marks)))
     (when fragments-to-show
       (setq fragments-to-show (nreverse fragments-to-show))
-      (if org-latex-preview--dvisvgm-version>=3.1
+      (if (>= org-latex-preview--dvisvgm3-minor-version 1)
           (mapc #'org-latex-preview--await-fragment-existance fragments-to-show)
         (mapc #'org-latex-preview--svg-make-fg-currentColor fragments-to-show))
       (org-latex-preview--place-images extended-info fragments-to-show))))
@@ -2927,7 +2944,7 @@ information for this run."
                     (and fg (format "\\color[rgb]{%s}" fg))
                     (and fg
                          (eq processing-type 'dvisvgm)
-                         org-latex-preview--dvisvgm-version>=3.1
+                         (>= org-latex-preview--dvisvgm3-minor-version 1)
                          "\\special{dvisvgm:currentcolor on}"))))
             (and num (format "\\setcounter{equation}{%d}" (1- num)))
             "%\n"
