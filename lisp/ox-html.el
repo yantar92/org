@@ -1181,13 +1181,12 @@ This is a HTML-specific counterpart to
 
 This supports two extra properties,
 :image-dir  an html-export counterpart of `org-latex-preview-cache', and
-:inline     images that should not be saved according to :image-dir,
-            but instead inlined in the generated HTML.  This can be:
-            - t, to inline all images
-            - svg, to inline all images, using <svg> with SVGs
-            - nil, to never inline images
-            - an extension or list of extensions, for images that
-              should be inline (e.g. \"svg\")"
+:inline     a list of image formats (or single format symbol) that
+            should not be saved according to :image-dir, but instead
+            inlined in the generated HTML.  Valid format symbols are:
+            - png, to inline png images using <img> with a data URI
+            - svg, to inline svg images using <img> with a data URI
+            - svg-embed, to inline svg images using an <svg> element"
   :group 'org-export-html
   :package-version '(Org . "9.7")
   :type 'plist)
@@ -3244,40 +3243,48 @@ that an image for ELEMENT already exists within it."
          (path-info (or (org-latex-preview--get-cached hash)
                         (error "Expected LaTeX preview %S to exist in the cache" hash)))
          (image-options (plist-get info :html-latex-image-options))
-         (rescale-factor (if (eq (plist-get (cdr path-info) :image-type) 'svg)
-                             (plist-get image-options :scale)
-                           1))
+         (block-p (memq (aref (org-element-property :value element) 1) '(?$ ?\[)))
          (image-source
-          (org-html-latex-image--data (car path-info) hash info)))
+          (org-html-latex-image--data path-info hash info block-p)))
     (unless (and (plist-get (cdr path-info) :height)
                  (plist-get (cdr path-info) :depth))
       (error "Something went wrong during image generation"))
-    (if (and (eq (plist-get image-options :inline) 'svg)
-             (string= (file-name-extension (car path-info)) "svg"))
+    (if (and (eq (plist-get image-options :inline) 'svg-embed)
+             (eq (plist-get (cdr path-info) :image-type) 'svg))
         image-source
-      (org-html-close-tag
-       "img"
-       (org-html--make-attribute-string
-        (list :src image-source
-              :alt (org-html-encode-plain-text
-                    (org-element-property :value element))
-              :style (if (eq (org-element-type element) 'latex-environment)
-                         (format "height: %.4fem"
-                                 (* rescale-factor (plist-get (cdr path-info) :height)))
-                       (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
-                               (* rescale-factor (plist-get (cdr path-info) :height))
-                               (* rescale-factor (plist-get (cdr path-info) :depth))))
-              :class (if (eq (org-element-type element) 'latex-environment)
-                         "org-latex org-latex-environment"
-                       "org-latex org-latex-fragment")))
-       info))))
+      (let ((scaling (org-html-latex-image--scaling path-info info)))
+        (org-html-close-tag
+         "img"
+         (org-html--make-attribute-string
+          (list :src image-source
+                :alt (org-html-encode-plain-text
+                      (org-element-property :value element))
+                :style (if block-p
+                           (format "height: %.4fem; display: block" (plist-get scaling :height))
+                         (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
+                                 (plist-get scaling :height) (plist-get scaling :depth)))
+                :class (format "org-latex org-latex-%s" (if block-p "block" "inline"))))
+         info)))))
 
-(defun org-html-latex-image--data (source-file hash info)
-  "Obtaine the image source for SOURCE-FILE as a string, based on HASH and INFO.
-This can take the form of a path, data URI, or <svg> element."
+(defun org-html-latex-image--scaling (image-path-info info)
+  "Determine the appropriate (<height> . <depth>) of IMAGE-PATH-INFO given INFO."
+  (let* ((image-options (plist-get info :html-latex-image-options))
+         (rescale-factor (if (eq (plist-get (cdr image-path-info) :image-type) 'svg)
+                             (plist-get image-options :scale)
+                           1)))
+    (list :height (* rescale-factor (plist-get (cdr image-path-info) :height))
+          :depth (* rescale-factor (plist-get (cdr image-path-info) :depth)))))
+
+(defun org-html-latex-image--data (image-path-info hash info &optional block-p)
+  "Obtaine the image source for IMAGE-PATH-INFO as a string.
+This can take the form of a path, data URI, or <svg> element
+depending on HASH and INFO.  BLOCK-P signals that the image
+should be a block element."
   (let* ((image-options (plist-get info :html-latex-image-options))
          (inline-condition (plist-get image-options :inline))
-         (image-dir (plist-get image-options :image-dir)))
+         (image-dir (plist-get image-options :image-dir))
+         (image-format (plist-get (cdr image-path-info) :image-type))
+         (source-file (car image-path-info)))
     (cond
      ((or inline-condition
           (member (file-name-extension source-file)
@@ -3287,10 +3294,32 @@ This can take the form of a path, data URI, or <svg> element."
         (with-temp-buffer
           (insert-file-contents-literally source-file)
           (cond
-           ((and (eq inline-condition 'svg)
-                 (string= (file-name-extension source-file) "svg"))
+           ((and (eq inline-condition 'svg-embed)
+                 (eq image-format 'svg))
+            (goto-char (point-min))
+            (let ((svg-closing-tag (and (search-forward "<svg" nil t)
+                                        (search-forward ">" nil t))))
+
+              (dolist (search '("<!-- This file was generated by dvisvgm [^\n]+ -->"
+                                " height=['\"][^\"']+[\"']"
+                                " width=['\"][^\"']+[\"']"))
+                (goto-char (point-min))
+                (when (re-search-forward search svg-closing-tag t)
+                  (replace-match "")))
+              (goto-char (point-min))
+              (when (re-search-forward "viewBox=['\"][^\"']+[\"']" svg-closing-tag t)
+                (insert
+                 " style=\""
+                 (let ((scaling (org-html-latex-image--scaling image-path-info info)))
+                   (if block-p
+                       (format "height: %.4fem; display: block" (plist-get scaling :height))
+                     (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
+                             (plist-get scaling :height) (plist-get scaling :depth))))
+                 "\" class=\"org-latex org-latex-"
+                 (if block-p "block" "inline")
+                 "\"")))
             (buffer-string))
-           ((string= (file-name-extension source-file) "svg")
+           ((eq image-format 'svg)
             ;; Modelled after <https://codepen.io/tigt/post/optimizing-svgs-in-data-uris>.
             (concat "data:image/svg+xml,"
                     (url-hexify-string
@@ -3305,7 +3334,7 @@ This can take the form of a path, data URI, or <svg> element."
            (t
             (base64-encode-region (point-min) (point-max))
             (goto-char (point-min))
-            (insert "data:image/" (file-name-extension source-file) ";base64,")
+            (insert "data:image/" (symbol-name image-format) ";base64,")
             (buffer-string))))))
      ((stringp image-dir)
       (let* ((image-dir (expand-file-name image-dir))
