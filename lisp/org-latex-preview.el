@@ -873,8 +873,8 @@ customize the variable `org-latex-preview-live'."
 ;; - When the preview is regenerated, the `after-string' property of
 ;;   the preview overlay is updated to show the new image.  This
 ;;   regeneration is modulated with a debounce
-;;   `org-latex-preview-live-debounce' and a throttle
-;;   `org-latex-preview-live-throttle'.
+;;   `org-latex-preview-live-debounce' and a dynamically updated
+;;   throttle `org-latex-preview-live-throttle'.
 ;;
 ;; - When the cursor exits the boundaries of the fragment, the
 ;;   `after-string' property of the preview overlay is removed.
@@ -938,15 +938,36 @@ environment for at least this much time."
   :package-version '(Org . "9.7")
   :type 'number)
 
-(defcustom org-latex-preview-live-throttle 1.0
+(defvar org-latex-preview-live-throttle 1.0
   "Throttle time for live LaTeX previews.
 
 When `org-latex-preview-live' is non-nil and
 `org-latex-preview-auto-mode' is active, live previews are
-updated no more than once in this interval of time."
-  :group 'org-latex-preview
-  :package-version '(Org . "9.7")
-  :type 'number)
+updated no more than once in this interval of time.
+
+Its value is updated dynamically based on the average fragment
+preview time.")
+
+(defvar-local org-latex-preview-live--preview-times
+    (make-vector 3 1.0)
+  "Vector containing the last three preview run times in this buffer")
+(defvar-local org-latex-preview-live--preview-times-index 0)
+
+(defun org-latex-preview-live--update-times (latest-duration)
+  "Update preview times given the last preview took LATEST-DURATION seconds."
+  (aset org-latex-preview-live--preview-times
+        (% (cl-incf org-latex-preview-live--preview-times-index) 3)
+        latest-duration)
+  (setq-local org-latex-preview-live-throttle
+              (/ (apply #'+ (append org-latex-preview-live--preview-times nil))
+                 3)))
+
+(defun org-latex-preview-live--record-hook (exit-code _buf extended-info)
+  "A hook for `org-latex-preview-process-finish-functions' to track preview time.
+Called with EXIT-CODE and EXTENDED-INFO from the async process."
+  (when (= exit-code 0)
+    (org-latex-preview-live--update-times
+     (- (float-time) (plist-get extended-info :start-time)))))
 
 (defconst org-latex-preview-live-display-type 'buffer
   "How to display live-updating previews of LaTeX snippets.
@@ -973,22 +994,27 @@ The only currently supported option is the symbol buffer, to
                  (setq debounce-timer nil)
                  (apply func args))))))))
 
-(defun org-latex-preview-live--throttle (func timeout)
-  "Return a throttled FUNC with TIMEOUT applied."
+(defun org-latex-preview-live--throttle (func)
+  "Return a throttled FUNC.
+
+Ensures that FUNC runs at the end of the throttle duration."
   (let ((waiting))
     (lambda (&rest args)
       (unless waiting
         (apply func args)
         (setq waiting t)
-        (run-at-time timeout nil
-                     (lambda () (setq waiting nil)))))))
+        (run-at-time
+         org-latex-preview-live-throttle nil
+         (lambda ()
+           (setq waiting nil)
+           (apply func args)))))))
 
 (defun org-latex-preview-live--clearout (ov)
   "Clear out the live LaTeX preview for the preview overlay OV."
   (setq org-latex-preview-live--element-type nil)
   (overlay-put ov 'after-string nil))
 
-(defun org-latex-preview-live--regenerate (beg end _)
+(defun org-latex-preview-live--regenerate (&rest _)
   "Regenerate the LaTeX preview overlay that overlaps BEG and END.
 
 This is meant to be run via the `after-change-functions' hook in
@@ -996,10 +1022,13 @@ Org buffers when using live-updating LaTeX previews."
   (pcase-let ((`(,type . ,ov)
                (get-char-property-and-overlay (point) 'org-overlay-type)))
     (when (and ov (eq type 'org-latex-overlay)
-               (<= (overlay-start ov) beg)
-               (>= (overlay-end ov) end))
-      (org-latex-preview-auto--regenerate-overlay ov)
-      (unless (overlay-buffer ov)
+               ;; The following checks are redundant and can make
+               ;; throttling inconsistent:
+               ;; (<= (overlay-start ov) beg)
+               ;; (>= (overlay-end ov) end)
+               (overlay-get ov 'preview-state))
+      (org-latex-preview-auto--regenerate-overlay ov t)
+      (unless (and (overlay-buffer ov) (overlay-get ov 'preview-image))
         (org-latex-preview-live--clearout ov)))))
 
 (defun org-latex-preview-live--update-props (image-spec &optional box-face)
@@ -1141,8 +1170,7 @@ This is meant to be called via `org-src-mode-hook'."
                                                (overlay-end orig-ov)
                                                content))
                                    numbering-offsets))))
-                            (org-latex-preview-live--throttle
-                             org-latex-preview-live-throttle)
+                              (org-latex-preview-live--throttle)
                             (org-latex-preview-live--debounce
                              org-latex-preview-live-debounce)))
               (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local))
@@ -1174,8 +1202,7 @@ This is meant to be called via `org-src-mode-hook'."
                                                        (skip-chars-backward "\n \t\r")
                                                        (point))))
                            numbering-offsets preamble))
-                        (org-latex-preview-live--throttle
-                         org-latex-preview-live-throttle)
+                          (org-latex-preview-live--throttle)
                         (org-latex-preview-live--debounce
                          org-latex-preview-live-debounce)))
           (add-hook 'org-latex-preview-overlay-open-functions #'org-latex-preview-live--ensure-overlay nil 'local)
@@ -1207,8 +1234,7 @@ See `org-latex-preview-live' for details."
   (setq org-latex-preview-live--docstring " ")
   (setq-local org-latex-preview-live--generator
               (thread-first #'org-latex-preview-live--regenerate
-                            (org-latex-preview-live--throttle
-                             org-latex-preview-live-throttle)
+                            (org-latex-preview-live--throttle)
                             (org-latex-preview-live--debounce
                              org-latex-preview-live-debounce)))
   (when (eq org-latex-preview-live-display-type 'eldoc)
@@ -1218,6 +1244,7 @@ See `org-latex-preview-live' for details."
   (add-hook 'org-latex-preview-overlay-close-functions #'org-latex-preview-live--clearout nil 'local)
   (add-hook 'org-latex-preview-overlay-open-functions #'org-latex-preview-live--ensure-overlay nil 'local)
   (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local)
+  (add-hook 'org-latex-preview-process-finish-functions #'org-latex-preview-live--record-hook nil 'local)
   (add-hook 'org-latex-preview-overlay-update-functions #'org-latex-preview-live--update-overlay nil 'local))
 
 (defun org-latex-preview-live--teardown ()
@@ -1235,6 +1262,7 @@ See `org-latex-preview-live' for details."
   (remove-hook 'org-latex-preview-overlay-open-functions #'org-latex-preview-live--ensure-overlay 'local)
   (remove-hook 'after-change-functions org-latex-preview-live--generator 'local)
   (remove-hook 'org-latex-preview-overlay-update-functions #'org-latex-preview-live--update-overlay 'local)
+  (remove-hook 'org-latex-preview-process-finish-functions #'org-latex-preview-live--record-hook 'local)
   (setq-local org-latex-preview-live--generator nil))
 
 (defun org-latex-preview-clear-overlays (&optional beg end)
@@ -1861,7 +1889,8 @@ Returns a list of async tasks started."
                           :texfile (org-latex-preview--create-tex-file
                                     processing-info fragments-info appearance-options)
                           :appearance-options appearance-options
-                          :place-preview-p place-preview-p)))
+                          :place-preview-p place-preview-p
+                          :start-time (float-time))))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
