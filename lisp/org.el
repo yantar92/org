@@ -4258,19 +4258,8 @@ related expressions."
 		  (push (cons name value) store)))))
 	  (setq org-table-formula-constants-local store))
 	;; Link abbreviations.
-	(let ((links
-	       (delq nil
-		     (mapcar
-		      (lambda (value)
-			(and (or
-                              ;; "abbrev with spaces" spec
-                              (string-match "\\`\"\\(.+[^\\]\\)\"[ \t]+\\(.+\\)" value)
-                              ;; abbrev spec
-                              (string-match "\\`\\(\\S-+\\)[ \t]+\\(.+\\)" value))
-			     (cons (match-string-no-properties 1 value)
-				   (match-string-no-properties 2 value))))
-		      (org-element-property :LINK org-data)))))
-	  (when links (setq org-link-abbrev-alist-local (nreverse links))))
+        (setq org-link-abbrev-alist-local
+              (org-element-property :link-abbrevs org-data))
 	;; Priorities.
 	(let ((value (org-element-property :PRIORITIES org-data)))
 	  (pcase (and value (split-string value))
@@ -16403,7 +16392,7 @@ buffer boundaries with possible narrowing."
 	(let* ((case-fold-search t)
 	       (file-extension-re (image-file-name-regexp))
 	       (link-abbrevs (mapcar #'car
-				     (append org-link-abbrev-alist-local
+				     (append (org-element-property :link-abbrevs (org-element-org-data))
 					     org-link-abbrev-alist)))
 	       ;; Check absolute, relative file names and explicit
 	       ;; "file:" links.  Also check link abbreviations since

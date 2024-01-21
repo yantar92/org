@@ -69,7 +69,6 @@
 (defvar org-file-tags)
 (defvar org-priority-highest)
 (defvar org-link-abbrev-alist)
-(defvar org-link-abbrev-alist-local)
 (defvar org-priority-lowest)
 (defvar org-options-keywords)
 (defvar org-outline-regexp)
@@ -348,7 +347,7 @@ When completing for #+STARTUP, for example, this function returns
    (pcomplete-uniquify-list
     (copy-sequence
      (mapcar (lambda (e) (concat (car e) ":"))
-	     (append org-link-abbrev-alist-local
+	     (append (org-element-property :link-abbrevs (org-element-org-data))
 		     org-link-abbrev-alist))))))
 
 (defun pcomplete/org-mode/tex ()

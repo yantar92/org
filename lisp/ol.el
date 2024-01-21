@@ -1151,9 +1151,9 @@ and then used in capture templates."
 Abbreviations are defined in `org-link-abbrev-alist'."
   (if (not (string-match "^\\([^:]*\\)\\(::?\\(.*\\)\\)?$" link)) link
     (let* ((key (match-string 1 link))
-	   (as (or (assoc key org-link-abbrev-alist-local)
-		   (assoc key org-link-abbrev-alist)))
 	   (tag (and (match-end 2) (match-string 3 link)))
+           (as (or (assoc key (org-element-property :link-abbrevs (org-element-org-data)))
+		   (assoc key org-link-abbrev-alist)))
 	   rpl)
       (if (not as)
 	  link
@@ -2009,7 +2009,7 @@ non-interactively, don't allow editing the default description."
 	 (remove (and region (list (region-beginning) (region-end))))
 	 (desc region)
 	 (link link-location)
-	 (abbrevs org-link-abbrev-alist-local)
+	 (abbrevs (org-element-property :link-abbrevs (org-element-org-data)))
 	 (all-prefixes (append (mapcar #'car abbrevs)
 			       (mapcar #'car org-link-abbrev-alist)
 			       (org-link-types)))

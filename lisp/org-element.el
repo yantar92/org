@@ -1874,6 +1874,28 @@ for files with their full path listed in FILES."
 			 (t (push final (cdr entry)))))))))))
       alist)))
 
+(defun org-element--compute-link-abbrevs (data)
+  "Compute buffer-local link abbreviations from #+LINK keywords.
+Return alist of (ABBREV . REPLACEMENT) elements."
+  (with-current-buffer (org-element-property :buffer data)
+    (let ((links
+	   (delq nil
+	         (mapcar
+		  (lambda (value)
+		    (and (or
+                          ;; "abbrev with spaces" spec
+                          (string-match "\\`\"\\(.+[^\\]\\)\"[ \t]+\\(.+\\)" value)
+                          ;; abbrev spec
+                          (string-match "\\`\\(\\S-+\\)[ \t]+\\(.+\\)" value))
+		         (cons (match-string-no-properties 1 value)
+			       (match-string-no-properties 2 value))))
+		  (org-element-property :LINK data)))))
+      (nreverse links))))
+
+(defconst org-element--compute-link-abbrevs
+  (org-element-deferred-create nil #'org-element--compute-link-abbrevs)
+  "Default value for `:link-abbrevs' property.")
+
 (defconst org-element--unique-keywords
   (seq-difference org-element-buffer-keywords
                   org-element-multiple-keywords)
@@ -2033,7 +2055,7 @@ Alter DATA by side effect."
   "Constant holding `:deferred' property for org-data.")
 
 (defconst org-element-parser-variables
-  '(org-todo-keywords)
+  '(org-todo-keywords org-link-abbrev-alist)
   "List of variables that can alter the Org parser.")
 
 (defvar org-element-org-data-parser--recurse nil)
@@ -2043,8 +2065,8 @@ Alter DATA by side effect."
 Return a new syntax node of `org-data' type containing `:begin',
 `:contents-begin', `:contents-end', `:end', `:post-blank',
 `:post-affiliated', `:todo-keywords', `:done-keywords',
-`:todo-keyword-settings', `:todo-regexp', `:parser-settings', and
-`:path' properties."
+`:todo-keyword-settings', `:todo-regexp', `:link-abbrevs',
+`:parser-settings', and `:path' properties."
   (org-with-wide-buffer
    (let* ((begin 1)
           (contents-begin (progn
@@ -2083,6 +2105,7 @@ Return a new syntax node of `org-data' type containing `:begin',
             :done-keywords org-element--compute-todo-keywords
             :todo-keyword-settings org-element--compute-todo-keywords
             :todo-regexp org-element--compute-todo-keywords
+            :link-abbrevs org-element--compute-link-abbrevs
             :path (buffer-file-name)
             :parser-settings (mapcar (lambda (var) (cons var (symbol-value  var)))
                                      org-element-parser-variables)
@@ -6270,7 +6293,7 @@ indentation removed from its contents."
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
-(defconst org-element-cache-version "2.5"
+(defconst org-element-cache-version "2.6"
   "Version number for Org AST structure.
 Used to avoid loading obsolete AST representation when using
 `org-element-cache-persistent'.")
