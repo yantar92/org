@@ -8089,9 +8089,8 @@ Paragraph<point>"
   ;; Tags are inherited from `org-file-tags'.
   (should
    (equal '("tag")
-	  (org-test-with-temp-text "* H1"
-	    (let ((org-file-tags '("tag"))
-		  (org-use-tag-inheritance t))
+	  (org-test-with-temp-text "#+FILETAGS: tag\n* H1<point>"
+	    (let ((org-use-tag-inheritance t))
 	      (org-get-tags)))))
   ;; Only inherited tags have the `inherited' text property.
   (should
