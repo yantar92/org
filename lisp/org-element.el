@@ -80,6 +80,8 @@
 ;; org-element.el.
 (require 'org-list)
 
+(defvar org-inhibit-startup) ; defined in org.el
+
 
 ;;; Customization
 
