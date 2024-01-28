@@ -1939,8 +1939,9 @@ TYPE is a symbol representing sequence type.
 
 TODO-ALIST associates todo keyword (both todo and done) strings with
 the corresponding settings (key binding and logging status).  For
-example, WAIT(w!)  keyword definition will be represented as (\"WAIT\"
-. \"w!\") alist element.
+example, WAIT(w!)  keyword definition will be represented as
+  (\"WAIT\" . \"w!\")
+alist element.
 
 DONE-ALIST is like TODO-ALIST, but only for done keywords."
   (with-current-buffer (org-element-property :buffer data)
