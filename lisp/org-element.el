@@ -9308,10 +9308,14 @@ This function may modify match data."
     (or (and (>= beg-A beg-B) (<= end-A end-B))
 	(and (>= beg-B beg-A) (<= end-B end-A)))))
 
+;; Appears in `org-fold-core-regions' macro expansion.
+(declare-function org-fold-core-region "org-fold-core" (from to flag &optional spec-or-alias))
+(declare-function org-fold-core-get-regions "org-fold-core" (&key specs from to with-markers relative))
 (defun org-element-swap-A-B (elem-A elem-B)
   "Swap elements ELEM-A and ELEM-B.
 Assume ELEM-B is after ELEM-A in the buffer.  Leave point at the
 end of ELEM-A."
+  (require 'org-fold-core)
   (goto-char (org-element-begin elem-A))
   ;; There are two special cases when an element doesn't start at bol:
   ;; the first paragraph in an item or in a footnote definition.
