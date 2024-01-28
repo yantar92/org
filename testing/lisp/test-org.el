@@ -3276,7 +3276,7 @@ Let’s stop here
    (equal '("A" "B" "C")
 	  (org-test-with-temp-text "#+FILETAGS: :A:B:C:"
 	    (org-mode-restart)
-	    org-file-tags)))
+	    (org-element-property :tags (org-element-org-data)))))
   ;; PROPERTY keyword.  Property names are case-insensitive.
   (should
    (equal "foo=1"
@@ -8086,7 +8086,7 @@ Paragraph<point>"
 	  (let ((org-use-tag-inheritance t))
 	    (org-test-with-temp-text "* H0 :foo:\n* H1 :tag:\n<point>** H2"
 	      (org-get-tags)))))
-  ;; Tags are inherited from `org-file-tags'.
+  ;; #+FILETAGS are inherited.
   (should
    (equal '("tag")
 	  (org-test-with-temp-text "#+FILETAGS: tag\n* H1<point>"
@@ -8109,9 +8109,10 @@ Paragraph<point>"
      (let ((org-use-tag-inheritance nil))
        (assoc-string "foo" (org-get-tags)))))
   (should-not
-   (org-test-with-temp-text "* H1 :foo:\n** <point>H2 :bar:"
-     (let ((org-use-tag-inheritance nil)
-	   (org-file-tags '("foo")))
+   (org-test-with-temp-text "#+FILETAGS: foo
+* H1 :foo:
+** <point>H2 :bar:"
+     (let ((org-use-tag-inheritance nil))
        (assoc-string "foo" (org-get-tags)))))
   (should-not
    (org-test-with-temp-text "* H1 :foo:bar:\n** <point>H2 :baz:"
@@ -8156,7 +8157,6 @@ Paragraph<point>"
 					   "*** Level 3 :d:\n"
 					   "<point>")
             (let ((org-use-tag-inheritance t))
-	      (org-mode-restart) ;So that `org-file-tags' get populated from #+filetags
 	      (org-get-tags)))))
   ;; Pathological case: tagged headline with an empty body.
   (should (org-test-with-temp-text "* :tag:" (org-get-tags))))
