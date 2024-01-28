@@ -346,15 +346,32 @@ This requires the LaTeX package \"mylatexformat\" to be installed."
   :type 'boolean)
 
 (defcustom org-latex-preview-auto-generate t
-  "Whether `org-latex-preview-auto-mode' should apply to new fragments.
+  "Whether `org-latex-preview-auto-mode' should apply to new and edited fragments.
 
-When non-nil, newly inserted/typed LaTeX fragments and
-environments will be automatically previewed.  Otherwise, only
-existing LaTeX previews will be automatically hidden/shown on
-cursor movement and regenerated after edits."
+When `org-latex-preview-auto-mode' is on, existing LaTeX previews
+will be automatically hidden/shown on cursor movement and
+regenerated after edits.  This option controls how newly inserted
+and edited fragments are previewed.
+
+The following values are supported:
+
+- t: Generate previews for newly inserted fragments.
+
+- nil: Do not generate previews for newly inserted fragments.
+
+- live: (symbol) same as t, but also update previews for existing
+  fragments continuously with each keystroke.  These live
+  previews are shown according to
+  `org-latex-preview-live-display-type', which see.
+
+Note that existing previews are always updated after the cursor
+moves out of them."
   :group 'org-latex
   :package-version '(Org . "9.7")
-  :type 'boolean)
+  :type '(choice
+          (const :tag "Auto-generate" t)
+          (const :tag "Don't auto-generate" nil)
+          (const :tag "Auto-generate continuously" live)))
 
 (defconst org-latex-preview--tentative-math-re
   "\\$\\|\\\\[([]\\|^[ \t]*\\\\begin{[A-Za-z0-9*]+}"
@@ -821,10 +838,217 @@ them or vice-versa, customize the variable `org-latex-preview-auto-generate'."
         (add-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor nil 'local)
         (org-latex-preview-auto--handle-pre-cursor) ; Invoke setup before the hook even fires.
         (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local)
-        (add-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change nil 'local))
+        (add-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change nil 'local)
+        (when (eq org-latex-preview-auto-generate 'live)
+          (org-latex-preview-live--setup)))
     (remove-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor 'local)
     (remove-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor 'local)
-    (remove-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change 'local)))
+    (remove-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change 'local)
+    (org-latex-preview-live--teardown)))
+
+;; Code for "live" preview generation
+;;
+;; When `org-latex-preview-auto-mode' is turned on and
+;; `org-latex-preview-auto-generate' is set to the symbol `live',
+;; previews are generated in the background with each change to the
+;; LaTeX fragment being edited.  This continuously updated preview is
+;; shown to the right of the LaTeX fragment, or under the LaTeX
+;; environment being edited.
+;;
+;; The code works as follows (simplified description):
+
+;; - When the cursor enters a fragment and
+;;   `org-latex-preview-auto-mode' is active, the corresponding
+;;   overlay is "opened" up and the preview image is hidden.  At this
+;;   time, the `after-string' property of this overlay is updated to
+;;   show the existing preview image.
+;;
+;; - A handler is added to `after-change-functions' to regenerate the
+;;   preview for the fragment when its contents change.
+;;
+;; - When the preview is regenerated, the `after-string' property of
+;;   the preview overlay is updated to show the new image.  This
+;;   regeneration is modulated with a debounce
+;;   `org-latex-preview-debounce' and a throttle
+;;   `org-latex-preview-throttle'.
+;;
+;; - When the cursor exits the boundaries of the fragment, the
+;;   `after-string' property of the preview overlay is removed.
+
+(defvar-local org-latex-preview-live--docstring " "
+  "String that holds the live LaTeX preview image as a text property.")
+
+(defvar-local org-latex-preview-live--element-type nil)
+
+(defvar-local org-latex-preview-live--generator nil)
+
+(defcustom org-latex-preview-live-preview-inline t
+  "Whether inline LaTeX fragments should be live-previewed along
+with LaTeX environments."
+  :group 'org-latex-preview
+  :type 'boolean)
+
+(defcustom org-latex-preview-debounce 1.0
+  "Idle time before regenerating LaTeX previews.
+
+When `org-latex-preview-auto-generate' is set to `live' and
+`org-latex-preview-auto-mode' is active, live previews are
+updated when there have been no changes to the LaTeX fragment or
+environment for at least this much time."
+  :group 'org-latex-preview
+  :package-version '(Org . "9.7")
+  :type 'number)
+
+(defcustom org-latex-preview-throttle 1.0
+  "Throttle time for live LaTeX previews.
+
+When `org-latex-preview-auto-generate' is set to `live' and
+`org-latex-preview-auto-mode' is active, live previews are
+updated no more than once in this interval of time."
+  :group 'org-latex-preview
+  :package-version '(Org . "9.7")
+  :type 'number)
+
+(defconst org-latex-preview-live-display-type 'buffer
+  "How to display live-updating previews of LaTeX snippets.
+
+This option is meaningful when live previews are enabled, by
+setting `org-latex-preview-auto-generate' to `live' and enabling
+`org-latex-preview-auto-mode'.
+
+The only currently supported option is the symbol buffer, to
+ display live previews next to or under the LaTeX fragment in the
+ Org buffer.")
+
+(defun org-latex-preview-live--debounce (func duration)
+  "Return a debounced FUNC with DURATION applied."
+  (let ((debounce-timer))
+    (lambda (&rest args)
+      (if (timerp debounce-timer)
+          (timer-set-time debounce-timer (+ (float-time) duration))
+        (setq debounce-timer
+              (run-at-time
+               duration nil
+               (lambda ()
+                 (cancel-timer debounce-timer)
+                 (setq debounce-timer nil)
+                 (apply func args))))))))
+
+(defun org-latex-preview-live--throttle (func timeout)
+  "Return a throttled FUNC with TIMEOUT applied."
+  (let ((waiting))
+    (lambda (&rest args)
+      (unless waiting
+        (apply func args)
+        (setq waiting t)
+        (run-at-time timeout nil
+                     (lambda () (setq waiting nil)))))))
+
+(defun org-latex-preview-live--clearout (ov)
+  "Clear out the live LaTeX preview for the preview overlay OV."
+  (setq org-latex-preview-live--element-type nil)
+  (overlay-put ov 'after-string nil))
+
+(defun org-latex-preview-live--regenerate (beg end _)
+  "Regenerate the LaTeX preview overlay that overlaps BEG and END.
+
+This is meant to be run via the `after-change-functions' hook in
+Org buffers when using live-updating LaTeX previews."
+  (pcase-let ((`(,type . ,ov)
+               (get-char-property-and-overlay (point) 'org-overlay-type)))
+    (when (and ov (eq type 'org-latex-overlay)
+               (<= (overlay-start ov) beg)
+               (>= (overlay-end ov) end))
+      (org-latex-preview-auto--regenerate-overlay ov)
+      (unless (overlay-buffer ov)
+        (org-latex-preview-live--clearout ov)))))
+
+(defun org-latex-preview-live--update-props (image-spec &optional box-face)
+  "Update the live preview string with the IMAGE-SPEC display property.
+
+BOX-FACE is the face to apply in addition."
+  (let ((l (length org-latex-preview-live--docstring)))
+    (put-text-property
+     (1- l) l 'display image-spec
+     org-latex-preview-live--docstring)
+    (when box-face
+      (put-text-property
+       (1- l) l 'face box-face
+       org-latex-preview-live--docstring))))
+
+(defun org-latex-preview-live--ensure-overlay (&optional ov)
+  "Set up a live preview for the LaTeX fragment with overlay OV."
+  (when-let*
+      ((ov (or ov
+               (let ((props (get-char-property-and-overlay (point) 'org-overlay-type)))
+                 (and (eq (car props) 'org-latex-overlay)
+                      (cdr props)))))
+       (end (overlay-end ov)))
+    (let ((latex-env-p
+           (progn
+             (unless org-latex-preview-live--element-type
+               (let* ((elm (org-element-context)))
+                 ;; Treat \[ ... \] as a latex-environment for the
+                 ;; purposes of live-previews.
+                 (setq org-latex-preview-live--element-type
+                       (or (and (string-prefix-p
+                                 "\\[" (org-element-property :value elm))
+                                'latex-environment)
+                           (org-element-type elm)))))
+             (eq org-latex-preview-live--element-type
+                 'latex-environment))))
+      (when (or latex-env-p org-latex-preview-live-preview-inline)
+        (when (eq org-latex-preview-live-display-type 'buffer)
+          (unless (overlay-get ov 'after-string)
+            ;; NOTE: The latex-env-specific string includes a zero
+            ;; width space char.  This is to force the box around the
+            ;; image to render correctly.
+            (setq org-latex-preview-live--docstring
+                  (concat (and latex-env-p "\n​") " "))
+            (overlay-put ov 'view-text t)
+            (overlay-put ov 'after-string org-latex-preview-live--docstring)))
+        (org-latex-preview-live--update-props
+         (overlay-get ov 'preview-image) '(:box t))))))
+
+(defun org-latex-preview-live--update-overlay (ov)
+  "Update the live LaTeX preview for overlay OV."
+  (when (and (memq ov (overlays-at (point)))
+             (overlay-get ov 'view-text))
+    (if (overlay-get ov 'after-string)
+        (org-latex-preview-live--update-props
+         (overlay-get ov 'preview-image))
+      (org-latex-preview-live--ensure-overlay ov))))
+
+;; Live preview setup and teardown.
+(defun org-latex-preview-live--setup ()
+  "Set up hooks for live LaTeX previews.
+
+See `org-latex-preview-auto-generate' for details."
+  (setq org-latex-preview-live--docstring " ")
+  (setq-local org-latex-preview-live--generator
+                 (thread-first #'org-latex-preview-live--regenerate
+                            (org-latex-preview-live--throttle
+                             org-latex-preview-throttle)
+                            (org-latex-preview-live--debounce
+                             org-latex-preview-debounce)))
+  (add-hook 'org-latex-preview-close-functions #'org-latex-preview-live--clearout nil 'local)
+  (add-hook 'org-latex-preview-open-functions #'org-latex-preview-live--ensure-overlay nil 'local)
+  (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local)
+  (add-hook 'org-latex-preview-update-overlay-functions #'org-latex-preview-live--update-overlay nil 'local))
+
+(defun org-latex-preview-live--teardown ()
+  "Remove hooks for live LaTeX previews.
+
+See `org-latex-preview-auto-generate' for details."
+  (when-let* ((props (get-char-property-and-overlay (point) 'org-overlay-type))
+              ((eq (car props) 'org-latex-overlay))
+              (ov (cdr props)))
+    (org-latex-preview-live--clearout ov))
+  (remove-hook 'org-latex-preview-close-functions #'org-latex-preview-live--clearout 'local)
+  (remove-hook 'org-latex-preview-open-functions #'org-latex-preview-live--ensure-overlay 'local)
+  (remove-hook 'after-change-functions org-latex-preview-live--generator 'local)
+  (remove-hook 'org-latex-preview-update-overlay-functions #'org-latex-preview-live--update-overlay 'local)
+  (setq-local org-latex-preview-live--generator nil))
 
 (defun org-latex-preview-clear-overlays (&optional beg end)
   "Remove all overlays with LaTeX fragment images in current buffer.
@@ -961,8 +1185,9 @@ should it be enabled."
      ;; let's try to show the image if possible.
      (ov
       (overlay-put ov 'view-text t)
-      (overlay-put ov 'face (overlay-get ov 'hidden-face))
-      (overlay-put ov 'display (overlay-get ov 'preview-image))))))
+      (unless (overlay-get ov 'after-string) ;Live preview being shown
+        (overlay-put ov 'face (overlay-get ov 'hidden-face))
+        (overlay-put ov 'display (overlay-get ov 'preview-image)))))))
 
 (defun org-latex-preview-collect-fragments (&optional beg end)
   "Collect all LaTeX maths fragments/environments between BEG and END."
@@ -1512,23 +1737,28 @@ previews."
                              (search-forward ": No such file or directory" nil t))))))
                (propertize org-latex-preview--latex-log 'face 'warning)
              (propertize org-latex-preview--image-log 'face 'warning)))
-  (cl-loop for fragment in (plist-get extended-info :fragments)
-           for path = (plist-get fragment :path)
-           when (not path)
-           for ov = (plist-get fragment :overlay)
-           when ov do
-           ;; ;TODO: Other options here include:
-           ;; ;Fringe marker
-           ;; (overlay-put ov 'before-string
-           ;;              (propertize "!" 'display
-           ;;                          `(left-fringe exclamation-mark
-           ;;                            warning)))
-           ;; ;Special face
-           ;; (unless (overlay-get ov 'face)
-           ;;   (overlay-put ov 'face 'org-latex-preview-processing-face))
-           ;;
-           ;; ;Note: ov has buffer extended-info, no need to set current-buffer
-           (delete-overlay ov)))
+  (with-current-buffer (plist-get extended-info :org-buffer)
+    (cl-loop for fragment in (plist-get extended-info :fragments)
+             for path = (plist-get fragment :path)
+             when (not path)
+             for ov = (plist-get fragment :overlay)
+             when ov do
+             ;; ;TODO: Other options here include:
+             ;; ;Fringe marker
+             ;; (overlay-put ov 'before-string
+             ;;              (propertize "!" 'display
+             ;;                          `(left-fringe exclamation-mark
+             ;;                            warning)))
+             ;; ;Special face
+             ;; (unless (overlay-get ov 'face)
+             ;;   (overlay-put ov 'face 'org-latex-preview-processing-face))
+             ;;
+             ;; ;Note: ov has buffer extended-info, no need to set current-buffer
+             (let ((start (overlay-start ov))
+                   (end (overlay-end ov)))
+               (delete-overlay ov)
+               (when org-latex-preview-auto-mode
+                 (org-latex-preview--ensure-overlay start end))))))
 
 (defvar-local org-latex-preview--preamble-content nil
   "Cache of the LaTeX preamble for snippet preview.")
@@ -2104,6 +2334,11 @@ tests with the output of dvisvgm."
         (path (plist-get svg-fragment :path)))
     (org-latex-preview--await-fragment-existance svg-fragment)
     (when path
+      (catch 'svg-exists
+        (dotimes (_ 1000)           ; Check for svg existance over 1s.
+          (when (file-exists-p path)
+            (throw 'svg-exists t))
+          (sleep-for 0.001)))
       (with-temp-buffer
         (insert-file-contents path)
         (unless ; When the svg is incomplete, wait for it to be completed.
