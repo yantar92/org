@@ -34,6 +34,7 @@
 (declare-function org-persist-read "org-persist")
 (declare-function org-persist-register "org-persist")
 (declare-function org-persist-unregister "org-persist")
+(declare-function eldoc--invoke-strategy "eldoc")
 
 (defgroup org-latex-preview nil
   "Options for generation of LaTeX previews in Org mode."
@@ -853,7 +854,8 @@ them or vice-versa, customize the variable `org-latex-preview-auto-generate'."
 ;; previews are generated in the background with each change to the
 ;; LaTeX fragment being edited.  This continuously updated preview is
 ;; shown to the right of the LaTeX fragment, or under the LaTeX
-;; environment being edited.
+;; environment being edited.  Alternatively, it can be shown using
+;; Eldoc (see `org-latex-preview-live-display-type').
 ;;
 ;; The code works as follows (simplified description):
 
@@ -887,6 +889,27 @@ them or vice-versa, customize the variable `org-latex-preview-auto-generate'."
 with LaTeX environments."
   :group 'org-latex-preview
   :type 'boolean)
+
+(defcustom org-latex-preview-live-display-type 'buffer
+  "How to display live-updating previews of LaTeX snippets.
+
+This option is meaningful when live previews are enabled, by
+setting `org-latex-preview-auto-generate' to `live' and enabling
+`org-latex-preview-auto-mode'.
+
+The currently supported options are the symbols
+
+- buffer: Display live previews next to or under the LaTeX
+  fragment in the Org buffer.
+
+- eldoc: Display live previews using Eldoc.  Requires
+  `eldoc-mode' to be turned on in the Org buffer.  Note that
+  Eldoc in turn offers various display functions, such as the
+  echo area, the dedicated `eldoc-doc-buffer' and more."
+  :group 'org-latex-preview
+  :type  '(choice
+           (const :tag "Display next to fragment" buffer)
+           (const :tag "Display in Eldoc" eldoc)))
 
 (defcustom org-latex-preview-debounce 1.0
   "Idle time before regenerating LaTeX previews.
@@ -1014,10 +1037,26 @@ BOX-FACE is the face to apply in addition."
   "Update the live LaTeX preview for overlay OV."
   (when (and (memq ov (overlays-at (point)))
              (overlay-get ov 'view-text))
-    (if (overlay-get ov 'after-string)
+    (if (or (overlay-get ov 'after-string)
+            (eq org-latex-preview-live-display-type
+                'eldoc))
         (org-latex-preview-live--update-props
          (overlay-get ov 'preview-image))
       (org-latex-preview-live--ensure-overlay ov))))
+
+;; Eldoc support for live previews
+(defun org-latex-preview-live--display-in-eldoc (callback)
+  "Eldoc documentation function for live LaTeX previews.
+
+CALLBACK is supplied by Eldoc, see
+`eldoc-documentation-functions'."
+  (when (and org-latex-preview-live--docstring
+             (get-char-property (point) 'org-overlay-type))
+    (funcall callback org-latex-preview-live--docstring)))
+
+(defun org-latex-preview-live--update-eldoc (_ov)
+  "Force eldoc to update when a preview is updated."
+  (eldoc--invoke-strategy nil))
 
 ;; Live preview setup and teardown.
 (defun org-latex-preview-live--setup ()
@@ -1031,6 +1070,9 @@ See `org-latex-preview-auto-generate' for details."
                              org-latex-preview-throttle)
                             (org-latex-preview-live--debounce
                              org-latex-preview-debounce)))
+  (when (eq org-latex-preview-live-display-type 'eldoc)
+    (add-hook 'eldoc-documentation-functions #'org-latex-preview-live--display-in-eldoc nil t)
+    (add-hook 'org-latex-preview-update-overlay-functions #'org-latex-preview-live--update-eldoc nil 'local))
   (add-hook 'org-latex-preview-close-functions #'org-latex-preview-live--clearout nil 'local)
   (add-hook 'org-latex-preview-open-functions #'org-latex-preview-live--ensure-overlay nil 'local)
   (add-hook 'after-change-functions org-latex-preview-live--generator 90 'local)
@@ -1044,6 +1086,9 @@ See `org-latex-preview-auto-generate' for details."
               ((eq (car props) 'org-latex-overlay))
               (ov (cdr props)))
     (org-latex-preview-live--clearout ov))
+  (when (eq org-latex-preview-live-display-type 'eldoc)
+    (remove-hook 'eldoc-documentation-functions #'org-latex-preview-live--display-in-eldoc t)
+    (remove-hook 'org-latex-preview-update-overlay-functions #'org-latex-preview-live--update-eldoc 'local))
   (remove-hook 'org-latex-preview-close-functions #'org-latex-preview-live--clearout 'local)
   (remove-hook 'org-latex-preview-open-functions #'org-latex-preview-live--ensure-overlay 'local)
   (remove-hook 'after-change-functions org-latex-preview-live--generator 'local)
