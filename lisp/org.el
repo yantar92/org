@@ -411,9 +411,6 @@ FULL is given."
 
 ;;; Syntax Constants
 ;;;; Comments
-(defconst org-comment-regexp
-  (rx (seq bol (zero-or-more (any "\t ")) "#" (or " " eol)))
-  "Regular expression for comment lines.")
 
 ;;;; Keyword
 (defconst org-keyword-regexp "^[ \t]*#\\+\\(\\S-+?\\):[ \t]*\\(.*\\)$"
