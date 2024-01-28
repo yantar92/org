@@ -98,6 +98,8 @@
 (defvar org-table-number-fraction)
 (defvar org-table-number-regexp)
 
+(defvar org-inhibit-startup) ; defined in org.el
+
 
 ;;; Internal Variables
 ;;
