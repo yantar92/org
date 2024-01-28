@@ -283,6 +283,13 @@ Style, if any, is located in match group 1.")
   "Regular expression matching a time stamp or time stamp range.
 The time stamps may be either active or inactive.")
 
+(defconst org-clock-string "CLOCK:"
+  "String used as prefix for timestamps clocking work hours on an item.")
+
+(defconst org-clock-line-re
+  (concat "^[ \t]*" org-clock-string)
+  "Matches a line with clock info.")
+
 (defconst org-element-clock-line-re
   (let ((duration ; "=> 212:12"
          '(seq
@@ -291,7 +298,7 @@ The time stamps may be either active or inactive.")
     (rx-to-string
      `(seq
        line-start (0+ (or ?\t ?\s))
-       "CLOCK:"
+       ,org-clock-string
        (or
         (seq
          (1+ (or ?\t ?\s))
@@ -2835,7 +2842,7 @@ Return a new syntax node of `clock' type containing `:status',
 `:post-affiliated' as properties."
   (save-excursion
     (let* ((begin (point))
-	   (value (progn (search-forward "CLOCK:" (line-end-position))
+	   (value (progn (search-forward org-clock-string (line-end-position) t)
 			 (skip-chars-forward " \t")
 			 (org-element-timestamp-parser)))
 	   (duration (and (search-forward "=> " (line-end-position) t)
@@ -2861,7 +2868,7 @@ Return a new syntax node of `clock' type containing `:status',
 
 (defun org-element-clock-interpreter (clock _)
   "Interpret CLOCK element as Org syntax."
-  (concat "CLOCK: "
+  (concat org-clock-string " "
 	  (org-element-timestamp-interpreter
 	   (org-element-property :value clock) nil)
 	  (let ((duration (org-element-property :duration clock)))
