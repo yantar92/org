@@ -8219,7 +8219,8 @@ Return non-nil when verification failed."
                ;; Avoid too much slowdown
                (< (random 1000) (* 1000 org-element--cache-self-verify-frequency)))
       (org-with-point-at (org-element-begin element)
-        (org-element-with-disabled-cache (org-up-heading-or-point-min))
+        (re-search-backward
+         (org-headline-re (1- (org-element-property :true-level element))) nil t)
         (unless (or (= (point)
                        (org-element-begin
                         (org-element-property :parent element)))
