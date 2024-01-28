@@ -1977,7 +1977,7 @@ DONE-ALIST is like TODO-ALIST, but only for done keywords."
 		 (if (not (stringp (car d))) d
 		   ;; FIXME: Backward compatibility code.
                    ;; `org-todo-interpretation' is obsolete.
-		   (list (cons org-todo-interpretation d)))))))
+		   (list (cons (with-no-warnings org-todo-interpretation) d)))))))
       (dolist (sequence todo-sequences)
 	(let* ((sequence
                 (or (run-hook-with-args-until-success
