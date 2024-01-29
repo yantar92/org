@@ -958,7 +958,8 @@ get an unnecessary O(N²) space complexity, so you're usually better off using
 (defvar org--headline-re-cache-bol nil
   "Plist holding association between headline level regexp.")
 (defsubst org-headline-re (true-level &optional no-bol)
-  "Generate headline regexp for TRUE-LEVEL.
+  "Generate headline regexp for <= TRUE-LEVEL.
+When TRUE-LEVEL is nil, regexp will match any level.
 When NO-BOL is non-nil, regexp will not demand the regexp to start at
 beginning of line."
   (or (plist-get
@@ -967,9 +968,13 @@ beginning of line."
          org--headline-re-cache-bol)
        true-level)
       (let ((re (rx-to-string
-                 (if no-bol
-                     `(seq (** 1 ,true-level "*") " ")
-                   `(seq line-start (** 1 ,true-level "*") " ")))))
+                 (if (not true-level)
+                     (if no-bol `(seq (1+ "*") " ")
+                       `(seq line-start (1+ "*") " "))
+                   (if no-bol
+                       `(seq (** 1 ,true-level "*") " ")
+                     `(seq line-start (** 1 ,true-level "*") " ")))
+                 t)))
         (if no-bol
             (setq org--headline-re-cache-no-bol
                   (plist-put
