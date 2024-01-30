@@ -2376,11 +2376,10 @@ fragments are regenerated."
         ;; If output ends prematurely, this is most likely due to an issue with
         ;; the last "succesfully" produced fragment, and so we mark it as erronious
         ;; and attempt to re-generate the rest.
-        (let ((bad-fragment (car fragments))
-              (bad-fragment-err (plist-get (car fragments) :errors)))
+        (when-let ((bad-fragment (car fragments)))
           (plist-put bad-fragment :errors
-                     (concat bad-fragment-err
-                             (and bad-fragment-err "\n\n")
+                     (concat (when-let ((current-error (plist-get bad-fragment :errors)))
+                               (concat current-error "\n\n"))
                              "Preview generation catastrophically failed after this fragment."))
           (org-latex-preview--remove-cached
            (plist-get bad-fragment :key))
