@@ -239,6 +239,15 @@ There are three recognised value symbols:
           (const :tag "Fringe marker" fringe)
           (const :tag "Processing face" face)))
 
+(defcustom org-latex-preview-auto-blacklist nil
+  "List of movement commands that should not affect preview display.
+
+When these commands are invoked, they will not cause previews to
+be revealed when using `org-latex-preview-auto-mode'."
+  :type '(repeat symbol)
+  :package-version '(Org . "9.7")
+  :group 'org-latex-preview)
+
 (defface org-latex-preview-processing-face '((t :inherit shadow))
   "Face applied to LaTeX fragments for which a preview is being generated.
 
@@ -655,8 +664,10 @@ If an org-latex-overlay is already present, nothing is done."
 If there is a latex preview image overlay at point, hide the
 image and display its text."
   (dolist (ov (overlays-at (point)))
-    (when (eq (overlay-get ov 'org-overlay-type)
-              'org-latex-overlay)
+    (when (and (eq (overlay-get ov 'org-overlay-type)
+                   'org-latex-overlay)
+               (not (memq this-command
+                          org-latex-preview-auto-blacklist)))
       (overlay-put ov 'display nil)
       (overlay-put ov 'view-text t)
       (when-let ((f (overlay-get ov 'face)))
