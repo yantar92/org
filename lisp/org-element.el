@@ -229,11 +229,6 @@ When NODE is not passed, assume element at point."
 (defvar org-outline-regexp (org-headline-re nil t)
   "Regexp to match Org headlines.")
 
-(defvar org-outline-regexp-bol org-element-headline-re
-  "Regexp to match Org headlines.
-This is similar to `org-outline-regexp' but additionally makes
-sure that we are at the beginning of the line.")
-
 (defun org-inlinetask-outline-regexp ()
   "Return string matching an inline task heading.
 The number of levels is controlled by `org-inlinetask-min-level'."
@@ -278,23 +273,6 @@ Style, if any, is located in match group 1.")
 
 (defconst org-ts-regexp-both (format "[[<]\\(%s\\)[]>]" org-ts--internal-regexp)
   "Regular expression for fast time stamp matching.")
-
-(defconst org-tr-regexp (concat org-ts-regexp "--?-?" org-ts-regexp)
-  "Regular expression matching a time stamp range.")
-
-(defconst org-tr-regexp-both
-  (concat org-ts-regexp-both "--?-?" org-ts-regexp-both)
-  "Regular expression matching a time stamp range.")
-
-(defconst org-tsr-regexp (concat org-ts-regexp "\\(--?-?"
-				 org-ts-regexp "\\)?")
-  "Regular expression matching a time stamp or time stamp range.")
-
-(defconst org-tsr-regexp-both
-  (concat org-ts-regexp-both "\\(--?-?"
-	  org-ts-regexp-both "\\)?")
-  "Regular expression matching a time stamp or time stamp range.
-The time stamps may be either active or inactive.")
 
 (defconst org-clock-string "CLOCK:"
   "String used as prefix for timestamps clocking work hours on an item.")
