@@ -80,6 +80,7 @@
 (require 'oc)
 (require 'ol)
 (require 'org-element)
+(require 'org-regexps)
 (require 'org-macro)
 (require 'org-attach) ; org-attach adds staff to `org-export-before-parsing-functions'
 (require 'tabulated-list)
