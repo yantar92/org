@@ -235,7 +235,7 @@ The number of levels is controlled by `org-inlinetask-min-level'."
   (let ((nstars (if org-odd-levels-only
 		    (1- (* org-inlinetask-min-level 2))
 		  org-inlinetask-min-level)))
-    (format "^\\(\\*\\{%d,\\}\\)[ \t]+" nstars)))
+    (rx-to-string `(seq bol (>= ,nstars ?*) (1+ (any " \t"))))))
 
 (defconst org-element-archive-tag "ARCHIVE"
   "Tag marking a subtree as archived.")
