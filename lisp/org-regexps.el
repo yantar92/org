@@ -34,7 +34,9 @@
 (defvar org-outline-regexp-bol org-element-headline-re
   "Regexp to match Org headlines.
 This is similar to `org-outline-regexp' but additionally makes
-sure that we are at the beginning of the line.")
+sure that we are at the beginning of the line.
+Unlike `org-element-headline-re', this variable may be re-defined
+inside `org-with-limited-levels'.")
 
 (defvar org-heading-regexp "^\\(\\*+\\)\\(?: +\\(.*?\\)\\)?[ \t]*$"
   "Matches a headline, putting stars and text into groups.

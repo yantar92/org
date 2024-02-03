@@ -227,7 +227,8 @@ When NODE is not passed, assume element at point."
 ;; `org-outline-regexp' ought to be a defconst but is let-bound in
 ;; some places -- e.g. see the macro `org-with-limited-levels'.
 (defvar org-outline-regexp (org-headline-re nil t)
-  "Regexp to match Org headlines.")
+  "Regexp to match Org headlines.
+This variable may be re-defined inside `org-with-limited-levels'.")
 
 (defun org-inlinetask-outline-regexp ()
   "Return string matching an inline task heading.
