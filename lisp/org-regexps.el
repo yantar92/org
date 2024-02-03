@@ -31,6 +31,12 @@
 
 ;;;; Heading
 
+;; `org-outline-regexp' ought to be a defconst but is let-bound in
+;; some places -- e.g. see the macro `org-with-limited-levels'.
+(defvar org-outline-regexp (org-headline-re nil t)
+  "Regexp to match Org headlines.
+This variable may be re-defined inside `org-with-limited-levels'.")
+
 (defvar org-outline-regexp-bol org-element-headline-re
   "Regexp to match Org headlines.
 This is similar to `org-outline-regexp' but additionally makes

@@ -224,12 +224,6 @@ When NODE is not passed, assume element at point."
 (defconst org-element-headline-re (org-headline-re nil)
   "Regexp matching a headline.")
 
-;; `org-outline-regexp' ought to be a defconst but is let-bound in
-;; some places -- e.g. see the macro `org-with-limited-levels'.
-(defvar org-outline-regexp (org-headline-re nil t)
-  "Regexp to match Org headlines.
-This variable may be re-defined inside `org-with-limited-levels'.")
-
 (defun org-inlinetask-outline-regexp ()
   "Return string matching an inline task heading.
 The number of levels is controlled by `org-inlinetask-min-level'."
@@ -444,7 +438,7 @@ specially in `org-element--object-lex'.")
   (setq org-element-paragraph-separate
 	(concat "^\\(?:"
 		;; Headlines, inlinetasks.
-		org-outline-regexp "\\|"
+		"\\*+ " "\\|"
 		;; Footnote definitions.
 		"\\[fn:[-_[:word:]]+\\]" "\\|"
 		;; Diary sexps.
