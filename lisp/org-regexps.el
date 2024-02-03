@@ -44,6 +44,7 @@ sure that we are at the beginning of the line.
 Unlike `org-element-headline-re', this variable may be re-defined
 inside `org-with-limited-levels'.")
 
+;; FIXME: Unused in Org mode, may need to be deprecated.
 (defvar org-heading-regexp "^\\(\\*+\\)\\(?: +\\(.*?\\)\\)?[ \t]*$"
   "Matches a headline, putting stars and text into groups.
 Stars are put in group 1 and the trimmed body in group 2.")
