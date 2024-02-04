@@ -171,22 +171,11 @@ After a match, the following groups carry important information:
 
 ;;;; Clock and Planning
 
-(defvar org-closed-string "CLOSED:"
-  "String used as the prefix for timestamps logging closing a TODO entry.")
+(defvaralias 'org-closed-string 'org-element-closed-keyword)
 
-(defvar org-deadline-string "DEADLINE:"
-  "String to mark deadline entries.
-\\<org-mode-map>
-A deadline is this string, followed by a time stamp.  It must be
-a word, terminated by a colon.  You can insert a schedule keyword
-and a timestamp with `\\[org-deadline]'.")
+(defvaralias 'org-deadline-string 'org-element-deadline-keyword)
 
-(defvar org-scheduled-string "SCHEDULED:"
-  "String to mark scheduled TODO entries.
-\\<org-mode-map>
-A schedule is this string, followed by a time stamp.  It must be
-a word, terminated by a colon.  You can insert a schedule keyword
-and a timestamp with `\\[org-schedule]'.")
+(defvaralias 'org-scheduled-string 'org-element-scheduled-keyword)
 
 (defconst org-ds-keyword-length
   (+ 2
@@ -261,13 +250,7 @@ Matched keyword is in group 1.")
 
 ;;;; Drawer
 
-(defconst org-drawer-regexp
-  ;; FIXME: Duplicate of `org-element-drawer-re'.
-  (rx line-start (0+ (any ?\s ?\t))
-      ":" (group (1+ (any ?- ?_ word))) ":"
-      (0+ (any ?\s ?\t)) line-end)
-  "Matches first or last line of a hidden block.
-Group 1 contains drawer's name or \"END\".")
+(defvaralias 'org-drawer-regexp 'org-element-drawer-re)
 
 (defconst org-property-start-re "^[ \t]*:PROPERTIES:[ \t]*$"
   "Regular expression matching the first line of a property drawer.")
