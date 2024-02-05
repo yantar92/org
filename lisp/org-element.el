@@ -1813,7 +1813,10 @@ for files with their full path listed in FILES."
     (let ((case-fold-search t)
 	  (regexp (org-make-options-regexp keywords)))
       (while (and keywords (re-search-forward regexp nil t))
-        (let ((element (org-element-at-point)))
+        (let ((element
+               ;; We might be called from inside incremental parser.
+               ;; Must not modify cache.
+               (org-element-at-point-no-context)))
           (when (org-element-type-p element 'keyword)
             (let ((value (org-element-property :value element)))
               (pcase (org-element-property :key element)
