@@ -25,6 +25,11 @@
 ;; This file defines a number of auxiliary regexps and format strings
 ;; related, but not used by Org Parser and Org Interpreter.
 
+;; FIXME: Many regexps here should not be necessary.  Org element API
+;; should be used instead where possible.  Some regexps are also
+;; redundant, repeating equivalent regexps (or their parts) in
+;; org-element.el.
+
 ;;; Code:
 
 (require 'org-element)
