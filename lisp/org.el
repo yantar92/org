@@ -3841,7 +3841,8 @@ related expressions."
 	     (set (make-local-variable variable) value))
 	    (_ nil))))
       ;; FIXME: This variable is assigned for backwards-compatibility
-      ;; and should probably be removed in future.
+      ;; and should probably be removed in future.  It is no longer
+      ;; used in Org mode code.
       (setq-local org-file-tags
 		  (mapcar #'org-add-prop-inherited
                           (org-element-property :tags org-data)))
@@ -3897,6 +3898,8 @@ related expressions."
 		  (push (cons name value) store)))))
 	  (setq org-table-formula-constants-local store))
 	;; Link abbreviations.
+        ;; FIXME: This variable should probably be obsoleted.  It is
+        ;; no longer used in Org code.
         (setq org-link-abbrev-alist-local
               (org-element-property :link-abbrevs org-data))
 	;; Priorities.
