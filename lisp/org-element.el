@@ -73,7 +73,7 @@
 (require 'ring) ; User for logging org-element-cache
 (require 'org-persist) ; Used to store cache between Emacs sessions
 
-(require 'ol) ; Defines link types and abbreviations
+(require 'ol-syntax) ; Defines link types and abbreviations
 (require 'org-entities) ; Defines what constitutes an entity object
 ;; FIXME: List parsing is currently implemented outside, in
 ;; org-list.el.  Should ideally put everything parser-related into
