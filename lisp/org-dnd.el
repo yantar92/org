@@ -28,6 +28,8 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'ol)
+
 ;;;; Customization variables
 
 (defcustom org-yank-image-save-method 'attach
@@ -286,6 +288,7 @@ SEPARATOR is the string to insert after each link."
 When NEED-NAME is t, FILENAME is the base name of the file to be
 saved.
 When NEED-NAME is nil, the drop is complete."
+  (declare-function org-attach-dir "org-attach" (&optional create-if-not-exists-p no-fs-check))
   (if need-name
       (let ((method (if (eq org-yank-dnd-method 'ask)
                         (org--dnd-rmc
@@ -296,7 +299,9 @@ When NEED-NAME is nil, the drop is complete."
                       org-yank-dnd-method)))
         (setq-local org--dnd-xds-method method)
         (pcase method
-          (`attach (expand-file-name filename (org-attach-dir 'create)))
+          (`attach
+           (require 'org-attach)
+           (expand-file-name filename (org-attach-dir 'create)))
           (`open (expand-file-name (make-temp-name "emacs.") temporary-file-directory))
           (`file-link (read-file-name "Write file to: " nil nil nil filename))))
     (pcase org--dnd-xds-method
