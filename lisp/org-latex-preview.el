@@ -2,6 +2,7 @@
 
 ;; Copyright (C) 2022-2024 Free Software Foundation, Inc.
 
+;; Authors: TEC <contact@tecosaur.net> and Karthik Chikmagalur
 ;; Keywords: tex, extensions, tools
 
 ;; This file is part of GNU Emacs.
