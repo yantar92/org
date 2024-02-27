@@ -736,6 +736,24 @@ level org-n-level-faces."
   "Face used for clock display for overrun tasks in mode line."
   :group 'org-faces)
 
+(defface org-async-scheduled '((t :inherit org-tag :background "gray"))
+  "Face for babel results for code blocks that are scheduled for execution."
+  :group 'org-faces
+  :version "27.2"
+  :package-version '(Org . "9.5"))
+
+(defface org-async-pending '((t :inherit org-checkbox :background "dark orange"))
+  "Face for babel results for code blocks that are running."
+  :group 'org-faces
+  :version "27.2"
+  :package-version '(Org . "9.5"))
+
+(defface org-async-failure '((t :inherit org-warning))
+  "Face for babel results for code blocks that have failed."
+  :group 'org-faces
+  :version "27.2"
+  :package-version '(Org . "9.5"))
+
 (provide 'org-faces)
 
 ;;; org-faces.el ends here
