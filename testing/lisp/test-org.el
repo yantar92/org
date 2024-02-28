@@ -3770,11 +3770,12 @@ Foo Bar
   (when (featurep 'org-inlinetask)
     (should
      (= 1
+        (let ((org-inlinetask-min-level 15))
 	(org-test-with-temp-text "* Headline\n*************** Task\nContents"
 	  (progn (transient-mark-mode 1)
 		 (forward-line 1)
-		 (let ((org-inlinetask-min-level 15)) (org-mark-subtree))
-		 (region-beginning)))))))
+		 (org-mark-subtree)
+		 (region-beginning))))))))
 
 
  
