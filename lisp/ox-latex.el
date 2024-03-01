@@ -2128,19 +2128,26 @@ holding contextual information."
              (language-ini-only (plist-get lang-plist :babel-ini-only))
              (language-ini-alt (plist-get lang-plist :babel-ini-alt))
              (lang-final (or language language-ini-only language-ini-alt))
+             (ifprelatex (if prelatex prelatex ""))
+             (ifpostlatex (if postlatex postlatex ""))
+             (iflatexcommand (if latex-command
+                                 (if (string= "nil" latex-command)
+                                     ""
+                                   (format "\\%s" latex-command))
+                               (format "\\%s" type)))
+             (bracket-contents (when (or latex-command type)
+                                 (if (string= "nil" latex-command)
+                                     contents
+                                   (format "{%s}" contents))))
              (basic-format (if type-is-anon
-                               (format "%s" contents)
-                             (format "\\%s{%s}" (if latex-command latex-command type) contents))))
+                               (format "%s%s%s" ifprelatex contents ifpostlatex)
+                             (format "%s%s%s%s" iflatexcommand ifprelatex bracket-contents ifpostlatex))))
         (concat
          (when (or color smallcaps type-is-anon) "{")
          (when smallcaps "\\scshape{}")
          (when color (format "\\color{%s}" color))
          (when lang-final (format "\\foreignlanguage{%s}{" lang-final))
-         (if (not (or prelatex postlatex))
-	     basic-format
-	   (if (not type-is-anon)
-               (concat "\\" type prelatex "{" contents "}" postlatex)
-             (concat prelatex contents postlatex)))
+         basic-format
          (when lang-final "}")
          (when (or color smallcaps type-is-anon) "}"))))))
 
