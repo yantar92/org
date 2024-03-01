@@ -27,6 +27,7 @@
 *.tp
 *.vr
 *.vrs
+.dir-locals-2.el
 orgcard_letter.tex
 orgcard.txt
 org
