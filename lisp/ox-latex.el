@@ -2131,12 +2131,12 @@ holding contextual information."
              (ifprelatex (if prelatex prelatex ""))
              (ifpostlatex (if postlatex postlatex ""))
              (iflatexcommand (if latex-command
-                                 (if (string= "nil" latex-command)
+                                 (if (string= "nocommand" latex-command)
                                      ""
                                    (format "\\%s" latex-command))
                                (format "\\%s" type)))
              (bracket-contents (if (and latex-command
-                                        (string= "nil" latex-command))
+                                        (string= "nocommand" latex-command))
                                    contents
                                  (format "{%s}" contents)))
              (basic-format (if type-is-anon
