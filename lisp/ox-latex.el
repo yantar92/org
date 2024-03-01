@@ -2135,10 +2135,10 @@ holding contextual information."
                                      ""
                                    (format "\\%s" latex-command))
                                (format "\\%s" type)))
-             (bracket-contents (when (or latex-command type)
-                                 (if (string= "nil" latex-command)
-                                     contents
-                                   (format "{%s}" contents))))
+             (bracket-contents (if (and latex-command
+                                        (string= "nil" latex-command))
+                                   contents
+                                 (format "{%s}" contents)))
              (basic-format (if type-is-anon
                                (format "%s%s%s" ifprelatex contents ifpostlatex)
                              (format "%s%s%s%s" iflatexcommand ifprelatex bracket-contents ifpostlatex))))
