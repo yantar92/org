@@ -117,6 +117,7 @@
     (:exclude-tags "EXCLUDE_TAGS" nil org-export-exclude-tags split)
     (:creator "CREATOR" nil org-export-creator-string)
     (:headline-levels nil "H" org-export-headline-levels)
+    (:inline-special-block-aliases nil "inline-special-block-aliases" org-export-inline-special-block-aliases)
     (:preserve-breaks nil "\\n" org-export-preserve-breaks)
     (:section-numbers nil "num" org-export-with-section-numbers)
     (:time-stamp-file nil "timestamp" org-export-timestamp-file)
@@ -526,6 +527,11 @@ e.g. \"H:2\"."
   :group 'org-export-general
   :type 'integer
   :safe #'integerp)
+
+(defcustom org-export-inline-special-block-aliases nil
+  "TODO"
+  :group 'org-export-general
+  :type '(alist :value-type (group plist)))
 
 (defcustom org-export-default-language "en"
   "The default language for export and clocktable translations, as a string.
@@ -3800,6 +3806,30 @@ will become the empty string."
 		;; Ignore any string before first property with `cdr'.
 		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
     (if property (plist-get attributes property) attributes)))
+
+(defun org-export-read-inline-special-block-attributes (attributes)
+  "TODO"
+  (let* ((prepare-value
+	  (lambda (str)
+	    (save-match-data
+	      (cond ((member str '(nil "" "nil")) nil)
+		    ((string-match "^\"\\(\"+\\)?\"$" str)
+		     (or (match-string 1 str) ""))
+		    (t str)))))
+	 (attributes
+	  (let ((value (list attributes)))
+	    (when value
+	      (let ((s (mapconcat #'identity value " ")) result)
+		(while (string-match
+			"\\(?:^\\|[ \t]+\\)\\(:[-a-zA-Z0-9_]+\\)\\([ \t]+\\|$\\)"
+			s)
+		  (let ((value (substring s 0 (match-beginning 0))))
+		    (push (funcall prepare-value value) result))
+		  (push (intern (match-string 1 s)) result)
+		  (setq s (substring s (match-end 0))))
+		;; Ignore any string before first property with `cdr'.
+		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
+    attributes))
 
 (defun org-export-get-caption (element &optional short)
   "Return caption from ELEMENT as a secondary string.

@@ -101,6 +101,7 @@
     (underline . org-latex-underline)
     (verbatim . org-latex-verbatim)
     (verse-block . org-latex-verse-block)
+    (inline-special-block . org-latex-inline-special-block)
     ;; Pseudo objects and elements.
     (latex-math-block . org-latex-math-block)
     (latex-matrices . org-latex-matrices))
@@ -2096,6 +2097,52 @@ holding contextual information."
   (org-latex--wrap-label
    center-block (format "\\begin{center}\n%s\\end{center}" contents) info))
 
+;;;; Inline Special Block
+
+(defun org-latex-inline-special-block (inline-special-block contents info)
+  "Transcode an INLINE SPECIAL BLOCK element from Org to LaTeX.
+CONTENTS holds the contents of the block.  INFO is a plist
+holding contextual information."
+  (let* ((raw-type (org-element-property :type inline-special-block))
+         (type-is-anon (string= "_" raw-type))
+         (alias (when (string-match "\\([^!]+\\)!" raw-type)
+                  (match-string 1 raw-type)))
+         (type (replace-regexp-in-string "!" "" raw-type))
+	 (parameters (org-element-property :parameters inline-special-block))
+         (latex-command (org-element-property :latex-command inline-special-block))
+	 (attributes (org-export-read-inline-special-block-attributes parameters))
+         (alias-plist (when alias (cdr (or (assoc alias (plist-get info :inline-special-block-aliases))
+					   (assoc alias org-export-inline-special-block-aliases))))))
+    (if (not (or attributes alias type-is-anon))
+        (format "\\%s{%s}" type contents)
+      (let* ((attr-final (if alias-plist (append attributes alias-plist) attributes))
+             (prelatex (plist-get attr-final :prelatex))
+	     (postlatex (plist-get attr-final :postlatex))
+             (latex-command (plist-get attr-final :latex-command))
+	     (color (plist-get attr-final :color))
+	     (smallcaps (plist-get attr-final :smallcaps))
+	     (lang (plist-get attr-final :lang))
+             (lang-plist (cdr
+	                  (assoc lang org-latex-language-alist)))
+             (language (plist-get lang-plist :babel))
+             (language-ini-only (plist-get lang-plist :babel-ini-only))
+             (language-ini-alt (plist-get lang-plist :babel-ini-alt))
+             (lang-final (or language language-ini-only language-ini-alt))
+             (basic-format (if type-is-anon
+                               (format "%s" contents)
+                             (format "\\%s{%s}" (if latex-command latex-command type) contents))))
+        (concat
+         (when (or color smallcaps type-is-anon) "{")
+         (when smallcaps "\\scshape{}")
+         (when color (format "\\color{%s}" color))
+         (when lang-final (format "\\foreignlanguage{%s}{" lang-final))
+         (if (not (or prelatex postlatex))
+	     basic-format
+	   (if (not type-is-anon)
+               (concat "\\" type prelatex "{" contents "}" postlatex)
+             (concat prelatex contents postlatex)))
+         (when lang-final "}")
+         (when (or color smallcaps type-is-anon) "}"))))))
 
 ;;;; Clock
 

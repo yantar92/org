@@ -273,6 +273,8 @@ specially in `org-element--object-lex'.")
 			       "\\|"))
 		      ;; Objects starting with "@": export snippets.
 		      "@@"
+                      ;; Objects starting with "&": inline-special-blocks.
+		      "&"
 		      ;; Objects starting with "{": macro.
 		      "{{{"
 		      ;; Objects starting with "<" : timestamp
@@ -314,7 +316,7 @@ specially in `org-element--object-lex'.")
   "List of recursive element types aka Greater Elements.")
 
 (defconst org-element-all-objects
-  '(bold citation citation-reference code entity export-snippet
+  '(bold citation citation-reference code entity export-snippet inline-special-block
 	 footnote-reference inline-babel-call inline-src-block italic line-break
 	 latex-fragment link macro radio-target statistics-cookie strike-through
 	 subscript superscript table-cell target timestamp underline verbatim)
@@ -438,6 +440,7 @@ Don't modify it, set `org-element-affiliated-keywords' instead.")
       (strike-through ,@standard-set)
       (subscript ,@standard-set)
       (superscript ,@standard-set)
+      (inline-special-block ,@standard-set)
       ;; Ignore inline babel call and inline source block as formulas
       ;; are possible.  Also ignore line breaks and statistics
       ;; cookies.
@@ -3542,6 +3545,55 @@ Assume point is at the beginning of the entity."
 	  (when (org-element-property :use-brackets-p entity) "{}")))
 
 
+;;;; inline special block
+
+(defun org-element-inline-special-block-parser ()
+  "Parse inline special block at point.
+
+When at an inline special block, return a new syntax node of
+`inline-special-block' type containing `:begin', `:end', `:type',
+`:parameters', `:contents-begin', `:contents-end' and
+`:post-blank' as properties.  Otherwise, return nil.
+
+Assume point is at the beginning of the block."
+  (save-excursion
+    (when (looking-at "&\\([_!A-Za-z]+\\)[{[]")
+      (goto-char (- (match-end 0) 1))
+      (let* ((begin (match-beginning 0))
+             (parameters
+	      (let ((p (org-element--parse-paired-brackets ?\[)))
+		(and (org-string-nw-p p)
+		     (replace-regexp-in-string "\n[ \t]*" " " (org-trim p)))))
+             (contents-begin (when (looking-at-p "{") (+ (point) 1)))
+	     (type (org-element--get-cached-string
+                    (match-string-no-properties 1)))
+             (contents-end
+              (progn
+                (goto-char (- contents-begin 1))
+                (org-element--parse-paired-brackets ?\{)
+                (- (point) 1)))
+	     (post-blank (skip-chars-forward " \t"))
+	     (end (point)))
+        (when contents-end 
+	  (org-element-create
+           'inline-special-block
+	   (list :type type
+                 :parameters parameters
+	         :contents-begin contents-begin
+                 :contents-end contents-end
+	         :begin begin
+	         :end end
+	         :post-blank post-blank)))))))
+
+(defun org-element-inline-special-block-interpreter (inline-special-block contents)
+  "Interpret INLINE SPECIAL BLOCK object as Org syntax."
+  (let ((type (org-element-property :type inline-special-block))
+        (opts (org-element-property :parameters inline-special-block)))
+    (format "&%s%s{%s}"
+	    type
+	    (if opts (format "[%s]" opts) "")
+            contents)))
+
 ;;;; Export Snippet
 
 (defun org-element-export-snippet-parser ()
@@ -5274,6 +5326,8 @@ to an appropriate container (e.g., a paragraph)."
 			          (org-element-strike-through-parser)))
 		         (?@ (and (memq 'export-snippet restriction)
 			          (org-element-export-snippet-parser)))
+                         (?& (and (memq 'inline-special-block restriction)
+			          (org-element-inline-special-block-parser)))
 		         (?{ (and (memq 'macro restriction)
 			          (org-element-macro-parser)))
 		         (?$ (and (memq 'latex-fragment restriction)

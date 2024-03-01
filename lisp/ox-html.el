@@ -105,6 +105,7 @@
     (timestamp . org-html-timestamp)
     (underline . org-html-underline)
     (verbatim . org-html-verbatim)
+    (inline-special-block . org-html-inline-special-block)
     (verse-block . org-html-verse-block))
   :filters-alist '((:filter-options . org-html-infojs-install-script)
 		   (:filter-parse-tree . org-html-image-link-filter)
@@ -3912,6 +3913,64 @@ CONTENTS is nil.  INFO is a plist holding contextual
 information."
   (format (or (cdr (assq 'verbatim (plist-get info :html-text-markup-alist))) "%s")
 	  (org-html-encode-plain-text (org-element-property :value verbatim))))
+
+;;;; Inline Special Block
+
+(defun org-html-inline-special-block (inline-special-block contents info)
+  "Transcode an INLINE SPECIAL BLOCK element from Org to HTML.
+CONTENTS holds the contents of the block.  INFO is a plist
+holding contextual information."
+  (let* ((raw-type (org-element-property :type inline-special-block))
+         (type-is-anon (string= "_" raw-type))
+         (alias (when (string-match "\\([^!]+\\)!" raw-type)
+                  (match-string 1 raw-type)))
+         (type (replace-regexp-in-string "!" "" raw-type))
+	 (parameters (org-element-property :parameters inline-special-block))
+	 (attributes (org-export-read-inline-special-block-attributes parameters))
+         (alias-plist (when alias (cdr (or (assoc alias (plist-get info :inline-special-block-aliases))
+					   (assoc alias org-export-inline-special-block-aliases))))))
+    (if (not (or attributes alias type-is-anon))
+        (format "<span class=\"%s\">%s</span>" type contents)
+      (let* ((attr-final (if alias-plist (append attributes alias-plist) attributes))
+	     (html (plist-get attr-final :html))
+             (html-tag (plist-get attr-final :html-tag))
+             (html-class (plist-get attr-final :html-class))
+             (basic-format (if type-is-anon
+                               (format "<%s%s>%s</%s>" (or html-tag "span")
+                                       (if html-class (format " class=\"%s\"" html-class) "")
+                                       contents
+                                       (or html-tag "span"))
+                             (format "<%s class=\"%s\">%s</%s>"
+                                     (or html-tag "span")
+                                     (or html-class type)
+                                     contents
+                                     (or html-tag "span"))))
+	     (color (plist-get attr-final :color))
+	     (smallcaps (plist-get attr-final :smallcaps))
+             (color+smallcaps (concat (when color (format "color:%s;" color))
+                                      (when smallcaps "font-variant:small-caps;")))
+	     (lang (plist-get attr-final :lang))
+             (final-format-attr
+              (with-temp-buffer
+                (save-excursion
+                  (insert basic-format)
+                  (goto-char (point-min))
+                  (when (re-search-forward "<[a-zA-Z]+" nil t)
+                    (let ((point (point))
+                          (tag-end (when (re-search-forward ">" nil t)
+                                     (point))))
+                      (save-restriction
+                        (narrow-to-region point tag-end)
+                        (goto-char (point-min))
+                        (when html (insert (format " %s" html)))
+                        (when lang (insert (format " lang=\"%s\"" lang)))
+                        (when (or color smallcaps)
+                          (goto-char (point-min))
+                          (if (re-search-forward "style=\"" nil t)
+                              (insert color+smallcaps)
+                            (insert (format " style=\"%s\"" color+smallcaps))))))))
+                (buffer-string))))
+        final-format-attr))))
 
 ;;;; Verse Block
 
