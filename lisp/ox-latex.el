@@ -2103,11 +2103,10 @@ holding contextual information."
   "Transcode an INLINE SPECIAL BLOCK element from Org to LaTeX.
 CONTENTS holds the contents of the block.  INFO is a plist
 holding contextual information."
-  (let* ((raw-type (org-element-property :type inline-special-block))
-         (type-is-anon (string= "_" raw-type))
-         (alias (when (string-match "\\([^!]+\\)!" raw-type)
-                  (match-string 1 raw-type)))
-         (type (replace-regexp-in-string "!" "" raw-type))
+  (let* ((type (org-element-property :type inline-special-block))
+         (type-is-anon (string= "_" type))
+         (alias (car (or (assoc type (plist-get info :inline-special-block-aliases))
+	                 (assoc type org-export-inline-special-block-aliases))))
 	 (parameters (org-element-property :parameters inline-special-block))
          (latex-command (org-element-property :latex-command inline-special-block))
 	 (attributes (org-export-read-inline-special-block-attributes parameters))
