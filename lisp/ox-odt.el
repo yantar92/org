@@ -3093,7 +3093,7 @@ holding contextual information."
                                (format "<text:span%s>%s</text:span>"
                                        (if odt-style (format "text:style-name=\"%s\"" odt-style) "")
                                        contents)
-                             (format "<text:span class=\"%s\">%s</text:span>"
+                             (format "<text:span text:style-name=\"%s\">%s</text:span>"
                                      (or odt-style type)
                                      contents)))
 	     (color-name (plist-get attr-final :color))
