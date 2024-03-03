@@ -4296,6 +4296,7 @@ Return output file's name."
 	     (let* ((org-odt-embedded-images-count 0)
 		    (org-odt-embedded-formulas-count 0)
 		    (org-odt-automatic-styles nil)
+                    (org-odt-inline-special-block-automatic-styles nil)
 		    (org-odt-object-counters nil)
 		    ;; Let `htmlfontify' know that we are interested in
 		    ;; collecting styles.
@@ -4318,6 +4319,7 @@ Return output file's name."
        (let* ((org-odt-embedded-images-count 0)
 	      (org-odt-embedded-formulas-count 0)
 	      (org-odt-automatic-styles nil)
+              (org-odt-inline-special-block-automatic-styles nil)
 	      (org-odt-object-counters nil)
 	      ;; Let `htmlfontify' know that we are interested in collecting
 	      ;; styles.
