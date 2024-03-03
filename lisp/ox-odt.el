@@ -76,6 +76,7 @@
     (radio-target . org-odt-radio-target)
     (section . org-odt-section)
     (special-block . org-odt-special-block)
+    (inline-special-block . org-odt-inline-special-block)
     (src-block . org-odt-src-block)
     (statistics-cookie . org-odt-statistics-cookie)
     (strike-through . org-odt-strike-through)
@@ -259,6 +260,8 @@ OBJECT-PROPS is (typically) a plist created by passing
 \"#+ATTR_ODT: \" option to `org-odt-parse-block-attributes'.
 
 Use `org-odt-add-automatic-style' to add update this variable.'")
+
+(defvar org-odt-inline-special-block-automatic-styles '())
 
 (defvar org-odt-object-counters nil
   "Running counters for various OBJECT-TYPEs.
@@ -1425,6 +1428,13 @@ original parsed data.  INFO is a plist holding export options."
       (goto-char (point-min))
       (re-search-forward "  </office:automatic-styles>" nil t)
       (goto-char (match-beginning 0))
+      ;; - automatic inline special block styles
+      (insert
+       (mapconcat #'identity
+                  (mapcar (lambda (cons)
+                            (cdr cons))
+                          org-odt-inline-special-block-automatic-styles)
+                  "\n"))
       ;; - Dump automatic table styles.
       (cl-loop for (style-name props) in
 	       (plist-get org-odt-automatic-styles 'Table) do
@@ -3061,6 +3071,53 @@ holding contextual information."
 						 style extra anchor))))
      (t contents))))
 
+;;;; Inline Special Block
+
+(defun org-odt-inline-special-block (inline-special-block contents info)
+  "Transcode an INLINE SPECIAL BLOCK element from Org to ODT.
+CONTENTS holds the contents of the block.  INFO is a plist
+holding contextual information."
+  (let* ((type (org-element-property :type inline-special-block))
+         (type-is-anon (string= "_" type))
+         (alias (car (or (assoc type (plist-get info :inline-special-block-aliases))
+	                 (assoc type org-export-inline-special-block-aliases))))
+	 (parameters (org-element-property :parameters inline-special-block))
+	 (attributes (org-export-read-inline-special-block-attributes parameters))
+         (alias-plist (when alias (cdr (or (assoc alias (plist-get info :inline-special-block-aliases))
+					   (assoc alias org-export-inline-special-block-aliases))))))
+    (if (not (or attributes alias type-is-anon))
+        (format "<text:span text:style-name=\"%s\">%s</text:span>" type contents)
+      (let* ((attr-final (if alias-plist (append attributes alias-plist) attributes))
+	     (odt-style (plist-get attr-final :odt-style))
+             (basic-format (if type-is-anon
+                               (format "<text:span%s>%s</text:span>"
+                                       (if odt-style (format "text:style-name=\"%s\"" odt-style) "")
+                                       contents)
+                             (format "<text:span class=\"%s\">%s</text:span>"
+                                     (or odt-style type)
+                                     contents)))
+	     (color-name (plist-get attr-final :color))
+             (color-rgb (color-name-to-rgb color-name))
+             (color-hex (color-rgb-to-hex
+                         (nth 0 color-rgb)
+                         (nth 1 color-rgb)
+                         (nth 2 color-rgb)
+                         2))
+             (smallcaps (plist-get attr-final :smallcaps))
+	     (lang (plist-get attr-final :lang))
+             (color-style-name (concat "OrgInline" (car (org-odt-add-automatic-style color-name))))
+             (color-style-format (format "<style:style style:name=\"%s\"
+                                          style:family=\"text\">
+                                          <style:text-properties fo:color=\"%s\"/>
+                                          </style:style>" color-style-name color-hex))
+             (automatic-color-style (cons color-style-name color-style-format)))
+        (push automatic-color-style org-odt-inline-special-block-automatic-styles)
+        (concat
+         (when color-style-name
+           (format "<text:span text:style-name=\"%s\">" color-style-name))
+         basic-format
+         (when color-style-name
+           "</text:span>"))))))
 
 ;;;; Src Block
 
