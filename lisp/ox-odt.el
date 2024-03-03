@@ -3091,32 +3091,54 @@ holding contextual information."
 	     (odt-style (plist-get attr-final :odt-style))
              (basic-format (if type-is-anon
                                (format "<text:span%s>%s</text:span>"
-                                       (if odt-style (format "text:style-name=\"%s\"" odt-style) "")
+                                       (if odt-style (format " text:style-name=\"%s\"" odt-style) "")
                                        contents)
                              (format "<text:span text:style-name=\"%s\">%s</text:span>"
                                      (or odt-style type)
                                      contents)))
 	     (color-name (plist-get attr-final :color))
-             (color-rgb (color-name-to-rgb color-name))
-             (color-hex (color-rgb-to-hex
-                         (nth 0 color-rgb)
-                         (nth 1 color-rgb)
-                         (nth 2 color-rgb)
-                         2))
+             (color-rgb (when color-name (color-name-to-rgb color-name)))
+             (color-hex (when color-name (color-rgb-to-hex
+                                          (nth 0 color-rgb)
+                                          (nth 1 color-rgb)
+                                          (nth 2 color-rgb)
+                                          2)))
              (smallcaps (plist-get attr-final :smallcaps))
 	     (lang (plist-get attr-final :lang))
-             (color-style-name (concat "OrgInline" (car (org-odt-add-automatic-style color-name))))
+             (color-style-name (concat "OrgInline" (when color-name (car (org-odt-add-automatic-style color-name)))))
              (color-style-format (format "<style:style style:name=\"%s\"
                                           style:family=\"text\">
                                           <style:text-properties fo:color=\"%s\"/>
                                           </style:style>" color-style-name color-hex))
-             (automatic-color-style (cons color-style-name color-style-format)))
-        (push automatic-color-style org-odt-inline-special-block-automatic-styles)
+             (automatic-color-style (cons color-style-name color-style-format))
+             (smallcaps-style-name (concat "OrgInline" (car (org-odt-add-automatic-style "smallcaps"))))
+             (smallcaps-style-format (format "<style:style style:name=\"%s\"
+                                          style:family=\"text\">
+                                          <style:text-properties fo:font-variant=\"small-caps\"/>
+                                          </style:style>" smallcaps-style-name))
+             (automatic-smallcaps-style (cons smallcaps-style-name smallcaps-style-format))
+             (lang-style-name (concat "OrgInline" (car (org-odt-add-automatic-style "lang"))))
+             (lang-style-format (format "<style:style style:name=\"%s\"
+                                          style:family=\"text\">
+                                          <style:text-properties fo:language=\"%s\"/>
+                                          </style:style>" lang-style-name lang))
+             (automatic-lang-style (cons lang-style-name lang-style-format)))
+        (when color-name (push automatic-color-style org-odt-inline-special-block-automatic-styles))
+        (when smallcaps (push automatic-smallcaps-style org-odt-inline-special-block-automatic-styles))
+        (when lang (push automatic-lang-style org-odt-inline-special-block-automatic-styles))
         (concat
-         (when color-style-name
+         (when color-name
            (format "<text:span text:style-name=\"%s\">" color-style-name))
+         (when smallcaps
+           (format "<text:span text:style-name=\"%s\">" smallcaps-style-name))
+         (when lang
+           (format "<text:span text:style-name=\"%s\">" lang-style-name))
          basic-format
-         (when color-style-name
+         (when lang
+           "</text:span>")
+         (when smallcaps
+           "</text:span>")
+         (when color-name
            "</text:span>"))))))
 
 ;;;; Src Block
