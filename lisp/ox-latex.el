@@ -2142,13 +2142,13 @@ holding contextual information."
                                (format "%s%s%s" ifprelatex contents ifpostlatex)
                              (format "%s%s%s%s" iflatexcommand ifprelatex bracket-contents ifpostlatex))))
         (concat
-         (when (or color smallcaps type-is-anon) "{")
+         (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "{")
          (when smallcaps "\\scshape{}")
          (when color (format "\\color{%s}" color))
          (when lang-final (format "\\foreignlanguage{%s}{" lang-final))
          basic-format
          (when lang-final "}")
-         (when (or color smallcaps type-is-anon) "}"))))))
+         (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "}"))))))
 
 ;;;; Clock
 

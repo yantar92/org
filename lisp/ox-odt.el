@@ -3089,10 +3089,8 @@ holding contextual information."
         (format "<text:span text:style-name=\"%s\">%s</text:span>" type contents)
       (let* ((attr-final (if alias-plist (append attributes alias-plist) attributes))
 	     (odt-style (plist-get attr-final :odt-style))
-             (basic-format (if type-is-anon
-                               (format "<text:span%s>%s</text:span>"
-                                       (if odt-style (format " text:style-name=\"%s\"" odt-style) "")
-                                       contents)
+             (basic-format (if (and type-is-anon (not attr-final))
+                               (format "%s" contents)
                              (format "<text:span text:style-name=\"%s\">%s</text:span>"
                                      (or odt-style type)
                                      contents)))

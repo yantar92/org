@@ -3934,14 +3934,14 @@ holding contextual information."
 	     (html (plist-get attr-final :html))
              (html-tag (plist-get attr-final :html-tag))
              (html-class (plist-get attr-final :html-class))
-             (basic-format (if type-is-anon
-                               (format "<%s%s>%s</%s>" (or html-tag "span")
-                                       (if html-class (format " class=\"%s\"" html-class) "")
-                                       contents
-                                       (or html-tag "span"))
-                             (format "<%s class=\"%s\">%s</%s>"
+             (basic-format (if (and type-is-anon (not attr-final))
+                               (format "%s" contents)
+                             (format "<%s%s>%s</%s>"
                                      (or html-tag "span")
-                                     (or html-class type)
+                                     (if (and type-is-anon
+                                              (not html-class))
+                                         ""
+                                       (format " class=\"%s\"" (or html-class (unless type-is-anon type))))
                                      contents
                                      (or html-tag "span"))))
 	     (color (plist-get attr-final :color))
