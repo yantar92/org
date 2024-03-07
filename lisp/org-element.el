@@ -271,11 +271,11 @@ specially in `org-element--object-lex'.")
 				     "\\(?:[0-9]\\|\\(?:%\\|/[0-9]*\\)\\]\\)"
 				     "\\[")
 			       "\\|"))
-		      ;; Objects starting with "@": export snippets.
+                      ;; Inline-special-blocks.
+		      "@\\([_A-Za-z]+\\)"
+                      ;; Objects starting with "@": export snippets.
 		      "@@"
-                      ;; Objects starting with "&": inline-special-blocks.
-		      "&"
-		      ;; Objects starting with "{": macro.
+                      ;; Objects starting with "{": macro.
 		      "{{{"
 		      ;; Objects starting with "<" : timestamp
 		      ;; (active, diary), target, radio target and
@@ -3557,7 +3557,7 @@ When at an inline special block, return a new syntax node of
 
 Assume point is at the beginning of the block."
   (save-excursion
-    (when (looking-at "&\\([_!A-Za-z]+\\)[{[]")
+    (when (looking-at "@\\([_A-Za-z]+\\)[{[]")
       (goto-char (- (match-end 0) 1))
       (let* ((begin (match-beginning 0))
              (parameters
@@ -3589,7 +3589,7 @@ Assume point is at the beginning of the block."
   "Interpret INLINE SPECIAL BLOCK object as Org syntax."
   (let ((type (org-element-property :type inline-special-block))
         (opts (org-element-property :parameters inline-special-block)))
-    (format "&%s%s{%s}"
+    (format "@%s%s{%s}"
 	    type
 	    (if opts (format "[%s]" opts) "")
             contents)))
@@ -5324,11 +5324,12 @@ to an appropriate container (e.g., a paragraph)."
 			          (org-element-verbatim-parser)))
 		         (?+ (and (memq 'strike-through restriction)
 			          (org-element-strike-through-parser)))
-		         (?@ (and (memq 'export-snippet restriction)
-			          (org-element-export-snippet-parser)))
-                         (?& (and (memq 'inline-special-block restriction)
-			          (org-element-inline-special-block-parser)))
-		         (?{ (and (memq 'macro restriction)
+                         (?@ (if (eq (aref result 1) ?@)
+                                 (and (memq 'export-snippet restriction)
+			              (org-element-export-snippet-parser))
+                               (and (memq 'inline-special-block restriction)
+			            (org-element-inline-special-block-parser))))
+                         (?{ (and (memq 'macro restriction)
 			          (org-element-macro-parser)))
 		         (?$ (and (memq 'latex-fragment restriction)
 			          (org-element-latex-fragment-parser)))
