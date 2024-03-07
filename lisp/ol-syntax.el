@@ -249,6 +249,39 @@ The value of this is taken from the LINK keywords.")
 
 ;;; Public API
 
+(defun org--re-list-search-forward (regexp-list &optional bound noerror count)
+  "Like `re-search-forward', but REGEXP-LIST is a list of regexps.
+BOUND, NOERROR, and COUNT are passed to `re-search-forward'."
+  (let (result (min-found most-positive-fixnum)
+               (pos-found nil)
+               (min-found-data nil)
+               (tail regexp-list))
+    (while tail
+      (setq result (save-excursion (re-search-forward (pop tail) bound t count)))
+      (when (and result (< result min-found))
+        (setq min-found result
+              pos-found (match-end 0)
+              min-found-data (match-data))))
+    (if (= most-positive-fixnum min-found)
+        (pcase noerror
+          (`t nil)
+          (_ (re-search-forward (car regexp-list) bound noerror count)))
+      (set-match-data min-found-data)
+      (goto-char pos-found))))
+
+(defun org--re-list-looking-at (regexp-list &optional inhibit-modify)
+  "Like `looking-at', but REGEXP-LIST is a list of regexps.
+INHIBIT-MODIFY is passed to `looking-at'."
+  (catch :found
+    (while regexp-list
+      (when
+          (if inhibit-modify
+              (looking-at-p (pop regexp-list))
+            ;; FIXME: In Emacs <29, `looking-at' does not accept
+            ;; optional INHIBIT-MODIFY argument.
+            (looking-at (pop regexp-list)))
+        (throw :found t)))))
+
 (defun org-link-types ()
   "Return a list of known link types."
   (mapcar #'car org-link-parameters))
