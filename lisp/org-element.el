@@ -272,7 +272,7 @@ specially in `org-element--object-lex'.")
 				     "\\[")
 			       "\\|"))
                       ;; Inline-special-blocks.
-		      "@\\([_A-Za-z]+\\)"
+		      "@\\([@A-Za-z]+\\)"
                       ;; Objects starting with "@": export snippets.
 		      "@@"
                       ;; Objects starting with "{": macro.
@@ -3557,7 +3557,7 @@ When at an inline special block, return a new syntax node of
 
 Assume point is at the beginning of the block."
   (save-excursion
-    (when (looking-at "@\\([_A-Za-z]+\\)[{[]")
+    (when (looking-at "@\\([@A-Za-z]+\\)[{[]")
       (goto-char (- (match-end 0) 1))
       (let* ((begin (match-beginning 0))
              (parameters
@@ -5324,11 +5324,10 @@ to an appropriate container (e.g., a paragraph)."
 			          (org-element-verbatim-parser)))
 		         (?+ (and (memq 'strike-through restriction)
 			          (org-element-strike-through-parser)))
-                         (?@ (if (eq (aref result 1) ?@)
-                                 (and (memq 'export-snippet restriction)
+                         (?@ (or (and (memq 'export-snippet restriction)
 			              (org-element-export-snippet-parser))
-                               (and (memq 'inline-special-block restriction)
-			            (org-element-inline-special-block-parser))))
+                                 (and (memq 'inline-special-block restriction)
+			              (org-element-inline-special-block-parser))))
                          (?{ (and (memq 'macro restriction)
 			          (org-element-macro-parser)))
 		         (?$ (and (memq 'latex-fragment restriction)
