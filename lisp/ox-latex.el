@@ -2776,9 +2776,10 @@ INFO, CODE, and LANG are provided by `org-latex-inline-src-block'."
   "Transcode an inline src block's content from Org to LaTeX, using engrave-faces.
 INFO, CODE, and LANG are provided by `org-latex-inline-src-block'."
   (let ((engraved-theme (plist-get info :latex-engraved-theme)))
+    (when (stringp engraved-theme)
+      (setq engraved-theme (intern engraved-theme)))
     (org-latex-src--engrave-code
-     code lang
-     (and engraved-theme (intern engraved-theme)) nil
+     code lang engraved-theme nil
      (plist-get info :latex-engraved-options) t)))
 
 (defun org-latex-inline-src-block--listings (info code lang)
@@ -3908,9 +3909,16 @@ and FLOAT are extracted from SRC-BLOCK and INFO in `org-latex-src-block'."
                `(("linenos")
                  ("firstnumber" ,(number-to-string (1+ num-start)))))
              (and local-options `((,local-options))))))
-         (engraved-doc-theme (plist-get info :latex-engraved-theme))
-         (engraved-theme (or (plist-get attributes :engraved-theme)
-                             engraved-doc-theme))
+         (intern-safe
+          (lambda (name)
+            (if (stringp name)
+                (intern name)
+              name)))
+         (engraved-doc-theme
+          (funcall intern-safe (plist-get info :latex-engraved-theme)))
+         (engraved-theme
+          (or (funcall intern-safe (plist-get attributes :engraved-theme))
+              engraved-doc-theme))
          (content
           (let* ((code-info (org-export-unravel-code src-block))
                  (max-width
@@ -3936,7 +3944,7 @@ and FLOAT are extracted from SRC-BLOCK and INFO in `org-latex-src-block'."
                  (org-latex-src--engrave-mathescape-p info options)))
             (org-latex-src--engrave-code
              content lang
-             (and engraved-theme (intern engraved-theme))
+             engraved-theme
              (not (eq engraved-theme engraved-doc-theme))
              options))))
     (concat (car float-env) body (cdr float-env))))
