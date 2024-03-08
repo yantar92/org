@@ -2108,7 +2108,6 @@ holding contextual information."
          (alias (car (or (assoc type (plist-get info :inline-special-block-aliases))
 	                 (assoc type org-export-inline-special-block-aliases))))
 	 (parameters (org-element-property :parameters inline-special-block))
-         (latex-command (org-element-property :latex-command inline-special-block))
 	 (attributes (org-export-read-inline-special-block-attributes parameters))
          (alias-plist (when alias (cdr (or (assoc alias (plist-get info :inline-special-block-aliases))
 					   (assoc alias org-export-inline-special-block-aliases))))))

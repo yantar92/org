@@ -3570,8 +3570,8 @@ Assume point is at the beginning of the block."
              (contents-end
               (progn
                 (goto-char (- contents-begin 1))
-                (org-element--parse-paired-brackets ?\{)
-                (- (point) 1)))
+                (when (org-element--parse-paired-brackets ?\{)
+                  (- (point) 1))))
 	     (post-blank (skip-chars-forward " \t"))
 	     (end (point)))
         (when contents-end 
