@@ -272,7 +272,7 @@ specially in `org-element--object-lex'.")
 				     "\\[")
 			       "\\|"))
                       ;; Inline-special-blocks.
-		      "@\\([@A-Za-z]+\\)"
+		      "@\\(@\\|[A-Za-z]+\\)"
                       ;; Objects starting with "@": export snippets.
 		      "@@"
                       ;; Objects starting with "{": macro.
@@ -3557,7 +3557,7 @@ When at an inline special block, return a new syntax node of
 
 Assume point is at the beginning of the block."
   (save-excursion
-    (when (looking-at "@\\([@A-Za-z]+\\)[{[]")
+    (when (looking-at "@\\(@\\|[A-Za-z]+\\)[{[]")
       (goto-char (- (match-end 0) 1))
       (let* ((begin (match-beginning 0))
              (parameters
@@ -3568,7 +3568,7 @@ Assume point is at the beginning of the block."
 	     (type (org-element--get-cached-string
                     (match-string-no-properties 1)))
              (contents-end
-              (progn
+              (when contents-begin
                 (goto-char (- contents-begin 1))
                 (when (org-element--parse-paired-brackets ?\{)
                   (- (point) 1))))
