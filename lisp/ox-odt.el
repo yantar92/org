@@ -3079,6 +3079,7 @@ CONTENTS holds the contents of the block.  INFO is a plist
 holding contextual information."
   (let* ((type (org-element-property :type inline-special-block))
          (type-is-anon (string= "@" type))
+         (contents (if contents contents ""))
          (alias (car (or (assoc type (plist-get info :inline-special-block-aliases))
 	                 (assoc type org-export-inline-special-block-aliases))))
 	 (parameters (org-element-property :parameters inline-special-block))
