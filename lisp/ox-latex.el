@@ -2158,7 +2158,7 @@ holding contextual information."
                 (when lang-final (format "\\foreignlanguage{%s}{" lang-final))
                 basic-format
                 (when lang-final "}")
-                (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "}")))))))))
+                (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "}"))))))))
 
 ;;;; Clock
 
