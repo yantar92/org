@@ -3947,6 +3947,7 @@ holding contextual information."
                                      (or html-tag "span"))))
 	     (color (plist-get attr-final :color))
 	     (smallcaps (plist-get attr-final :smallcaps))
+             (export (plist-get attr-final :export))
              (color+smallcaps (concat (when color (format "color:%s;" color))
                                       (when smallcaps "font-variant:small-caps;")))
 	     (lang (plist-get attr-final :lang))
@@ -3970,7 +3971,16 @@ holding contextual information."
                               (insert color+smallcaps)
                             (insert (format " style=\"%s\"" color+smallcaps))))))))
                 (buffer-string))))
-        final-format-attr))))
+        (cond ((and export
+                    (string-match-p "noexport" export))
+               "")
+              ((and export
+                    (or (string-match-p "contents" export)
+                        (string-match-p "html\\*" export)))
+               contents)
+              ((or (and export (string-match-p "html\\+" export))
+                   (not export))
+               final-format-attr))))))
 
 ;;;; Verse Block
 
