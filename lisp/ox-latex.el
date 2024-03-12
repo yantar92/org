@@ -2141,24 +2141,19 @@ holding contextual information."
                                  (format "{%s}" contents)))
              (basic-format (if type-is-anon
                                (format "%s%s%s" ifprelatex contents ifpostlatex)
-                             (format "%s%s%s%s" iflatexcommand ifprelatex bracket-contents ifpostlatex))))
-        (cond ((and export
-                    (string-match-p "noexport" export))
-               "")
-              ((and export
-                    (or (string-match-p "contents" export)
-                        (string-match-p "latex\\*" export)))
-               contents)
-              ((or (and export (string-match-p "latex\\+" export))
-                   (not export))
-               (concat
-                (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "{")
-                (when smallcaps "\\scshape{}")
-                (when color (format "\\color{%s}" color))
-                (when lang-final (format "\\foreignlanguage{%s}{" lang-final))
-                basic-format
-                (when lang-final "}")
-                (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "}"))))))))
+                             (format "%s%s%s%s" iflatexcommand ifprelatex bracket-contents ifpostlatex)))
+             (result (concat
+                      (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "{")
+                      (when smallcaps "\\scshape{}")
+                      (when color (format "\\color{%s}" color))
+                      (when lang-final (format "\\foreignlanguage{%s}{" lang-final))
+                      basic-format
+                      (when lang-final "}")
+                      (when (or color smallcaps (and type-is-anon (or prelatex postlatex))) "}"))))
+        (if (not export)
+            result
+          (org-export-inline-special-block-manage-backends export contents result))))))
+
 
 ;;;; Clock
 

@@ -3831,6 +3831,30 @@ will become the empty string."
 		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
     attributes))
 
+(defun org-export-inline-special-block-manage-backends (backends contents format)
+  "TODO"
+  (let* ((current-backend-str (symbol-name org-export-current-backend))
+         (current-backend-str-match (when (string-match
+                                           (concat current-backend-str
+                                                   "\\(\\*\\)?")
+                                           backends)
+                                      (match-string 0 backends)))
+         (current-backend-str-contents (when current-backend-str-match
+                                         (string-match-p "\\*" current-backend-str-match)))
+         (current-backend-str-full (when current-backend-str-match
+                                     (not (string-match-p "\\*" current-backend-str-match)))))
+    (cond ((string-match-p "noexport" backends)
+           "")
+          ((or (string-match-p "contents" backends)
+               (and (string-match "rest\\(\\*\\)?" backends)
+                    (match-string 1 backends))
+               current-backend-str-contents)
+           contents)
+          ((or current-backend-str-full
+               (and (string-match "rest\\(\\*\\)?" backends)
+                    (not (match-string 1 backends))))
+           format))))
+
 (defun org-export-get-caption (element &optional short)
   "Return caption from ELEMENT as a secondary string.
 

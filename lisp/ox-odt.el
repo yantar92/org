@@ -3122,33 +3122,28 @@ holding contextual information."
                                           style:family=\"text\">
                                           <style:text-properties fo:language=\"%s\"/>
                                           </style:style>" lang-style-name lang))
-             (automatic-lang-style (cons lang-style-name lang-style-format)))
+             (automatic-lang-style (cons lang-style-name lang-style-format))
+             (result (concat
+                      (when color-name
+                        (format "<text:span text:style-name=\"%s\">" color-style-name))
+                      (when smallcaps
+                        (format "<text:span text:style-name=\"%s\">" smallcaps-style-name))
+                      (when lang
+                        (format "<text:span text:style-name=\"%s\">" lang-style-name))
+                      basic-format
+                      (when lang
+                        "</text:span>")
+                      (when smallcaps
+                        "</text:span>")
+                      (when color-name
+                        "</text:span>"))))
         (when color-name (push automatic-color-style org-odt-inline-special-block-automatic-styles))
         (when smallcaps (push automatic-smallcaps-style org-odt-inline-special-block-automatic-styles))
         (when lang (push automatic-lang-style org-odt-inline-special-block-automatic-styles))
-        (cond ((and export
-                    (string-match-p "noexport" export))
-               "")
-              ((and export
-                    (or (string-match-p "contents" export)
-                        (string-match-p "odt\\*" export)))
-               contents)
-              ((or (and export (string-match-p "odt\\+" export))
-                   (not export))
-               (concat
-                (when color-name
-                  (format "<text:span text:style-name=\"%s\">" color-style-name))
-                (when smallcaps
-                  (format "<text:span text:style-name=\"%s\">" smallcaps-style-name))
-                (when lang
-                  (format "<text:span text:style-name=\"%s\">" lang-style-name))
-                basic-format
-                (when lang
-                  "</text:span>")
-                (when smallcaps
-                  "</text:span>")
-                (when color-name
-                  "</text:span>"))))))))
+        (if (not export)
+            result
+          (org-export-inline-special-block-manage-backends export contents result))))))
+
 
 ;;;; Src Block
 

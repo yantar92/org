@@ -3971,16 +3971,9 @@ holding contextual information."
                               (insert color+smallcaps)
                             (insert (format " style=\"%s\"" color+smallcaps))))))))
                 (buffer-string))))
-        (cond ((and export
-                    (string-match-p "noexport" export))
-               "")
-              ((and export
-                    (or (string-match-p "contents" export)
-                        (string-match-p "html\\*" export)))
-               contents)
-              ((or (and export (string-match-p "html\\+" export))
-                   (not export))
-               final-format-attr))))))
+        (if (not export)
+            result
+          (org-export-inline-special-block-manage-backends export contents final-format-attr))))))
 
 ;;;; Verse Block
 
