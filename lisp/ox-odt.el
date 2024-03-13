@@ -3083,7 +3083,7 @@ holding contextual information."
          (alias (car (or (assoc type (plist-get info :inline-special-block-aliases))
 	                 (assoc type org-export-inline-special-block-aliases))))
 	 (parameters (org-element-property :parameters inline-special-block))
-	 (attributes (org-export-read-inline-special-block-attributes parameters))
+	 (attributes (org-export-read-attribute parameters inline-special-block))
          (alias-plist (when alias (cdr (or (assoc alias (plist-get info :inline-special-block-aliases))
 					   (assoc alias org-export-inline-special-block-aliases))))))
     (if (not (or attributes alias type-is-anon))

@@ -3793,7 +3793,9 @@ will become the empty string."
 		     (or (match-string 1 str) ""))
 		    (t str)))))
 	 (attributes
-	  (let ((value (org-element-property attribute element)))
+	  (let ((value (if (equal (org-element-type element) 'inline-special-block)
+			   (list attribute)
+			 (org-element-property attribute element))))
 	    (when value
 	      (let ((s (mapconcat #'identity value " ")) result)
 		(while (string-match
@@ -3807,29 +3809,29 @@ will become the empty string."
 		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
     (if property (plist-get attributes property) attributes)))
 
-(defun org-export-read-inline-special-block-attributes (attributes)
-  "TODO"
-  (let* ((prepare-value
-	  (lambda (str)
-	    (save-match-data
-	      (cond ((member str '(nil "" "nil")) nil)
-		    ((string-match "^\"\\(\"+\\)?\"$" str)
-		     (or (match-string 1 str) ""))
-		    (t str)))))
-	 (attributes
-	  (let ((value (list attributes)))
-	    (when value
-	      (let ((s (mapconcat #'identity value " ")) result)
-		(while (string-match
-			"\\(?:^\\|[ \t]+\\)\\(:[-a-zA-Z0-9_]+\\)\\([ \t]+\\|$\\)"
-			s)
-		  (let ((value (substring s 0 (match-beginning 0))))
-		    (push (funcall prepare-value value) result))
-		  (push (intern (match-string 1 s)) result)
-		  (setq s (substring s (match-end 0))))
-		;; Ignore any string before first property with `cdr'.
-		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
-    attributes))
+;; (defun org-export-read-inline-special-block-attributes (attributes)
+;;   "TODO"
+;;   (let* ((prepare-value
+;; 	  (lambda (str)
+;; 	    (save-match-data
+;; 	      (cond ((member str '(nil "" "nil")) nil)
+;; 		    ((string-match "^\"\\(\"+\\)?\"$" str)
+;; 		     (or (match-string 1 str) ""))
+;; 		    (t str)))))
+;; 	 (attributes
+;; 	  (let ((value (list attributes)))
+;; 	    (when value
+;; 	      (let ((s (mapconcat #'identity value " ")) result)
+;; 		(while (string-match
+;; 			"\\(?:^\\|[ \t]+\\)\\(:[-a-zA-Z0-9_]+\\)\\([ \t]+\\|$\\)"
+;; 			s)
+;; 		  (let ((value (substring s 0 (match-beginning 0))))
+;; 		    (push (funcall prepare-value value) result))
+;; 		  (push (intern (match-string 1 s)) result)
+;; 		  (setq s (substring s (match-end 0))))
+;; 		;; Ignore any string before first property with `cdr'.
+;; 		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
+;;     attributes))
 
 (defun org-export-inline-special-block-manage-backends (backends contents format)
   "TODO"
