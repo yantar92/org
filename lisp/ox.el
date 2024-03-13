@@ -3833,27 +3833,67 @@ will become the empty string."
 
 (defun org-export-inline-special-block-manage-backends (backends contents format)
   "TODO"
-  (let* ((current-backend-str (symbol-name org-export-current-backend))
-         (current-backend-str-match (when (string-match
-                                           (concat current-backend-str
-                                                   "\\(\\*\\)?")
-                                           backends)
-                                      (match-string 0 backends)))
-         (current-backend-str-contents (when current-backend-str-match
-                                         (string-match-p "\\*" current-backend-str-match)))
-         (current-backend-str-full (when current-backend-str-match
-                                     (not (string-match-p "\\*" current-backend-str-match)))))
-    (cond ((string-match-p "noexport" backends)
-           "")
-          ((or (string-match-p "contents" backends)
-               (and (string-match "rest\\(\\*\\)?" backends)
-                    (match-string 1 backends))
-               current-backend-str-contents)
-           contents)
-          ((or current-backend-str-full
-               (and (string-match "rest\\(\\*\\)?" backends)
-                    (not (match-string 1 backends))))
-           format))))
+  (let* ((current-backend org-export-current-backend)
+	 (backends-list (split-string backends))
+	 (backends-contents-list
+	  (mapcar (lambda (elt)
+		    (when (string-match
+			   "\\([a-zA-Z]+\\)\\(\\*\\)"
+			   elt)
+		      (intern (match-string 1 elt))))
+		  backends-list))
+	 (backends-full-list
+	  (mapcar (lambda (elt)
+		    (when (string-match
+			   "\\([a-zA-Z]+\\)\\(\\+\\)"
+			   elt)
+		      (intern (match-string 1 elt))))
+		  backends-list))
+	 (backends-noexport-list
+	  (mapcar (lambda (elt)
+		    (when (string-match
+			   "\\([a-zA-Z]+\\)\\(-\\)"
+			   elt)
+		      (intern (match-string 1 elt))))
+		  backends-list))
+	 (backend-contents-p
+	  (when backends-contents-list
+	    (cl-remove-if (lambda (x) (equal x nil))
+			  (mapcar
+			   (lambda (elt)
+			     (if (org-export-derived-backend-p current-backend elt)
+				 elt
+			       nil))
+			   backends-contents-list))))
+	 (backend-full-p
+	  (when backends-full-list
+	    (cl-remove-if (lambda (x) (equal x nil))
+			  (mapcar
+			   (lambda (elt)
+			     (if (org-export-derived-backend-p current-backend elt)
+				 elt
+			       nil))
+			   backends-full-list))))
+	 (backend-noexport-p
+	  (when backends-noexport-list
+	    (cl-remove-if (lambda (x) (equal x nil))
+			  (mapcar
+			   (lambda (elt)
+			     (if (org-export-derived-backend-p current-backend elt)
+				 elt
+			       nil))
+			   backends-noexport-list)))))
+    (cond ((or (member "-" backends-list)
+	       backend-noexport-p)
+	   "")
+	  ((or (member "*" backends-list)
+	       (member "=*" backends-list)
+	       backend-contents-p)
+	   contents)
+	  ((or backend-full-p
+	       (not backend-noexport-p)
+	       (member "=" backends-list))
+	   format))))
 
 (defun org-export-get-caption (element &optional short)
   "Return caption from ELEMENT as a secondary string.
