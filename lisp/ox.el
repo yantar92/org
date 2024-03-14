@@ -3893,10 +3893,9 @@ will become the empty string."
 	       backend-contents-p)
 	   contents)
 	  ((or backend-full-p
-;;	       (not backend-noexport-p)
-	       (member "=" backends-list))
+               (member "=" backends-list))
 	   format)
-          (t format))))
+          (t ""))))
 
 (defun org-export-get-caption (element &optional short)
   "Return caption from ELEMENT as a secondary string.
