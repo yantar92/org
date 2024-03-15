@@ -3886,6 +3886,8 @@ will become the empty string."
 			       nil))
 			   backends-noexport-list)))))
     (cond ((or (member "-" backends-list)
+	       (and (member "=-" backends-list)
+		    (not (or backend-full-p backend-contents-p)))
 	       backend-noexport-p)
 	   "")
 	  ((or (member "*" backends-list)
@@ -3895,7 +3897,7 @@ will become the empty string."
 	  ((or backend-full-p
                (member "=" backends-list))
 	   format)
-          (t ""))))
+	  (t format))))
 
 (defun org-export-get-caption (element &optional short)
   "Return caption from ELEMENT as a secondary string.
