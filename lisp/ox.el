@@ -3839,23 +3839,19 @@ will become the empty string."
 	 (backends-list (split-string backends))
 	 (backends-contents-list
 	  (mapcar (lambda (elt)
-		    (when (string-match
-			   "\\([a-zA-Z]+\\)\\(\\*\\)"
-			   elt)
+		    (when (string-match "\\([a-zA-Z]+\\)\\(\\*\\)" elt)
 		      (intern (match-string 1 elt))))
 		  backends-list))
 	 (backends-full-list
 	  (mapcar (lambda (elt)
-		    (when (string-match
-			   "\\([a-zA-Z]+\\)\\(\\+\\)"
-			   elt)
+		    (when (and
+			   (string-match "\\([a-zA-Z]+\\)" elt)
+			   (not (string-match-p "\\(\\*\\|-\\)" elt)))
 		      (intern (match-string 1 elt))))
 		  backends-list))
 	 (backends-noexport-list
 	  (mapcar (lambda (elt)
-		    (when (string-match
-			   "\\([a-zA-Z]+\\)\\(-\\)"
-			   elt)
+		    (when (string-match "\\([a-zA-Z]+\\)\\(-\\)" elt)
 		      (intern (match-string 1 elt))))
 		  backends-list))
 	 (backend-contents-p
@@ -3891,7 +3887,8 @@ will become the empty string."
 	       backend-noexport-p)
 	   "")
 	  ((or (member "*" backends-list)
-	       (member "=*" backends-list)
+	       (and (member "=*" backends-list)
+		    (not backend-full-p))
 	       backend-contents-p)
 	   contents)
 	  ((or backend-full-p
