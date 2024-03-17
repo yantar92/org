@@ -99,6 +99,7 @@
 (require 'oc)
 (require 'org-table)
 (require 'org-fold)
+(require 'org-pending)
 
 (require 'org-cycle)
 (defalias 'org-global-cycle #'org-cycle-global)
@@ -8938,10 +8939,15 @@ the property list including an extra property :name with the block name."
 	  (append params
 		  (list :content (buffer-substring
 				  begdel (match-beginning 0)))))
-    (delete-region begdel (match-beginning 0))
     (goto-char begdel)
-    (open-line 1)
-    params))
+    (cons params
+          (let ((cbeg (save-excursion (goto-char begdel) (point-marker)))
+                (cend (save-excursion (goto-char (match-beginning 0)) (point-marker))))
+            (lambda ()
+              (delete-region cbeg cend)
+              (goto-char cbeg)
+              (open-line 1))))))
+
 
 (defun org-map-dblocks (&optional command)
   "Apply COMMAND to all dynamic blocks in the current buffer.
@@ -9018,29 +9024,64 @@ the correct writing function."
     (let* ((win (selected-window))
 	   (pos (point))
 	   (line (org-current-line))
-	   (params
+	   (params-eraser
             ;; Called for side effect.
             (org-prepare-dblock))
-	   (name (plist-get params :name))
+           (params (car params-eraser))
 	   (indent (plist-get params :indentation-column))
-	   (cmd (intern (concat "org-dblock-write:" name))))
-      (message "Updating dynamic block `%s' at line %d..." name line)
-      (funcall cmd params)
-      (message "Updating dynamic block `%s' at line %d...done" name line)
-      (goto-char pos)
-      (when (and indent (> indent 0))
-	(setq indent (make-string indent ?\ ))
-	(save-excursion
-	  (select-window win)
-	  (org-beginning-of-dblock)
-	  (forward-line 1)
-	  (while (not (looking-at org-dblock-end-re))
-	    (insert indent)
-	    (forward-line 1))
-	  (when (looking-at org-dblock-end-re)
-	    (and (looking-at "[ \t]+")
-		 (replace-match ""))
-	    (insert indent)))))))
+	   (name (plist-get params :name))
+	   (cmd (intern (concat "org-dblock-write:" name)))
+           (async (get cmd 'nasync))
+           (post-process
+            (lambda (ipos)
+              (goto-char ipos)
+              (when (and indent (> indent 0))
+	        (setq indent (make-string indent ?\ ))
+	        (save-excursion
+	          (select-window win)
+	          (org-beginning-of-dblock)
+	          (forward-line 1)
+	          (while (not (looking-at org-dblock-end-re))
+	            (insert indent)
+	            (forward-line 1))
+	          (when (looking-at org-dblock-end-re)
+	            (and (looking-at "[ \t]+")
+		         (replace-match ""))
+	            (insert indent)))))))
+      (if (not async)
+          (progn
+            (funcall (cdr params-eraser))
+            (message "Updating dynamic block `%s' at line %d..." name line)
+            (funcall cmd params)
+            (message "Updating dynamic block `%s' at line %d...done" name line)
+            (funcall post-process pos))
+        (let* ((insert-pos (point-marker))
+               (begin (org-beginning-of-dblock))
+               (anchor (save-excursion
+                         (goto-char begin)
+                         (cons (point-marker)
+                               (progn (end-of-line) (point-marker)))))
+               (penreg
+                (org-pending anchor
+                             (lambda (r)
+                               (funcall (cdr params-eraser))
+                               (goto-char insert-pos)
+                               (unless (stringp r) (setq r (format "%s" r)))
+                               (insert r)
+                               (funcall post-process insert-pos)
+                               anchor)))
+               (task-control
+                (funcall cmd params
+                         (lambda (msg)
+                           (org-pending-task-send-update penreg msg)))))
+          (org-pending-task-connect penreg task-control)
+          ;; If the no-async flag is ON, block until the content is
+          ;; written.
+          (when org-pending-without-async-flag
+            (funcall task-control :get penreg))
+          nil)))))
+
+
 
 (defun org-beginning-of-dblock ()
   "Find the beginning of the dynamic block at point.
