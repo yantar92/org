@@ -473,6 +473,16 @@ have to clear the target cache in order to find new targets.
 This can be done with a `0' prefix (`C-0 C-c C-w') or a triple
 prefix argument (`C-u C-u C-u C-c C-w')."
   (interactive "P")
+  (let ((start-buffer (current-buffer))
+        (start-point (point-marker)))
+    (condition-case-unless-debug  _exc
+        (org-refile-1 arg default-buffer rfloc msg)
+      (org-pending-error
+       (with-current-buffer start-buffer
+         (goto-char start-point))
+       (user-error "Cannot refile a region that contains pending contents")))))
+
+(defun org-refile-1 (&optional arg default-buffer rfloc msg)
   (if (member arg '(0 (64)))
       (org-refile-cache-clear)
     (let* ((actionmsg (cond (msg msg)
@@ -551,9 +561,10 @@ prefix argument (`C-u C-u C-u C-c C-w')."
 		(org-fold-show-context 'org-goto))
 	    (if regionp
 		(progn
+                  (org-ensure-no-pending-contents region-start region-end)
 		  (org-kill-new (buffer-substring region-start region-end))
 		  (org-save-markers-in-region region-start region-end))
-	      (org-copy-subtree 1 nil t))
+	      (org-copy-subtree 1 nil t nil :no-pendings))
             (let ((origin (point-marker)))
               ;; Handle special case when we refile to exactly same
               ;; location with tree promotion/demotion.  Point marker
