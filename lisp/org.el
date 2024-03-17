@@ -5054,7 +5054,13 @@ The following commands are available:
   (setq-local org-mode-loading nil)
 
   ;; `yank-media' handler and DND support.
-  (org-setup-yank-dnd-handlers))
+  (org-setup-yank-dnd-handlers)
+
+  (add-hook 'kill-buffer-query-functions
+            #'org-pending--kill-buffer-query nil :local)
+  (add-hook 'clone-indirect-buffer-hook
+            #'org-pending--after-indirect-clone :local))
+
 
 ;; Update `customize-package-emacs-version-alist'
 (add-to-list 'customize-package-emacs-version-alist
