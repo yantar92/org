@@ -301,10 +301,16 @@ direct children of this heading."
 					  "/"))
 		    (time . ,time)
 		    (todo . ,(org-entry-get (point) "TODO")))))
-	    ;; We first only copy, in case something goes wrong
-	    ;; we need to protect `this-command', to avoid kill-region sets it,
-	    ;; which would lead to duplication of subtrees
-	    (let (this-command) (org-copy-subtree 1 nil t))
+            ;; We don't know the region yet. So we use the backup copy
+            ;; to tell us if the region contains pending contents.
+            (condition-case _exc
+                ;; We first only copy, in case something goes wrong
+	        ;; we need to protect `this-command', to avoid kill-region sets it,
+	        ;; which would lead to duplication of subtrees
+	        (let (this-command)
+                  (org-copy-subtree 1 nil t nil :no-pendings))
+              (org-pending-error
+               (user-error "Cannot archive a region that contains pending contents")))
 	    (set-buffer buffer)
 	    ;; Enforce Org mode for the archive buffer
 	    (if (not (derived-mode-p 'org-mode))
