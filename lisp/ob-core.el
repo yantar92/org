@@ -33,6 +33,7 @@
 (require 'org-fold)
 (require 'org-compat)
 (require 'org-cycle)
+(require 'org-pending)
 
 (defconst org-babel-exeext
   (if (memq system-type '(windows-nt cygwin))
@@ -795,12 +796,138 @@ retrieve backend-specific session buffer name."
     (when (org-babel-comint-buffer-livep buffer-name)
       buffer-name)))
 
+
+
+(cl-defun org-babel--async-p (params &key default)
+  "Return a non-nil when the execution is asynchronous.
+Get the value of the :nasync argument and convert it."
+  (if org-pending-without-async-flag
+      nil
+    (if-let ((binding (assq :nasync params)))
+        (pcase (cdr binding)
+          ((pred (not stringp))
+           (error "Invalid value for :nasync argument"))
+          ((or "no" "n")  nil)
+          ((or "yes" "y") t)
+          (_ (error "Invalid value for :nasync argument")))
+      default)))
+
+(defun org-babel--async-result-region (inline-elem &optional info)
+  "Return the region of the result of the source block at point."
+  (unless info (setq info (org-babel-get-src-block-info)))
+  (save-excursion
+    (when-let ((res-begin  (org-babel-where-is-src-block-result nil info)))
+      (cons res-begin
+            (save-excursion
+              (goto-char res-begin)
+              (if inline-elem
+                  ;; Logic copy/pasted from org-babel-where-is-src-block-result.
+	          (let ((result (org-element-context)))
+		    (and (org-element-type-p result 'macro)
+		         (string= (org-element-property :key result)
+			          "results")
+		         (progn
+			   (goto-char (org-element-end result))
+			   (skip-chars-backward " \t")
+			   (point))))
+                ;; Logic copy/pasted from hide-result
+                (beginning-of-line)
+                (let ((case-fold-search t))
+                  (unless (re-search-forward org-babel-result-regexp nil t)
+	            (error "Not looking at a result line")))
+                (org-babel-result-end)
+                ))))))
+
+(defun org-babel--async-pending (info handle-result
+                                      result-params exec-start-time)
+  "Mark the result region as \"pending\".
+
+Identify the result region, mark it as \"pending\" by calling
+`org-pending' with the result region and the function
+HANDLE-RESULT. Return the `org-pending' PENREG.
+
+See `org-pending' for the definition of HANDLE-RESULT.
+
+If there is no result region, and the result type is none, silent or
+discard, call `org-pending' without a region.  Else, if there is no
+result region, create a new empty one."
+  (if (or (member "none" result-params)
+          (member "silent" result-params)
+          (member "discard" result-params))
+      ;; For none, silent and discard, there is no pending content.
+      ;; But we do have to control the executions, using a fake
+      ;; pending content: this block result may still be used by
+      ;; something else. For example, "none" is used to resolve vars
+      ;; when executing other blocks.
+      (org-pending nil handle-result)
+
+    (let (;; copy/pasted from org-babel-insert-result
+          (inline-elem (let ((context (org-element-context)))
+		         (and (memq (org-element-type context)
+			            '(inline-babel-call inline-src-block))
+			      context)))
+          (to-marker (lambda (p)
+                       ;; Make sure P is a marker.
+                       (or (and (markerp p) p)
+                           (save-excursion (goto-char p) (point-marker))))))
+      ;; Ensure there is a non-empty region for the result.
+      (save-excursion
+        (unless (org-babel-where-is-src-block-result (not inline-elem) nil nil)
+          (org-babel-insert-result
+           ;; Use " " for the empty result. That cannot be nil, else it's interpreted
+           ;; as a list. We need at least one char, to separate markers if any.
+           " \n"
+           result-params
+           info nil
+           (nth 0 info) ; lang
+           exec-start-time)))
+
+      (let* ((result-region (org-babel--async-result-region inline-elem info))
+             (anchor-begin ;; Skip blanks to the result
+              (save-excursion (goto-char (car result-region))
+                              (re-search-forward "[[:blank:]]*")))
+             (anchor-end (if inline-elem
+                             (cdr result-region)
+                           (1- (save-excursion (goto-char (car result-region))
+                                               (forward-line 1) (point)))))
+             (anchor (cons (funcall to-marker anchor-begin)
+                           (funcall to-marker anchor-end)))
+             (content-begin anchor-begin)
+             (content-end (cdr result-region))
+             (penreg (org-pending
+                      (cons content-begin content-end)
+                      (lambda (r)
+                        (let ((result-region (funcall handle-result r)))
+                          ;; For non-inline results, put outcome info
+                          ;; only on '#+RESULTS:'.
+                          (unless inline-elem (setq result-region anchor))
+                          result-region))
+                      :anchor anchor)))
+        penreg))))
+
+
+(defun org-babel-async-schedule-and-wait (schedule lang body params)
+  "Execute the function SCHEDULE synchronously.
+Start the asynchronous execution, wait for its outcome, finally return
+the result or raise the exception."
+  (let* ((task-control (funcall schedule lang body params nil)))
+    (unless task-control
+      (error "Function `%s' didn't return a valid task-control"
+             schedule))
+    (funcall task-control :get nil)))
+
+
+
 ;;;###autoload
 (defun org-babel-execute-src-block (&optional arg info params executor-type)
-  "Execute the current source code block and return the result.
-Insert the results of execution into the buffer.  Source code
-execution and the collection and formatting of results can be
-controlled through a variety of header arguments.
+  "Execute or schedule the current source code block.
+
+When synchronous, return the result; when asynchronous, mark the result
+region as \"pending\" (using `org-pending') and return the PENREG.
+
+When the result is available, insert it into the buffer.  Source code
+execution and the collection and formatting of results can be controlled
+through a variety of header arguments.
 
 With prefix argument ARG, force re-execution even if an existing
 result cached in the buffer would otherwise have been returned.
@@ -875,11 +1002,75 @@ guess will be made."
 		    (let ((d (file-name-as-directory (expand-file-name dir))))
 		      (make-directory d 'parents)
 		      d))))
-		 (cmd (intern (concat "org-babel-execute:" lang)))
-		 result exec-start-time)
+                 (async (org-babel--async-p params))
+                 (cmd (intern (concat "org-babel-"
+                                      (if async "schedule" "execute")
+                                      ":" lang)))
+                 (cmd-args (list body params))
+                 (exec-start-time (current-time))
+                 (exec-dir default-directory)
+                 (handle-result
+                  (lambda (result &optional result-symbol)
+                    (org-pending-without-async
+                      (setq result
+		            (if (and (eq (cdr (assq :result-type params)) 'value)
+			             (or (member "vector" result-params)
+				         (member "table" result-params))
+			             (not (listp result)))
+		                (list (list result))
+		              result))
+	              (let ((file (and (member "file" result-params)
+			               (cdr (assq :file params))))
+                            (result-region nil)
+                            (default-directory exec-dir))
+		        ;; If non-empty result and :file then write to :file.
+		        (when file
+		          ;; If `:results' are special types like `link' or
+		          ;; `graphics', don't write result to `:file'.  Only
+		          ;; insert a link to `:file'.
+		          (when (and result
+			             (not (or (member "link" result-params)
+				              (member "graphics" result-params))))
+		            (with-temp-file file
+		              (insert (org-babel-format-result
+			               result
+			               (cdr (assq :sep params)))))
+		            ;; Set file permissions if header argument
+		            ;; `:file-mode' is provided.
+		            (when (assq :file-mode params)
+		              (set-file-modes file (cdr (assq :file-mode params)))))
+		          (setq result file))
+		        ;; Possibly perform post process provided its
+		        ;; appropriate.  Dynamically bind "*this*" to the
+		        ;; actual results of the block.
+		        (let ((post (cdr (assq :post params))))
+		          (when post
+		            (let ((*this* (if (not file) result
+				            (org-babel-result-to-file
+				             file
+				             (org-babel--file-desc params result)
+                                             'attachment))))
+		              (setq result (org-babel-ref-resolve post))
+		              (when file
+			        (setq result-params (remove "file" result-params))))))
+
+                        ;; Update the result symbol for the caller if requested.
+                        (when result-symbol
+                          (set result-symbol result))
+	                (unless (member "none" result-params)
+		          (setq result-region
+                                (org-babel-insert-result
+		                 result result-params info
+                                 ;; append/prepend cannot handle hash as we accumulate
+                                 ;; multiple outputs together.
+                                 (when (member "replace" result-params) new-hash)
+                                 lang
+                                 (time-subtract (current-time) exec-start-time)))
+	                  (run-hooks 'org-babel-after-execute-hook)
+                          result-region))))))
 	    (unless (fboundp cmd)
-	      (error "No org-babel-execute function for %s!" lang))
-	    (message "Executing %s %s %s..."
+	      (error "No org-babel-execute function for %s: %s!" lang (symbol-name cmd)))
+	    (message "Executing %s %s %s %s..."
 		     (capitalize lang)
                      (pcase executor-type
                        ('src-block "code block")
@@ -887,61 +1078,40 @@ guess will be made."
                        ('babel-call "call")
                        ('inline-babel-call "inline call")
                        (e (symbol-name e)))
+                     (if async "async" "")
 		     (let ((name (nth 4 info)))
 		       (if name
                            (format "(%s)" name)
                          (format "at position %S" (nth 5 info)))))
-	    (setq exec-start-time (current-time)
-                  result
-		  (let ((r (save-current-buffer (funcall cmd body params))))
-		    (if (and (eq (cdr (assq :result-type params)) 'value)
-			     (or (member "vector" result-params)
-				 (member "table" result-params))
-			     (not (listp r)))
-			(list (list r))
-		      r)))
-	    (let ((file (and (member "file" result-params)
-			     (cdr (assq :file params)))))
-	      ;; If non-empty result and :file then write to :file.
-	      (when file
-		;; If `:results' are special types like `link' or
-		;; `graphics', don't write result to `:file'.  Only
-		;; insert a link to `:file'.
-		(when (and result
-			   (not (or (member "link" result-params)
-				  (member "graphics" result-params))))
-		  (with-temp-file file
-		    (insert (org-babel-format-result
-			     result
-			     (cdr (assq :sep params)))))
-		  ;; Set file permissions if header argument
-		  ;; `:file-mode' is provided.
-		  (when (assq :file-mode params)
-		    (set-file-modes file (cdr (assq :file-mode params)))))
-		(setq result file))
-	      ;; Possibly perform post process provided its
-	      ;; appropriate.  Dynamically bind "*this*" to the
-	      ;; actual results of the block.
-	      (let ((post (cdr (assq :post params))))
-		(when post
-		  (let ((*this* (if (not file) result
-				  (org-babel-result-to-file
-				   file
-				   (org-babel--file-desc params result)
-                                   'attachment))))
-		    (setq result (org-babel-ref-resolve post))
-		    (when file
-		      (setq result-params (remove "file" result-params))))))
-	      (unless (member "none" result-params)
-	        (org-babel-insert-result
-	         result result-params info
-                 ;; append/prepend cannot handle hash as we accumulate
-                 ;; multiple outputs together.
-                 (when (member "replace" result-params) new-hash)
-                 lang
-                 (time-subtract (current-time) exec-start-time))))
-	    (run-hooks 'org-babel-after-execute-hook)
-	    result)))))))
+            (if (not async)
+                (let ((res-sb (make-symbol "result")))
+                  (condition-case-unless-debug exc
+                      (set res-sb (save-current-buffer (apply cmd cmd-args)))
+                    (error (org-pending--popup-failure-details exc)))
+                  (when (boundp res-sb)
+                    (funcall handle-result (symbol-value res-sb) res-sb)
+                    (symbol-value res-sb)))
+              ;; If starting this execution requires other source code
+              ;; executions, we force them to be synchronous.  A well
+              ;; behaving CMD should include them in its own
+              ;; asynchronous computation.
+              (org-pending-without-async
+               (let* ((penreg
+                       (org-babel--async-pending
+                        info handle-result result-params exec-start-time))
+                      (task-control
+                       (condition-case-unless-debug exc
+                           (apply cmd (nconc cmd-args
+                                             (list
+                                              (lambda (msg)
+                                                (org-pending-task-send-update penreg msg)))))
+                         (error
+                          (org-pending-task-send-update penreg (list :failure exc))
+                          nil))))
+                 (org-pending-task-connect penreg task-control)
+                 penreg))))))))))
+
+
 
 (defun org-babel-expand-body:generic (body params &optional var-lines)
   "Expand BODY with PARAMS.
@@ -1420,12 +1590,13 @@ Call `org-babel-execute-src-block' on every source block in
 the current buffer."
   (interactive "P")
   (org-babel-eval-wipe-error-buffer)
-  (org-save-outline-visibility t
-    (org-babel-map-executables nil
-      (if (org-element-type-p
-           (org-element-context) '(babel-call inline-babel-call))
-          (org-babel-lob-execute-maybe)
-        (org-babel-execute-src-block arg)))))
+  (org-pending-without-async
+    (org-save-outline-visibility t
+      (org-babel-map-executables nil
+        (if (org-element-type-p
+             (org-element-context) '(babel-call inline-babel-call))
+            (org-babel-lob-execute-maybe)
+          (org-babel-execute-src-block arg))))))
 
 ;;;###autoload
 (defun org-babel-execute-subtree (&optional arg)
@@ -2440,6 +2611,10 @@ separator."
 (defun org-babel-insert-result (result &optional result-params info hash lang exec-time)
   "Insert RESULT into the current buffer.
 
+Return the region (a pair (START . END) where START..END is the region
+that contains the inserted result); return nil when there is no such
+region.
+
 By default RESULT is inserted after the end of the current source
 block.  The RESULT of an inline source block usually will be
 wrapped inside a `results' macro and placed on the same line as
@@ -2555,7 +2730,7 @@ INFO may provide the values of these header arguments (in the
 				   (buffer-narrowed-p)
 				   (or (> visible-beg existing-result)
 				       (<= visible-end existing-result))))
-	       beg end indent)
+	       beg end indent result-region)
 	  ;; Ensure non-inline results end in a newline.
 	  (when (and (org-string-nw-p result)
 		     (not inline)
@@ -2758,6 +2933,7 @@ INFO may provide the values of these header arguments (in the
 			   (not (and (listp result)
 				     (member "append" result-params))))
 		  (indent-rigidly beg end indent))
+                (when end (setq result-region (cons (+ 0 beg) (+ 0 end))))
                 (let ((time-info
                        ;; Only show the time when something other than
                        ;; 0s will be shown, i.e. check if the time is at
@@ -2769,8 +2945,10 @@ INFO may provide the values of these header arguments (in the
                       (if (member "value" result-params)
                           (message "Code block returned no value%s." time-info)
                         (message "Code block produced no output%s." time-info))
-                    (message "Code block evaluation complete%s." time-info))))
+                    (message "Code block evaluation complete%s." time-info)))
+                result-region)
 	    (when end (set-marker end nil))
+
 	    (when outside-scope (narrow-to-region visible-beg visible-end))
 	    (set-marker visible-beg nil)
 	    (set-marker visible-end nil)))))))
