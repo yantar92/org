@@ -2961,6 +2961,11 @@ with external parameters overriding Org default settings, but
 still inferior to file-local settings.
 
 Return code as a string."
+  (org-pending-without-async
+   (org-export-as-1 backend subtreep visible-only body-only ext-plist)))
+
+(defun org-export-as-1
+    (backend &optional subtreep visible-only body-only ext-plist)
   (when (symbolp backend) (setq backend (org-export-get-backend backend)))
   (org-export-barf-if-invalid-backend backend)
   (org-fold-core-ignore-modifications
