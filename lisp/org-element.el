@@ -80,6 +80,7 @@
 (require 'org-list)
 
 (defvar org-inhibit-startup) ; defined in org.el
+(defvar org--warnings) ; defined in org.el
 
 
 ;;; Customization
