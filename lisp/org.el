@@ -7200,14 +7200,16 @@ This is a short-hand for marking the subtree and then cutting it."
   (interactive "p")
   (org-copy-subtree n 'cut))
 
-(defun org-copy-subtree (&optional n cut force-store-markers nosubtrees)
+(defun org-copy-subtree (&optional n cut force-store-markers nosubtrees no-pendings)
   "Copy the current subtree into the clipboard.
 With prefix arg N, copy this many sequential subtrees.
 This is a short-hand for marking the subtree and then copying it.
 If CUT is non-nil, actually cut the subtree.
 If FORCE-STORE-MARKERS is non-nil, store the relative locations
 of some markers in the region, even if CUT is non-nil.  This is
-useful if the caller implements cut-and-paste as copy-then-paste-then-cut."
+useful if the caller implements cut-and-paste as copy-then-paste-then-cut.
+If NO-PENDINGS is non-nil, raise a org-pending-error if the region to
+copy contains any pending contents."
   (interactive "p")
   (org-preserve-local-variables
    (let (beg end folded (beg0 (point)))
@@ -7232,6 +7234,8 @@ useful if the caller implements cut-and-paste as copy-then-paste-then-cut."
 				      "END[ \t]*$")))
        (end-of-line))
      (setq end (point))
+     (when no-pendings
+       (org-ensure-no-pending-contents beg end))
      (goto-char beg0)
      (when (> end beg)
        (setq org-subtree-clip-folded folded)
