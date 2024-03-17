@@ -1003,10 +1003,18 @@ guess will be made."
 		      (make-directory d 'parents)
 		      d))))
                  (async (org-babel--async-p params))
-                 (cmd (intern (concat "org-babel-"
-                                      (if async "schedule" "execute")
-                                      ":" lang)))
-                 (cmd-args (list body params))
+                 (execute-with (let ((be (cdr (assq :execute-with params))))
+                                 (when (equal be "none") (setq be nil))
+                                 be))
+                 (cmd (intern (or (and execute-with
+                                       (concat execute-with "-" (if async "schedule" "execute")))
+                                  (concat "org-babel-"
+                                          (if async "schedule" "execute")
+                                          ":" lang))))
+                 (cmd-args (let ((ps (list body params)))
+                             (when execute-with
+                               (setq ps (cons lang ps)))
+                             ps))
                  (exec-start-time (current-time))
                  (exec-dir default-directory)
                  (handle-result
