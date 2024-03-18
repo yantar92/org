@@ -3833,68 +3833,76 @@ will become the empty string."
 ;; 		(cdr (nreverse (cons (funcall prepare-value s) result))))))))
 ;;     attributes))
 
-(defun org-export-inline-special-block-manage-backends (backends contents format)
+(defun org-export--inline-special-block-make-backend-list
+    (rules)
+  (let (result)
+    (dolist (spec rules)
+      (if (string-match
+
+           "\\`\\([-_a-zA-Z0-9]*\\)\\(?:\\([/+*]\\)\\([=.]\\)?\\|\\([=.]\\)\\([/+*]\\)?\\)?\\'"
+	   spec)
+	  (let ((name (match-string 1 spec))
+		(inherit (or (match-string 3 spec)
+			     (match-string 4 spec)))
+		(what (or (match-string 2 spec)
+			  (match-string 5 spec))))
+	    (push (cons
+		   (if (string-equal "" name) '@ (intern name))
+		   (cons (or (not inherit) (string-equal inherit "="))
+			 (if what (string-to-char what) ?+)))
+		  result))
+	(message "invalid :export specification %S" spec)))
+    (nreverse result)))
+
+(defun org-export--backend-hierarchy (backend)
+  "Result may be cached in INFO."
+  (let ((hierarchy))
+    (when (not (symbolp backend))
+      (setq backend (org-export-backend-name backend)))
+    (while backend
+      (push backend hierarchy)
+      (setq backend (org-export-backend-parent
+		     (org-export-get-backend backend))))
+    hierarchy))
+
+(defun org-export--inline-special-block-export-decision
+    (rule-list hierarchy)
+  (let ((hierarchy (cons '@ hierarchy))
+	(decision ?+))
+    (while (and hierarchy rule-list)
+      (let* ((rule (pop rule-list))
+	     (tail (memq (car rule) hierarchy)))
+	(when (and tail
+		   (or (not (cdr tail)) ; Current backend.
+		       (cadr rule))) ; Inherits.
+	  (setq hierarchy (cdr tail))
+	  (setq decision (cddr rule)))))
+    (pcase decision
+      (?+ 'full)
+      (?* 'content)
+      (?/ nil)
+      (_ 'full))))
+
+(defun org-export-inline-special-block-manage-backends (opts content format)
   "TODO"
   (let* ((current-backend org-export-current-backend)
-	 (backends-list (split-string backends))
-	 (backends-contents-list
-	  (mapcar (lambda (elt)
-		    (when (string-match "\\([a-zA-Z]+\\)\\(\\*\\)" elt)
-		      (intern (match-string 1 elt))))
-		  backends-list))
-	 (backends-full-list
-	  (mapcar (lambda (elt)
-		    (when (and
-			   (string-match "\\([a-zA-Z]+\\)" elt)
-			   (not (string-match-p "\\(\\*\\|-\\)" elt)))
-		      (intern (match-string 1 elt))))
-		  backends-list))
-	 (backends-noexport-list
-	  (mapcar (lambda (elt)
-		    (when (string-match "\\([a-zA-Z]+\\)\\(-\\)" elt)
-		      (intern (match-string 1 elt))))
-		  backends-list))
-	 (backend-contents-p
-	  (when backends-contents-list
-	    (cl-remove-if (lambda (x) (equal x nil))
-			  (mapcar
-			   (lambda (elt)
-			     (if (org-export-derived-backend-p current-backend elt)
-				 elt
-			       nil))
-			   backends-contents-list))))
-	 (backend-full-p
-	  (when backends-full-list
-	    (cl-remove-if (lambda (x) (equal x nil))
-			  (mapcar
-			   (lambda (elt)
-			     (if (org-export-derived-backend-p current-backend elt)
-				 elt
-			       nil))
-			   backends-full-list))))
-	 (backend-noexport-p
-	  (when backends-noexport-list
-	    (cl-remove-if (lambda (x) (equal x nil))
-			  (mapcar
-			   (lambda (elt)
-			     (if (org-export-derived-backend-p current-backend elt)
-				 elt
-			       nil))
-			   backends-noexport-list)))))
-    (cond ((or (member "-" backends-list)
-	       (and (member "=-" backends-list)
-		    (not (or backend-full-p backend-contents-p)))
-	       backend-noexport-p)
-	   "")
-	  ((or (member "*" backends-list)
-	       (and (member "=*" backends-list)
-		    (not backend-full-p))
-	       backend-contents-p)
-	   contents)
-	  ((or backend-full-p
-               (member "=" backends-list))
-	   format)
-	  (t format))))
+         (opts-list (org-split-string opts))
+         (backends-list (add-to-list 'org-export-backends current-backend))
+         (rules-list (let ((rules
+	                    (org-export--inline-special-block-make-backend-list
+	                     opts-list)))
+                       (mapcar (lambda (backend)
+	                         (let ((hierarchy
+		                        (org-export--backend-hierarchy backend)))
+		                   (list backend
+		                         (org-export--inline-special-block-export-decision
+		                          rules hierarchy))))
+	                       backends-list)))
+         (this-backend (cadr (assoc current-backend rules-list))))
+    (pcase this-backend
+      ('full format)
+      ('content content)
+      ('nil ""))))
 
 (defun org-export-get-caption (element &optional short)
   "Return caption from ELEMENT as a secondary string.
