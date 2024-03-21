@@ -383,7 +383,8 @@ If the outcome is not known, use the current time."
 
 ;;;; Creating a pending region
 ;;
-(cl-defun org-pending (region handle-result &key anchor source)
+
+(cl-defun org-pending (region handle-result &key anchor source name)
   "Mark a REGION as \"pending\" and return its PENREG.
 
 Return the PENREG that allows to manage the pending region.
@@ -609,7 +610,7 @@ eventually, you must send a :success or a :failure update (see
       (unless pending-is-virtual
         (overlay-put anchor-ovl 'org-pending-penreg penreg)
         (overlay-put region-ovl 'org-pending-penreg penreg))
-      (org-pending--mgr-handle-new-penreg penreg)
+      (org-pending--mgr-handle-new-penreg penreg name)
       penreg)))
 
 
@@ -682,6 +683,8 @@ connected task raises a \='org-pending-task-not-implemented error."
                    (one-line label tv)))))
 
           ;; ... ok, back to real work.
+          (one-line "Id"
+                    (org-pending-penreg-id penreg))
           (one-line "Status"
                     (substring (symbol-name (org-pending-penreg-status penreg)) 1))
           (one-line "Live?"
@@ -887,9 +890,10 @@ See also `org-pending-contents-in'."
                (:constructor org-pending--create-manager)
 	       (:copier nil))
   ; An id (integer) uniquely identifies one PENREG.
-  last-id  ; The last used id.
+  used-names ; obarray of in-use names.
   penregs ; The list of PENREGs, past & present.
   )
+
 
 
 (defvar org-pending--manager nil
@@ -899,11 +903,11 @@ See also `org-pending-contents-in'."
   "Get/create the global manager for pending contents."
   (unless org-pending--manager
     (setq org-pending--manager (org-pending--create-manager
-                                :last-id -1))
+                                :used-names (obarray-make)))
     (add-hook 'kill-emacs-query-functions #'org-pending--kill-emacs-query))
   org-pending--manager)
 
-(defun org-pending--mgr-handle-new-penreg (penreg)
+(defun org-pending--mgr-handle-new-penreg (penreg name)
   "Handle this new pending content PENREG.
 Update PENREG as needed. Return nothing."
   (let* ((mgr (org-pending--manager)))
@@ -912,8 +916,22 @@ Update PENREG as needed. Return nothing."
      (lambda (message)
        (org-pending--mgr-handle-penreg-update penreg message)))
     (push penreg (org-pending--manager-penregs mgr))
-    (setf (org-pending-penreg-id penreg)
-          (cl-incf (org-pending--manager-last-id mgr)))
+    (unless name (setq name "PENREG"))
+
+    ;; Making NAME unique.
+    (let* ((ob (org-pending--manager-used-names mgr))
+           (sfx 0)
+           to-try)
+      (setq name
+            (if (not (intern-soft name ob)) name
+              (setq to-try (concat name (format "-%d" sfx)))
+              (while (intern-soft to-try ob)
+                (cl-incf sfx)
+                (setq to-try (concat name (format "-%d" sfx))))
+              to-try))
+      (intern name ob))
+
+    (setf (org-pending-penreg-id penreg) name)
     nil))
 
 (defun org-pending--mgr-handle-penreg-update (penreg update)
