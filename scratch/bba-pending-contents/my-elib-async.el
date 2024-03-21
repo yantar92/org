@@ -239,7 +239,7 @@ a function that allows to control the tasks."
                (org-pending-wait-outcome outcome-ready-p))
 
               (`(:cancel ,_penreg)
-               (org-pending-task-not-implemented))
+               (org-pending-ti-not-implemented))
 
               (`(:insert-details ,_penreg ,start ,end)
                (let ((to-insert (with-temp-buffer
