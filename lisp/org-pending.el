@@ -49,7 +49,7 @@
 ;;       "something" may be a thread, a timer, a notification, a
 ;;       process, etc.  That "something" must eventually send a
 ;;       :success or :failure message (using
-;;       `org-pending-task-send-update'): Emacs will appropriately
+;;       `org-pending-ti-send-update'): Emacs will appropriately
 ;;       update the pending region and close it.
 ;;
 ;;    3. You may, optionally, connect the pending region to a "task".
@@ -61,11 +61,11 @@
 ;;       synchronously).  If you have information related to your
 ;;       "task" to display to the user (logs, stderr, links, widgets
 ;;       to control the task), you should provide a 'insert-details'
-;;       method.  See `org-pending-task-connect'.
+;;       method.  See `org-pending-ti-connect'.
 ;;
 ;; When implementing your tasks, you should use the functions prefixed
-;; with 'org-pending-task-'; if you need to use another function,
-;; there is most probably a mistake somewhere.
+;; with 'org-pending-ti-'; if you need to use another function, there
+;; is most probably a mistake somewhere.
 ;;
 ;; Here are examples of functions using this package:
 ;;     - `org-pending-user-edit': prompt the user to edit a region,
@@ -106,7 +106,7 @@
 
 (define-error 'org-pending-not-implemented
               "Raise when an operation is not implemented.
-See `org-pending-task-not-implemented'.")
+See `org-pending-ti-not-implemented'.")
 
 (define-error 'org-pending-user-cancel
               "The user canceled this update")
@@ -415,7 +415,7 @@ buffer is the \"owner\" of the created pending region (see
 
 Assume the SOURCE and the REGION are in the same buffer.
 
-On receiving the outcome (sent with `org-pending-task-send-update'),
+On receiving the outcome (sent with `org-pending-ti-send-update'),
 remove the REGION protection.  If the outcome is a success, call
 HANDLE-RESULT with the value from the SOURCE position.  If HANDLE-RESULT
 returns the outcome region (a pair (start position . end position)),
@@ -423,9 +423,9 @@ report the success using visual hints on that region.  If the outcome is
 a failure, report the failure using REGION.
 
 You may want to connect a task with that PENREG (see
-`org-pending-task-connect').  You may send progress updates, and,
+`org-pending-ti-connect').  You may send progress updates, and,
 eventually, you must send a :success or a :failure update (see
-`org-pending-task-send-update')."
+`org-pending-ti-send-update')."
   (let ((buf (current-buffer))
         (pt  (point-marker))
         (pending-is-virtual (eq nil region)) ;; Sometimes there is no region ...
@@ -626,7 +626,7 @@ eventually, you must send a :success or a :failure update (see
   "Insert (part of) the PENREG log at point.
 
 The log is requested from the connected task.  Insert nothing if the
-connected task raises a \='org-pending-task-not-implemented error."
+connected task raises a org-pending-ti-not-implemented error."
   (when-let ((conn (org-pending-penreg--task-connection penreg)))
     (condition-case-unless-debug _exc
         (funcall conn :insert-details penreg start end)
@@ -739,7 +739,7 @@ Get the PENREG at point (pending content or an outcome).  Use
 ;;
 
 
-(defun org-pending-task-connect (penreg task-control)
+(defun org-pending-ti-connect (penreg task-control)
   "Connect the pending region PENREG with the TASK-CONTROL.
 
 TASK-CONTROL may be nil. When non-nil, it must be a function.
@@ -773,26 +773,26 @@ A valid (but useless) TASK-CONTROL is:
     (lambda (&rest query)
       (pcase query
         (`(:cancel ,_penreg)
-         (org-pending-task-not-implemented))
+         (org-pending-ti-not-implemented))
 
         (`(:insert-details ,_penreg ,_start ,_end)
-         (org-pending-task-not-implemented))
+         (org-pending-ti-not-implemented))
 
         (`(:get ,_penreg)
-         (org-pending-task-not-implemented))
+         (org-pending-ti-not-implemented))
 
         (_ (error \"Unknown query\"))))
 
 When a given call is not implemented, call:
 
-     (org-pending-task-not-implemented)
+     (org-pending-ti-not-implemented)
 
 to signal to Emacs that it's not implemented.
 
 See `org-pending-user-edit' for another example of a TASK-CONTROL."
   (setf (org-pending-penreg--task-connection penreg) task-control))
 
-(defun org-pending-task-send-update (penreg message)
+(defun org-pending-ti-send-update (penreg message)
   "Send the status update to the PENREG.
 
 The udpate MESSAGE must be one of the following:
@@ -809,7 +809,7 @@ Eventually, you must send one, and only one, of either a :success or a
 :failure. Until you do, the region will be protected from modifications."
   (funcall (org-pending-penreg--sentinel penreg) message))
 
-(defun org-pending-task-not-implemented ()
+(defun org-pending-ti-not-implemented ()
   "Signal that the operation is not implemented.
 A task-connection must call this function when it doesn't implement the
 requested operation."
@@ -958,7 +958,7 @@ includes past and present PENREGs."
   "Cancel this PENREG.
 
 A task must never call this function; it must use
-`org-pending-task-send-update' to report, for example, a
+`org-pending-ti-send-update' to report, for example, a
 org-pending-user-cancel failure.
 
 Return nothing.
@@ -982,7 +982,7 @@ Do not ask for confirmation or interact in any way."
         (org-pending-not-implemented nil)))
     ;; Unlock the region, marking the PENREG as failed due to
     ;; cancellation.
-    (org-pending-task-send-update
+    (org-pending-ti-send-update
      penreg (list :failure (list 'org-pending-user-cancel
                                 "Canceled")))
     nil))
@@ -1126,12 +1126,12 @@ unique if needed."
          closing)
     (string-edit prompt to-update
                  (lambda (new-text)
-                   (org-pending-task-send-update
+                   (org-pending-ti-send-update
                     penreg
                     (list :success new-text)))
                  :abort-callback
                  (lambda ()
-                   (org-pending-task-send-update
+                   (org-pending-ti-send-update
                     penreg
                     (list :failure (list 'user-error
                                          "Edition canceled by the user")))))
@@ -1158,7 +1158,7 @@ unique if needed."
       (push (lambda ()
               (when (and (not closing)
                          (org-pending-penreg-live-p penreg))
-                (org-pending-task-send-update
+                (org-pending-ti-send-update
                  penreg
                  (list :failure (list 'user-error
                                       "Edition buffer killed"))))
@@ -1198,7 +1198,7 @@ unique if needed."
                    (insert "-"))))
 
               (_ (error "Unknown operation")))))
-    (org-pending-task-connect penreg task-control)
+    (org-pending-ti-connect penreg task-control)
 
     edit-buffer))
 
