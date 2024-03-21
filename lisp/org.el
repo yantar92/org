@@ -9077,8 +9077,8 @@ the correct writing function."
                (task-control
                 (funcall cmd params
                          (lambda (msg)
-                           (org-pending-task-send-update penreg msg)))))
-          (org-pending-task-connect penreg task-control)
+                           (org-pending-ti-send-update penreg msg)))))
+          (org-pending-ti-connect penreg task-control)
           ;; If the no-async flag is ON, block until the content is
           ;; written.
           (when org-pending-without-async-flag
