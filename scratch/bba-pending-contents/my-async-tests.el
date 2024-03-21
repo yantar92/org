@@ -502,7 +502,7 @@ Execute the code in a separate thread."
          ;; the main thread, it's going to hang Emacs display.
          (org-pending-wait-outcome
           (lambda () (with-mutex outcome-lock outcome))))
-        (_ (org-pending-task-not-implemented))))))
+        (_ (org-pending-ti-not-implemented))))))
 
 
 (defun my-use-threads-execute (lang body params)
@@ -571,7 +571,7 @@ Execute the code providing callbacks to get the result."
          (org-pending-wait-outcome (lambda () outcome)))
         (`(:insert-details . ,_)
          (dolist (it (nreverse progress-items)) (insert (format "%s\n" it))))
-        (_ (org-pending-task-not-implemented))))))
+        (_ (org-pending-ti-not-implemented))))))
 
 
 (defun my-use-callbacks-execute (lang body params)
@@ -596,10 +596,10 @@ Execute the code providing callbacks to get the result."
          (org-pending-wait-outcome (lambda () outcome)))
 
         (`(:cancel ,_penreg)
-         (org-pending-task-not-implemented))
+         (org-pending-ti-not-implemented))
 
         (`(:insert-details ,_penreg ,_start ,_end)
-         (org-pending-task-not-implemented))
+         (org-pending-ti-not-implemented))
 
         (_ (error "Unknown query"))))))
 
@@ -654,7 +654,7 @@ Execute the code providing callbacks to get the result."
       (pcase query
         (`(:get . ,_)
          (org-async-wait-for task))
-        (_ (org-pending-task-not-implemented))))))
+        (_ (org-pending-ti-not-implemented))))))
 
 
 (defun my-async-call-execute (lang body params)
