@@ -1112,11 +1112,11 @@ guess will be made."
                            (apply cmd (nconc cmd-args
                                              (list
                                               (lambda (msg)
-                                                (org-pending-task-send-update penreg msg)))))
+                                                (org-pending-ti-send-update penreg msg)))))
                          (error
-                          (org-pending-task-send-update penreg (list :failure exc))
+                          (org-pending-ti-send-update penreg (list :failure exc))
                           nil))))
-                 (org-pending-task-connect penreg task-control)
+                 (org-pending-ti-connect penreg task-control)
                  penreg))))))))))
 
 
