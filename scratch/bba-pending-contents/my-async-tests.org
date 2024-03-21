@@ -1,0 +1,1234 @@
+#+STARTUP: content
+#+PROPERTY: HEADER-ARGS+ :eval yes :exports both
+#+TITLE: Regions with pending contents
+#+AUTHOR: Bruno BARBIER
+#+DATE: 2024-03-18
+* Intro
+
+We propose a new API 'org-pending' to mark a region as /pending/,
+meaning, /something is working to update that region/; the update will
+be ready later.
+
+This document explains this API and provides examples that use it.
+
+We demonstrate it:
+   1. executing source blocks asynchronously (shell, Python, Ruby)
+      with or without sessions,
+   2. executing elisp source blocks asynchronously (either threadings
+      or callbacks),
+   3. and running dynamic blocks asynchronously.
+
+*WARNING* Some code blocks do network connections.  Do not execute
+code blocks, or export this document, if you're not OK with that.
+
+*WARNING* The unstable branch modifies fundamental hooks, like about
+killing Emacs and killing buffers.  DO NOT test in your production
+Emacs.
+
+*NOTE* In the branch =bba-pending-contents=, the commits prefixed with
+=org-pending= implements this proposal.  The commits prefixed with
+=DEMO_ONLY= are for /demo/ purposes only (and will be thrown away once
+the /org-pending/ feature is integrated).
+
+Most of the examples in this document come from different sources:
+  - from the Worg (org community) website: https://orgmode.org/worg/,
+  - from testing folder of the Org source: https://git.savannah.gnu.org/cgit/emacs/org-mode.git/tree/testing,
+  - from the org mailing list: https://lists.gnu.org/mailman/listinfo/emacs-orgmode.
+
+* How to use
+** Repository and branch
+   #+begin_example
+   https://framagit.org/brubar/org-mode-mirror
+   bba-pending-contents
+   #+end_example
+
+** Clone and start a new Emacs
+Here is a simple recipe to test the proposed "pending contents"
+feature:
+
+     #+begin_src shell
+       git clone -b bba-pending-contents https://framagit.org/brubar/org-mode-mirror
+       cd org-mode-mirror
+       make compile
+       cd scratch/bba-pending-contents/
+       emacs -q -L ../../lisp my-async-tests.org
+     #+end_src
+
+If you do so, from now on, you should be able to execute the source
+code blocks of this file.
+
+** Test
+Check the following elisp instructions. The 2 last lines are
+mandatory.  Feel free to remove the first ones.  Then, execute the
+block to load the code required for the demo.
+   #+begin_src elisp :results silent :exports code :eval no-export
+   (setq-local org-confirm-babel-evaluate nil)
+   ;; (setq debug-on-error nil)
+   (load-file "my-elib-async.el")
+   (load-file "my-async-tests.el")
+   #+end_src
+
+
+Here is the versions of Emacs and org that I'm using, in case it
+matters:
+   #+begin_src elisp
+   (mapcar (lambda (sb) (list sb (symbol-value sb)))
+           '(emacs-version org-version))
+   #+end_src
+
+   #+RESULTS:
+   | emacs-version | 30.0.50 |
+   | org-version   | 9.7-pre |
+
+* Technical notes
+
+** An experimental keyword for org babel: execute-with
+We use an experimental keyword to easily test different execution
+engines with org babel.
+
+With the option ':execute-with ENGINE', org delegates the execution of
+the source code block to the function `ENGINE-execute' (in the
+synchronous case), or to `ENGINE-schedule' (in the asynchronous case).
+
+These functions take the same parameters as `org-babel-execute:LANG'
+and `org-babel-schedule:LANG' except that the language is passed as
+the first argument.
+
+Use "none" to unset the value.
+
+
+** Overlays and text properties
+
+If you hit a bug, you'll need to close this document and to reopen it
+to start fresh, to make sure the document doesn't contain inconsistent
+informations in some overlays or in text properties.  Do not use
+`revert': close and reopen.
+
+Or you may try:
+  #+begin_src elisp
+  (org-pending--reset-buffer)
+  #+end_src
+
+** When evaluation hangs
+When using sessions, if an unhandled error happens, you'll probably
+need to kill the relevant session buffer, as the engine might still be
+waiting for the previous outcome that will never arrive.  Or change
+the session name.
+
+* Design/implementation
+** Asynchronous execution
+
+We don't assume any asynchronous method.  This should work with
+multiprocessing, multithreadings, timers, comint, callbacks, etc.
+
+
+** lisp/org-pending
+
+This implements "pending" regions in Emacs. See its section
+"Commentary".
+
+** Integration with org babel: new keyword ":nasync"
+For asynchronous executions, org now calls `org-babel-schedule:LANG'
+to schedule the execution of the source code blocks (instead of
+`org-babel-execute:LANG').
+
+The function `org-babel-schedule:LANG' must be defined like this:
+
+    #+begin_src elisp
+    (defun org-babel-schedule:LANG (body params sentinel)
+      ...
+      )
+    #+end_src
+
+that is, compared to `org-babel-execute:LANG', it takes one extra
+parameter: the SENTINEL function.
+
+The function `org-babel-schedule:LANG' may schedule the execution
+using any possible technique: processes, threads, timers, etc.  It
+must setup calls to SENTINEL to communicate to org the progress and
+the outcome. It must return immediately a TASK-CONTROL.
+
+Org marks the block result as "pending", calling `org-pending', which
+returns PENREG (for PENding REGion).  Org then call
+`org-babel-schedule:LANG' with a SENTINEL that will send updates to
+this PENREG; `org-babel-schedule:LANG' must return a TASK-CONTROL.
+Org then connects that TASK-CONTROL to the pending region PENREG.
+
+
+** Integration with dynamic blocks
+
+The function `org-update-dblock' now handles asynchronous dynamic
+blocks.
+
+If the dynamic block function symbol has a non-nil 'nasync' property,
+org now assumes that this is an asynchronous function and runs it as
+such: it marks the dynamic block region as "pending" and calls the
+function with the SENTINEL as an extra argument.  The function must
+return immediately a TASK-CONTROL.
+
+* Examples
+** Manual editing of some content
+
+Create a pending region that waits for the user.
+
+Popup a new buffer to edit/update the meta data of this file.  Use
+'C-c C-c' when done, 'C-c C-k' to cancel.  Until you're done, the meta
+data region (above) is protected from modifications.
+
+    #+begin_src elisp :results none
+    (save-excursion
+      (let ((start (progn (goto-char (point-min))
+    		      (re-search-forward "^#\\+TITLE:")
+    		      (goto-char (match-beginning 0))))
+    	(end (progn (re-search-forward "^\\* Intro")
+    		    (goto-char (match-beginning 0)))))
+        (org-pending-user-edit
+         "Check/update the meta info" start end)))
+    #+end_src
+
+
+** Using a custom engine: my-org-babel
+
+We use =:execute-with my-org-babel= so that org delegates execution to
+my `my-org-babel', i.e.  use `my-org-babel-schedule' for asynchronous
+executions, and `my-org-babel-execute' for synchronous ones. These
+functions are defined in [[file:my-async-tests.el]].
+
+We use =:nasync yes=: to default to asynchronous executions.
+
+*** On top of ob-shell
+   :PROPERTIES:
+    :header-args:bash:  :execute-with my-org-babel :nasync yes
+    :header-args:bash+: :session sh-async
+   :END:
+
+**** basic examples
+   #+begin_src bash
+   sleep 1; date
+   #+end_src
+
+
+
+   #+begin_src bash :results output :session *test* :nasync yes
+   cd /tmp
+   echo "hello world"
+   #+end_src
+
+
+   #+begin_src bash :results output
+   # comment
+   # comment
+   #+end_src
+
+
+    #+begin_src bash :results output
+    # print message
+    echo \"hello world\"
+    #+end_src
+
+
+    #+begin_src bash :results output
+    echo "hello"
+    echo "world"
+    #+end_src
+
+
+
+    #+begin_src bash :results output
+      echo PID: "$$"
+    #+end_src
+
+
+    #+begin_src bash :results output
+      echo PID: "$$"
+    #+end_src
+
+
+    #+begin_src bash :results output :session shared
+      echo PID: "$$"
+      X=5
+    #+end_src
+
+
+    #+begin_src bash :results output :session shared
+      echo PID: "$$"
+      echo X was set to "$X"
+    #+end_src
+
+
+    #+begin_src bash :nasync yes :results value scalar
+    echo "Execute session blocks in the background"
+    sleep 3                                              # <=== SLEEP 3s
+    echo "Using the :async header"
+    #+end_src
+
+
+
+**** Example with :stdin, :cmdline and :tangle
+
+    #+name: their-os
+    Linux
+
+
+    #+begin_src bash :results output :stdin their-os :cmdline RMS
+
+      # call as ./ask_for_os.sh NAME, where NAME is who to ask
+
+      if [ -z "$1" ]; then
+          asked="$USER"
+      else
+          asked="$1"
+      fi
+
+      echo Hi, "$asked"! What operating system are you using?
+      read my_os
+
+      if [ "$asked" = "RMS" ]; then
+          echo You\'re using GNU/"$my_os"!
+      elif [ "$asked" = "Linus" ]; then
+          echo You\'re using "$my_os"!
+      else
+          echo You\'re using `uname -o`!
+      fi
+    #+end_src
+
+    #+RESULTS:
+    : Hi, RMS! What operating system are you using?
+    : You're using GNU/Linux!
+
+
+**** Examples using :noweb
+
+We define =make_array=, as a template. Don't execute it.
+
+    #+name: make_array
+    #+begin_src bash
+    declare -a array
+    m=4
+    n=3
+    for ((i=0; i<m; i++))
+    do
+        for ((j=0; j<n; j++))
+        do
+            a[${i},${j}]=$RANDOM
+        done
+    done
+    for ((i=0; i<m; i++))
+    do
+        for ((j=0; j<n; j++))
+        do
+            echo -ne "${a[${i},${j}]}\t"
+        done
+        echo
+    done
+    sleep 1
+    #+end_src
+
+
+Execute to get the default result.
+    #+begin_src bash :noweb yes
+    <<make_array>>
+    #+end_src
+
+
+
+
+
+
+
+Execute to get a list.
+    #+begin_src bash :noweb yes :results list
+    <<make_array>>
+    #+end_src
+
+
+
+
+Execute to write the result in a file.
+    #+begin_src bash :noweb yes :results file :file my_output.txt
+    <<make_array>>
+    #+end_src
+
+
+
+
+Execute to check the result file content.
+    #+begin_src bash :results output
+      cat my_output.txt
+    #+end_src
+
+
+
+**** Remote execution
+
+    #+begin_src bash :results output :dir /ssh:phone: :session none
+    if [ ! -e  "foo_file" ];
+    then
+        echo "foo" > foo_file
+        echo "Created foo_file"
+    else
+        echo "foo_file already exists!"
+    fi
+    #+end_src
+
+
+
+    #+begin_src bash :results output :dir /ssh:phone: :session *remote*
+    if [ -e "foo_file" ];
+    then
+        echo "Deleting foo_file"
+        rm foo_file
+    fi
+    #+end_src
+
+
+
+
+**** Sessions
+
+    #+begin_src bash :results none :session *my-session*
+      X=1
+    #+end_src
+
+
+    #+begin_src bash :results output :session *my-session*
+      echo X was set to "$X"
+    #+end_src
+
+
+
+    #+begin_src bash :results output :session *another-session*
+      echo X was set to "$X"
+    #+end_src
+
+
+    #+begin_src bash :results output
+    echo "Hello, world!"
+    sleep 3                               # <=== SLEEP 3s
+    echo "Good-bye, cruel World..."
+    #+end_src
+
+
+    #+begin_src bash :var by_two=0  x=3 :session none
+      if [ "$by_two" = "0" ]; then
+        echo $(($x * 2))
+      else
+        echo $(($x * 3))
+      fi
+    #+end_src
+
+
+**** With variables
+
+    #+begin_src bash :results output :var arr='("apple" "banana" "cherry")
+      echo The first element is...
+      echo \"${arr[1]}\"
+    #+end_src
+
+    #+RESULTS:
+    : The first element is...
+    : "banana"
+
+
+**** With a named element as :stdin
+
+    #+name: my-org-element
+    This is something referenced as stdin.
+    The stdin can even be multiple lines!
+
+    #+begin_src bash :stdin my-org-element :results output :session none
+    cat
+    #+end_src
+
+    #+RESULTS:
+    :     This is something referenced as stdin.
+    :     The stdin can even be multiple lines!
+
+
+
+
+
+**** Asynchronous execution that depends on other blocks
+It works ... almost: blocks, that the execution depends on, are
+executed synchronously.
+
+***** stdin
+
+We define the block =my-input-block=; do not execute this one.
+
+    #+name: my-input-block
+    #+begin_src bash :eval no-export
+      date
+      echo "$(uname -o)"
+      x=$(ps -p $PPID -o comm=)
+      echo "${x:0:5}"
+    #+end_src
+
+
+Execute this one:
+    #+begin_src bash :stdin my-input-block
+      echo $(cut -f 1 -d "/") rocks!
+    #+end_src
+
+
+***** post
+
+A block named =multiply_by_2=, that we will use to post-process the
+next result. Do not execute this one.
+    #+name: multiply_by_2
+    #+begin_src bash :var data="" :results output
+      echo $(($data * 2))
+    #+end_src
+
+
+Let use it to post-process the result of this one; execute it.
+    #+begin_src bash :post multiply_by_2(data=*this*)
+      sleep 2 && echo 3
+    #+end_src
+
+
+
+
+*** On top of ob-python
+   :PROPERTIES:
+    :header-args:python:  :execute-with my-org-babel :nasync yes
+    :header-args:python+: :session py-async
+   :END:
+
+
+**** basic examples
+***** async with a session
+A very simple test:
+    #+begin_src python
+      2+3
+    #+end_src
+
+    #+RESULTS:
+    : 5
+
+Let's import the module time in our session.
+    #+begin_src python :results silent
+      import time
+    #+end_src
+
+
+A table that requires some time to compute:
+    #+begin_src python
+      start = time.time()
+      time.sleep(1)
+      end = time.time()
+      ["%.1fs" % t for t in [start, end, end-start]]
+    #+end_src
+
+
+
+An error (click on the error , <mouse-1>, to see the details):
+    #+begin_src python
+      2/0
+    #+end_src
+
+    #+RESULTS:
+
+
+***** async with no session
+   :PROPERTIES:
+    :header-args:python+: :session none
+   :END:
+
+A very simple test:
+    #+begin_src python
+      2+3
+    #+end_src
+
+    #+RESULTS:
+    : 5
+
+Let's import the module time in our session.
+    #+begin_src python :results silent
+      import time
+    #+end_src
+
+
+
+A table that requires some time to compute:
+    #+begin_src python
+      start = time.time()
+      time.sleep(1)
+      end = time.time()
+      ["%.1fs" % t for t in [start, end, end-start]]
+    #+end_src
+
+
+
+Yes, it failed, as expected. "import time" was done in its own
+temporary session.  The old result is preserved; the error is display
+as an overlay. Click on it to get more info about the error.
+
+
+Let's fix it, adding the import line:
+    #+begin_src python
+    import time
+    start = time.time()
+    time.sleep(1)
+    end = time.time()
+    ["%.1fs" % t for t in [start, end, end-start]]
+    #+end_src
+
+
+
+An error (click on the error , <mouse-1>, to see the details):
+    #+begin_src python
+      2/0
+    #+end_src
+
+
+***** sync with a session
+   :PROPERTIES:
+    :header-args:python+: :session py-sync-session :nasync no
+   :END:
+
+A very simple test:
+    #+begin_src python
+      2+3
+    #+end_src
+
+
+
+Let's import the module time in our session.
+    #+begin_src python :results silent
+      import time
+    #+end_src
+
+
+
+A table that requires some time to compute:
+    #+begin_src python
+      start = time.time()
+      time.sleep(1)
+      end = time.time()
+      ["%.1fs" % t for t in [start, end, end-start]]
+    #+end_src
+
+
+
+
+An error (click on the error , <mouse-1>, to see the details):
+    #+begin_src python
+      2/0
+    #+end_src
+
+
+***** sync with no session
+   :PROPERTIES:
+    :header-args:python+: :session none :nasync no
+   :END:
+
+A very simple test:
+    #+begin_src python
+      2+3
+    #+end_src
+
+
+Let's import the module time in our session.
+    #+begin_src python :results silent
+      import time
+    #+end_src
+
+
+A table that requires some time to compute:
+    #+begin_src python
+      start = time.time()
+      time.sleep(1)
+      end = time.time()
+      ["%.1fs" % t for t in [start, end, end-start]]
+    #+end_src
+
+Yes, that fails (no session), displaying the details in a popup. Let's
+fix it:
+    #+begin_src python
+    import time
+    start = time.time()
+    time.sleep(1)
+    end = time.time()
+    ["%.1fs" % t for t in [start, end, end-start]]
+    #+end_src
+
+
+
+An error (popup the error as it's synchronous execution).
+    #+begin_src python
+      2/0
+    #+end_src
+
+    #+RESULTS:
+
+
+**** worg examples
+
+Let's import matplotlib in our session.
+
+    #+begin_src python
+    import matplotlib
+    import matplotlib.pyplot as plt
+    #+end_src
+
+
+A figure in a PDF, asynchronous case.
+    #+begin_src python :results file link
+    fig=plt.figure(figsize=(3,2))
+    plt.plot([1,3,2])
+    fig.tight_layout()
+
+    fname = 'myfig-async.pdf'
+    plt.savefig(fname)
+    fname # return this to org-mode
+    #+end_src
+
+
+
+A figure in a PDF, synchronous case.
+    #+begin_src python :results file link :nasync no
+    fig=plt.figure(figsize=(3,2))
+    plt.plot([1,3,2])
+    fig.tight_layout()
+
+    fname = 'myfig-sync.pdf'
+    plt.savefig(fname)
+    fname # return this to org-mode
+    #+end_src
+
+
+
+A PNG figure, asynchronous case.
+    #+begin_src python :results graphics file output :file boxplot.png
+      fig=plt.figure(figsize=(3,2))
+      plt.plot([1,3,2])
+      fig.tight_layout()
+      fig
+    #+end_src
+
+
+
+Same, but using the =:return= keyword.
+    #+begin_src python :return "plt.gcf()" :results graphics file output :file boxplot.png
+      fig=plt.figure(figsize=(3,2))
+      plt.plot([1,3,2])
+      fig.tight_layout()
+    #+end_src
+
+
+
+Same, asynchronous but without a session this time.
+    #+begin_src python :return "plt.gcf()" :results graphics file output :file boxplot-no-sess-a-y.png :session none
+      import matplotlib
+      import matplotlib.pyplot as plt
+      fig=plt.figure(figsize=(3,2))
+      plt.plot([1,3,2])
+      fig.tight_layout()
+    #+end_src
+
+
+
+Lists are table,
+    #+begin_src python
+    print("Some text for the log.")
+    [1,2,3]
+    #+end_src
+
+
+
+unless requested otherwise.
+    #+begin_src python :results verbatim
+      [1,2,3]
+    #+end_src
+
+
+
+Dictionaries are tables too.
+    #+begin_src python :results table
+      {"a": 1, "b": 2}
+    #+end_src
+
+
+
+Let's try the example with Panda.
+    #+begin_src python
+    print("Importing pandas and numpy: ...")
+    import pandas as pd
+    import numpy as np
+    print("Importing pandas and numpy: ok.")
+    #+end_src
+
+
+    #+begin_src python :results table
+      pd.DataFrame(np.array([[1,2,3],[4,5,6]]),
+                   columns=['a','b','c'])
+    #+end_src
+
+
+And the synchronous case?
+
+    #+begin_src python :results table  :nasync no
+      pd.DataFrame(np.array([[1,2,3],[4,5,6]]),
+                   columns=['a','b','c'])
+    #+end_src
+
+
+
+Without session ?
+
+    #+begin_src python :results table :session none
+    pd.DataFrame(np.array([[1,2,3],[4,5,6]]),
+                 columns=['a','b','c'])
+    #+end_src
+
+    #+RESULTS:
+
+
+Right, we need to import the libraries (no session).
+
+    #+begin_src python :results table :session none
+    import pandas as pd
+    import numpy as np
+    pd.DataFrame(np.array([[1,2,3],[4,5,6]]),
+                 columns=['a','b','c'])
+    #+end_src
+
+
+
+
+
+**** inline examples
+
+Let's check asynchronous inlines.
+
+A simple asynchronous inline src_python{3*2} {{{results(=6=)}}}.
+
+An other one containing a mistake src_python{2/0} {{{results(=6=)}}}
+(click on the error to see the details).
+
+
+Some very slow inline asynchronous computations that all run in
+the same session. You need to execute the 3 of them at once. Here
+is the first one src_python[:return "\"OK1\""]{import time;
+time.sleep(5)} {{{results(=OK1=)}}} and a second one
+src_python[:return "\"OK1 bis\""]{import time; time.sleep(5)}
+{{{results(=OK1 bis=)}}} and the third one src_python[:return
+"\"OK2\""]{import time; time.sleep(5)} {{{results(=OK2=)}}}.
+
+Yes, the previous paragraph is unreadable; it's on purpose, to
+check that org-pending can figure it out.
+
+Let's repeat, in a more readable way, and making the last one
+synchronous.
+
+Some very slow inline computations that all run in the same
+session. Here is the first asynchronous one
+      src_python[:return"\"OK1\""]{import time; time.sleep(5)} {{{results(=None=)}}}
+and a second one, asynchronous too:
+      src_python[:return "\"OK1 bis\""]{import time; time.sleep(5)} {{{results(=OK1 bis=)}}}
+and finally, a third one, synchronous this one:
+      src_python[:nasync no :return "\"OK2\""]{import time; time.sleep(5)} {{{results(=OK2=)}}}.
+
+Note that, once that once we execute the last block, which is
+synchronous, the user is blocked until that synchronous execution can
+start (i.e. all previous asynchronous executions are done) and until
+that execution is done.  The display is updated though, to see the
+asynchronous progress.
+
+
+**** Several bocks targetting the same result
+    #+name: foo
+    #+begin_src python :nasync yes :return block_name
+    import time; time.sleep(3)
+    block_name="block 1"
+    #+end_src
+
+    #+results: foo
+    : block 2
+
+    Another code block with the same name will write results under
+    #+results: foo
+    #+name: foo
+    #+begin_src python :nasync yes :return block_name
+    import time; time.sleep(0)
+    block_name="block 2"
+    #+end_src
+
+**** Append and prepend
+
+   #+begin_src python :results append output
+   import time; time.sleep(3)
+   import sys; print([sys.version, time.time()])
+   #+end_src
+
+
+
+   #+begin_src python :results prepend output
+   import time; time.sleep(3)
+   import sys; print([sys.version, time.time()])
+   #+end_src
+
+
+
+
+*** On top of ob-ruby
+   :PROPERTIES:
+    :header-args:ruby:  :execute-with my-org-babel :nasync yes
+    :header-args:ruby+: :session ruby-async
+   :END:
+
+The package ob-ruby requires inf-ruby. You may need to install it.
+
+   #+begin_src elisp
+   (package-install 'inf-ruby)
+   #+end_src
+
+
+
+    #+begin_src ruby
+    require 'date'
+    "This file was last evaluated on #{Date.today}"
+    #+end_src
+
+
+Examples from the testsuite
+
+    #+begin_src ruby :session org-test-ruby :results output
+    s = "1"
+    s = "2"
+    s = "3"
+    puts s
+    s = "4"
+    #+end_src
+
+
+
+    #+begin_src ruby :session org-test-ruby :results output
+    puts s
+    s = "5"
+    #+end_src
+
+
+
+    #+begin_src ruby :session org-test-ruby :results output
+    puts s
+    s = "6"
+    #+end_src
+
+
+
+
+** Running elisp using callbacks
+   :PROPERTIES:
+    :header-args:elisp:  :execute-with my-use-callbacks :nasync yes
+   :END:
+
+*** Simple example
+   #+begin_src elisp
+   (lambda (success error progress)
+     (funcall progress "I'm running")
+     ( run-at-time "1 sec"  nil
+       (lambda ()
+         (funcall progress "Still running")
+         ( run-at-time "1 sec"  nil
+   	(lambda ()
+   	  (funcall progress "I'm done.")
+   	  (funcall success (list (list "An" "amazing" "result") (list "In" "a" "table"))))))))
+   #+end_src
+
+
+*** A block that re-execute itself, appending the results
+
+WARNING: The following code block re-execute itself every 5s, 10
+times.  ... if it reschedules itself forever, then, there is a bug :(
+
+Escape hatch if you need it:
+   (setq timer-idle-list nil)
+
+   #+begin_src elisp :results append
+   (progn
+     (unless (boundp 'my-n) (setq my-n 0))
+     (let ((pm (point-marker)))
+       (lambda (success error progress)
+         (funcall progress (format "Execution n°%s" my-n))
+         ( run-at-time "5 sec"  nil
+   	(lambda ()
+   	  (cl-incf my-n)
+   	  (if (>= my-n 10)
+   	      (funcall success (list my-n "Done"))
+   	    (with-current-buffer (marker-buffer pm)
+   	      (save-excursion
+   		(goto-char pm)
+   		(funcall success (list my-n (current-time-string)))
+   		(org-babel-execute-src-block)))))))))
+   #+end_src
+
+To reset and re-run it again:
+   (setq my-n 0)
+
+*** url-retrieve
+
+Retrieving the webpage for https://orgmode.org.
+
+   #+begin_src elisp
+   (lambda (success error progress)
+     (funcall progress "Retrieving org webpage")
+     ( url-retrieve "https://orgmode.org/"
+       (lambda (status)
+         (funcall progress "Got it")
+         (pcase status
+   	(`(:error ,err) (funcall error err))
+   	(_ (goto-char (point-min))
+   	   (re-search-forward "^\n")
+   	   (funcall success
+   		    (buffer-substring (point-min) (point))))))))
+   #+end_src
+
+** Running elisp in threads
+   :PROPERTIES:
+    :header-args:elisp:  :execute-with my-use-threads :nasync yes
+   :END:
+
+In this section, source codes must be elisp code.  They are executed
+asynchronously using threads.  You need an Emacs compiled with
+threads.
+
+   #+begin_src elisp :execute-with none :nasync no :results value
+   (list "threads?" (if (fboundp 'make-thread) "Yes" "No"))
+   #+end_src
+
+
+
+Simple check:
+   #+begin_src elisp
+   (+ 3 4)
+   #+end_src
+
+
+
+Let see with a more complex task:
+   #+begin_src elisp
+   (progn (sleep-for 1) (+ 3 4))
+   #+end_src
+
+
+
+Ready to wait 10s ?  Not that you can execute the following block, or
+any other one during these 10s.
+   #+begin_src elisp
+   (dolist (n (number-sequence 0 10))
+     (message "Running step %d" n)
+     (sleep-for 1))
+   #+end_src
+
+
+Let's check an execution that fails:
+   #+begin_src elisp
+   (sleep-for 1)
+   (error "On purpose")
+   #+end_src
+
+
+Synchronous multithreading ? ... why not !
+
+   #+begin_src elisp :nasync no
+   (progn (sleep-for 2) (+ 3 3))
+   #+end_src
+
+   #+RESULTS:
+   : 6
+
+Note I am in no way advising to use threads, just checking that
+'org-pending' works for them too.
+
+** Asynchronous dynamic blocks
+
+Here we test asynchronous dynamic blocks.
+
+    #+BEGIN: sleeper
+    #+END:
+
+** Using org-async-call
+   :PROPERTIES:
+    :header-args:  :execute-with my-async-call :nasync yes
+   :END:
+
+In this section, we use custom backend =my-async-call= that uses
+`org-async-call' and `org-async-wait-for' to execute each block using
+a different process for each one.
+
+This requires to merge the 'dev' branch from:
+     https://code.tecosaur.net/tec/org-mode
+
+
+   #+begin_src shell
+   date
+   #+end_src
+
+   #+RESULTS:
+   : Thu Feb 22 18:36:09 CET 2024
+
+
+   #+begin_src shell
+   sleep 1
+   #+end_src
+
+   #+RESULTS:
+
+   #+begin_src shell
+   false
+   #+end_src
+
+   #+RESULTS:
+
+
+   #+begin_src shell
+   oops
+   #+end_src
+
+   #+RESULTS:
+
+
+   #+begin_src python :results append
+   import time; time.sleep(2)
+   import sys; print([sys.version, time.time()])
+   #+end_src
+
+   #+RESULTS:
+   : ['3.11.7 (main, Jan 31 2024, 12:32:36) [GCC 13.2.1 20230826]', 1708878957.5800645]
+   : ['3.11.7 (main, Jan 31 2024, 12:32:36) [GCC 13.2.1 20230826]', 1708878961.1794374]
+   : ['3.11.7 (main, Jan 31 2024, 12:32:36) [GCC 13.2.1 20230826]', 1708878964.0685596]
+
+
+   #+begin_src python :results prepend
+   import time; time.sleep(2)
+   import sys; print([sys.version, time.time()])
+   #+end_src
+
+   #+RESULTS:
+   : ['3.11.7 (main, Jan 31 2024, 12:32:36) [GCC 13.2.1 20230826]', 1708878997.03655]
+   : ['3.11.7 (main, Jan 31 2024, 12:32:36) [GCC 13.2.1 20230826]', 1708878994.0566769]
+   : ['3.11.7 (main, Jan 31 2024, 12:32:36) [GCC 13.2.1 20230826]', 1708878991.1641896]
+
+   #+begin_src shell
+   sleep 1 && date
+   #+end_src
+
+   #+RESULTS:
+   : Sun Feb 25 17:38:08 CET 2024
+
+
+For async-call, synchronous execution is not implemented.
+   #+begin_src shell :nasync no
+   sleep 1 && date
+   #+end_src
+
+   #+RESULTS:
+
+
+* Test cases
+   :PROPERTIES:
+    :header-args:python:  :execute-with my-org-babel :nasync yes
+    :header-args:python+: :session py-async
+   :END:
+
+** Refiling/archiving with pending contents
+   :PROPERTIES:
+    :header-args:elisp:  :execute-with my-use-threads :nasync yes
+    :header-args+: :eval no-export :exports code
+   :END:
+
+We setup a thread condition.
+
+Note that Emacs silently aborts killing a buffer with threads
+(thread_check_current_buffer).
+
+   #+begin_src elisp
+   (progn
+     (setq-default my-lock (make-mutex "my-lock"))
+     (setq-default my-done-cond (make-condition-variable my-lock "my-done-cond"))
+     (setq-default my-done-flag nil))
+   #+end_src
+
+   #+RESULTS:
+
+      
+Launch a thread that will wait until we manually set the condition.
+You can now try to refile or kill emacs.
+   #+begin_src elisp
+   (with-mutex my-lock
+     (while (not my-done-flag)
+       (condition-wait my-done-cond)))
+   ;; (sleep-for 0.)
+   my-done-flag
+   #+end_src
+
+
+
+To unlock the previous pending content, execute the following block.
+   #+begin_src elisp
+   (progn
+     (with-mutex my-lock
+       (setq-default my-done-flag "Done 2!")
+       (condition-notify my-done-cond :all))
+     "Condition set")
+   #+end_src
+
+
+** Some slow executions to test indirect buffers (org-tree-to-indirect-buffer)
+
+   #+begin_src python
+   import time; time.sleep(10)
+   #+end_src
+
+
+   #+begin_src python
+   import time; time.sleep(10)
+   #+end_src
+
+
+
+   #+begin_src python :session newone
+   import time; time.sleep(10)
+   #+end_src
+
+
+   #+begin_src python :session newone
+   import time; time.sleep(5)
+   2/0
+   #+end_src
+
+* Pending contents management
+
+There are no user interface yet for managing pending contents.  But
+everything should be in place to allow it: execution history, update
+signals, etc.
+
+How many pending contents did you use?
+   #+begin_src elisp
+   (length (org-pending-list))
+   #+end_src
+
+
+Some info about the pending contents that you've executed.
+   #+begin_src elisp
+   (cl-flet ((first-line (val) (car (string-split (format "%s" val) "\n"))))
+     (mapcar (lambda (x) (mapcar (lambda (k)
+                                   (let ((v (eval `(,(intern (concat "org-pending-penreg-"
+   								  (symbol-name k)))
+   						 ,x))))
+   				  (setq v
+   					(cond
+   					 ((memq k '(scheduled-at outcome-at))
+   					  (format-time-string "%T" v))
+   					 ((memq k '(get-status get-live-p))
+   					  (format "%s" (funcall v)))
+   					 (t (first-line v))))
+   				  v))
+                                 '(id  status live-p scheduled-at outcome-at outcome)))
+             (org-pending-list)))
+   #+end_src
+
+
+
