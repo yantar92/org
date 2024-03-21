@@ -316,12 +316,17 @@ Assume OVL has been created with `org-pending--make-overlay'."
   ( source nil
     :read-only t
     :documentation
-    "A point marker from where pending region was created.")
+    "A point marker, pointing to what triggered the update.
+This is a position in a buffer, meaningful for the user, that explains
+what the update is.  For example, for org-babel, the source would be the
+source code block (and the pending region its result).")
 
   ( region nil
     :read-only t
     :documentation
-    "The pending region: a pair of positions (begin marker . end marker).")
+    "The pending region: a pair of positions (begin marker . end
+marker). This is the target of the update. Its content will be updated
+on succes.")
 
   ( virtual nil
     :read-only t
