@@ -350,7 +350,10 @@ no argument.")
 containing detailed human readable information about this PENREG, insert
 at point details from START to END.  Handle cases where START, END are
 nil or out of bounds without raising an error.  The function may use
-text properties, overlays, etc."))
+text properties, overlays, etc.")
+  ( properties nil
+    :documentation
+    "A alist of properties.  Useful to attach custom features to this PENREG." ))
 
 (defun org-pending-penreg-owner (penreg)
   "The buffer that owns this pending region; it may be the base
@@ -378,6 +381,18 @@ If the outcome is not known, use the current time."
         (end (or (org-pending-penreg-outcome-at penreg)
                  (float-time))))
     (- end start)))
+
+(defun org-pending-penreg-property (penreg prop)
+  (cdr (assq prop (org-pending-penreg-properties penreg))))
+
+(defun org-pending-penreg-set-property (penreg prop val)
+  (if-let ((b (assq prop (org-pending-penreg-properties penreg))))
+      (setcdr b val)
+    (push (cons prop val)
+          (org-pending-penreg-properties penreg))))
+
+(gv-define-simple-setter org-pending-penreg-property
+                         org-pending-penreg-set-property)
 
 
 ;;;; Creating a pending region
