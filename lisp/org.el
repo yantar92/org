@@ -9065,7 +9065,7 @@ the correct writing function."
                          (goto-char begin)
                          (cons (point-marker)
                                (progn (end-of-line) (point-marker)))))
-               (penreg
+               (reglock
                 (org-pending anchor
                              :on-outcome
                              (lambda (o)
@@ -9077,7 +9077,7 @@ the correct writing function."
                                   (insert r)
                                   (funcall post-process insert-pos)
                                   anchor)))))
-               (await (funcall cmd params penreg)))
+               (await (funcall cmd params reglock)))
           ;; If the no-async flag is ON, block until the content is
           ;; written.
           (when org-pending-without-async-flag
