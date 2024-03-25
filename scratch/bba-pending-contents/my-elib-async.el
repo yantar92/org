@@ -203,7 +203,7 @@ a function that blocks until the result is available and returns it."
           (lambda (result)
             ;; Get the result, and report success using SENTINEL.
             ;; If something fails, report failure using SENTINEL.
-            (setq result-log result)
+            (setq result-log (format "%s" result))
             (unwind-protect
                 (let ((outcome
                        (condition-case-unless-debug exc
@@ -235,13 +235,14 @@ a function that blocks until the result is available and returns it."
         (when penreg
           (setf (org-pending-penreg-insert-details-function penreg)
                 (lambda (start end)
-                  (let ((to-insert (with-temp-buffer
-                                     (insert result-log)
-                                     (buffer-substring (or (and start (max (point-min) start))
-                                                           (point-min))
-                                                       (or (and end (min (point-max) end))
-                                                           (point-max))))))
-                    (insert to-insert)))))
+                  (when result-log
+                    (let ((to-insert (with-temp-buffer
+                                       (insert result-log)
+                                       (buffer-substring (or (and start (max (point-min) start))
+                                                             (point-min))
+                                                         (or (and end (min (point-max) end))
+                                                             (point-max))))))
+                      (insert to-insert))))))
         (let* ((outcome-ready-p
                 (lambda ()
                   (when (boundp outcome-sb) (symbol-value outcome-sb)))))
