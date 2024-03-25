@@ -23,15 +23,16 @@
 
 ;;; Commentary:
 
-;; This file contains an API to mark a region has "being updated"; the
-;; content of the region is "pending".  It will be updated, later,
-;; when the new content is available.  Until its new content is
-;; available, Emacs protects the region from being modified and/or
-;; destroyed.  The new content may be "pending" because it's computed
-;; using an asynchronous function (like url-retrieve), or a thread or
-;; a sub process or a timer or is waiting for user inputs, etc.
+;; This file contains an API to lock a region while it is "being
+;; updated"; the content of the region is "pending".  It will be
+;; updated, later, when the new content is available.  Until that new
+;; content is available, Emacs protects the region from being modified
+;; and/or destroyed.
 ;;
-;; This package provides a way to mark a region as "pending", telling
+;; Locking regions is useful when the update is computed
+;; asynchronously or depends on external events.
+;;
+;; This package provides a way to lock a region as "pending", telling
 ;; Emacs what to do when the update is ready.
 ;;
 ;; Buffers with pending contents will resist killing.
@@ -40,55 +41,38 @@
 ;; this:
 ;;
 ;;    1. Mark a region as "pending" using `org-pending', which gives
-;;       you a REGLOCK.  When you call `org-pending', you need to
-;;       provide how to update the pending region when the result is
-;;       available (see HANDLE-RESULT arguemnt); Emacs applies it when
-;;       you provide the result and close the pending region.
+;;       you a REGLOCK.  When you call `org-pending', you may provide
+;;       how to update the pending region when the outcome is
+;;       available (see ON-OUTCOME arguemnt); Emacs applies it when
+;;       you provide the outcome and unlock the region.
 ;;
 ;;    2. Start "something" that compute the new content.  That
 ;;       "something" may be a thread, a timer, a notification, a
 ;;       process, etc.  That "something" must eventually send a
 ;;       :success or :failure message (using
 ;;       `org-pending-send-update'): Emacs will appropriately
-;;       update the pending region and close it.
+;;       update the pending region and unlock it.
 ;;
-;;    3. You may, optionally, connect the pending region to a "task".
-;;       If your "task" is using ressources, you should provide a
-;;       "task-control" with a 'cancel' method, so that Emacs can tell
-;;       you, for example, when the pending region is destroyed.  If
-;;       your "task" cannot always run asynchronously, you should
-;;       provide a 'get' method (so that Emacs knows how to run it
-;;       synchronously).  If you have information related to your
-;;       "task" to display to the user (logs, stderr, links, widgets
-;;       to control the task), you should provide a 'insert-details'
-;;       method.  See `org-pending-ti-connect'.
-;;
-;; When implementing your tasks, you should use the functions prefixed
-;; with 'org-pending-ti-'; if you need to use another function, there
-;; is most probably a mistake somewhere.
-;;
-;; Here are examples of functions using this package:
+;; Here are examples of functions using this library:
 ;;     - `org-pending-user-edit': prompt the user to edit a region,
 ;;     - `org-babel-execute-src-block': execute source blocks
 ;;       asynchronously.
 ;;     - and `org-dblock-update': execute dynamic blocks
 ;;       asynchronously.
 ;;
-;; The section "REGLOCK" describes the REGLOCK structure, how to create
-;; pending regions and how to describe them to the user.  The section
-;; "Implementing tasks & task-controls" contains the functions to
-;; implement your tasks.  The section "Checking for pending regions"
-;; allows to check for pending contents in regions, in buffers or in
-;; Emacs.  The section "Managing pending regions" is about managing
-;; all (past or present) pending regions in Emacs.  The section
-;; "Plugging into Emacs" teaches Emacs how to deal with these pending
-;; regions (like forbidding some operations until a pending region is
-;; updated).  The section "Basic use of pending regions" is for simple
-;; functions that use the "pending region" feature.  The section
-;; "Giving up on asynchronicity" provides tools when you give up, and,
-;; really need to freeze Emacs and block the user.  The section "Dev &
-;; debug" contains tools that are useful only for development and
-;; debugging.
+;; The section "REGLOCK" describes the REGLOCK structure, how to lock
+;; pending regions, how to describe them to the user and how to update
+;; them.  The section "Checking for pending regions" allows to check
+;; for pending contents in regions, in buffers or in Emacs.  The
+;; section "Managing pending regions" is about managing all (past or
+;; present) pending regions in Emacs.  The section "Plugging into
+;; Emacs" teaches Emacs how to deal with these pending regions (like
+;; forbidding some operations until a pending region is updated).  The
+;; section "Basic use of pending regions" is for simple functions that
+;; use the "pending region" feature.  The section "Giving up on
+;; asynchronicity" provides tools when you give up, and, really need
+;; to freeze Emacs and block the user.  The section "Dev & debug"
+;; contains tools that are useful only for development and debugging.
 ;;
 ;; This file does *NOT* depend on Org.
 
@@ -335,8 +319,8 @@ or (:failure ERROR)")
 
   ( before-kill-function nil
     :documentation
-    "When non-nil, function called before Emacs kills this REGLOCK, with
-no argument.")
+    "When non-nil, function called before Emacs kills this REGLOCK, with the
+REGLOCK as argument.")
 
   ( insert-details-function nil
     :documentation
@@ -411,17 +395,15 @@ is not given, use the first line of REGION.
 
 Assume the region REGION contains the region ANCHOR.
 
-On receiving the outcome (sent with `org-pending-send-update'),
-remove the REGION protection.  If the outcome is a success, call
-HANDLE-RESULT with the value from the SOURCE position.  If HANDLE-RESULT
-returns the outcome region (a pair (start position . end position)),
-report the success using visual hints on that region.  If the outcome is
-a failure, report the failure using REGION.
+On receiving the outcome (sent with `org-pending-send-update'), remove
+the REGION protection.  When ON-OUTCOME is non-nil, call it with the
+reglock and the outcome, from the position from where the REGLOCK has
+been created.  If ON-OUTCOME returns an outcome region (a pair (start
+position . end position)), report the success/failure using visual hints
+on that region.
 
-You may want to connect a task with that REGLOCK (see
-`org-pending-ti-connect').  You may send progress updates, and, FIXME
-eventually, you must send a :success or a :failure update (see
-`org-pending-send-update')."
+You may send progress updates, and, eventually, you must send the
+outcome to unlock the region (see `org-pending-send-update')."
   (unless region
     (error "Now illegal"))
 
@@ -724,11 +706,13 @@ The udpate MESSAGE must be one of the following:
       content; Emacs needs to close the pending region, marking it as
       failed.
     - (:progress P): Content is still pending; current progress is P;
-      Emacs may display it near the pending region.
+      Emacs may display this progress P near the pending region.
 
 You may send as many :progress updates as you want (or none).
 Eventually, you must send one, and only one, of either a :success or a
-:failure. Until you do, the region will be protected from modifications."
+:failure. Until you do, the region will be protected from modifications.
+
+Sending update messages once the REGLOCK got its outcome is undefined."
   (let* ((internals (org-pending-reglock--alist reglock))
          (pt (cdr (assq 'creation-point internals)))
          (buf (marker-buffer pt)))
