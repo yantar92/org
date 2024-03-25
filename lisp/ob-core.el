@@ -888,7 +888,7 @@ result region, create a new empty one."
                            (funcall to-marker anchor-end)))
              (content-begin anchor-begin)
              (content-end (cdr result-region))
-             (penreg (org-pending
+             (reglock (org-pending
                       (cons content-begin content-end)
                       :on-outcome
                       (lambda (o)
@@ -901,7 +901,7 @@ result region, create a new empty one."
                              result-region))
                           (_ anchor)))
                       :anchor anchor)))
-        penreg))))
+        reglock))))
 
 
 (defun org-babel-async-schedule-and-wait (schedule lang body params)
@@ -921,7 +921,7 @@ the result or raise the exception."
   "Execute or schedule the current source code block.
 
 When synchronous, return the result; when asynchronous, mark the result
-region as \"pending\" (using `org-pending') and return the PENREG.
+region as \"pending\" (using `org-pending') and return the REGLOCK.
 
 When the result is available, insert it into the buffer.  Source code
 execution and the collection and formatting of results can be controlled
@@ -1102,17 +1102,17 @@ guess will be made."
               ;; behaving CMD should include them in its own
               ;; asynchronous computation.
               (org-pending-without-async
-               (let* ((penreg
+               (let* ((reglock
                        (org-babel--async-pending
                         info handle-result result-params exec-start-time)))
-                 (if penreg
-                     ;; We have a penreg, we can use it to report the error.
+                 (if reglock
+                     ;; We have a reglock, we can use it to report the error.
                      (condition-case-unless-debug exc
-                         (apply cmd (nconc cmd-args (list penreg)))
-                       (error (org-pending-send-update penreg (list :failure exc))))
+                         (apply cmd (nconc cmd-args (list reglock)))
+                       (error (org-pending-send-update reglock (list :failure exc))))
                    ;; Let the error go through as we don't know what to do with it.
-                   (apply cmd (nconc cmd-args (list penreg))))
-                 penreg))))))))))
+                   (apply cmd (nconc cmd-args (list reglock))))
+                 reglock))))))))))
 
 
 
