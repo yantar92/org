@@ -320,10 +320,6 @@ Assume OVL has been created with `org-pending--make-overlay'."
 marker). This is the target of the update. Its content will be updated
 on succes.")
 
-  ( virtual nil
-    :read-only t
-    :documentation
-    "t when there is no region.")
 
   ( scheduled-at nil
     :documentation
@@ -588,7 +584,6 @@ eventually, you must send a :success or a :failure update (see
             (org-pending--make
              :-sentinel sentinel
              :region region
-             :virtual pending-is-virtual
              :-alist `( (get-status . ,(lambda () last-status))
                         (get-live-p . ,(lambda () (and anchor-ovl
                                                        (overlay-buffer anchor-ovl)))) )
