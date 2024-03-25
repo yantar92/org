@@ -104,9 +104,6 @@
 (define-error 'org-pending-error
               "Some content is pending, cannot modify it")
 
-(define-error 'org-pending-not-implemented
-              "Raise when an operation is not implemented.
-See `org-pending-ti-not-implemented'.")
 
 (define-error 'org-pending-user-cancel
               "The user canceled this update")
@@ -314,7 +311,6 @@ Assume OVL has been created with `org-pending--make-overlay'."
     "Unique identifier of this PENREG for this Emacs instance.")
 
   ( region nil
-    :read-only t
     :documentation
     "(read-only constant) The pending region: a pair of positions
 (begin marker . end marker). This is the target of the update. Its
@@ -342,9 +338,19 @@ or (:failure ERROR)")
     :documentation
     "(internal) An alist containing some other information.")
 
-  ( -task-connection nil
+  ( before-kill-function nil
     :documentation
-    "(internal) A function linking the region to a task."))
+    "When non-nil, function called before Emacs kills this PENREG, with
+no argument.")
+
+  ( insert-details-function nil
+    :documentation
+    "When non-nil, function called to insert custom details at the end of
+`org-pending-describe-penreg'.  Assuming B is a (virtual) buffer
+containing detailed human readable information about this PENREG, insert
+at point details from START to END.  Handle cases where START, END are
+nil or out of bounds without raising an error.  The function may use
+text properties, overlays, etc."))
 
 (defun org-pending-penreg-owner (penreg)
   "The buffer that owns this pending region; it may be the base
@@ -587,8 +593,8 @@ eventually, you must send a :success or a :failure update (see
              :-alist `( (get-status . ,(lambda () last-status))
                         (get-live-p . ,(lambda () (and anchor-ovl
                                                        (overlay-buffer anchor-ovl)))) )
-             :scheduled-at (float-time)
-             :-task-connection nil))
+             :scheduled-at (float-time)))
+
       (unless pending-is-virtual
         (overlay-put anchor-ovl 'org-pending-penreg penreg)
         (overlay-put region-ovl 'org-pending-penreg penreg))
@@ -597,17 +603,7 @@ eventually, you must send a :success or a :failure update (see
 
 
 ;;;; Describing a pending region for the user
-
 ;;
-(defun org-pending-penreg-insert-details (penreg start end)
-  "Insert (part of) the PENREG log at point.
-
-The log is requested from the connected task.  Insert nothing if the
-connected task raises a org-pending-ti-not-implemented error."
-  (when-let ((conn (org-pending-penreg--task-connection penreg)))
-    (condition-case-unless-debug _exc
-        (funcall conn :insert-details penreg start end)
-      (org-pending-not-implemented nil))))
 
 
 (defun org-pending-describe-penreg (penreg)
@@ -700,8 +696,9 @@ connected task raises a org-pending-ti-not-implemented error."
                    "-"))
           ;; Insert up to 1M of log.
           (multi-line "Details"
-                      (lambda () (org-pending-penreg-insert-details
-                                  penreg nil (* 1024 1024)))))))))
+                      (lambda ()
+                        (when-let ((insert-details (org-pending-penreg-insert-details-function penreg)))
+                          (funcall insert-details nil (* 1024 1024))))))))))
 
 (defun org-pending--describe-penreg-at-point ()
   "Describe the pending content at point.
@@ -716,62 +713,6 @@ Get the PENREG at point (pending content or an outcome).  Use
       (user-error "No pending content at point"))))
 
 
-;;; Implementing tasks & task-controls
-;;
-
-
-(defun org-pending-ti-connect (penreg task-control)
-  "Connect the pending region PENREG with the TASK-CONTROL.
-
-TASK-CONTROL may be nil. When non-nil, it must be a function.
-When a function TASK-CONTROL will be called like this:
-
-  - (funcall TASK-CONTROL :cancel PENREG): PENREG is not interested by
-       this update anymore (region deleted, buffer killed, etc.).  The
-       implementation must not try to interact in any way with the
-       user.
-
-  - (funcall TASK-CONTROL :insert-details PENREG START END): Assuming B
-       is a (virtual) buffer containing detailed human readable
-       information about this update, insert at point details from
-       START to END.  Handle cases where START, END are nil or out of
-       bounds without raising an error.  You may use text properties,
-       overlays, etc.
-
-  - (funcall TASK-CONTROL :get PENREG): Block the user until the
-       outcome for this PENREG is available. Return the result on
-       success.  Raise on failure.  Do not block display updates,
-       process outputs, idle timers, etc.  Only needed to force
-       asynchronous calls into synchronous ones, when Org can not
-       (yet) handle the asynchrocity (ob-core and org-update-dblock).
-
-A task control can handle requests for many penregs, from one or many
-buffers.  As pending regions are protected from modifications, it's
-better to make them as small as possible.
-
-A valid (but useless) TASK-CONTROL is:
-
-    (lambda (&rest query)
-      (pcase query
-        (`(:cancel ,_penreg)
-         (org-pending-ti-not-implemented))
-
-        (`(:insert-details ,_penreg ,_start ,_end)
-         (org-pending-ti-not-implemented))
-
-        (`(:get ,_penreg)
-         (org-pending-ti-not-implemented))
-
-        (_ (error \"Unknown query\"))))
-
-When a given call is not implemented, call:
-
-     (org-pending-ti-not-implemented)
-
-to signal to Emacs that it's not implemented.
-
-See `org-pending-user-edit' for another example of a TASK-CONTROL."
-  (setf (org-pending-penreg--task-connection penreg) task-control))
 
 (defun org-pending-ti-send-update (penreg message)
   "Send the status update to the PENREG.
@@ -789,12 +730,6 @@ You may send as many :progress updates as you want (or none).
 Eventually, you must send one, and only one, of either a :success or a
 :failure. Until you do, the region will be protected from modifications."
   (funcall (org-pending-penreg--sentinel penreg) message))
-
-(defun org-pending-ti-not-implemented ()
-  "Signal that the operation is not implemented.
-A task-connection must call this function when it doesn't implement the
-requested operation."
-  (signal `org-pending-not-implemented nil))
 
 
 
@@ -935,37 +870,28 @@ This is a global list for this Emacs instance, in any org buffer.  It
 includes past and present PENREGs."
   (org-pending--manager-penregs (org-pending--manager)))
 
-(defun org-pending-cancel (penreg)
-  "Cancel this PENREG.
-
-A task must never call this function; it must use
-`org-pending-ti-send-update' to report, for example, a
-org-pending-user-cancel failure.
-
-Return nothing.
-
-If there is a connected task, send a :cancel to release resources if
-any.
-
-If the PENREG is still live, make it fail with \='org-pending-user-cancel
-error.
-
-Release resources, unlock regions, etc.
+(defun org-pending--kill (penreg)
+  "Kill this PENREG.
 
 Do nothing if this PENREG is not live anymore.
 
+Call `org-pending-penreg-before-kill-function' with PENREG if any.  If
+the PENREG is still live, make it fail with org-pending-user-cancel
+error.
+
+Return nothing.
+
 Do not ask for confirmation or interact in any way."
   (when (org-pending-penreg-live-p penreg)
-    ;; Try to send a "cancel" message to the connected task.
-    (when-let ((conn (org-pending-penreg--task-connection penreg)))
-      (condition-case _exc
-          (funcall conn :cancel penreg)
-        (org-pending-not-implemented nil)))
+    (when-let ((before-kill (org-pending-penreg-before-kill-function penreg)))
+      (funcall before-kill penreg))
     ;; Unlock the region, marking the PENREG as failed due to
     ;; cancellation.
-    (org-pending-ti-send-update
-     penreg (list :failure (list 'org-pending-user-cancel
-                                "Canceled")))
+    (when (org-pending-penreg-live-p penreg)
+      (org-pending-send-update
+       penreg (list :failure (list 'org-pending-user-cancel
+                                    "Canceled"))))
+    (setf (org-pending-penreg-region penreg) nil)
     nil))
 
 
@@ -995,7 +921,7 @@ offer to abort killing the buffer."
         (without-restriction
           (dolist (pi (org-pending-contents-in (point-min) (point-max)
                                                :owned-only))
-            (org-pending-cancel pi)))
+            (org-pending--kill pi)))
         :forced-kill))))
 
 (defun org-pending--kill-emacs-query ()
@@ -1007,7 +933,7 @@ If there are any pending contents, offer to abort killing Emacs."
     (when (yes-or-no-p (format "Some org content is pending, kill anyway?"))
       ;; Forced kill: cancel all pending regions
       (dolist (pi (org-pending-list))
-        (org-pending-cancel pi))
+        (org-pending--kill pi))
       :forced-kill)))
 
 (defun org-pending--after-indirect-clone ()
@@ -1103,7 +1029,6 @@ unique if needed."
                  (cons start end)
                  (org-pending-user-edit--replacer buf start end)))
          edit-buffer
-         task-control
          closing)
     (string-edit prompt to-update
                  (lambda (new-text)
@@ -1146,41 +1071,33 @@ unique if needed."
               :ok-to-kill)
             kill-buffer-query-functions))
 
-    (setq task-control
-          (lambda (&rest query)
-            (pcase query
-              (`(:get ,_)
-               (error "Cannot block the user: we are waiting for him/her!"))
-              (`(:cancel ,penreg-caller)
-               (cl-assert (eq penreg penreg-caller))
-               (setq closing t)
-               (when (buffer-live-p edit-buffer)
-                 (with-current-buffer edit-buffer
-                   (kill-buffer edit-buffer))))
-              (`(:insert-details ,penreg-caller ,_start ,_end)
-               (cl-assert (eq penreg penreg-caller))
-               (let ((insert-link
-                      (lambda (b)
-                        (insert
-                         (propertize
-                          (format "%s" (buffer-name b))
-                          'face 'org-link
-                          'keymap
-                          (let ((km (make-sparse-keymap)))
-                            (define-key km [mouse-1]
-                                        (lambda (&rest _)
-                                          (interactive)
-                                          (when (buffer-live-p b)
-                                            (pop-to-buffer b))))
-                            km))))))
-                 (insert "Edit buffer: ")
-                 (if edit-buffer
-                     (funcall insert-link edit-buffer)
-                   (insert "-"))))
+    (setf (org-pending-penreg-before-kill-function penreg)
+          (lambda ()
+            (setq closing t)
+            (when (buffer-live-p edit-buffer)
+              (with-current-buffer edit-buffer
+                (kill-buffer edit-buffer)))))
 
-              (_ (error "Unknown operation")))))
-    (org-pending-ti-connect penreg task-control)
-
+    (setf (org-pending-penreg-insert-details-function penreg)
+          (lambda (_start _end)
+            (let ((insert-link
+                   (lambda (b)
+                     (insert
+                      (propertize
+                       (format "%s" (buffer-name b))
+                       'face 'org-link
+                       'keymap
+                       (let ((km (make-sparse-keymap)))
+                         (define-key km [mouse-1]
+                                     (lambda (&rest _)
+                                       (interactive)
+                                       (when (buffer-live-p b)
+                                         (pop-to-buffer b))))
+                         km))))))
+              (insert "Edit buffer: ")
+              (if edit-buffer
+                  (funcall insert-link edit-buffer)
+                (insert "-")))))
     edit-buffer))
 
 
