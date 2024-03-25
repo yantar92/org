@@ -891,7 +891,7 @@ result region, create a new empty one."
              (reglock (org-pending
                       (cons content-begin content-end)
                       :on-outcome
-                      (lambda (o)
+                      (lambda (_rg o)
                         (pcase o
                           (`(:success ,r)
                            (let ((result-region (funcall handle-result r)))
