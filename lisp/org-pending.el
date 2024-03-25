@@ -40,7 +40,7 @@
 ;; this:
 ;;
 ;;    1. Mark a region as "pending" using `org-pending', which gives
-;;       you a PENREG.  When you call `org-pending', you need to
+;;       you a REGLOCK.  When you call `org-pending', you need to
 ;;       provide how to update the pending region when the result is
 ;;       available (see HANDLE-RESULT arguemnt); Emacs applies it when
 ;;       you provide the result and close the pending region.
@@ -74,7 +74,7 @@
 ;;     - and `org-dblock-update': execute dynamic blocks
 ;;       asynchronously.
 ;;
-;; The section "PENREG" describes the PENREG structure, how to create
+;; The section "REGLOCK" describes the REGLOCK structure, how to create
 ;; pending regions and how to describe them to the user.  The section
 ;; "Implementing tasks & task-controls" contains the functions to
 ;; implement your tasks.  The section "Checking for pending regions"
@@ -133,13 +133,13 @@ Raise, e.g. by `org-pending-wait-condition'.")
 ;;
 (defvar org-pending--outcome-keymap
   (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] 'org-pending--describe-penreg-at-point)
+    (define-key map [mouse-1] 'org-pending--describe-reglock-at-point)
     map)
   "Keymap for outcome overlays.")
 
 (defvar org-pending--pending-keymap
   (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] 'org-pending--describe-penreg-at-point)
+    (define-key map [mouse-1] 'org-pending--describe-reglock-at-point)
     map)
   "Keymap for pending region overlays.")
 
@@ -301,14 +301,14 @@ Assume OVL has been created with `org-pending--make-overlay'."
 
 
 
-;;; PENREG: Structure to control one PENDing REGion
+;;; REGLOCK: Structure to control one PENDing REGion
 
 ;;;; Definition and properties
-(cl-defstruct (org-pending-penreg
+(cl-defstruct (org-pending-reglock
                (:constructor org-pending--make))
   ( id nil
     :documentation
-    "Unique identifier of this PENREG for this Emacs instance.")
+    "Unique identifier of this REGLOCK for this Emacs instance.")
 
   ( region nil
     :documentation
@@ -335,72 +335,72 @@ or (:failure ERROR)")
 
   ( before-kill-function nil
     :documentation
-    "When non-nil, function called before Emacs kills this PENREG, with
+    "When non-nil, function called before Emacs kills this REGLOCK, with
 no argument.")
 
   ( insert-details-function nil
     :documentation
     "When non-nil, function called to insert custom details at the end of
-`org-pending-describe-penreg'.  Assuming B is a (virtual) buffer
-containing detailed human readable information about this PENREG, insert
+`org-pending-describe-reglock'.  Assuming B is a (virtual) buffer
+containing detailed human readable information about this REGLOCK, insert
 at point details from START to END.  Handle cases where START, END are
 nil or out of bounds without raising an error.  The function may use
 text properties, overlays, etc.")
   ( properties nil
     :documentation
-    "A alist of properties.  Useful to attach custom features to this PENREG." ))
+    "A alist of properties.  Useful to attach custom features to this REGLOCK." ))
 
-(defun org-pending-penreg-owner (penreg)
+(defun org-pending-reglock-owner (reglock)
   "The buffer that owns this pending region; it may be the base
 buffer or an indirect one.
 
-A PENREG belongs to one buffer, the buffer that is current when it is
+A REGLOCK belongs to one buffer, the buffer that is current when it is
 created.  For example, if you flag some content as /pending/ in an
 indirect buffer, that /pending region/ belongs to that indirect buffer,
 and, control of that /pending region/ must happen in that buffer."
-  (marker-buffer (org-pending-penreg-region penreg)))
+  (marker-buffer (org-pending-reglock-region reglock)))
 
-(defun org-pending-penreg-status (penreg)
-  "Return the status of PENREG: :scheduled, :pending, :success or :failure."
-  (funcall (cdr (assq 'get-status (org-pending-penreg--alist penreg)))))
+(defun org-pending-reglock-status (reglock)
+  "Return the status of REGLOCK: :scheduled, :pending, :success or :failure."
+  (funcall (cdr (assq 'get-status (org-pending-reglock--alist reglock)))))
 
-(defun org-pending-penreg-live-p (penreg)
-  "Return non-nil if PENREG is still live.
-A PENREG stays live until it receives its outcome: :success or :failure."
-  (funcall (cdr (assq 'get-live-p (org-pending-penreg--alist penreg)))))
+(defun org-pending-reglock-live-p (reglock)
+  "Return non-nil if REGLOCK is still live.
+A REGLOCK stays live until it receives its outcome: :success or :failure."
+  (funcall (cdr (assq 'get-live-p (org-pending-reglock--alist reglock)))))
 
-(defun org-pending-penreg-duration (penreg)
+(defun org-pending-reglock-duration (reglock)
   "Return the duration between the scheduling and the outcome.
 If the outcome is not known, use the current time."
-  (let ((start (org-pending-penreg-scheduled-at penreg))
-        (end (or (org-pending-penreg-outcome-at penreg)
+  (let ((start (org-pending-reglock-scheduled-at reglock))
+        (end (or (org-pending-reglock-outcome-at reglock)
                  (float-time))))
     (- end start)))
 
-(defun org-pending-penreg-property (penreg prop)
-  (cdr (assq prop (org-pending-penreg-properties penreg))))
+(defun org-pending-reglock-property (reglock prop)
+  (cdr (assq prop (org-pending-reglock-properties reglock))))
 
-(defun org-pending-penreg-set-property (penreg prop val)
-  (if-let ((b (assq prop (org-pending-penreg-properties penreg))))
+(defun org-pending-reglock-set-property (reglock prop val)
+  (if-let ((b (assq prop (org-pending-reglock-properties reglock))))
       (setcdr b val)
     (push (cons prop val)
-          (org-pending-penreg-properties penreg))))
+          (org-pending-reglock-properties reglock))))
 
-(gv-define-simple-setter org-pending-penreg-property
-                         org-pending-penreg-set-property)
+(gv-define-simple-setter org-pending-reglock-property
+                         org-pending-reglock-set-property)
 
 
 ;;;; Creating a pending region
 ;;
 
 (cl-defun org-pending (region &key anchor name on-outcome)
-  "Mark a REGION as \"pending\" and return its PENREG.
+  "Mark a REGION as \"pending\" and return its REGLOCK.
 
-Return the PENREG that allows to manage the pending region.
+Return the REGLOCK that allows to manage the pending region.
 
 The argument REGION is a pair (start position . end position).  Protect
-the REGION from modifications until the PENREG receives a :success or a
-:failure update.  Display progress when PENREG receives :progress
+the REGION from modifications until the REGLOCK receives a :success or a
+:failure update.  Display progress when REGLOCK receives :progress
 updates.  Do not delete the previous content of REGION.
 
 The argument ANCHOR, when given, is a pair (start position . end
@@ -416,7 +416,7 @@ returns the outcome region (a pair (start position . end position)),
 report the success using visual hints on that region.  If the outcome is
 a failure, report the failure using REGION.
 
-You may want to connect a task with that PENREG (see
+You may want to connect a task with that REGLOCK (see
 `org-pending-ti-connect').  You may send progress updates, and, FIXME
 eventually, you must send a :success or a :failure update (see
 `org-pending-send-update')."
@@ -428,7 +428,7 @@ eventually, you must send a :success or a :failure update (see
                       (or (and (markerp p) p)
                           (save-excursion (goto-char p) (point-marker)))))
          x-last-status
-         penreg
+         reglock
          (internals
           `( (get-status . ,(lambda () x-last-status))
              (set-status . ,(lambda (v) (setq x-last-status v)))
@@ -466,21 +466,21 @@ eventually, you must send a :success or a :failure update (see
            ;; Raise if an other (indirect) buffer owns this region.
            (dolist (pi (org-pending-contents-in (max (1- (car anchor)) (point-min))
                                                 (cdr region)))
-             (let ((pi-owner (org-pending-penreg-owner pi)))
+             (let ((pi-owner (org-pending-reglock-owner pi)))
                (unless (eq (current-buffer) pi-owner)
                  (error "Pending region owned by another buffer %s" pi-owner))))
 
-           (let (ovls penreg)
-             ;; Scan for previous overlays and identify the penreg.
+           (let (ovls reglock)
+             ;; Scan for previous overlays and identify the reglock.
              (dolist (ovl (overlays-in (max (1- (car anchor)) (point-min))
                                        (cdr region)))
                (when-let ((type (overlay-get ovl 'org-pending)))
                  (push ovl ovls)
                  (when (eq :status type)
-                   (when penreg
+                   (when reglock
                      (error "More than one status overlay"))
-                   (setq penreg (overlay-get ovl 'org-pending-penreg)))))
-             (when penreg
+                   (setq reglock (overlay-get ovl 'org-pending-reglock)))))
+             (when reglock
                (user-error "This region is already scheduled or pending."))
              ;; Delete previous pending decorations.
              (mapc (lambda (x) (org-pending--delete-overlay x))
@@ -494,29 +494,29 @@ eventually, you must send a :success or a :failure update (see
       (push (cons 'anchor-ovl (org-pending--make-overlay :status anchor))
             internals)
 
-      (setq penreg
+      (setq reglock
             (org-pending--make
              :region region
              :-alist internals
              :scheduled-at (float-time)))
 
       ;; Flag the result as ":scheduled".
-      (org-pending--update penreg :scheduled nil)
+      (org-pending--update reglock :scheduled nil)
 
       (overlay-put (cdr (assq 'anchor-ovl internals))
-                   'org-pending-penreg penreg)
+                   'org-pending-reglock reglock)
       (overlay-put (cdr (assq 'region-ovl internals))
-                   'org-pending-penreg penreg)
-      (org-pending--mgr-handle-new-penreg penreg name)
-      penreg)))
+                   'org-pending-reglock reglock)
+      (org-pending--mgr-handle-new-reglock reglock name)
+      reglock)))
 
 
 ;;;; Describing a pending region for the user
 ;;
 
 
-(defun org-pending-describe-penreg (penreg)
-  "Describe PENREG in a buffer."
+(defun org-pending-describe-reglock (reglock)
+  "Describe REGLOCK in a buffer."
   (interactive)
   (let ((buffer (get-buffer-create "*Pending content info*")))
     (with-output-to-temp-buffer buffer
@@ -577,28 +577,28 @@ eventually, you must send a :success or a :failure update (see
 
           ;; ... ok, back to real work.
           (one-line "Id"
-                    (org-pending-penreg-id penreg))
+                    (org-pending-reglock-id reglock))
           (one-line "Status"
-                    (substring (symbol-name (org-pending-penreg-status penreg)) 1))
+                    (substring (symbol-name (org-pending-reglock-status reglock)) 1))
           (one-line "Live?"
-                    (bool-to-string (org-pending-penreg-live-p penreg)))
+                    (bool-to-string (org-pending-reglock-live-p reglock)))
           (one-line "Region"
-                    (lambda () (insert-region (org-pending-penreg-region penreg))))
+                    (lambda () (insert-region (org-pending-reglock-region reglock))))
           (one-line "Scheduled at"
-                    (time-to-string (org-pending-penreg-scheduled-at penreg)))
+                    (time-to-string (org-pending-reglock-scheduled-at reglock)))
           (one-line "Outcome at"
-                    (time-to-string (org-pending-penreg-outcome-at penreg)))
+                    (time-to-string (org-pending-reglock-outcome-at reglock)))
           (one-line "Duration"
                     ;; TODO nice human format like 1m27s
-                    (format "%.1fs" (org-pending-penreg-duration penreg)))
+                    (format "%.1fs" (org-pending-reglock-duration reglock)))
           (field "Result"
-                 (if-let ((outcome (org-pending-penreg-outcome penreg)))
+                 (if-let ((outcome (org-pending-reglock-outcome reglock)))
                      (pcase outcome
                        (`(:success ,v) v)
                        (_ "-"))
                    "-"))
           (field "Error"
-                 (if-let ((outcome (org-pending-penreg-outcome penreg)))
+                 (if-let ((outcome (org-pending-reglock-outcome reglock)))
                      (pcase outcome
                        (`(:failure ,v) v)
                        (_ "-"))
@@ -606,26 +606,26 @@ eventually, you must send a :success or a :failure update (see
           ;; Insert up to 1M of log.
           (multi-line "Details"
                       (lambda ()
-                        (when-let ((insert-details (org-pending-penreg-insert-details-function penreg)))
+                        (when-let ((insert-details (org-pending-reglock-insert-details-function reglock)))
                           (funcall insert-details nil (* 1024 1024))))))))))
 
-(defun org-pending--describe-penreg-at-point ()
+(defun org-pending--describe-reglock-at-point ()
   "Describe the pending content at point.
-Get the PENREG at point (pending content or an outcome).  Use
-`org-pending-describe-penreg' to display it."
+Get the REGLOCK at point (pending content or an outcome).  Use
+`org-pending-describe-reglock' to display it."
   (interactive)
-  (let ((penreg (or (get-char-property (point) 'org-pending-penreg)
+  (let ((reglock (or (get-char-property (point) 'org-pending-reglock)
                    (when-let ((ovl (get-char-property (point) 'org-pending--projection-of)))
-                     (overlay-get ovl 'org-pending-penreg)))))
-    (if penreg
-        (org-pending-describe-penreg penreg)
+                     (overlay-get ovl 'org-pending-reglock)))))
+    (if reglock
+        (org-pending-describe-reglock reglock)
       (user-error "No pending content at point"))))
 
 
 
 ;;;; Updates
 ;;
-(cl-defun org-pending--update (penreg status data)
+(cl-defun org-pending--update (reglock status data)
   (cl-labels
       ((add-style (status txt)
          "Add the style matching STATUS over the text TXT."
@@ -636,7 +636,7 @@ Get the PENREG at point (pending content or an outcome).  Use
          (if msg
              (car (split-string (format "%s" msg) "\n" :omit-nulls))
            "")))
-    (let* ((internals  (org-pending-penreg--alist penreg))
+    (let* ((internals  (org-pending-reglock--alist reglock))
            (anchor-ovl (cdr (assq 'anchor-ovl internals)))
            (region-ovl (cdr (assq 'region-ovl internals)))
            (on-outcome (cdr (assq 'on-outcome internals)))
@@ -681,8 +681,8 @@ Get the PENREG at point (pending content or an outcome).  Use
         (setq region-ovl nil))
 
       (when (memq status '(:success :failure))
-        (setf (org-pending-penreg-outcome penreg) (list status data))
-        (setf (org-pending-penreg-outcome-at penreg) (float-time))
+        (setf (org-pending-reglock-outcome reglock) (list status data))
+        (setf (org-pending-reglock-outcome-at reglock) (float-time))
 
         (when on-outcome
           (setq outcome-region (funcall on-outcome (list status data)))))
@@ -702,11 +702,11 @@ Get the PENREG at point (pending content or an outcome).  Use
                        'before-string (propertize
                                        "x" 'display
                                        `(left-fringe ,bitmap ,face)))
-          (overlay-put outcome-ovl 'org-pending-penreg penreg))))))
+          (overlay-put outcome-ovl 'org-pending-reglock reglock))))))
 
 
-(defun org-pending-send-update (penreg upd-message)
-  "Send the status update to the PENREG.
+(defun org-pending-send-update (reglock upd-message)
+  "Send the status update to the REGLOCK.
 
 The udpate MESSAGE must be one of the following:
     - (:success R):   New content is ready; the result is R; Emacs
@@ -720,7 +720,7 @@ The udpate MESSAGE must be one of the following:
 You may send as many :progress updates as you want (or none).
 Eventually, you must send one, and only one, of either a :success or a
 :failure. Until you do, the region will be protected from modifications."
-  (let* ((internals (org-pending-penreg--alist penreg))
+  (let* ((internals (org-pending-reglock--alist reglock))
          (pt (cdr (assq 'creation-point internals)))
          (buf (marker-buffer pt)))
     (message "org-pending: Handling update message at %s@%s: %s"
@@ -732,16 +732,16 @@ Eventually, you must send one, and only one, of either a :success or a
           (pcase upd-message
             (`(:success ,r)
              ;; Visual beep that the result is available.
-             (org-pending--update penreg :success r))
+             (org-pending--update reglock :success r))
 
             (`(:progress ,p)
              ;; Still waiting for the outcome. Update our
              ;; overlays with the progress info R.
-             (org-pending--update penreg :pending p))
+             (org-pending--update reglock :pending p))
 
             (`(:failure ,err)
              ;; We didn't get a result.
-             (org-pending--update penreg :failure err))
+             (org-pending--update reglock :failure err))
 
             (_ (error "Invalid message"))))))
     nil))
@@ -753,13 +753,13 @@ Eventually, you must send one, and only one, of either a :success or a
 (defun org-pending-contents-in (start end &optional owned)
   "Return the list of pending contents in BEGIN..END.
 
-Return the list of PENREG(s) for pending contents, in the current buffer.
+Return the list of REGLOCK(s) for pending contents, in the current buffer.
 
 When OWNED is non-nil, ignore pending contents that are not owned by
 this buffer.
 
 See also `org-buffer-pending-contents-p'."
-  (let ((penregs)
+  (let ((reglocks)
         (here nil)
         ovl)
     (while (and (< start end)
@@ -773,9 +773,9 @@ See also `org-buffer-pending-contents-p'."
                           end))
         (when (or (not owned)
                   (eq (current-buffer) (overlay-buffer ovl)))
-          (push (overlay-get ovl 'org-pending-penreg) penregs))
+          (push (overlay-get ovl 'org-pending-reglock) reglocks))
         (setq start (1+ (min end (overlay-end ovl))))))
-    penregs))
+    reglocks))
 
 (defun org-buffer-pending-contents-p (&optional buffer owned-only)
   "Return non-nil if BUFFER owns some pending contents.
@@ -801,7 +801,7 @@ See also `org-pending-contents-in'."
   (catch 'found-one
     (dolist (p (org-pending-list))
       (when (org-pending--status-still-pending-p
-             (org-pending-penreg-status p))
+             (org-pending-reglock-status p))
         (throw 'found-one t)))
     nil))
 
@@ -825,9 +825,9 @@ See also `org-pending-contents-in'."
 (cl-defstruct (org-pending--manager
                (:constructor org-pending--create-manager)
 	       (:copier nil))
-  ; An id (integer) uniquely identifies one PENREG.
+  ; An id (integer) uniquely identifies one REGLOCK.
   used-names ; obarray of in-use names.
-  penregs ; The list of PENREGs, past & present.
+  reglocks ; The list of REGLOCKs, past & present.
   )
 
 
@@ -843,16 +843,16 @@ See also `org-pending-contents-in'."
     (add-hook 'kill-emacs-query-functions #'org-pending--kill-emacs-query))
   org-pending--manager)
 
-(defun org-pending--mgr-handle-new-penreg (penreg name)
-  "Handle this new pending content PENREG.
-Update PENREG as needed. Return nothing."
+(defun org-pending--mgr-handle-new-reglock (reglock name)
+  "Handle this new pending content REGLOCK.
+Update REGLOCK as needed. Return nothing."
   (let* ((mgr (org-pending--manager)))
     (add-function
-     :after (org-pending-penreg--sentinel penreg)
+     :after (org-pending-reglock--sentinel reglock)
      (lambda (message)
-       (org-pending--mgr-handle-penreg-update penreg message)))
-    (push penreg (org-pending--manager-penregs mgr))
-    (unless name (setq name "PENREG"))
+       (org-pending--mgr-handle-reglock-update reglock message)))
+    (push reglock (org-pending--manager-reglocks mgr))
+    (unless name (setq name "REGLOCK"))
 
     ;; Making NAME unique.
     (let* ((ob (org-pending--manager-used-names mgr))
@@ -867,46 +867,46 @@ Update PENREG as needed. Return nothing."
               to-try))
       (intern name ob))
 
-    (setf (org-pending-penreg-id penreg) name)
+    (setf (org-pending-reglock-id reglock) name)
     nil))
 
-(defun org-pending--mgr-handle-penreg-update (penreg update)
-  "Handle the update UPDATE for this PENREG.
+(defun org-pending--mgr-handle-reglock-update (reglock update)
+  "Handle the update UPDATE for this REGLOCK.
 Return nothing."
-  (message "org-pending: penreg update for id=%s: %s"
-           (org-pending-penreg-id penreg) update))
+  (message "org-pending: reglock update for id=%s: %s"
+           (org-pending-reglock-id reglock) update))
 
 ;;;; API
 ;;
 
 (defun org-pending-list ()
-  "Return the list of PENREGs.
+  "Return the list of REGLOCKs.
 This is a global list for this Emacs instance, in any org buffer.  It
-includes past and present PENREGs."
-  (org-pending--manager-penregs (org-pending--manager)))
+includes past and present REGLOCKs."
+  (org-pending--manager-reglocks (org-pending--manager)))
 
-(defun org-pending--kill (penreg)
-  "Kill this PENREG.
+(defun org-pending--kill (reglock)
+  "Kill this REGLOCK.
 
-Do nothing if this PENREG is not live anymore.
+Do nothing if this REGLOCK is not live anymore.
 
-Call `org-pending-penreg-before-kill-function' with PENREG if any.  If
-the PENREG is still live, make it fail with org-pending-user-cancel
+Call `org-pending-reglock-before-kill-function' with REGLOCK if any.  If
+the REGLOCK is still live, make it fail with org-pending-user-cancel
 error.
 
 Return nothing.
 
 Do not ask for confirmation or interact in any way."
-  (when (org-pending-penreg-live-p penreg)
-    (when-let ((before-kill (org-pending-penreg-before-kill-function penreg)))
-      (funcall before-kill penreg))
-    ;; Unlock the region, marking the PENREG as failed due to
+  (when (org-pending-reglock-live-p reglock)
+    (when-let ((before-kill (org-pending-reglock-before-kill-function reglock)))
+      (funcall before-kill reglock))
+    ;; Unlock the region, marking the REGLOCK as failed due to
     ;; cancellation.
-    (when (org-pending-penreg-live-p penreg)
+    (when (org-pending-reglock-live-p reglock)
       (org-pending-send-update
-       penreg (list :failure (list 'org-pending-user-cancel
+       reglock (list :failure (list 'org-pending-user-cancel
                                     "Canceled"))))
-    (setf (org-pending-penreg-region penreg) nil)
+    (setf (org-pending-reglock-region reglock) nil)
     nil))
 
 
@@ -970,8 +970,8 @@ Fix pending contents, after creating an indirect clone."
   ;; wrong one.  We probably could rescan only the region matching our
   ;; indirect buffer...
   (with-current-buffer (buffer-base-buffer (current-buffer))
-    (dolist (penreg (org-pending-contents-in (point-min) (point-max)))
-      (let ((region (org-pending-penreg-region penreg)))
+    (dolist (reglock (org-pending-contents-in (point-min) (point-max)))
+      (let ((region (org-pending-reglock-region reglock)))
         (when region
           (let ((inhibit-modification-hooks t)
                 (inhibit-read-only t))
@@ -1040,7 +1040,7 @@ When non-nil, EDIT-NAME is the name to use for the edit buffer.  Make it
 unique if needed."
   (let* ((buf (current-buffer))
          (to-update (buffer-substring start end))
-         (penreg (org-pending
+         (reglock (org-pending
                  (cons start end)
                  (org-pending-user-edit--replacer buf start end)))
          edit-buffer
@@ -1048,12 +1048,12 @@ unique if needed."
     (string-edit prompt to-update
                  (lambda (new-text)
                    (org-pending-send-update
-                    penreg
+                    reglock
                     (list :success new-text)))
                  :abort-callback
                  (lambda ()
                    (org-pending-send-update
-                    penreg
+                    reglock
                     (list :failure (list 'user-error
                                          "Edition canceled by the user")))))
     ;; `string-edit' switches to the edit buffer.
@@ -1078,22 +1078,22 @@ unique if needed."
       (make-local-variable 'kill-buffer-query-functions)
       (push (lambda ()
               (when (and (not closing)
-                         (org-pending-penreg-live-p penreg))
+                         (org-pending-reglock-live-p reglock))
                 (org-pending-send-update
-                 penreg
+                 reglock
                  (list :failure (list 'user-error
                                       "Edition buffer killed"))))
               :ok-to-kill)
             kill-buffer-query-functions))
 
-    (setf (org-pending-penreg-before-kill-function penreg)
+    (setf (org-pending-reglock-before-kill-function reglock)
           (lambda ()
             (setq closing t)
             (when (buffer-live-p edit-buffer)
               (with-current-buffer edit-buffer
                 (kill-buffer edit-buffer)))))
 
-    (setf (org-pending-penreg-insert-details-function penreg)
+    (setf (org-pending-reglock-insert-details-function reglock)
           (lambda (_start _end)
             (let ((insert-link
                    (lambda (b)
@@ -1222,7 +1222,7 @@ Once available, return on success, raise on failure."
 (defun org-pending--reset-buffer ()
   "Reset the current buffer, throwing away of pending decorations.
 Dev only. Use at your own risk."
-  ;; TODO: Remove PENREGs from the manager if any.
+  ;; TODO: Remove REGLOCKs from the manager if any.
   (save-excursion
     ;; First pass: removing pending overlays.
     (mapc (lambda (o)
