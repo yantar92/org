@@ -9074,15 +9074,11 @@ the correct writing function."
                                (insert r)
                                (funcall post-process insert-pos)
                                anchor)))
-               (task-control
-                (funcall cmd params
-                         (lambda (msg)
-                           (org-pending-ti-send-update penreg msg)))))
-          (org-pending-ti-connect penreg task-control)
+               (await (funcall cmd params penreg)))
           ;; If the no-async flag is ON, block until the content is
           ;; written.
           (when org-pending-without-async-flag
-            (funcall task-control :get penreg))
+            (funcall await))
           nil)))))
 
 
