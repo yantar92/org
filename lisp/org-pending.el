@@ -329,10 +329,6 @@ content will be updated on success.")
     "The outcome. nil when not know yet. Else a list: (:success RESULT)
 or (:failure ERROR)")
 
-  ( -sentinel nil
-    :documentation
-    "(internal) The sentinel handles failure, success and progress messages.")
-
   ( -alist nil
     :documentation
     "(internal) An alist containing some other information.")
@@ -427,18 +423,21 @@ eventually, you must send a :success or a :failure update (see
   (unless region
     (error "Now illegal"))
 
-  (let ((buf (current-buffer))
-        (pt  (point-marker))
-        (to-marker (lambda (p)
+  (let* ((buf (current-buffer))
+         (pt  (point-marker))
+         (to-marker (lambda (p)
                      ;; Make sure P is a marker.
-                     (or (and (markerp p) p)
-                         (save-excursion (goto-char p) (point-marker)))))
-        anchor-ovl region-ovl
-        sentinel
-        last-status
-        penreg
-        outcome-region)
-
+                      (or (and (markerp p) p)
+                          (save-excursion (goto-char p) (point-marker)))))
+         anchor-ovl region-ovl
+         sentinel
+         last-status
+         penreg
+         outcome-region
+         (internals
+          `( (get-status . ,(lambda () last-status))
+             (get-live-p . ,(lambda () (and anchor-ovl
+                                            (overlay-buffer anchor-ovl)))))))
 
     (setq region (cons (funcall to-marker (car region))
                        (funcall to-marker (cdr region))))
@@ -597,9 +596,7 @@ eventually, you must send a :success or a :failure update (see
             (org-pending--make
              :-sentinel sentinel
              :region region
-             :-alist `( (get-status . ,(lambda () last-status))
-                        (get-live-p . ,(lambda () (and anchor-ovl
-                                                       (overlay-buffer anchor-ovl)))) )
+             :-alist internals
              :scheduled-at (float-time)))
 
       (overlay-put anchor-ovl 'org-pending-penreg penreg)
