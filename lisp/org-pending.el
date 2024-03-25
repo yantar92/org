@@ -693,7 +693,7 @@ Get the REGLOCK at point (pending content or an outcome).  Use
         (setf (org-pending-reglock-outcome-at reglock) (float-time))
 
         (when on-outcome
-          (setq outcome-region (funcall on-outcome (list status data)))))
+          (setq outcome-region (funcall on-outcome reglock (list status data)))))
 
       (when (and (memq status '(:failure :success))
                  outcome-region)
@@ -1005,37 +1005,43 @@ Fix pending contents, after creating an indirect clone."
 ;;
 
 ;;;; Prompt the user to edit a region
-(defun org-pending-user-edit--replacer (buf start end)
+(defun org-pending-user-edit--on-outcome (reglock outcome)
   "Helper for `org-pending-user-edit'.
 Return a function that takes some text and replaces the region between
 START and END in buffer BUF with it.  Return the new region as a
 pair (start point . end point).
 
 The returned function silently do nothing when the buffer is dead."
-  (lambda (new-txt)
-    (with-current-buffer buf
-      (save-excursion
-        (when (buffer-live-p buf)
-          (if (> (- end start) 1)
-              ;; Insert in the middle as it's more robust to
-              ;; keep existing data (text properties, markers,
-              ;; overlays).
-              (let ((ipoint (+ 0 (goto-char (1+ start)))))
-                (setq end (progn (goto-char end) (point-marker)))
-                (goto-char ipoint)
-                (insert new-txt)
-                (delete-region (point) end)
-                (delete-region start ipoint)
-                (cons start (point)))
-            ;; Can't insert in the middle.
-            (let ((old-end (point-marker))
-                  new-end)
-              (set-marker-insertion-type old-end nil)
-              (insert new-txt)
-              (setq new-end (point-marker))
-              (delete-region start old-end)
-              (cons start new-end)
-              )))))))
+  (pcase outcome
+    (`(:failure ,_) nil)
+    (`(:success ,new-text)
+     (let* ((reg  (org-pending-reglock-region reglock))
+            (start (car reg))
+            (end (cdr reg))
+            (buf (marker-buffer start)))
+       (when (buffer-live-p buf)
+         (with-current-buffer buf
+           (save-excursion
+             (if (> (- end start) 1)
+                 ;; Insert in the middle as it's more robust to
+                 ;; keep existing data (text properties, markers,
+                 ;; overlays).
+                 (let ((ipoint (+ 0 (goto-char (1+ start)))))
+                   (setq end (progn (goto-char end) (point-marker)))
+                   (goto-char ipoint)
+                   (insert new-text)
+                   (delete-region (point) end)
+                   (delete-region start ipoint)
+                   (cons start (point)))
+               ;; Can't insert in the middle.
+               (let ((old-end (point-marker))
+                     new-end)
+                 (set-marker-insertion-type old-end nil)
+                 (insert new-text)
+                 (setq new-end (point-marker))
+                 (delete-region start old-end)
+                 (cons start new-end)
+                 )))))))))
 
 (cl-defun org-pending-user-edit (prompt start end &key edit-name)
   "Ask the user to edit the region BEGIN .. END.
@@ -1063,8 +1069,8 @@ unique if needed."
   (let* ((buf (current-buffer))
          (to-update (buffer-substring start end))
          (reglock (org-pending
-                 (cons start end)
-                 (org-pending-user-edit--replacer buf start end)))
+                   (cons start end)
+                   :on-outcome #'org-pending-user-edit--on-outcome))
          edit-buffer
          closing)
     (string-edit prompt to-update
@@ -1109,14 +1115,14 @@ unique if needed."
             kill-buffer-query-functions))
 
     (setf (org-pending-reglock-before-kill-function reglock)
-          (lambda ()
+          (lambda (_rl)
             (setq closing t)
             (when (buffer-live-p edit-buffer)
               (with-current-buffer edit-buffer
                 (kill-buffer edit-buffer)))))
 
     (setf (org-pending-reglock-insert-details-function reglock)
-          (lambda (_start _end)
+          (lambda (_rl _start _end)
             (let ((insert-link
                    (lambda (b)
                      (insert
