@@ -80,7 +80,7 @@
 ;;
 ;;;;; Asynchronous case: my-org-babel-schedule
 ;;
-(defun my-org-babel-schedule (lang body params penreg)
+(defun my-org-babel-schedule (lang body params reglock)
   "Schedule the execution of BODY according to PARAMS.
 Called by `org-babel-execute-src-block', async case.  Return a task
 controller."
@@ -90,8 +90,8 @@ controller."
         exec)
     (unless (and exec-sb (symbol-function exec-sb))
       (error "Not implemented my-org-babel-schedule for lang '%s'" lang))
-    (setq exec (funcall (symbol-function exec-sb) body params penreg))
-    (my-elib-async-comint-queue--push exec :penreg penreg)))
+    (setq exec (funcall (symbol-function exec-sb) body params reglock))
+    (my-elib-async-comint-queue--push exec :reglock reglock)))
 
 
 ;;;;; Synchronous case: my-org-babel-execute
@@ -104,7 +104,7 @@ This function is called by `org-babel-execute-src-block'."
 
 ;;;; How to execute Shell
 ;;
-(defun my-org-babel-how-to-execute-shell (body params _penreg)
+(defun my-org-babel-how-to-execute-shell (body params _reglock)
   "Return how to execute BODY using a POSIX shell.
 Return how to execute, as expected by
 `my-elib-async-comint-queue--execution'."
@@ -239,7 +239,7 @@ Return how to execute, as expected by
 ;;;; How to execute Python
 ;;
 
-(defun my-org-babel-how-to-execute-python (body params _penreg)
+(defun my-org-babel-how-to-execute-python (body params _reglock)
   "Return how to execute BODY using python.
 Return how to execute, as expected by
 `my-elib-async-comint-queue--execution'."
@@ -349,7 +349,7 @@ Return how to execute, as expected by
 ;;;; How to execute Ruby
 ;;
 
-(defun my-org-babel-how-to-execute-ruby (body params _penreg)
+(defun my-org-babel-how-to-execute-ruby (body params _reglock)
   "Return how to execute BODY using ruby.
 Return how to execute, as expected by
 `my-elib-async-comint-queue--execution'."
@@ -442,7 +442,7 @@ Return how to execute, as expected by
 ;;; Demo executing elisp using threads
 ;;
 
-(defun my-use-threads-schedule (lang body params penreg)
+(defun my-use-threads-schedule (lang body params reglock)
   "Schedule emacs-lisp code BODY according to PARAMS.
 Execute the code in a separate thread."
   ;; Code adapted from: `org-babel-execute:emacs-lisp'.
@@ -472,8 +472,8 @@ Execute the code in a separate thread."
          (outcome-lock (make-mutex "babel-outcome-lock"))
          (outcome nil)
 	 (todo (lambda ()
-                 (when penreg
-                   (org-pending-send-update penreg (list :progress "started")))
+                 (when reglock
+                   (org-pending-send-update reglock (list :progress "started")))
                  (let ((oc
                         (condition-case exc
                             (list :success
@@ -485,8 +485,8 @@ Execute the code in a separate thread."
 		                                 (org-babel-emacs-lisp-lexical lexical))))
                           (error (list :failure exc)))))
                    ;; Finger crossed: we run the feedback handler in a thread.
-                   (when penreg
-                     (org-pending-send-update penreg oc))
+                   (when reglock
+                     (org-pending-send-update reglock oc))
                    (with-mutex outcome-lock
                      (setq outcome oc)))
                    (message "org babel thread done.")))
@@ -504,7 +504,7 @@ Execute the code in a separate thread."
 ;;; Demo executing elisp using callbacks
 ;;
 
-(defun my-use-callbacks-schedule (lang body params penreg)
+(defun my-use-callbacks-schedule (lang body params reglock)
   "Schedule emacs-lisp code BODY according to PARAMS.
 Execute the code providing callbacks to get the result."
   ;; Code adapted from: `org-babel-execute:emacs-lisp'.
@@ -535,11 +535,11 @@ Execute the code providing callbacks to get the result."
          (progress-items)
          (report-outcome
           (lambda (oc)
-            (when penreg (org-pending-send-update penreg oc))
+            (when reglock (org-pending-send-update reglock oc))
             (setq outcome oc))))
 
-    (when penreg
-      (org-pending-send-update penreg (list :progress "started")))
+    (when reglock
+      (org-pending-send-update reglock (list :progress "started")))
 
     (funcall worker
              ;; report success
@@ -554,10 +554,10 @@ Execute the code providing callbacks to get the result."
                (funcall report-outcome (list :failure exc)))
              ;; report progress
              (lambda (p)
-               (when penreg (org-pending-send-update penreg (list :progress p)))
+               (when reglock (org-pending-send-update reglock (list :progress p)))
                (push p progress-items)))
 
-    (setf (org-pending-penreg-insert-details-function penreg)
+    (setf (org-pending-reglock-insert-details-function reglock)
           (lambda ()
             (dolist (it (nreverse progress-items)) (insert (format "%s\n" it)))))
     (lambda ()
@@ -570,15 +570,15 @@ Execute the code providing callbacks to get the result."
 
 ;;; Demo asynchronous dynamic blocks
 ;;
-(defun org-dblock-write:sleeper (_params penreg)
+(defun org-dblock-write:sleeper (_params reglock)
   (let ((outcome nil))
-    (when penreg
-      (org-pending-send-update penreg (list :progress "started"))
+    (when reglock
+      (org-pending-send-update reglock (list :progress "started"))
     ( run-with-idle-timer 1 nil
       (lambda ()
-        (when penreg
+        (when reglock
           (org-pending-send-update
-           penreg
+           reglock
 	   (list :success (concat "You're sleeping! (at "
 				  (current-time-string)
 				  ")"))))
@@ -600,7 +600,7 @@ Execute the code providing callbacks to get the result."
 ;;     - org-async-call
 ;;     - org-async-wait-for
 ;;
-(defun my-async-call-schedule (lang body params penreg)
+(defun my-async-call-schedule (lang body params reglock)
   ;; Basic executions of shell and python scripts.
   (let* ((mk-pargs (lambda (sfn)
                      (pcase lang
@@ -610,9 +610,9 @@ Execute the code providing callbacks to get the result."
          (handle-outcome
           (lambda (constr)
             (lambda (_exit process-buffer _info)
-              (when penreg
+              (when reglock
                 (org-pending-send-update
-                 penreg
+                 reglock
                  (list constr
                        (with-current-buffer process-buffer
                          (buffer-substring-no-properties (point-min) (point-max))))))

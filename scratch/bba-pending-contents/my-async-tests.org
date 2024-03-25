@@ -135,13 +135,13 @@ to schedule the execution of the source code blocks (instead of
 The function `org-babel-schedule:LANG' must be defined like this:
 
     #+begin_src elisp
-    (defun org-babel-schedule:LANG (body params penreg)
+    (defun org-babel-schedule:LANG (body params reglock)
       ...
       )
     #+end_src
 
 that is, compared to `org-babel-execute:LANG', it takes one extra
-parameter: a PENREG for the execution result.
+parameter: a REGLOCK for the execution result.
 
 The function `org-babel-schedule:LANG' may schedule the execution
 using any possible technique: processes, threads, timers, etc.  It
@@ -149,9 +149,9 @@ must use ~org-pending-send-update~ to report progress and
 the outcome. It must return immediately nothing.
 
 Org marks the block result as "pending", calling `org-pending', which
-returns PENREG (for PENding REGion).  Org then call
+returns REGLOCK (for PENding REGion).  Org then call
 `org-babel-schedule:LANG' with a SENTINEL that will send updates to
-this PENREG; `org-babel-schedule:LANG' must return a function that
+this REGLOCK; `org-babel-schedule:LANG' must return a function that
 waits for the result and returns it.
 
 
@@ -1216,7 +1216,7 @@ Some info about the pending contents that you've executed.
    #+begin_src elisp
    (cl-flet ((first-line (val) (car (string-split (format "%s" val) "\n"))))
      (mapcar (lambda (x) (mapcar (lambda (k)
-                                   (let ((v (eval `(,(intern (concat "org-pending-penreg-"
+                                   (let ((v (eval `(,(intern (concat "org-pending-reglock-"
    								  (symbol-name k)))
    						 ,x))))
    				  (setq v
