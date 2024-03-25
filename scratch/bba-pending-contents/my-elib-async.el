@@ -233,16 +233,17 @@ a function that blocks until the result is available and returns it."
                  (funcall exec :instrs-to-exit))
 
         (when reglock
-          (setf (org-pending-reglock-insert-details-function reglock)
-                (lambda (start end)
-                  (when result-log
-                    (let ((to-insert (with-temp-buffer
-                                       (insert result-log)
-                                       (buffer-substring (or (and start (max (point-min) start))
-                                                             (point-min))
-                                                         (or (and end (min (point-max) end))
-                                                             (point-max))))))
-                      (insert to-insert))))))
+          (add-function
+           :after (org-pending-reglock-insert-details-function reglock)
+           (lambda (_reglock start end)
+             (when result-log
+               (let ((to-insert (with-temp-buffer
+                                  (insert result-log)
+                                  (buffer-substring (or (and start (max (point-min) start))
+                                                        (point-min))
+                                                    (or (and end (min (point-max) end))
+                                                        (point-max))))))
+                 (insert to-insert))))))
         (let* ((outcome-ready-p
                 (lambda ()
                   (when (boundp outcome-sb) (symbol-value outcome-sb)))))
