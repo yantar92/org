@@ -397,7 +397,7 @@ If the outcome is not known, use the current time."
 ;;;; Creating a pending region
 ;;
 
-(cl-defun org-pending (region handle-result &key anchor name)
+(cl-defun org-pending (region &key anchor name on-outcome)
   "Mark a REGION as \"pending\" and return its PENREG.
 
 Return the PENREG that allows to manage the pending region.
@@ -412,7 +412,6 @@ position).  Use the ANCHOR region to display the progress.  When ANCHOR
 is not given, use the first line of REGION.
 
 Assume the region REGION contains the region ANCHOR.
-
 
 On receiving the outcome (sent with `org-pending-send-update'),
 remove the REGION protection.  If the outcome is a success, call
@@ -512,11 +511,8 @@ eventually, you must send a :success or a :failure update (see
              (setf (org-pending-penreg-outcome penreg) (list status data))
              (setf (org-pending-penreg-outcome-at penreg) (float-time))
 
-             (pcase status
-               (:success
-                (setq outcome-region (funcall handle-result data)))
-               (:failure
-                (setq outcome-region anchor))))
+             (when on-outcome
+               (setq outcome-region (funcall on-outcome (list status data)))))
 
            (when (and (memq status '(:failure :success))
                       outcome-region)
