@@ -901,6 +901,28 @@ result region, create a new empty one."
                              result-region))
                           (_ anchor)))
                       :anchor anchor)))
+        (setf (org-pending-reglock-property reglock 'source) (point-marker))
+        (setf (org-pending-reglock-insert-details-function reglock)
+              (lambda (_ _start _end)
+                (let ((src (org-pending-reglock-property reglock 'source)))
+                  (cl-labels
+                      ((insert-link (m)
+                         (insert
+                          (propertize
+                           (format "pos %s in buffer %s" (+ 0 m) (marker-buffer m))
+                           'face 'org-link
+                           'keymap
+                           (let ((km (make-sparse-keymap)))
+                             (define-key km [mouse-1]
+                                         (lambda (&rest _)
+                                           (interactive)
+                                           (let ((b (marker-buffer m)))
+                                             (pop-to-buffer b)
+                                             (goto-char m))))
+                             km)))))
+                    (progn (insert "Source: ")
+                           (insert-link src)
+                           (insert "\n"))))))
         reglock))))
 
 
