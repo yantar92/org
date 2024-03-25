@@ -526,7 +526,7 @@ If the field org-pending-reglock-insert-details-function of REGLOCK is
 non-nil, move point to the end of the description buffer, and that
 function with REGLOCK 0 and a reasonable size."
   (interactive)
-  (let ((buffer (get-buffer-create "*Pending content info*")))
+  (let ((buffer (get-buffer-create "*Region Lock*")))
     (with-output-to-temp-buffer buffer
       (with-current-buffer buffer
         (cl-labels
