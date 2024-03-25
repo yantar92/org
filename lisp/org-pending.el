@@ -341,11 +341,13 @@ no argument.")
   ( insert-details-function nil
     :documentation
     "When non-nil, function called to insert custom details at the end of
-`org-pending-describe-reglock'.  Assuming B is a (virtual) buffer
-containing detailed human readable information about this REGLOCK, insert
-at point details from START to END.  Handle cases where START, END are
-nil or out of bounds without raising an error.  The function may use
-text properties, overlays, etc.")
+`org-pending-describe-reglock'.  The function is called with a REGLOCK,
+a START position and an END position, it must insert details at
+point. Assuming B is a (virtual) buffer containing all detailed human
+readable information, insert at point details from START to END.  Handle
+cases where START, END are nil or out of bounds without raising an
+error.  The function may use text properties, overlays, etc.  See
+`org-pending-describe-reglock'")
   ( properties nil
     :documentation
     "A alist of properties.  Useful to attach custom features to this REGLOCK." ))
@@ -516,7 +518,14 @@ eventually, you must send a :success or a :failure update (see
 
 
 (defun org-pending-describe-reglock (reglock)
-  "Describe REGLOCK in a buffer."
+  "Describe REGLOCK in a buffer.
+
+Describe position REGLOCK.
+The information is displayed in new buffer.
+
+If the field org-pending-reglock-insert-details-function of REGLOCK is
+non-nil, move point to the end of the description buffer, and that
+function with REGLOCK 0 and a reasonable size."
   (interactive)
   (let ((buffer (get-buffer-create "*Pending content info*")))
     (with-output-to-temp-buffer buffer
@@ -607,7 +616,7 @@ eventually, you must send a :success or a :failure update (see
           (multi-line "Details"
                       (lambda ()
                         (when-let ((insert-details (org-pending-reglock-insert-details-function reglock)))
-                          (funcall insert-details nil (* 1024 1024))))))))))
+                          (funcall insert-details reglock nil (* 1024 1024))))))))))
 
 (defun org-pending--describe-reglock-at-point ()
   "Describe the pending content at point.
