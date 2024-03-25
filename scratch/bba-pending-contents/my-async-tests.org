@@ -135,24 +135,25 @@ to schedule the execution of the source code blocks (instead of
 The function `org-babel-schedule:LANG' must be defined like this:
 
     #+begin_src elisp
-    (defun org-babel-schedule:LANG (body params sentinel)
+    (defun org-babel-schedule:LANG (body params penreg)
       ...
       )
     #+end_src
 
 that is, compared to `org-babel-execute:LANG', it takes one extra
-parameter: the SENTINEL function.
+parameter: a PENREG for the execution result.
 
 The function `org-babel-schedule:LANG' may schedule the execution
 using any possible technique: processes, threads, timers, etc.  It
-must setup calls to SENTINEL to communicate to org the progress and
-the outcome. It must return immediately a TASK-CONTROL.
+must use ~org-pending-ti-send-update~ to report progress and
+the outcome. It must return immediately nothing.
 
 Org marks the block result as "pending", calling `org-pending', which
 returns PENREG (for PENding REGion).  Org then call
 `org-babel-schedule:LANG' with a SENTINEL that will send updates to
-this PENREG; `org-babel-schedule:LANG' must return a TASK-CONTROL.
-Org then connects that TASK-CONTROL to the pending region PENREG.
+this PENREG; `org-babel-schedule:LANG' must return a function that
+waits for the result and returns it.
+
 
 
 ** Integration with dynamic blocks
@@ -164,7 +165,7 @@ If the dynamic block function symbol has a non-nil 'nasync' property,
 org now assumes that this is an asynchronous function and runs it as
 such: it marks the dynamic block region as "pending" and calls the
 function with the SENTINEL as an extra argument.  The function must
-return immediately a TASK-CONTROL.
+return a function that waits for the result and returns it.
 
 * Examples
 ** Manual editing of some content
