@@ -316,10 +316,10 @@ Assume OVL has been created with `org-pending--make-overlay'."
   ( region nil
     :read-only t
     :documentation
-    "The pending region: a pair of positions (begin marker . end
-marker). This is the target of the update. Its content will be updated
-on succes.")
-
+    "(read-only constant) The pending region: a pair of positions
+(begin marker . end marker). This is the target of the update. Its
+content will be updated on success.  A PENREG without a region is said
+to be virtual.")
 
   ( scheduled-at nil
     :documentation
