@@ -9067,13 +9067,16 @@ the correct writing function."
                                (progn (end-of-line) (point-marker)))))
                (penreg
                 (org-pending anchor
-                             (lambda (r)
-                               (funcall (cdr params-eraser))
-                               (goto-char insert-pos)
-                               (unless (stringp r) (setq r (format "%s" r)))
-                               (insert r)
-                               (funcall post-process insert-pos)
-                               anchor)))
+                             :on-outcome
+                             (lambda (o)
+                               (pcase o
+                                 (`(:success ,r)
+                                  (funcall (cdr params-eraser))
+                                  (goto-char insert-pos)
+                                  (unless (stringp r) (setq r (format "%s" r)))
+                                  (insert r)
+                                  (funcall post-process insert-pos)
+                                  anchor)))))
                (await (funcall cmd params penreg)))
           ;; If the no-async flag is ON, block until the content is
           ;; written.
