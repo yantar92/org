@@ -473,7 +473,7 @@ Execute the code in a separate thread."
          (outcome nil)
 	 (todo (lambda ()
                  (when penreg
-                   (org-pending-ti-send-update penreg (list :progress "started")))
+                   (org-pending-send-update penreg (list :progress "started")))
                  (let ((oc
                         (condition-case exc
                             (list :success
@@ -486,7 +486,7 @@ Execute the code in a separate thread."
                           (error (list :failure exc)))))
                    ;; Finger crossed: we run the feedback handler in a thread.
                    (when penreg
-                     (org-pending-ti-send-update penreg oc))
+                     (org-pending-send-update penreg oc))
                    (with-mutex outcome-lock
                      (setq outcome oc)))
                    (message "org babel thread done.")))
@@ -535,11 +535,11 @@ Execute the code providing callbacks to get the result."
          (progress-items)
          (report-outcome
           (lambda (oc)
-            (when penreg (org-pending-ti-send-update penreg oc))
+            (when penreg (org-pending-send-update penreg oc))
             (setq outcome oc))))
 
     (when penreg
-      (org-pending-ti-send-update penreg (list :progress "started")))
+      (org-pending-send-update penreg (list :progress "started")))
 
     (funcall worker
              ;; report success
@@ -554,7 +554,7 @@ Execute the code providing callbacks to get the result."
                (funcall report-outcome (list :failure exc)))
              ;; report progress
              (lambda (p)
-               (when penreg (org-pending-ti-send-update penreg (list :progress p)))
+               (when penreg (org-pending-send-update penreg (list :progress p)))
                (push p progress-items)))
 
     (setf (org-pending-penreg-insert-details-function penreg)
@@ -573,11 +573,11 @@ Execute the code providing callbacks to get the result."
 (defun org-dblock-write:sleeper (_params penreg)
   (let ((outcome nil))
     (when penreg
-      (org-pending-ti-send-update penreg (list :progress "started"))
+      (org-pending-send-update penreg (list :progress "started"))
     ( run-with-idle-timer 1 nil
       (lambda ()
         (when penreg
-          (org-pending-ti-send-update
+          (org-pending-send-update
            penreg
 	   (list :success (concat "You're sleeping! (at "
 				  (current-time-string)
@@ -611,7 +611,7 @@ Execute the code providing callbacks to get the result."
           (lambda (constr)
             (lambda (_exit process-buffer _info)
               (when penreg
-                (org-pending-ti-send-update
+                (org-pending-send-update
                  penreg
                  (list constr
                        (with-current-buffer process-buffer

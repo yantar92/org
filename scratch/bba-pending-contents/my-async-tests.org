@@ -145,7 +145,7 @@ parameter: a PENREG for the execution result.
 
 The function `org-babel-schedule:LANG' may schedule the execution
 using any possible technique: processes, threads, timers, etc.  It
-must use ~org-pending-ti-send-update~ to report progress and
+must use ~org-pending-send-update~ to report progress and
 the outcome. It must return immediately nothing.
 
 Org marks the block result as "pending", calling `org-pending', which
