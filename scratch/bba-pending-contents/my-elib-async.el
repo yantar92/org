@@ -183,13 +183,15 @@ Assume we are called from the comint buffer."
 (define-error 'my-elib-async-comint-queue-task-error
               "Task failure.")
 
-(cl-defun my-elib-async-comint-queue--push (exec &key sentinel)
+(cl-defun my-elib-async-comint-queue--push (exec &key penreg)
   "Push the execution of EXEC into the FIFO queue.
 When the task completed, call SENTINEL with its outcome.  Return
-a function that allows to control the tasks."
+a function that blocks until the result is available and returns it."
   (let* ((tid (org-id-uuid))
          (start-tag (format "MY-ELIB-ASYNC_START_%s" tid))
          (end-tag (format "MY-ELIB-ASYNC_END___%s" tid))
+         (sentinel (when penreg
+                     (lambda (msg) (org-pending-ti-send-update penreg msg))))
          (outcome-sb (make-symbol "outcome"))
          result-log
          (on-start
@@ -230,26 +232,20 @@ a function that allows to control the tasks."
         (funcall exec :send-instrs-to-session
                  (funcall exec :instrs-to-exit))
 
-        (let ((outcome-ready-p
-               (lambda ()
-                 (when (boundp outcome-sb) (symbol-value outcome-sb)))))
-          (lambda (&rest query)
-            (pcase query
-              (`(:get . ,_)
-               (org-pending-wait-outcome outcome-ready-p))
-
-              (`(:cancel ,_penreg)
-               (org-pending-ti-not-implemented))
-
-              (`(:insert-details ,_penreg ,start ,end)
-               (let ((to-insert (with-temp-buffer
-                                  (insert result-log)
-                                  (buffer-substring (or (and start (max (point-min) start))
-                                                        (point-min))
-                                                    (or (and end (min (point-max) end))
-                                                        (point-max))))))
-                 (insert to-insert)))
-              (_ (error "Unknown query")))))))))
+        (when penreg
+          (setf (org-pending-penreg-insert-details-function penreg)
+                (lambda (start end)
+                  (let ((to-insert (with-temp-buffer
+                                     (insert result-log)
+                                     (buffer-substring (or (and start (max (point-min) start))
+                                                           (point-min))
+                                                       (or (and end (min (point-max) end))
+                                                           (point-max))))))
+                    (insert to-insert)))))
+        (let* ((outcome-ready-p
+                (lambda ()
+                  (when (boundp outcome-sb) (symbol-value outcome-sb)))))
+          (lambda () (org-pending-wait-outcome outcome-ready-p)))))))
 
 
 (defun my-elib-async-comint-queue-init-if-needed (buffer)
