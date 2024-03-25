@@ -366,7 +366,7 @@ A PENREG belongs to one buffer, the buffer that is current when it is
 created.  For example, if you flag some content as /pending/ in an
 indirect buffer, that /pending region/ belongs to that indirect buffer,
 and, control of that /pending region/ must happen in that buffer."
-  (marker-buffer (org-pending-penreg-source penreg)))
+  (marker-buffer (org-pending-penreg-region penreg)))
 
 (defun org-pending-penreg-status (penreg)
   "Return the status of PENREG: :scheduled, :pending, :success or :failure."
