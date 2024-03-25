@@ -314,8 +314,7 @@ Assume OVL has been created with `org-pending--make-overlay'."
     :documentation
     "(read-only constant) The pending region: a pair of positions
 (begin marker . end marker). This is the target of the update. Its
-content will be updated on success.  A PENREG without a region is said
-to be virtual.")
+content will be updated on success.")
 
   ( scheduled-at nil
     :documentation
@@ -408,9 +407,6 @@ the REGION from modifications until the PENREG receives a :success or a
 :failure update.  Display progress when PENREG receives :progress
 updates.  Do not delete the previous content of REGION.
 
-If REGION is nil, ignore REGION and ANCHOR and ignore instructions that
-require them.
-
 The argument ANCHOR, when given, is a pair (start position . end
 position).  Use the ANCHOR region to display the progress.  When ANCHOR
 is not given, use the first line of REGION.
@@ -426,12 +422,14 @@ report the success using visual hints on that region.  If the outcome is
 a failure, report the failure using REGION.
 
 You may want to connect a task with that PENREG (see
-`org-pending-ti-connect').  You may send progress updates, and,
+`org-pending-ti-connect').  You may send progress updates, and, FIXME
 eventually, you must send a :success or a :failure update (see
 `org-pending-send-update')."
+  (unless region
+    (error "Now illegal"))
+
   (let ((buf (current-buffer))
         (pt  (point-marker))
-        (pending-is-virtual (eq nil region)) ;; Sometimes there is no region ...
         (to-marker (lambda (p)
                      ;; Make sure P is a marker.
                      (or (and (markerp p) p)
@@ -441,23 +439,24 @@ eventually, you must send a :success or a :failure update (see
         last-status
         penreg
         outcome-region)
-    (unless pending-is-virtual
-      (setq region (cons (funcall to-marker (car region))
-                         (funcall to-marker (cdr region))))
-      (save-excursion
-        (setq anchor
-              (if (not anchor)
-                  (let ((abeg ;; First non-blank point in region.
-                         (save-excursion (goto-char (car region))
-                                         (re-search-forward "[[:blank:]]*")
-                                         (point-marker)))
-                        (aend ;; Last position on first line
-                         (save-excursion (goto-char (car region))
-                                         (end-of-line)
-                                         (point-marker))))
-                    (cons abeg aend))
-                (cons (funcall to-marker (car anchor))
-                      (funcall to-marker (cdr anchor)))))))
+
+
+    (setq region (cons (funcall to-marker (car region))
+                       (funcall to-marker (cdr region))))
+    (save-excursion
+      (setq anchor
+            (if (not anchor)
+                (let ((abeg ;; First non-blank point in region.
+                       (save-excursion (goto-char (car region))
+                                       (re-search-forward "[[:blank:]]*")
+                                       (point-marker)))
+                      (aend ;; Last position on first line
+                       (save-excursion (goto-char (car region))
+                                       (end-of-line)
+                                       (point-marker))))
+                  (cons abeg aend))
+              (cons (funcall to-marker (car anchor))
+                    (funcall to-marker (cdr anchor))))))
     (cl-labels
         ((add-style (status txt)
            "Add the style matching STATUS over the text TXT."
@@ -474,41 +473,40 @@ eventually, you must send a :success or a :failure update (see
              (error "Invalid status"))
            ;; Update the title overlay to match STATUS and DATA.
            (setq last-status status)
-           (unless pending-is-virtual
+           (overlay-put anchor-ovl
+                        'face
+                        (org-pending-status-face status))
+           (overlay-put anchor-ovl
+                        'before-string
+                        ;; The text property projection hack (for
+                        ;; indirect buffers) is leaking its
+                        ;; background colour to the status flag; we
+                        ;; try to undo this by forcing the
+                        ;; background colour for the status,
+                        ;; hopefully matching the buffer one.
+                        (propertize
+                         (pcase status
+                           (:scheduled "⏱")
+                           (:pending "⏳")
+                           (:failure "❌")
+                           (:success "✔️"))
+                         'face (list :background (face-attribute 'default :background))))
+           (unless (memq status '(:success :failure))
              (overlay-put anchor-ovl
-                          'face
-                          (org-pending-status-face status))
-             (overlay-put anchor-ovl
-                          'before-string
-                          ;; The text property projection hack (for
-                          ;; indirect buffers) is leaking its
-                          ;; background colour to the status flag; we
-                          ;; try to undo this by forcing the
-                          ;; background colour for the status,
-                          ;; hopefully matching the buffer one.
-                          (propertize
-                           (pcase status
-                             (:scheduled "⏱")
-                             (:pending "⏳")
-                             (:failure "❌")
-                             (:success "✔️"))
-                           'face (list :background (face-attribute 'default :background))))
-             (unless (memq status '(:success :failure))
-               (overlay-put anchor-ovl
-                            'after-string
-                            (propertize (format " |%s|" (short-version-of data))
-                                        'face (org-pending-status-face status))))
-             (when (memq status '(:success :failure))
-               ;; NOTE: `sit-for' doesn't garantuee we'll be
-               ;;       at the same pos when exiting.
-               (save-excursion (sit-for 0.2))
+                          'after-string
+                          (propertize (format " |%s|" (short-version-of data))
+                                      'face (org-pending-status-face status))))
+           (when (memq status '(:success :failure))
+             ;; NOTE: `sit-for' doesn't garantuee we'll be
+             ;;       at the same pos when exiting.
+             (save-excursion (sit-for 0.2))
 
-               ;; We remove all overlays and let org insert the result
-               ;; as it would in the synchronous case.
-               (org-pending--delete-overlay anchor-ovl)
-               (setq anchor-ovl nil)
-               (org-pending--delete-overlay region-ovl)
-               (setq region-ovl nil)))
+             ;; We remove all overlays and let org insert the result
+             ;; as it would in the synchronous case.
+             (org-pending--delete-overlay anchor-ovl)
+             (setq anchor-ovl nil)
+             (org-pending--delete-overlay region-ovl)
+             (setq region-ovl nil))
 
            (when (memq status '(:success :failure))
              (setf (org-pending-penreg-outcome penreg) (list status data))
@@ -520,23 +518,22 @@ eventually, you must send a :success or a :failure update (see
                (:failure
                 (setq outcome-region anchor))))
 
-           (unless pending-is-virtual
-             (when (and (memq status '(:failure :success))
-                        outcome-region)
-               ;; We add some outcome decorations to let the user now
-               ;; what happened and allow him to explore the details.
-               (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
-                     (bitmap (pcase status
-                               (:success 'large-circle)
-                               (:failure 'exclamation-mark)))
-                     (face (pcase status
-                             (:success 'org-done)
-                             (:failure 'org-todo))))
-                 (overlay-put outcome-ovl
-                              'before-string (propertize
-                                              "x" 'display
-                                              `(left-fringe ,bitmap ,face)))
-                 (overlay-put outcome-ovl 'org-pending-penreg penreg)))))
+           (when (and (memq status '(:failure :success))
+                      outcome-region)
+             ;; We add some outcome decorations to let the user now
+             ;; what happened and allow him to explore the details.
+             (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
+                   (bitmap (pcase status
+                             (:success 'large-circle)
+                             (:failure 'exclamation-mark)))
+                   (face (pcase status
+                           (:success 'org-done)
+                           (:failure 'org-todo))))
+               (overlay-put outcome-ovl
+                            'before-string (propertize
+                                            "x" 'display
+                                            `(left-fringe ,bitmap ,face)))
+               (overlay-put outcome-ovl 'org-pending-penreg penreg))))
 
          (remove-previous-overlays ()
            "Remove previous status overlays.
@@ -567,12 +564,11 @@ eventually, you must send a :success or a :failure update (see
              (mapc (lambda (x) (org-pending--delete-overlay x))
                    ovls))))
 
-      (unless pending-is-virtual
-        (remove-previous-overlays)
+      (remove-previous-overlays)
 
-        ;; Create the overlays for the anchor and for the region.
-        (setq region-ovl (org-pending--make-overlay :region region))
-        (setq anchor-ovl (org-pending--make-overlay :status anchor)))
+      ;; Create the overlays for the anchor and for the region.
+      (setq region-ovl (org-pending--make-overlay :region region))
+      (setq anchor-ovl (org-pending--make-overlay :status anchor))
 
       ;; Flag the result as ":scheduled".
       (update :scheduled nil)
@@ -610,9 +606,8 @@ eventually, you must send a :success or a :failure update (see
                                                        (overlay-buffer anchor-ovl)))) )
              :scheduled-at (float-time)))
 
-      (unless pending-is-virtual
-        (overlay-put anchor-ovl 'org-pending-penreg penreg)
-        (overlay-put region-ovl 'org-pending-penreg penreg))
+      (overlay-put anchor-ovl 'org-pending-penreg penreg)
+      (overlay-put region-ovl 'org-pending-penreg penreg)
       (org-pending--mgr-handle-new-penreg penreg name)
       penreg)))
 
