@@ -897,8 +897,9 @@ includes past and present REGLOCKs."
 
 ;;; Plugging into Emacs
 ;;
-(defun org-pending--kill (reglock)
+(defun org-pending--forced-kill (reglock)
   "Kill this REGLOCK.
+Do not ask for confirmation or interact in any way, just kill it.
 
 Do nothing if this REGLOCK is not live anymore.
 
@@ -906,9 +907,7 @@ Call `org-pending-reglock-before-kill-function' with REGLOCK if any.  If
 the REGLOCK is still live, make it fail with org-pending-user-cancel
 error.
 
-Return nothing.
-
-Do not ask for confirmation or interact in any way."
+Return nothing."
   (when (org-pending-reglock-live-p reglock)
     (when-let ((before-kill (org-pending-reglock-before-kill-function reglock)))
       (funcall before-kill reglock))
@@ -946,7 +945,7 @@ offer to abort killing the buffer."
         (without-restriction
           (dolist (pi (org-pending-contents-in (point-min) (point-max)
                                                :owned-only))
-            (org-pending--kill pi)))
+            (org-pending--forced-kill pi)))
         :forced-kill))))
 
 (defun org-pending--kill-emacs-query ()
@@ -958,7 +957,7 @@ If there are any pending contents, offer to abort killing Emacs."
     (when (yes-or-no-p (format "Some org content is pending, kill anyway?"))
       ;; Forced kill: cancel all pending regions
       (dolist (pi (org-pending-list))
-        (org-pending--kill pi))
+        (org-pending--forced-kill pi))
       :forced-kill)))
 
 (defun org-pending--after-indirect-clone ()
