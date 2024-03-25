@@ -739,6 +739,7 @@ Sending update messages once the REGLOCK got its outcome is undefined."
       (with-current-buffer buf
         (save-excursion
           (goto-char pt)
+          (org-pending--mgr-handle-reglock-update reglock upd-message)
           (pcase upd-message
             (`(:success ,r)
              ;; Visual beep that the result is available.
@@ -857,10 +858,6 @@ See also `org-pending-contents-in'."
   "Handle this new pending content REGLOCK.
 Update REGLOCK as needed. Return nothing."
   (let* ((mgr (org-pending--manager)))
-    (add-function
-     :after (org-pending-reglock--sentinel reglock)
-     (lambda (message)
-       (org-pending--mgr-handle-reglock-update reglock message)))
     (push reglock (org-pending--manager-reglocks mgr))
     (unless name (setq name "REGLOCK"))
 
