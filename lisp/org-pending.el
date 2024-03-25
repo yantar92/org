@@ -894,6 +894,9 @@ This is a global list for this Emacs instance, in any org buffer.  It
 includes past and present REGLOCKs."
   (org-pending--manager-reglocks (org-pending--manager)))
 
+
+;;; Plugging into Emacs
+;;
 (defun org-pending--kill (reglock)
   "Kill this REGLOCK.
 
@@ -919,8 +922,6 @@ Do not ask for confirmation or interact in any way."
     nil))
 
 
-;;; Plugging into Emacs
-;;
 (defun org-pending--kill-buffer-query ()
   "For `kill-buffer-query-functions'.
 If the current buffer contains pending contents,
