@@ -49,7 +49,7 @@
 ;;       "something" may be a thread, a timer, a notification, a
 ;;       process, etc.  That "something" must eventually send a
 ;;       :success or :failure message (using
-;;       `org-pending-ti-send-update'): Emacs will appropriately
+;;       `org-pending-send-update'): Emacs will appropriately
 ;;       update the pending region and close it.
 ;;
 ;;    3. You may, optionally, connect the pending region to a "task".
@@ -418,7 +418,7 @@ is not given, use the first line of REGION.
 Assume the region REGION contains the region ANCHOR.
 
 
-On receiving the outcome (sent with `org-pending-ti-send-update'),
+On receiving the outcome (sent with `org-pending-send-update'),
 remove the REGION protection.  If the outcome is a success, call
 HANDLE-RESULT with the value from the SOURCE position.  If HANDLE-RESULT
 returns the outcome region (a pair (start position . end position)),
@@ -428,7 +428,7 @@ a failure, report the failure using REGION.
 You may want to connect a task with that PENREG (see
 `org-pending-ti-connect').  You may send progress updates, and,
 eventually, you must send a :success or a :failure update (see
-`org-pending-ti-send-update')."
+`org-pending-send-update')."
   (let ((buf (current-buffer))
         (pt  (point-marker))
         (pending-is-virtual (eq nil region)) ;; Sometimes there is no region ...
@@ -729,7 +729,7 @@ Get the PENREG at point (pending content or an outcome).  Use
 
 
 
-(defun org-pending-ti-send-update (penreg message)
+(defun org-pending-send-update (penreg message)
   "Send the status update to the PENREG.
 
 The udpate MESSAGE must be one of the following:
@@ -1047,12 +1047,12 @@ unique if needed."
          closing)
     (string-edit prompt to-update
                  (lambda (new-text)
-                   (org-pending-ti-send-update
+                   (org-pending-send-update
                     penreg
                     (list :success new-text)))
                  :abort-callback
                  (lambda ()
-                   (org-pending-ti-send-update
+                   (org-pending-send-update
                     penreg
                     (list :failure (list 'user-error
                                          "Edition canceled by the user")))))
@@ -1079,7 +1079,7 @@ unique if needed."
       (push (lambda ()
               (when (and (not closing)
                          (org-pending-penreg-live-p penreg))
-                (org-pending-ti-send-update
+                (org-pending-send-update
                  penreg
                  (list :failure (list 'user-error
                                       "Edition buffer killed"))))
