@@ -313,14 +313,6 @@ Assume OVL has been created with `org-pending--make-overlay'."
     :documentation
     "Unique identifier of this PENREG for this Emacs instance.")
 
-  ( source nil
-    :read-only t
-    :documentation
-    "A point marker, pointing to what triggered the update.
-This is a position in a buffer, meaningful for the user, that explains
-what the update is.  For example, for org-babel, the source would be the
-source code block (and the pending region its result).")
-
   ( region nil
     :read-only t
     :documentation
@@ -389,7 +381,7 @@ If the outcome is not known, use the current time."
 ;;;; Creating a pending region
 ;;
 
-(cl-defun org-pending (region handle-result &key anchor source name)
+(cl-defun org-pending (region handle-result &key anchor name)
   "Mark a REGION as \"pending\" and return its PENREG.
 
 Return the PENREG that allows to manage the pending region.
@@ -408,12 +400,6 @@ is not given, use the first line of REGION.
 
 Assume the region REGION contains the region ANCHOR.
 
-The SOURCE is the buffer position that requested this pending region.
-When not given, use the current position as the SOURCE.  The SOURCE
-buffer is the \"owner\" of the created pending region (see
-`org-pending-penreg-owner').
-
-Assume the SOURCE and the REGION are in the same buffer.
 
 On receiving the outcome (sent with `org-pending-ti-send-update'),
 remove the REGION protection.  If the outcome is a success, call
@@ -438,9 +424,6 @@ eventually, you must send a :success or a :failure update (see
         last-status
         penreg
         outcome-region)
-    (setq source
-          (or (and source (funcall to-marker source))
-              (point-marker)))
     (unless pending-is-virtual
       (setq region (cons (funcall to-marker (car region))
                          (funcall to-marker (cdr region))))
@@ -604,7 +587,6 @@ eventually, you must send a :success or a :failure update (see
       (setq penreg
             (org-pending--make
              :-sentinel sentinel
-             :source source
              :region region
              :virtual pending-is-virtual
              :-alist `( (get-status . ,(lambda () last-status))
@@ -656,6 +638,12 @@ connected task raises a org-pending-ti-not-implemented error."
                                    (pop-to-buffer b)
                                    (goto-char m))))
                    km))))
+             (insert-region (r)
+               (insert "[")
+               (insert-link (car r))
+               (insert "..")
+               (insert-link (cdr r))
+               (insert "]"))
              (insert-value (value)
                (cond
                 ((markerp value) (insert-link value))
@@ -694,10 +682,8 @@ connected task raises a org-pending-ti-not-implemented error."
                     (substring (symbol-name (org-pending-penreg-status penreg)) 1))
           (one-line "Live?"
                     (bool-to-string (org-pending-penreg-live-p penreg)))
-          (one-line "Source"
-                    (org-pending-penreg-source penreg))
           (one-line "Region"
-                    (org-pending-penreg-region penreg))
+                    (lambda () (insert-region (org-pending-penreg-region penreg))))
           (one-line "Scheduled at"
                     (time-to-string (org-pending-penreg-scheduled-at penreg)))
           (one-line "Outcome at"
