@@ -5,7 +5,7 @@
 #+DATE: 2024-03-18
 * Intro
 
-We propose a new API 'org-pending' to mark a region as /pending/,
+We propose a new API 'org-pending' to lock a region as /pending/,
 meaning, /something is working to update that region/; the update will
 be ready later.
 
@@ -141,18 +141,19 @@ The function `org-babel-schedule:LANG' must be defined like this:
     #+end_src
 
 that is, compared to `org-babel-execute:LANG', it takes one extra
-parameter: a REGLOCK for the execution result.
+parameter: a REGLOCK, i.e. the lock of the region that waits for the
+result.
 
 The function `org-babel-schedule:LANG' may schedule the execution
 using any possible technique: processes, threads, timers, etc.  It
 must use ~org-pending-send-update~ to report progress and
 the outcome. It must return immediately nothing.
 
-Org marks the block result as "pending", calling `org-pending', which
-returns REGLOCK (for PENding REGion).  Org then call
-`org-babel-schedule:LANG' with a SENTINEL that will send updates to
-this REGLOCK; `org-babel-schedule:LANG' must return a function that
-waits for the result and returns it.
+Org locks the block result, calling `org-pending', which returns
+REGLOCK (for REGion LOCK).  Org then call `org-babel-schedule:LANG'
+with the lock; `org-babel-schedule:LANG' needs to send updates to this
+REGLOCK; it must return a function that waits for the result and
+returns it.
 
 
 
@@ -163,8 +164,8 @@ blocks.
 
 If the dynamic block function symbol has a non-nil 'nasync' property,
 org now assumes that this is an asynchronous function and runs it as
-such: it marks the dynamic block region as "pending" and calls the
-function with the SENTINEL as an extra argument.  The function must
+such: it locks the dynamic block region as "pending" and calls the
+function with the REGLOCK as an extra argument.  The function must
 return a function that waits for the result and returns it.
 
 * Examples
@@ -1183,22 +1184,34 @@ To unlock the previous pending content, execute the following block.
    import time; time.sleep(10)
    #+end_src
 
+   #+RESULTS:
+   : None
+
 
    #+begin_src python
    import time; time.sleep(10)
    #+end_src
+
+   #+RESULTS:
+   : None
 
 
 
    #+begin_src python :session newone
    import time; time.sleep(10)
    #+end_src
+
+   #+RESULTS:
+   : None
 
 
    #+begin_src python :session newone
    import time; time.sleep(5)
    2/0
    #+end_src
+
+   #+RESULTS:
+   : None
 
 * Pending contents management
 
