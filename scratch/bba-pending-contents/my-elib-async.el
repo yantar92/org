@@ -183,15 +183,15 @@ Assume we are called from the comint buffer."
 (define-error 'my-elib-async-comint-queue-task-error
               "Task failure.")
 
-(cl-defun my-elib-async-comint-queue--push (exec &key penreg)
+(cl-defun my-elib-async-comint-queue--push (exec &key reglock)
   "Push the execution of EXEC into the FIFO queue.
 When the task completed, call SENTINEL with its outcome.  Return
 a function that blocks until the result is available and returns it."
   (let* ((tid (org-id-uuid))
          (start-tag (format "MY-ELIB-ASYNC_START_%s" tid))
          (end-tag (format "MY-ELIB-ASYNC_END___%s" tid))
-         (sentinel (when penreg
-                     (lambda (msg) (org-pending-send-update penreg msg))))
+         (sentinel (when reglock
+                     (lambda (msg) (org-pending-send-update reglock msg))))
          (outcome-sb (make-symbol "outcome"))
          result-log
          (on-start
@@ -232,8 +232,8 @@ a function that blocks until the result is available and returns it."
         (funcall exec :send-instrs-to-session
                  (funcall exec :instrs-to-exit))
 
-        (when penreg
-          (setf (org-pending-penreg-insert-details-function penreg)
+        (when reglock
+          (setf (org-pending-reglock-insert-details-function reglock)
                 (lambda (start end)
                   (when result-log
                     (let ((to-insert (with-temp-buffer
