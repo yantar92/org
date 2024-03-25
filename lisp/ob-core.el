@@ -890,12 +890,16 @@ result region, create a new empty one."
              (content-end (cdr result-region))
              (penreg (org-pending
                       (cons content-begin content-end)
-                      (lambda (r)
-                        (let ((result-region (funcall handle-result r)))
-                          ;; For non-inline results, put outcome info
-                          ;; only on '#+RESULTS:'.
-                          (unless inline-elem (setq result-region anchor))
-                          result-region))
+                      :on-outcome
+                      (lambda (o)
+                        (pcase o
+                          (`(:success ,r)
+                           (let ((result-region (funcall handle-result r)))
+                             ;; For non-inline results, put outcome info
+                             ;; only on '#+RESULTS:'.
+                             (unless inline-elem (setq result-region anchor))
+                             result-region))
+                          (_ anchor)))
                       :anchor anchor)))
         penreg))))
 
