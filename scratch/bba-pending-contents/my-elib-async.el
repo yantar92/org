@@ -191,7 +191,7 @@ a function that blocks until the result is available and returns it."
          (start-tag (format "MY-ELIB-ASYNC_START_%s" tid))
          (end-tag (format "MY-ELIB-ASYNC_END___%s" tid))
          (sentinel (when penreg
-                     (lambda (msg) (org-pending-ti-send-update penreg msg))))
+                     (lambda (msg) (org-pending-send-update penreg msg))))
          (outcome-sb (make-symbol "outcome"))
          result-log
          (on-start
