@@ -322,6 +322,15 @@ or (:failure ERROR)")
     "When non-nil, function called before Emacs kills this REGLOCK, with the
 REGLOCK as argument.")
 
+  ( user-cancel-function nil
+    :documentation
+    "Function called when the user wish to cancel this REGLOCK,
+with the REGLOCK as argument.  This function must return immediately; it
+may, asynchronously, stop some processing and release resources; and,
+once this is done, it should send the REGLOCK outcome (using
+`org-pending-send-update', so that the REGLOCK get closed). The default
+value is `org-pending--user-cancel-default'" )
+
   ( insert-details-function nil
     :documentation
     "When non-nil, function called to insert custom details at the end of
@@ -375,6 +384,13 @@ If the outcome is not known, use the current time."
 (gv-define-simple-setter org-pending-reglock-property
                          org-pending-reglock-set-property)
 
+
+(defun org-pending--user-cancel-default (reglock)
+  "Send a cancel message to REGLOCK to close it.
+Default value for `org-pending-reglock-insert-details-function'."
+  (org-pending-send-update
+   reglock (list :failure (list 'org-pending-user-cancel
+                                "Canceled"))))
 
 ;;;; Creating a pending region
 ;;
@@ -482,7 +498,8 @@ outcome to unlock the region (see `org-pending-send-update')."
             (org-pending--make
              :region region
              :-alist internals
-             :scheduled-at (float-time)))
+             :scheduled-at (float-time)
+             :user-cancel-function #'org-pending--user-cancel-default))
 
       ;; Flag the result as ":scheduled".
       (org-pending--update reglock :scheduled nil)
@@ -878,6 +895,21 @@ This is a global list for this Emacs instance, in any org buffer.  It
 includes past and present REGLOCKs."
   (org-pending--manager-reglocks (org-pending--manager)))
 
+
+(defun org-pending-cancel (reglock)
+  "Try to cancel REGLOCK.
+
+Call `org-pending-reglock-user-cancel-function' with REGLOCK.
+
+Note that the cancellation is asynchronous, the REGLOCK should receive
+its outcome when the cancellation completes.
+
+Return nothing immediately."
+  (when (org-pending-reglock-live-p reglock)
+    (org-pending-send-update
+     reglock (list :failure (list 'org-pending-user-cancel
+                                  "Canceled"))))
+  nil)
 
 ;;; Plugging into Emacs
 ;;
