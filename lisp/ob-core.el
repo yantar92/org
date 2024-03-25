@@ -910,11 +910,11 @@ result region, create a new empty one."
   "Execute the function SCHEDULE synchronously.
 Start the asynchronous execution, wait for its outcome, finally return
 the result or raise the exception."
-  (let* ((task-control (funcall schedule lang body params nil)))
-    (unless task-control
-      (error "Function `%s' didn't return a valid task-control"
+  (let ((await (funcall schedule lang body params nil)))
+    (unless await
+      (error "Function `%s' didn't return a function to wait for the result."
              schedule))
-    (funcall task-control :get nil)))
+    (funcall await)))
 
 
 
@@ -1106,17 +1106,12 @@ guess will be made."
               (org-pending-without-async
                (let* ((penreg
                        (org-babel--async-pending
-                        info handle-result result-params exec-start-time))
-                      (task-control
-                       (condition-case-unless-debug exc
-                           (apply cmd (nconc cmd-args
-                                             (list
-                                              (lambda (msg)
-                                                (org-pending-ti-send-update penreg msg)))))
-                         (error
-                          (org-pending-ti-send-update penreg (list :failure exc))
-                          nil))))
-                 (org-pending-ti-connect penreg task-control)
+                        info handle-result result-params exec-start-time)))
+                 (condition-case-unless-debug exc
+                     (apply cmd (nconc cmd-args (list penreg)))
+                   (error
+                    (org-pending-ti-send-update penreg (list :failure exc))
+                    nil))
                  penreg))))))))))
 
 
