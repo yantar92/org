@@ -1110,7 +1110,7 @@ guess will be made."
                  (condition-case-unless-debug exc
                      (apply cmd (nconc cmd-args (list penreg)))
                    (error
-                    (org-pending-ti-send-update penreg (list :failure exc))
+                    (org-pending-send-update penreg (list :failure exc))
                     nil))
                  penreg))))))))))
 
