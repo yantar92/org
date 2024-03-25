@@ -854,13 +854,7 @@ result region, create a new empty one."
   (if (or (member "none" result-params)
           (member "silent" result-params)
           (member "discard" result-params))
-      ;; For none, silent and discard, there is no pending content.
-      ;; But we do have to control the executions, using a fake
-      ;; pending content: this block result may still be used by
-      ;; something else. For example, "none" is used to resolve vars
-      ;; when executing other blocks.
-      (org-pending nil handle-result)
-
+      nil
     (let (;; copy/pasted from org-babel-insert-result
           (inline-elem (let ((context (org-element-context)))
 		         (and (memq (org-element-type context)
@@ -1107,11 +1101,13 @@ guess will be made."
                (let* ((penreg
                        (org-babel--async-pending
                         info handle-result result-params exec-start-time)))
-                 (condition-case-unless-debug exc
-                     (apply cmd (nconc cmd-args (list penreg)))
-                   (error
-                    (org-pending-send-update penreg (list :failure exc))
-                    nil))
+                 (if penreg
+                     ;; We have a penreg, we can use it to report the error.
+                     (condition-case-unless-debug exc
+                         (apply cmd (nconc cmd-args (list penreg)))
+                       (error (org-pending-send-update penreg (list :failure exc))))
+                   ;; Let the error go through as we don't know what to do with it.
+                   (apply cmd (nconc cmd-args (list penreg))))
                  penreg))))))))))
 
 
