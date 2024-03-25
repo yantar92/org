@@ -423,21 +423,22 @@ eventually, you must send a :success or a :failure update (see
   (unless region
     (error "Now illegal"))
 
-  (let* ((buf (current-buffer))
-         (pt  (point-marker))
-         (to-marker (lambda (p)
+  (let* ((to-marker (lambda (p)
                      ;; Make sure P is a marker.
                       (or (and (markerp p) p)
                           (save-excursion (goto-char p) (point-marker)))))
-         anchor-ovl region-ovl
          sentinel
-         last-status
+         x-last-status
          penreg
-         outcome-region
          (internals
-          `( (get-status . ,(lambda () last-status))
-             (get-live-p . ,(lambda () (and anchor-ovl
-                                            (overlay-buffer anchor-ovl)))))))
+          `( (get-status . ,(lambda () x-last-status))
+             (set-status . ,(lambda (v) (setq x-last-status v)))
+             (creation-point . ,(point-marker)))))
+
+    (push (cons 'get-live-p
+                (lambda () (when-let ((anchor-ovl (cdr (assq 'anchor-ovl internals))))
+                             (overlay-buffer anchor-ovl))))
+          internals)
 
     (setq region (cons (funcall to-marker (car region))
                        (funcall to-marker (cdr region))))
@@ -467,68 +468,71 @@ eventually, you must send a :success or a :failure update (see
                (car (split-string (format "%s" msg) "\n" :omit-nulls))
              ""))
          (update (status data)
-           (unless (memq status '(:scheduled :pending :failure :success))
-             (error "Invalid status"))
-           ;; Update the title overlay to match STATUS and DATA.
-           (setq last-status status)
-           (overlay-put anchor-ovl
-                        'face
-                        (org-pending-status-face status))
-           (overlay-put anchor-ovl
-                        'before-string
-                        ;; The text property projection hack (for
-                        ;; indirect buffers) is leaking its
-                        ;; background colour to the status flag; we
-                        ;; try to undo this by forcing the
-                        ;; background colour for the status,
-                        ;; hopefully matching the buffer one.
-                        (propertize
-                         (pcase status
-                           (:scheduled "⏱")
-                           (:pending "⏳")
-                           (:failure "❌")
-                           (:success "✔️"))
-                         'face (list :background (face-attribute 'default :background))))
-           (unless (memq status '(:success :failure))
+           (let ((anchor-ovl (cdr (assq 'anchor-ovl internals)))
+                 (region-ovl (cdr (assq 'region-ovl internals)))
+                 outcome-region)
+             (unless (memq status '(:scheduled :pending :failure :success))
+               (error "Invalid status"))
+             ;; Update the title overlay to match STATUS and DATA.
+             (funcall (cdr (assq 'set-status internals)) status)
              (overlay-put anchor-ovl
-                          'after-string
-                          (propertize (format " |%s|" (short-version-of data))
-                                      'face (org-pending-status-face status))))
-           (when (memq status '(:success :failure))
-             ;; NOTE: `sit-for' doesn't garantuee we'll be
-             ;;       at the same pos when exiting.
-             (save-excursion (sit-for 0.2))
+                          'face
+                          (org-pending-status-face status))
+             (overlay-put anchor-ovl
+                          'before-string
+                          ;; The text property projection hack (for
+                          ;; indirect buffers) is leaking its
+                          ;; background colour to the status flag; we
+                          ;; try to undo this by forcing the
+                          ;; background colour for the status,
+                          ;; hopefully matching the buffer one.
+                          (propertize
+                           (pcase status
+                             (:scheduled "⏱")
+                             (:pending "⏳")
+                             (:failure "❌")
+                             (:success "✔️"))
+                           'face (list :background (face-attribute 'default :background))))
+             (unless (memq status '(:success :failure))
+               (overlay-put anchor-ovl
+                            'after-string
+                            (propertize (format " |%s|" (short-version-of data))
+                                        'face (org-pending-status-face status))))
+             (when (memq status '(:success :failure))
+               ;; NOTE: `sit-for' doesn't garantuee we'll be
+               ;;       at the same pos when exiting.
+               (save-excursion (sit-for 0.2))
 
-             ;; We remove all overlays and let org insert the result
-             ;; as it would in the synchronous case.
-             (org-pending--delete-overlay anchor-ovl)
-             (setq anchor-ovl nil)
-             (org-pending--delete-overlay region-ovl)
-             (setq region-ovl nil))
+               ;; We remove all overlays and let org insert the result
+               ;; as it would in the synchronous case.
+               (org-pending--delete-overlay anchor-ovl)
+               (setq anchor-ovl nil)
+               (org-pending--delete-overlay region-ovl)
+               (setq region-ovl nil))
 
-           (when (memq status '(:success :failure))
-             (setf (org-pending-penreg-outcome penreg) (list status data))
-             (setf (org-pending-penreg-outcome-at penreg) (float-time))
+             (when (memq status '(:success :failure))
+               (setf (org-pending-penreg-outcome penreg) (list status data))
+               (setf (org-pending-penreg-outcome-at penreg) (float-time))
 
-             (when on-outcome
-               (setq outcome-region (funcall on-outcome (list status data)))))
+               (when on-outcome
+                 (setq outcome-region (funcall on-outcome (list status data)))))
 
-           (when (and (memq status '(:failure :success))
-                      outcome-region)
-             ;; We add some outcome decorations to let the user now
-             ;; what happened and allow him to explore the details.
-             (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
-                   (bitmap (pcase status
-                             (:success 'large-circle)
-                             (:failure 'exclamation-mark)))
-                   (face (pcase status
-                           (:success 'org-done)
-                           (:failure 'org-todo))))
-               (overlay-put outcome-ovl
-                            'before-string (propertize
-                                            "x" 'display
-                                            `(left-fringe ,bitmap ,face)))
-               (overlay-put outcome-ovl 'org-pending-penreg penreg))))
+             (when (and (memq status '(:failure :success))
+                        outcome-region)
+               ;; We add some outcome decorations to let the user now
+               ;; what happened and allow him to explore the details.
+               (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
+                     (bitmap (pcase status
+                               (:success 'large-circle)
+                               (:failure 'exclamation-mark)))
+                     (face (pcase status
+                             (:success 'org-done)
+                             (:failure 'org-todo))))
+                 (overlay-put outcome-ovl
+                              'before-string (propertize
+                                              "x" 'display
+                                              `(left-fringe ,bitmap ,face)))
+                 (overlay-put outcome-ovl 'org-pending-penreg penreg)))))
 
          (remove-previous-overlays ()
            "Remove previous status overlays.
@@ -562,35 +566,39 @@ eventually, you must send a :success or a :failure update (see
       (remove-previous-overlays)
 
       ;; Create the overlays for the anchor and for the region.
-      (setq region-ovl (org-pending--make-overlay :region region))
-      (setq anchor-ovl (org-pending--make-overlay :status anchor))
+      (push (cons 'region-ovl (org-pending--make-overlay :region region))
+            internals)
+      (push (cons 'anchor-ovl (org-pending--make-overlay :status anchor))
+            internals)
 
       ;; Flag the result as ":scheduled".
       (update :scheduled nil)
 
       (setq sentinel
             (lambda (upd-message)
-              (message "org-pending: Handling update message at %s@%s: %s"
-                       pt buf upd-message)
-              (save-excursion
-                (with-current-buffer buf
-                  (save-excursion
-                    (goto-char pt)
-                    (pcase upd-message
-                      (`(:success ,r)
-                       ;; Visual beep that the result is available.
-                       (update :success r))
+              (let* ((pt (cdr (assq 'creation-point internals)))
+                     (buf (marker-buffer pt)))
+                (message "org-pending: Handling update message at %s@%s: %s"
+                         pt buf upd-message)
+                (save-excursion
+                  (with-current-buffer buf
+                    (save-excursion
+                      (goto-char pt)
+                      (pcase upd-message
+                        (`(:success ,r)
+                         ;; Visual beep that the result is available.
+                         (update :success r))
 
-                      (`(:progress ,p)
-                       ;; Still waiting for the outcome. Update our
-                       ;; overlays with the progress info R.
-                       (update :pending p))
+                        (`(:progress ,p)
+                         ;; Still waiting for the outcome. Update our
+                         ;; overlays with the progress info R.
+                         (update :pending p))
 
-                      (`(:failure ,err)
-                       ;; We didn't get a result.
-                       (update :failure err))
+                        (`(:failure ,err)
+                         ;; We didn't get a result.
+                         (update :failure err))
 
-                      (_ (error "Invalid message")))))
+                        (_ (error "Invalid message"))))))
                 nil)))
       (setq penreg
             (org-pending--make
@@ -599,8 +607,10 @@ eventually, you must send a :success or a :failure update (see
              :-alist internals
              :scheduled-at (float-time)))
 
-      (overlay-put anchor-ovl 'org-pending-penreg penreg)
-      (overlay-put region-ovl 'org-pending-penreg penreg)
+      (overlay-put (cdr (assq 'anchor-ovl internals))
+                   'org-pending-penreg penreg)
+      (overlay-put (cdr (assq 'region-ovl internals))
+                   'org-pending-penreg penreg)
       (org-pending--mgr-handle-new-penreg penreg name)
       penreg)))
 
