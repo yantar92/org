@@ -9068,7 +9068,7 @@ the correct writing function."
                (reglock
                 (org-pending anchor
                              :on-outcome
-                             (lambda (o)
+                             (lambda (_rg o)
                                (pcase o
                                  (`(:success ,r)
                                   (funcall (cdr params-eraser))
