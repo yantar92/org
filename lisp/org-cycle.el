@@ -784,6 +784,14 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
                (= (match-end 0) (point-max)))
       (org-fold-region (point) (match-end 0) nil 'outline))))
 
+(declare-function org-up-heading-safe "org-move" ())
+(defun org-show-empty-lines-in-parent ()
+  "Move to the parent and re-show empty lines before visible headlines."
+  (require 'org-move)
+  (save-excursion
+    (let ((context (if (org-up-heading-safe) 'children 'overview)))
+      (org-cycle-show-empty-lines context))))
+
 (defun org-cycle-hide-archived-subtrees (state)
   "Re-hide all archived subtrees after a visibility state change.
 STATE should be one of the symbols listed in the docstring of

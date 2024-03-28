@@ -2338,12 +2338,6 @@ prompted for."
     (and move (backward-char 1))))
 
 ;; FIXME: This function is unused.
-(defun org-show-empty-lines-in-parent ()
-  "Move to the parent and re-show empty lines before visible headlines."
-  (save-excursion
-    (let ((context (if (org-up-heading-safe) 'children 'overview)))
-      (org-cycle-show-empty-lines context))))
-
 (defsubst org-entry-beginning-position ()
   "Return the beginning position of the current entry."
   (save-excursion (org-back-to-heading t) (point)))
