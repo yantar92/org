@@ -377,11 +377,6 @@ FULL is given."
   :group 'outlines
   :group 'calendar)
 
-(defcustom org-mode-hook nil
-  "Mode hook for Org mode, run after the mode was turned on."
-  :group 'org
-  :type 'hook)
-
 (defcustom org-load-hook nil
   "Hook that is run after org.el has been loaded."
   :group 'org

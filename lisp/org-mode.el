@@ -49,6 +49,11 @@
 (declare-function org-num-mode "org-num")
 (declare-function org-indent-mode "org-indent")
 
+(defcustom org-mode-hook nil
+  "Mode hook for Org mode, run after the mode was turned on."
+  :group 'org
+  :type 'hook)
+
 (defcustom org-insert-mode-line-in-empty-file nil
   "Non-nil means insert the first line setting Org mode in empty files.
 When the function `org-mode' is called interactively in an empty file, this
