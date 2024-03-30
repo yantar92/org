@@ -34,23 +34,27 @@
 (require 'org-timestamp)
 (require 'org-indent-static)
 
-(declare-function org-get-heading "org")
 (declare-function org-clock-update-mode-line "org-clock")
 (defvar org-complex-heading-regexp)
 (defvar org-todo-line-regexp)
 (defvar org-priority-default)
 (defvar org-todo-keywords-1)
 (declare-function org-entry-blocked-p "org")
-(declare-function org-get-category "org")
 (declare-function org-todo "org")
 (declare-function org-priority "org")
 (declare-function org-schedule "org")
 (declare-function org-deadline "org")
 (defvar org-priority-lowest)
 (defvar org-priority-highest)
-(declare-function org-heading-components "org")
 (declare-function org-columns-compute "org-colview")
 (declare-function org-columns-get-format-and-top-level "org-colview")
+(defvar org-category)
+(defvar org-not-done-keywords)
+(defvar org-done-keywords)
+(declare-function org-entry-end-position "org")
+(declare-function org-macro-initialize-templates "org-macro")
+(defvar org-macro-templates)
+(declare-function org-link-display-format "ol")
 
 (defgroup org-properties nil
   "Options concerning properties in Org mode."
@@ -1192,6 +1196,218 @@ completion."
 	(setq org-clock-effort nval)
 	(org-clock-update-mode-line)))
     (run-hook-with-args 'org-property-changed-functions key nval)))
+
+(defun org-get-category (&optional pos _)
+  "Get the category applying to position POS.
+Return \"???\" when no category is set.
+
+This function may modify the match data."
+  ;; Sync cache.
+  (cond
+   ((org-entry-get-with-inheritance
+     "CATEGORY" nil (or pos (point))))
+   ((null org-category)
+    (when (org-with-base-buffer nil
+            buffer-file-name)
+      (file-name-sans-extension
+       (file-name-nondirectory
+        (org-with-base-buffer nil
+          buffer-file-name)))))
+   ((symbolp org-category) (symbol-name org-category))
+   ((stringp org-category) org-category)
+   (t "???")))
+
+(defun org-entry-is-todo-p ()
+  (member (org-get-todo-state) org-not-done-keywords))
+
+(defun org-entry-is-done-p ()
+  (member (org-get-todo-state) org-done-keywords))
+
+(defun org-get-todo-state ()
+  "Return the TODO keyword of the current subtree."
+  (save-excursion
+    (org-back-to-heading t)
+    (and (let ((case-fold-search nil))
+           (looking-at org-todo-line-regexp))
+	 (match-end 2)
+	 (match-string 2))))
+
+(defun org-get-repeat (&optional timestamp)
+  "Check if there is a timestamp with repeater in this entry.
+
+Return the repeater, as a string, or nil.  Also return nil when
+this function is called before first heading.
+
+When optional argument TIMESTAMP is a string, extract the
+repeater from there instead."
+  (save-match-data
+    (cond
+     (timestamp
+      (and (string-match org-repeat-re timestamp)
+	   (match-string-no-properties 1 timestamp)))
+     ((org-before-first-heading-p) nil)
+     (t
+      (save-excursion
+	(org-back-to-heading t)
+	(let ((end (org-entry-end-position)))
+	  (catch :repeat
+	    (while (re-search-forward org-repeat-re end t)
+	      (when (save-match-data (org-at-timestamp-p 'agenda))
+		(throw :repeat (match-string-no-properties 1)))))))))))
+
+(defun org-get-scheduled-time (pom &optional inherit)
+  "Get the scheduled time as a time tuple, of a format suitable
+for calling org-schedule with, or if there is no scheduling,
+returns nil."
+  (let ((time (org-entry-get pom "SCHEDULED" inherit)))
+    (when time
+      (org-time-string-to-time time))))
+
+(defun org-get-deadline-time (pom &optional inherit)
+  "Get the deadline as a time tuple, of a format suitable for
+calling org-deadline with, or if there is no scheduling, returns
+nil."
+  (let ((time (org-entry-get pom "DEADLINE" inherit)))
+    (when time
+      (org-time-string-to-time time))))
+
+(defun org-get-heading (&optional no-tags no-todo no-priority no-comment)
+  "Return the heading of the current entry, without the stars.
+When NO-TAGS is non-nil, don't include tags.
+When NO-TODO is non-nil, don't include TODO keywords.
+When NO-PRIORITY is non-nil, don't include priority cookie.
+When NO-COMMENT is non-nil, don't include COMMENT string.
+Return nil before first heading."
+  (unless (org-before-first-heading-p)
+    (save-excursion
+      (org-back-to-heading t)
+      (let ((case-fold-search nil))
+	(looking-at org-complex-heading-regexp)
+        ;; When using `org-fold-core--optimise-for-huge-buffers',
+        ;; returned text will be invisible.  Clear it up.
+        (save-match-data
+          (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0)))
+        (let ((todo (and (not no-todo) (match-string 2)))
+	      (priority (and (not no-priority) (match-string 3)))
+	      (headline (pcase (match-string 4)
+			  (`nil "")
+			  ((and (guard no-comment) h)
+			   (replace-regexp-in-string
+			    (eval-when-compile
+			      (format "\\`%s[ \t]+" org-comment-string))
+			    "" h))
+			  (h h)))
+	      (tags (and (not no-tags) (match-string 5))))
+          ;; Restore cleared optimization.
+          (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))
+	  (mapconcat #'identity
+		     (delq nil (list todo priority headline tags))
+		     " "))))))
+
+(defun org-heading-components ()
+  "Return the components of the current heading.
+This is a list with the following elements:
+- the level as an integer
+- the reduced level, different if `org-odd-levels-only' is set.
+- the TODO keyword, or nil
+- the priority character, like ?A, or nil if no priority is given
+- the headline text itself, or the tags string if no headline text
+- the tags string, or nil."
+  (save-excursion
+    (org-back-to-heading t)
+    (when (let (case-fold-search) (looking-at org-complex-heading-regexp))
+      (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0))
+      (prog1
+          (list (length (match-string 1))
+	        (org-reduced-level (length (match-string 1)))
+	        (match-string-no-properties 2)
+	        (and (match-end 3) (aref (match-string 3) 2))
+	        (match-string-no-properties 4)
+	        (match-string-no-properties 5))
+        (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))))))
+
+(defun org-get-entry ()
+  "Get the entry text, after heading, entire subtree."
+  (save-excursion
+    (org-back-to-heading t)
+    (filter-buffer-substring (line-beginning-position 2) (org-end-of-subtree t))))
+
+(defun org-get-title (&optional buffer-or-file)
+  "Collect title from the provided `org-mode' BUFFER-OR-FILE.
+
+Returns nil if there are no #+TITLE property."
+  (let ((buffer (cond ((bufferp buffer-or-file) buffer-or-file)
+                      ((stringp buffer-or-file) (find-file-noselect
+                                                 buffer-or-file))
+                      (t (current-buffer)))))
+    (with-current-buffer buffer
+      (org-macro-initialize-templates)
+      (let ((title (assoc-default "title" org-macro-templates)))
+        (unless (string= "" title)
+          title)))))
+
+(defvar org-outline-path-cache nil
+  "Alist between buffer positions and outline paths.
+It value is an alist (POSITION . PATH) where POSITION is the
+buffer position at the beginning of an entry and PATH is a list
+of strings describing the outline path for that entry, in reverse
+order.")
+
+(defun org--get-outline-path-1 (&optional use-cache)
+  "Return outline path to current headline.
+
+Outline path is a list of strings, in reverse order.  When
+optional argument USE-CACHE is non-nil, make use of a cache.  See
+`org-get-outline-path' for details.
+
+Assume buffer is widened and point is on a headline."
+  (or (and use-cache (cdr (assq (point) org-outline-path-cache)))
+      (let ((p (point))
+	    (heading (let ((case-fold-search nil))
+		       (looking-at org-complex-heading-regexp)
+		       (if (not (match-end 4)) ""
+			 ;; Remove statistics cookies.
+			 (org-trim
+			  (org-link-display-format
+			   (replace-regexp-in-string
+			    "\\[[0-9]+%\\]\\|\\[[0-9]+/[0-9]+\\]" ""
+			    (match-string-no-properties 4))))))))
+        (when (org-element-property :commentedp (org-element-at-point))
+          (setq heading (replace-regexp-in-string (format "^%s[ \t]*" org-comment-string) "" heading)))
+	(if (org-up-heading-safe)
+	    (let ((path (cons heading (org--get-outline-path-1 use-cache))))
+	      (when use-cache
+		(push (cons p path) org-outline-path-cache))
+	      path)
+	  ;; This is a new root node.  Since we assume we are moving
+	  ;; forward, we can drop previous cache so as to limit number
+	  ;; of associations there.
+	  (let ((path (list heading)))
+	    (when use-cache (setq org-outline-path-cache (list (cons p path))))
+	    path)))))
+
+(defun org-get-outline-path (&optional with-self use-cache)
+  "Return the outline path to the current entry.
+
+An outline path is a list of ancestors for current headline, as
+a list of strings.  Statistics cookies are removed and links are
+replaced with their description, if any, or their path otherwise.
+
+When optional argument WITH-SELF is non-nil, the path also
+includes the current headline.
+
+When optional argument USE-CACHE is non-nil, cache outline paths
+between calls to this function so as to avoid backtracking.  This
+argument is useful when planning to find more than one outline
+path in the same document.  In that case, there are two
+conditions to satisfy:
+  - `org-outline-path-cache' is set to nil before starting the
+    process;
+  - outline paths are computed by increasing buffer positions."
+  (org-with-wide-buffer
+   (and (or (and with-self (org-back-to-heading t))
+	    (org-up-heading-safe))
+	(reverse (org--get-outline-path-1 use-cache)))))
 
 (provide 'org-property)
 

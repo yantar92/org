@@ -1221,27 +1221,6 @@ ellipses string, only part of the ellipses string will be shown."
   :tag "Org Agenda"
   :group 'org)
 
-(defvar-local org-category nil
-  "Variable used by Org files to set a category for agenda display.
-There are multiple ways to set the category.  One way is to set
-it in the document property drawer.  For example:
-
-:PROPERTIES:
-:CATEGORY: ELisp
-:END:
-
-Other ways to define it is as an Emacs file variable, for example
-
-#   -*- mode: org; org-category: \"ELisp\"
-
-or for the file to contain a special line:
-
-#+CATEGORY: ELisp
-
-If the file does not specify a category, then file's base name
-is used instead.")
-(put 'org-category 'safe-local-variable (lambda (x) (or (symbolp x) (stringp x))))
-
 (defvaralias 'org-agenda-multi-occur-extra-files
   'org-agenda-text-search-extra-files)
 
@@ -1712,64 +1691,6 @@ This function is meant to be added to the user configuration."
   :tag "Org Archive"
   :group 'org-structure)
 
-(defcustom org-archive-location "%s_archive::"
-  "The location where subtrees should be archived.
-
-The value of this variable is a string, consisting of two parts,
-separated by a double-colon.  The first part is a filename and
-the second part is a headline.
-
-When the filename is omitted, archiving happens in the same file.
-%s in the filename will be replaced by the current file
-name (without the directory part).  Archiving to a different file
-is useful to keep archived entries from contributing to the
-Org Agenda.
-
-The archived entries will be filed as subtrees of the specified
-headline.  When the headline is omitted, the subtrees are simply
-filed away at the end of the file, as top-level entries.  Also in
-the heading you can use %s to represent the file name, this can be
-useful when using the same archive for a number of different files.
-
-Here are a few examples:
-\"%s_archive::\"
-	If the current file is Projects.org, archive in file
-	Projects.org_archive, as top-level trees.  This is the default.
-
-\"::* Archived Tasks\"
-	Archive in the current file, under the top-level headline
-	\"* Archived Tasks\".
-
-\"~/org/archive.org::\"
-	Archive in file ~/org/archive.org (absolute path), as top-level trees.
-
-\"~/org/archive.org::* From %s\"
-	Archive in file ~/org/archive.org (absolute path), under headlines
-        \"From FILENAME\" where file name is the current file name.
-
-\"~/org/datetree.org::datetree/* Finished Tasks\"
-        The \"datetree/\" string is special, signifying to archive
-        items to the datetree.  Items are placed in either the CLOSED
-        date of the item, or the current date if there is no CLOSED date.
-        The heading will be a subentry to the current date.  There doesn't
-        need to be a heading, but there always needs to be a slash after
-        datetree.  For example, to store archived items directly in the
-        datetree, use \"~/org/datetree.org::datetree/\".
-
-\"basement::** Finished Tasks\"
-	Archive in file ./basement (relative path), as level 3 trees
-	below the level 2 heading \"** Finished Tasks\".
-
-You may define it locally by setting an ARCHIVE property.  If
-such a property is found in the file or in an entry, and anywhere
-up the hierarchy, it will be used.
-
-You can also set it for the whole file using the keyword-syntax:
-
-#+ARCHIVE: basement::** Finished Tasks"
-  :group 'org-archive
-  :type 'string)
-
 (defcustom org-agenda-skip-archived-trees t
   "Non-nil means the agenda will skip any items located in archived trees.
 An archived tree is a tree marked with the tag ARCHIVE.  The use of this
@@ -2155,32 +2076,6 @@ call CMD."
 	(push (cadr var) vals)))
     (cl-progv vars vals
       (call-interactively cmd))))
-
-(defun org-get-archive-location (&optional epom)
-  "Get archive location applying to EPOM or point.
-EPOM is an element, marker, or buffer position."
-  (or (org-entry-get epom "ARCHIVE" 'inherit)
-      org-archive-location))
-
-(defun org-get-category (&optional pos _)
-  "Get the category applying to position POS.
-Return \"???\" when no category is set.
-
-This function may modify the match data."
-  ;; Sync cache.
-  (cond
-   ((org-entry-get-with-inheritance
-     "CATEGORY" nil (or pos (point))))
-   ((null org-category)
-    (when (org-with-base-buffer nil
-            buffer-file-name)
-      (file-name-sans-extension
-       (file-name-nondirectory
-        (org-with-base-buffer nil
-          buffer-file-name)))))
-   ((symbolp org-category) (symbol-name org-category))
-   ((stringp org-category) org-category)
-   (t "???")))
 
 ;;; Refresh properties
 
@@ -3601,21 +3496,6 @@ where CURRENT-TODO-KEYWORD belongs over on in another sequence."
 	  todo-keyword)
          (t (signal 'quit nil)))))))
 
-(defun org-entry-is-todo-p ()
-  (member (org-get-todo-state) org-not-done-keywords))
-
-(defun org-entry-is-done-p ()
-  (member (org-get-todo-state) org-done-keywords))
-
-(defun org-get-todo-state ()
-  "Return the TODO keyword of the current subtree."
-  (save-excursion
-    (org-back-to-heading t)
-    (and (let ((case-fold-search nil))
-           (looking-at org-todo-line-regexp))
-	 (match-end 2)
-	 (match-string 2))))
-
 (defun org-at-date-range-p (&optional inactive-ok)
   "Non-nil if point is inside a date range.
 
@@ -3639,29 +3519,6 @@ on INACTIVE-OK."
 	     (>= (match-end 0) pos)
 	     (throw 'exit t)))
       nil)))
-
-(defun org-get-repeat (&optional timestamp)
-  "Check if there is a timestamp with repeater in this entry.
-
-Return the repeater, as a string, or nil.  Also return nil when
-this function is called before first heading.
-
-When optional argument TIMESTAMP is a string, extract the
-repeater from there instead."
-  (save-match-data
-    (cond
-     (timestamp
-      (and (string-match org-repeat-re timestamp)
-	   (match-string-no-properties 1 timestamp)))
-     ((org-before-first-heading-p) nil)
-     (t
-      (save-excursion
-	(org-back-to-heading t)
-	(let ((end (org-entry-end-position)))
-	  (catch :repeat
-	    (while (re-search-forward org-repeat-re end t)
-	      (when (save-match-data (org-at-timestamp-p 'agenda))
-		(throw :repeat (match-string-no-properties 1)))))))))))
 
 (defvar org-last-changed-timestamp)
 (defvar org-last-inserted-timestamp)
@@ -3924,22 +3781,6 @@ either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
 	 'region)
        (lambda () (when (org-invisible-p) (org-end-of-subtree nil t))))
     (org--deadline-or-schedule arg 'scheduled time)))
-
-(defun org-get-scheduled-time (pom &optional inherit)
-  "Get the scheduled time as a time tuple, of a format suitable
-for calling org-schedule with, or if there is no scheduling,
-returns nil."
-  (let ((time (org-entry-get pom "SCHEDULED" inherit)))
-    (when time
-      (org-time-string-to-time time))))
-
-(defun org-get-deadline-time (pom &optional inherit)
-  "Get the deadline as a time tuple, of a format suitable for
-calling org-deadline with, or if there is no scheduling, returns
-nil."
-  (let ((time (org-entry-get pom "DEADLINE" inherit)))
-    (when time
-      (org-time-string-to-time time))))
 
 (defun org-remove-timestamp-with-keyword (keyword)
   "Remove all time stamps with KEYWORD in the current entry."
@@ -7874,67 +7715,6 @@ Started from `gnus-info-find-node'."
                  default-org-info-node)))
           (t default-org-info-node))))))
 
-(defun org-get-heading (&optional no-tags no-todo no-priority no-comment)
-  "Return the heading of the current entry, without the stars.
-When NO-TAGS is non-nil, don't include tags.
-When NO-TODO is non-nil, don't include TODO keywords.
-When NO-PRIORITY is non-nil, don't include priority cookie.
-When NO-COMMENT is non-nil, don't include COMMENT string.
-Return nil before first heading."
-  (unless (org-before-first-heading-p)
-    (save-excursion
-      (org-back-to-heading t)
-      (let ((case-fold-search nil))
-	(looking-at org-complex-heading-regexp)
-        ;; When using `org-fold-core--optimise-for-huge-buffers',
-        ;; returned text will be invisible.  Clear it up.
-        (save-match-data
-          (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0)))
-        (let ((todo (and (not no-todo) (match-string 2)))
-	      (priority (and (not no-priority) (match-string 3)))
-	      (headline (pcase (match-string 4)
-			  (`nil "")
-			  ((and (guard no-comment) h)
-			   (replace-regexp-in-string
-			    (eval-when-compile
-			      (format "\\`%s[ \t]+" org-comment-string))
-			    "" h))
-			  (h h)))
-	      (tags (and (not no-tags) (match-string 5))))
-          ;; Restore cleared optimization.
-          (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))
-	  (mapconcat #'identity
-		     (delq nil (list todo priority headline tags))
-		     " "))))))
-
-(defun org-heading-components ()
-  "Return the components of the current heading.
-This is a list with the following elements:
-- the level as an integer
-- the reduced level, different if `org-odd-levels-only' is set.
-- the TODO keyword, or nil
-- the priority character, like ?A, or nil if no priority is given
-- the headline text itself, or the tags string if no headline text
-- the tags string, or nil."
-  (save-excursion
-    (org-back-to-heading t)
-    (when (let (case-fold-search) (looking-at org-complex-heading-regexp))
-      (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0))
-      (prog1
-          (list (length (match-string 1))
-	        (org-reduced-level (length (match-string 1)))
-	        (match-string-no-properties 2)
-	        (and (match-end 3) (aref (match-string 3) 2))
-	        (match-string-no-properties 4)
-	        (match-string-no-properties 5))
-        (org-fold-core-update-optimisation (match-beginning 0) (match-end 0))))))
-
-(defun org-get-entry ()
-  "Get the entry text, after heading, entire subtree."
-  (save-excursion
-    (org-back-to-heading t)
-    (filter-buffer-substring (line-beginning-position 2) (org-end-of-subtree t))))
-
 (defun org-get-previous-line-level ()
   "Return the outline depth of the last headline before the current line.
 Returns 0 for the first headline in the buffer, and nil if before the
@@ -7968,69 +7748,6 @@ odd number.  Returns values greater than 0."
 
 ;;; Outline path
 
-(defvar org-outline-path-cache nil
-  "Alist between buffer positions and outline paths.
-It value is an alist (POSITION . PATH) where POSITION is the
-buffer position at the beginning of an entry and PATH is a list
-of strings describing the outline path for that entry, in reverse
-order.")
-
-(defun org--get-outline-path-1 (&optional use-cache)
-  "Return outline path to current headline.
-
-Outline path is a list of strings, in reverse order.  When
-optional argument USE-CACHE is non-nil, make use of a cache.  See
-`org-get-outline-path' for details.
-
-Assume buffer is widened and point is on a headline."
-  (or (and use-cache (cdr (assq (point) org-outline-path-cache)))
-      (let ((p (point))
-	    (heading (let ((case-fold-search nil))
-		       (looking-at org-complex-heading-regexp)
-		       (if (not (match-end 4)) ""
-			 ;; Remove statistics cookies.
-			 (org-trim
-			  (org-link-display-format
-			   (replace-regexp-in-string
-			    "\\[[0-9]+%\\]\\|\\[[0-9]+/[0-9]+\\]" ""
-			    (match-string-no-properties 4))))))))
-        (when (org-element-property :commentedp (org-element-at-point))
-          (setq heading (replace-regexp-in-string (format "^%s[ \t]*" org-comment-string) "" heading)))
-	(if (org-up-heading-safe)
-	    (let ((path (cons heading (org--get-outline-path-1 use-cache))))
-	      (when use-cache
-		(push (cons p path) org-outline-path-cache))
-	      path)
-	  ;; This is a new root node.  Since we assume we are moving
-	  ;; forward, we can drop previous cache so as to limit number
-	  ;; of associations there.
-	  (let ((path (list heading)))
-	    (when use-cache (setq org-outline-path-cache (list (cons p path))))
-	    path)))))
-
-(defun org-get-outline-path (&optional with-self use-cache)
-  "Return the outline path to the current entry.
-
-An outline path is a list of ancestors for current headline, as
-a list of strings.  Statistics cookies are removed and links are
-replaced with their description, if any, or their path otherwise.
-
-When optional argument WITH-SELF is non-nil, the path also
-includes the current headline.
-
-When optional argument USE-CACHE is non-nil, cache outline paths
-between calls to this function so as to avoid backtracking.  This
-argument is useful when planning to find more than one outline
-path in the same document.  In that case, there are two
-conditions to satisfy:
-  - `org-outline-path-cache' is set to nil before starting the
-    process;
-  - outline paths are computed by increasing buffer positions."
-  (org-with-wide-buffer
-   (and (or (and with-self (org-back-to-heading t))
-	    (org-up-heading-safe))
-	(reverse (org--get-outline-path-1 use-cache)))))
-
 (defun org-format-outline-path (path &optional width prefix separator)
   "Format the outline path PATH for display.
 WIDTH is the maximum number of characters that is available.
@@ -8061,20 +7778,6 @@ the default is \"/\"."
 	  (setq fpath (substring fpath 0 width))
 	(setf (substring fpath (- width 2)) "..")))
     fpath))
-
-(defun org-get-title (&optional buffer-or-file)
-  "Collect title from the provided `org-mode' BUFFER-OR-FILE.
-
-Returns nil if there are no #+TITLE property."
-  (let ((buffer (cond ((bufferp buffer-or-file) buffer-or-file)
-                      ((stringp buffer-or-file) (find-file-noselect
-                                                 buffer-or-file))
-                      (t (current-buffer)))))
-    (with-current-buffer buffer
-      (org-macro-initialize-templates)
-      (let ((title (assoc-default "title" org-macro-templates)))
-        (unless (string= "" title)
-          title)))))
 
 (defun org-display-outline-path (&optional file-or-title current separator just-return-string)
   "Display the current outline path in the echo area.

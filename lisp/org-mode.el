@@ -243,6 +243,28 @@ the following lines anywhere in the buffer:
 
 ;;; Variables for pre-computed regular expressions, all buffer local
 
+(defvar-local org-category nil
+  "Variable used by Org files to set a category for agenda display.
+There are multiple ways to set the category.  One way is to set
+it in the document property drawer.  For example:
+
+:PROPERTIES:
+:CATEGORY: ELisp
+:END:
+
+Other ways to define it is as an Emacs file variable, for example
+
+#   -*- mode: org; org-category: \"ELisp\"
+
+or for the file to contain a special line:
+
+#+CATEGORY: ELisp
+
+If the file does not specify a category, then file's base name
+is used instead.")
+(put 'org-category 'safe-local-variable (lambda (x) (or (symbolp x) (stringp x))))
+
+
 (defvar-local org-current-tag-alist nil
   "Alist of all tag groups in current buffer.
 This variable takes into consideration `org-tag-alist',
