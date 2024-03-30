@@ -671,6 +671,50 @@ interactive command with similar behavior."
 	      (and (bolp) (looking-at-p org-outline-regexp)
 		   (<= (org-outline-level) level))))))))
 
+(defun org-copy-visible (beg end)
+  "Copy the visible parts of the region."
+  (interactive "r")
+  (let ((result ""))
+    (while (/= beg end)
+      (while (org-invisible-p beg)
+	(setq beg (org-fold-next-visibility-change beg end)))
+      (let ((next (org-fold-next-visibility-change beg end)))
+	(setq result (concat result (buffer-substring beg next)))
+	(setq beg next)))
+    ;; Prevent Emacs from adding full selected text to `kill-ring'
+    ;; when `select-enable-primary' is non-nil.  This special value of
+    ;; `deactivate-mark' only works since Emacs 29.
+    (setq deactivate-mark 'dont-save)
+    (kill-new result)
+    (message "Visible strings have been copied to the kill ring.")))
+
+(defun org-copy-special ()
+  "Copy region in table or copy current subtree.
+Calls `org-table-copy-region' or `org-copy-subtree', depending on
+context.  See the individual commands for more information."
+  (interactive)
+  (call-interactively
+   (if (org-at-table-p) #'org-table-copy-region #'org-copy-subtree)))
+
+(defun org-cut-special ()
+  "Cut region in table or cut current subtree.
+Calls `org-table-cut-region' or `org-cut-subtree', depending on
+context.  See the individual commands for more information."
+  (interactive)
+  (call-interactively
+   (if (org-at-table-p) #'org-table-cut-region #'org-cut-subtree)))
+
+(defun org-paste-special (arg)
+  "Paste rectangular region into table, or past subtree relative to level.
+Calls `org-table-paste-rectangle' or `org-paste-subtree', depending on context.
+See the individual commands for more information."
+  (interactive "P")
+  (if (org-at-table-p)
+      (org-table-paste-rectangle)
+    (org-paste-subtree arg)))
+
+
+
 (provide 'org-edit)
 
 ;;; org-edit.el ends here
