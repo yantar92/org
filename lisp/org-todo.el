@@ -184,14 +184,6 @@ to change it while Emacs is running is through the customize interface."
   :group 'org-todo
   :type 'boolean)
 
-(defcustom org-treat-S-cursor-todo-selection-as-state-change t
-  "Non-nil means switching TODO states with S-cursor counts as state change.
-This is the default behavior.  However, setting this to nil allows a
-convenient way to select a TODO state and bypass any logging associated
-with that."
-  :group 'org-todo
-  :type 'boolean)
-
 (defcustom org-todo-state-tags-triggers nil
   "Tag changes that should be triggered by TODO state changes.
 This is a list.  Each entry is

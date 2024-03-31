@@ -900,6 +900,17 @@ The following commands are available:
   (add-hook 'change-major-mode-hook
             #'org-fold-show-all 'append 'local))
 
+(defun org-mode-restart ()
+  "Restart `org-mode'."
+  (interactive)
+  (let ((indent-status (bound-and-true-p org-indent-mode)))
+    (funcall major-mode)
+    (hack-local-variables)
+    (when (and indent-status (not (bound-and-true-p org-indent-mode)))
+      (org-indent-mode -1))
+    (org-reset-file-cache))
+  (message "%s restarted" major-mode))
+
 (provide 'org-mode)
 
 ;;; org-mode.el ends here
