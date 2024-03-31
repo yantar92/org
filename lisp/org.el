@@ -4083,20 +4083,6 @@ Return the position where this entry starts, or nil if there is no such entry."
 
 ;;;; Timestamps
 
-(defun org-fix-decoded-time (time)
-  "Set 0 instead of nil for the first 6 elements of time.
-Don't touch the rest."
-  (let ((n 0))
-    (mapcar (lambda (x) (if (< (setq n (1+ n)) 7) (or x 0) x)) time)))
-
-(defalias 'org-time-stamp-to-now #'org-timestamp-to-now)
-(defun org-timestamp-to-now (timestamp-string &optional seconds)
-  "Difference between TIMESTAMP-STRING and now in days.
-If SECONDS is non-nil, return the difference in seconds."
-  (let ((fdiff (if seconds #'float-time #'time-to-days)))
-    (- (funcall fdiff (org-time-string-to-time timestamp-string))
-       (funcall fdiff nil))))
-
 (defun org-deadline-close-p (timestamp-string &optional ndays)
   "Is the time in TIMESTAMP-STRING close to the current date?"
   (setq ndays (or ndays (org-get-wdays timestamp-string)))

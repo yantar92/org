@@ -90,6 +90,14 @@ Note that this option has precedence over the combined use of
   "Convert a timestamp string S into a number of seconds."
   (float-time (org-time-string-to-time s)))
 
+(defalias 'org-time-stamp-to-now #'org-timestamp-to-now)
+(defun org-timestamp-to-now (timestamp-string &optional seconds)
+  "Difference between TIMESTAMP-STRING and now in days.
+If SECONDS is non-nil, return the difference in seconds."
+  (let ((fdiff (if seconds #'float-time #'time-to-days)))
+    (- (funcall fdiff (org-time-string-to-time timestamp-string))
+       (funcall fdiff nil))))
+
 (defun org-current-time (&optional rounding-minutes past)
   "Current time, possibly rounded to ROUNDING-MINUTES.
 When ROUNDING-MINUTES is not an integer, fall back on the car of
@@ -323,6 +331,12 @@ day number."
 	 (let ((d (org-parse-time-string d)))
 	   (list (nth 4 d) (nth 3 d) (nth 5 d))))
 	((listp d) (list (nth 4 d) (nth 3 d) (nth 5 d)))))
+
+(defun org-fix-decoded-time (time)
+  "Set 0 instead of nil for the first 6 elements of time.
+Don't touch the rest."
+  (let ((n 0))
+    (mapcar (lambda (x) (if (< (setq n (1+ n)) 7) (or x 0) x)) time)))
 
 (provide 'org-time)
 
