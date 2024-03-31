@@ -32,7 +32,6 @@
 (require 'org-compat)
 (defvar org-loop-over-headlines-in-active-region)
 (require 'org-map)
-(declare-function org-cancel-repeater "org")
 (defvar org-todo-kwd-alist)
 (defvar org-todo-keywords-1)
 (defvar org-done-keywords)
@@ -40,13 +39,12 @@
 (defvar org-todo-key-trigger)
 (defvar org-todo-sets)
 (defvar org-closed-keep-when-no-todo)
-(declare-function org-add-planning-info "org")
 (require 'org-log-note)
 (declare-function org-clock-out-if-current "org-clock")
 (declare-function org-entry-end-position "org")
-(declare-function org-remove-timestamp-with-keyword "org")
 (defvar org-todo-key-alist)
 (require 'org-time)
+(require 'org-planning)
 
 (defvar-local org-todo-log-states nil)
 (defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
