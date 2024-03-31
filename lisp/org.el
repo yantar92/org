@@ -127,6 +127,7 @@
 (require 'org-todo)
 (require 'org-planning)
 (require 'org-edit-special)
+(require 'org-mark)
 
 (require 'org-cycle)
 (defalias 'org-global-cycle #'org-cycle-global)
@@ -4576,21 +4577,6 @@ earliest time on the cursor date that Org treats as that date
                                     (nth 1 date) (nth 0 date) (nth 2 date))))))
     (or defd (current-time))))
 
-(defun org-mark-subtree (&optional up)
-  "Mark the current subtree.
-This puts point at the start of the current subtree, and mark at
-the end.  If a numeric prefix UP is given, move up into the
-hierarchy of headlines by UP levels before marking the subtree."
-  (interactive "P")
-  (org-with-limited-levels
-   (cond ((org-at-heading-p) (forward-line 0))
-	 ((org-before-first-heading-p) (user-error "Not in a subtree"))
-	 (t (outline-previous-visible-heading 1))))
-  (when up (while (and (> up 0) (org-up-heading-safe)) (cl-decf up)))
-  (if (called-interactively-p 'any)
-      (call-interactively 'org-mark-element)
-    (org-mark-element)))
-
 ;;; Fixed Width Areas
 
 (defun org-toggle-fixed-width ()
@@ -4750,27 +4736,6 @@ package ox-bibtex by Taru Karttunen."
 ;;;; Functions extending outline functionality
 
 (require 'org-move)
-
-(defun org-mark-element ()
-  "Put point at beginning of this element, mark at end.
-
-Interactively, if this command is repeated or (in Transient Mark
-mode) if the mark is active, it marks the next element after the
-ones already marked."
-  (interactive)
-  (let (deactivate-mark)
-    (if (and (called-interactively-p 'any)
-	     (or (and (eq last-command this-command) (mark t))
-		 (and transient-mark-mode mark-active)))
-	(set-mark
-	 (save-excursion
-	   (goto-char (mark))
-	   (goto-char (org-element-end (org-element-at-point)))
-	   (point)))
-      (let ((element (org-element-at-point)))
-	(end-of-line)
-	(push-mark (min (point-max) (org-element-end element)) t t)
-	(goto-char (org-element-begin element))))))
 
 (defun org-narrow-to-subtree (&optional element)
   "Narrow buffer to the current subtree.
