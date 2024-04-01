@@ -1163,14 +1163,6 @@ prompted for."
     (and move (backward-char 1))))
 
 ;; FIXME: This function is unused.
-(defsubst org-entry-beginning-position ()
-  "Return the beginning position of the current entry."
-  (save-excursion (org-back-to-heading t) (point)))
-
-(defsubst org-entry-end-position ()
-  "Return the end position of the current entry."
-  (save-excursion (outline-next-heading) (point)))
-
 (defun org-subtree-end-visible-p ()
   "Is the end of the current subtree visible?"
   (pos-visible-in-window-p

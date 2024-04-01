@@ -1346,6 +1346,14 @@ Returns nil if there are no #+TITLE property."
         (unless (string= "" title)
           title)))))
 
+(defsubst org-entry-beginning-position ()
+  "Return the beginning position of the current entry."
+  (save-excursion (org-back-to-heading t) (point)))
+
+(defsubst org-entry-end-position ()
+  "Return the end position of the current entry."
+  (save-excursion (outline-next-heading) (point)))
+
 (defvar org-outline-path-cache nil
   "Alist between buffer positions and outline paths.
 It value is an alist (POSITION . PATH) where POSITION is the
