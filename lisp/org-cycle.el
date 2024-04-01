@@ -714,6 +714,11 @@ With numerical argument ARG, show content up to level ARG."
         (org-fold-region (line-end-position) last t 'outline)
         (setq last (line-end-position 0))))))
 
+(defun org-subtree-end-visible-p ()
+  "Is the end of the current subtree visible?"
+  (pos-visible-in-window-p
+   (save-excursion (org-end-of-subtree t) (point))))
+
 (defvar org-cycle-scroll-position-to-restore nil
   "Temporarily store scroll position to restore.")
 (defun org-cycle-optimize-window-after-visibility-change (state)

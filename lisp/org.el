@@ -1163,11 +1163,6 @@ prompted for."
     (and move (backward-char 1))))
 
 ;; FIXME: This function is unused.
-(defun org-subtree-end-visible-p ()
-  "Is the end of the current subtree visible?"
-  (pos-visible-in-window-p
-   (save-excursion (org-end-of-subtree t) (point))))
-
 (defun org-first-headline-recenter ()
   "Move cursor to the first headline and recenter the headline."
   (let ((window (get-buffer-window)))
