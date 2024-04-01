@@ -141,6 +141,13 @@ This can be turned on/off through `org-toggle-tags-groups'."
   :group 'org-startup
   :type 'boolean)
 
+
+;; Defined to provide a value for defcustom, since there is no
+;; string-collate-greaterp in Emacs.
+(defun org-string-collate-greaterp (s1 s2)
+  "Return non-nil if S1 is greater than S2 in collation order."
+  (not (string-collate-lessp s1 s2)))
+
 (defcustom org-tags-sort-function nil
   "When set, tags are sorted using this function as a comparator."
   :group 'org-tags
