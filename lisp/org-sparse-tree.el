@@ -76,6 +76,14 @@ doesn't specify any upper case character."
 	  (const :tag "Case-insensitive" t)
 	  (const :tag "Case-insensitive for lower case searches only" smart)))
 
+(defun org-first-headline-recenter ()
+  "Move cursor to the first headline and recenter the headline."
+  (let ((window (get-buffer-window)))
+    (when window
+      (goto-char (point-min))
+      (when (re-search-forward (concat "^\\(" org-outline-regexp "\\)") nil t)
+	(set-window-start window (line-beginning-position))))))
+
 (defcustom org-occur-hook '(org-first-headline-recenter)
   "Hook that is run after `org-occur' has constructed a sparse tree.
 This can be used to recenter the window to show as much of the structure

@@ -1162,16 +1162,6 @@ prompted for."
     (insert string)
     (and move (backward-char 1))))
 
-;; FIXME: This function is unused.
-(defun org-first-headline-recenter ()
-  "Move cursor to the first headline and recenter the headline."
-  (let ((window (get-buffer-window)))
-    (when window
-      (goto-char (point-min))
-      (when (re-search-forward (concat "^\\(" org-outline-regexp "\\)") nil t)
-	(set-window-start window (line-beginning-position))))))
-
-
 ;;;###autoload
 (defun org-run-like-in-org-mode (cmd)
   "Run a command, pretending that the current buffer is in Org mode.
