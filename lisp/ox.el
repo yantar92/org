@@ -77,6 +77,8 @@
 
 (require 'cl-lib)
 (require 'ob-exp)
+(require 'ob-ref)
+(require 'ob-lob)
 (require 'oc)
 (require 'ol)
 (require 'org-element)
@@ -84,6 +86,14 @@
 (require 'org-macro)
 (require 'org-attach) ; org-attach adds staff to `org-export-before-parsing-functions'
 (require 'tabulated-list)
+(require 'org-element-timestamp)
+(require 'org-timestamp)
+(require 'org-map)
+(require 'org-property)
+(require 'org-move)
+(require 'org-narrow)
+(require 'org-footnote)
+(require 'org-tags)
 
 (declare-function org-src-coderef-format "org-src" (&optional element))
 (declare-function org-src-coderef-regexp "org-src" (fmt &optional label))

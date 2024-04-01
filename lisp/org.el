@@ -2245,12 +2245,6 @@ The value is a list, with symbol `stats'."
 ;;;###autoload
 ;;;; Documentation
 
-(defun org-require-autoloaded-modules ()
-  (interactive)
-  (mapc #'require
-	'(org-agenda org-archive org-attach org-clock org-colview org-id
-		     org-table org-timer)))
-
 ;;;###autoload
 (defun org-reload (&optional uncompiled)
   "Reload all Org Lisp files.

@@ -48,6 +48,12 @@ With optional NODE, go directly to that node."
   (interactive)
   (browse-url "https://orgmode.org/Changes.html"))
 
+(defun org-require-autoloaded-modules ()
+  (interactive)
+  (mapc #'require
+	'(org-agenda org-archive org-attach org-clock org-colview org-id
+		     org-table org-timer)))
+
 (defun org-submit-bug-report ()
   "Submit a bug report on Org via mail.
 

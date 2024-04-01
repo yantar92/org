@@ -51,7 +51,6 @@
 (defvar org-category)
 (defvar org-not-done-keywords)
 (defvar org-done-keywords)
-(declare-function org-entry-end-position "org")
 (declare-function org-macro-initialize-templates "org-macro")
 (defvar org-macro-templates)
 (declare-function org-link-display-format "ol")
@@ -1232,6 +1231,10 @@ This function may modify the match data."
 	 (match-end 2)
 	 (match-string 2))))
 
+(defsubst org-entry-end-position ()
+  "Return the end position of the current entry."
+  (save-excursion (outline-next-heading) (point)))
+
 (defun org-get-repeat (&optional timestamp)
   "Check if there is a timestamp with repeater in this entry.
 
@@ -1349,10 +1352,6 @@ Returns nil if there are no #+TITLE property."
 (defsubst org-entry-beginning-position ()
   "Return the beginning position of the current entry."
   (save-excursion (org-back-to-heading t) (point)))
-
-(defsubst org-entry-end-position ()
-  "Return the end position of the current entry."
-  (save-excursion (outline-next-heading) (point)))
 
 (defvar org-outline-path-cache nil
   "Alist between buffer positions and outline paths.

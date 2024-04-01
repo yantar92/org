@@ -26,6 +26,7 @@
 
 (require 'org-keys)
 (require 'org-element)
+(require 'org-edit)
 
 (declare-function cdlatex-math-symbol "ext:cdlatex")
 (declare-function cdlatex-compute-tables "ext:cdlatex" ())

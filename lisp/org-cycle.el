@@ -42,7 +42,6 @@
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
 (declare-function org-display-inline-images "org" (&optional include-linked refresh beg end))
 (declare-function org-get-tags "org" (&optional pos local fontify))
-(declare-function org-subtree-end-visible-p "org" ())
 (declare-function org-narrow-to-subtree "org" (&optional element))
 (declare-function org-next-visible-heading "org" (arg))
 (declare-function org-at-property-p "org" ())
