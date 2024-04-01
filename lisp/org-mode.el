@@ -39,6 +39,7 @@
 (require 'org-comment)
 (require 'org-pcomplete)
 (require 'org-dnd)
+(require 'org-menu)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")
