@@ -1846,7 +1846,6 @@ POS may also be a marker."
 			       (point))))))))
 
 ;;;; Tags
-(defalias 'org-tags-sparse-tree 'org-match-sparse-tree)
 
 (defun org-insert-drawer (&optional arg drawer)
   "Insert a drawer at point.

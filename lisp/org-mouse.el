@@ -139,8 +139,15 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
 (require 'cl-lib)
+(require 'outline)
+(require 'org-edit)
+(declare-function org-at-date-range-p "org")
+(defvar org-todo-keywords-1)
+(require 'org-todo)
+(require 'org-sparse-tree)
+(declare-function org-context "org")
+
 
 (defvar org-agenda-allow-remote-undo)
 (defvar org-agenda-undo-list)

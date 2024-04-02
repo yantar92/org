@@ -192,6 +192,7 @@ are shown."
 	     (org-occur regexp nil callback)
 	     org-warn-days)))
 
+(defalias 'org-tags-sparse-tree 'org-match-sparse-tree)
 (defun org-match-sparse-tree (&optional todo-only match)
   "Create a sparse tree according to tags string MATCH.
 
