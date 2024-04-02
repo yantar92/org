@@ -28,7 +28,17 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
+(require 'org-menu)
+(require 'org-agenda-files)
+(require 'org-log-note)
+(require 'org-edit-structure)
+(require 'org-edit-special)
+(defvar org-clock-hd-marker)
+(defvar org-clock-heading)
+(declare-function org-get-valid-level "org")
+(defvar org-loop-over-headlines-in-active-region)
+(defvar org-bookmark-names-plist)
+(declare-function org-back-over-empty-lines "org")
 
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 (defvar org-odd-levels-only)
