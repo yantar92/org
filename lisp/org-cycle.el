@@ -440,6 +440,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	      (org-back-to-heading)
 	      (org-cycle))))))))))
 
+(defalias 'org-force-cycle-archived #'org-cycle-force-archived)
 (defun org-cycle-force-archived ()
   "Cycle subtree even if it is archived."
   (interactive)
@@ -597,6 +598,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-cycle-hook 'folded))))))
 
+(defalias 'org-global-cycle #'org-cycle-global)
 ;;;###autoload
 (defun org-cycle-global (&optional arg)
   "Cycle the global visibility.  For details see `org-cycle'.
@@ -672,6 +674,7 @@ With a numeric prefix, show all headlines up to that level."
 		 (org-fold-show-subtree))
 	        (_ nil)))))))))
 
+(defalias 'org-overview #'org-cycle-overview)
 (defun org-cycle-overview ()
   "Switch to overview mode, showing only top-level headlines."
   (interactive)
@@ -693,6 +696,7 @@ With a numeric prefix, show all headlines up to that level."
           (setq regexp (format "^\\*\\{1,%d\\} " level)))
         (org-fold-region last (point) t 'outline)))))
 
+(defalias 'org-content #'org-cycle-content)
 (defun org-cycle-content (&optional arg)
   "Show all headlines in the buffer, like a table of contents.
 With numerical argument ARG, show content up to level ARG."

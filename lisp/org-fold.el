@@ -701,6 +701,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
 	(when (memq detail '(canonical t)) (org-fold-show-entry))
 	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
 
+(defalias 'org-reveal #'org-fold-reveal)
 (defun org-fold-reveal (&optional siblings)
   "Show current entry, hierarchy above it, and the following headline.
 
