@@ -55,6 +55,7 @@
 (require 'org-macs)
 (require 'org-refile)
 (require 'org-element)
+(require 'org-clock)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))

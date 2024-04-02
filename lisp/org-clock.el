@@ -32,9 +32,21 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
+(require 'org-property)
+(require 'org-log-note)
+(require 'org-edit-structure)
+(require 'org-todo)
+(defvar org-todo-keywords-1)
+(defvar org-done-keywords)
+(declare-function org-remove-empty-drawer-at "org")
+(require 'org-narrow)
+(require 'org-sparse-tree)
+(require 'org-dblock)
+(require 'cal-iso)
+(declare-function org-add-archive-files "org-archive")
+(declare-function org-agenda-prepare-buffers "org")
 
-(declare-function calendar-iso-to-absolute "cal-iso" (date))
+
 (declare-function notifications-notify "notifications" (&rest params))
 (declare-function org-element-property "org-element-ast" (property node))
 (declare-function org-element-contents-end "org-element" (node))
@@ -96,6 +108,46 @@ function `org-clock-into-drawer' instead."
 	  (integer :tag "When at least N clock entries")
 	  (const :tag "Into LOGBOOK drawer" "LOGBOOK")
 	  (string :tag "Into Drawer named...")))
+
+(defvar org-clock-start-time)
+(defvar org-clock-marker (make-marker)
+  "Marker recording the last clock-in.")
+(defvar org-clock-hd-marker (make-marker)
+  "Marker recording the last clock-in, but the headline position.")
+(defvar org-clock-heading ""
+  "The heading of the current clock entry.")
+(defalias 'org-clock-is-active #'org-clocking-buffer)
+
+(defun org-clocking-buffer ()
+  "Return the buffer where the clock is currently running.
+Return nil if no clock is running."
+  (marker-buffer org-clock-marker))
+
+(defun org-check-running-clock ()
+  "Check if the current buffer contains the running clock.
+If yes, offer to stop it and to save the buffer with the changes."
+  (when (and (equal (marker-buffer org-clock-marker) (current-buffer))
+	     (y-or-n-p (format "Clock-out in buffer %s before killing it? "
+			       (buffer-name))))
+    (org-clock-out)
+    (when (y-or-n-p "Save changed buffer?")
+      (save-buffer))))
+
+;;;###autoload
+(defun org-clock-persistence-insinuate ()
+  "Set up hooks for clock persistence."
+  (require 'org-clock)
+  (add-hook 'org-mode-hook 'org-clock-load)
+  (add-hook 'kill-emacs-hook 'org-clock-save))
+
+;;;###autoload
+(defun org-clock-auto-clockout-insinuate ()
+  "Set up hook for auto clocking out when Emacs is idle.
+See `org-clock-auto-clockout-timer'.
+
+This function is meant to be added to the user configuration."
+  (require 'org-clock)
+  (add-hook 'org-clock-in-hook #'org-clock-auto-clockout t))
 
 (defun org-clock-into-drawer ()
   "Value of `org-clock-into-drawer', but let properties overrule.
@@ -509,6 +561,18 @@ This variable only has effect if set with \\[customize]."
          (set-default-toplevel-value symbol value))
   :type 'boolean
   :package-version '(Org . "9.5"))
+
+
+(defcustom org-log-note-clock-out nil
+  "Non-nil means record a note when clocking out of an item.
+This can also be configured on a per-file basis by adding one of
+the following lines anywhere in the buffer:
+
+   #+STARTUP: lognoteclock-out
+   #+STARTUP: nolognoteclock-out"
+  :group 'org-todo
+  :group 'org-progress
+  :type 'boolean)
 
 (defvar org-clock-in-prepare-hook nil
   "Hook run when preparing the clock.

@@ -28,6 +28,7 @@
 (org-assert-version)
 
 (require 'org-refile)
+(require 'org-mark-ring)
 
 (defvar org-goto-exit-command nil)
 (defvar org-goto-map nil)

@@ -797,17 +797,6 @@ taken from the (otherwise obsolete) variable `org-todo-interpretation'."
 (defvar-local org-todo-key-alist nil)
 (defvar-local org-todo-key-trigger nil)
 
-(defcustom org-log-note-clock-out nil
-  "Non-nil means record a note when clocking out of an item.
-This can also be configured on a per-file basis by adding one of
-the following lines anywhere in the buffer:
-
-   #+STARTUP: lognoteclock-out
-   #+STARTUP: nolognoteclock-out"
-  :group 'org-todo
-  :group 'org-progress
-  :type 'boolean)
-
 (defgroup org-time nil
   "Options concerning time stamps and deadlines in Org mode."
   :tag "Org Time"
@@ -960,44 +949,6 @@ scope."
 (declare-function org-clock-update-mode-line "org-clock" (&optional refresh))
 (declare-function org-resolve-clocks "org-clock"
 		  (&optional also-non-dangling-p prompt last-valid))
-
-(defvar org-clock-start-time)
-(defvar org-clock-marker (make-marker)
-  "Marker recording the last clock-in.")
-(defvar org-clock-hd-marker (make-marker)
-  "Marker recording the last clock-in, but the headline position.")
-(defvar org-clock-heading ""
-  "The heading of the current clock entry.")
-(defun org-clocking-buffer ()
-  "Return the buffer where the clock is currently running.
-Return nil if no clock is running."
-  (marker-buffer org-clock-marker))
-(defalias 'org-clock-is-active #'org-clocking-buffer)
-
-(defun org-check-running-clock ()
-  "Check if the current buffer contains the running clock.
-If yes, offer to stop it and to save the buffer with the changes."
-  (when (and (equal (marker-buffer org-clock-marker) (current-buffer))
-	     (y-or-n-p (format "Clock-out in buffer %s before killing it? "
-			       (buffer-name))))
-    (org-clock-out)
-    (when (y-or-n-p "Save changed buffer?")
-      (save-buffer))))
-
-;;;###autoload
-(defun org-clock-persistence-insinuate ()
-  "Set up hooks for clock persistence."
-  (require 'org-clock)
-  (add-hook 'org-mode-hook 'org-clock-load)
-  (add-hook 'kill-emacs-hook 'org-clock-save))
-
-(defun org-clock-auto-clockout-insinuate ()
-  "Set up hook for auto clocking out when Emacs is idle.
-See `org-clock-auto-clockout-timer'.
-
-This function is meant to be added to the user configuration."
-  (require 'org-clock)
-  (add-hook 'org-clock-in-hook #'org-clock-auto-clockout t))
 
 (defgroup org-archive nil
   "Options concerning archiving in Org mode."
