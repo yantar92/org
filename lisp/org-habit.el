@@ -32,7 +32,6 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
 (require 'org-agenda)
 
 (defgroup org-habit nil

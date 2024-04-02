@@ -145,7 +145,9 @@
 (org-assert-version)
 
 (eval-when-compile (require 'cl-lib))
-(require 'org)
+(require 'org-mode)
+(require 'org-mark-ring)
+(require 'org-narrow)
 
 (defgroup org-ctags nil
   "Options concerning use of ctags within org mode."

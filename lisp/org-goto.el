@@ -27,7 +27,6 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
 (require 'org-refile)
 
 (defvar org-goto-exit-command nil)

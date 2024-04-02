@@ -91,8 +91,13 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
 (require 'sha1)
+(require 'org-fold)
+(require 'org-move)
+(defvar org-complex-heading-regexp)
+(declare-function org-get-valid-level "org")
+(require 'org-edit-structure)
+(require 'org-mark-ring)
 
 (declare-function url-retrieve-synchronously "url"
                   (url &optional silent inhibit-cookies timeout))

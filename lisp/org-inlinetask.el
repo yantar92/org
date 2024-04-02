@@ -81,9 +81,12 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
 (defvar org-inlinetask-min-level)
 (declare-function org-inlinetask-outline-regexp "org-element" ())
+(require 'org-compat)
+(require 'org-mode)
+(declare-function org-get-valid-level "org")
+(require 'org-edit-structure)
 
 (defgroup org-inlinetask nil
   "Options concerning inline tasks in Org mode."

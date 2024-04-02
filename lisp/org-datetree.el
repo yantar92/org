@@ -33,7 +33,13 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
+(require 'org-element)
+(require 'org-narrow)
+(declare-function org-get-valid-level "org")
+(require 'org-property)
+(defvar org-complex-heading-regexp-format)
+(require 'org-edit-structure)
+(declare-function org-back-over-empty-lines "org")
 
 (defvar org-ts-regexp)
 

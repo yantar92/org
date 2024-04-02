@@ -597,7 +597,8 @@ This first checks the user list, then the built-in list."
 	   (princ "\n")
 	   (setq lastwasstring t))))))
   (with-current-buffer "*Org Entity Help*"
-    (require 'org)
+    (require 'org-mode)
+    (require 'org-font-lock)
     (org-mode)
     (when org-pretty-entities
       (org-toggle-pretty-entities)))

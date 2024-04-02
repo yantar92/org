@@ -41,7 +41,9 @@
 
 (require 'org-macs)
 (require 'org-compat)
-(require 'org)
+(require 'org-indent-static)
+(require 'org-font-lock)
+(require 'outline)
 
 (require 'cl-lib)
 
