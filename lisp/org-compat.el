@@ -115,19 +115,6 @@
 
 ;;; Miscellaneous functions
 
-(defun org-get-x-clipboard (value)
-  "Get the value of the X or Windows clipboard."
-  (cond ((and (eq window-system 'x)
-              (fboundp 'gui-get-selection)) ;Silence byte-compiler.
-         (org-no-properties
-          (ignore-errors
-            (or (gui-get-selection value 'UTF8_STRING)
-                (gui-get-selection value 'COMPOUND_TEXT)
-                (gui-get-selection value 'STRING)
-                (gui-get-selection value 'TEXT)))))
-        ((and (eq window-system 'w32) (fboundp 'w32-get-clipboard-data))
-         (w32-get-clipboard-data))))
-
 (defun org--check-org-structure-template-alist (checklist)
   "Check whether structure template alist CHECKLIST is set up correctly.
 CHECKLIST is a symbol holding the template alist.
