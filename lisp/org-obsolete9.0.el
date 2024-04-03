@@ -133,16 +133,22 @@
            (obsolete "you can safely remove it." "9.0"))
   s)
 
+(declare-function cl-subseq "cl")
 (defun org-sublist (list start end)
   "Return a section of LIST, from START to END.
 Counting starts at 1."
+  (require 'cl)
   (cl-subseq list (1- start) end))
 (make-obsolete 'org-sublist
                "use cl-subseq (note the 0-based counting)."
                "9.0")
 
+(declare-function org-element-type-p "org-element-ast")
+(declare-function org-element-at-point "org-element")
 (defun org-in-fixed-width-region-p ()
   "Non-nil if point in a fixed-width region."
+  (require 'org-element-ast)
+  (require 'org-element)
   (save-match-data
     (org-element-type-p (org-element-at-point) 'fixed-width)))
 (make-obsolete 'org-in-fixed-width-region-p
@@ -160,6 +166,7 @@ is, use SPECS to define the face."
     specs))
 (make-obsolete 'org-compatible-face "you can remove it." "9.0")
 
+(declare-function org-link-set-parameters "ol-syntax")
 (defun org-add-link-type (type &optional follow export)
   "Add a new TYPE link.
 FOLLOW and EXPORT are two functions.
@@ -186,12 +193,20 @@ type.  For a simple example of an export function, see `org-bbdb.el'.
 
 If TYPE already exists, update it with the arguments.
 See `org-link-parameters' for documentation on the other parameters."
+  (require 'ol-syntax)
   (org-link-set-parameters type :follow follow :export export)
   (message "Created %s link." type))
 (make-obsolete 'org-add-link-type "use `org-link-set-parameters' instead." "9.0")
 
+(declare-function org-at-table.el-p "org-table")
+(defvar org-table-dataline-regexp)
+(defvar org-table1-hline-regexp)
+(defvar org-table-any-border-regexp)
+(declare-function org-table-end "org-table")
+(declare-function table--at-cell-p "table")
 (defun org-table-recognize-table.el ()
   "If there is a table.el table nearby, recognize it and move into it."
+  (require 'org-table)
   (when (org-at-table.el-p)
     (forward-line 0)
     (unless (or (looking-at org-table-dataline-regexp)
@@ -213,7 +228,9 @@ See `org-link-parameters' for documentation on the other parameters."
                "please notify Org mailing list if you use this function."
                "9.0")
 
+(declare-function org-unbracket-string "org-macs")
 (defun org-remove-angle-brackets (s)
+  (require 'org-macs)
   (org-unbracket-string "<" ">" s))
 (make-obsolete 'org-remove-angle-brackets 'org-unbracket-string "9.0")
 

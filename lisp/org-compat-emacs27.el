@@ -30,6 +30,9 @@
 
 ;;; Code:
 
+;; seq is not preloaded with Emacs in Emacs 27.
+(require 'seq)
+
 ;; `flatten-tree' was added in Emacs 27.1.
 (if (fboundp 'flatten-tree)
     (defalias 'org--flatten-tree #'flatten-tree)

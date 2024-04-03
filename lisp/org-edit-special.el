@@ -28,6 +28,7 @@
 (org-assert-version)
 
 (require 'org-table)
+(require 'org-mode)
 (require 'org-element)
 (require 'org-cycle)
 (defvar org-support-shift-select)
@@ -1165,10 +1166,6 @@ Use `\\[org-edit-special]' to edit table.el tables")))
 	 (user-error
 	  (substitute-command-keys
 	   "`\\[org-ctrl-c-ctrl-c]' can do nothing useful here"))))))))
-
-(defvar org-finish-function nil
-  "Function to be called when \\`C-c C-c' is used.
-This is for getting out of special buffers like capture.")
 
 (defun org-kill-note-or-show-branches ()
   "Abort storing current note, or show just branches."

@@ -38,6 +38,7 @@
 Ignore optional argument."
     (get-buffer-create buffer-or-name)))
 
+(declare-function seq-empty-p "seq")
 (if (fboundp 'file-name-concat)
     (defalias 'org-file-name-concat #'file-name-concat)
   (defun org-file-name-concat (directory &rest components)
@@ -47,6 +48,7 @@ Elements in COMPONENTS must be a string or nil.
 DIRECTORY or the non-final elements in COMPONENTS may or may not end
 with a slash -- if they don't end with a slash, a slash will be
 inserted before concatenating."
+    (require 'seq)
     (save-match-data
       (mapconcat
        #'identity
@@ -66,6 +68,7 @@ inserted before concatenating."
     (and (file-directory-p dir)
          (null (directory-files dir nil directory-files-no-dot-files-regexp t)))))
 
+(eval-when-compile (require 'subr-x))  ; Emacs < 28
 (if (fboundp 'string-clean-whitespace)
     (defalias 'org-string-clean-whitespace #'string-clean-whitespace)
   ;; From Emacs subr-x.el.

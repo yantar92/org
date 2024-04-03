@@ -31,7 +31,6 @@
 
 
 (require 'cl-lib)
-(require 'seq)
 (require 'org-macs)
 
 (eval-when-compile (require 'subr-x))  ; Emacs < 28
@@ -102,6 +101,7 @@
 (require 'org-compat-emacs29)
 (require 'org-compat-emacs28)
 (require 'org-compat-emacs27)
+;; Emacs 26 is no longer supported.  Caveat emptor.
 (require 'org-compat-emacs26)
 
 (require 'org-obsolete)

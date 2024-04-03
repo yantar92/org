@@ -26,6 +26,8 @@
 (require 'org-macs)
 (require 'org-mode)
 
+(defvar org-window-configuration)
+
 (defcustom org-directory "~/org"
   "Directory with Org files.
 This is just a default location to look for Org files.  There is no need

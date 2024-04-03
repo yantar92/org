@@ -46,7 +46,6 @@
 (require 'org-time)
 (require 'org-planning)
 
-(defvar-local org-todo-log-states nil)
 (defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
 (defvar org-inhibit-logging nil)        ; Dynamically-scoped param.
 (defvar org-last-state)

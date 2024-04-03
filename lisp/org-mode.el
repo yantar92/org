@@ -50,6 +50,13 @@
 (declare-function org-num-mode "org-num")
 (declare-function org-indent-mode "org-indent")
 
+(defvar buffer-face-mode-face) ; face-remap.el
+(defvar align-mode-rules-list) ; align.el
+(defvar calc-embedded-open-mode) ; calc.el
+
+(defvar org-columns-default-format)
+(defvar org-archive-location)
+
 (defcustom org-mode-hook nil
   "Mode hook for Org mode, run after the mode was turned on."
   :group 'org
@@ -80,6 +87,20 @@ effective.  It cannot be set as a local variable."
 
 (defvar org-inhibit-startup nil)        ; Dynamically-scoped param.
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
+
+(defvar org-mode-loading nil
+  "Non-nil during Org mode initialization.")
+
+(defvar-local org-done-keywords nil)
+(defvar-local org-todo-heads nil)
+(defvar-local org-todo-sets nil)
+(defvar-local org-todo-kwd-alist nil)
+(defvar-local org-todo-key-alist nil)
+(defvar-local org-todo-key-trigger nil)
+(defvar-local org-todo-log-states nil)
+(defvar-local org-todo-keywords-1 nil
+  "All TODO and DONE keywords active in a buffer.")
+
 
 (defgroup org-startup nil
   "Startup options Org uses when first visiting a file."
@@ -241,6 +262,10 @@ the following lines anywhere in the buffer:
 
 (defvar org-display-table nil
   "The display table for Org mode, in case `org-ellipsis' is non-nil.")
+
+(defvar org-finish-function nil
+  "Function to be called when \\`C-c C-c' is used.
+This is for getting out of special buffers like capture.")
 
 ;;; Variables for pre-computed regular expressions, all buffer local
 

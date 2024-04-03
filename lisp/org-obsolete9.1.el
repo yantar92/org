@@ -108,6 +108,8 @@ to skip this subtree.  This is a function that can be put into
       (setq skip (re-search-forward org-agenda-skip-regexp end t)))
     (and skip end)))
 
+(declare-function org-end-of-subtree "org-move")
+(declare-function outline-next-heading "outline")
 (defun org-agenda-skip-entry-when-regexp-matches-in-subtree ()
   "Check if the current subtree contains match for `org-agenda-skip-regexp'.
 If yes, it returns the end position of the current entry (NOT the tree),
@@ -116,6 +118,8 @@ the subtree.  This is a function that can be put into
 `org-agenda-skip-function' for the duration of a command.  An important
 use of this function is for the stuck project list."
   (declare (obsolete "use `org-agenda-skip-if' instead." "9.1"))
+  (require 'org-move)
+  (require 'outline)
   (let ((end (save-excursion (org-end-of-subtree t)))
 	(entry-end (save-excursion (outline-next-heading) (1- (point))))
 	skip)

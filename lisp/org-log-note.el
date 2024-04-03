@@ -24,6 +24,7 @@
 ;;; Code:
 
 (require 'org-property)
+(require 'org-mode)
 
 (defvar org-log-post-message)
 (defvar org-log-note-purpose)

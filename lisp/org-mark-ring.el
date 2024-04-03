@@ -26,6 +26,8 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'seq) ; for `seq-do-indexed' in older Emacs where seq is not preloaded.
+
 (declare-function org-fold-show-context "org-fold" (&optional key))
 
 (defcustom org-mark-ring-length 4

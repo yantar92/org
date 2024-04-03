@@ -59,6 +59,7 @@
 
 ;;;; Obsolete functions and macros
 
+(eval-when-compile (require 'org-macs)) ; `org-with-gensyms'
 (defmacro org-preserve-lc (&rest body)
   (declare (debug (body))
 	   (obsolete "please notify Org mailing list if you use this function."
@@ -77,18 +78,22 @@
 		     "9.2"))
   (version< version emacs-version))
 
+(declare-function org-fold-show-all "org-fold")
 (defun org-show-block-all ()
   "Unfold all blocks in the current buffer."
   (interactive)
+  (require 'org-fold)
   (org-fold-show-all '(blocks)))
 
 (make-obsolete 'org-show-block-all
 	       "use `org-show-all' instead."
 	       "9.2")
 
+(declare-function org-get-tags "org-tags")
 (defun org-get-local-tags ()
   "Get a list of tags defined in the current headline."
   (declare (obsolete "use `org-get-tags' instead." "9.2"))
+  (require 'org-tags)
   (org-get-tags nil 'local))
 
 (defun org-get-local-tags-at (&optional pos)
@@ -96,15 +101,19 @@
   (declare (obsolete "use `org-get-tags' instead." "9.2"))
   (org-get-tags pos 'local))
 
+(declare-function org-make-tag-string "org-tags")
 (defun org-get-tags-string ()
   "Get the TAGS string in the current headline."
   (declare (obsolete "use `org-make-tag-string' instead." "9.2"))
+  (require 'org-tags)
   (org-make-tag-string (org-get-tags nil t)))
 
 
+(declare-function org-align-tags "org-tags")
 (defun org-align-all-tags ()
   "Align the tags in all headings."
   (declare (obsolete "use `org-align-tags' instead." "9.2"))
+  (require 'org-tags)
   (org-align-tags t))
 
 

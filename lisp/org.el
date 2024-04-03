@@ -775,8 +775,6 @@ taken from the (otherwise obsolete) variable `org-todo-interpretation'."
 		   (repeat
 		    (string :tag "Keyword"))))))
 
-(defvar-local org-todo-keywords-1 nil
-  "All TODO and DONE keywords active in a buffer.")
 (defvar org-todo-keywords-for-agenda nil)
 (defvar org-done-keywords-for-agenda nil)
 (defvar org-todo-keyword-alist-for-agenda nil)
@@ -785,13 +783,6 @@ taken from the (otherwise obsolete) variable `org-todo-interpretation'."
 (defvar org-tag-groups-alist-for-agenda nil
   "Alist of all groups tags from all current agenda files.")
 (defvar org-agenda-contributing-files nil)
-(defvar-local org-done-keywords nil)
-(defvar-local org-todo-heads nil)
-(defvar-local org-todo-sets nil)
-(defvar-local org-todo-kwd-alist nil)
-(defvar-local org-todo-key-alist nil)
-(defvar-local org-todo-key-trigger nil)
-
 (defgroup org-time nil
   "Options concerning time stamps and deadlines in Org mode."
   :tag "Org Time"
@@ -933,10 +924,10 @@ scope."
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 (declare-function parse-time-string "parse-time" (string))
 
-(defvar align-mode-rules-list)
 (defvar calc-embedded-close-formula)
 (defvar calc-embedded-open-formula)
 (defvar calc-embedded-open-mode)
+(defvar font-lock-unfontify-region-function)
 (defvar org-agenda-tags-todo-honor-ignore-options)
 (defvar remember-data-file)
 
@@ -1002,7 +993,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
 (defvar org-mode-map)
 (defvar org-agenda-keep-modes nil)      ; Dynamically-scoped param.
 (defvar bidi-paragraph-direction)
-(defvar buffer-face-mode-face)
 
 (require 'outline)
 
@@ -1023,9 +1013,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
 (defvar org-element-cache-version); Defined in org-element.el
 (defvar org-element-cache-persistent); Defined in org-element.el
 (defvar org-element-use-cache); Defined in org-element.el
-(defvar org-mode-loading nil
-  "Non-nil during Org mode initialization.")
-
 (defvar org-mode-tags-syntax-table
   (let ((st (make-syntax-table org-mode-syntax-table)))
     (modify-syntax-entry ?@ "w" st)
