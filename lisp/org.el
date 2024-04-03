@@ -1171,51 +1171,6 @@ the whole buffer."
 	  (pcase-dolist (`(,prop . ,f) tprop)
 	    (put-text-property start end prop (funcall f p))))))))
 
-(defun org-refresh-category-properties ()
-  "Refresh category text properties in the buffer."
-  (let ((case-fold-search t)
-	(inhibit-read-only t)
-	(default-category
-	 (cond ((null org-category)
-		(if buffer-file-name
-		    (file-name-sans-extension
-		     (file-name-nondirectory buffer-file-name))
-		  "???"))
-	       ((symbolp org-category) (symbol-name org-category))
-	       (t org-category))))
-    (let ((category (catch 'buffer-category
-                      (org-with-wide-buffer
-	               (goto-char (point-max))
-	               (while (re-search-backward "^[ \t]*#\\+CATEGORY:" (point-min) t)
-	                 (let ((element (org-element-at-point-no-context)))
-	                   (when (org-element-type-p element 'keyword)
-		             (throw 'buffer-category
-		                    (org-element-property :value element))))))
-	              default-category)))
-      (with-silent-modifications
-        (org-with-wide-buffer
-         ;; Set buffer-wide property from keyword.  Search last #+CATEGORY
-         ;; keyword.  If none is found, fall-back to `org-category' or
-         ;; buffer file name, or set it by the document property drawer.
-         (put-text-property (point-min) (point-max)
-                            'org-category category)
-         ;; Set categories from the document property drawer or
-         ;; property drawers in the outline.  If category is found in
-         ;; the property drawer for the whole buffer that value
-         ;; overrides the keyword-based value set above.
-         (goto-char (point-min))
-         (let ((regexp (org-re-property "CATEGORY")))
-           (while (re-search-forward regexp nil t)
-             (let ((value (match-string-no-properties 3)))
-               (when (org-at-property-p)
-                 (put-text-property
-                  (save-excursion (org-back-to-heading-or-point-min t))
-                  (save-excursion (if (org-before-first-heading-p)
-                                      (point-max)
-                                    (org-end-of-subtree t t)))
-                  'org-category
-                  value))))))))))
-
 (defun org-refresh-stats-properties ()
   "Refresh stats text properties in the buffer."
   (with-silent-modifications
@@ -1232,12 +1187,7 @@ the whole buffer."
 	    (put-text-property (point) (progn (org-end-of-subtree t t) (point))
 			       'org-stats stats)))))))
 
-(defun org-refresh-effort-properties ()
-  "Refresh effort properties."
-  (org-refresh-properties
-   org-effort-property
-   '((effort . identity)
-     (effort-minutes . org-duration-to-minutes))))
+
 
 (defun org-find-file-at-mouse (ev)
   "Open file link or URL at mouse."
