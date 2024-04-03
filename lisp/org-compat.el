@@ -111,7 +111,6 @@
 
 ;;;; Functions and variables from previous releases now obsolete.
 
-(define-obsolete-variable-alias 'org-html-style 'org-html-head "24.4")
 
 
 ;;; Miscellaneous functions
