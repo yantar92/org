@@ -270,9 +270,9 @@ Assume OVL has been created with `org-pending--make-overlay'."
 
 
 
-;;; REGLOCK: Structure to control one PENDing REGion
+;;; REGLOCK: Structure to control one REGion LOCK
 
-;;;; Definition and properties
+;;;; Definition and properties of a lock
 (cl-defstruct (org-pending-reglock
                (:constructor org-pending--make))
   ( id nil
@@ -377,13 +377,13 @@ Default value for `org-pending-reglock-user-cancel-function'."
    reglock (list :failure (list 'org-pending-user-cancel
                                 "Canceled"))))
 
-;;;; Creating a pending region
+;;;; Locking a region
 ;;
 
 (cl-defun org-pending (region &key anchor name on-outcome)
-  "Mark a REGION as \"pending\" and return its REGLOCK.
+  "Lock the REGION and return its REGLOCK.
 
-Return the REGLOCK that allows to manage the pending region.
+Return the REGLOCK that you'll need to call `org-pending-send-update'.
 
 The argument REGION is a pair (start position . end position).  Protect
 the REGION from modifications until the REGLOCK receives a :success or a
@@ -396,12 +396,12 @@ is not given, use the first line of REGION.
 
 Assume the region REGION contains the region ANCHOR.
 
-On receiving the outcome (sent with `org-pending-send-update'), remove
-the REGION protection.  When ON-OUTCOME is non-nil, call it with the
-reglock and the outcome, from the position from where the REGLOCK has
-been created.  If ON-OUTCOME returns an outcome region (a pair (start
-position . end position)), report the success/failure using visual hints
-on that region.
+On receiving the outcome (a :success or :failure message, sent with
+`org-pending-send-update'), remove the region protection.  When
+ON-OUTCOME is non-nil, call it with the reglock and the outcome, from
+the position from where the REGLOCK was created.  If ON-OUTCOME returns
+an region (a pair (start position . end position)), use it to report the
+success/failure using visual hints on that region.
 
 You may send progress updates, and, eventually, you must send the
 outcome to unlock the region (see `org-pending-send-update')."
@@ -497,7 +497,7 @@ outcome to unlock the region (see `org-pending-send-update')."
       reglock)))
 
 
-;;;; Describing a pending region for the user
+;;;; Describing a lock for the user
 ;;
 
 
@@ -698,22 +698,28 @@ Get the REGLOCK at point (pending content or an outcome).  Use
 
 
 (defun org-pending-send-update (reglock upd-message)
-  "Send the status update to the REGLOCK.
+  "Send the update UPD-MESSAGE to REGLOCK.
 
-The udpate MESSAGE must be one of the following:
-    - (:success R):   New content is ready; the result is R; Emacs
-      need to call HANDLE-RESULT with R.
-    - (:failure ERR): Something failed; the error is ERR; no new
-      content; Emacs needs to close the pending region, marking it as
-      failed.
+Use `org-pending' to create a REGBLOCK.
+
+The udpate UPD-MESSAGE must be one of the following:
+
+    - (:success R): The new content is ready; the result is R; Emacs
+      calls ON-OUTCOME with (:success R) and unlock the region.
+
+    - (:failure ERR): Something failed; the error is ERR; Emacs calls
+      ON-OUTCOME with (:failure ERR) and unlock the region.
+
     - (:progress P): Content is still pending; current progress is P;
-      Emacs may display this progress P near the pending region.
+      Emacs may display this progress P using the lock anchor (see
+      `org-pending').
 
-You may send as many :progress updates as you want (or none).
+You may send as many :progress updates as you want (including none).
 Eventually, you must send one, and only one, of either a :success or a
-:failure. Until you do, the region will be protected from modifications.
+:failure. Until you do, the region stays locked, and protected from
+modifications.
 
-Sending update messages once the REGLOCK got its outcome is undefined."
+Once the REGBLOCK got its outcome, it is dead."
   (let* ((internals (org-pending-reglock--alist reglock))
          (pt (cdr (assq 'creation-point internals)))
          (buf (marker-buffer pt)))
