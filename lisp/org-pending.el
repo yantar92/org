@@ -1070,8 +1070,7 @@ inserted.
 
 When non-nil, EDIT-NAME is the name to use for the edit buffer.  Make it
 unique if needed."
-  (let* ((buf (current-buffer))
-         (to-update (buffer-substring start end))
+  (let* ((to-update (buffer-substring start end))
          (reglock (org-pending
                    (cons start end)
                    :on-outcome #'org-pending-user-edit--on-outcome))
