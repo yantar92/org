@@ -6059,6 +6059,12 @@ information."
   "Convert the `orgtbl-mode' TABLE to TAB separated material."
   (orgtbl-to-generic table (org-combine-plists '(:sep "\t") params)))
 
+(defun org-quote-csv-field (s)
+  "Quote field S for inclusion in CSV material."
+  (if (string-match "[\",]" s)
+      (concat "\"" (mapconcat 'identity (split-string s "\"") "\"\"") "\"")
+    s))
+
 ;;;###autoload
 (defun orgtbl-to-csv (table params)
   "Convert the `orgtbl-mode' TABLE to CSV material.

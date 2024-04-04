@@ -1896,12 +1896,6 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 
 ;;; Generally useful functions
 
-(defun org-quote-csv-field (s)
-  "Quote field for inclusion in CSV material."
-  (if (string-match "[\",]" s)
-      (concat "\"" (mapconcat 'identity (split-string s "\"") "\"\"") "\"")
-    s))
-
 (defun org-context ()
   "Return a list of contexts of the current cursor position.
 If several contexts apply, all are returned.
