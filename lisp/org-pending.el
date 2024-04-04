@@ -225,16 +225,7 @@ See `org-pending--delete-overlay' to delete it."
 
       (when (eq :region type)
         ;; Cleanup outcome overlays if any.
-        (let ((sstart (car beg-end))
-              (slimit (cdr beg-end)))
-          (while (and sstart (< sstart slimit))
-            (when-let ((ovl (get-text-property sstart 'org-pending--outcome-overlay)))
-              (when (overlay-buffer ovl)
-                (delete-overlay ovl)))
-            (setq sstart (next-single-property-change
-                          sstart 'org-pending--outcome-overlay nil slimit)))
-          (remove-text-properties (car beg-end) (cdr beg-end)
-                                  (list 'org-pending--outcome-overlay :not-used)))
+        (org-pending-delete-outcome-marks (car beg-end) (cdr beg-end))
 
         (org-pending--add-overlay-projection overlay read-only)
         (overlay-put overlay 'org-pending--before-delete
@@ -907,6 +898,20 @@ Return nothing immediately."
      reglock (list :failure (list 'org-pending-user-cancel
                                   "Canceled"))))
   nil)
+
+;;; Managing outcomes
+;;
+(defun org-pending-delete-outcome-marks (sstart slimit)
+  "Remove outcome marks between SSTART and SLIMIT.
+Remove them in any buffer (base or indirect, owned or not)."
+  (while (and sstart (< sstart slimit))
+    (when-let ((ovl (get-text-property sstart 'org-pending--outcome-overlay)))
+      (when (overlay-buffer ovl)
+        (delete-overlay ovl)))
+    (setq sstart (next-single-property-change
+                  sstart 'org-pending--outcome-overlay nil slimit)))
+  (remove-text-properties sstart slimit
+                          (list 'org-pending--outcome-overlay :not-used)))
 
 ;;; Plugging into Emacs
 ;;
