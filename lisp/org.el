@@ -1490,13 +1490,6 @@ on INACTIVE-OK."
 	     (throw 'exit t)))
       nil)))
 
-(defvar org-last-changed-timestamp)
-(defvar org-last-inserted-timestamp)
-(defvar org-log-post-message)
-(defvar org-log-note-purpose)
-(defvar org-log-note-how nil)
-(defvar org-log-note-extra)
-(defvar org-log-setup nil)
 (defun org-remove-empty-drawer-at (pos)
   "Remove an empty drawer at position POS.
 POS may also be a marker."
