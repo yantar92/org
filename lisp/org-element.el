@@ -154,6 +154,76 @@ you will need to run the following command after the change:
 	  (const :tag "Define footnotes locally" nil))
   :safe #'string-or-null-p)
 
+(defvar org-todo-interpretation-widgets
+  '((:tag "Sequence (cycling hits every state)" sequence)
+    (:tag "Type     (cycling directly to DONE)" type))
+  "The available interpretation symbols for customizing `org-todo-keywords'.
+Interested libraries should add to this list.")
+
+(defcustom org-todo-keywords '((sequence "TODO" "DONE"))
+  "List of TODO entry keyword sequences and their interpretation.
+\\<org-mode-map>This is a list of sequences.
+
+Each sequence starts with a symbol, either `sequence' or `type',
+indicating if the keywords should be interpreted as a sequence of
+action steps, or as different types of TODO items.  The first
+keywords are states requiring action - these states will select a headline
+for inclusion into the global TODO list Org produces.  If one of the
+\"keywords\" is the vertical bar, \"|\", the remaining keywords
+signify that no further action is necessary.  If \"|\" is not found,
+the last keyword is treated as the only DONE state of the sequence.
+
+The command `\\[org-todo]' cycles an entry through these states, and one
+additional state where no keyword is present.  For details about this
+cycling, see the manual.
+
+TODO keywords and interpretation can also be set on a per-file basis with
+the special #+SEQ_TODO and #+TYP_TODO lines.
+
+Each keyword can optionally specify a character for fast state selection
+\(in combination with the variable `org-use-fast-todo-selection')
+and specifiers for state change logging, using the same syntax that
+is used in the \"#+TODO:\" lines.  For example, \"WAIT(w)\" says that
+the WAIT state can be selected with the \"w\" key.  \"WAIT(w!)\"
+indicates to record a time stamp each time this state is selected.
+
+Each keyword may also specify if a timestamp or a note should be
+recorded when entering or leaving the state, by adding additional
+characters in the parenthesis after the keyword.  This looks like this:
+\"WAIT(w@/!)\".  \"@\" means to add a note (with time), \"!\" means to
+record only the time of the state change.  With X and Y being either
+\"@\" or \"!\", \"X/Y\" means use X when entering the state, and use
+Y when leaving the state if and only if the *target* state does not
+define X.  You may omit any of the fast-selection key or X or /Y,
+so WAIT(w@), WAIT(w/@) and WAIT(@/@) are all valid.
+
+For backward compatibility, this variable may also be just a list
+of keywords.  In this case the interpretation (sequence or type) will be
+taken from the (otherwise obsolete) variable `org-todo-interpretation'."
+  :group 'org-todo
+  :group 'org-keywords
+  :type '(choice
+	  (repeat :tag "Old syntax, just keywords"
+		  (string :tag "Keyword"))
+	  (repeat :tag "New syntax"
+		  (cons
+		   (choice
+		    :tag "Interpretation"
+		    ;;Quick and dirty way to see
+                    ;;`org-todo-interpretation'.  This takes the
+		    ;;place of item arguments
+		    :convert-widget
+		    (lambda (widget)
+		      (widget-put widget
+				  :args (mapcar
+					 (lambda (x)
+					   (widget-convert
+					    (cons 'const x)))
+					 org-todo-interpretation-widgets))
+		      widget))
+		   (repeat
+		    (string :tag "Keyword"))))))
+
 (defcustom org-tags-column -77
   "The column to which tags should be indented in a headline.
 If this number is positive, it specifies the column.  If it is negative,
