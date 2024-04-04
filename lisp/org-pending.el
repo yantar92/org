@@ -752,7 +752,6 @@ Once the REGBLOCK got its outcome, it is dead."
       (with-current-buffer buf
         (save-excursion
           (goto-char pt)
-          (org-pending--mgr-handle-reglock-update reglock upd-message)
           (pcase upd-message
             (`(:success ,r)
              ;; Visual beep that the result is available.
@@ -767,7 +766,8 @@ Once the REGBLOCK got its outcome, it is dead."
              ;; We didn't get a result.
              (org-pending--update reglock :failure err))
 
-            (_ (error "Invalid message"))))))
+            (_ (error "Invalid message")))
+          (org-pending--mgr-handle-reglock-update reglock upd-message))))
     nil))
 
 (defun org-pending-sending-outcome-to--worker (reglock todo)
