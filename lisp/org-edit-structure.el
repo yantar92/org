@@ -52,7 +52,6 @@
 (declare-function org-clocking-buffer "org")
 (defvar org-clock-marker)
 (declare-function org-get-valid-level "org")
-(declare-function org-get-previous-line-level "org")
 (declare-function org-level-increment "org")
 (declare-function org-get-heading "org")
 
@@ -515,6 +514,15 @@ headings in the region."
        (when org-auto-align-tags (org-align-tags))
        (when org-adapt-indentation (org-fixup-indentation diff)))
      (run-hooks 'org-after-demote-entry-hook))))
+
+(defun org-get-previous-line-level ()
+  "Return the outline depth of the last headline before the current line.
+Returns 0 for the first headline in the buffer, and nil if before the
+first headline."
+  (and (org-current-level)
+       (or (and (/= (line-beginning-position) (point-min))
+		(save-excursion (forward-line -1) (org-current-level)))
+	   0)))
 
 (defun org-cycle-level ()
   "Cycle the level of an empty headline through possible states.

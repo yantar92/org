@@ -2282,15 +2282,6 @@ package ox-bibtex by Taru Karttunen."
 
 (require 'org-move)
 
-(defun org-get-previous-line-level ()
-  "Return the outline depth of the last headline before the current line.
-Returns 0 for the first headline in the buffer, and nil if before the
-first headline."
-  (and (org-current-level)
-       (or (and (/= (line-beginning-position) (point-min))
-		(save-excursion (forward-line -1) (org-current-level)))
-	   0)))
-
 (defun org-level-increment ()
   "Return the number of stars that will be added or removed at a
 time to headlines when structure editing, based on the value of
