@@ -743,8 +743,26 @@ Sending update messages once the REGLOCK got its outcome is undefined."
             (_ (error "Invalid message"))))))
     nil))
 
+(defun org-pending-sending-outcome-to--worker (reglock todo)
+  "See `org-pending-sending-outcome-to'."
+  (let (outcome)
+    (unwind-protect
+        (setq outcome
+              (condition-case-unless-debug exc
+                  (list :success (funcall todo))
+                (error (list :failure exc))))
+      (unless outcome
+        (setq outcome (list :failure 'error)))
+      (org-pending-send-update reglock outcome))))
 
+(defmacro org-pending-sending-outcome-to (reglock &rest body)
+  "Execute BODY, using the outcome to unlock REGLOCK.
 
+Exectute BODY.  Use the value of the last form to send a :success
+outcome to REGLOCK.  If an error occurs when executing BODY, use that
+error to send a :failure outcome to REGLOCK."
+  (declare (indent 1) (debug (form body)))
+  `(org-pending-sending-outcome-to--worker ,reglock (lambda () ,@body)))
 
 
 ;;; Checking for reglocks
