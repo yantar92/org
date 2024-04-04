@@ -518,6 +518,12 @@ depends on, if any."
        (error (message "Problems while trying to load export backend `%s'"
 		       backend)))))
 
+(defun org-require-autoloaded-modules ()
+  (interactive)
+  (mapc #'require
+	'(org-agenda org-archive org-attach org-clock org-colview org-id
+		     org-table org-timer)))
+
 (defgroup org-keywords nil
   "Keywords in Org mode."
   :tag "Org Keywords"
@@ -2401,54 +2407,6 @@ package ox-bibtex by Taru Karttunen."
 ;;;; Functions extending outline functionality
 
 (require 'org-move)
-
-;;; Conveniently switch to Info nodes
-
-(defun org-info-find-node (&optional nodename)
-  "Find Info documentation NODENAME or Org documentation according context.
-Started from `gnus-info-find-node'."
-  (interactive)
-  (Info-goto-node
-   (or nodename
-       (let ((default-org-info-node "(org) Top"))
-         (cond
-          ((eq 'org-agenda-mode major-mode) "(org) Agenda Views")
-          ((eq 'org-mode major-mode)
-           (let* ((context (org-element-at-point))
-                  (element-info-nodes ; compare to `org-element-all-elements'.
-                   `((babel-call . "(org) Evaluating Code Blocks")
-                     (center-block . "(org) Paragraphs")
-                     (clock . ,default-org-info-node)
-                     (comment . "(org) Comment Lines")
-                     (comment-block . "(org) Comment Lines")
-                     (diary-sexp . ,default-org-info-node)
-                     (drawer . "(org) Drawers")
-                     (dynamic-block . "(org) Dynamic Blocks")
-                     (example-block . "(org) Literal Examples")
-                     (export-block . "(org) ASCII/Latin-1/UTF-8 export")
-                     (fixed-width . ,default-org-info-node)
-                     (footnote-definition . "(org) Creating Footnotes")
-                     (headline . "(org) Document Structure")
-                     (horizontal-rule . "(org) Built-in Table Editor")
-                     (inlinetask . ,default-org-info-node)
-                     (item . "(org) Plain Lists")
-                     (keyword . "(org) Per-file keywords")
-                     (latex-environment . "(org) LaTeX Export")
-                     (node-property . "(org) Properties and Columns")
-                     (paragraph . "(org) Paragraphs")
-                     (plain-list . "(org) Plain Lists")
-                     (planning . "(org) Deadlines and Scheduling")
-                     (property-drawer . "(org) Properties and Columns")
-                     (quote-block . "(org) Paragraphs")
-                     (section . ,default-org-info-node)
-                     (special-block . ,default-org-info-node)
-                     (src-block . "(org) Working with Source Code")
-                     (table . "(org) Tables")
-                     (table-row . "(org) Tables")
-                     (verse-block . "(org) Paragraphs"))))
-             (or (cdr (assoc (car context) element-info-nodes))
-                 default-org-info-node)))
-          (t default-org-info-node))))))
 
 (defun org-get-previous-line-level ()
   "Return the outline depth of the last headline before the current line.
