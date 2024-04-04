@@ -493,7 +493,7 @@ Execute the code in a separate thread."
          (_worker (make-thread todo "babel-thread")))
 
     (lambda ()
-      (org-pending-wait-outcome
+      (my-elib-async-wait-outcome
        (lambda () (with-mutex outcome-lock outcome))))))
 
 
@@ -561,7 +561,7 @@ Execute the code providing callbacks to get the result."
           (lambda ()
             (dolist (it (nreverse progress-items)) (insert (format "%s\n" it)))))
     (lambda ()
-            (org-pending-wait-outcome (lambda () outcome)))))
+            (my-elib-async-wait-outcome (lambda () outcome)))))
 
 
 (defun my-use-callbacks-execute (lang body params)
@@ -585,7 +585,7 @@ Execute the code providing callbacks to get the result."
         (setq outcome (list :success nil))))
 
     (lambda ()
-      (org-pending-wait-outcome (lambda () outcome))))))
+      (my-elib-async-wait-outcome (lambda () outcome))))))
 
 
 ;; Tell org that 'sleeper' is for asynchronous dynamic blocks.
