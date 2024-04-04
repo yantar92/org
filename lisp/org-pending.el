@@ -451,7 +451,7 @@ outcome to unlock the region (see `org-pending-send-update')."
          this region is already scheduled or pending, raise a user
          error."
            ;; Raise if an other (indirect) buffer owns this region.
-           (dolist (pi (org-pending-contents-in (max (1- (car anchor)) (point-min))
+           (dolist (pi (org-pending-locks-in (max (1- (car anchor)) (point-min))
                                                 (cdr region)))
              (let ((pi-owner (org-pending-reglock-owner pi)))
                (unless (eq (current-buffer) pi-owner)
@@ -745,17 +745,19 @@ Sending update messages once the REGLOCK got its outcome is undefined."
 
 
 
-;;; Checking for pending regions
 
-(defun org-pending-contents-in (start end &optional owned)
-  "Return the list of pending contents in BEGIN..END.
 
-Return the list of REGLOCK(s) for pending contents, in the current buffer.
+;;; Checking for reglocks
 
-When OWNED is non-nil, ignore pending contents that are not owned by
-this buffer.
+(defun org-pending-locks-in (start end &optional owned)
+  "Return the list of locks in BEGIN..END.
 
-See also `org-buffer-pending-contents-p'."
+Return the list of REGLOCK(s) that are alive between START and END, in
+the current buffer.
+
+When OWNED is non-nil, ignore locks that are not owned by this buffer.
+
+See also `org-pending-locks-in-buffer-p'."
   (let ((reglocks)
         (here nil)
         ovl)
@@ -774,26 +776,28 @@ See also `org-buffer-pending-contents-p'."
         (setq start (1+ (min end (overlay-end ovl))))))
     reglocks))
 
-(defun org-buffer-pending-contents-p (&optional buffer owned-only)
-  "Return non-nil if BUFFER owns some pending contents.
+(defun org-pending-locks-in-buffer-p (&optional buffer owned-only)
+  "Return non-nil if BUFFER contains some locks that are alive.
 BUFFER is a buffer or a buffer name.  When BUFFER is nil, use the
-current buffer.  Ignore pending contents that failed.
+current buffer.
 
-See also `org-pending-contents-in'."
+When OWNED-ONLY, ignore locks that are not owned by this buffer.
+
+See also `org-pending-locks-in'."
   (setq buffer (or (and buffer (get-buffer buffer))
                    (current-buffer)))
   (with-current-buffer buffer
     (without-restriction
-      (org-pending-contents-in (point-min) (point-max)
-                               owned-only))))
+      (org-pending-locks-in (point-min) (point-max)
+                            owned-only))))
 
 
-(defun org-ensure-no-pending-contents (begin end &optional error-info)
-  "Raise `org-pending-error' if BEGIN..END contains pending contents."
-  (when (org-pending-contents-in begin end)
+(defun org-pending-ensure-no-locks (begin end &optional error-info)
+  "Raise `org-pending-error' if BEGIN..END contains locks that are alive."
+  (when (org-pending-locks-in begin end)
     (signal 'org-pending-error (cons begin (cons end error-info)))))
 
-(defun org-emacs-pending-contents-p ()
+(defun org-pending-no-locks-in-emacs-p ()
   "Return non-nil if any buffer contains some pending contents."
   (catch 'found-one
     (dolist (p (org-pending-list))
@@ -947,14 +951,14 @@ offer to abort killing the buffer."
   ;;          bug#69529).
   (let* ((b (current-buffer))
          (owned-only (buffer-base-buffer b)))
-    (if (not (org-buffer-pending-contents-p b owned-only))
+    (if (not (org-pending-locks-in-buffer-p b owned-only))
         :ok-to-kill
       (when (y-or-n-p (format (concat "Some content is pending in buffer '%s'"
                                       " (or its indirect buffers), kill anyway?")
 			      (buffer-name)))
         ;; Force killed: cancel the pending regions of this buffer.
         (without-restriction
-          (dolist (pi (org-pending-contents-in (point-min) (point-max)
+          (dolist (pi (org-pending-locks-in (point-min) (point-max)
                                                :owned-only))
             (org-pending--forced-kill pi)))
         :forced-kill))))
@@ -963,7 +967,7 @@ offer to abort killing the buffer."
   "For `kill-emacs-query-functions'.
 If there are any pending contents, offer to abort killing Emacs."
   ;; TODO: Offer to jump to the list of the pending contents
-  (if (not (org-emacs-pending-contents-p))
+  (if (not (org-pending-no-locks-in-emacs-p))
       :ok-to-kill
     (when (yes-or-no-p (format "Some org content is pending, kill anyway?"))
       ;; Forced kill: cancel all pending regions
@@ -990,7 +994,7 @@ Fix pending contents, after creating an indirect clone."
   ;; wrong one.  We probably could rescan only the region matching our
   ;; indirect buffer...
   (with-current-buffer (buffer-base-buffer (current-buffer))
-    (dolist (reglock (org-pending-contents-in (point-min) (point-max)))
+    (dolist (reglock (org-pending-locks-in (point-min) (point-max)))
       (let ((region (org-pending-reglock-region reglock)))
         (when region
           (let ((inhibit-modification-hooks t)

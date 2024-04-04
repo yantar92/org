@@ -7235,7 +7235,7 @@ copy contains any pending contents."
        (end-of-line))
      (setq end (point))
      (when no-pendings
-       (org-ensure-no-pending-contents beg end))
+       (org-pending-ensure-no-locks beg end))
      (goto-char beg0)
      (when (> end beg)
        (setq org-subtree-clip-folded folded)

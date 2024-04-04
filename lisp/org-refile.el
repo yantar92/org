@@ -561,7 +561,7 @@ prefix argument (`C-u C-u C-u C-c C-w')."
 		(org-fold-show-context 'org-goto))
 	    (if regionp
 		(progn
-                  (org-ensure-no-pending-contents region-start region-end)
+                  (org-pending-ensure-no-locks region-start region-end)
 		  (org-kill-new (buffer-substring region-start region-end))
 		  (org-save-markers-in-region region-start region-end))
 	      (org-copy-subtree 1 nil t nil :no-pendings))
