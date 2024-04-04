@@ -709,7 +709,7 @@ Get the REGLOCK at point (pending content or an outcome).  Use
             (overlay-put outcome-ovl 'org-pending-reglock reglock)
             (push (cons 'useless-p
                         (lambda ()
-                          (if-let ((buf (overlay-buffer ovl)))
+                          (if-let ((buf (overlay-buffer outcome-ovl)))
                             (not (buffer-live-p buf))
                             t)))
                   (org-pending-reglock--alist reglock))))))))
@@ -851,9 +851,6 @@ See also `org-pending-locks-in'."
 ;; The manager contains locks (dead or alive).  This allows to check
 ;; the history of locks.
 ;;
-;; FIXME: Implement garbage collection for pending contents.  We need
-;;        a strategy to free obsolete pending contents automatically.
-;;
 
 ;;;; Internals
 ;;
@@ -908,6 +905,13 @@ Return nothing."
   (message "org-pending: reglock update for id=%s: %s"
            (org-pending-reglock-id reglock) update))
 
+(defun org-pending--mgr-garbage-collect ()
+  "Forget useless data about locks."
+  (let ((mgr (org-pending--manager)))
+    (setf (org-pending--manager-reglocks mgr)
+          (seq-filter (lambda (l) (not (org-pending-reglock-useless-p l)))
+                      (org-pending--manager-reglocks mgr)))))
+
 ;;;; API
 ;;
 
@@ -915,6 +919,7 @@ Return nothing."
   "Return the list of REGLOCKs.
 This is a global list for this Emacs instance, in any org buffer.  It
 includes past and present REGLOCKs."
+  (org-pending--mgr-garbage-collect)
   (org-pending--manager-reglocks (org-pending--manager)))
 
 
