@@ -225,6 +225,44 @@ Returns the newly created buffer."
                "Performs badly.  Instead use `org-entry-get' with the argument INHERIT set to `selective'"
                "9.7")
 
+(declare-function outline-previous-heading "outline")
+(declare-function outline-next-heading "outline")
+(declare-function org-in-regexp "org-macs" (regexp &optional nlines visually))
+(defun org-between-regexps-p (start-re end-re &optional lim-up lim-down)
+  "Non-nil when point is between matches of START-RE and END-RE.
+
+Also return a non-nil value when point is on one of the matches.
+
+Optional arguments LIM-UP and LIM-DOWN bound the search; they are
+buffer positions.  Default values are the positions of headlines
+surrounding the point.
+
+The functions returns a cons cell whose car (resp. cdr) is the
+position before START-RE (resp. after END-RE)."
+  (require 'outline)
+  (require 'org-macs)
+  (save-match-data
+    (let ((pos (point))
+	  (limit-up (or lim-up (save-excursion (outline-previous-heading))))
+	  (limit-down (or lim-down (save-excursion (outline-next-heading))))
+	  beg end)
+      (save-excursion
+	;; Point is on a block when on START-RE or if START-RE can be
+	;; found before it...
+	(and (or (org-in-regexp start-re)
+		 (re-search-backward start-re limit-up t))
+	     (setq beg (match-beginning 0))
+	     ;; ... and END-RE after it...
+	     (goto-char (match-end 0))
+	     (re-search-forward end-re limit-down t)
+	     (> (setq end (match-end 0)) pos)
+	     ;; ... without another START-RE in-between.
+	     (goto-char (match-beginning 0))
+	     (not (re-search-backward start-re (1+ beg) t))
+	     ;; Return value.
+	     (cons beg end))))))
+(make-obsolete 'org-between-regexps-p "no longer used" "9.7")
+
 (provide 'org-obsolete9.7)
 
 ;; Local variables:
