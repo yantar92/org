@@ -893,9 +893,7 @@ its outcome when the cancellation completes.
 
 Return nothing immediately."
   (when (org-pending-reglock-live-p reglock)
-    (org-pending-send-update
-     reglock (list :failure (list 'org-pending-user-cancel
-                                  "Canceled"))))
+    (funcall (org-pending-reglock-user-cancel-function reglock)))
   nil)
 
 ;;; Managing outcomes
