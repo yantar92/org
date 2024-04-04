@@ -681,8 +681,8 @@ Get the REGLOCK at point (pending content or an outcome).  Use
 
       (when (and (memq status '(:failure :success))
                  outcome-region)
-        ;; We add some outcome decorations to let the user now
-        ;; what happened and allow him to explore the details.
+        ;; We add some outcome decorations to let the user know what
+        ;; happened and allow him to explore the details.
         (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
               (bitmap (pcase status
                         (:success 'large-circle)
