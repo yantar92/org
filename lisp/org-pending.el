@@ -372,7 +372,7 @@ If the outcome is not known, use the current time."
 
 (defun org-pending--user-cancel-default (reglock)
   "Send a cancel message to REGLOCK to close it.
-Default value for `org-pending-reglock-insert-details-function'."
+Default value for `org-pending-reglock-user-cancel-function'."
   (org-pending-send-update
    reglock (list :failure (list 'org-pending-user-cancel
                                 "Canceled"))))
