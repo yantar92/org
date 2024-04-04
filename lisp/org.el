@@ -1902,12 +1902,6 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
       (concat "\"" (mapconcat 'identity (split-string s "\"") "\"\"") "\"")
     s))
 
-(defun org-quote-vert (s)
-  "Replace \"|\" with \"\\vert\"."
-  (while (string-match "|" s)
-    (setq s (replace-match "\\vert" t t s)))
-  s)
-
 (defun org-context ()
   "Return a list of contexts of the current cursor position.
 If several contexts apply, all are returned.

@@ -1441,6 +1441,12 @@ and variances (respectively) of the individual estimates."
 
 ;;; Dynamic block for Column view
 
+(defun org-quote-vert (s)
+  "Replace \"|\" with \"\\vert\"."
+  (while (string-match "|" s)
+    (setq s (replace-match "\\vert" t t s)))
+  s)
+
 (defun org-columns--capture-view (maxlevel match skip-empty exclude-tags format local)
   "Get the column view of the current buffer.
 
