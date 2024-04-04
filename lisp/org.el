@@ -811,8 +811,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
   :group 'org-properties
   :type 'boolean)
 
-(defalias 'org-advertized-archive-subtree 'org-archive-subtree)
-
 ;; Declare Column View Code
 
 (declare-function org-columns-get-format-and-top-level "org-colview" ())

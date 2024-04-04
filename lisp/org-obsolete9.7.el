@@ -53,6 +53,9 @@
   'org--print-speed-command "9.7"
   "Internal function.  Subject of unannounced changes.")
 
+(define-obsolete-function-alias 'org-advertized-archive-subtree
+  'org-archive-subtree "9.7")
+
 ;;;; Obsolete variables
 
 (defconst org-latex-line-break-safe "\\\\[0pt]"
