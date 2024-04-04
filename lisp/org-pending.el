@@ -31,12 +31,12 @@
 ;; Locking regions is useful when the update is computed
 ;; asynchronously and/or depends on external events.
 ;;
-;; To lock a region to update it, you need to do something like this:
+;; To lock a region, you need to do something like this:
 ;;
 ;;    1. Call the function `org-pending' with the region to lock; use
 ;;       the ON-OUTCOME argument to tell Emacs how to update the
-;;       region.  Keep the returned REGLOCK, you'll need it to send
-;;       updates.
+;;       region.  Keep the returned REGLOCK (you'll need it to send
+;;       updates).
 ;;
 ;;    2. Start "something" that computes the new content.  That
 ;;       "something" may be a thread, a timer, a notification, a
@@ -281,21 +281,21 @@ Assume OVL has been created with `org-pending--make-overlay'."
 
   ( region nil
     :documentation
-    "(read-only constant) The pending region: a pair of positions
+    "(read-only constant) The locked region: a pair of positions
 (begin marker . end marker). This is the target of the update. Its
-content will be updated on success.")
+content may be updated on success.")
 
   ( scheduled-at nil
     :documentation
-    "When the pending region was created (float-time).")
+    "When the lock was created (float-time).")
 
   ( outcome-at nil
     :documentation
-    "When the outcome was received; nil if not received yet.")
+    "When the outcome was received (float-time); nil if not received yet.")
 
   ( outcome nil
     :documentation
-    "The outcome. nil when not know yet. Else a list: (:success RESULT)
+    "The outcome. nil when not known yet. Else a list: (:success RESULT)
 or (:failure ERROR)")
 
   ( -alist nil
@@ -312,9 +312,10 @@ REGLOCK as argument.")
     "Function called when the user wish to cancel this REGLOCK,
 with the REGLOCK as argument.  This function must return immediately; it
 may, asynchronously, stop some processing and release resources; and,
-once this is done, it should send the REGLOCK outcome (using
-`org-pending-send-update', so that the REGLOCK get closed). The default
-value is `org-pending--user-cancel-default'" )
+once this is done, it should send the outcome to the REGLOCK (using
+`org-pending-send-update', so that the region is unlocked and the
+REGLOCK destroyed). The default value is
+`org-pending--user-cancel-default'" )
 
   ( insert-details-function nil
     :documentation
@@ -331,13 +332,13 @@ error.  The function may use text properties, overlays, etc.  See
     "A alist of properties.  Useful to attach custom features to this REGLOCK." ))
 
 (defun org-pending-reglock-owner (reglock)
-  "The buffer that owns this pending region; it may be the base
+  "The buffer that owns this lock; it may be the base
 buffer or an indirect one.
 
 A REGLOCK belongs to one buffer, the buffer that is current when it is
-created.  For example, if you flag some content as /pending/ in an
-indirect buffer, that /pending region/ belongs to that indirect buffer,
-and, control of that /pending region/ must happen in that buffer."
+created.  For example, if you lock a region as /pending/ in an indirect
+buffer, that region lock belongs to that indirect buffer, and, control
+of that lock must happen in that buffer."
   (marker-buffer (car (org-pending-reglock-region reglock))))
 
 (defun org-pending-reglock-status (reglock)
@@ -351,8 +352,8 @@ A REGLOCK stays live until it receives its outcome: :success or :failure."
 
 (defun org-pending-reglock-useless-p (reglock)
   "Return non-nil if REGLOCK is useless.
-When a REGLOCK becomes useless, org-pending will forget about it at some
-point."
+When a REGLOCK becomes useless, org-pending will, at some point, forget
+about it."
   (funcall (cdr (assq 'useless-p (org-pending-reglock--alist reglock)))))
 
 (defun org-pending-reglock-duration (reglock)
@@ -364,9 +365,13 @@ If the outcome is not known, use the current time."
     (- end start)))
 
 (defun org-pending-reglock-property (reglock prop)
+  "Get the value of the property on this REGLOCK.
+This is a place: use `setf' to set it.
+See also `org-pending-reglock-set-property'."
   (cdr (assq prop (org-pending-reglock-properties reglock))))
 
 (defun org-pending-reglock-set-property (reglock prop val)
+  "See `org-pending-reglock-property'."
   (if-let ((b (assq prop (org-pending-reglock-properties reglock))))
       (setcdr b val)
     (push (cons prop val)
@@ -407,7 +412,8 @@ On receiving the outcome (a :success or :failure message, sent with
 ON-OUTCOME is non-nil, call it with the reglock and the outcome, from
 the position from where the REGLOCK was created.  If ON-OUTCOME returns
 an region (a pair (start position . end position)), use it to report the
-success/failure using visual hints on that region.
+success/failure using visual hints on that region.  If ON-OUTCOME
+returns nothing, don't display outcome marks.
 
 You may send progress updates, and, eventually, you must send the
 outcome to unlock the region (see `org-pending-send-update')."
@@ -517,9 +523,9 @@ outcome to unlock the region (see `org-pending-send-update')."
 Describe position REGLOCK.
 The information is displayed in new buffer.
 
-If the field org-pending-reglock-insert-details-function of REGLOCK is
-non-nil, move point to the end of the description buffer, and that
-function with REGLOCK 0 and a reasonable size."
+If the REGLOCK field insert-details-function is non-nil, move point to
+the end of the description buffer, and call that function with REGLOCK,
+0 and some reasonable size."
   (let ((buffer (get-buffer-create "*Region Lock*")))
     (with-output-to-temp-buffer buffer
       (with-current-buffer buffer
@@ -612,8 +618,8 @@ function with REGLOCK 0 and a reasonable size."
                           (funcall insert-details reglock nil (* 1024 1024))))))))))
 
 (defun org-pending--describe-reglock-at-point ()
-  "Describe the pending content at point.
-Get the REGLOCK at point (pending content or an outcome).  Use
+  "Describe the lock at point.
+Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 `org-pending-describe-reglock' to display it."
   (interactive)
   (let ((reglock (or (get-char-property (point) 'org-pending-reglock)
@@ -717,15 +723,15 @@ Get the REGLOCK at point (pending content or an outcome).  Use
 (defun org-pending-send-update (reglock upd-message)
   "Send the update UPD-MESSAGE to REGLOCK.
 
-Use `org-pending' to create a REGBLOCK.
+Use `org-pending' to create a REGLOCK.
 
 The udpate UPD-MESSAGE must be one of the following:
 
     - (:success R): The new content is ready; the result is R; Emacs
-      calls ON-OUTCOME with (:success R) and unlock the region.
+      unlocks the region and calls ON-OUTCOME with (:success R).
 
-    - (:failure ERR): Something failed; the error is ERR; Emacs calls
-      ON-OUTCOME with (:failure ERR) and unlock the region.
+    - (:failure ERR): Something failed; the error is ERR; Emacs unlocks
+      the region and calls ON-OUTCOME with (:failure ERR).
 
     - (:progress P): Content is still pending; current progress is P;
       Emacs may display this progress P using the lock anchor (see
@@ -789,7 +795,7 @@ error to send a :failure outcome to REGLOCK."
 ;;; Checking for reglocks
 
 (defun org-pending-locks-in (start end &optional owned)
-  "Return the list of locks in BEGIN..END.
+  "Return the list of locks in START..END.
 
 Return the list of REGLOCK(s) that are alive between START and END, in
 the current buffer.
@@ -820,7 +826,8 @@ See also `org-pending-locks-in-buffer-p'."
 BUFFER is a buffer or a buffer name.  When BUFFER is nil, use the
 current buffer.
 
-When OWNED-ONLY, ignore locks that are not owned by this buffer.
+When OWNED-ONLY is non-nil, ignore locks that are not owned by this
+buffer.
 
 See also `org-pending-locks-in'."
   (setq buffer (or (and buffer (get-buffer buffer))
@@ -858,7 +865,7 @@ See also `org-pending-locks-in'."
 (cl-defstruct (org-pending--manager
                (:constructor org-pending--create-manager)
 	       (:copier nil))
-  ; An id (integer) uniquely identifies one REGLOCK.
+  ; An name (string) uniquely identifies one REGLOCK.
   used-names ; obarray of in-use names.
   reglocks ; The list of REGLOCKs, past & present.
   )
@@ -866,10 +873,10 @@ See also `org-pending-locks-in'."
 
 
 (defvar org-pending--manager nil
-  "The global pending content manager.")
+  "The global manager for locks.")
 
 (defun org-pending--manager ()
-  "Get/create the global manager for pending contents."
+  "Get/create the global manager for locks."
   (unless org-pending--manager
     (setq org-pending--manager (org-pending--create-manager
                                 :used-names (obarray-make)))
@@ -877,7 +884,7 @@ See also `org-pending-locks-in'."
   org-pending--manager)
 
 (defun org-pending--mgr-handle-new-reglock (reglock name)
-  "Handle this new pending content REGLOCK.
+  "Handle this new lock REGLOCK.
 Update REGLOCK as needed. Return nothing."
   (let* ((mgr (org-pending--manager)))
     (push reglock (org-pending--manager-reglocks mgr))
@@ -917,7 +924,7 @@ Return nothing."
 
 (defun org-pending-list ()
   "Return the list of REGLOCKs.
-This is a global list for this Emacs instance, in any org buffer.  It
+This is a global list for this Emacs instance, in any buffer.  It
 includes past and present REGLOCKs."
   (org-pending--mgr-garbage-collect)
   (org-pending--manager-reglocks (org-pending--manager)))
@@ -939,7 +946,7 @@ Return nothing immediately."
 ;;; Managing outcomes
 ;;
 (defun org-pending-delete-outcome-marks (sstart slimit)
-  "Remove outcome marks between SSTART and SLIMIT.
+  "Remove outcome marks between SSTART and SLIMIT in the current buffer.
 Remove them in any buffer (base or indirect, owned or not)."
   (while (and sstart (< sstart slimit))
     (when-let ((ovl (get-text-property sstart 'org-pending--outcome-overlay)))
@@ -958,9 +965,9 @@ Do not ask for confirmation or interact in any way, just kill it.
 
 Do nothing if this REGLOCK is not live anymore.
 
-Call `org-pending-reglock-before-kill-function' with REGLOCK if any.  If
-the REGLOCK is still live, make it fail with org-pending-user-cancel
-error.
+When the REGLOCK field `before-kill-function' is non-nil, call it with
+REGLOCK.  If the REGLOCK is still live, make it fail with
+org-pending-user-cancel error.
 
 Return nothing."
   (when (org-pending-reglock-live-p reglock)
@@ -978,25 +985,24 @@ Return nothing."
 
 (defun org-pending--kill-buffer-query ()
   "For `kill-buffer-query-functions'.
-If the current buffer contains pending contents,
-offer to abort killing the buffer."
-  ;; TODO: Offer to jump to the list of this buffer pending contents
+If the current buffer contains locks, offer to abort killing the buffer."
+  ;; TODO: Offer to jump to the list of this buffer locks
   ;;
-  ;; For an indirect buffer, we can kill it even if there are pending
-  ;; contents, as long as the buffer doesn't own any of them.  For a
-  ;; base buffer, we can't kill it if they are any pending contents
-  ;; (as this would kill all indirect buffers).
+  ;; For an indirect buffer, we can kill it even if there are locks,
+  ;; as long as the buffer doesn't own any of them.  For a base
+  ;; buffer, we can't kill it if they are any lock (as this would kill
+  ;; all indirect buffers).
+  ;;
   ;; WARNING: Emacs (<=30.1) may segfault if the indirect buffer
-  ;;          rejects the kill and its base buffer didn't (see
-  ;;          bug#69529).
+  ;;   rejects the kill and its base buffer didn't (see bug#69529).
   (let* ((b (current-buffer))
          (owned-only (buffer-base-buffer b)))
     (if (not (org-pending-locks-in-buffer-p b owned-only))
         :ok-to-kill
-      (when (y-or-n-p (format (concat "Some content is pending in buffer '%s'"
+      (when (y-or-n-p (format (concat "There are pending locks in buffer '%s'"
                                       " (or its indirect buffers), kill anyway?")
 			      (buffer-name)))
-        ;; Force killed: cancel the pending regions of this buffer.
+        ;; Force killed: cancel all the locks of this buffer.
         (without-restriction
           (dolist (pi (org-pending-locks-in (point-min) (point-max)
                                                :owned-only))
@@ -1005,11 +1011,11 @@ offer to abort killing the buffer."
 
 (defun org-pending--kill-emacs-query ()
   "For `kill-emacs-query-functions'.
-If there are any pending contents, offer to abort killing Emacs."
-  ;; TODO: Offer to jump to the list of the pending contents
+If there are any lock, offer to abort killing Emacs."
+  ;; TODO: Offer to jump to the list of the locks.
   (if (not (org-pending-no-locks-in-emacs-p))
       :ok-to-kill
-    (when (yes-or-no-p (format "Some org content is pending, kill anyway?"))
+    (when (yes-or-no-p (format "There are pending locks, kill anyway?"))
       ;; Forced kill: cancel all pending regions
       (dolist (pi (org-pending-list))
         (org-pending--forced-kill pi))
@@ -1017,7 +1023,7 @@ If there are any pending contents, offer to abort killing Emacs."
 
 (defun org-pending--after-indirect-clone ()
   "For `clone-indirect-buffer-hook'.
-Fix pending contents, after creating an indirect clone."
+Fix our data, after creating an indirect clone."
   (unless (buffer-base-buffer (current-buffer))
     (error "Bad call: not an indirect buffer: %s" (current-buffer)))
 
@@ -1106,7 +1112,7 @@ The returned function silently do nothing when the buffer is dead."
 (cl-defun org-pending-user-edit (prompt start end &key edit-name)
   "Ask the user to edit the region BEGIN .. END.
 
-Like `string-edit' using a pending region.
+Like `string-edit' using a lock.
 
 Assume the region START..END is in the current buffer.
 
@@ -1212,7 +1218,7 @@ unique if needed."
 Used to disable asynchronous calls when Emacs doesn't support it (yet),
 or, when it's impossible by design.
 
-For example, when a Org block is executed asynchronously, if it depends
+For example, when an Org block is executed asynchronously, if it depends
 on the execution of other blocks, we have to execute those synchronously
 for now.")
 
