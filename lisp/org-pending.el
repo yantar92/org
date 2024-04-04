@@ -1021,8 +1021,26 @@ Fix pending contents, after creating an indirect clone."
                                     (list 'face :not-used))))))))
 
 
-;;; Basic use of pending regions
+;;; Basic use of locks
 ;;
+
+;;;; Lock while executing some elisp
+;;
+
+(defmacro org-pending-updating-region (start end props &rest body)
+  "Lock the region START..END while executing BODY.
+
+Lock the region START..END (applying `org-pending' to the region and
+PROPS). Then, execute BODY while the region is locked, and, set the
+outcome (see `org-pending-sending-outcome-to'). Finally, unlock the
+region.
+
+Use the ON-OUTCOME property to update the region if/when you need to."
+  (declare (indent 3) (debug (form form form body)))
+  (let ((reglock-sb (make-symbol "reglock")))
+    `(let ((,reglock-sb (apply #'org-pending (cons ,start ,end) ,props)))
+       (org-pending-sending-outcome-to ,reglock-sb ,@body))))
+
 
 ;;;; Prompt the user to edit a region
 (defun org-pending-user-edit--on-outcome (reglock outcome)
