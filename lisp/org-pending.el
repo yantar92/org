@@ -92,10 +92,6 @@
 (define-error 'org-pending-user-cancel
               "The user canceled this update")
 
-(define-error 'org-pending-timeout-error
-              "Timeout error.
-Raise, e.g. by `org-pending-wait-condition'.")
-
 
 ;;; Status
 (defun org-pending-status-face (status)
@@ -1148,9 +1144,6 @@ unique if needed."
 ;;; Giving up on asynchronicity
 ;;
 
-;;;; Request no asynchronicity
-;;
-
 (defvar org-pending-without-async-flag nil
   "When non-nil, do not make asynchronous calls.
 
@@ -1170,78 +1163,6 @@ Return the value of the last form."
   (declare (indent 0) (debug t))
   `(let ((org-pending-without-async-flag t))
      ,@body))
-
-
-;;;; Blocking the user
-;;
-
-(cl-defun org-pending-wait-condition ( cond-p
-                                         &key
-                                         (tick .3) (message "Waiting")
-                                         (nb_secs_between_messages 5)
-                                         timeout)
-  "Wait until the condition COND-P returns non-nil.
-
-This function blocks the main thread and the user, until the condition
-is true.  It's only intended as a workaround, when some feature cannot
-work asynchronously.  Do not use if you can: stay asynchronous.
-
-Raise when not called from the main thread.
-Return the non-nil value returned by COND-P.
-
-Repeatedly call COND-P with no arguments, about every TICK seconds,
-until it returns a non-nil value.  Return that non-nil value.  When
-TIMEOUT (seconds) is non-nil, raise an `org-pending-timeout-error' if
-COND-P is still nil after TIMEOUT seconds.  Assume COND-P calls cost 0s.
-
-Do not block display updates.  Do not block process outputs.  Do not
-block idle timers.  Do block the user, letting them know why, but do not
-display more messages than one every NB_SECS_BETWEEN_MESSAGES.  Default
-MESSAGE is \"Waiting\".  Use 0.3s as the default for TICK."
-  (unless (or
-           ;; No thread support.
-           (or (not (fboundp 'make-thread)) (not main-thread))
-           ;; Wrong thread.
-           (eq (current-thread) main-thread))
-    (error "Must only be called from the main thread"))
-  (let ((keep-waiting t)
-        (result nil)
-        (start (float-time))
-        elapsed
-        last-elapsed)
-    (while keep-waiting
-      (setq result (funcall cond-p))
-      (if result
-          (setq keep-waiting nil)
-        (sleep-for 0.01)
-        (redisplay :force)
-        (setq elapsed (- (float-time) start))
-        (when (and timeout (> elapsed timeout))
-          (signal 'org-pending-timeout-error (list message elapsed)))
-        ;; Let the user why Emacs hangs, without flooding the message area.
-        (if (and last-elapsed (> (- elapsed last-elapsed) nb_secs_between_messages))
-            (message (format "%s ...(%.1fs)" message elapsed)))
-        (unless (sit-for tick :redisplay)
-          ;; Emacs has something to do; let it process new
-          ;; sub-processes outputs in case there are some.
-          (accept-process-output nil 0.01))
-        (setq last-elapsed elapsed)))
-    result))
-
-(cl-defun org-pending-wait-outcome ( try-get-outcome )
-  "Wait the outcome; return or raise when available.
-
-This function blocks the main thread and the user, until the condition
-is true.  It's only intended as a workaround, when some feature cannot
-work asynchronously.  Do not use if you can: stay asynchronous.
-
-Call TRY-GET-OUTCOME to check if the outcome is available.
-Once available, return on success, raise on failure."
-  (let ((outcome (org-pending-wait-condition
-                  (lambda () (funcall try-get-outcome)))))
-    (pcase outcome
-      (`(:success ,r) r)
-      (`(:failure ,err) (signal (car err) (cdr err))))))
 
 
 
