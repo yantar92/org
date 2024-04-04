@@ -1,6 +1,6 @@
 ;;; org-pending.el --- Regions with pending content -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2024-2024 Free Software Foundation, Inc.
+;; Copyright (C) 2024 Free Software Foundation, Inc.
 
 ;; Author: Bruno Barbier <brubar.cs@gmail.com>
 ;; Keywords: tools text
@@ -23,38 +23,39 @@
 
 ;;; Commentary:
 
-;; This file contains an API to lock a region while it is "being
-;; updated"; the content of the region is "pending".  It will be
-;; updated, later, when the new content is available.  Until that new
-;; content is available, Emacs protects the region from being modified
-;; and/or destroyed.
+;; This library contains an API to lock a region while it is "being
+;; updated"; the content of the region is "pending" and cannot be
+;; modified.  It will be updated, later, when the new content is
+;; available.
 ;;
 ;; Locking regions is useful when the update is computed
-;; asynchronously or depends on external events.
+;; asynchronously and/or depends on external events.
 ;;
-;; This package provides a way to lock a region as "pending", telling
-;; Emacs what to do when the update is ready.
+;; To lock a region to update it, you need to do something like this:
 ;;
-;; Buffers with pending contents will resist killing.
+;;    1. Call the function `org-pending' with the region to lock; use
+;;       the ON-OUTCOME argument to tell Emacs how to update the
+;;       region.  Keep the returned REGLOCK, you'll need it to send
+;;       updates.
 ;;
-;; To create and use a pending region, you need to do something like
-;; this:
-;;
-;;    1. Mark a region as "pending" using `org-pending', which gives
-;;       you a REGLOCK.  When you call `org-pending', you may provide
-;;       how to update the pending region when the outcome is
-;;       available (see ON-OUTCOME arguemnt); Emacs applies it when
-;;       you provide the outcome and unlock the region.
-;;
-;;    2. Start "something" that compute the new content.  That
+;;    2. Start "something" that computes the new content.  That
 ;;       "something" may be a thread, a timer, a notification, a
 ;;       process, etc.  That "something" must eventually send a
 ;;       :success or :failure message (using
-;;       `org-pending-send-update'): Emacs will appropriately
-;;       update the pending region and unlock it.
+;;       `org-pending-send-update'): Emacs will update the pending
+;;       region (using your ON-OUTCOME) and unlock it; at this point
+;;       the lock is "dead" (not live-p).
+;;
+;; A lock is "live" (blocking a region) from its creation until its
+;; outcome.  Once the lock receives its outcome, it's dead.
+;;
+;; The two functions`org-pending' and `org-pending-send-update' should
+;; be enough for most use cases.
 ;;
 ;; Here are examples of functions using this library:
 ;;     - `org-pending-user-edit': prompt the user to edit a region,
+;;     - `org-pending-updating-region': lock a region while executing
+;;       some elisp,
 ;;     - `org-babel-execute-src-block': execute source blocks
 ;;       asynchronously.
 ;;     - and `org-dblock-update': execute dynamic blocks
@@ -62,22 +63,19 @@
 ;;
 ;; The section "REGLOCK" describes the REGLOCK structure, how to lock
 ;; pending regions, how to describe them to the user and how to update
-;; them.  The section "Checking for pending regions" allows to check
-;; for pending contents in regions, in buffers or in Emacs.  The
-;; section "Managing pending regions" is about managing all (past or
-;; present) pending regions in Emacs.  The section "Plugging into
-;; Emacs" teaches Emacs how to deal with these pending regions (like
-;; forbidding some operations until a pending region is updated).  The
-;; section "Basic use of pending regions" is for simple functions that
-;; use the "pending region" feature.  The section "Giving up on
-;; asynchronicity" provides tools when you give up, and, really need
-;; to freeze Emacs and block the user.  The section "Dev & debug"
-;; contains tools that are useful only for development and debugging.
+;; them.  The section "Checking for reglocks" allows to check for
+;; reglocks in regions, in buffers or in Emacs.  The section "Managing
+;; locks" is about managing all (alive or dead) locks in Emacs.  The
+;; section "Managing outcomes" is about managing outcome marks.  The
+;; section "Plugging into Emacs" teaches Emacs how to deal with these
+;; locks (like forbidding some operations while there are live locks).
+;; The section "Basic use of locks" is for simple functions that use
+;; the lock feature.  The section "Giving up on asynchronicity"
+;; provides tools when you give up, and, really need to freeze Emacs
+;; and block the user.  The section "Dev & debug" contains tools that
+;; are useful only for development and debugging.
 ;;
 ;; This file does *NOT* depend on Org.
-
-;; org execute subtree bug
-;;
 
 ;;; Code:
 
