@@ -188,6 +188,43 @@ data region (above) is protected from modifications.
          "Check/update the meta info" start end)))
     #+end_src
 
+** Locking a region while executing some elisp
+
+Lock the js code source below while prompting for new values, then
+replace it.
+
+    #+begin_src elisp :results none
+    (save-excursion
+      (let ((start (progn (re-search-forward "#\\+begin_src js")
+    		      (goto-char (match-beginning 0))
+    		      (point-marker)))
+    	(end (progn (re-search-forward "#\\+end_src\n")
+    		    (goto-char (match-end 0))
+    		    (point-marker)))
+    	name value)
+        (set-marker-insertion-type start nil)
+        (set-marker-insertion-type end t)
+        (org-pending-updating-region
+    	start end
+    	(list :on-outcome
+    	      (lambda (_ o) (pcase o
+    			      (`(:success t)
+    			       (replace-region-contents
+    				start end
+    				(lambda ()
+    				  (concat "#+begin_src" " " "js\n"
+    					  (format "{ %s : %d }\n" name value)
+    					  "#+end" "_" "src\n")))
+    			       (indent-rigidly start end 4))
+    			      (`(:failure . ,_) (cons start end)))))
+          (setq name (read-string "Name?"))
+          (setq value (read-number "Number?"))
+          (y-or-n-p "Do it?"))))
+    #+end_src
+
+    #+begin_src js
+    { klsdf : 23 }
+    #+end_src
 
 ** Using a custom engine: my-org-babel
 
