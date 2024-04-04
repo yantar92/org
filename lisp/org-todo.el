@@ -112,6 +112,14 @@ property and include the word \"recursive\" into the value."
   :group 'org-todo
   :type 'boolean)
 
+(defcustom org-closed-keep-when-no-todo nil
+  "Remove CLOSED: timestamp when switching back to a non-todo state?"
+  :group 'org-todo
+  :group 'org-keywords
+  :version "24.4"
+  :package-version '(Org . "8.0")
+  :type 'boolean)
+
 (defcustom org-after-todo-state-change-hook nil
   "Hook which is run after the state of a TODO item was changed.
 The new state (a string with a TODO keyword, or nil) is available in the

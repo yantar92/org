@@ -529,14 +529,6 @@ depends on, if any."
   :tag "Org Keywords"
   :group 'org)
 
-(defcustom org-closed-keep-when-no-todo nil
-  "Remove CLOSED: timestamp when switching back to a non-todo state?"
-  :group 'org-todo
-  :group 'org-keywords
-  :version "24.4"
-  :package-version '(Org . "8.0")
-  :type 'boolean)
-
 (defgroup org-structure nil
   "Options concerning the general structure of Org files."
   :tag "Org Structure"
