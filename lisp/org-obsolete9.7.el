@@ -29,6 +29,14 @@
 
 ;;; Code:
 
+;;;; Groups
+
+;; It was used only for two non-obsolete variables.
+(defgroup org-keywords nil
+  "Keywords in Org mode."
+  :tag "Org Keywords"
+  :group 'org)
+
 ;;;; Obsolete aliases
 
 (define-obsolete-variable-alias 'org-export-ignored-local-variables

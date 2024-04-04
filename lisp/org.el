@@ -524,11 +524,6 @@ depends on, if any."
 	'(org-agenda org-archive org-attach org-clock org-colview org-id
 		     org-table org-timer)))
 
-(defgroup org-keywords nil
-  "Keywords in Org mode."
-  :tag "Org Keywords"
-  :group 'org)
-
 (defgroup org-structure nil
   "Options concerning the general structure of Org files."
   :tag "Org Structure"
