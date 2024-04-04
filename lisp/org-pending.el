@@ -829,14 +829,10 @@ See also `org-pending-locks-in'."
     nil))
 
 
-;;; Managing pending regions
-;; The manager contains past & present pending regions.  This allows
-;; to check the history of pending regions.  For example, on success,
-;; the updated text becomes a regular text without any information
-;; that it was a pending region; you may still recover some info using
-;; the manager. Also, on error (failed, canceled, etc.), Emacs
-;; displays only the last error; you may use the history to check
-;; previous attempts and the reason why they failed.
+
+;;; Managing locks
+;; The manager contains locks (dead or alive).  This allows to check
+;; the history of locks.
 ;;
 ;; FIXME: Implement garbage collection for pending contents.  We need
 ;;        a strategy to free obsolete pending contents automatically.
