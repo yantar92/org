@@ -349,6 +349,12 @@ and, control of that /pending region/ must happen in that buffer."
 A REGLOCK stays live until it receives its outcome: :success or :failure."
   (funcall (cdr (assq 'get-live-p (org-pending-reglock--alist reglock)))))
 
+(defun org-pending-reglock-useless-p (reglock)
+  "Return non-nil if REGLOCK is useless.
+When a REGLOCK becomes useless, org-pending will forget about it at some
+point."
+  (funcall (cdr (assq 'useless-p (org-pending-reglock--alist reglock)))))
+
 (defun org-pending-reglock-duration (reglock)
   "Return the duration between the scheduling and the outcome.
 If the outcome is not known, use the current time."
@@ -418,7 +424,11 @@ outcome to unlock the region (see `org-pending-send-update')."
           `( (get-status . ,(lambda () x-last-status))
              (set-status . ,(lambda (v) (setq x-last-status v)))
              (creation-point . ,(point-marker))
-             (on-outcome . ,on-outcome))))
+             (on-outcome . ,on-outcome)
+             ;; useless-p returns non-nil when a reglock becomes
+             ;; useless and we may forget about it.  We'll update the
+             ;; function when we get the outcome.
+             (useless-p . ,(lambda () nil)))))
 
     (push (cons 'get-live-p
                 (lambda () (when-let ((anchor-ovl (cdr (assq 'anchor-ovl internals))))
@@ -679,23 +689,30 @@ Get the REGLOCK at point (pending content or an outcome).  Use
         (when on-outcome
           (setq outcome-region (funcall on-outcome reglock (list status data)))))
 
-      (when (and (memq status '(:failure :success))
-                 outcome-region)
-        ;; We add some outcome decorations to let the user know what
-        ;; happened and allow him to explore the details.
-        (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
-              (bitmap (pcase status
-                        (:success 'large-circle)
-                        (:failure 'exclamation-mark)))
-              (face (pcase status
-                      (:success 'org-done)
-                      (:failure 'org-todo))))
-          (overlay-put outcome-ovl
-                       'before-string (propertize
-                                       "x" 'display
-                                       `(left-fringe ,bitmap ,face)))
-          (overlay-put outcome-ovl 'org-pending-reglock reglock))))))
-
+      (when (memq status '(:failure :success))
+        (if (not outcome-region)
+            (push (cons 'useless-p (lambda () t))
+                  (org-pending-reglock--alist reglock))
+          ;; We add some outcome decorations to let the user know what
+          ;; happened and allow him to explore the details.
+          (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
+                (bitmap (pcase status
+                          (:success 'large-circle)
+                          (:failure 'exclamation-mark)))
+                (face (pcase status
+                        (:success 'org-done)
+                        (:failure 'org-todo))))
+            (overlay-put outcome-ovl
+                         'before-string (propertize
+                                         "x" 'display
+                                         `(left-fringe ,bitmap ,face)))
+            (overlay-put outcome-ovl 'org-pending-reglock reglock)
+            (push (cons 'useless-p
+                        (lambda ()
+                          (if-let ((buf (overlay-buffer ovl)))
+                            (not (buffer-live-p buf))
+                            t)))
+                  (org-pending-reglock--alist reglock))))))))
 
 (defun org-pending-send-update (reglock upd-message)
   "Send the update UPD-MESSAGE to REGLOCK.
