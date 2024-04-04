@@ -104,7 +104,7 @@
 (declare-function org-calendar-scroll-month-right "org" ())
 (declare-function org-calendar-scroll-three-months-left "org" ())
 (declare-function org-calendar-scroll-three-months-right "org" ())
-(declare-function org-evaluate-time-range "org" (&optional to-buffer))
+(declare-function org-evaluate-time-range "org-misc" (&optional to-buffer))
 (declare-function org-export-dispatch "org" (&optional arg))
 (declare-function org-feed-goto-inbox "org" (feed))
 (declare-function org-feed-update-all "org" ())

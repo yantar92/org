@@ -1702,68 +1702,6 @@ don't try to find the delay cookie in the scheduled timestamp."
      ;; go for the default.
      (t tv))))
 
-(defun org-evaluate-time-range (&optional to-buffer)
-  "Evaluate a time range by computing the difference between start and end.
-Normally the result is just printed in the echo area, but with prefix arg
-TO-BUFFER, the result is inserted just after the date stamp into the buffer.
-If the time range is actually in a table, the result is inserted into the
-next column.
-For time difference computation, a year is assumed to be exactly 365
-days in order to avoid rounding problems."
-  (interactive "P")
-  (or
-   (org-clock-update-time-maybe)
-   (save-excursion
-     (unless (org-at-date-range-p t)
-       (goto-char (line-beginning-position))
-       (re-search-forward org-tr-regexp-both (line-end-position) t))
-     (unless (org-at-date-range-p t)
-       (user-error "Not at a timestamp range, and none found in current line")))
-   (let* ((ts1 (match-string 1))
-	  (ts2 (match-string 2))
-	  (havetime (or (> (length ts1) 15) (> (length ts2) 15)))
-	  (match-end (match-end 0))
-	  (time1 (org-time-string-to-time ts1))
-	  (time2 (org-time-string-to-time ts2))
-	  (diff (abs (float-time (time-subtract time2 time1))))
-	  (negative (time-less-p time2 time1))
-	  ;; (ys (floor (* 365 24 60 60)))
-	  (ds (* 24 60 60))
-	  (hs (* 60 60))
-	  (fy "%dy %dd %02d:%02d")
-	  (fy1 "%dy %dd")
-	  (fd "%dd %02d:%02d")
-	  (fd1 "%dd")
-	  (fh "%02d:%02d")
-	  y d h m align)
-     (if havetime
-	 (setq ; y (floor diff ys)  diff (mod diff ys)
-	  y 0
-	  d (floor diff ds)  diff (mod diff ds)
-	  h (floor diff hs)  diff (mod diff hs)
-	  m (floor diff 60))
-       (setq ; y (floor diff ys)  diff (mod diff ys)
-	y 0
-	d (round diff ds)
-	h 0 m 0))
-     (if (not to-buffer)
-	 (message "%s" (org-make-tdiff-string y d h m))
-       (if (org-at-table-p)
-	   (progn
-	     (goto-char match-end)
-	     (setq align t)
-	     (and (looking-at " *|") (goto-char (match-end 0))))
-	 (goto-char match-end))
-       (when (looking-at
-	      "\\( *-? *[0-9]+y\\)?\\( *[0-9]+d\\)? *[0-9][0-9]:[0-9][0-9]")
-	 (replace-match ""))
-       (when negative (insert " -"))
-       (if (> y 0) (insert " " (format (if havetime fy fy1) y d h m))
-	 (if (> d 0) (insert " " (format (if havetime fd fd1) d h m))
-	   (insert " " (format fh h m))))
-       (when align (org-table-align))
-       (message "Time difference inserted")))))
-
 (defvar org-agenda-current-date)
 (defun org-calendar-holiday ()
   "List of holidays, for Diary display in Org mode."
