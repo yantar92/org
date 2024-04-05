@@ -282,5 +282,22 @@ A prefix ARG can be used to force the current date."
     (calendar-goto-today)
     (when (and diff (not arg)) (calendar-forward-day diff))))
 
+(declare-function org-timestamp-change "org-timestamp"
+                  (n &optional what updown suppress-tmp-delay))
+(declare-function org-get-date-from-calendar "org-timestamp" ())
+(declare-function org-insert-timestamp "org-timestamp"
+                  (time &optional with-hm inactive pre post extra))
+;;;###autoload
+(defun org-date-from-calendar ()
+  "Insert time stamp corresponding to cursor date in *Calendar* buffer.
+If there is already a time stamp at the cursor position, update it."
+  (interactive)
+  (require 'org-timestamp)
+  (if (org-at-timestamp-p 'lax)
+      (org-timestamp-change 0 'calendar)
+    (let ((cal-date (org-get-date-from-calendar)))
+      (org-insert-timestamp
+       (org-encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
+
 (provide 'org-misc)
 ;;; org-misc.el ends here

@@ -1694,22 +1694,6 @@ don't try to find the delay cookie in the scheduled timestamp."
      ;; go for the default.
      (t tv))))
 
-(defun org-get-date-from-calendar ()
-  "Return a list (month day year) of date at point in calendar."
-  (with-current-buffer calendar-buffer
-    (save-match-data
-      (calendar-cursor-to-date))))
-
-(defun org-date-from-calendar ()
-  "Insert time stamp corresponding to cursor date in *Calendar* buffer.
-If there is already a time stamp at the cursor position, update it."
-  (interactive)
-  (if (org-at-timestamp-p 'lax)
-      (org-timestamp-change 0 'calendar)
-    (let ((cal-date (org-get-date-from-calendar)))
-      (org-insert-timestamp
-       (org-encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
-
 (defcustom org-agenda-inhibit-startup nil
   "Inhibit startup when preparing agenda buffers.
 When this variable is t, the initialization of the Org agenda

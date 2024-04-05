@@ -32,7 +32,6 @@
 
 (declare-function org-todo "org")
 (declare-function org-at-date-range-p "org")
-(declare-function org-get-date-from-calendar "org")
 (declare-function org-clock-update-time-maybe "org-clock")
 (declare-function org-get-heading "org")
 
@@ -265,6 +264,12 @@ With prefix ARG, change that many days."
 	(with-selected-window cwin
 	  (calendar-goto-date
 	   (if (listp d) d (calendar-gregorian-from-absolute d))))))))
+
+(defun org-get-date-from-calendar ()
+  "Return a list (month day year) of date at point in calendar."
+  (with-current-buffer calendar-buffer
+    (save-match-data
+      (calendar-cursor-to-date))))
 
 (defvar org-clock-history)                     ; defined in org-clock.el
 (defvar org-clock-adjust-closest nil)          ; defined in org-clock.el

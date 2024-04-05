@@ -72,7 +72,7 @@
 (declare-function org-cut-subtree "org" (&optional n))
 (declare-function org-cycle "org-cycle" (&optional arg))
 (declare-function org-cycle-agenda-files "org-cycle" ())
-(declare-function org-date-from-calendar "org" ())
+(declare-function org-date-from-calendar "org-misc" ())
 (declare-function org-dynamic-block-insert-dblock "org" (&optional arg))
 (declare-function org-dblock-update "org" (&optional arg))
 (declare-function org-deadline "org" (arg1 &optional time))
