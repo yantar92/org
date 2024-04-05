@@ -135,17 +135,13 @@
 
 (require 'org-cycle)
 
-(declare-function Info-goto-node "info" (nodename &optional fork strict-case))
 (declare-function org-add-archive-files "org-archive" (files))
 (declare-function org-agenda-list "org-agenda" (&optional arg start-day span with-hour))
 (declare-function org-attach "org-attach" ())
 (declare-function org-attach-dir "org-attach"
 		  (&optional create-if-not-exists-p no-fs-check))
 (declare-function org-babel-tangle-file "ob-tangle" (file &optional target-file lang))
-(declare-function org-clock-update-time-maybe "org-clock" ())
 (declare-function org-tags-view "org-agenda" (&optional todo-only match))
-
-(defvar org-agenda-buffer-name)
 
 ;; load languages based on value of `org-babel-load-languages'
 (defvar org-babel-load-languages)
@@ -670,56 +666,10 @@ scope."
 
 ;;; Functions and variables from their packages
 ;;  Declared here to avoid compiler warnings
-(defvar mark-active)
 
-;; Various packages
-(declare-function calc-eval "calc" (str &optional separator &rest args))
-(declare-function calendar-forward-day "cal-move" (arg))
-(declare-function calendar-goto-date "cal-move" (date))
-(declare-function calendar-goto-today "cal-move" ())
-(declare-function calendar-iso-from-absolute "cal-iso" (date))
-(declare-function dired-get-filename
-		  "dired"
-		  (&optional localp no-error-if-not-filep))
-(declare-function org-agenda-change-all-lines
-		  "org-agenda"
-		  (newhead hdmarker &optional fixface just-this))
-(declare-function org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item
-		  "org-agenda"
-		  (&optional end))
 (declare-function org-agenda-copy-local-variable "org-agenda" (var))
-(declare-function org-agenda-format-item
-		  "org-agenda"
-		  (extra txt &optional level category tags dotime
-			 remove-re habitp))
-(declare-function org-agenda-new-marker "org-agenda" (&optional pos))
-(declare-function org-agenda-save-markers-for-cut-and-paste
-		  "org-agenda"
-		  (beg end))
-(declare-function org-agenda-set-restriction-lock "org-agenda" (&optional type))
-(declare-function org-agenda-skip "org-agenda" (&optional element))
-(declare-function org-attach-expand "org-attach" (file))
 (declare-function org-attach-reveal "org-attach" ())
 (declare-function org-attach-reveal-in-emacs "org-attach" ())
-(declare-function org-gnus-follow-link "org-gnus" (&optional group article))
-(declare-function org-indent-mode "org-indent" (&optional arg))
-(declare-function org-inlinetask-goto-beginning "org-inlinetask" ())
-(declare-function org-inlinetask-goto-end "org-inlinetask" ())
-(declare-function org-inlinetask-in-task-p "org-inlinetask" ())
-(declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
-(declare-function parse-time-string "parse-time" (string))
-
-(defvar calc-embedded-close-formula)
-(defvar calc-embedded-open-formula)
-(defvar calc-embedded-open-mode)
-(defvar font-lock-unfontify-region-function)
-(defvar org-agenda-tags-todo-honor-ignore-options)
-(defvar remember-data-file)
-
-(declare-function org-clock-save-markers-for-cut-and-paste "org-clock" (beg end))
-(declare-function org-clock-update-mode-line "org-clock" (&optional refresh))
-(declare-function org-resolve-clocks "org-clock"
-		  (&optional also-non-dangling-p prompt last-valid))
 
 (defgroup org-archive nil
   "Options concerning archiving in Org mode."
@@ -741,17 +691,7 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
   :group 'org-properties
   :type 'boolean)
 
-;; Declare Column View Code
-
-(declare-function org-columns-get-format-and-top-level "org-colview" ())
-(declare-function org-columns-compute "org-colview" (property))
-
 ;; Declare ID code
-
-(declare-function org-id-store-link "org-id")
-(declare-function org-id-locations-load "org-id")
-(declare-function org-id-locations-save "org-id")
-(defvar org-id-track-globally)
 
 (defun org-remove-keyword-keys (list)
   "Remove a pair of parenthesis at the end of each string in LIST."
@@ -773,9 +713,7 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
 (defun org-before-change-function (_beg _end)
   "Every change indicates that a table might need an update."
   (setq org-table-may-need-update t))
-(defvar org-mode-map)
 (defvar org-agenda-keep-modes nil)      ; Dynamically-scoped param.
-(defvar bidi-paragraph-direction)
 
 (require 'outline)
 
@@ -793,9 +731,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
 ;; babel
 (require 'ob)
 
-(defvar org-element-cache-version); Defined in org-element.el
-(defvar org-element-cache-persistent); Defined in org-element.el
-(defvar org-element-use-cache); Defined in org-element.el
 (defvar org-mode-tags-syntax-table
   (let ((st (make-syntax-table org-mode-syntax-table)))
     (modify-syntax-entry ?@ "w" st)
@@ -1267,9 +1202,6 @@ to read."
      (t (error "This should not happen")))))
 
 
-;;;; Refiling
-
-(declare-function org-string-nw-p "org-macs" (s))
 ;;;; Completion
 
 (defcustom org-structure-template-alist
