@@ -118,7 +118,7 @@
 (declare-function org-forward-paragraph "org" ())
 (declare-function org-forward-sentence "org" (&optional arg))
 (declare-function org-goto "org" (&optional alternative-interface))
-(declare-function org-goto-calendar "org" (&optional arg))
+(declare-function org-goto-calendar "org-misc" (&optional arg))
 (declare-function org-inc-effort "org" ())
 (declare-function org-increase-number-at-point "org" (&optional inc))
 (declare-function org-info-find-node "org" (&optional nodename))

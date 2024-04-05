@@ -1694,24 +1694,6 @@ don't try to find the delay cookie in the scheduled timestamp."
      ;; go for the default.
      (t tv))))
 
-(defun org-goto-calendar (&optional arg)
-  "Go to the Emacs calendar at the current date.
-If there is a time stamp in the current line, go to that date.
-A prefix ARG can be used to force the current date."
-  (interactive "P")
-  (let ((calendar-move-hook nil)
-	(calendar-view-holidays-initially-flag nil)
-	(calendar-view-diary-initially-flag nil)
-	diff)
-    (when (or (org-at-timestamp-p 'lax)
-	      (org-match-line (concat ".*" org-ts-regexp)))
-      (let ((d1 (time-to-days nil))
-	    (d2 (time-to-days (org-time-string-to-time (match-string 1)))))
-	(setq diff (- d2 d1))))
-    (calendar)
-    (calendar-goto-today)
-    (when (and diff (not arg)) (calendar-forward-day diff))))
-
 (defun org-get-date-from-calendar ()
   "Return a list (month day year) of date at point in calendar."
   (with-current-buffer calendar-buffer
