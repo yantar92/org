@@ -1694,15 +1694,6 @@ don't try to find the delay cookie in the scheduled timestamp."
      ;; go for the default.
      (t tv))))
 
-(defun org-recenter-calendar (d)
-  "If the calendar is visible, recenter it to date D."
-  (let ((cwin (get-buffer-window calendar-buffer t)))
-    (when cwin
-      (let ((calendar-move-hook nil))
-	(with-selected-window cwin
-	  (calendar-goto-date
-	   (if (listp d) d (calendar-gregorian-from-absolute d))))))))
-
 (defun org-goto-calendar (&optional arg)
   "Go to the Emacs calendar at the current date.
 If there is a time stamp in the current line, go to that date.

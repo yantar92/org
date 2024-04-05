@@ -35,7 +35,6 @@
 (declare-function org-get-date-from-calendar "org")
 (declare-function org-clock-update-time-maybe "org-clock")
 (declare-function org-get-heading "org")
-(declare-function org-recenter-calendar "org")
 
 (defvaralias 'org-time-stamp-rounding-minutes 'org-timestamp-rounding-minutes)
 (defcustom org-timestamp-rounding-minutes '(0 5)
@@ -257,6 +256,15 @@ With prefix ARG, change that many days."
 			 t t)))
       (message "Timestamp is now %sactive"
 	       (if (equal (char-after beg) ?<) "" "in")))))
+
+(defun org-recenter-calendar (d)
+  "If the calendar is visible, recenter it to date D."
+  (let ((cwin (get-buffer-window calendar-buffer t)))
+    (when cwin
+      (let ((calendar-move-hook nil))
+	(with-selected-window cwin
+	  (calendar-goto-date
+	   (if (listp d) d (calendar-gregorian-from-absolute d))))))))
 
 (defvar org-clock-history)                     ; defined in org-clock.el
 (defvar org-clock-adjust-closest nil)          ; defined in org-clock.el
