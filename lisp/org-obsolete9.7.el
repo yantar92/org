@@ -263,6 +263,41 @@ position before START-RE (resp. after END-RE)."
 	     (cons beg end))))))
 (make-obsolete 'org-between-regexps-p "no longer used" "9.7")
 
+(defvar reftex-docstruct-symbol)
+(defvar org--rds)
+(defun org-reftex-citation ()
+  "Use `reftex-citation' to insert a citation into the buffer.
+This looks for a line like
+
+#+BIBLIOGRAPHY: foo plain option:-d
+
+and derives from it that foo.bib is the bibliography file relevant
+for this document.  It then installs the necessary environment for RefTeX
+to work in this buffer and calls `reftex-citation'  to insert a citation
+into the buffer.
+
+Export of such citations to both LaTeX and HTML is handled by the contributed
+package ox-bibtex by Taru Karttunen."
+  (interactive)
+  (let ((reftex-docstruct-symbol 'org--rds)
+	org--rds bib)
+    (org-with-wide-buffer
+     (let ((case-fold-search t)
+	   (re "^[ \t]*#\\+BIBLIOGRAPHY:[ \t]+\\([^ \t\n]+\\)"))
+       (if (not (save-excursion
+		(or (re-search-forward re nil t)
+		    (re-search-backward re nil t))))
+	   (user-error "No bibliography defined in file")
+	 (setq bib (concat (match-string 1) ".bib")
+	       org--rds (list (list 'bib bib))))))
+    (call-interactively 'reftex-citation)))
+(make-obsolete 'org-reftex-citation "predates native citation support" "9.7")
+
+(declare-function org-defkey "org-keys" (keymap key def))
+(defvar org-mode-map)
+(eval-after-load 'org-keys
+  '(with-no-warnings (org-defkey org-mode-map (kbd "C-c C-x [") #'org-reftex-citation)))
+
 (provide 'org-obsolete9.7)
 
 ;; Local variables:
