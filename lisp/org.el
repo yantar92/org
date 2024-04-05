@@ -135,7 +135,6 @@
 
 (require 'org-cycle)
 
-(declare-function calendar-check-holidays "holidays" (date))
 (declare-function Info-goto-node "info" (nodename &optional fork strict-case))
 (declare-function org-add-archive-files "org-archive" (files))
 (declare-function org-agenda-list "org-agenda" (&optional arg start-day span with-hour))
@@ -1694,13 +1693,6 @@ don't try to find the delay cookie in the scheduled timestamp."
 			      ("h" . 0.041667)))))))
      ;; go for the default.
      (t tv))))
-
-(defvar org-agenda-current-date)
-(defun org-calendar-holiday ()
-  "List of holidays, for Diary display in Org mode."
-  (require 'holidays)
-  (let ((hl (calendar-check-holidays org-agenda-current-date)))
-    (and hl (mapconcat #'identity hl "; "))))
 
 (defun org-diary-to-ical-string (frombuf)
   "Get iCalendar entries from diary entries in buffer FROMBUF.
