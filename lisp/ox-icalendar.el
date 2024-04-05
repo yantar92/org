@@ -561,6 +561,29 @@ used as a communication channel."
 			 categories)))))))
    ","))
 
+(defun org-diary-to-ical-string (frombuf)
+  "Get iCalendar entries from diary entries in buffer FROMBUF.
+This uses the icalendar.el library."
+  (let* ((tmpdir temporary-file-directory)
+	 (tmpfile (make-temp-name
+		   (expand-file-name "orgics" tmpdir)))
+	 buf rtn b e)
+    (unwind-protect
+        (with-current-buffer frombuf
+          (icalendar-export-region (point-min) (point-max) tmpfile)
+          (setq buf (find-buffer-visiting tmpfile))
+          (set-buffer buf)
+          (goto-char (point-min))
+          (when (re-search-forward "^BEGIN:VEVENT" nil t)
+	    (setq b (match-beginning 0)))
+          (goto-char (point-max))
+          (when (re-search-backward "^END:VEVENT" nil t)
+	    (setq e (match-end 0)))
+          (setq rtn (if (and b e) (concat (buffer-substring b e) "\n") "")))
+      (when (and buf (buffer-live-p buf)) (kill-buffer buf))
+      (delete-file tmpfile))
+    rtn))
+
 (defun org-icalendar-transcode-diary-sexp (sexp uid summary)
   "Transcode a diary sexp into iCalendar format.
 SEXP is the diary sexp being transcoded, as a string.  UID is the
