@@ -66,13 +66,20 @@
 (defvar org-priority-highest)
 (defvar org-link-abbrev-alist)
 (defvar org-priority-lowest)
-(defvar org-options-keywords)
 (defvar org-outline-regexp)
 (defvar org-property-re)
 (defvar org-startup-options)
 (defvar org-tag-re)
 (defvar org-todo-keywords-1)
 (defvar org-todo-line-regexp)
+
+(defconst org-options-keywords
+  '("ARCHIVE:" "AUTHOR:" "BIBLIOGRAPHY:" "BIND:" "CATEGORY:" "CITE_EXPORT:"
+    "COLUMNS:" "CREATOR:" "DATE:" "DESCRIPTION:" "DRAWERS:" "EMAIL:"
+    "EXCLUDE_TAGS:" "FILETAGS:" "INCLUDE:" "INDEX:" "KEYWORDS:" "LANGUAGE:"
+    "MACRO:" "OPTIONS:" "PROPERTY:" "PRINT_BIBLIOGRAPHY:" "PRIORITIES:"
+    "SELECT_TAGS:" "SEQ_TODO:" "SETUPFILE:" "STARTUP:" "TAGS:" "TITLE:" "TODO:"
+    "TYP_TODO:" "SELECT_TAGS:" "EXCLUDE_TAGS:" "EXPORT_FILE_NAME:"))
 
 
 ;;; Internal Functions
