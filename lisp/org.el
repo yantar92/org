@@ -1272,21 +1272,6 @@ to read."
 (declare-function org-string-nw-p "org-macs" (s))
 ;;;; Completion
 
-(declare-function org-export-backend-options "ox" (cl-x) t)
-(defun org-get-export-keywords ()
-  "Return a list of all currently understood export keywords.
-Export keywords include options, block names, attributes and
-keywords relative to each registered export backend."
-  (let (keywords)
-    (dolist (backend
-	     (bound-and-true-p org-export-registered-backends)
-	     (delq nil keywords))
-      ;; Backend name (for keywords, like #+LATEX:)
-      (push (upcase (symbol-name (org-export-backend-name backend))) keywords)
-      (dolist (option-entry (org-export-backend-options backend))
-	;; Backend options.
-	(push (nth 1 option-entry) keywords)))))
-
 (defconst org-options-keywords
   '("ARCHIVE:" "AUTHOR:" "BIBLIOGRAPHY:" "BIND:" "CATEGORY:" "CITE_EXPORT:"
     "COLUMNS:" "CREATOR:" "DATE:" "DESCRIPTION:" "DRAWERS:" "EMAIL:"

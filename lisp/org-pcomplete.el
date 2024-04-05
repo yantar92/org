@@ -46,8 +46,8 @@
 (declare-function org-end-of-meta-data "org" (&optional full))
 (declare-function org-entry-properties "org" (&optional pom which))
 (declare-function org-export-backend-options "ox" (cl-x) t)
+(declare-function org-export-backend-name "ox" (cl-x) t)
 (declare-function org-get-buffer-tags "org" ())
-(declare-function org-get-export-keywords "org" ())
 (declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
 (declare-function org-get-tags "org" (&optional pos local))
 (declare-function org-link-heading-search-string "ol" (&optional string))
@@ -204,6 +204,20 @@ When completing for #+STARTUP, for example, this function returns
 
 
 ;;; Completion functions
+
+(defun org-get-export-keywords ()
+  "Return a list of all currently understood export keywords.
+Export keywords include options, block names, attributes and
+keywords relative to each registered export backend."
+  (let (keywords)
+    (dolist (backend
+	     (bound-and-true-p org-export-registered-backends)
+	     (delq nil keywords))
+      ;; Backend name (for keywords, like #+LATEX:)
+      (push (upcase (symbol-name (org-export-backend-name backend))) keywords)
+      (dolist (option-entry (org-export-backend-options backend))
+	;; Backend options.
+	(push (nth 1 option-entry) keywords)))))
 
 (defun pcomplete/org-mode/file-option ()
   "Complete against all valid file options."
