@@ -665,9 +665,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
 ;; Defined somewhere in this file, but used before definition.
 ;;;; Define the Org mode
 
-(defun org-before-change-function (_beg _end)
-  "Every change indicates that a table might need an update."
-  (setq org-table-may-need-update t))
 (defvar org-agenda-keep-modes nil)      ; Dynamically-scoped param.
 
 (require 'outline)

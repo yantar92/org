@@ -518,6 +518,10 @@ in the #+STARTUP line), the corresponding variable, and the value to set
 this variable to if the option is found.  An optional fourth element PUSH
 means to push this value onto the list in the variable.")
 
+(defun org-before-change-function (_beg _end)
+  "Every change indicates that a table might need an update."
+  (setq org-table-may-need-update t))
+
 (defun org-set-regexps-and-options (&optional tags-only)
   "Precompute regular expressions used in the current buffer.
 When optional argument TAGS-ONLY is non-nil, only compute tags
