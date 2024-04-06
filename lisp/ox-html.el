@@ -1186,7 +1186,9 @@ This supports two extra properties,
             inlined in the generated HTML.  Valid format symbols are:
             - png, to inline png images using <img> with a data URI
             - svg, to inline svg images using <img> with a data URI
-            - svg-embed, to inline svg images using an <svg> element"
+            - svg-embed, to inline svg images using an <svg> element.
+              This is only applied when used along with svg, as in
+              (svg svg-embed)."
   :group 'org-export-html
   :package-version '(Org . "9.7")
   :type 'plist)
@@ -1741,6 +1743,7 @@ INFO is the current state of the export process, as a plist."
   "Return close-tag for string TAG.
 ATTR specifies additional attributes.  INFO is a property list
 containing current export state."
+  (declare (indent 1))
   (concat "<" tag
 	  (org-string-nw-p (concat " " attr))
 	  (if (org-html-xhtml-p info) " />" ">")))
@@ -3087,64 +3090,34 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 
 (defun org-html-prepare-latex-images (parse-tree _backend info)
   "Make sure that appropriate preview images exist for all LaTeX.
-TODO."
-  (when (assq (plist-get info :with-latex) org-latex-preview-process-alist)
-    (let* ((latex-preamble
-            (or org-latex-preview--preamble-content
-              (setq org-latex-preview--preamble-content
-                    (org-latex-preview--get-preamble))))
-           (elements
-            (org-element-map parse-tree
-                '(latex-fragment latex-environment)
-              #'identity
-              info))
-           (entries-and-numbering
-            (org-latex-preview--construct-entries
-             elements t parse-tree))
-           (processing-type (plist-get info :with-latex))
-           (processing-info
-            (cdr (assq processing-type org-latex-preview-process-alist)))
-           (imagetype (or (plist-get processing-info :image-output-type) "png"))
-           (numbering-offsets (cons nil (cadr entries-and-numbering)))
-           (html-options (plist-get info :html-latex-image-options))
-           (element-hash-table (make-hash-table :test #'eq :size (length elements)))
-           fragment-info prev-fg prev-bg)
-      (cl-loop
-       for entry in (car entries-and-numbering)
-       for element in elements
-       do
-       (pcase-let* ((`(,beg ,end ,provided-value) entry)
-                    (value (or provided-value
-                               (buffer-substring-no-properties beg end)))
-                    (fg (plist-get html-options :foreground))
-                    (bg (plist-get html-options :background))
-                    (number (car (setq numbering-offsets (cdr numbering-offsets))))
-                    (hash (org-latex-preview--hash
-                            processing-type latex-preamble value imagetype fg bg number))
-                    (options (org-combine-plists
-                              org-latex-preview-appearance-options
-                              html-options
-                              (list :number number
-                                    :continue-color
-                                    (and (equal prev-bg bg)
-                                         (equal prev-fg fg))))))
-         (puthash element hash element-hash-table)
-         (unless (org-latex-preview--get-cached hash)
-           (push (list :string (org-latex-preview--tex-styled
-                                processing-type value options)
-                       :overlay (org-latex-preview--ensure-overlay beg end)
-                       :key hash)
-                 fragment-info))
-         (setq prev-fg fg prev-bg bg)))
-      (when fragment-info
-        (apply #'org-async-wait-for
-               (org-latex-preview--create-image-async
-                processing-type
-                (nreverse fragment-info)
-                :latex-preamble latex-preamble
-                :appearance-options html-options)))
-      (plist-put info :html-latex-preview-hash-table element-hash-table)
-      nil)))
+
+Create a hash table containing preview images for all LaTeX
+fragments in PARSE-TREE, and add it to INFO.  Filter out
+fragments to be ignored according to INFO (see the INFO argument
+of `org-element-map').
+
+The keys of the hash table are elements and the values are lists
+containing image paths and metadata used for display."
+  (prog1 nil
+    (let ((processing-type (plist-get info :with-latex)))
+      (when (assq processing-type org-latex-preview-process-alist)
+        (let* ((image-options (plist-get info :html-latex-image-options))
+               (inline-condition (org-ensure-list
+                                  (plist-get image-options :inline)))
+               (image-type
+                (thread-first processing-type
+                              (alist-get org-latex-preview-process-alist)
+                              (plist-get :image-output-type)
+                              (intern)))
+               (element-preview-hash-table
+                (apply #'org-latex-preview-cache-images parse-tree info
+                       ;; Do not copy preview images to :image-dir if
+                       ;; inlining of images in html is requested
+                       (org-combine-plists
+                        image-options
+                        (and (memq image-type inline-condition)
+                             (list :image-dir nil))))))
+          (plist-put info :html-latex-preview-hash-table element-preview-hash-table))))))
 
 (defun org-html--as-latex (element info &optional content)
   (let ((content (or content (org-element-property :value element))))
@@ -3238,33 +3211,43 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
   "Transcode the LaTeX fragment or environment ELEMENT from Org to HTML.
 INFO is a plist holding contextual information, and it is assumed
 that an image for ELEMENT already exists within it."
-  (let* ((hash (or (gethash element (plist-get info :html-latex-preview-hash-table))
-                   (error "Expected LaTeX preview hash to exist for element, but none found")))
-         (path-info (or (org-latex-preview--get-cached hash)
-                        (error "Expected LaTeX preview %S to exist in the cache" hash)))
-         (image-options (plist-get info :html-latex-image-options))
+  (let* ((path-info
+          (or (gethash element (plist-get info :html-latex-preview-hash-table))
+              (prog1 nil
+                (org-display-warning
+                 (format "Expected LaTeX preview image to exist for element, but none found: %s"
+                         (string-replace "\n" " " (org-element-property :value element)))))))
+         (image-options (org-ensure-list (plist-get info :html-latex-image-options)))
          (block-p (memq (aref (org-element-property :value element) 1) '(?$ ?\[)))
-         (image-source
-          (org-html-latex-image--data path-info hash info block-p)))
-    (unless (and (plist-get (cdr path-info) :height)
-                 (plist-get (cdr path-info) :depth))
-      (error "Something went wrong during image generation"))
-    (if (and (eq (plist-get image-options :inline) 'svg-embed)
-             (eq (plist-get (cdr path-info) :image-type) 'svg))
+         (image-source (if path-info (org-html-latex-image--data path-info info block-p) "")))
+    (if (and (eq (plist-get (cdr path-info) :image-type) 'svg)
+             (memq 'svg-embed (plist-get image-options :inline)))
         image-source
-      (let ((scaling (org-html-latex-image--scaling path-info info)))
-        (org-html-close-tag
-         "img"
-         (org-html--make-attribute-string
-          (list :src image-source
-                :alt (org-html-encode-plain-text
-                      (org-element-property :value element))
-                :style (if block-p
-                           (format "height: %.4fem; display: block" (plist-get scaling :height))
-                         (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
-                                 (plist-get scaling :height) (plist-get scaling :depth)))
-                :class (format "org-latex org-latex-%s" (if block-p "block" "inline"))))
-         info)))))
+      (let ((scaling
+             (if (and (plist-get (cdr path-info) :height)
+                      (plist-get (cdr path-info) :depth))
+                 (org-html-latex-image--scaling path-info info)
+               (prog1 nil
+                 (org-display-warning
+                  (format "Missing geometry information for LaTeX preview image for element: %s"
+                          (string-replace "\n" " " (org-element-property :value element))))))))
+        (org-html-close-tag "img"
+          (org-html--make-attribute-string
+           (nconc
+            (list :src image-source
+                  :alt (org-html-encode-plain-text (org-element-property :value element))
+                  :style
+                  (if path-info
+                      (if scaling
+                          (if block-p
+                              (format "height: %.4fem; display: block" (plist-get scaling :height))
+                            (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
+                                    (plist-get scaling :height) (plist-get scaling :depth)))
+                        (if block-p "display: block" "display: inline-block"))
+                    "color: red")
+                  :class (format "org-latex org-latex-%s" (if block-p "block" "inline")))
+            (unless path-info (list :title "LaTeX preview image not generated."))))
+          info)))))
 
 (defun org-html-latex-image--scaling (image-path-info info)
   "Determine the appropriate (<height> . <depth>) of IMAGE-PATH-INFO given INFO."
@@ -3275,78 +3258,64 @@ that an image for ELEMENT already exists within it."
     (list :height (* rescale-factor (plist-get (cdr image-path-info) :height))
           :depth (* rescale-factor (plist-get (cdr image-path-info) :depth)))))
 
-(defun org-html-latex-image--data (image-path-info hash info &optional block-p)
+(defun org-html-latex-image--data (image-path-info info &optional block-p)
   "Obtaine the image source for IMAGE-PATH-INFO as a string.
 This can take the form of a path, data URI, or <svg> element
 depending on HASH and INFO.  BLOCK-P signals that the image
 should be a block element."
   (let* ((image-options (plist-get info :html-latex-image-options))
-         (inline-condition (plist-get image-options :inline))
-         (image-dir (plist-get image-options :image-dir))
+         (inline-condition (org-ensure-list (plist-get image-options :inline)))
          (image-format (plist-get (cdr image-path-info) :image-type))
          (source-file (car image-path-info)))
-    (cond
-     ((or inline-condition
-          (member (file-name-extension source-file)
-                  (org-ensure-list inline-condition)))
-      (let ((coding-system-for-read 'utf-8)
-            (file-name-handler-alist nil))
-        (with-temp-buffer
-          (insert-file-contents-literally source-file)
-          (cond
-           ((and (eq inline-condition 'svg-embed)
-                 (eq image-format 'svg))
-            (goto-char (point-min))
-            (let ((svg-closing-tag (and (search-forward "<svg" nil t)
-                                        (search-forward ">" nil t))))
+    (if (memq image-format inline-condition)
+     (let ((coding-system-for-read 'utf-8)
+           (file-name-handler-alist nil))
+       (with-temp-buffer
+         (insert-file-contents-literally source-file)
+         (cond
+          ((and (memq 'svg-embed inline-condition)
+                (eq image-format 'svg))
+           (goto-char (point-min))
+           (let ((svg-closing-tag (and (search-forward "<svg" nil t)
+                                       (search-forward ">" nil t))))
 
-              (dolist (search '("<!-- This file was generated by dvisvgm [^\n]+ -->"
-                                " height=['\"][^\"']+[\"']"
-                                " width=['\"][^\"']+[\"']"))
-                (goto-char (point-min))
-                (when (re-search-forward search svg-closing-tag t)
-                  (replace-match "")))
-              (goto-char (point-min))
-              (when (re-search-forward "viewBox=['\"][^\"']+[\"']" svg-closing-tag t)
-                (insert
-                 " style=\""
-                 (let ((scaling (org-html-latex-image--scaling image-path-info info)))
-                   (if block-p
-                       (format "height: %.4fem; display: block" (plist-get scaling :height))
-                     (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
-                             (plist-get scaling :height) (plist-get scaling :depth))))
-                 "\" class=\"org-latex org-latex-"
-                 (if block-p "block" "inline")
-                 "\"")))
-            (buffer-string))
-           ((eq image-format 'svg)
-            ;; Modelled after <https://codepen.io/tigt/post/optimizing-svgs-in-data-uris>.
-            (concat "data:image/svg+xml,"
-                    (url-hexify-string
-                     (subst-char-in-string ?\" ?\' (buffer-string))
-                     '(?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m ?n
-                       ?o ?p ?q ?r ?s ?t ?u ?v ?w ?x ?y ?z ?A ?B
-                       ?C ?D ?E ?F ?G ?H ?I ?J ?K ?L ?M ?N ?O ?P
-                       ?Q ?R ?S ?T ?U ?V ?W ?X ?Y ?Z ?0 ?1 ?2 ?3
-                       ?4 ?5 ?6 ?7 ?8 ?9 ?- ?_ ?. ?~
-                       ;;Special additions
-                       ?\s ?= ?: ?/))))
-           (t
-            (base64-encode-region (point-min) (point-max))
-            (goto-char (point-min))
-            (insert "data:image/" (symbol-name image-format) ";base64,")
-            (buffer-string))))))
-     ((stringp image-dir)
-      (let* ((image-dir (expand-file-name image-dir))
-             (image-path (file-name-with-extension
-                          (file-name-concat image-dir (substring hash 0 11))
-                          (file-name-extension source-file))))
-        (unless (file-directory-p image-dir)
-          (mkdir image-dir t))
-        (unless (file-exists-p image-path)
-          (copy-file source-file image-path))
-        image-path))
-     (t source-file))))
+             (dolist (search '("<!-- This file was generated by dvisvgm [^\n]+ -->"
+                               " height=['\"][^\"']+[\"']"
+                               " width=['\"][^\"']+[\"']"))
+               (goto-char (point-min))
+               (when (re-search-forward search svg-closing-tag t)
+                 (replace-match "")))
+             (goto-char (point-min))
+             (when (re-search-forward "viewBox=['\"][^\"']+[\"']" svg-closing-tag t)
+               (insert
+                " style=\""
+                (let ((scaling (org-html-latex-image--scaling image-path-info info)))
+                  (if block-p
+                      (format "height: %.4fem; display: block" (plist-get scaling :height))
+                    (format "height: %.4fem; vertical-align: -%.4fem; display: inline-block"
+                            (plist-get scaling :height) (plist-get scaling :depth))))
+                "\" class=\"org-latex org-latex-"
+                (if block-p "block" "inline")
+                "\"")))
+           (buffer-string))
+          ((eq image-format 'svg)
+           ;; Modelled after <https://codepen.io/tigt/post/optimizing-svgs-in-data-uris>.
+           (concat "data:image/svg+xml,"
+                   (url-hexify-string
+                    (subst-char-in-string ?\" ?\' (buffer-string))
+                    '(?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k ?l ?m ?n
+                      ?o ?p ?q ?r ?s ?t ?u ?v ?w ?x ?y ?z ?A ?B
+                      ?C ?D ?E ?F ?G ?H ?I ?J ?K ?L ?M ?N ?O ?P
+                      ?Q ?R ?S ?T ?U ?V ?W ?X ?Y ?Z ?0 ?1 ?2 ?3
+                      ?4 ?5 ?6 ?7 ?8 ?9 ?- ?_ ?. ?~
+                      ;;Special additions
+                      ?\s ?= ?: ?/))))
+          (t
+           (base64-encode-region (point-min) (point-max))
+           (goto-char (point-min))
+           (insert "data:image/" (symbol-name image-format) ";base64,")
+           (buffer-string)))))
+     source-file)))
 
 ;;;; Line Break
 
