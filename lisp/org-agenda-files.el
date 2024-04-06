@@ -91,6 +91,24 @@ A nil value means to remove them, after a query, from the list."
   :group 'org-agenda
   :type 'boolean)
 
+(defvaralias 'org-agenda-multi-occur-extra-files
+  'org-agenda-text-search-extra-files)
+(defcustom org-agenda-text-search-extra-files nil
+  "List of extra files to be searched by text search commands.
+These files will be searched in addition to the agenda files by the
+commands `org-search-view' (`\\[org-agenda] s') \
+and `org-occur-in-agenda-files'.
+Note that these files will only be searched for text search commands,
+not for the other agenda views like todo lists, tag searches or the weekly
+agenda.  This variable is intended to list notes and possibly archive files
+that should also be searched by these two commands.
+In fact, if the first element in the list is the symbol `agenda-archives',
+then all archive files of all agenda files will be added to the search
+scope."
+  :group 'org-agenda
+  :type '(set :greedy t
+	      (const :tag "Agenda Archives" agenda-archives)
+	      (repeat :inline t (file))))
 
 ;;; Listing and querying Org agenda files
 
@@ -180,8 +198,26 @@ open and agenda-wise Org files."
 
 ;;; Opening Org agenda files, if they are not yet open in Emacs
 
-(defvar org-agenda-new-buffers nil
-  "Buffers created to visit agenda files.")
+(defcustom org-agenda-inhibit-startup nil
+  "Inhibit startup when preparing agenda buffers.
+When this variable is t, the initialization of the Org agenda
+buffers is inhibited: e.g. the visibility state is not set, the
+tables are not re-aligned, etc."
+  :type 'boolean
+  :version "24.3"
+  :group 'org-agenda)
+
+(defcustom org-agenda-ignore-properties nil
+  "Avoid updating text properties when building the agenda.
+Properties are used to prepare buffers for effort estimates,
+appointments, statistics and subtree-local categories.
+If you don't use these in the agenda, you can add them to this
+list and agenda building will be a bit faster.
+The value is a list, with symbol `stats'."
+  :type '(set :greedy t
+	      (const stats))
+  :package-version '(Org . "9.7")
+  :group 'org-agenda)
 
 (defun org-check-agenda-file (file)
   "Make sure FILE exists.  If not, ask user what to do."
@@ -194,6 +230,9 @@ open and agenda-wise Org files."
 	(org-remove-file file)
 	(throw 'nextfile t))
        (t (user-error "Abort"))))))
+
+(defvar org-agenda-new-buffers nil
+  "Buffers created to visit agenda files.")
 
 (defun org-get-agenda-file-buffer (file)
   "Get an agenda buffer visiting FILE.
@@ -219,6 +258,103 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
 		 (y-or-n-p (format "Save file %s? " file)))
 	(with-current-buffer buf (save-buffer)))
       (kill-buffer buf))))
+
+(defun org-refresh-stats-properties ()
+  "Refresh stats text properties in the buffer."
+  (with-silent-modifications
+    (org-with-point-at 1
+      (let ((regexp (concat org-outline-regexp-bol
+			    ".*\\[\\([0-9]*\\)\\(?:%\\|/\\([0-9]*\\)\\)\\]")))
+	(while (re-search-forward regexp nil t)
+	  (let* ((numerator (string-to-number (match-string 1)))
+		 (denominator (and (match-end 2)
+				   (string-to-number (match-string 2))))
+		 (stats (cond ((not denominator) numerator) ;percent
+			      ((= denominator 0) 0)
+			      (t (/ (* numerator 100) denominator)))))
+	    (put-text-property (point) (progn (org-end-of-subtree t t) (point))
+			       'org-stats stats)))))))
+
+(defvar org-todo-keywords-for-agenda nil
+  "Combined `org-todo-keywords' from all agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(defvar org-done-keywords-for-agenda nil
+  "Combined `org-done-keywords' from all agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(defvar org-todo-keyword-alist-for-agenda nil
+  "Combined `org-todo-keyword-alist' from all agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(defvar org-tag-alist-for-agenda nil
+  "Alist of all tags from all agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(defvar org-tag-groups-alist-for-agenda nil
+  "Alist of all groups tags from all current agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+
+(defun org-agenda-prepare-buffers (files)
+  "Create buffers for all agenda files, protect archived trees and comments.
+
+1. Open the files in Emacs if they are not open yet;
+2. Query user if any file in FILES does not exist;
+3. Perform minimal Org mode activation according to
+   `org-agenda-inhibit-startup;
+4. Run `org-refresh-stats-properties' in each file;
+5. Combine todo keyword and tag settings in FILES into
+   `org-todo-keywords-for-agenda', `org-done-keywords-for-agenda',
+   `org-todo-keyword-alist-for-agenda', `org-tag-alist-for-agenda',
+   and `org-tag-groups-alist-for-agenda';
+6. Refresh agenda list in the menu.
+7. Collect all the agenda files that were opened as a result into
+   `org-agenda-new-buffers'"
+  (interactive)
+  (let ((inhibit-read-only t)
+	(org-inhibit-startup org-agenda-inhibit-startup)
+        ;; Do not refresh list of agenda files in the menu when
+        ;; opening every new file.
+        (org-agenda-file-menu-enabled nil))
+    (setq org-tag-alist-for-agenda nil
+	  org-tag-groups-alist-for-agenda nil)
+    (dolist (file files)
+      (catch 'nextfile
+        (with-current-buffer
+            (if (bufferp file)
+                file
+              (org-check-agenda-file file)
+              (org-get-agenda-file-buffer file))
+          (org-with-wide-buffer
+	   (org-set-regexps-and-options 'tags-only)
+	   (or (memq 'stats org-agenda-ignore-properties)
+	       (org-refresh-stats-properties))
+           (dolist (el org-todo-keywords-1)
+             (unless (member el org-todo-keywords-for-agenda)
+               (push el org-todo-keywords-for-agenda)))
+           (dolist (el org-done-keywords)
+             (unless (member el org-done-keywords-for-agenda)
+               (push el org-done-keywords-for-agenda)))
+	   (setq org-todo-keyword-alist-for-agenda
+                 (org--tag-add-to-alist
+		  org-todo-key-alist
+                  org-todo-keyword-alist-for-agenda))
+	   (setq org-tag-alist-for-agenda
+		 (org--tag-add-to-alist
+		  org-current-tag-alist
+                  org-tag-alist-for-agenda))
+	   ;; Merge current file's tag groups into global
+	   ;; `org-tag-groups-alist-for-agenda'.
+	   (when org-group-tags
+	     (dolist (alist org-tag-groups-alist)
+	       (let ((old (assoc (car alist) org-tag-groups-alist-for-agenda)))
+		 (if old
+		     (setcdr old (org-uniquify (append (cdr old) (cdr alist))))
+		   (push alist org-tag-groups-alist-for-agenda)))))))))
+    ;; Refresh the menu once after loading all the agenda buffers.
+    (when org-agenda-file-menu-enabled
+      (org-install-agenda-files-menu))))
 
 ;;; User commands to manage Org agenda files
 
