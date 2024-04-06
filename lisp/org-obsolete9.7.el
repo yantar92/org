@@ -186,7 +186,8 @@ the value of the drawer property."
 	;; Set values based on property-drawers throughout the document.
 	(while (re-search-forward property-re nil t)
 	  (when (org-at-property-p)
-	    (org-refresh-property tprop (org-entry-get (point) dprop) inherit?))
+            (with-no-warnings
+	      (org-refresh-property tprop (org-entry-get (point) dprop) inherit?)))
 	  (outline-next-heading))))))
 (make-obsolete 'org-refresh-properties "no longer used" "9.7")
 
@@ -254,10 +255,11 @@ the value of the drawer property."
 (defun org-refresh-effort-properties ()
   "Refresh effort properties."
   (require 'org-regexps)
-  (org-refresh-properties
-   org-effort-property
-   '((effort . identity)
-     (effort-minutes . org-duration-to-minutes))))
+  (with-no-warnings
+    (org-refresh-properties
+     org-effort-property
+     '((effort . identity)
+       (effort-minutes . org-duration-to-minutes)))))
 (make-obsolete 'org-refresh-effort-properties "no longer used" "9.7")
 
 (defvar org-cached-props nil)
