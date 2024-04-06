@@ -808,6 +808,15 @@ Respect keys that are already there."
       (cons (org-element-begin context)
             (org-element-end context)))))
 
+(defun org-occur-reveal-occurrence ()
+  "Reveal folded text found by Occur in Org mode."
+  (when (derived-mode-p 'org-mode) (org-fold-reveal)))
+
+(defun org-setup-occur ()
+  "Setup `occur' and `multi-occur' support."
+  (add-hook 'occur-mode-find-occurrence-hook
+            #'org-occur-reveal-occurrence nil 'local))
+
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias
@@ -997,6 +1006,8 @@ The following commands are available:
 
   ;; `yank-media' handler and DND support.
   (org-setup-yank-dnd-handlers)
+  ;; `occur' support.
+  (org-setup-occur)
   ;; Remove folds when changing major mode
   (add-hook 'change-major-mode-hook
             #'org-fold-show-all 'append 'local))
