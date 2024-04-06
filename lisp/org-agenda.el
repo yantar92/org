@@ -57,6 +57,7 @@
 (require 'org-element)
 (require 'org-clock)
 (require 'org-diary-lib)
+(require 'org-agenda-files)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))
@@ -702,13 +703,6 @@ If this is the symbol `trees', trees in the selected agenda scope
 that are marked with the ARCHIVE tag will be included anyway.  When this is
 t, also all archive files associated with the current selection of agenda
 files will be included.")
-
-(defcustom org-agenda-restriction-lock-highlight-subtree t
-  "Non-nil means highlight the whole subtree when restriction is active.
-Otherwise only highlight the headline.  Highlighting the whole subtree is
-useful to ensure no edits happen beyond the restricted region."
-  :group 'org-agenda
-  :type 'boolean)
 
 (defcustom org-agenda-skip-archived-trees t
   "Non-nil means the agenda will skip any items located in archived trees.
@@ -2257,17 +2251,6 @@ string that it returns."
 (org-remap org-agenda-mode-map 'move-end-of-line 'org-agenda-end-of-line)
 
 (defvar org-agenda-menu) ; defined later in this file.
-(defvar org-agenda-restrict nil
-  "Non-nil means agenda restriction is active.
-This is an internal flag indicating either temporary or extended
-agenda restriction.  Specifically, it is set to t if the agenda
-is restricted to an entire file, and is set to the corresponding
-buffer if the agenda is restricted to a part of a file, e.g. a
-region or a subtree.  In the latter case,
-`org-agenda-restrict-begin' and `org-agenda-restrict-end' are set
-to the beginning and the end of the part.
-
-See also `org-agenda-set-restriction-lock'.")
 (defvar org-agenda-follow-mode nil)
 (defvar org-agenda-entry-text-mode nil)
 (defvar org-agenda-clockreport-mode nil)
@@ -2798,16 +2781,6 @@ that have been changed along."
   (not (eq l1 l2)))
 
 ;;; Agenda dispatch
-
-(defvar org-agenda-restrict-begin (make-marker)
-  "Internal variable used to mark the restriction beginning.
-It is only relevant when `org-agenda-restrict' is a buffer.")
-(defvar org-agenda-restrict-end (make-marker)
-  "Internal variable used to mark the restriction end.
-It is only relevant when `org-agenda-restrict' is a buffer.")
-(defvar org-agenda-overriding-restriction nil
-  "Non-nil means extended agenda restriction is active.
-This is an internal flag set by `org-agenda-set-restriction-lock'.")
 
 (defcustom org-agenda-custom-commands-contexts nil
   "Alist of custom agenda keys and contextual rules.
@@ -7652,14 +7625,6 @@ their type."
 
 ;;; Agenda restriction lock
 
-(defvar org-agenda-restriction-lock-overlay (make-overlay 1 1)
-  "Overlay to mark the headline to which agenda commands are restricted.")
-(overlay-put org-agenda-restriction-lock-overlay
-	     'face 'org-agenda-restriction-lock)
-(overlay-put org-agenda-restriction-lock-overlay
-	     'help-echo "Agendas are currently limited to this subtree.")
-(delete-overlay org-agenda-restriction-lock-overlay)
-
 (defun org-agenda-set-restriction-lock-from-agenda (arg)
   "Set the restriction lock to the agenda item at point from within the agenda.
 When called with a `\\[universal-argument]' prefix, restrict to
@@ -7675,72 +7640,6 @@ Argument ARG is the prefix argument."
     (with-current-buffer buffer
       (goto-char pos)
       (org-agenda-set-restriction-lock arg))))
-
-;;;###autoload
-(defun org-agenda-set-restriction-lock (&optional type)
-  "Set restriction lock for agenda to current subtree or file.
-When in a restricted subtree, remove it.
-
-The restriction will span over the entire file if TYPE is `file',
-or if TYPE is (4), or if the cursor is before the first headline
-in the file.  Otherwise, only apply the restriction to the current
-subtree."
-  (interactive "P")
-  (if (and org-agenda-overriding-restriction
-	   (member org-agenda-restriction-lock-overlay
-		   (overlays-at (point)))
-	   (equal (overlay-start org-agenda-restriction-lock-overlay)
-		  (point)))
-      (org-agenda-remove-restriction-lock 'noupdate)
-    (org-agenda-remove-restriction-lock 'noupdate)
-    (and (equal type '(4)) (setq type 'file))
-    (setq type (cond
-		(type type)
-		((org-at-heading-p) 'subtree)
-		((condition-case nil (org-back-to-heading t) (error nil))
-		 'subtree)
-		(t 'file)))
-    (if (eq type 'subtree)
-	(progn
-	  (setq org-agenda-restrict (current-buffer))
-	  (setq org-agenda-overriding-restriction 'subtree)
-	  (put 'org-agenda-files 'org-restrict
-	       (list (buffer-file-name (buffer-base-buffer))))
-	  (org-back-to-heading t)
-	  (move-overlay org-agenda-restriction-lock-overlay
-			(point)
-			(if org-agenda-restriction-lock-highlight-subtree
-			    (save-excursion (org-end-of-subtree t t) (point))
-                          (line-end-position)))
-	  (move-marker org-agenda-restrict-begin (point))
-	  (move-marker org-agenda-restrict-end
-		       (save-excursion (org-end-of-subtree t t)))
-	  (message "Locking agenda restriction to subtree"))
-      (put 'org-agenda-files 'org-restrict
-	   (list (buffer-file-name (buffer-base-buffer))))
-      (setq org-agenda-restrict t)
-      (setq org-agenda-overriding-restriction 'file)
-      (move-marker org-agenda-restrict-begin nil)
-      (move-marker org-agenda-restrict-end nil)
-      (message "Locking agenda restriction to file"))
-    (setq current-prefix-arg nil))
-  (org-agenda-maybe-redo))
-
-(defun org-agenda-remove-restriction-lock (&optional noupdate)
-  "Remove agenda restriction lock."
-  (interactive "P")
-  (if (not org-agenda-restrict)
-      (message "No agenda restriction to remove.")
-    (delete-overlay org-agenda-restriction-lock-overlay)
-    (delete-overlay org-speedbar-restriction-lock-overlay)
-    (setq org-agenda-overriding-restriction nil)
-    (setq org-agenda-restrict nil)
-    (put 'org-agenda-files 'org-restrict nil)
-    (move-marker org-agenda-restrict-begin nil)
-    (move-marker org-agenda-restrict-end nil)
-    (setq current-prefix-arg nil)
-    (message "Agenda restriction lock removed")
-    (or noupdate (org-agenda-maybe-redo))))
 
 (defun org-agenda-maybe-redo ()
   "If there is any window showing the agenda view, update it."

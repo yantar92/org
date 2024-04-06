@@ -196,6 +196,116 @@ open and agenda-wise Org files."
 		    (file-name-as-directory org-directory)
 		    default)))
 
+;;; Temporarily restricting agenda files to specific buffer or a
+;;; subtree
+
+(defcustom org-agenda-restriction-lock-highlight-subtree t
+  "Non-nil means highlight the whole subtree when restriction is active.
+Otherwise only highlight the headline.  Highlighting the whole subtree is
+useful to ensure no edits happen beyond the restricted region."
+  :group 'org-agenda
+  :type 'boolean)
+
+(defvar org-agenda-restrict nil
+  "Non-nil means agenda restriction is active.
+This is an internal flag indicating either temporary or extended
+agenda restriction.  Specifically, it is set to t if the agenda
+is restricted to an entire file, and is set to the corresponding
+buffer if the agenda is restricted to a part of a file, e.g. a
+region or a subtree.  In the latter case,
+`org-agenda-restrict-begin' and `org-agenda-restrict-end' are set
+to the beginning and the end of the part.
+
+See also `org-agenda-set-restriction-lock'.")
+
+(defvar org-agenda-restrict-begin (make-marker)
+  "Internal variable used to mark the restriction beginning.
+It is only relevant when `org-agenda-restrict' is a buffer.")
+
+(defvar org-agenda-restrict-end (make-marker)
+  "Internal variable used to mark the restriction end.
+It is only relevant when `org-agenda-restrict' is a buffer.")
+
+(defvar org-agenda-overriding-restriction nil
+  "Non-nil means extended agenda restriction is active.
+This is an internal flag set by `org-agenda-set-restriction-lock'.")
+
+(defvar org-agenda-restriction-lock-overlay (make-overlay 1 1)
+  "Overlay to mark the headline to which agenda commands are restricted.")
+(overlay-put org-agenda-restriction-lock-overlay
+	     'face 'org-agenda-restriction-lock)
+(overlay-put org-agenda-restriction-lock-overlay
+	     'help-echo "Agendas are currently limited to this subtree.")
+(delete-overlay org-agenda-restriction-lock-overlay)
+
+(declare-function org-agenda-maybe-redo "org-agenda" ())
+;;;###autoload
+(defun org-agenda-set-restriction-lock (&optional type)
+  "Set restriction lock for agenda to current subtree or file.
+When in a restricted subtree, remove it.
+
+The restriction will span over the entire file if TYPE is `file',
+or if TYPE is (4), or if the cursor is before the first headline
+in the file.  Otherwise, only apply the restriction to the current
+subtree."
+  (interactive "P")
+  (if (and org-agenda-overriding-restriction
+	   (member org-agenda-restriction-lock-overlay
+		   (overlays-at (point)))
+	   (equal (overlay-start org-agenda-restriction-lock-overlay)
+		  (point)))
+      (org-agenda-remove-restriction-lock 'noupdate)
+    (org-agenda-remove-restriction-lock 'noupdate)
+    (and (equal type '(4)) (setq type 'file))
+    (setq type (cond
+		(type type)
+		((org-at-heading-p) 'subtree)
+		((condition-case nil (org-back-to-heading t) (error nil))
+		 'subtree)
+		(t 'file)))
+    (if (eq type 'subtree)
+	(progn
+	  (setq org-agenda-restrict (current-buffer))
+	  (setq org-agenda-overriding-restriction 'subtree)
+	  (put 'org-agenda-files 'org-restrict
+	       (list (buffer-file-name (buffer-base-buffer))))
+	  (org-back-to-heading t)
+	  (move-overlay org-agenda-restriction-lock-overlay
+			(point)
+			(if org-agenda-restriction-lock-highlight-subtree
+			    (save-excursion (org-end-of-subtree t t) (point))
+                          (line-end-position)))
+	  (move-marker org-agenda-restrict-begin (point))
+	  (move-marker org-agenda-restrict-end
+		       (save-excursion (org-end-of-subtree t t)))
+	  (message "Locking agenda restriction to subtree"))
+      (put 'org-agenda-files 'org-restrict
+	   (list (buffer-file-name (buffer-base-buffer))))
+      (setq org-agenda-restrict t)
+      (setq org-agenda-overriding-restriction 'file)
+      (move-marker org-agenda-restrict-begin nil)
+      (move-marker org-agenda-restrict-end nil)
+      (message "Locking agenda restriction to file"))
+    (setq current-prefix-arg nil))
+  (when (featurep 'org-agenda)
+    (org-agenda-maybe-redo)))
+
+(defun org-agenda-remove-restriction-lock (&optional noupdate)
+  "Remove agenda restriction lock."
+  (interactive "P")
+  (if (not org-agenda-restrict)
+      (message "No agenda restriction to remove.")
+    (delete-overlay org-agenda-restriction-lock-overlay)
+    (delete-overlay org-speedbar-restriction-lock-overlay)
+    (setq org-agenda-overriding-restriction nil)
+    (setq org-agenda-restrict nil)
+    (put 'org-agenda-files 'org-restrict nil)
+    (move-marker org-agenda-restrict-begin nil)
+    (move-marker org-agenda-restrict-end nil)
+    (setq current-prefix-arg nil)
+    (message "Agenda restriction lock removed")
+    (or noupdate (org-agenda-maybe-redo))))
+
 ;;; Opening Org agenda files, if they are not yet open in Emacs
 
 (defcustom org-agenda-inhibit-startup nil
