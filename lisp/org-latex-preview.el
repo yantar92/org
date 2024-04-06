@@ -1619,15 +1619,18 @@ is either the substring between BEG and END or (when provided) VALUE."
        :appearance-options org-latex-preview-appearance-options
        :place-preview-p t))))
 
-(defun org-latex-preview--colors-around (start end)
-  "Find colors for LaTeX previews occuping the region START to END."
+(defun org-latex-preview--colors-around (start end &optional options)
+  "Find colors for LaTeX previews occuping the region START to END.
+
+OPTIONS is a plist containing foreground/background specifications."
   (let* ((face (org-latex-preview--face-around start end))
-         (fg (pcase (plist-get org-latex-preview-appearance-options :foreground)
+         (options (or options org-latex-preview-appearance-options))
+         (fg (pcase (plist-get options :foreground)
                ('auto
                 (org-latex-preview--resolved-faces-attr face :foreground))
                ('default (face-attribute 'default :foreground nil))
                (color color)))
-         (bg (pcase (plist-get org-latex-preview-appearance-options :background)
+         (bg (pcase (plist-get options :background)
                ('auto
                 (org-latex-preview--resolved-faces-attr face :background))
                ('default (face-attribute 'default :background nil))
@@ -1853,6 +1856,130 @@ If PARSE-TREE is provided, it will be used insead of
                     (save-excursion
                       (goto-char (org-element-property :begin datum))
                       (org-element-context))))))))))
+
+(cl-defun org-latex-preview-cache-images
+    (parse-tree &optional export-info
+                &key preamble processing-type foreground
+                background page-width scale image-dir
+                &allow-other-keys)
+  "Create preview images for LaTeX fragments in PARSE-TREE synchronously.
+
+Returns a hash table. Each key is a LaTeX fragment or
+environment in PARSE-TREE, and correspdonding value is a list
+containing image information.  This list has the format
+(path . image-info).
+
+ For example:
+  (\"/path/.../to/image.svg\"
+    :type svg
+    :height 1.4
+    :width 7.5
+    :depth 0.2
+    :errors nil)
+
+The geometry information here is in em units.
+
+EXPORT-INFO is a plist holding export options.
+
+PREAMBLE is the LaTeX preamble to use for preview generation.  If
+nil, a preamble will be consructed from the contents of the
+current buffer if it is in Org mode.
+
+PROCESSING-TYPE is a symbol specifying a external command used to
+generate the images.  For supported image converters see
+`org-latex-preview-process-default'.
+
+The keyword arguments FOREGROUND, BACKGROUND, PAGE-WIDTH and
+SCALE are as in `org-latex-preview-appearance-options' and will
+default to its values, which see.
+
+IMAGE-DIR, if non-nil, is a directory to contain the preview
+images.  It will be created if necessary.  If IMAGE-DIR is nil,
+image are cached as per `org-latex-preview-cache', which see."
+  (let* ((preamble
+          (or preamble
+              org-latex-preview--preamble-content
+              (setq org-latex-preview--preamble-content
+                    (org-latex-preview--get-preamble))))
+         (appearance-options
+          (org-combine-plists
+           org-latex-preview-appearance-options
+           (nconc (and foreground (list :foreground foreground))
+                  (and background (list :background background))
+                  (and page-width (list :page-width page-width))
+                  (and scale (list :scale scale)))))
+         (elements
+          (org-element-map parse-tree
+              '(latex-fragment latex-environment)
+            #'identity export-info))
+         (entries-and-numbering
+          (org-latex-preview--construct-entries
+           elements t parse-tree))
+         (processing-type (or processing-type
+                              (plist-get export-info :with-latex)
+                              org-latex-preview-process-default))
+         (processing-info
+          (cdr (assq processing-type org-latex-preview-process-alist)))
+         (imagetype (or (plist-get processing-info :image-output-type) "png"))
+         (numbering-offsets (cons nil (cadr entries-and-numbering)))
+         (element-preview-hash-table (make-hash-table :test #'eq :size (length elements)))
+         fragment-info prev-fg prev-bg)
+
+    ;; Create fragment info for the preview process
+    (cl-loop
+     for entry in (car entries-and-numbering)
+     for element in elements
+     for (beg end provided-value) = entry
+     for value = (or provided-value (buffer-substring-no-properties beg end))
+     for (fg bg) = (org-latex-preview--colors-around beg end appearance-options)
+     for number = (car (setq numbering-offsets (cdr numbering-offsets)))
+     for hash = (org-latex-preview--hash processing-type preamble value imagetype fg bg number)
+     for options = (org-combine-plists
+                    appearance-options
+                    (list :foreground fg :background bg
+                          :number number
+                          :continue-color
+                          (and (equal prev-bg bg)
+                               (equal prev-fg fg))))
+     do
+     (puthash element hash element-preview-hash-table)
+     (unless (org-latex-preview--get-cached hash)
+       (push (list :string (org-latex-preview--tex-styled
+                            processing-type value options)
+                   :overlay (org-latex-preview--ensure-overlay beg end)
+                   :key hash)
+             fragment-info))
+     (setq prev-fg fg prev-bg bg))
+
+    ;; Generate fragment previews
+    (when fragment-info
+      (apply #'org-async-wait-for
+             (org-latex-preview--create-image-async
+              processing-type
+              (nreverse fragment-info)
+              :latex-preamble preamble
+              :appearance-options appearance-options)))
+    (when (and image-dir (not (file-directory-p image-dir)))
+      (make-directory image-dir 'parents)
+      (setq image-dir (expand-file-name image-dir)))
+    ;; Fragments generated, update the hash table
+    (cl-loop for element in elements
+             for hash = (gethash element element-preview-hash-table)
+             for (source-file . image-info) = (org-latex-preview--get-cached hash)
+             if (not (and source-file (file-exists-p source-file)))
+             do (display-warning
+                 '(org-latex-preview get-cache)
+                 (format "No image generated for fragment:\n%s"
+                         (org-element-property :value element)))
+             else do
+             (if image-dir
+                 (let ((image-path (file-name-with-extension
+                                    (file-name-concat image-dir (substring hash 0 11))
+                                    (file-name-extension source-file))))
+                   (copy-file source-file image-path 'replace)
+                   (puthash element (cons image-path image-info) element-preview-hash-table))
+               (puthash element (cons source-file image-info) element-preview-hash-table))
+             finally return element-preview-hash-table)))
 
 (cl-defun org-latex-preview--create-image-async (processing-type fragments-info &key latex-processor latex-preamble appearance-options place-preview-p)
   "Preview PREVIEW-STRINGS asynchronously with method PROCESSING-TYPE.
