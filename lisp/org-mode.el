@@ -325,6 +325,9 @@ the following lines anywhere in the buffer:
   :package-version '(Org . "8.0")
   :type 'boolean)
 
+;; FIXME: Org parser depends on the syntax table implicitly.  We may
+;; consider moving this table to Org parser and even defining it
+;; without inheritance to make Org syntax more deterministic.
 (defvar org-mode-syntax-table
   (let ((st (make-syntax-table outline-mode-syntax-table)))
     (modify-syntax-entry ?\" "\"" st)
@@ -334,6 +337,13 @@ the following lines anywhere in the buffer:
     (modify-syntax-entry ?> ")<" st)
     st)
   "Standard syntax table for Org mode buffers.")
+
+(defvar org-mode-tags-syntax-table
+  (let ((st (make-syntax-table org-mode-syntax-table)))
+    (modify-syntax-entry ?@ "w" st)
+    (modify-syntax-entry ?_ "w" st)
+    st)
+  "Syntax table including \"@\" and \"_\" as word constituents.")
 
 (defvar org-display-table nil
   "The display table for Org mode, in case `org-ellipsis' is non-nil.")

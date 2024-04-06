@@ -115,6 +115,14 @@
 (defvar org-agenda-pending-undo-list nil
   "In a series of undo commands, this is the list of remaining undo items.")
 
+(defvar org-agenda-keep-modes nil)      ; Dynamically-scoped param.
+(defvar org-agenda-contributing-files nil)
+
+(defgroup org-agenda nil
+  "Options concerning agenda views in Org mode."
+  :tag "Org Agenda"
+  :group 'org)
+
 (defcustom org-agenda-confirm-kill 1
   "When set, remote killing from the agenda buffer needs confirmation.
 When t, a confirmation is always needed.  When a number N, confirmation is
@@ -702,6 +710,15 @@ useful to ensure no edits happen beyond the restricted region."
   :group 'org-agenda
   :type 'boolean)
 
+(defcustom org-agenda-skip-archived-trees t
+  "Non-nil means the agenda will skip any items located in archived trees.
+An archived tree is a tree marked with the tag ARCHIVE.  The use of this
+variable is no longer recommended, you should leave it at the value t.
+Instead, use the key `v' to cycle the archives-mode in the agenda."
+  :group 'org-archive
+  :group 'org-agenda-skip
+  :type 'boolean)
+
 (defcustom org-agenda-skip-comment-trees t
   "Non-nil means skip trees that start with the COMMENT keyword.
 When nil, these trees are also scanned by agenda commands."
@@ -1209,6 +1226,20 @@ argument, a calendar-style date list like (month day year)."
   :type '(choice
 	  (string :tag "Format string")
 	  (function :tag "Function")))
+
+(defcustom org-agenda-jump-prefer-future 'org-read-date-prefer-future
+  "Should the agenda jump command prefer the future for incomplete dates?
+The default is to do the same as configured in `org-read-date-prefer-future'.
+But you can also set a deviating value here.
+This may t or nil, or the symbol `org-read-date-prefer-future'."
+  :group 'org-agenda
+  :group 'org-time
+  :version "24.1"
+  :type '(choice
+	  (const :tag "Use org-read-date-prefer-future"
+		 org-read-date-prefer-future)
+	  (const :tag "Never" nil)
+	  (const :tag "Always" t)))
 
 (defun org-agenda-end-of-line ()
   "Go to the end of visible line."

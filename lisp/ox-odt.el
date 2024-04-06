@@ -1276,6 +1276,13 @@ new entry in `org-odt-automatic-styles'.  Return (OBJECT-NAME
 		      " number:format-source=\"fixed\"")
 	      output ))))
 
+;;; FIXME: Only called once, from ox-odt which should probably use
+;;; org-export-inline-image-p or something.
+(defun org-file-image-p (file)
+  "Return non-nil if FILE is an image."
+  (save-match-data
+    (string-match (image-file-name-regexp) file)))
+
 (defun org-odt-template (contents info)
   "Return complete document string after ODT conversion.
 CONTENTS is the transcoded contents string.  RAW-DATA is the

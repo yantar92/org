@@ -75,6 +75,42 @@ node `(org)Column attributes')."
                   (const :tag "Intermediate state [-]" "[-]")
                   (string :tag "Arbitrary string"))))
 
+(defcustom org-columns-default-format "%25ITEM %TODO %3PRIORITY %TAGS"
+  "The default column format, if no other format has been defined.
+This variable can be set on the per-file basis by inserting a line
+
+#+COLUMNS: %25ITEM ....."
+  :group 'org-properties
+  :type 'string)
+
+(defcustom org-columns-default-format-for-agenda nil
+  "The default column format in an agenda buffer.
+This will be used for column view in the agenda unless a format has
+been set by adding `org-overriding-columns-format' to the local
+settings list of a custom agenda view.  When nil, the columns format
+for the first item in the agenda list will be used, or as a fall-back,
+`org-columns-default-format'."
+  :group 'org-properties
+  :type '(choice
+	  (const :tag "No default" nil)
+	  (string :tag "Format string")))
+
+(defcustom org-columns-ellipses ".."
+  "The ellipses to be used when a field in column view is truncated.
+When this is the empty string, as many characters as possible are shown,
+but then there will be no visual indication that the field has been truncated.
+When this is a string of length N, the last N characters of a truncated
+field are replaced by this string.  If the column is narrower than the
+ellipses string, only part of the ellipses string will be shown."
+  :group 'org-properties
+  :type 'string)
+
+(defcustom org-columns-skip-archived-trees t
+  "Non-nil means ignore archived trees when creating column view."
+  :group 'org-archive
+  :group 'org-properties
+  :type 'boolean)
+
 (defcustom org-columns-modify-value-for-display-function nil
   "Function that modifies values for display in column view.
 For example, it can be used to cut out a certain part from a time stamp.
@@ -1494,7 +1530,7 @@ the columns according to FORMAT."
          (concat match (and maxlevel (format "+LEVEL<=%d" maxlevel)))
        (and maxlevel (format "LEVEL<=%d" maxlevel)))
      (and local 'tree)
-     'archive 'comment)
+     (when org-columns-skip-archived-trees 'archive) 'comment)
     (org-columns-quit)
     ;; Add column titles and a horizontal rule in front of the table.
     (cons (mapcar #'cadr org-columns-current-fmt-compiled)

@@ -55,6 +55,11 @@
 (defvar org-odd-levels-only)
 (defvar org-ts-regexp)
 
+(defgroup org-archive nil
+  "Options concerning archiving in Org mode."
+  :tag "Org Archive"
+  :group 'org-structure)
+
 (defcustom org-archive-location "%s_archive::"
   "The location where subtrees should be archived.
 

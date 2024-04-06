@@ -528,7 +528,6 @@ is not set."
   "Alist of all tags from all agenda files.")
 (defvar org-tag-groups-alist-for-agenda nil
   "Alist of all groups tags from all current agenda files.")
-(defvar org-agenda-contributing-files nil)
 (defgroup org-time nil
   "Options concerning time stamps and deadlines in Org mode."
   :tag "Org Time"
@@ -560,55 +559,6 @@ Custom commands can set this variable in the options section."
   :package-version '(Org . "8.0")
   :type 'integer)
 
-(defcustom org-agenda-jump-prefer-future 'org-read-date-prefer-future
-  "Should the agenda jump command prefer the future for incomplete dates?
-The default is to do the same as configured in `org-read-date-prefer-future'.
-But you can also set a deviating value here.
-This may t or nil, or the symbol `org-read-date-prefer-future'."
-  :group 'org-agenda
-  :group 'org-time
-  :version "24.1"
-  :type '(choice
-	  (const :tag "Use org-read-date-prefer-future"
-		 org-read-date-prefer-future)
-	  (const :tag "Never" nil)
-	  (const :tag "Always" t)))
-
-(defcustom org-columns-default-format "%25ITEM %TODO %3PRIORITY %TAGS"
-  "The default column format, if no other format has been defined.
-This variable can be set on the per-file basis by inserting a line
-
-#+COLUMNS: %25ITEM ....."
-  :group 'org-properties
-  :type 'string)
-
-(defcustom org-columns-default-format-for-agenda nil
-  "The default column format in an agenda buffer.
-This will be used for column view in the agenda unless a format has
-been set by adding `org-overriding-columns-format' to the local
-settings list of a custom agenda view.  When nil, the columns format
-for the first item in the agenda list will be used, or as a fall-back,
-`org-columns-default-format'."
-  :group 'org-properties
-  :type '(choice
-	  (const :tag "No default" nil)
-	  (string :tag "Format string")))
-
-(defcustom org-columns-ellipses ".."
-  "The ellipses to be used when a field in column view is truncated.
-When this is the empty string, as many characters as possible are shown,
-but then there will be no visual indication that the field has been truncated.
-When this is a string of length N, the last N characters of a truncated
-field are replaced by this string.  If the column is narrower than the
-ellipses string, only part of the ellipses string will be shown."
-  :group 'org-properties
-  :type 'string)
-
-(defgroup org-agenda nil
-  "Options concerning agenda views in Org mode."
-  :tag "Org Agenda"
-  :group 'org)
-
 (defvaralias 'org-agenda-multi-occur-extra-files
   'org-agenda-text-search-extra-files)
 
@@ -636,26 +586,6 @@ scope."
 (declare-function org-attach-reveal "org-attach" ())
 (declare-function org-attach-reveal-in-emacs "org-attach" ())
 
-(defgroup org-archive nil
-  "Options concerning archiving in Org mode."
-  :tag "Org Archive"
-  :group 'org-structure)
-
-(defcustom org-agenda-skip-archived-trees t
-  "Non-nil means the agenda will skip any items located in archived trees.
-An archived tree is a tree marked with the tag ARCHIVE.  The use of this
-variable is no longer recommended, you should leave it at the value t.
-Instead, use the key `v' to cycle the archives-mode in the agenda."
-  :group 'org-archive
-  :group 'org-agenda-skip
-  :type 'boolean)
-
-(defcustom org-columns-skip-archived-trees t
-  "Non-nil means ignore archived trees when creating column view."
-  :group 'org-archive
-  :group 'org-properties
-  :type 'boolean)
-
 ;;; Some variables used in various places
 
 (defvar org-window-configuration nil
@@ -664,8 +594,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
   "Used in various places to store a window configuration.")
 ;; Defined somewhere in this file, but used before definition.
 ;;;; Define the Org mode
-
-(defvar org-agenda-keep-modes nil)      ; Dynamically-scoped param.
 
 (require 'outline)
 
@@ -682,14 +610,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
 
 ;; babel
 (require 'ob)
-
-(defvar org-mode-tags-syntax-table
-  (let ((st (make-syntax-table org-mode-syntax-table)))
-    (modify-syntax-entry ?@ "w" st)
-    (modify-syntax-entry ?_ "w" st)
-    st)
-  "Syntax table including \"@\" and \"_\" as word constituents.")
-
 
 ;; Update `customize-package-emacs-version-alist'
 (add-to-list 'customize-package-emacs-version-alist
@@ -1814,13 +1734,6 @@ Returns the number of empty lines passed."
     (forward-line 1)
     (goto-char (min (point) pos))
     (count-lines (point) pos)))
-
-;;; TODO: Only called once, from ox-odt which should probably use
-;;; org-export-inline-image-p or something.
-(defun org-file-image-p (file)
-  "Return non-nil if FILE is an image."
-  (save-match-data
-    (string-match (image-file-name-regexp) file)))
 
 (defun org-get-cursor-date (&optional with-time)
   "Return the date at cursor in as a time.
