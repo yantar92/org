@@ -298,6 +298,15 @@ package ox-bibtex by Taru Karttunen."
 (eval-after-load 'org-keys
   '(with-no-warnings (org-defkey org-mode-map (kbd "C-c C-x [") #'org-reftex-citation)))
 
+(defun org-remove-keyword-keys (list)
+  "Remove a pair of parenthesis at the end of each string in LIST."
+  (mapcar (lambda (x)
+	    (if (string-match "(.*)$" x)
+		(substring x 0 (match-beginning 0))
+	      x))
+	  list))
+(make-obsolete 'org-remove-keyword-keys "no longer used" "9.7")
+
 (provide 'org-obsolete9.7)
 
 ;; Local variables:

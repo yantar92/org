@@ -656,16 +656,6 @@ Instead, use the key `v' to cycle the archives-mode in the agenda."
   :group 'org-properties
   :type 'boolean)
 
-;; Declare ID code
-
-(defun org-remove-keyword-keys (list)
-  "Remove a pair of parenthesis at the end of each string in LIST."
-  (mapcar (lambda (x)
-	    (if (string-match "(.*)$" x)
-		(substring x 0 (match-beginning 0))
-	      x))
-	  list))
-
 ;;; Some variables used in various places
 
 (defvar org-window-configuration nil
