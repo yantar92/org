@@ -438,51 +438,6 @@ hide them with `org-toggle-custom-properties-visibility'."
                 )
 	      (throw :exit t))))))))
 
-(defun org-emphasize (&optional char)
-  "Insert or change an emphasis, i.e. a font like bold or italic.
-If there is an active region, change that region to a new emphasis.
-If there is no region, just insert the marker characters and position
-the cursor between them.
-CHAR should be the marker character.  If it is a space, it means to
-remove the emphasis of the selected region.
-If CHAR is not given (for example in an interactive call) it will be
-prompted for."
-  (interactive)
-  (let ((erc org-emphasis-regexp-components)
-	(string "") beg end move s)
-    (if (org-region-active-p)
-	(setq beg (region-beginning)
-	      end (region-end)
-	      string (buffer-substring beg end))
-      (setq move t))
-
-    (unless char
-      (message "Emphasis marker or tag: [%s]"
-	       (mapconcat #'car org-emphasis-alist ""))
-      (setq char (read-char-exclusive)))
-    (if (equal char ?\s)
-	(setq s ""
-	      move nil)
-      (unless (assoc (char-to-string char) org-emphasis-alist)
-	(user-error "No such emphasis marker: \"%c\"" char))
-      (setq s (char-to-string char)))
-    (while (and (> (length string) 1)
-		(equal (substring string 0 1) (substring string -1))
-		(assoc (substring string 0 1) org-emphasis-alist))
-      (setq string (substring string 1 -1)))
-    (setq string (concat s string s))
-    (when beg (delete-region beg end))
-    (unless (or (bolp)
-		(string-match (concat "[" (nth 0 erc) "\n]")
-			      (char-to-string (char-before (point)))))
-      (insert " "))
-    (unless (or (eobp)
-		(string-match (concat "[" (nth 1 erc) "\n]")
-			      (char-to-string (char-after (point)))))
-      (insert " ") (backward-char 1))
-    (insert string)
-    (and move (backward-char 1))))
-
 (defun org-activate-links (limit)
   "Add link properties to links.
 This includes angle, plain, and bracket links."
@@ -498,13 +453,13 @@ This includes angle, plain, and bracket links."
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-				        (match-string 0)))
+				      (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			     (let ((face (get-text-property
-					  (max (1- start) (point-min)) 'face)))
-			       (if (consp face) (memq 'org-tag face)
-			         (eq 'org-tag face))))))
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))
