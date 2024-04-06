@@ -132,6 +132,64 @@ Returns the newly created buffer."
     (apply #'switch-to-buffer-other-window args)))
 (make-obsolete 'org-switch-to-buffer-other-window "no longer used" "9.7")
 
+(defun org-refresh-property (tprop p &optional inherit)
+  "Refresh the buffer text property TPROP from the drawer property P.
+
+The refresh happens only for the current entry, or the whole
+sub-tree if optional argument INHERIT is non-nil.
+
+If point is before first headline, the function applies to the
+part before the first headline.  In that particular case, when
+optional argument INHERIT is non-nil, it refreshes properties for
+the whole buffer."
+  (save-excursion
+    (org-back-to-heading-or-point-min t)
+    (let ((start (point))
+	  (end (save-excursion
+		 (cond ((and inherit (org-before-first-heading-p))
+			(point-max))
+		       (inherit
+			(org-end-of-subtree t t))
+		       ((outline-next-heading))
+		       ((point-max))))))
+      (with-silent-modifications
+	(if (symbolp tprop)
+	    ;; TPROP is a text property symbol.
+	    (put-text-property start end tprop p)
+	  ;; TPROP is an alist with (property . function) elements.
+	  (pcase-dolist (`(,prop . ,f) tprop)
+	    (put-text-property start end prop (funcall f p))))))))
+(make-obsolete 'org-refresh-property "no longer used" "9.7")
+
+(eval-when-compile (require 'org-macs))
+(declare-function org-property-inherit-p "org-property" (property))
+(declare-function org--property-global-or-keyword-value "org-property" (property literal-nil))
+(declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
+(defun org-refresh-properties (dprop tprop)
+  "Refresh buffer text properties.
+DPROP is the drawer property and TPROP is either the
+corresponding text property to set, or an alist with each element
+being a text property (as a symbol) and a function to apply to
+the value of the drawer property."
+  (require 'org-property)
+  (let* ((case-fold-search t)
+	 (inhibit-read-only t)
+	 (inherit? (org-property-inherit-p dprop))
+	 (property-re (org-re-property (concat (regexp-quote dprop) "\\+?") t))
+	 (global-or-keyword (and inherit?
+				 (org--property-global-or-keyword-value dprop nil))))
+    (with-silent-modifications
+      (org-with-point-at 1
+	;; Set global and keyword based values to the whole buffer.
+	(when global-or-keyword
+	  (put-text-property (point-min) (point-max) tprop global-or-keyword))
+	;; Set values based on property-drawers throughout the document.
+	(while (re-search-forward property-re nil t)
+	  (when (org-at-property-p)
+	    (org-refresh-property tprop (org-entry-get (point) dprop) inherit?))
+	  (outline-next-heading))))))
+(make-obsolete 'org-refresh-properties "no longer used" "9.7")
+
 (defvar org-category)
 (eval-when-compile (require 'org-macs)) ; `org-with-wide-buffer'
 (declare-function org-element-type-p "org-element-ast")
