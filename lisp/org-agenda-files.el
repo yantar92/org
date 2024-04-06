@@ -19,7 +19,11 @@
 
 ;;; Commentary:
 
-;; This library provides tools to manage Org files and buffers.
+;; This library provides tools to manage files and buffers what are
+;; tracked by Org mode.
+;; "Tracked" includes standard Org file locations, files where Org
+;; mode searches information for the purposes of following links,
+;; searching text, building agendas, etc.
 
 ;;; Code:
 
@@ -27,6 +31,8 @@
 (require 'org-mode)
 
 (defvar org-window-configuration)
+
+;;; Customizing files managed by Org mode.
 
 (defcustom org-directory "~/org"
   "Directory with Org files.
@@ -86,17 +92,70 @@ A nil value means to remove them, after a query, from the list."
   :type 'boolean)
 
 
-(defvar org-agenda-new-buffers nil
-  "Buffers created to visit agenda files.")
+;;; Listing and querying Org agenda files
 
-(defvar remember-data-file)
-(defun org-get-org-file ()
-  "Read a filename, with default directory `org-directory'."
-  (require 'remember)
-  (let ((default (or org-default-notes-file remember-data-file)))
-    (read-file-name (format "File name [%s]: " default)
-		    (file-name-as-directory org-directory)
-		    default)))
+(defun org-read-agenda-file-list (&optional pair-with-expansion)
+  "Read the list of agenda files from a file.
+If PAIR-WITH-EXPANSION is t return pairs with un-expanded
+filenames, used by `org-store-new-agenda-file-list' to write back
+un-expanded file names."
+  (when (file-directory-p org-agenda-files)
+    (error "`org-agenda-files' cannot be a single directory"))
+  (when (stringp org-agenda-files)
+    (with-temp-buffer
+      (insert-file-contents org-agenda-files)
+      (mapcar
+       (lambda (f)
+	 (let ((e (expand-file-name (substitute-in-file-name f)
+				    org-directory)))
+	   (if pair-with-expansion
+	       (cons e f)
+	     e)))
+       (org-split-string (buffer-string) "[ \t\r\n]*?[\r\n][ \t\r\n]*")))))
+
+(defvar org-agenda-archives-mode)
+(declare-function org-add-archive-files "org-archive")
+(defun org-agenda-files (&optional unrestricted archives)
+  "Get the list of agenda files.
+Optional UNRESTRICTED means return the full list even if a restriction
+is currently in place.
+When ARCHIVES is t, include all archive files that are really being
+used by the agenda files.  If ARCHIVE is `ifmode', do this only if
+`org-agenda-archives-mode' is t."
+  (let ((files
+	 (cond
+	  ((and (not unrestricted) (get 'org-agenda-files 'org-restrict)))
+	  ((stringp org-agenda-files) (org-read-agenda-file-list))
+	  ((listp org-agenda-files) org-agenda-files)
+	  (t (error "Invalid value of `org-agenda-files'")))))
+    (setq files (apply 'append
+		       (mapcar (lambda (f)
+				 (if (file-directory-p f)
+				     (directory-files
+				      f t org-agenda-file-regexp)
+				   (list (expand-file-name f org-directory))))
+			       files)))
+    (when org-agenda-skip-unavailable-files
+      (setq files (delq nil
+			(mapcar (lambda (file)
+				  (and (file-readable-p file) file))
+				files))))
+    (when (or (eq archives t)
+	      (and (eq archives 'ifmode)
+                   (derived-mode-p 'org-agenda-mode)
+                   (eq org-agenda-archives-mode t)))
+      (require 'org-archive)
+      (setq files (org-add-archive-files files)))
+    (delete-dups files)))
+
+(defun org-agenda-file-p (&optional file)
+  "Return non-nil, if FILE is an agenda file.
+If FILE is omitted, use the file associated with the current
+buffer."
+  (let ((fname (or file (buffer-file-name))))
+    (and fname
+         (member (file-truename fname)
+                 (mapcar #'file-truename (org-agenda-files t))))))
 
 (defun org-files-list ()
   "Return `org-agenda-files' list, plus all open Org files.
@@ -109,6 +168,152 @@ open and agenda-wise Org files."
 	  (cl-pushnew (expand-file-name (buffer-file-name)) files
 		      :test #'equal))))
     files))
+
+(defvar remember-data-file)
+(defun org-get-org-file ()
+  "Read a filename, with default directory `org-directory'."
+  (require 'remember)
+  (let ((default (or org-default-notes-file remember-data-file)))
+    (read-file-name (format "File name [%s]: " default)
+		    (file-name-as-directory org-directory)
+		    default)))
+
+;;; Opening Org agenda files, if they are not yet open in Emacs
+
+(defvar org-agenda-new-buffers nil
+  "Buffers created to visit agenda files.")
+
+(defun org-check-agenda-file (file)
+  "Make sure FILE exists.  If not, ask user what to do."
+  (unless (file-exists-p file)
+    (message "Non-existent agenda file %s.  [R]emove from list or [A]bort?"
+	     (abbreviate-file-name file))
+    (let ((r (downcase (read-char-exclusive))))
+      (cond
+       ((equal r ?r)
+	(org-remove-file file)
+	(throw 'nextfile t))
+       (t (user-error "Abort"))))))
+
+(defun org-get-agenda-file-buffer (file)
+  "Get an agenda buffer visiting FILE.
+If the buffer needs to be created, add it to the list of buffers
+which might be released later."
+  (let ((buf (org-find-base-buffer-visiting file)))
+    (if buf
+	buf ; just return it
+      ;; Make a new buffer and remember it
+      (setq buf (find-file-noselect file))
+      (when buf (push buf org-agenda-new-buffers))
+      buf)))
+
+(defun org-release-buffers (blist)
+  "Release all buffers in list, asking the user for confirmation when needed.
+When a buffer is unmodified, it is just killed.  When modified, it is saved
+\(if the user agrees) and then killed."
+  (let (file)
+    (dolist (buf blist)
+      (setq file (buffer-file-name buf))
+      (when (and (buffer-modified-p buf)
+		 file
+		 (y-or-n-p (format "Save file %s? " file)))
+	(with-current-buffer buf (save-buffer)))
+      (kill-buffer buf))))
+
+;;; User commands to manage Org agenda files
+
+(defun org-store-new-agenda-file-list (list)
+  "Set new value for the agenda file list and save it correctly."
+  (if (stringp org-agenda-files)
+      (let ((fe (org-read-agenda-file-list t)) b u)
+	(while (setq b (find-buffer-visiting org-agenda-files))
+	  (kill-buffer b))
+	(with-temp-file org-agenda-files
+	  (insert
+	   (mapconcat
+	    (lambda (f) ;; Keep un-expanded entries.
+	      (if (setq u (assoc f fe))
+		  (cdr u)
+		f))
+	    list "\n")
+	   "\n")))
+    (let ((org-mode-hook nil) (org-inhibit-startup t)
+	  (org-insert-mode-line-in-empty-file nil))
+      (setq org-agenda-files list)
+      (customize-save-variable 'org-agenda-files org-agenda-files))))
+
+(defun org-edit-agenda-file-list ()
+  "Edit the list of agenda files.
+Depending on setup, this either uses customize to edit the variable
+`org-agenda-files', or it visits the file that is holding the list.  In the
+latter case, the buffer is set up in a way that saving it automatically kills
+the buffer and restores the previous window configuration."
+  (interactive)
+  (if (stringp org-agenda-files)
+      (let ((cw (current-window-configuration)))
+	(find-file org-agenda-files)
+	(setq-local org-window-configuration cw)
+	(add-hook 'after-save-hook
+		  (lambda ()
+		    (set-window-configuration
+		     (prog1 org-window-configuration
+		       (kill-buffer (current-buffer))))
+		    (org-install-agenda-files-menu)
+		    (message "New agenda file list installed"))
+		  nil 'local)
+	(message "%s" (substitute-command-keys
+		       "Edit list and finish with \\[save-buffer]")))
+    (customize-variable 'org-agenda-files)))
+
+(defun org-agenda-file-to-front (&optional to-end)
+  "Move/add the current file to the top of the agenda file list.
+If the file is not present in the list, it is added to the front.  If it is
+present, it is moved there.  With optional argument TO-END, add/move to the
+end of the list."
+  (interactive "P")
+  (let ((org-agenda-skip-unavailable-files nil)
+	(file-alist (mapcar (lambda (x)
+			      (cons (file-truename x) x))
+			    (org-agenda-files t)))
+	(ctf (file-truename
+	      (or buffer-file-name
+		  (user-error "Please save the current buffer to a file"))))
+	x had)
+    (setq x (assoc ctf file-alist) had x)
+
+    (unless x (setq x (cons ctf (abbreviate-file-name buffer-file-name))))
+    (if to-end
+	(setq file-alist (append (delq x file-alist) (list x)))
+      (setq file-alist (cons x (delq x file-alist))))
+    (org-store-new-agenda-file-list (mapcar 'cdr file-alist))
+    (org-install-agenda-files-menu)
+    (message "File %s to %s of agenda file list"
+	     (if had "moved" "added") (if to-end "end" "front"))))
+
+(defun org-remove-file (&optional file)
+  "Remove current file from the list of files in variable `org-agenda-files'.
+These are the files which are being checked for agenda entries.
+Optional argument FILE means use this file instead of the current."
+  (interactive)
+  (let* ((org-agenda-skip-unavailable-files nil)
+	 (file (or file buffer-file-name
+		   (user-error "Current buffer does not visit a file")))
+	 (true-file (file-truename file))
+	 (afile (abbreviate-file-name file))
+	 (files (delq nil (mapcar
+			 (lambda (x)
+			   (unless (equal true-file
+					  (file-truename x))
+			     x))
+			 (org-agenda-files t)))))
+    (if (not (= (length files) (length (org-agenda-files t))))
+	(progn
+	  (org-store-new-agenda-file-list files)
+	  (org-install-agenda-files-menu)
+	  (message "Removed from Org Agenda list: %s" afile))
+      (message "File was not in list: %s (not removed)" afile))))
+
+;;; User commands to act on Org agenda files
 
 (declare-function org-id-locations-save "org-id")
 (defun org-save-all-org-buffers ()
@@ -164,112 +369,6 @@ prefix, restrict available buffers to agenda files."
 		      (mapcar #'list (mapcar #'buffer-name blist))
 		      nil t))))
 
-(defvar org-agenda-archives-mode)
-(declare-function org-add-archive-files "org-archive")
-(defun org-agenda-files (&optional unrestricted archives)
-  "Get the list of agenda files.
-Optional UNRESTRICTED means return the full list even if a restriction
-is currently in place.
-When ARCHIVES is t, include all archive files that are really being
-used by the agenda files.  If ARCHIVE is `ifmode', do this only if
-`org-agenda-archives-mode' is t."
-  (let ((files
-	 (cond
-	  ((and (not unrestricted) (get 'org-agenda-files 'org-restrict)))
-	  ((stringp org-agenda-files) (org-read-agenda-file-list))
-	  ((listp org-agenda-files) org-agenda-files)
-	  (t (error "Invalid value of `org-agenda-files'")))))
-    (setq files (apply 'append
-		       (mapcar (lambda (f)
-				 (if (file-directory-p f)
-				     (directory-files
-				      f t org-agenda-file-regexp)
-				   (list (expand-file-name f org-directory))))
-			       files)))
-    (when org-agenda-skip-unavailable-files
-      (setq files (delq nil
-			(mapcar (lambda (file)
-				  (and (file-readable-p file) file))
-				files))))
-    (when (or (eq archives t)
-	      (and (eq archives 'ifmode)
-                   (derived-mode-p 'org-agenda-mode)
-                   (eq org-agenda-archives-mode t)))
-      (require 'org-archive)
-      (setq files (org-add-archive-files files)))
-    (delete-dups files)))
-
-(defun org-agenda-file-p (&optional file)
-  "Return non-nil, if FILE is an agenda file.
-If FILE is omitted, use the file associated with the current
-buffer."
-  (let ((fname (or file (buffer-file-name))))
-    (and fname
-         (member (file-truename fname)
-                 (mapcar #'file-truename (org-agenda-files t))))))
-
-(defun org-edit-agenda-file-list ()
-  "Edit the list of agenda files.
-Depending on setup, this either uses customize to edit the variable
-`org-agenda-files', or it visits the file that is holding the list.  In the
-latter case, the buffer is set up in a way that saving it automatically kills
-the buffer and restores the previous window configuration."
-  (interactive)
-  (if (stringp org-agenda-files)
-      (let ((cw (current-window-configuration)))
-	(find-file org-agenda-files)
-	(setq-local org-window-configuration cw)
-	(add-hook 'after-save-hook
-		  (lambda ()
-		    (set-window-configuration
-		     (prog1 org-window-configuration
-		       (kill-buffer (current-buffer))))
-		    (org-install-agenda-files-menu)
-		    (message "New agenda file list installed"))
-		  nil 'local)
-	(message "%s" (substitute-command-keys
-		       "Edit list and finish with \\[save-buffer]")))
-    (customize-variable 'org-agenda-files)))
-
-(defun org-store-new-agenda-file-list (list)
-  "Set new value for the agenda file list and save it correctly."
-  (if (stringp org-agenda-files)
-      (let ((fe (org-read-agenda-file-list t)) b u)
-	(while (setq b (find-buffer-visiting org-agenda-files))
-	  (kill-buffer b))
-	(with-temp-file org-agenda-files
-	  (insert
-	   (mapconcat
-	    (lambda (f) ;; Keep un-expanded entries.
-	      (if (setq u (assoc f fe))
-		  (cdr u)
-		f))
-	    list "\n")
-	   "\n")))
-    (let ((org-mode-hook nil) (org-inhibit-startup t)
-	  (org-insert-mode-line-in-empty-file nil))
-      (setq org-agenda-files list)
-      (customize-save-variable 'org-agenda-files org-agenda-files))))
-
-(defun org-read-agenda-file-list (&optional pair-with-expansion)
-  "Read the list of agenda files from a file.
-If PAIR-WITH-EXPANSION is t return pairs with un-expanded
-filenames, used by `org-store-new-agenda-file-list' to write back
-un-expanded file names."
-  (when (file-directory-p org-agenda-files)
-    (error "`org-agenda-files' cannot be a single directory"))
-  (when (stringp org-agenda-files)
-    (with-temp-buffer
-      (insert-file-contents org-agenda-files)
-      (mapcar
-       (lambda (f)
-	 (let ((e (expand-file-name (substitute-in-file-name f)
-				    org-directory)))
-	   (if pair-with-expansion
-	       (cons e f)
-	     e)))
-       (org-split-string (buffer-string) "[ \t\r\n]*?[\r\n][ \t\r\n]*")))))
-
 ;;;###autoload
 (defun org-cycle-agenda-files ()
   "Cycle through the files in `org-agenda-files'.
@@ -287,93 +386,10 @@ If the current buffer does not, find the first agenda file."
     (find-file (car (or files fs)))
     (when (buffer-base-buffer) (pop-to-buffer-same-window (buffer-base-buffer)))))
 
-(defun org-agenda-file-to-front (&optional to-end)
-  "Move/add the current file to the top of the agenda file list.
-If the file is not present in the list, it is added to the front.  If it is
-present, it is moved there.  With optional argument TO-END, add/move to the
-end of the list."
-  (interactive "P")
-  (let ((org-agenda-skip-unavailable-files nil)
-	(file-alist (mapcar (lambda (x)
-			      (cons (file-truename x) x))
-			    (org-agenda-files t)))
-	(ctf (file-truename
-	      (or buffer-file-name
-		  (user-error "Please save the current buffer to a file"))))
-	x had)
-    (setq x (assoc ctf file-alist) had x)
-
-    (unless x (setq x (cons ctf (abbreviate-file-name buffer-file-name))))
-    (if to-end
-	(setq file-alist (append (delq x file-alist) (list x)))
-      (setq file-alist (cons x (delq x file-alist))))
-    (org-store-new-agenda-file-list (mapcar 'cdr file-alist))
-    (org-install-agenda-files-menu)
-    (message "File %s to %s of agenda file list"
-	     (if had "moved" "added") (if to-end "end" "front"))))
-
-(defun org-remove-file (&optional file)
-  "Remove current file from the list of files in variable `org-agenda-files'.
-These are the files which are being checked for agenda entries.
-Optional argument FILE means use this file instead of the current."
-  (interactive)
-  (let* ((org-agenda-skip-unavailable-files nil)
-	 (file (or file buffer-file-name
-		   (user-error "Current buffer does not visit a file")))
-	 (true-file (file-truename file))
-	 (afile (abbreviate-file-name file))
-	 (files (delq nil (mapcar
-			   (lambda (x)
-			     (unless (equal true-file
-					    (file-truename x))
-			       x))
-			   (org-agenda-files t)))))
-    (if (not (= (length files) (length (org-agenda-files t))))
-	(progn
-	  (org-store-new-agenda-file-list files)
-	  (org-install-agenda-files-menu)
-	  (message "Removed from Org Agenda list: %s" afile))
-      (message "File was not in list: %s (not removed)" afile))))
-
+;; FIXME: This is slightly out of scope - helper function to create
+;; menu `find-file' entry.
 (defun org-file-menu-entry (file)
   (vector file (list 'find-file file) t))
-
-(defun org-check-agenda-file (file)
-  "Make sure FILE exists.  If not, ask user what to do."
-  (unless (file-exists-p file)
-    (message "Non-existent agenda file %s.  [R]emove from list or [A]bort?"
-	     (abbreviate-file-name file))
-    (let ((r (downcase (read-char-exclusive))))
-      (cond
-       ((equal r ?r)
-	(org-remove-file file)
-	(throw 'nextfile t))
-       (t (user-error "Abort"))))))
-
-(defun org-get-agenda-file-buffer (file)
-  "Get an agenda buffer visiting FILE.
-If the buffer needs to be created, add it to the list of buffers
-which might be released later."
-  (let ((buf (org-find-base-buffer-visiting file)))
-    (if buf
-	buf ; just return it
-      ;; Make a new buffer and remember it
-      (setq buf (find-file-noselect file))
-      (when buf (push buf org-agenda-new-buffers))
-      buf)))
-
-(defun org-release-buffers (blist)
-  "Release all buffers in list, asking the user for confirmation when needed.
-When a buffer is unmodified, it is just killed.  When modified, it is saved
-\(if the user agrees) and then killed."
-  (let (file)
-    (dolist (buf blist)
-      (setq file (buffer-file-name buf))
-      (when (and (buffer-modified-p buf)
-		 file
-		 (y-or-n-p (format "Save file %s? " file)))
-	(with-current-buffer buf (save-buffer)))
-      (kill-buffer buf))))
 
 (provide 'org-agenda-files)
 
