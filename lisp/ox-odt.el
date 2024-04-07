@@ -35,6 +35,7 @@
 (require 'ox)
 (require 'table nil 'noerror)
 (require 'ox-mathml)
+(require 'org-latex-preview)
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
@@ -120,6 +121,7 @@
     (:odt-pixels-per-inch nil nil org-odt-pixels-per-inch)
     (:odt-table-styles nil nil org-odt-table-styles)
     (:odt-use-date-fields nil nil org-odt-use-date-fields)
+    (:odt-latex-image-options nil nil org-odt-latex-image-options)
     ;; Redefine regular option.
     (:with-latex nil "tex" org-odt-with-latex)
     ;; Retrieve LaTeX header for fragments.
@@ -721,6 +723,15 @@ Any other symbol is a synonym for `mathjax'."
 	  (const :tag "Use imagemagick to make images" imagemagick)
 	  (other :tag "Use MathJax to display math" mathjax)))
 
+(defcustom org-odt-latex-image-options
+  '(:foreground "Black" :background "Transparent"
+    :page-width 1.0 :scale 1.0 :inline nil)
+  "LaTeX preview options that apply to generated images.
+This is a ODT-specific counterpart to
+`org-latex-preview-appearance-options', which see."
+  :group 'org-export-odt
+  :package-version '(Org . "9.7")
+  :type 'plist)
 
 ;;;; Links
 
@@ -2285,12 +2296,24 @@ used as a communication channel."
 	 ;;
 	 ;; Handle `:width', `:height' and `:scale' properties.  Read
 	 ;; them as numbers since we need them for computations.
-	 (size (org-odt--image-size
-		src-expanded info
-		(let ((width (plist-get attr-plist :width)))
-		  (and width (read width)))
-		(let ((length (plist-get attr-plist :length)))
-		  (and length (read length)))
+	 (--em-to-cm
+          ;; FIXME: Hardcoded default font-size to 12 according to the
+          ;; default value of styles.xml in org-odt-styles-dir.  I
+          ;; don't know how how to determine this dynamically.
+          (lambda (size) (and size (* 12 0.0352778 size))))
+         (em-geometry
+          (cdr-safe
+           (gethash element (plist-get info :odt-latex-preview-hash-table))))
+         (width (or (funcall --em-to-cm (plist-get em-geometry :width)) ;latex image size
+                    (and-let* ((w (plist-get attr-plist :width)) ;ATTR_ODT specified size
+                               ((stringp w)))
+                      (read w))))
+         (height (or (funcall --em-to-cm (plist-get em-geometry :height)) ;latex image size
+                     (and-let* ((l (plist-get attr-plist :length)) ;ATTR_ODT specified size
+                                ((stringp l)))
+                       (read l))))
+         (size (org-odt--image-size
+		src-expanded info width height
 		(let ((scale (plist-get attr-plist :scale)))
 		  (and scale (read scale)))
 		nil			; embed-as
@@ -3733,8 +3756,8 @@ contextual information."
         (warning nil))
     ;; MathML will be handled seperately.
     (if (and (memq processing-type '(t mathml))
-             (fboundp 'org-format-latex-mathml-available-p)
-             (org-format-latex-mathml-available-p)
+             (fboundp 'org-mathml-converter-available-p)
+             (org-mathml-converter-available-p)
              (plist-put info :with-latex 'mathml))
         (org-element-map tree '(latex-fragment latex-environment)
           (lambda (latex)
@@ -3782,12 +3805,14 @@ contextual information."
         ((t mathml)
          (setq warning "LaTeX to MathML converter not available.  Falling back to verbatim."
                processing-type 'verbatim))
-        ((dvipng imagemagick)
-         (unless (and (org-check-external-command "latex" "" t)
-                      (org-check-external-command
-                       (if (eq processing-type 'dvipng) "dvipng" "convert") "" t))
-           (setq warning "LaTeX to PNG converter not available.  Falling back to verbatim."
-                 processing-type 'verbatim)))
+        ((dvipng imagemagick dvisvgm)
+         (let ((programs
+                (thread-first processing-type
+                              (alist-get org-latex-preview-process-alist)
+                              (plist-get :programs))))
+           (unless (cl-every (lambda (p) (org-check-external-command p "" 'no-error)) programs)
+             (setq warning "LaTeX or image converter not available.  Falling back to verbatim."
+                   processing-type 'verbatim))))
         (otherwise
          (setq warning "Unknown LaTeX option.  Forcing verbatim."
                processing-type 'verbatim)))
@@ -3795,81 +3820,67 @@ contextual information."
       ;; available, but there are fragments to be converted.
       (when warning
         (org-element-map tree '(latex-fragment latex-environment)
-          (lambda (_) (warn warning))
+          (lambda (_) (org-display-warning warning))
           info 'first-match nil t))
       ;; Store normalized value for later use.
       (when (plist-get info :with-latex)
         (plist-put info :with-latex processing-type))
       (message "Formatting LaTeX using %s" processing-type)
       ;; Convert `latex-fragment's and `latex-environment's.
-      (when (memq processing-type '(dvipng imagemagick))
+      (when (memq processing-type '(dvipng imagemagick dvisvgm))
+        ;; Prepare hash table with image file data
+        (plist-put info :odt-latex-preview-hash-table
+                   (apply #'org-latex-preview-cache-images tree info
+                          org-odt-latex-image-options))
+        ;; Map over the parse tree again and replace LaTeX
+        ;; fragments with links.  If an image doesn't exist for the
+        ;; fragment, leave it in verbatim.
         (org-element-map tree '(latex-fragment latex-environment)
           (lambda (latex-*)
-            (cl-incf count)
-            (let* ((latex-frag (org-element-property :value latex-*))
-                   (input-file (plist-get info :input-file))
-                   (cache-dir (file-name-directory input-file))
-                   (cache-subdir (concat
-                                  (cl-case processing-type
-                                    ((dvipng imagemagick)
-                                     org-preview-latex-image-directory))
-                                  (file-name-sans-extension
-                                   (file-name-nondirectory input-file))))
-                   (display-msg
-                    (cl-case processing-type
-                      ((dvipng imagemagick)
-                       (format "Creating LaTeX Image %d..." count))))
-                   ;; Get an Org-style link to PNG image.
-                   (link
-                    (with-temp-buffer
-                      (insert latex-frag)
-                      (delay-mode-hooks (let ((org-inhibit-startup t)) (org-mode)))
-                      ;; When converting to a PNG image, make sure to
-                      ;; copy all LaTeX header specifications from the
-                      ;; Org source.
-                      (let ((h (plist-get info :latex-header)))
-                        (when h
-                          (insert "\n"
-                                  (replace-regexp-in-string
-                                   "^" "#+LATEX_HEADER: " h))))
-                      (org-latex-preview-replace-fragments
-                       cache-subdir processing-type cache-dir display-msg)
-                      (goto-char (point-min))
-                      (skip-chars-forward " \t\n")
-                      (org-element-link-parser))))
-              (if (not (eq 'link (org-element-type link)))
-                  (message "LaTeX Conversion failed.")
-                ;; Conversion succeeded.  Parse above Org-style link to
-                ;; a `link' object.
-                (let ((replacement
-                       (cl-case (org-element-type latex-*)
-                         ;;LaTeX environment.  Mimic a "standalone image
-                         ;; or formula" by enclosing the `link' in
-                         ;; a `paragraph'.  Copy over original
-                         ;; attributes, captions to the enclosing
-                         ;; paragraph.
-                         (latex-environment
-                          (org-element-adopt-elements
-                              (list 'paragraph
-                                    (list :style "OrgFormula"
-                                          :name
-                                          (org-element-property :name latex-*)
-                                          :caption
-                                          (org-element-property :caption latex-*)))
-                            link))
-                         ;; LaTeX fragment.  No special action.
-                         (latex-fragment link))))
-                  ;; Note down the object that link replaces.
-                  (org-element-put-property replacement :replaces
-                                            (list (org-element-type latex-*)
-                                                  (list :value latex-frag)))
-                  ;; Restore blank after initial element or object.
-                  (org-element-put-property
-                   replacement :post-blank
-                   (org-element-property :post-blank latex-*))
-                  ;; Replace now.
-                  (org-element-set-element latex-* replacement)))))
-          info nil nil t))))
+            (when-let*
+                ((latex-preview-hash-table (plist-get info :odt-latex-preview-hash-table))
+                 (latex-frag (org-element-property :value latex-*))
+                 (path-info
+                  (or (gethash latex-* latex-preview-hash-table)
+                      (prog1 nil (org-display-warning
+                                  (format "Failed to generate preview image for element: %s" latex-frag)))))
+                 (source-file (car path-info))
+                 (link (list 'link (list :type "file"
+                                         :path source-file
+                                         :format 'bracket
+                                         :raw-link (format "file:%s" source-file)))))
+              (let ((replacement
+                     (cl-case (org-element-type latex-*)
+                       ;;LaTeX environment.  Mimic a "standalone image
+                       ;; or formula" by enclosing the `link' in
+                       ;; a `paragraph'.  Copy over original
+                       ;; attributes, captions to the enclosing
+                       ;; paragraph.
+                       (latex-environment
+                        (org-element-adopt-elements
+                            (list 'paragraph
+                                  (list :style "OrgFormula"
+                                        :name
+                                        (org-element-property :name latex-*)
+                                        :caption
+                                        (org-element-property :caption latex-*)))
+                          link))
+                       ;; LaTeX fragment.  No special action.
+                       (latex-fragment link))))
+                ;; Note down the object that link replaces.
+                (org-element-put-property replacement :replaces
+                                          (list (org-element-type latex-*)
+                                                (list :value latex-frag)))
+                ;; Restore blank after initial element or object.
+                (org-element-put-property
+                 replacement :post-blank
+                 (org-element-property :post-blank latex-*))
+                ;; Replace now.
+                (org-element-set-element latex-* replacement)
+                ;; Also replace in the latex preview table
+                (puthash replacement (gethash latex-* latex-preview-hash-table)
+                         latex-preview-hash-table))))
+          info))))
   tree)
 
 
