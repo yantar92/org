@@ -139,7 +139,6 @@
 (declare-function org-attach "org-attach" ())
 (declare-function org-attach-dir "org-attach"
 		  (&optional create-if-not-exists-p no-fs-check))
-(declare-function org-babel-tangle-file "ob-tangle" (file &optional target-file lang))
 (declare-function org-tags-view "org-agenda" (&optional todo-only match))
 
 ;; load languages based on value of `org-babel-load-languages'
@@ -484,11 +483,6 @@ depends on, if any."
 	'(org-agenda org-archive org-attach org-clock org-colview org-id
 		     org-table org-timer)))
 
-(defgroup org-structure nil
-  "Options concerning the general structure of Org files."
-  :tag "Org Structure"
-  :group 'org)
-
 (defcustom org-bookmark-names-plist
   '(:last-capture "org-capture-last-stored"
 		  :last-refile "org-refile-last-stored"
@@ -504,27 +498,7 @@ is not set."
   :group 'org-structure
   :type 'plist)
 
-(defgroup org-edit-structure nil
-  "Options concerning structure editing in Org mode."
-  :tag "Org Edit Structure"
-  :group 'org-structure)
-
 (defvar org-odd-levels-only)
-
-(defgroup org-todo nil
-  "Options concerning TODO items in Org mode."
-  :tag "Org TODO"
-  :group 'org)
-
-(defgroup org-progress nil
-  "Options concerning Progress logging in Org mode."
-  :tag "Org Progress"
-  :group 'org-time)
-
-(defgroup org-time nil
-  "Options concerning time stamps and deadlines in Org mode."
-  :tag "Org Time"
-  :group 'org)
 
 (defcustom org-deadline-warning-days 14
   "Number of days before expiration during which a deadline becomes active.

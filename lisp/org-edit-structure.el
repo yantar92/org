@@ -55,6 +55,11 @@
 (declare-function org-level-increment "org")
 (declare-function org-get-heading "org")
 
+(defgroup org-edit-structure nil
+  "Options concerning structure editing in Org mode."
+  :tag "Org Edit Structure"
+  :group 'org-structure)
+
 (defcustom org-M-RET-may-split-line '((default . t))
   "Non-nil means M-RET will split the line at the cursor position.
 When nil, it will go to the end of the line before making a

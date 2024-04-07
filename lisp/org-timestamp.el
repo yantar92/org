@@ -35,6 +35,11 @@
 (declare-function org-clock-update-time-maybe "org-clock")
 (declare-function org-get-heading "org")
 
+(defgroup org-time nil
+  "Options concerning time stamps and deadlines in Org mode."
+  :tag "Org Time"
+  :group 'org)
+
 (defvaralias 'org-time-stamp-rounding-minutes 'org-timestamp-rounding-minutes)
 (defcustom org-timestamp-rounding-minutes '(0 5)
   "Number of minutes to round time stamps to.

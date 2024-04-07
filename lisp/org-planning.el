@@ -33,6 +33,11 @@
 (defvar org-loop-over-headlines-in-active-region)
 (require 'org-map)
 
+(defgroup org-progress nil
+  "Options concerning Progress logging in Org mode."
+  :tag "Org Progress"
+  :group 'org-time)
+
 (defcustom org-log-reschedule nil
   "Information to record when the scheduling date of a task is modified.
 

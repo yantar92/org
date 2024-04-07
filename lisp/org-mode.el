@@ -182,6 +182,11 @@ equivalent option for agenda views."
   :tag "Org Startup"
   :group 'org)
 
+(defgroup org-structure nil
+  "Options concerning the general structure of Org files."
+  :tag "Org Structure"
+  :group 'org)
+
 (defcustom org-startup-folded 'showeverything
   "Initial folding state of headings when entering Org mode.
 

@@ -50,6 +50,11 @@
 (defvar org-inhibit-logging nil)        ; Dynamically-scoped param.
 (defvar org-last-state)
 
+(defgroup org-todo nil
+  "Options concerning TODO items in Org mode."
+  :tag "Org TODO"
+  :group 'org)
+
 (defcustom org-use-fast-todo-selection 'auto
   "\\<org-mode-map>\
 Non-nil means use the fast todo selection scheme with `\\[org-todo]'.
