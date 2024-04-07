@@ -9390,6 +9390,7 @@ It also looks at the text of the entry itself."
 		(with-current-buffer buffer
 		  (setq trg (and (string-match org-link-bracket-re l)
 				 (match-string 1 l)))
+                  (require 'org-open-at-point)
 		  (if (or (not trg) (string-match org-link-any-re trg))
 		      ;; Don't use `org-with-wide-buffer' here as
 		      ;; opening the link may result in moving the point

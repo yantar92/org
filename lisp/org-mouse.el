@@ -147,7 +147,7 @@
 (require 'org-todo)
 (require 'org-sparse-tree)
 (declare-function org-context "org")
-
+(require 'org-open-at-point)
 
 (defvar org-agenda-allow-remote-undo)
 (defvar org-agenda-undo-list)

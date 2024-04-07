@@ -36,7 +36,7 @@
 
 (defvar org-emphasis-alist)
 (defvar org-complex-heading-regexp)
-(declare-function org-open-at-point "org")
+(declare-function org-open-at-point "org-open-at-point")
 
 (defcustom org-self-insert-cluster-for-undo nil
   "Non-nil means cluster self-insert commands for undo when possible.

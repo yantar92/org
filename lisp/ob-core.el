@@ -1263,7 +1263,8 @@ exist."
        (end-of-line)
        (skip-chars-forward " \r\t\n")
        ;; Open the results.
-       (if (looking-at org-link-bracket-re) (org-open-at-point)
+       (if (looking-at org-link-bracket-re)
+           (progn (require 'org-open-at-point) (org-open-at-point))
 	 (let ((r (org-babel-format-result (org-babel-read-result)
 					   (cdr (assq :sep arguments)))))
 	   (pop-to-buffer (get-buffer-create org-babel-results-buffer-name))

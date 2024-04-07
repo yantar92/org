@@ -25,6 +25,7 @@
 
 (require 'org-test "../testing/org-test")
 (require 'org-agenda)
+(require 'org-open-at-point)
 (eval-and-compile (require 'cl-lib))
 
 
