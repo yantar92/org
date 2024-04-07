@@ -433,19 +433,6 @@ ELEMENT is the element at point."
 (eval-after-load 'flyspell
   '(add-to-list 'flyspell-delayed-commands 'org-self-insert-command))
 
-;;;; Bookmark
-
-(defun org-bookmark-jump-unhide (&rest _)
-  "Unhide the current position, to show the bookmark location."
-  (and (derived-mode-p 'org-mode)
-       (or (org-invisible-p)
-	   (save-excursion (goto-char (max (point-min) (1- (point))))
-			   (org-invisible-p)))
-       (org-fold-show-context 'bookmark-jump)))
-
-;; Make `bookmark-jump' shows the jump location if it was hidden.
-(add-hook 'bookmark-after-jump-hook #'org-bookmark-jump-unhide)
-
 ;;;; Calendar
 
 (defcustom org-calendar-to-agenda-key 'default
@@ -493,11 +480,6 @@ key."
 
 (eval-after-load 'calendar
   '(add-hook 'calendar-mode-hook #'org--setup-calendar-bindings))
-
-;;;; Saveplace
-
-;; Make sure saveplace shows the location if it was hidden
-(advice-add 'save-place-find-file-hook :after #'org-bookmark-jump-unhide)
 
 ;;;; Ecb
 

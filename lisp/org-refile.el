@@ -37,8 +37,8 @@
 (defvar org-clock-heading)
 (declare-function org-get-valid-level "org")
 (defvar org-loop-over-headlines-in-active-region)
-(defvar org-bookmark-names-plist)
 (declare-function org-back-over-empty-lines "org")
+(require 'org-bookmark)
 
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 (defvar org-odd-levels-only)

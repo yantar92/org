@@ -483,21 +483,6 @@ depends on, if any."
 	'(org-agenda org-archive org-attach org-clock org-colview org-id
 		     org-table org-timer)))
 
-(defcustom org-bookmark-names-plist
-  '(:last-capture "org-capture-last-stored"
-		  :last-refile "org-refile-last-stored"
-		  :last-capture-marker "org-capture-last-stored-marker")
-  "Names for bookmarks automatically set by some Org commands.
-This can provide strings as names for a number of bookmarks Org sets
-automatically.  The following keys are currently implemented:
-  :last-capture
-  :last-capture-marker
-  :last-refile
-When a key does not show up in the property list, the corresponding bookmark
-is not set."
-  :group 'org-structure
-  :type 'plist)
-
 (defvar org-odd-levels-only)
 
 (defcustom org-deadline-warning-days 14

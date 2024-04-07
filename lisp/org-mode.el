@@ -40,6 +40,7 @@
 (require 'org-pcomplete)
 (require 'org-dnd)
 (require 'org-menu)
+(require 'org-bookmark)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")
@@ -836,6 +837,16 @@ Respect keys that are already there."
   (add-hook 'occur-mode-find-occurrence-hook
             #'org-occur-reveal-occurrence nil 'local))
 
+(defun org-setup-bookmark ()
+  "Setup bookmark support."
+  ;; Make `bookmark-jump' show the jump location if it was hidden.
+  (add-hook 'bookmark-after-jump-hook #'org-bookmark-jump-unhide nil 'local))
+
+(defun org-setup-saveplace ()
+  "Setup saveplace support."
+  ;; Make sure saveplace shows the location if it was hidden
+  (advice-add 'save-place-find-file-hook :after #'org-bookmark-jump-unhide))
+
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias
@@ -1027,6 +1038,8 @@ The following commands are available:
   (org-setup-yank-dnd-handlers)
   ;; `occur' support.
   (org-setup-occur)
+  (org-setup-bookmark)
+  (org-setup-saveplace)
   ;; Remove folds when changing major mode
   (add-hook 'change-major-mode-hook
             #'org-fold-show-all 'append 'local))

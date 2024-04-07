@@ -54,6 +54,7 @@
 (require 'org)
 (require 'org-refile)
 (require 'org-clock)
+(require 'org-bookmark)
 
 (declare-function org-at-encrypted-entry-p "org-crypt" ())
 (declare-function org-at-table-p "org-table" (&optional table-type))
