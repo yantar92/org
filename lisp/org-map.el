@@ -295,6 +295,22 @@ headlines matching this string."
       (org-fold-hide-archived-subtrees (point-min) (point-max)))
     (nreverse rtn)))
 
+(defvar org-cached-props nil)
+(defun org-cached-entry-get (pom property)
+  (if (or (eq t org-use-property-inheritance)
+	  (and (stringp org-use-property-inheritance)
+	       (let ((case-fold-search t))
+		 (string-match-p org-use-property-inheritance property)))
+	  (and (listp org-use-property-inheritance)
+	       (member-ignore-case property org-use-property-inheritance)))
+      ;; Caching is not possible, check it directly.
+      (org-entry-get pom property 'inherit)
+    ;; Get all properties, so we can do complicated checks easily.
+    (cdr (assoc-string property
+		       (or org-cached-props
+			   (setq org-cached-props (org-entry-properties pom)))
+		       t))))
+
 (defun org-make-tags-matcher (match &optional only-local-tags)
   "Create the TAGS/TODO matcher form for the selection string MATCH.
 
