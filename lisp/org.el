@@ -892,10 +892,6 @@ odd number.  Returns values greater than 0."
 	    ((< change 0) (max 1 (1+ (* 2 (/ (+ level (* 2 change)) 2))))))
     (max 1 (+ level (or change 0)))))
 
-(defun org-tr-level (n)
-  "Make N odd if required."
-  (if org-odd-levels-only (1+ (/ n 2)) n))
-
 ;;; Outline path
 
 (defun org-format-outline-path (path &optional width prefix separator)

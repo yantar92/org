@@ -367,6 +367,13 @@ package ox-bibtex by Taru Karttunen."
 	  list))
 (make-obsolete 'org-remove-keyword-keys "no longer used" "9.7")
 
+(defvar org-odd-levels-only)
+(defun org-tr-level (n)
+  "Make N odd if required."
+  (require 'org-element)
+  (if org-odd-levels-only (1+ (/ n 2)) n))
+(make-obsolete 'org-tr-level "no longer used" "9.7")
+
 (provide 'org-obsolete9.7)
 
 ;; Local variables:
