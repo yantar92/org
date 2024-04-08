@@ -601,21 +601,6 @@ on INACTIVE-OK."
 	     (throw 'exit t)))
       nil)))
 
-(defun org-remove-empty-drawer-at (pos)
-  "Remove an empty drawer at position POS.
-POS may also be a marker."
-  (with-current-buffer (if (markerp pos) (marker-buffer pos) (current-buffer))
-    (org-with-wide-buffer
-     (goto-char pos)
-     (let ((drawer (org-element-at-point)))
-       (when (and (org-element-type-p drawer '(drawer property-drawer))
-		  (not (org-element-contents-begin drawer)))
-	 (delete-region (org-element-begin drawer)
-			(progn (goto-char (org-element-end drawer))
-			       (skip-chars-backward " \r\t\n")
-			       (forward-line)
-			       (point))))))))
-
 ;;;; Timestamps
 
 (defun org-deadline-close-p (timestamp-string &optional ndays)
