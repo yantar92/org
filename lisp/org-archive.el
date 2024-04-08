@@ -43,8 +43,7 @@
 (require 'org-edit-structure)
 (require 'org-narrow)
 (require 'org-todo)
-(declare-function org-level-increment "org")
-(declare-function org-get-valid-level "org")
+(require 'org-element)
 
 (declare-function org-datetree-find-date-create "org-datetree" (date &optional keep-restriction))
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())

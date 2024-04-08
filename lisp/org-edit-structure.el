@@ -51,8 +51,6 @@
 (declare-function org-clock-sum "org-clock")
 (declare-function org-clocking-buffer "org")
 (defvar org-clock-marker)
-(declare-function org-get-valid-level "org")
-(declare-function org-level-increment "org")
 (declare-function org-get-heading "org")
 
 (defgroup org-edit-structure nil

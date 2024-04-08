@@ -35,10 +35,10 @@
 (require 'org-edit-special)
 (defvar org-clock-hd-marker)
 (defvar org-clock-heading)
-(declare-function org-get-valid-level "org")
 (defvar org-loop-over-headlines-in-active-region)
 (declare-function org-back-over-empty-lines "org")
 (require 'org-bookmark)
+(require 'org-element)
 
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
 (defvar org-odd-levels-only)

@@ -144,7 +144,7 @@
 (declare-function org-inlinetask-goto-end "org-inlinetask" ())
 (declare-function org-inlinetask-in-task-p "org-inlinetask" ())
 (declare-function org-inlinetask-outline-regexp "org-inlinetask" ())
-(declare-function org-level-increment "org" ())
+(declare-function org-level-increment "org-element" ())
 (declare-function org-mode "org" ())
 (declare-function org-narrow-to-subtree "org" (&optional element))
 (declare-function org-outline-level "org" ())
