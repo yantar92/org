@@ -136,11 +136,7 @@
 
 (require 'org-cycle)
 
-(declare-function org-agenda-list "org-agenda" (&optional arg start-day span with-hour))
 (declare-function org-attach "org-attach" ())
-(declare-function org-attach-dir "org-attach"
-		  (&optional create-if-not-exists-p no-fs-check))
-(declare-function org-tags-view "org-agenda" (&optional todo-only match))
 
 ;; load languages based on value of `org-babel-load-languages'
 (defvar org-babel-load-languages)
@@ -484,8 +480,6 @@ depends on, if any."
 	'(org-agenda org-archive org-attach org-clock org-colview org-id
 		     org-table org-timer)))
 
-(defvar org-odd-levels-only)
-
 (defcustom org-deadline-warning-days 14
   "Number of days before expiration during which a deadline becomes active.
 This variable governs the display in sparse trees and in the agenda.
@@ -511,13 +505,6 @@ Custom commands can set this variable in the options section."
   :version "24.4"
   :package-version '(Org . "8.0")
   :type 'integer)
-
-;;; Functions and variables from their packages
-;;  Declared here to avoid compiler warnings
-
-(declare-function org-agenda-copy-local-variable "org-agenda" (var))
-(declare-function org-attach-reveal "org-attach" ())
-(declare-function org-attach-reveal-in-emacs "org-attach" ())
 
 ;;; Some variables used in various places
 
@@ -563,17 +550,6 @@ Custom commands can set this variable in the options section."
 (when (fboundp 'abbrev-table-put)
   (abbrev-table-put org-mode-abbrev-table
 		    :parents (list text-mode-abbrev-table)))
-
-;;;; Font-Lock stuff, including the activators
-
-;;; Refresh properties
-
-;;; File search
-
-
-
-
-;;; Following specific links
 
 ;;;; TODO, DEADLINE, Comments
 
@@ -636,8 +612,6 @@ don't try to find the delay cookie in the scheduled timestamp."
 ;;; Menu entries
 (defvar org--warnings nil
   "List of warnings to be added to the bug reports.")
-;;;###autoload
-;;;; Documentation
 
 ;;;###autoload
 (defun org-reload (&optional uncompiled)
@@ -688,8 +662,6 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 	(message "Some error occurred while reloading Org feature%s\n%s\nPlease check *Messages*!\n%s"
 		 (if (> (length load-misses) 1) "s" "") load-misses (org-version nil 'full))
       (message "Successfully reloaded Org\n%s" (org-version nil 'full)))))
-
-;;;; Miscellaneous stuff
 
 ;;; Generally useful functions
 
@@ -855,13 +827,7 @@ earliest time on the cursor date that Org treats as that date
                                     (nth 1 date) (nth 0 date) (nth 2 date))))))
     (or defd (current-time))))
 
-;;;; Functions extending outline functionality
-
 (require 'org-move)
-
-
-
-;;; Outline path
 
 
 
