@@ -894,43 +894,6 @@ odd number.  Returns values greater than 0."
 
 ;;; Outline path
 
-(defun org-display-outline-path (&optional file-or-title current separator just-return-string)
-  "Display the current outline path in the echo area.
-
-If FILE-OR-TITLE is `title', prepend outline with file title.  If
-it is non-nil or title is not present in document, prepend
-outline path with the file name.
-If CURRENT is non-nil, append the current heading to the output.
-SEPARATOR is passed through to `org-format-outline-path'.  It separates
-the different parts of the path and defaults to \"/\".
-If JUST-RETURN-STRING is non-nil, return a string, don't display a message."
-  (interactive "P")
-  (let* (case-fold-search
-	 (bfn (buffer-file-name (buffer-base-buffer)))
-         (title-prop (when (eq file-or-title 'title) (org-get-title)))
-	 (path (and (derived-mode-p 'org-mode) (org-get-outline-path)))
-	 res)
-    (when current (setq path (append path
-				     (save-excursion
-				       (org-back-to-heading t)
-				       (when (looking-at org-complex-heading-regexp)
-					 (list (match-string 4)))))))
-    (setq res
-	  (org-format-outline-path
-	   path
-	   (1- (frame-width))
-	   (and file-or-title bfn (concat (if (and (eq file-or-title 'title) title-prop)
-					      title-prop
-					    (file-name-nondirectory bfn))
-				          separator))
-	   separator))
-    (add-face-text-property 0 (length res)
-			    `(:height ,(face-attribute 'default :height))
-			    nil res)
-    (if just-return-string
-	res
-      (org-unlogged-message "%s" res))))
-
 
 
 (provide 'org)
