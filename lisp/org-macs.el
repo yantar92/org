@@ -927,34 +927,17 @@ ones and overrule settings in the other lists."
 
 ;;; Local variables
 
-(defconst org-unique-local-variables
-  '(org-element--cache
-    org-element--headline-cache
-    org-element--cache-change-tic
-    org-element--cache-last-buffer-size
-    org-element--cache-change-warning
-    org-element--cache-gapless
-    org-element--cache-hash-left
-    org-element--cache-hash-right
-    org-element--cache-size
-    org-element--headline-cache-size
-    org-element--cache-sync-keys-value
-    org-element--cache-diagnostics-ring
-    org-element--cache-diagnostics-ring-size
-    org-element--cache-sync-keys
-    org-element--cache-sync-requests
-    org-element--cache-sync-timer)
-  "List of local variables that cannot be transferred to another buffer.")
-
+(defvar org-element-ignored-local-variables)
 (defun org-get-local-variables ()
   "Return a list of all local variables in an Org mode buffer."
+  (require 'org-element)
   (delq nil
 	(mapcar
 	 (lambda (x)
 	   (let* ((binding (if (symbolp x) (list x) (list (car x) (cdr x))))
 		  (name (car binding)))
 	     (and (not (get name 'org-state))
-		  (not (memq name org-unique-local-variables))
+		  (not (memq name org-element-ignored-local-variables))
 		  (string-match-p
 		   "\\`\\(org-\\|orgtbl-\\|outline-\\|comment-\\|paragraph-\\|\
 auto-fill\\|normal-auto-fill\\|fill-paragraph\\|indent-\\)"
@@ -967,12 +950,30 @@ auto-fill\\|normal-auto-fill\\|fill-paragraph\\|indent-\\)"
 (defun org-clone-local-variables (from-buffer &optional regexp)
   "Clone local variables from FROM-BUFFER.
 Optional argument REGEXP selects variables to clone."
+  (require 'org-element)
   (dolist (pair (buffer-local-variables from-buffer))
     (pcase pair
       (`(,name . ,value)		;ignore unbound variables
-       (when (and (not (memq name org-unique-local-variables))
+       (when (and (not (memq name org-element-ignored-local-variables))
 		  (or (null regexp) (string-match-p regexp (symbol-name name))))
 	 (ignore-errors (set (make-local-variable name) value)))))))
+
+;;;###autoload
+(defun org-run-like-in-org-mode (cmd)
+  "Run a command, pretending that the current buffer is in Org mode.
+This will temporarily bind local variables that are typically bound in
+Org mode to the values they have in Org mode, and then interactively
+call CMD."
+  (org-load-modules-maybe)
+  (let (vars vals)
+    (dolist (var (org-get-local-variables))
+      (when (or (not (boundp (car var)))
+		(eq (symbol-value (car var))
+		    (default-value (car var))))
+	(push (car var) vars)
+	(push (cadr var) vals)))
+    (cl-progv vars vals
+      (call-interactively cmd))))
 
 
 ;;; Miscellaneous

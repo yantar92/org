@@ -566,23 +566,6 @@ Custom commands can set this variable in the options section."
 
 ;;;; Font-Lock stuff, including the activators
 
-;;;###autoload
-(defun org-run-like-in-org-mode (cmd)
-  "Run a command, pretending that the current buffer is in Org mode.
-This will temporarily bind local variables that are typically bound in
-Org mode to the values they have in Org mode, and then interactively
-call CMD."
-  (org-load-modules-maybe)
-  (let (vars vals)
-    (dolist (var (org-get-local-variables))
-      (when (or (not (boundp (car var)))
-		(eq (symbol-value (car var))
-		    (default-value (car var))))
-	(push (car var) vars)
-	(push (cadr var) vals)))
-    (cl-progv vars vals
-      (call-interactively cmd))))
-
 ;;; Refresh properties
 
 ;;; File search

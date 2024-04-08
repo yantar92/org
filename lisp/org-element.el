@@ -845,6 +845,7 @@ stacked delimiters is N.  Escaping delimiters is not possible."
      org-element--cache-change-warning)
   "List of variable symbols holding cache state.")
 
+(defvaralias 'org-unique-local-variables 'org-element-ignored-local-variables)
 (defconst org-element-ignored-local-variables
   `( org-font-lock-keywords
      ,@org-element--cache-variables)
