@@ -894,37 +894,6 @@ odd number.  Returns values greater than 0."
 
 ;;; Outline path
 
-(defun org-format-outline-path (path &optional width prefix separator)
-  "Format the outline path PATH for display.
-WIDTH is the maximum number of characters that is available.
-PREFIX is a prefix to be included in the returned string,
-such as the file name.
-SEPARATOR is inserted between the different parts of the path,
-the default is \"/\"."
-  (setq width (or width 79))
-  (setq path (delq nil path))
-  (unless (> width 0)
-    (user-error "Argument `width' must be positive"))
-  (setq separator (or separator "/"))
-  (let* ((org-odd-levels-only nil)
-	 (fpath (concat
-		 prefix (and prefix path separator)
-		 (mapconcat
-		  (lambda (s) (replace-regexp-in-string "[ \t]+\\'" "" s))
-		  (cl-loop for head in path
-			   for n from 0
-			   collect (org-add-props
-				       head nil 'face
-				       (nth (% n org-n-level-faces) org-level-faces)))
-		  separator))))
-    (when (> (length fpath) width)
-      (if (< width 7)
-	  ;; It's unlikely that `width' will be this small, but don't
-	  ;; waste characters by adding ".." if it is.
-	  (setq fpath (substring fpath 0 width))
-	(setf (substring fpath (- width 2)) "..")))
-    fpath))
-
 (defun org-display-outline-path (&optional file-or-title current separator just-return-string)
   "Display the current outline path in the echo area.
 
