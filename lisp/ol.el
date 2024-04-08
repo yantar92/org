@@ -51,7 +51,6 @@
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
 (declare-function org-before-first-heading-p "org" ())
-(declare-function org-do-occur "org" (regexp &optional cleanup))
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 (declare-function org-find-property "org" (property &optional value))
 (declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
@@ -899,6 +898,25 @@ Optional argument ARG is passed to `org-open-file' when S is a
 	     (org-element-link-parser)))
     (`nil (user-error "No valid link in %S" s))
     (link (org-link-open link arg))))
+
+(defun org-do-occur (regexp &optional cleanup)
+  "Call the Emacs command `occur'.
+If CLEANUP is non-nil, remove the printout of the regular expression
+in the *Occur* buffer.  This is useful if the regex is long and not useful
+to read."
+  (occur regexp)
+  (when cleanup
+    (let ((cwin (selected-window)) win beg end)
+      (when (setq win (get-buffer-window "*Occur*"))
+	(select-window win))
+      (goto-char (point-min))
+      (when (re-search-forward "match[a-z]+" nil t)
+	(setq beg (match-end 0))
+	(when (re-search-forward "^[ \t]*[0-9]+" nil t)
+	  (setq end (1- (match-beginning 0)))))
+      (and beg end (let ((inhibit-read-only t)) (delete-region beg end)))
+      (goto-char (point-min))
+      (select-window cwin))))
 
 (defun org-link-search (s &optional avoid-pos stealth new-heading-container)
   "Search for a search string S in the accessible part of the buffer.

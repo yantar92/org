@@ -570,24 +570,7 @@ Custom commands can set this variable in the options section."
 
 ;;; File search
 
-(defun org-do-occur (regexp &optional cleanup)
-  "Call the Emacs command `occur'.
-If CLEANUP is non-nil, remove the printout of the regular expression
-in the *Occur* buffer.  This is useful if the regex is long and not useful
-to read."
-  (occur regexp)
-  (when cleanup
-    (let ((cwin (selected-window)) win beg end)
-      (when (setq win (get-buffer-window "*Occur*"))
-	(select-window win))
-      (goto-char (point-min))
-      (when (re-search-forward "match[a-z]+" nil t)
-	(setq beg (match-end 0))
-	(when (re-search-forward "^[ \t]*[0-9]+" nil t)
-	  (setq end (1- (match-beginning 0)))))
-      (and beg end (let ((inhibit-read-only t)) (delete-region beg end)))
-      (goto-char (point-min))
-      (select-window cwin))))
+
 
 
 ;;; Following specific links
