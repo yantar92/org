@@ -480,32 +480,6 @@ depends on, if any."
 	'(org-agenda org-archive org-attach org-clock org-colview org-id
 		     org-table org-timer)))
 
-(defcustom org-deadline-warning-days 14
-  "Number of days before expiration during which a deadline becomes active.
-This variable governs the display in sparse trees and in the agenda.
-When 0 or negative, it means use this number (the absolute value of it)
-even if a deadline has a different individual lead time specified.
-
-Custom commands can set this variable in the options section."
-  :group 'org-time
-  :group 'org-agenda-daily/weekly
-  :type 'integer)
-
-(defcustom org-scheduled-delay-days 0
-  "Number of days before a scheduled item becomes active.
-This variable governs the display in sparse trees and in the agenda.
-The default value (i.e. 0) means: don't delay scheduled item.
-When negative, it means use this number (the absolute value of it)
-even if a scheduled item has a different individual delay time
-specified.
-
-Custom commands can set this variable in the options section."
-  :group 'org-time
-  :group 'org-agenda-daily/weekly
-  :version "24.4"
-  :package-version '(Org . "8.0")
-  :type 'integer)
-
 ;;; Some variables used in various places
 
 (defvar org-window-configuration nil
@@ -576,38 +550,6 @@ on INACTIVE-OK."
 	     (>= (match-end 0) pos)
 	     (throw 'exit t)))
       nil)))
-
-;;;; Timestamps
-
-(defun org-deadline-close-p (timestamp-string &optional ndays)
-  "Is the time in TIMESTAMP-STRING close to the current date?"
-  (setq ndays (or ndays (org-get-wdays timestamp-string)))
-  (and (<= (org-timestamp-to-now timestamp-string) ndays)
-       (not (org-entry-is-done-p))))
-
-(defun org-get-wdays (ts &optional delay zero-delay)
-  "Get the deadline lead time appropriate for timestring TS.
-When DELAY is non-nil, get the delay time for scheduled items
-instead of the deadline lead time.  When ZERO-DELAY is non-nil
-and `org-scheduled-delay-days' is 0, enforce 0 as the delay,
-don't try to find the delay cookie in the scheduled timestamp."
-  (let ((tv (if delay org-scheduled-delay-days
-	      org-deadline-warning-days)))
-    (cond
-     ((or (and delay (< tv 0))
-	  (and delay zero-delay (<= tv 0))
-	  (and (not delay) (<= tv 0)))
-      ;; Enforce this value no matter what
-      (- tv))
-     ((string-match "-\\([0-9]+\\)\\([hdwmy]\\)\\(\\'\\|>\\| \\)" ts)
-      ;; lead time is specified.
-      (floor (* (string-to-number (match-string 1 ts))
-		(cdr (assoc (match-string 2 ts)
-			    '(("d" . 1)    ("w" . 7)
-			      ("m" . 30.4) ("y" . 365.25)
-			      ("h" . 0.041667)))))))
-     ;; go for the default.
-     (t tv))))
 
 ;;; Menu entries
 (defvar org--warnings nil

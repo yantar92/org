@@ -80,6 +80,13 @@ You could use brackets to delimit on what part the link will be.
 (make-obsolete-variable 'org-time-clocksum-use-effort-durations
                         "set `org-duration-units' instead." "9.1")
 
+(defvar org-agenda-skip-regexp nil
+  "Regular expression used in skipping subtrees for the agenda.
+This is basically a temporary global variable that can be set and then
+used by user-defined selections using `org-agenda-skip-function'.")
+(make-obsolete-variable 'org-agenda-skip-regexp
+                        "use `org-agenda-skip-if' instead." "9.1")
+
 ;;;; Obsolete functions and macros
 
 (defvar org-agenda-skip-regexp)
