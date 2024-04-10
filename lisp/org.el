@@ -133,6 +133,7 @@
 (require 'org-preview-image)
 (require 'org-indirect-buffer)
 (require 'org-edit-markup)
+(require 'org-open-at-point)
 
 (require 'org-cycle)
 
