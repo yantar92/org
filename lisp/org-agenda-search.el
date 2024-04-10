@@ -1989,6 +1989,117 @@ scheduled items with an hour specification like [h]h:mm."
     ;; Sort the entries by expiration date.
     (nreverse block-list)))
 
+(defvar org-search-syntax-table nil
+  "Special syntax table for Org search.
+In this table, we have single quotes not as word constituents, to
+that when \"+Ameli\" is searched as a work, it will also match \"Ameli's\"")
+
+(defvar org-mode-syntax-table) ; From org.el
+(defun org-search-syntax-table ()
+  (unless org-search-syntax-table
+    (setq org-search-syntax-table (copy-syntax-table org-mode-syntax-table))
+    (modify-syntax-entry ?' "." org-search-syntax-table)
+    (modify-syntax-entry ?` "." org-search-syntax-table))
+  org-search-syntax-table)
+
+(defun org-agenda-get-regexps ( regexps+ regexps-
+                                &optional headline-only todo-only max-outline-level)
+  "Return REGEXPS+ matches for agenda display omitting REGEXPS- matches.
+REGEXPS+ and REGEXPS- are lists of regexps to match/skip.
+
+When HEADLINE-ONLY is non-nil, match only against headlines.
+When TODO-ONLY is non-nil, match only against todo items.
+When MAX-OUTLINE-LEVEL is non-nil and not 0, limit matching against
+headlines of up to that level."
+  (catch 'nextfile
+    (let ( last-search-end beg beg1 end str regexp ee category level
+           tags txt marker inherited-tags)
+      (if (not regexps+)
+	  (setq regexp org-outline-regexp-bol)
+        (setq regexp (pop regexps+))
+        (when headline-only
+          (setq regexp (concat org-outline-regexp-bol ".*?"
+			       regexp))))
+      (with-syntax-table (org-search-syntax-table)
+        (let ((case-fold-search t))
+	  (goto-char (point-min))
+	  (unless (or (org-at-heading-p)
+		      (outline-next-heading))
+	    (throw 'nextfile nil))
+	  (goto-char (max (point-min) (1- (point))))
+	  (while (re-search-forward regexp nil t)
+            (setq last-search-end (point))
+	    (org-back-to-heading t)
+	    (while (and (not (zerop max-outline-level))
+		        (> (org-reduced-level (org-outline-level))
+			   max-outline-level)
+		        (forward-line -1)
+		        (org-back-to-heading t)))
+	    (skip-chars-forward "* ")
+            (setq beg (line-beginning-position)
+		  beg1 (point)
+		  end (progn
+		        (outline-next-heading)
+		        (while (and (not (zerop max-outline-level))
+				    (> (org-reduced-level (org-outline-level))
+				       max-outline-level)
+				    (forward-line 1)
+				    (outline-next-heading)))
+		        (point)))
+	    (catch :skip
+	      (goto-char beg)
+	      (org-agenda-skip)
+	      (setq str (buffer-substring-no-properties
+                         (line-beginning-position)
+                         (if headline-only (line-end-position) end)))
+	      (mapc (lambda (wr) (when (string-match wr str)
+			      (goto-char (1- end))
+			      (throw :skip t)))
+		    regexps-)
+	      (mapc (lambda (wr) (unless (string-match wr str)
+			      (goto-char (1- end))
+			      (throw :skip t)))
+		    (if todo-only
+		        (cons (concat "^\\*+[ \t]+"
+                                      org-not-done-regexp)
+			      regexps+)
+		      regexps+))
+	      (goto-char beg)
+	      (setq marker (org-agenda-new-marker (point))
+		    category (org-get-category)
+		    level (make-string (org-reduced-level (org-outline-level)) ? )
+		    inherited-tags
+		    (or (eq org-agenda-show-inherited-tags 'always)
+		        (and (listp org-agenda-show-inherited-tags)
+			     (memq 'todo org-agenda-show-inherited-tags))
+		        (and (eq org-agenda-show-inherited-tags t)
+			     (or (eq org-agenda-use-tag-inheritance t)
+			         (memq 'todo org-agenda-use-tag-inheritance))))
+		    tags (org-get-tags nil (not inherited-tags))
+		    txt (org-agenda-format-item
+		         ""
+		         (buffer-substring-no-properties
+                          beg1 (line-end-position))
+		         level category tags t))
+	      (org-add-props txt nil
+                'face nil
+		'done-face 'org-agenda-done
+		'org-not-done-regexp org-not-done-regexp
+		'org-todo-regexp org-todo-regexp
+		'org-complex-heading-regexp org-complex-heading-regexp
+		'mouse-face 'highlight
+		'help-echo "mouse-2 or RET jump to location"
+	        'org-marker marker 'org-hd-marker marker
+	        'org-todo-regexp org-todo-regexp
+	        'level level
+	        'org-complex-heading-regexp org-complex-heading-regexp
+                'urgency 1000
+	        'priority 1000
+	        'type "search")
+	      (push txt ee)
+	      (goto-char (max (1- end) last-search-end))))))
+      (nreverse ee))))
+
 (provide 'org-agenda-search)
 
 ;;; org-agenda-search.el ends here

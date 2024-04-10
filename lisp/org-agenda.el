@@ -3620,19 +3620,6 @@ START-DAY is an absolute time value."
 
 (defvar org-agenda-search-history nil)
 
-(defvar org-search-syntax-table nil
-  "Special syntax table for Org search.
-In this table, we have single quotes not as word constituents, to
-that when \"+Ameli\" is searched as a work, it will also match \"Ameli's\"")
-
-(defvar org-mode-syntax-table) ; From org.el
-(defun org-search-syntax-table ()
-  (unless org-search-syntax-table
-    (setq org-search-syntax-table (copy-syntax-table org-mode-syntax-table))
-    (modify-syntax-entry ?' "." org-search-syntax-table)
-    (modify-syntax-entry ?` "." org-search-syntax-table))
-  org-search-syntax-table)
-
 (defvar org-agenda-last-search-view-search-was-boolean nil)
 
 ;;;###autoload
@@ -3685,18 +3672,10 @@ is active."
     (setq todo-only (car org-agenda-overriding-arguments)
 	  string (nth 1 org-agenda-overriding-arguments)
 	  edit-at (nth 2 org-agenda-overriding-arguments)))
-  (let* ((props (list 'face nil
-		      'done-face 'org-agenda-done
-		      'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
-		      'mouse-face 'highlight
-		      'help-echo "mouse-2 or RET jump to location"))
-	 (full-words org-agenda-search-view-force-full-words)
+  (let* ((full-words org-agenda-search-view-force-full-words)
 	 (org-agenda-text-search-extra-files org-agenda-text-search-extra-files)
-	 regexp rtn rtnall files file pos inherited-tags
-	 marker category level tags c neg re boolean
-	 ee txt beg end last-search-end words regexps+ regexps- hdl-only buffer beg1 str)
+	 rtn rtnall files file pos
+	 c neg re boolean words regexps+ regexps- hdl-only buffer)
     (unless (and (not edit-at)
 		 (stringp string)
 		 (string-match "\\S-" string))
@@ -3786,11 +3765,6 @@ is active."
 	(push (mapconcat #'regexp-quote words "\\s-+")
 	      regexps+))
       (setq regexps+ (sort regexps+ (lambda (a b) (> (length a) (length b)))))
-      (if (not regexps+)
-	  (setq regexp org-outline-regexp-bol)
-	(setq regexp (pop regexps+))
-	(when hdl-only (setq regexp (concat org-outline-regexp-bol ".*?"
-					    regexp))))
       (setq files (org-agenda-files nil 'ifmode))
       ;; Add `org-agenda-text-search-extra-files' unless there is some
       ;; restriction.
@@ -3808,98 +3782,26 @@ is active."
 				(file-equal-p a b))))
 	    rtnall nil)
       (while (setq file (pop files))
-	(setq ee nil)
-	(catch 'nextfile
-	  (org-check-agenda-file file)
-	  (setq buffer (if (file-exists-p file)
-			   (org-get-agenda-file-buffer file)
-			 (error "No such file %s" file)))
-	  (unless buffer
-	    ;; If file does not exist, make sure an error message is sent
-	    (setq rtn (list (format "ORG-AGENDA-ERROR: No such org-file %s"
-				    file))))
-	  (with-current-buffer buffer
-	    (with-syntax-table (org-search-syntax-table)
-	      (unless (derived-mode-p 'org-mode)
-		(error "Agenda file %s is not in Org mode" file))
-	      (let ((case-fold-search t))
-		(save-excursion
-		  (save-restriction
-		    (if (eq buffer org-agenda-restrict)
-			(narrow-to-region org-agenda-restrict-begin
-					  org-agenda-restrict-end)
-		      (widen))
-		    (goto-char (point-min))
-		    (unless (or (org-at-heading-p)
-				(outline-next-heading))
-		      (throw 'nextfile t))
-		    (goto-char (max (point-min) (1- (point))))
-		    (while (re-search-forward regexp nil t)
-                      (setq last-search-end (point))
-		      (org-back-to-heading t)
-		      (while (and (not (zerop org-agenda-search-view-max-outline-level))
-				  (> (org-reduced-level (org-outline-level))
-				     org-agenda-search-view-max-outline-level)
-				  (forward-line -1)
-				  (org-back-to-heading t)))
-		      (skip-chars-forward "* ")
-                      (setq beg (line-beginning-position)
-			    beg1 (point)
-			    end (progn
-				  (outline-next-heading)
-				  (while (and (not (zerop org-agenda-search-view-max-outline-level))
-					      (> (org-reduced-level (org-outline-level))
-						 org-agenda-search-view-max-outline-level)
-					      (forward-line 1)
-					      (outline-next-heading)))
-				  (point)))
-
-		      (catch :skip
-			(goto-char beg)
-			(org-agenda-skip)
-			(setq str (buffer-substring-no-properties
-                                   (line-beginning-position)
-                                   (if hdl-only (line-end-position) end)))
-			(mapc (lambda (wr) (when (string-match wr str)
-					     (goto-char (1- end))
-					     (throw :skip t)))
-			      regexps-)
-			(mapc (lambda (wr) (unless (string-match wr str)
-					     (goto-char (1- end))
-					     (throw :skip t)))
-			      (if todo-only
-				  (cons (concat "^\\*+[ \t]+"
-                                                org-not-done-regexp)
-					regexps+)
-				regexps+))
-			(goto-char beg)
-			(setq marker (org-agenda-new-marker (point))
-			      category (org-get-category)
-			      level (make-string (org-reduced-level (org-outline-level)) ? )
-			      inherited-tags
-			      (or (eq org-agenda-show-inherited-tags 'always)
-				  (and (listp org-agenda-show-inherited-tags)
-				       (memq 'todo org-agenda-show-inherited-tags))
-				  (and (eq org-agenda-show-inherited-tags t)
-				       (or (eq org-agenda-use-tag-inheritance t)
-					   (memq 'todo org-agenda-use-tag-inheritance))))
-			      tags (org-get-tags nil (not inherited-tags))
-			      txt (org-agenda-format-item
-				   ""
-				   (buffer-substring-no-properties
-                                    beg1 (line-end-position))
-				   level category tags t))
-			(org-add-props txt props
-			  'org-marker marker 'org-hd-marker marker
-			  'org-todo-regexp org-todo-regexp
-			  'level level
-			  'org-complex-heading-regexp org-complex-heading-regexp
-                          'urgency 1000
-			  'priority 1000
-			  'type "search")
-			(push txt ee)
-			(goto-char (max (1- end) last-search-end))))))))))
-	(setq rtn (nreverse ee))
+	(org-check-agenda-file file)
+	(setq buffer (if (file-exists-p file)
+			 (org-get-agenda-file-buffer file)
+		       (error "No such file %s" file)))
+	(unless buffer
+	  ;; If file does not exist, make sure an error message is sent
+	  (setq rtn (list (format "ORG-AGENDA-ERROR: No such org-file %s"
+				  file))))
+	(with-current-buffer buffer
+          (unless (derived-mode-p 'org-mode)
+            (error "Agenda file %s is not in Org mode" file))
+          (save-excursion
+            (save-restriction
+              (if (eq buffer org-agenda-restrict)
+		  (narrow-to-region org-agenda-restrict-begin
+				    org-agenda-restrict-end)
+		(widen))
+              (setq rtn (org-agenda-get-regexps
+                         regexps+ regexps- hdl-only todo-only
+                         org-agenda-search-view-max-outline-level)))))
 	(setq rtnall (append rtnall rtn)))
       (org-agenda--insert-overriding-header
 	(with-temp-buffer
