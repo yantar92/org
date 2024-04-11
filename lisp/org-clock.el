@@ -3194,8 +3194,6 @@ PROPERTIES: The list properties specified in the `:properties' parameter
 		       (lambda ()
 			 (let* ((todo (org-get-todo-state))
 				(tags-list (org-get-tags))
-				(org-scanner-tags tags-list)
-				(org-trust-scanner-tags t)
                                 (level (org-current-level)))
 			   (funcall matcher todo tags-list level)))))
       (goto-char (point-min))

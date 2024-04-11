@@ -193,7 +193,7 @@ are shown."
 	     org-warn-days)))
 
 (defalias 'org-tags-sparse-tree 'org-match-sparse-tree)
-(defun org-match-sparse-tree (&optional todo-only match)
+(defun org-match-sparse-tree (&optional todo-only match start-level)
   "Create a sparse tree according to tags string MATCH.
 
 MATCH is a string with match syntax.  It can contain a selection
@@ -201,13 +201,29 @@ of tags (\"+work+urgent-boss\"), properties (\"LEVEL>3\"), and
 TODO keywords (\"TODO=\\\"WAITING\\\"\") or a combination of
 those.  See the manual for details.
 
-If optional argument TODO-ONLY is non-nil, only select lines that
-are also TODO tasks."
+If optional argument TODO-ONLY is non-nil, only select lines that are
+also TODO tasks.  START-LEVEL can be a string with asterisks, reducing
+the scope to headlines matching this string."
   (interactive "P")
   (org-agenda-prepare-buffers (list (current-buffer)))
   (let ((org--matcher-tags-todo-only todo-only))
-    (org-scan-tags 'sparse-tree (cdr (org-make-tags-matcher match t))
-		   org--matcher-tags-todo-only)))
+    (org-cycle-overview)
+    (org-remove-occur-highlights)
+    (org-scan-tags
+     (lambda ()
+       (and org-highlight-sparse-tree-matches
+	    (org-get-heading) (match-end 0)
+	    (org-highlight-new-match
+	     (match-beginning 1) (match-end 1)))
+       (org-fold-show-context 'tags-tree))
+     (if (stringp match)
+         (cdr (org-make-tags-matcher match t))
+       match)
+     org--matcher-tags-todo-only
+     start-level
+     'ignore-agenda-skip)
+    (unless org-sparse-tree-open-archived-trees
+      (org-fold-hide-archived-subtrees (point-min) (point-max)))))
 
 (defun org-check-before-date (d)
   "Check if there are deadlines or scheduled entries before date D."

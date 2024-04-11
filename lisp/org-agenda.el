@@ -4006,9 +4006,8 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
 		      (narrow-to-region org-agenda-restrict-begin
 					org-agenda-restrict-end)
 		    (widen))
-		  (setq rtn (org-scan-tags 'agenda
-					   matcher
-					   org--matcher-tags-todo-only))
+		  (setq rtn (org-agenda-get-tags
+			     matcher org--matcher-tags-todo-only))
 		  (setq rtnall (append rtnall rtn))))))))
       (org-agenda--insert-overriding-header
         (with-temp-buffer

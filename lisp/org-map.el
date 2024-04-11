@@ -33,6 +33,7 @@
 (require 'org-tags)
 (require 'org-mode)
 (require 'org-agenda-files)
+(require 'org-agenda-search)
 
 (defvar org-not-done-regexp)
 (defvar org-todo-regexp)
@@ -61,28 +62,6 @@
 (declare-function org-narrow-to-subtree "org")
 (declare-function org-agenda-prepare-buffers "org-agenda")
 (declare-function org-add-archive-files "org-archive")
-
-(defcustom org-tags-match-list-sublevels t
-  "Non-nil means list also sublevels of headlines matching a search.
-This variable applies to tags/property searches, and also to stuck
-projects because this search is based on a tags match as well.
-
-When set to the symbol `indented', sublevels are indented with
-leading dots.
-
-Because of tag inheritance (see variable `org-use-tag-inheritance'),
-the sublevels of a headline matching a tag search often also match
-the same search.  Listing all of them can create very long lists.
-Setting this variable to nil causes subtrees of a match to be skipped.
-
-This variable is semi-obsolete and probably should always be true.  It
-is better to limit inheritance to certain tags using the variables
-`org-use-tag-inheritance' and `org-tags-exclude-from-inheritance'."
-  :group 'org-tags
-  :type '(choice
-	  (const :tag "No, don't list them" nil)
-	  (const :tag "Yes, do list them" t)
-	  (const :tag "List them, indented with leading dots" indented)))
 
 (defun org-map-tree (fun)
   "Call FUN for every heading underneath the current one."
@@ -126,174 +105,8 @@ Optional arguments START and END can be used to limit the range."
               (funcall function))))))))
 
 (defvar org-agenda-archives-mode)
-(defvar org-map-continue-from nil
-  "Position from where mapping should continue.
-Can be set by the action argument to `org-scan-tags' and `org-map-entries'.")
-
-(defvar org-scanner-tags nil
-  "The current tag list while the tags scanner is running.")
-
-(defvar org-trust-scanner-tags nil
-  "Should `org-get-tags' use the tags for the scanner.
-This is for internal dynamical scoping only.
-When this is non-nil, the function `org-get-tags' will return the value
-of `org-scanner-tags' instead of building the list by itself.  This
-can lead to large speed-ups when the tags scanner is used in a file with
-many entries, and when the list of tags is retrieved, for example to
-obtain a list of properties.  Building the tags list for each entry in such
-a file becomes an N^2 operation - but with this variable set, it scales
-as N.")
 
 (defvar org--matcher-tags-todo-only nil)
-
-(defun org-scan-tags (action matcher todo-only &optional start-level)
-  "Scan headline tags with inheritance and produce output ACTION.
-
-ACTION can be `sparse-tree' to produce a sparse tree in the current buffer,
-or `agenda' to produce an entry list for an agenda view.  It can also be
-a Lisp form or a function that should be called at each matched headline, in
-this case the return value is a list of all return values from these calls.
-
-MATCHER is a function accepting three arguments, returning
-a non-nil value whenever a given set of tags qualifies a headline
-for inclusion.  See `org-make-tags-matcher' for more information.
-As a special case, it can also be set to t (respectively nil) in
-order to match all (respectively none) headline.
-
-When TODO-ONLY is non-nil, only lines with a TODO keyword are
-included in the output.
-
-START-LEVEL can be a string with asterisks, reducing the scope to
-headlines matching this string."
-  (require 'org-agenda)
-  (let* ((heading-re
-          (concat ;;FIXME: use cache
-           "^"
-           (if start-level
-	       ;; Get the correct level to match
-	       (concat "\\*\\{" (number-to-string start-level) "\\} ")
-	     org-outline-regexp)))
-	 (props (list 'face 'default
-		      'done-face 'org-agenda-done
-		      'undone-face 'default
-		      'mouse-face 'highlight
-		      'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
-		      'help-echo
-		      (format "mouse-2 or RET jump to Org file %S"
-			      (abbreviate-file-name
-			       (or (buffer-file-name (buffer-base-buffer))
-				   (buffer-name (buffer-base-buffer)))))))
-	 (org-map-continue-from nil)
-         tags-list rtn rtn1 level category txt
-	 todo marker priority
-	 ts-date ts-date-type ts-date-pair)
-    (unless (or (member action '(agenda sparse-tree)) (functionp action))
-      (setq action (list 'lambda nil action)))
-    (save-excursion
-      (goto-char (point-min))
-      (when (eq action 'sparse-tree)
-	(org-cycle-overview)
-	(org-remove-occur-highlights))
-      (org-element-cache-map
-       (lambda (el)
-         (goto-char (org-element-begin el))
-         (setq todo (org-element-property :todo-keyword el)
-               level (org-element-property :level el)
-               category (org-entry-get-with-inheritance "CATEGORY" nil el)
-               tags-list (org-get-tags el)
-               org-scanner-tags tags-list)
-         (when (eq action 'agenda)
-           (setq ts-date-pair (org-agenda-entry-get-agenda-timestamp el)
-		 ts-date (car ts-date-pair)
-		 ts-date-type (cdr ts-date-pair)))
-         (catch :skip
-           (when (and
-
-		  ;; eval matcher only when the todo condition is OK
-		  (and (or (not todo-only) (member todo org-todo-keywords-1))
-		       (if (functionp matcher)
-			   (let ((case-fold-search t) (org-trust-scanner-tags t))
-			     (funcall matcher todo tags-list level))
-			 matcher))
-
-		  ;; Call the skipper, but return t if it does not
-		  ;; skip, so that the `and' form continues evaluating.
-		  (progn
-		    (unless (eq action 'sparse-tree) (org-agenda-skip el))
-		    t)
-
-		  ;; Check if timestamps are deselecting this entry
-		  (or (not todo-only)
-		      (and (member todo org-todo-keywords-1)
-			   (or (not org-agenda-tags-todo-honor-ignore-options)
-			       (not (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item))))))
-
-	     ;; select this headline
-	     (cond
-	      ((eq action 'sparse-tree)
-	       (and org-highlight-sparse-tree-matches
-		    (org-get-heading) (match-end 0)
-		    (org-highlight-new-match
-		     (match-beginning 1) (match-end 1)))
-	       (org-fold-show-context 'tags-tree))
-	      ((eq action 'agenda)
-               (let* ((effort (org-entry-get (point) org-effort-property))
-                      (effort-minutes (when effort (save-match-data (org-duration-to-minutes effort)))))
-	         (setq txt (org-agenda-format-item
-			    ""
-                            ;; Add `effort' and `effort-minutes'
-                            ;; properties for prefix format.
-                            (org-add-props
-                                (concat
-			         (if (eq org-tags-match-list-sublevels 'indented)
-			             (make-string (1- level) ?.) "")
-			         (org-get-heading))
-                                nil
-                              'effort effort
-                              'effort-minutes effort-minutes)
-			    (make-string level ?\s)
-			    category
-			    tags-list)
-		       priority (org-get-priority txt))
-                 ;; Now add `effort' and `effort-minutes' to
-                 ;; full agenda line.
-                 (setq txt (org-add-props txt nil
-                             'effort effort
-                             'effort-minutes effort-minutes)))
-	       (goto-char (org-element-begin el))
-	       (setq marker (org-agenda-new-marker))
-	       (org-add-props txt props
-		 'org-marker marker 'org-hd-marker marker 'org-category category
-		 'todo-state todo
-                 'ts-date ts-date
-		 'priority priority
-                 'type (concat "tagsmatch" ts-date-type))
-	       (push txt rtn))
-	      ((functionp action)
-	       (setq org-map-continue-from nil)
-	       (save-excursion
-		 (setq rtn1 (funcall action))
-		 (push rtn1 rtn)))
-	      (t (user-error "Invalid action")))
-
-	     ;; if we are to skip sublevels, jump to end of subtree
-	     (unless org-tags-match-list-sublevels
-	       (goto-char (1- (org-element-end el))))))
-         ;; Get the correct position from where to continue
-	 (when org-map-continue-from
-           (setq org-element-cache-map-continue-from org-map-continue-from)
-	   (goto-char org-map-continue-from))
-         ;; Return nil.
-         nil)
-       :next-re heading-re
-       :fail-re heading-re
-       :narrow t))
-    (when (and (eq action 'sparse-tree)
-	       (not org-sparse-tree-open-archived-trees))
-      (org-fold-hide-archived-subtrees (point-min) (point-max)))
-    (nreverse rtn)))
 
 (defvar org-cached-props nil)
 (defun org-cached-entry-get (pom property)

@@ -33,6 +33,7 @@
 
 (require 'cl-lib)
 (require 'org)
+(require 'org-agenda-search)
 
 (defvar org-ts-regexp)
 
