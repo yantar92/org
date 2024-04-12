@@ -26,6 +26,8 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'org-load)
+
 (when (< emacs-major-version 28)  ; preloaded in Emacs 28
   (require 'easymenu))
 (require 'org-element)
@@ -38,7 +40,6 @@
   (and (not (org-before-first-heading-p))
        (not (org-at-table-p))))
 
-(declare-function org-require-autoloaded-modules "org")
 (defun org-create-customize-menu ()
   "Create a full customization menu for Org mode, insert it into the menu."
   (interactive)

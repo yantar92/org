@@ -925,6 +925,9 @@ The following commands are available:
   ;; Remove folds when changing major mode
   (add-hook 'change-major-mode-hook
             #'org-fold-show-all 'append 'local))
+(when (fboundp 'abbrev-table-put)
+  (abbrev-table-put org-mode-abbrev-table
+		    :parents (list text-mode-abbrev-table)))
 
 (defun org-mode-restart ()
   "Restart `org-mode'."
