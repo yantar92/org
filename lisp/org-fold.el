@@ -643,6 +643,8 @@ be shown."
 	 ((cdr (assq key org-fold-show-context-detail)))
 	 (t (cdr (assq 'default org-fold-show-context-detail))))))
 
+(defvar org-fold-visibility-detail nil
+  "Detail setting when `org-fold-show-set-visibility' is called.")
 
 (defvar org-hide-emphasis-markers); Defined in org.el
 (defvar org-pretty-entities); Defined in org.el
@@ -651,55 +653,56 @@ be shown."
 DETAIL is either nil, `minimal', `local', `ancestors',
 `ancestors-full', `lineage', `tree', `canonical' or t.  See
 `org-show-context-detail' for more information."
-  ;; Show current heading and possibly its entry, following headline
-  ;; or all children.
-  (if (and (org-at-heading-p) (not (eq detail 'local)))
-      (org-fold-heading nil)
-    (org-fold-show-entry)
-    ;; If point is hidden make sure to expose it.
-    (when (org-invisible-p)
-      ;; FIXME: No clue why, but otherwise the following might not work.
-      (redisplay)
-      ;; Reveal emphasis markers.
-      (when (eq detail 'local)
-        (let (org-hide-emphasis-markers
-              org-link-descriptive
-              org-pretty-entities
-              (org-hide-macro-markers nil)
-              (region (or (org-find-text-property-region (point) 'org-emphasis)
-                          (org-find-text-property-region (point) 'org-macro)
-                          (org-find-text-property-region (point) 'invisible))))
-          ;; Silence byte-compiler.
-          (ignore org-hide-macro-markers)
-          (when region
-            (org-with-point-at (car region)
-              (forward-line 0)
-              (let (font-lock-extend-region-functions)
-                (font-lock-fontify-region (max (point-min) (1- (car region))) (cdr region)))))))
-      (let (region)
-        (dolist (spec (org-fold-core-folding-spec-list))
-          (setq region (org-fold-get-region-at-point spec))
-          (when region
-            (org-fold-region (car region) (cdr region) nil spec)))))
-    (unless (org-before-first-heading-p)
-      (org-with-limited-levels
-       (cl-case detail
-	 ((tree canonical t) (org-fold-show-children))
-	 ((nil minimal ancestors ancestors-full))
-	 (t (save-excursion
-	      (outline-next-heading)
-	      (org-fold-heading nil)))))))
-  ;; Show whole subtree.
-  (when (eq detail 'ancestors-full) (org-fold-show-subtree))
-  ;; Show all siblings.
-  (when (eq detail 'lineage) (org-fold-show-siblings))
-  ;; Show ancestors, possibly with their children.
-  (when (memq detail '(ancestors ancestors-full lineage tree canonical t))
-    (save-excursion
-      (while (org-up-heading-safe)
-	(org-fold-heading nil)
-	(when (memq detail '(canonical t)) (org-fold-show-entry))
-	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
+  (let ((org-fold-visibility-detail detail))
+    ;; Show current heading and possibly its entry, following headline
+    ;; or all children.
+    (if (and (org-at-heading-p) (not (eq detail 'local)))
+        (org-fold-heading nil)
+      (org-fold-show-entry)
+      ;; If point is hidden make sure to expose it.
+      (when (org-invisible-p)
+        ;; FIXME: No clue why, but otherwise the following might not work.
+        (redisplay)
+        ;; Reveal emphasis markers.
+        (when (eq detail 'local)
+          (let (org-hide-emphasis-markers
+                org-link-descriptive
+                org-pretty-entities
+                (org-hide-macro-markers nil)
+                (region (or (org-find-text-property-region (point) 'org-emphasis)
+                            (org-find-text-property-region (point) 'org-macro)
+                            (org-find-text-property-region (point) 'invisible))))
+            ;; Silence byte-compiler.
+            (ignore org-hide-macro-markers)
+            (when region
+              (org-with-point-at (car region)
+                (forward-line 0)
+                (let (font-lock-extend-region-functions)
+                  (font-lock-fontify-region (max (point-min) (1- (car region))) (cdr region)))))))
+        (let (region)
+          (dolist (spec (org-fold-core-folding-spec-list))
+            (setq region (org-fold-get-region-at-point spec))
+            (when region
+              (org-fold-region (car region) (cdr region) nil spec)))))
+      (unless (org-before-first-heading-p)
+        (org-with-limited-levels
+         (cl-case detail
+	   ((tree canonical t) (org-fold-show-children))
+	   ((nil minimal ancestors ancestors-full))
+	   (t (save-excursion
+	        (outline-next-heading)
+	        (org-fold-heading nil)))))))
+    ;; Show whole subtree.
+    (when (eq detail 'ancestors-full) (org-fold-show-subtree))
+    ;; Show all siblings.
+    (when (eq detail 'lineage) (org-fold-show-siblings))
+    ;; Show ancestors, possibly with their children.
+    (when (memq detail '(ancestors ancestors-full lineage tree canonical t))
+      (save-excursion
+        (while (org-up-heading-safe)
+	  (org-fold-heading nil)
+	  (when (memq detail '(canonical t)) (org-fold-show-entry))
+	  (when (memq detail '(tree canonical t)) (org-fold-show-children)))))))
 
 (defun org-fold-reveal (&optional siblings)
   "Show current entry, hierarchy above it, and the following headline.
@@ -888,12 +891,14 @@ The detailed reaction depends on the user option
 	     (or (org-invisible-p)
 		 (org-invisible-p (max (point-min) (1- (point))))))
     ;; OK, we need to take a closer look.  Only consider invisibility
-    ;; caused by folding of headlines, drawers, and blocks.  Edits
-    ;; inside links will be handled by font-lock.
-    (let* ((invisible-at-point (org-fold-folded-p (point) '(headline drawer block)))
+    ;; caused by folding of headlines, drawers, blocks, or ANSI
+    ;; sequences.  Edits inside links will be handled by font-lock.
+    (let* ((invisible-at-point (or (org-fold-folded-p (point) '(headline drawer block))
+                                   (eq (get-text-property (point) 'invisible) 'org-ansi)))
 	   (invisible-before-point
 	    (and (not (bobp))
-	         (org-fold-folded-p (1- (point)) '(headline drawer block))))
+                 (or (org-fold-folded-p (1- (point)) '(headline drawer block))
+                     (eq (get-text-property (1- (point)) 'invisible) 'org-ansi))))
 	   (border-and-ok-direction
 	    (or
 	     ;; Check if we are acting predictably before invisible

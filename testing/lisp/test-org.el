@@ -28,6 +28,8 @@
 (require 'org-inlinetask)
 (require 'org-refile)
 (require 'org-agenda)
+(require 'faceup)
+
 
 
 ;;; Helpers
@@ -2240,6 +2242,317 @@ text
             (org-test-without-dow
              (org-test-with-result 'buffer
                (org-clone-subtree-with-time-shift 1 "-2h")))))))
+
+
+;;; ANSI sequences
+
+(ert-deftest test-org/ansi-sequence-fontification ()
+  "Test correct behavior of ANSI sequences."
+  (let ((org-fontify-ansi-sequences t))
+    (cl-labels
+        ((faceup
+           (text)
+           (org-test-with-temp-text text
+             (org-ansi-mode)
+             (font-lock-ensure)
+             (let ((fontified (current-buffer)))
+               (with-temp-buffer
+                 (faceup-markup-to-buffer (current-buffer) fontified)
+                 (buffer-string)))))
+         (test
+           (text text-faceup)
+           ;; Don't spill over sequences to the rest of the terminal
+           ;; when a test fails.
+           (setq text (concat text "\n[0m\n")
+                 text-faceup (concat text-faceup "\n[0m\n"))
+           (should (faceup-test-equal (faceup text) text-faceup))))
+      (cl-macrolet ((face (f &rest args)
+                      (let* ((short-name (alist-get f faceup-face-short-alist))
+                             (name (or short-name f))
+                             (prefix (format (if short-name "%s:" "%S:") name)))
+                        (unless short-name
+                          (cl-callf2 concat ":" prefix))
+                        (cl-callf2 concat "«" prefix)
+                        `(concat ,prefix ,@args "»")))
+                    (fg (&rest args) `(face (:foreground "green3") ,@args))
+                    (bg (&rest args) `(face (:background "green3") ,@args))
+                    (fg-bg (&rest args) `(fg (bg ,@args)))
+                    (bold (&rest args) `(face bold ,@args))
+                    (org (text) `(faceup ,text))
+                    (fg-start () "[32m")
+                    (bg-start () "[42m")
+                    (clear () "[0m"))
+        ;; Objects
+        ;; Sequence's effect remains in object...
+        (test
+         (concat "1 An *obj" (fg-start) "ect*. text after\n")
+         (concat "1 An " (bold "*obj" (fg-start) (fg "ect") "*") ". text after\n"))
+        ;; ...except when there where sequences at the element level previously.
+        (test
+         (concat "2 " (fg-start) "text *obj" (bg-start) "ect*. text after\n")
+         (concat "2 " (fg-start) (fg "text ")
+                 (bold (fg "*obj") (bg-start) (fg-bg "ect*"))
+                 (fg-bg ". text after") "\n"))
+        ;; Sequence in object before sequence at element level.
+        (test
+         (concat
+          "3 *obj" (fg-start) "ect*. text "
+          (bg-start) "after\n")
+         (concat
+          "3 " (bold "*obj" (fg-start) (fg "ect") "*") ". text "
+          (bg-start) (bg "after") "\n"))
+        ;; Clearing the ANSI context in a paragraph, resets things so
+        ;; that sequences appearing in objects later in the paragraph
+        ;; have their effects localized to the objects.
+        (test
+         (concat
+          "4 *obj" (fg-start) "ect* " (fg-start) " text"
+          (clear) " text *obj" (bg-start) "ect* more text\n")
+         (concat
+          "4 " (bold "*obj" (fg-start) (fg "ect") "*") " " (fg-start) (fg " text")
+          (clear) " text " (bold "*obj" (bg-start) (bg "ect") "*") " more text\n"))
+        ;; Tables
+        (test
+         (concat
+          "#+RESULTS:\n"
+          "| " (fg-start) "10a | b |\n"
+          "| c | d |\n")
+         (concat
+          (org "#+RESULTS:\n")
+          (face org-table "| " (fg-start) (fg "10a") " | " (fg "b") " |") (face org-table-row "\n")
+          (face org-table "| " (fg "c") " | " (fg "d") " |") (face org-table-row "\n")))
+        (test
+         (concat
+          "| " (fg-start) "5a | b |\n"
+          "| cell  | d |\n")
+         (concat
+          (face org-table "| " (fg-start) (fg "5a")" | " (fg "b") " |") (face org-table-row "\n")
+          (face org-table "| cell" "  | d |") (face org-table-row "\n")))
+        ;; Paragraphs
+        (test
+         (concat
+          (fg-start) "6 paragraph1\ntext\n"
+          "\nparagraph2\n\n"
+          (fg-start) "text src_python{return 1 + 1} "
+          (bg-start) "more text\n")
+         (concat
+          (fg-start) (fg "6 paragraph1") "\n"
+          (fg "text") "\n"
+          "\nparagraph2\n\n"
+          ;; Effect of sequences skips inline source blocks.
+          (fg-start) (fg "text ") (org "src_python{return 1 + 1} ")
+          (bg-start) (fg (bg "more text")) "\n"))
+        ;; Don't fontify whitespace 
+        ;; Fixed width
+        (test
+         (concat
+          "#+RESULTS:\n"
+          ": 4 one " (fg-start) "two\n"
+          ": three\n")
+         (concat
+          (org "#+RESULTS:\n")
+          (face org-code
+                ": 4 one " (fg-start) (fg "two") "\n"
+                ": " (fg "three") "\n")))
+        ;; Blocks
+        (test
+         (concat
+          "#+begin_example\n"
+          "5 li " (fg-start) "ne 1\n"
+          "line 2\n"
+          "line 3\n"
+          "#+end_example\n"
+          "\ntext after\n")
+         (concat
+          (face org-block-begin-line "#+begin_example\n")
+          (face org-block
+                "5 li " (fg-start) (fg "ne 1\n"
+                                       "line 2\n"
+                                       "line 3\n"))
+          (face org-block-end-line "#+end_example\n")
+          "\ntext after\n"))
+        ;; Avoid processing some elements according to
+        ;; `org-ansi-highlightable-elements' or
+        ;; `org-ansi-highlightable-objects'.
+        (let ((org-ansi-highlightable-objects
+               (delete 'verbatim org-ansi-highlightable-objects))
+              (org-ansi-highlightable-elements
+               (delete 'src-block org-ansi-highlightable-elements)))
+          (test
+           (concat
+            "6 =verb" (fg-start) "atim=\n\n"
+            "#+begin_src python\n"
+            "return \"str " (fg-start) "ing\"\n"
+            "#+end_src\n")
+           (org
+            (concat
+             "6 =verb" (fg-start) "atim=\n\n"
+             "#+begin_src python\n"
+             "return \"str " (fg-start) "ing\"\n"
+             "#+end_src\n"))))
+        ;; Headlines
+        (test
+         (concat
+          "* 7 Head" (fg-start) "line 1\n"
+          "\ntext after\n")
+         (concat
+          (face org-level-1 "* 7 Head" (fg-start) (fg "line 1")) "\n"
+          "\ntext after\n"))
+        ;; Sequences span the whole list with a RESULTS affiliated
+        ;; keyword.
+        (test
+         (concat
+          "- " (fg-start) "one\n"
+          "  - two\n"
+          "- three\n\n"
+          "#+RESULTS:\n"
+          "- " (fg-start) "one\n"
+          "  - two\n"
+          "- three\n")
+         (concat
+          "- " (fg-start) (fg "one") "\n"
+          "  - two\n"
+          "- three\n\n"
+          (org "#+RESULTS:\n")
+          "- " (fg-start) (fg "one") "\n"
+          "  - " (fg "two") "\n"
+          "- " (fg "three") "\n"))
+        ;; Test that the context is being picked up by the elements.
+        (test
+         (concat
+          "#+RESULTS:\n"
+          "| " (fg-start) "b | c |\n"
+          "|---+---|\n"
+          "| a | b |\n\n"
+          "paragraph1\n\n"
+          "-----\n\n"
+          "paragraph2\n")
+         (concat
+          (org "#+RESULTS:\n")
+          (face org-table "| " (fg-start) (fg "b") " | " (fg "c") " |") (face org-table-row "\n")
+          (face org-table "|---+---|") (face org-table-row "\n")
+          (face org-table "| " (fg "a") " | " (fg "b") " |") (face org-table-row "\n")
+          "\nparagraph1\n\n"
+          "-----\n\n"
+          "paragraph2\n"))
+        (test
+         (concat
+          "#+RESULTS:\n"
+          ":drawer:\n"
+          (fg-start) "paragraph\n\n"
+          "#+begin_center\n"
+          "- item1\n"
+          "- item2\n"
+          "  - item3\n"
+          "#+end_center\n\n"
+          "paragraph2\n"
+          ":end:\n")
+         (concat
+          (org "#+RESULTS:\n")
+          (org ":drawer:\n")
+          (fg-start) (fg "paragraph") "\n\n"
+          (face org-block-begin-line "#+begin_center\n")
+          "- " (fg "item1") "\n"
+          "- " (fg "item2") "\n"
+          "  - " (fg "item3") "\n"
+          (face org-block-end-line "#+end_center\n") "\n"
+          (fg "paragraph2") "\n"
+          (org ":end:\n")))))))
+
+(ert-deftest test-org/ansi-sequence-editing ()
+  (cl-labels ((test (text-faceup)
+                (let ((fontified (current-buffer)))
+                  (with-temp-buffer
+                    (faceup-markup-to-buffer (current-buffer) fontified)
+                    (should (faceup-test-equal (buffer-string) text-faceup)))))
+              (test-lines (n text-faceup)
+                (font-lock-ensure (line-beginning-position) (1+ (line-end-position n)))
+                (save-restriction
+                  (narrow-to-region (line-beginning-position) (1+ (line-end-position n)))
+                  (test text-faceup))))
+      (cl-macrolet ((face (f &rest args) `(concat "«" ,(format ":%S:" f) ,@args "»"))
+                    (fg (&rest args) `(face (:foreground "green3") ,@args))
+                    (fg-start () "[32m")
+                    (clear () "[0m"))
+        ;; Check integration with
+        ;; `org-fold-check-before-invisible-edit'
+        (org-test-with-temp-text
+            (concat (fg-start) "<point>line1" (clear) "\n"
+                    "line2\n")
+          (org-ansi-mode)
+          (font-lock-ensure)
+          (should (invisible-p (1- (point))))
+          (should-not (invisible-p (point)))
+          (let ((this-command 'org-delete-backward-char))
+            (should-error (call-interactively #'org-delete-backward-char)))
+          (should-not (invisible-p (1- (point)))))
+        ;; Sequence revealed upon modification and hidden after first
+        ;; edit outside of sequence.
+        (org-test-with-temp-text
+            (concat (fg-start) "<point>line1" (clear) "\n"
+                    "line2\n")
+          (org-ansi-mode)
+          (font-lock-ensure)
+          (should (invisible-p (- (point) 2)))
+          (backward-delete-char 1)
+          (font-lock-ensure)
+          (should-not (invisible-p (- (point) 1)))
+          ;; Insert a new end byte.
+          (insert "t")
+          (font-lock-ensure)
+          (should-not (invisible-p (- (point) 2)))
+          (insert "x")
+          (font-lock-ensure)
+          (should (invisible-p (- (point) 2))))
+        ;; fixed-width regions and font-lock-multiline
+        (org-test-with-temp-text
+            (concat ": " (fg-start) "line1\n: line2\n<point>")
+          (org-ansi-mode)
+          (font-lock-ensure)
+          (insert ": line3\n")
+          (forward-line -1)
+          ;; Sequence effects spill over to newly inserted fixed-width line.
+          (test-lines 1 (face org-code ": " (fg "line3") "\n"))
+          (forward-line -1)
+          (goto-char (line-end-position))
+          (insert "text")
+          ;; Editing a line that is affected by some previous line's
+          ;; sequence maintains the effect of that sequence on the
+          ;; line.
+          (test-lines 2 (face org-code
+                              ": " (fg "line2text") "\n"
+                              ": " (fg "line3") "\n")))
+        ;; Test that the highlighting spans all nested elements inside
+        ;; an element with a RESULTS keyword and the highlighting
+        ;; remains after edits to any of the elements.
+        (org-test-with-temp-text
+            (concat "#+RESULTS:\n"
+                    ":drawer:\n"
+                    (fg-start) "paragraph\n\n"
+                    "#+begin_center\n"
+                    "- item1\n"
+                    "- item2\n"
+                    "  - item3\n"
+                    "#+end_center\n\n"
+                    "paragraph2<point>\n"
+                    ":end:\n")
+          (org-ansi-mode)
+          (font-lock-ensure)
+          (insert "more text")
+          (test-lines 1 (concat (fg "paragraph2more text") "\n"))
+          (re-search-backward "item3")
+          (forward-char)
+          (insert "x")
+          (test-lines 1 (concat "  - " (fg "ixtem3") "\n")))
+        ;; Joining paragraphs first looks at the context property of
+        ;; the end of the previous line in `org-ansi-point-context'.
+        (org-test-with-temp-text
+            (concat (fg-start) "paragraph1\n\n<point>paragraph2\n")
+          (org-ansi-mode)
+          (font-lock-ensure)
+          (test-lines 1 "paragraph2\n")
+          (delete-char -1)
+          (test-lines 1 (concat (fg "paragraph2") "\n"))))))
 
 
 ;;; Fixed-Width Areas

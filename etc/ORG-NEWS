@@ -31,6 +31,23 @@ batch scripts.
 # We list the most important features, and the features that may
 # require user action to be used.
 
+*** ANSI escape sequences are now highlighted in the whole buffer
+
+A new customization ~org-fontify-ansi-sequences~ is available which
+tells Org to highlight all ANSI sequences in the buffer if non-nil and
+the new minor mode ~org-ansi-mode~ is enabled.
+
+To disable highlighting of the sequences you can either
+disable ~org-ansi-mode~ or set ~org-fontify-ansi-sequences~ to ~nil~
+and =M-x org-mode-restart RET=.  Doing the latter will disable
+highlighting of sequences in all newly opened Org buffers whereas
+doing the former disables highlighting locally to the current buffer.
+
+The visibility of the ANSI sequences is controlled by the new
+customization ~org-ansi-hide-sequences~ which, if non-nil, makes the
+regions containing the sequences invisible.  The visibility can be
+toggled with =M-x org-toggle-ansi-display RET=.
+
 *** =ol.el=: New =shortdoc= link type
 
 You can now create links to =shortdoc= documentation groups for Emacs

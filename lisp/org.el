@@ -82,6 +82,7 @@
 (require 'find-func)
 (require 'format-spec)
 (require 'thingatpt)
+(require 'ansi-color)
 
 (condition-case nil
     (load (concat (file-name-directory load-file-name)
@@ -3688,6 +3689,12 @@ org-block-begin-line and org-block-end-line faces."
   :group 'org-appearance
   :type 'boolean)
 
+(defcustom org-fontify-ansi-sequences t
+  "Non-nil means to highlight ANSI escape sequences."
+  :group 'org-appearance
+  :type 'boolean
+  :package-version '(Org . "9.8"))
+
 (defcustom org-highlight-latex-and-related nil
   "Non-nil means highlight LaTeX related syntax in the buffer.
 When non-nil, the value should be a list containing any of the
@@ -5627,6 +5634,585 @@ by a #."
 	     (cons beg (or (funcall extend "end" "]" 1) end)))
 	    (t (cons beg end))))))
 
+(defcustom org-ansi-highlightable-elements
+  '(plain-list drawer headline inlinetask table
+               table-row paragraph example-block export-block fixed-width)
+  "A list of element types that will have ANSI sequences processed."
+  :type '(list (symbol :tag "Element Type"))
+  :package-version '(Org . "9.8")
+  :group 'org-appearance)
+
+(defcustom org-ansi-highlightable-objects
+  '(bold code export-snippet italic macro
+    strike-through table-cell underline verbatim)
+  "A list of object types that will have ANSI sequences processed."
+  :type '(list (symbol :tag "Object Type"))
+  :package-version '(Org . "9.8")
+  :group 'org-appearance)
+
+(defcustom org-ansi-hide-sequences t
+  "Non-nil means Org hides ANSI sequences."
+  :type 'boolean
+  :package-version '(Org . "9.8")
+  :group 'org-appearance)
+
+(defvar org-ansi-context nil
+  "The ANSI color context for the buffer.
+An ANSI context has the same structure as defined in
+`ansi-color-context-region'.")
+(make-variable-buffer-local 'org-ansi-context)
+
+(defvar org-ansi-fontify-begin nil
+  "Beginning position for this fontification cycle.")
+
+(defun org-ansi-new-context (&optional pos)
+  "Return a new ANSI context for POS.
+If POS is nil, it defaults to `point'.
+See `org-ansi-context'."
+  (list (list (make-bool-vector 8 nil)
+              nil nil)
+        (copy-marker (or pos (point)))))
+
+(defun org-ansi-copy-context (context)
+  (if (org-ansi-null-context-p context)
+      (list (list (make-bool-vector 8 nil)
+                  nil nil)
+            (make-marker))
+    (let ((basic-faces (make-bool-vector 8 nil)))
+      (bool-vector-union basic-faces (caar context) basic-faces)
+      (list (list basic-faces
+                  (cadar context)
+                  (caddar context))
+            (make-marker)))))
+
+(defun org-ansi-null-context-p (context)
+  "Return non-nil if CONTEXT does not set a face when applied to a region.
+See `org-ansi-context'."
+  (let ((vec (car context)))
+    (and (zerop (bool-vector-count-population (car vec)))
+         (null (cadr vec))
+         (null (caddr vec)))))
+
+(defun org-ansi-clear-context (context)
+  "Destructively clear CONTEXT.
+See `org-ansi-context'."
+  (pcase context
+    (`((,basic-faces . ,colors) . ,_)
+     ;; From `ansi-color--update-face-vec'
+     (bool-vector-intersection basic-faces #&8"\0" basic-faces)
+     (setcar colors nil)
+     (setcar (cdr colors) nil))))
+
+(defvar org-element-greater-elements)
+
+(defun org-ansi-greater-element-context (el)
+  "Return non-nil if ANSI sequences in EL can span multiple elements.
+They can if EL is contained in a greater element with a RESULTS
+affiliated keyword.  Or if EL is such a greater element.
+
+Specifically returns that greater element or nil."
+  (if (and (org-element-property :results el)
+           (memq (org-element-type el) org-ansi-highlightable-elements)
+           (memq (org-element-type el) org-element-greater-elements))
+      el
+    (let ((parent el))
+      (while (and parent
+                  (not (eq (org-element-type parent) 'section))
+                  (not (org-element-property :results parent)))
+        (setq parent (org-element-parent parent)))
+      (when (and parent (not (eq parent el))
+                 (org-element-property :results parent)
+                 (memq (org-element-type parent)
+                       org-ansi-highlightable-elements))
+        parent))))
+
+(defun org-ansi-highlightable-element-p (el)
+  (or (org-ansi-greater-element-context el)
+      (memq (org-element-type el) org-ansi-highlightable-elements)))
+
+(defun org-ansi-context-contained-p (a b)
+  "Return non-nil if ANSI context A is contained in B.
+A is contained in B if some of the effect of A is also in B's
+effect."
+  (pcase-let ((`(,bf-a ,fg-a ,bg-a) (car a))
+              (`(,bf-b ,fg-b ,bg-b) (car b)))
+    (or (not (zerop (bool-vector-count-population
+                     (bool-vector-intersection bf-a bf-b))))
+        (and fg-a (equal fg-a fg-b))
+        (and bg-a (equal bg-a bg-b)))))
+
+;; TODO Consider contexts in objects
+(defun org-ansi-extent-of-context ()
+  "Return the end of the influence of the ANSI context at `point'.
+Return nil if `point' has no ANSI context.
+
+Determining the influence of the context is non-trivial as a
+context's influence can span multiple elements and be contained
+in other contexts."
+  (let ((context (get-text-property (point) 'org-ansi-context)))
+    (when context
+      (let* ((el (org-element-at-point))
+             (pos (next-single-property-change (point) 'org-ansi-context))
+             (end (if-let ((parent (org-ansi-greater-element-context el)))
+                      (org-element-contents-end parent)
+                    (or (org-element-contents-end el)
+                        (org-element-end el)))))
+        (while (and (< pos end)
+                    (let ((other (get-text-property pos 'org-ansi-context)))
+                      (or (null other)
+                          (org-ansi-context-contained-p context other))))
+          (setq pos (next-single-property-change pos 'org-ansi-context nil end)))
+        (unless (get-text-property pos 'org-ansi-context)
+          (setq pos (previous-single-property-change pos 'org-ansi-context)))
+        pos))))
+
+(defvar font-lock-beg)
+(defvar font-lock-end)
+
+(defun org-ansi-extend-region ()
+  (let ((old-end font-lock-end)
+        (end font-lock-end))
+    (save-excursion
+      (goto-char font-lock-beg)
+      (while (< (point) end)
+        (let ((context (get-text-property (point) 'org-ansi-context))
+              (seq-state (get-text-property (point) 'org-ansi)))
+          (if (and context seq-state)
+              (if (and (looking-at ansi-color-control-seq-regexp)
+                       (eq (intern (buffer-substring-no-properties
+                                    (match-beginning 0) (match-end 0)))
+                           (car seq-state)))
+                  (goto-char (next-single-property-change
+                              (point) 'org-ansi-context nil end))
+                ;; Either a sequence was deleted or a sequence was
+                ;; replaced with some other sequence.  Extend the
+                ;; region to include the extent of the changed
+                ;; sequence.
+                (let ((ctx-end (org-ansi-extent-of-context)))
+                  (setq end (max end ctx-end))
+                  (goto-char ctx-end)))
+            (goto-char (next-single-property-change
+                        (point) 'org-ansi-context nil end))))))
+    (unless (eq old-end end)
+      (setq font-lock-end end)
+      t)))
+
+(defun org-ansi-previous-context (pos limit)
+  (let (context)
+    (while (and (< limit pos)
+                (null context))
+      (setq context (get-text-property
+                     (max (1- pos) (point-min)) 'org-ansi-context)
+            pos (previous-single-property-change
+                 pos 'org-ansi-context nil limit)))
+    context))
+
+(defun org-ansi-point-context ()
+  "Return the ANSI context associated with `point'.
+If no context is associated with `point' return nil."
+  (when-let ((context
+              (let ((el (org-element-at-point)))
+                (or (org-ansi-previous-context (point) (org-element-begin el))
+                    (when-let ((parent (org-ansi-greater-element-context el)))
+                      (org-ansi-previous-context
+                       (org-element-begin el)
+                       (org-element-contents-begin parent)))))))
+    (org-ansi-copy-context context)))
+
+(defun org-ansi-process-region (beg end)
+  "Process ANSI sequences in the region (BEG END).
+Use and update the value of `org-ansi-context' during the
+processing."
+  ;; Apply the colors.
+  (move-marker (cadr org-ansi-context) beg)
+  (let ((ansi-color-context-region org-ansi-context)
+        (ansi-color-apply-face-function
+         (lambda (beg end face)
+           (when face
+             (font-lock-prepend-text-property beg end 'face face))
+           (add-text-properties
+            beg end (list 'org-ansi-context
+                          ;; TODO: Only copy when the context has
+                          ;; actually been modified to avoid so many
+                          ;; copies, e.g. during processing of lines.
+                          (org-ansi-copy-context org-ansi-context))))))
+    (ansi-color-apply-on-region beg end t))
+  ;; Make adjustments to the regions containing the sequences.
+  (goto-char beg)
+  (let ((highlight-beg beg))
+    (while (re-search-forward ansi-color-control-seq-regexp end 'noerror)
+      (let ((beg (match-beginning 0))
+            (end (point))
+            (seq (intern (buffer-substring-no-properties beg end))))
+        (remove-text-properties highlight-beg beg '(org-ansi t))
+        (put-text-property beg end 'org-ansi-context
+                           (or (get-text-property end 'org-ansi-context)
+                               ;; Handle edge case that a sequence
+                               ;; occurs at the end of the region
+                               ;; being processed.
+                               (org-ansi-copy-context org-ansi-context)))
+        (setq highlight-beg end)
+        (dolist (ov (overlays-at beg))
+          (when (and (= beg (overlay-start ov))
+                     (= end (overlay-end ov))
+                     (overlay-get ov 'invisible))
+            ;; Assume this is the overlay added by
+            ;; `ansi-color-apply-on-region'.
+            (delete-overlay ov)
+            (pcase-let*
+                (((and state (or (and (pred null) (let new-seq t))
+                                 `(,_ . ,(or
+                                          ;; Previously invisible
+                                          (and (pred numberp) len)
+                                          ;; Previously revealed
+                                          (or `(,len) `(,len ,tick))))))
+                  (get-text-property beg 'org-ansi))
+                 (reveal-due-to-visibility
+                  (and (eq org-fold-visibility-detail 'local)
+                       (<= (1- beg) org-ansi-fontify-begin end)))
+                 (reveal-due-to-modification
+                  (unless new-seq
+                    (or (text-property-not-all beg end 'org-ansi state)
+                        (not (eq (- end beg) len)))))
+                 (invisible
+                  (unless (or reveal-due-to-visibility
+                              reveal-due-to-modification)
+                    'org-ansi)))
+              (let ((new-state (cons seq (- end beg))))
+                ;; Previously revealed due to local visibility
+                ;; changes.
+                (when (and tick invisible
+                           (eq tick (buffer-chars-modified-tick)))
+                  (setq invisible nil
+                        reveal-due-to-visibility t))
+                (unless invisible
+                  (setcdr new-state
+                          (cons (cdr new-state)
+                                (when reveal-due-to-visibility
+                                  (list (buffer-chars-modified-tick))))))
+                (add-text-properties
+                 beg end (list 'invisible invisible
+                               'rear-nonsticky '(org-ansi)
+                               'org-ansi new-state))))))))
+    (remove-text-properties highlight-beg end '(org-ansi t))))
+
+(defun org-ansi-process-object (obj)
+  "Highlight the ANSI sequences contained in OBJ."
+  (org-ansi-process-region
+   (point)
+   (or (org-element-contents-end obj)
+       (- (org-element-end obj)
+          (org-element-post-blank obj)
+          1)))
+  (goto-char (org-element-end obj)))
+
+(defun org-ansi-process-lines (beg end)
+  "Highlight the ANSI sequences of the lines between BEG and END.
+Exclude whitespace at the beginning of the lines."
+  (goto-char beg)
+  (while (< (point) end)
+    (org-ansi-process-region (point) (min end (line-end-position)))
+    (forward-line)
+    (skip-chars-forward " \t"))
+  (goto-char end))
+
+(defvar org-element-all-objects)
+
+(defun org-ansi-process-lines-consider-objects (beg end)
+  "Highlight the ANSI sequences of the lines between BEG and END.
+Consider objects when highlighting."
+  (goto-char beg)
+  (while (re-search-forward ansi-color-control-seq-regexp end 'noerror)
+    (goto-char (match-beginning 0))
+    (let ((seq-end (match-end 0))
+          (el (org-element-context)))
+      ;; If the context is empty and the current sequence lies in an
+      ;; object, relegate the effect of the sequence to the object.
+      (if (org-ansi-null-context-p org-ansi-context)
+          (let ((type (org-element-type el)))
+            (if (memq type org-element-all-objects)
+                (if (not (memq type org-ansi-highlightable-objects))
+                    (goto-char seq-end)
+                  (org-ansi-process-object el)
+                  (org-ansi-clear-context org-ansi-context)
+                  (setq beg (point)))
+              (org-ansi-process-lines beg seq-end)))
+        (org-ansi-process-lines beg seq-end))
+      (setq beg seq-end)))
+  (org-ansi-process-lines beg end))
+
+(defun org-ansi-process-block (el &optional limit)
+  "Highlight ANSI sequences in EL, a block element."
+  (let ((beg (point))
+        (end (save-excursion
+               (goto-char (org-element-end el))
+               (skip-chars-backward " \t\r\n")
+               (line-beginning-position))))
+    (if limit (setq limit (min end limit))
+      (setq limit end))
+    ;; TODO Have this be process-lines to ignore whitespace at the
+    ;; beginning of lines.
+    (org-ansi-process-region beg limit)
+    (if (eq limit end)
+        (goto-char (org-element-end el))
+      (goto-char limit))))
+
+(defun org-ansi-process-paragraph (el &optional limit)
+  "Highlight ANSI sequences in a paragraph element, EL.
+Exclude inline source blocks or babel calls from being
+highlighted."
+  (let ((pend (1- (org-element-contents-end el))) beg end)
+    (if limit (setq limit (min pend limit))
+      (setq limit pend))
+    ;; Compute the regions of the paragraph excluding inline
+    ;; source blocks or babel calls.
+    (push (point) beg)
+    (while (re-search-forward
+            "\\<\\(src\\|call\\)_[^ \t\n[{]+[{(]" limit t)
+      (let ((el (org-element-context)))
+        (when (memq (org-element-type el)
+                    '(inline-src-block inline-babel-call))
+          (push (org-element-begin el) end)
+          (goto-char (min (org-element-end el) limit))
+          (push (point) beg))))
+    (push limit end)
+    (setq beg (nreverse beg)
+          end (nreverse end))
+    (while beg
+      (org-ansi-process-lines-consider-objects (pop beg) (pop end)))
+    (if (eq limit pend)
+        (goto-char (org-element-end el))
+      (goto-char limit))))
+
+(defun org-ansi-process-fixed-width (el &optional limit)
+  "Highlight ANSI sequences in a fixed-width element, EL."
+  (if limit
+      (setq limit (min (org-element-end el) limit))
+    (setq limit (org-element-end el)))
+  (while (< (point) limit)
+    (when (eq (char-after) ?:)
+      (forward-char)
+      (when (eq (char-after) ?\s)
+        (forward-char)))
+    (org-ansi-process-region (point) (line-end-position))
+    (skip-chars-forward " \n\r\t")))
+
+;; NOTE Limit not used here since a row is a line and it doesn't seem
+;; to make sense to process only some of the cells in a row.
+(defun org-ansi-process-table-row (el &optional _limit)
+  "Highlight ANSI sequences in a table-row element, EL"
+  (if (eq (org-element-property :type el) 'rule)
+      (goto-char (org-element-end el))
+    (let ((end-1 (1- (org-element-end el))))
+      (while (< (point) end-1)
+        (let ((cell (org-element-context)))
+          (org-ansi-process-region
+           (org-element-contents-begin cell)
+           (org-element-contents-end cell))
+          (goto-char (org-element-end cell))))
+      (forward-char))))
+
+(defun org-ansi-process-at-element (el &optional limit)
+  (pcase (org-element-type el)
+    ((or `headline `inlinetask)
+     (org-ansi-process-lines-consider-objects
+      (point) (line-end-position))
+     (goto-char (org-element-contents-begin el)))
+    (`table-row
+     (org-ansi-process-table-row el limit))
+    ;;  `export-block `src-block
+    (`example-block
+     (org-ansi-process-block el limit))
+    (`fixed-width
+     (org-ansi-process-fixed-width el limit))
+    (`paragraph
+     (org-ansi-process-paragraph el limit))
+    (_
+     (goto-char (org-element-end el)))))
+
+(defun org-ansi-visit-elements (limit visitor)
+  "Visit highlightable elements between `point' and LIMIT with VISITOR.
+LIMIT is supposed to be a hard limit which VISITOR should not
+visit anything past it.
+
+VISITOR is a function that takes an element and LIMIT as
+arguments.  It is called for every highlightable lesser element
+within the visited region.  After being called it is expected
+that `point' is moved past the visited element, to the next
+element to potentially process, or to LIMIT, whichever comes
+first.
+
+TODO Is this an actual guarantee?
+After a call to this function, it is guaranteed that `point' will
+either be at LIMIT or at the beginning of the first element past
+LIMIT."
+  (declare (indent 1))
+  (let ((skip-to-end-p
+         (lambda (el)
+           (or (null (org-element-contents-begin el))
+               (<= (org-element-contents-end el)
+                   (point)
+                   (org-element-end el))))))
+    (while (< (point) limit)
+      (let* ((el (org-element-at-point))
+             (type (org-element-type el)))
+        (pcase type
+          ;; Greater elements
+          ((or `item `center-block `quote-block `special-block
+               `dynamic-block `drawer `footnote-definition)
+           (if (funcall skip-to-end-p el)
+               (goto-char (org-element-end el))
+             (goto-char (org-element-contents-begin el))
+             ;; TODO Is there a possibility that visiting an item will
+             ;; get stuck or process the same item indefinitely if the
+             ;; limit is the end of the contents?
+             (org-ansi-visit-elements
+              (min limit (org-element-contents-end el))
+              visitor)))
+          (`property-drawer
+           (goto-char (org-element-end el)))
+          (`plain-list
+           (let ((end (min limit (org-element-end el))))
+             (goto-char (org-element-contents-begin el))
+             (while (< (point) end)
+               ;; Move to within the first item of a list.
+               (forward-char)
+               (let* ((item (org-element-at-point))
+                      (cbeg (org-element-contents-begin item)))
+                 (when cbeg
+                   (goto-char cbeg)
+                   (org-ansi-visit-elements
+                    (min limit (org-element-contents-end item))
+                    visitor))
+                 (when (< (point) limit)
+                   (goto-char (org-element-end item)))
+                 (skip-chars-forward " \t\n\r")))))
+          (`table
+           (if (funcall skip-to-end-p el)
+               (goto-char (org-element-end el))
+             (goto-char (org-element-contents-begin el))
+             ;; Move to within the table-row of a table to continue
+             ;; processing it.
+             (forward-char)))
+          ((or `headline `inlinetask)
+           (if (funcall skip-to-end-p el)
+               (goto-char (org-element-end el))
+             (if (org-ansi-highlightable-element-p el)
+                 (funcall visitor el limit)
+               (goto-char (org-element-contents-begin el)))))
+          ((guard (org-ansi-highlightable-element-p el))
+           (let ((visit t))
+             ;; Move to within the highlightable region when `point'
+             ;; is before it.
+             ;;
+             ;; TODO Move to the first non-whitespace character since
+             ;; the process functions only apply the highlighting to
+             ;; non-whitespace regions.
+             (pcase type
+               (`table-row
+                (if (eq (org-element-property :type el) 'rule)
+                    (progn
+                      (setq visit nil)
+                      (goto-char (org-element-end el)))
+                  (when (< (point) (org-element-contents-begin el))
+                    (goto-char (org-element-contents-begin el)))))
+               (`example-block
+                (let ((start (save-excursion
+                               (goto-char (org-element-post-affiliated el))
+                               (line-beginning-position 2))))
+                  (when (< (point) start)
+                    (goto-char start))))
+               (`fixed-width
+                (when (< (point) (org-element-post-affiliated el))
+                  (goto-char (org-element-post-affiliated el))))
+               (`paragraph
+                (when (< (point) (org-element-contents-begin el))
+                  (goto-char (org-element-contents-begin el)))))
+             (when visit
+               (funcall visitor el limit))))
+          (_
+           (goto-char (org-element-end el))))))))
+
+(defvar org-ansi-mode)
+
+(defun org-fontify-ansi-sequences (limit)
+  "Fontify ANSI sequences."
+  (when (and org-fontify-ansi-sequences org-ansi-mode)
+    (setq org-ansi-fontify-begin (point))
+    (or org-ansi-context
+        (setq org-ansi-context (org-ansi-new-context)))
+    (let* ((did-process nil)
+           (maybe-process
+            (lambda (el limit)
+              (if-let ((context (org-ansi-point-context)))
+                  (setq org-ansi-context context)
+                ;; FIXME There are extra clears that are happening
+                ;; when they don't need to happen.
+                (org-ansi-clear-context org-ansi-context))
+              (let* ((el (or (org-ansi-greater-element-context el) el))
+                     ;; Process only up to the end of the element at
+                     ;; point, the end of the greater element context,
+                     ;; or to limit whichever comes first (typically limit).
+                     (limit (min (or (pcase (org-element-type el)
+                                       ((or `headline `inlinetask)
+                                        (org-element-contents-begin el)))
+                                     (org-element-end el))
+                                 limit)))
+                (org-ansi-visit-elements limit
+                  (lambda (el limit)
+                    (unless (org-ansi-greater-element-context el)
+                      (org-ansi-clear-context org-ansi-context))
+                    (setq did-process t)
+                    (org-ansi-process-at-element el limit)))))))
+      (skip-chars-forward " \n\r\t")
+      (while (< (point) limit)
+        ;; TODO Would I have to remove the context property when
+        ;; turning on/off org-ansi-mode?
+        (cond
+         ((org-ansi-point-context)
+          ;; A context exists before point in this element so it
+          ;; must have been highlightable, process the element
+          ;; starting with the previous context.
+          (funcall maybe-process (org-element-at-point) limit))
+         (t
+          ;; No previous context at this point, so it's safe to
+          ;; begin processing at the start of the next sequence.
+          ;; There is no context prior to the sequence to consider.
+          (when (re-search-forward ansi-color-control-seq-regexp limit 'noerror)
+            (goto-char (match-beginning 0))
+            (funcall maybe-process (org-element-at-point) limit))))
+        (skip-chars-forward " \n\r\t"))
+      ;; Post processing to highlight to the proper end (past limit)
+      ;; when there is a non-null context remaining and the region
+      ;; after limit does not match with the context.
+      (when (and did-process
+                 (not (org-ansi-null-context-p org-ansi-context))) 
+        (let* ((el (org-element-at-point))
+               (end (org-element-end
+                     (or (org-ansi-greater-element-context el) el))))
+          (unless (catch 'matching-contexts
+                    (org-ansi-visit-elements end
+                      (lambda (&rest _)
+                        (let ((context (get-text-property
+                                        (point) 'org-ansi-context)))
+                          (throw 'matching-contexts
+                                 (equal (car org-ansi-context)
+                                        (car context))))))
+                    t)
+            (org-ansi-visit-elements end
+              (lambda (el limit)
+                (org-ansi-process-at-element el limit)
+                (unless (org-ansi-greater-element-context el)
+                  (org-ansi-clear-context org-ansi-context))))))))))
+
+(defun org-toggle-ansi-display ()
+  "Toggle the visible state of ANSI sequences in the current buffer."
+  (interactive)
+  (setq org-ansi-hide-sequences (not org-ansi-hide-sequences))
+  (if org-ansi-hide-sequences
+      (add-to-invisibility-spec 'org-ansi)
+    (remove-from-invisibility-spec 'org-ansi)))
+
 (defun org-activate-footnote-links (limit)
   "Add text properties for footnotes."
   (let ((fn (org-footnote-next-reference-or-definition limit)))
@@ -5971,6 +6557,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
           ;; `org-fontify-inline-src-blocks' prepends object boundary
           ;; faces and overrides native faces.
           '(org-fontify-inline-src-blocks)
+          '(org-fontify-ansi-sequences)
           ;; Citations.  When an activate processor is specified, if
           ;; specified, try loading it beforehand.
           (progn
@@ -6159,7 +6746,7 @@ If TAG is a number, get the corresponding match group."
     (remove-text-properties beg end
 			    '(mouse-face t keymap t org-linked-text t
 					 invisible t intangible t
-					 org-emphasis t))
+					 org-emphasis t org-ansi-context t))
     (org-fold-core-update-optimisation beg end)
     (org-remove-font-lock-display-properties beg end)))
 
@@ -15929,6 +16516,30 @@ When a buffer is unmodified, it is just killed.  When modified, it is saved
     ;; Refresh the menu once after loading all the agenda buffers.
     (when org-agenda-file-menu-enabled
       (org-install-agenda-files-menu))))
+
+
+;;;; ANSI minor mode
+
+(define-minor-mode org-ansi-mode
+  "Toggle the minor `org-ansi-mode'.
+This mode adds support to highlight ANSI sequences in Org mode.
+The sequences are highlighted only if the customization
+`org-fontify-ansi-sequences' is non-nil when the mode is enabled.
+\\{org-ansi-mode-map}"
+  :lighter " OANSI"
+  (if org-ansi-mode
+      (progn
+        (add-hook 'font-lock-extend-region-functions
+                  #'org-ansi-extend-region 'append t)
+        (if org-ansi-hide-sequences
+            (add-to-invisibility-spec 'org-ansi)
+          (remove-from-invisibility-spec 'org-ansi)))
+    (remove-hook 'font-lock-extend-region-functions
+                 #'org-ansi-extend-region t)
+    (remove-from-invisibility-spec 'org-ansi))
+  (org-restart-font-lock))
+
+(add-hook 'org-mode-hook #'org-ansi-mode)
 
 
 ;;;; CDLaTeX minor mode
