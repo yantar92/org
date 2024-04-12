@@ -32,8 +32,8 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
 (require 'org-agenda-search)
+(require 'org-map)
 
 (defvar org-ts-regexp)
 
@@ -668,6 +668,10 @@ section for a custom agenda view.")
 This can be set as a buffer local value to avoid interfering with
 dynamic scoping for `org-overriding-columns-format'.")
 
+(declare-function org-schedule "org-planning" (arg &optional time))
+(declare-function org-deadline "org-planning" (arg &optional time))
+(declare-function org-todo "org-todo" (&optional arg))
+(declare-function org-edit-headline "org-edit-structure" (&optional heading))
 (defun org-columns-edit-value (&optional key)
   "Edit the value of the property at point in column view.
 Where possible, use the standard interface for changing this line."
@@ -684,9 +688,12 @@ Where possible, use the standard interface for changing this line."
 	    ("CLOCKSUM"
 	     (user-error "This special column cannot be edited"))
 	    ("ITEM"
-	     (lambda () (org-with-point-at pom (org-edit-headline))))
+	     (lambda ()
+               (require 'org-edit-structure)
+               (org-with-point-at pom (org-edit-headline))))
 	    ("TODO"
 	     (lambda ()
+               (require 'org-todo)
 	       (org-with-point-at pom (call-interactively #'org-todo))))
 	    ("PRIORITY"
 	     (lambda ()
@@ -702,9 +709,11 @@ Where possible, use the standard interface for changing this line."
 		   (call-interactively #'org-set-tags-command)))))
 	    ("DEADLINE"
 	     (lambda ()
+               (require 'org-planning)
 	       (org-with-point-at pom (call-interactively #'org-deadline))))
 	    ("SCHEDULED"
 	     (lambda ()
+               (require 'org-planning)
 	       (org-with-point-at pom (call-interactively #'org-schedule))))
 	    ("BEAMER_ENV"
 	     (lambda ()
@@ -718,7 +727,7 @@ Where possible, use the standard interface for changing this line."
 			     (completing-read
 			      "Value: " allowed nil
 			      (not (get-text-property
-				    0 'org-unrestricted (caar allowed))))))))
+				  0 'org-unrestricted (caar allowed))))))))
 	       (and (not (equal nval value))
 		    (lambda () (org-entry-put pom key nval))))))))
     (cond
@@ -1099,9 +1108,12 @@ When in agenda column view, also call `org-agenda-do-context-action'."
     (org-columns-move-right)
     (backward-char 1)))
 
+(declare-function org-move-subtree-up "org-move" (&optional arg))
+(declare-function org-move-subtree-down "org-move" (&optional arg))
 (defun org-columns--move-row (&optional up)
   "Move the current table row down.
 With non-nil optional argument UP, move it up."
+  (require 'org-move)
   (let ((inhibit-read-only t)
         (col (current-column)))
     (if up (org-move-subtree-up)
@@ -1729,10 +1741,13 @@ definition."
         (when (seq-find #'identity width-specs)
           (org-table-shrink))))))
 
+(declare-function org-create-dblock "org-dblock" (plist))
+(declare-function org-update-dblock "org-dblock" ())
 ;;;###autoload
 (defun org-columns-insert-dblock ()
   "Create a dynamic block capturing a column view table."
   (interactive)
+  (require 'org-dblock)
   (let ((id (completing-read
 	     "Capture columns (local, global, entry with :ID: property) [local]: "
 	     (append '(("global") ("local"))

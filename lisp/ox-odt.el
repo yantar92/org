@@ -34,6 +34,7 @@
 (require 'org-macs)
 (require 'ox)
 (require 'table nil 'noerror)
+(require 'org-preview-latex)
 
 (declare-function org-at-heading-p "org" (&optional _))
 (declare-function org-back-to-heading "org" (&optional invisible-ok))

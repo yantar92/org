@@ -73,7 +73,6 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org)
 (require 'org-element-ast)
 (require 'org-refile)
 (require 'ol)
@@ -836,6 +835,8 @@ non-nil."
                       (org-id--get-id-to-store-link))))
     (org-id-store-link)))
 
+(declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
+(declare-function org-narrow-to-subtree "org-narrow" (&optional element))
 (defun org-id-open (link _)
   "Go to the entry indicated by id link LINK.
 
@@ -850,6 +851,7 @@ will be tried as an ID."
 	 (id (if (not option) link
                (substring link 0 (match-beginning 0))))
          m cmd)
+    (require 'org-mark-ring)
     (org-mark-ring-push)
     (setq m (org-id-find id 'marker))
     (when (and (not m) option)
@@ -877,6 +879,7 @@ will be tried as an ID."
     (when option
       (save-restriction
         (unless (org-before-first-heading-p)
+          (require 'org-narrow)
           (org-narrow-to-subtree))
         (org-link-search option nil nil
                          (org-element-lineage (org-element-at-point) 'headline t))))

@@ -33,6 +33,7 @@
 (require 'cl-lib)
 (require 'ox)
 (require 'ox-publish)
+(require 'org-preview-latex)
 
 ;;; Function Declarations
 

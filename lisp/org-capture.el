@@ -51,7 +51,6 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
 (require 'org-refile)
 (require 'org-clock)
 (require 'org-bookmark)

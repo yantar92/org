@@ -39,6 +39,7 @@
 (require 'ox)
 (require 'ox-publish)
 (require 'table)
+(require 'org-preview-latex)
 
 
 ;;; Function Declarations

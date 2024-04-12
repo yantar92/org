@@ -38,7 +38,6 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org)
 (require 'ol)
 (require 'org-id)
 
