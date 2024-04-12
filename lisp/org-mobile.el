@@ -38,6 +38,7 @@
 (require 'org)
 (require 'org-agenda)
 (require 'ol)
+(require 'org-edit-structure-common)
 
 ;;; Code:
 

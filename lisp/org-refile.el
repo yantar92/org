@@ -32,11 +32,11 @@
 (require 'org-agenda-files)
 (require 'org-log-note)
 (require 'org-edit-structure)
+(require 'org-edit-structure-common)
 (require 'org-edit-special)
 (defvar org-clock-hd-marker)
 (defvar org-clock-heading)
 (defvar org-loop-over-headlines-in-active-region)
-(declare-function org-back-over-empty-lines "org")
 (require 'org-bookmark)
 (require 'org-element)
 

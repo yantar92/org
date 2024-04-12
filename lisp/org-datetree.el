@@ -39,7 +39,7 @@
 (require 'org-property)
 (defvar org-complex-heading-regexp-format)
 (require 'org-edit-structure)
-(declare-function org-back-over-empty-lines "org")
+(require 'org-edit-structure-common)
 
 (defvar org-ts-regexp)
 

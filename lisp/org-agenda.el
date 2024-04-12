@@ -62,6 +62,7 @@
 (require 'org-agenda-search)
 (require 'org-agenda-line-format)
 (require 'org-agenda-diary)
+(require 'org-edit-structure-common)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))

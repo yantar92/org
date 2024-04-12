@@ -59,6 +59,7 @@
 
 (require 'org-macs)
 (require 'org-compat)
+(require 'org-edit-structure-common)
 
 (declare-function epg-decrypt-string "epg" (context cipher))
 (declare-function epg-list-keys "epg" (context &optional name mode))
@@ -70,7 +71,6 @@
 		  (context plain recipients &optional sign always-trust))
 (defvar epg-context)
 
-(declare-function org-back-over-empty-lines "org" ())
 (declare-function org-current-level "org" ())
 (declare-function org-back-to-heading "org" (&optional invisible-ok))
 (declare-function org-before-first-heading-p "org" ())

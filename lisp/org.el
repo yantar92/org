@@ -581,20 +581,6 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 		 (if (> (length load-misses) 1) "s" "") load-misses (org-version nil 'full))
       (message "Successfully reloaded Org\n%s" (org-version nil 'full)))))
 
-;;; Generally useful functions
-
-(defun org-back-over-empty-lines ()
-  "Move backwards over whitespace, to the beginning of the first empty line.
-Returns the number of empty lines passed."
-  (let ((pos (point)))
-    (if (cdr (assq 'heading org-blank-before-new-entry))
-	(skip-chars-backward " \t\n\r")
-      (unless (eobp)
-	(forward-line -1)))
-    (forward-line 1)
-    (goto-char (min (point) pos))
-    (count-lines (point) pos)))
-
 (require 'org-move)
 
 
