@@ -93,14 +93,13 @@
 (defvar org-finish-function)
 (defvar org-inhibit-highlight-removal)
 (defvar org-inhibit-startup)
-(defvar org-selected-window)
+
 (defvar org-self-insert-cluster-for-undo)
 (defvar org-self-insert-command-undo-counter)
 (defvar org-ts-regexp)
 (defvar org-ts-regexp-both)
 (defvar org-ts-regexp-inactive)
 (defvar org-ts-regexp3)
-(defvar org-window-configuration)
 (defvar sort-fold-case)
 
 
@@ -602,6 +601,9 @@ visually merging spaces in an empty table cell.  See bug#45915.")
 
 ;;; Internal Variables
 
+(defvar org-selected-window nil
+  "Used in various places to store a window configuration.")
+
 (defvar org-table-last-highlighted-reference nil)
 
 (defvar org-table-formula-history nil)
@@ -713,6 +715,9 @@ Will be filled automatically during use.")
     ("^" . "Names for values in row above this one.")))
 
 (defvar org-pos nil)
+
+(defvar org-window-configuration nil
+  "Used in various places to store a window configuration.")
 
 
 ;;; Macros and Inlined Functions

@@ -42,6 +42,7 @@
 (require 'org-dnd)
 (require 'org-menu)
 (require 'org-bookmark)
+(require 'thingatpt)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")

@@ -489,6 +489,7 @@ The agenda files are the files processed by
       (setq org-agenda-files list)
       (customize-save-variable 'org-agenda-files org-agenda-files))))
 
+(defvar org-window-configuration)
 (defun org-edit-agenda-file-list ()
   "Edit the list of agenda files.
 Depending on setup, this either uses customize to edit the variable

@@ -66,25 +66,51 @@
 ;;
 ;;; Code:
 
-(defvar org-inlinetask-min-level)
-(defvar org-footnote-definition-re)
-
-;;;; Require other packages
-
 (require 'org-compat)
 (org-assert-version)
 
+(require 'org-load)
+(require 'org-mode)
+
+(defgroup org nil
+  "Outline-based notes management and organizer."
+  :tag "Org"
+  :group 'outlines
+  :group 'calendar)
+
+;; Update `customize-package-emacs-version-alist'
+(add-to-list 'customize-package-emacs-version-alist
+	     '(Org ("8.0" . "24.4")
+		   ("8.1" . "24.4")
+		   ("8.2" . "24.4")
+		   ("8.2.7" . "24.4")
+		   ("8.3" . "26.1")
+		   ("9.0" . "26.1")
+		   ("9.1" . "26.1")
+		   ("9.2" . "27.1")
+		   ("9.3" . "27.1")
+		   ("9.4" . "27.2")
+		   ("9.5" . "28.1")
+		   ("9.6" . "29.1")
+                   ("9.7" . "30.1")))
+
+(defvar org--warnings nil
+  "List of warnings to be added to the bug reports.")
+
+;;;; Require other packages
+
 (require 'cl-lib)
-
 (eval-when-compile (require 'gnus-sum))
-
 (require 'calendar)
 (require 'find-func)
 (require 'format-spec)
-(require 'thingatpt)
+(require 'outline)
+(require 'time-date)
 
-(require 'org-load)
+;;;; Require other Org libraries.
 
+;; These libraries are loaded to keep third-party code relying upon
+;; (require 'org) operational.
 (eval-and-compile (require 'org-macs))
 (require 'org-compat)
 (require 'org-keys)
@@ -110,7 +136,6 @@
 (require 'org-property)
 (require 'org-priority)
 (require 'org-log-note)
-(require 'org-mode)
 (require 'org-agenda-files)
 (require 'org-map)
 (require 'org-sparse-tree)
@@ -127,34 +152,7 @@
 (require 'org-indirect-buffer)
 (require 'org-edit-markup)
 (require 'org-open-at-point)
-
 (require 'org-cycle)
-
-;;;; Customization variables
-
-
-;;; The custom variables
-
-(defgroup org nil
-  "Outline-based notes management and organizer."
-  :tag "Org"
-  :group 'outlines
-  :group 'calendar)
-
-;;; Some variables used in various places
-
-(defvar org-window-configuration nil
-  "Used in various places to store a window configuration.")
-(defvar org-selected-window nil
-  "Used in various places to store a window configuration.")
-;; Defined somewhere in this file, but used before definition.
-;;;; Define the Org mode
-
-(require 'outline)
-
-;; Other stuff we need.
-(require 'time-date)
-
 (require 'org-entities)
 (require 'org-faces)
 (require 'org-list)
@@ -162,34 +160,8 @@
 (require 'org-src)
 (require 'org-footnote)
 (require 'org-macro)
-
-;; babel
 (require 'ob)
-
-;; Update `customize-package-emacs-version-alist'
-(add-to-list 'customize-package-emacs-version-alist
-	     '(Org ("8.0" . "24.4")
-		   ("8.1" . "24.4")
-		   ("8.2" . "24.4")
-		   ("8.2.7" . "24.4")
-		   ("8.3" . "26.1")
-		   ("9.0" . "26.1")
-		   ("9.1" . "26.1")
-		   ("9.2" . "27.1")
-		   ("9.3" . "27.1")
-		   ("9.4" . "27.2")
-		   ("9.5" . "28.1")
-		   ("9.6" . "29.1")
-                   ("9.7" . "30.1")))
-
-
-;;; Menu entries
-(defvar org--warnings nil
-  "List of warnings to be added to the bug reports.")
-
 (require 'org-move)
-
-
 
 (provide 'org)
 
