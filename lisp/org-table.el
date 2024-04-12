@@ -42,6 +42,8 @@
 (require 'org-compat)
 (require 'org-keys)
 (require 'org-fold-core)
+(require 'org-element)
+(require 'org-element-context)
 
 (declare-function calc-eval "calc" (str &optional separator &rest args))
 (declare-function face-remap-remove-relative "face-remap" (cookie))
@@ -542,18 +544,12 @@ This may be useful when columns have been shrunk."
 (defconst org-table-dataline-regexp "^[ \t]*|[^-]"
   "Detect an org-type table line.")
 
-(defconst org-table-hline-regexp "^[ \t]*|-"
-  "Detect an org-type table hline.")
-
 (defconst org-table1-hline-regexp "^[ \t]*\\+-[-+]"
   "Detect a table-type table hline.")
 
 (defconst org-table-any-border-regexp "^[ \t]*[^|+ \t]"
   "Detect the first line outside a table when searching from within it.
 This works for both table types.")
-
-(defconst org-TBLFM-regexp "^[ \t]*#\\+TBLFM: "
-  "Detect a #+TBLFM line.")
 
 (defvar org-table-TBLFM-begin-regexp "^[ \t]*|.*\n[ \t]*#\\+TBLFM: ")
 
@@ -758,51 +754,6 @@ Field is restored even in case of abnormal exit."
 	 (goto-char ,line)
 	 (org-table-goto-column ,column)
 	 (set-marker ,line nil)))))
-
-
-;;; Predicates
-
-(defun org-at-TBLFM-p (&optional pos)
-  "Non-nil when point (or POS) is in #+TBLFM line."
-  (save-excursion
-    (goto-char (or pos (point)))
-    (forward-line 0)
-    (and (let ((case-fold-search t)) (looking-at org-TBLFM-regexp))
-	 (org-element-type-p (org-element-at-point) 'table))))
-
-(defun org-at-table-p (&optional table-type)
-  "Non-nil if the cursor is inside an Org table.
-If TABLE-TYPE is non-nil, also check for table.el-type tables."
-  (and (org-match-line (if table-type "[ \t]*[|+]" "[ \t]*|"))
-       (or (not (derived-mode-p 'org-mode))
-	   (let ((e (org-element-lineage (org-element-at-point) 'table t)))
-	     (and e (or table-type
-			(eq 'org (org-element-property :type e))))))))
-
-(defun org-at-table.el-p ()
-  "Non-nil when point is at a table.el table."
-  (and (org-match-line "[ \t]*[|+]")
-       (let ((element (org-element-at-point)))
-	 (and (org-element-type-p element 'table)
-	      (eq (org-element-property :type element) 'table.el)))))
-
-(defun org-at-table-hline-p ()
-  "Non-nil when point is inside a hline in a table.
-Assume point is already in a table."
-  (org-match-line org-table-hline-regexp))
-
-(defun org-table-check-inside-data-field (&optional noerror assume-table)
-  "Non-nil when point is inside a table data field.
-Raise an error otherwise, unless NOERROR is non-nil.  In that
-case, return nil if point is not inside a data field.  When
-optional argument ASSUME-TABLE is non-nil, assume point is within
-a table."
-  (cond ((and (or assume-table (org-at-table-p))
-	      (not (save-excursion (skip-chars-backward " \t") (bolp)))
-	      (not (org-at-table-hline-p))
-	      (not (looking-at-p "[ \t]*$"))))
-	(noerror nil)
-	(t (user-error "Not in table data field"))))
 
 
 ;;; Create, Import, and Convert Tables

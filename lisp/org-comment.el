@@ -44,6 +44,7 @@
 ;; during 'org-mode' initialization.
 
 (require 'org-element)
+(require 'org-element-context)
 (eval-when-compile (require 'org-src)) ; `org-babel-do-in-edit-buffer'
 (defvar org-complex-heading-regexp)
 

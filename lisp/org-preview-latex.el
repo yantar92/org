@@ -27,6 +27,7 @@
 (org-assert-version)
 
 (require 'org-element)
+(require 'org-element-context)
 (require 'org-move)
 (require 'org-font-lock)
 (declare-function org-entry-end-position "org")

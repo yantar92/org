@@ -27,6 +27,7 @@
 (require 'org-agenda-global)
 (require 'org-agenda-files)
 (require 'org-agenda-line-format)
+(require 'org-element-context)
 (defvar org-agenda-show-log-scoped) ;; FIXME: in future org-agenda-mode.el
 
 ;;; FIXME:

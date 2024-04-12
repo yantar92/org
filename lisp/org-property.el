@@ -33,6 +33,7 @@
 (require 'org-tags)
 (require 'org-timestamp)
 (require 'org-indent-static)
+(require 'org-element-context)
 
 (declare-function org-clock-update-mode-line "org-clock")
 (defvar org-complex-heading-regexp)

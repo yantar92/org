@@ -29,6 +29,7 @@
 (require 'org-fold)
 (require 'outline)
 (require 'org-regexps)
+(require 'org-element-context)
 
 (defvar org-complex-heading-regexp)
 (declare-function org-current-level "org" ())

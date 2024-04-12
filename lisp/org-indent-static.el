@@ -29,6 +29,7 @@
 ;;; Code:
 
 (require 'org-element)
+(require 'org-element-context)
 (require 'org-src)
 (declare-function org-current-level "org" ())
 (declare-function org-log-into-drawer "org" ())

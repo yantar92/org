@@ -102,6 +102,7 @@
 (require 'org-fold)
 (require 'org-element)
 (require 'org-regexps)
+(require 'org-element-context)
 (require 'org-dnd)
 (require 'org-cdlatex)
 (require 'org-indent-static)
@@ -526,32 +527,6 @@ depends on, if any."
   (abbrev-table-put org-mode-abbrev-table
 		    :parents (list text-mode-abbrev-table)))
 
-;;;; TODO, DEADLINE, Comments
-
-(defun org-at-date-range-p (&optional inactive-ok)
-  "Non-nil if point is inside a date range.
-
-When optional argument INACTIVE-OK is non-nil, also consider
-inactive time ranges.
-
-When this function returns a non-nil value, match data is set
-according to `org-tr-regexp-both' or `org-tr-regexp', depending
-on INACTIVE-OK."
-  (save-excursion
-    (catch 'exit
-      (let ((pos (point)))
-	(skip-chars-backward "^[<\r\n")
-	(skip-chars-backward "<[")
-	(and (looking-at (if inactive-ok org-tr-regexp-both org-tr-regexp))
-	     (>= (match-end 0) pos)
-	     (throw 'exit t))
-	(skip-chars-backward "^<[\r\n")
-	(skip-chars-backward "<[")
-	(and (looking-at (if inactive-ok org-tr-regexp-both org-tr-regexp))
-	     (>= (match-end 0) pos)
-	     (throw 'exit t)))
-      nil)))
-
 ;;; Menu entries
 (defvar org--warnings nil
   "List of warnings to be added to the bug reports.")
@@ -607,126 +582,6 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
       (message "Successfully reloaded Org\n%s" (org-version nil 'full)))))
 
 ;;; Generally useful functions
-
-(defun org-context ()
-  "Return a list of contexts of the current cursor position.
-If several contexts apply, all are returned.
-Each context entry is a list with a symbol naming the context, and
-two positions indicating start and end of the context.  Possible
-contexts are:
-
-:headline         anywhere in a headline
-:headline-stars   on the leading stars in a headline
-:todo-keyword     on a TODO keyword (including DONE) in a headline
-:tags             on the TAGS in a headline
-:priority         on the priority cookie in a headline
-:item             on the first line of a plain list item
-:item-bullet      on the bullet/number of a plain list item
-:checkbox         on the checkbox in a plain list item
-:table            in an Org table
-:table-special    on a special filed in a table
-:table-table      in a table.el table
-:clocktable       in a clocktable
-:src-block        in a source block
-:link             on a hyperlink
-:keyword          on a keyword: SCHEDULED, DEADLINE, CLOSE, COMMENT.
-:latex-fragment   on a LaTeX fragment
-:latex-preview    on a LaTeX fragment with overlaid preview image
-
-This function expects the position to be visible because it uses font-lock
-faces as a help to recognize the following contexts: :table-special, :link,
-and :keyword."
-  (let* ((f (get-text-property (point) 'face))
-	 (faces (if (listp f) f (list f)))
-	 (case-fold-search t)
-	 (p (point)) clist o)
-    ;; First the large context
-    (cond
-     ((org-at-heading-p)
-      (push (list :headline (line-beginning-position)
-                  (line-end-position))
-            clist)
-      (when (progn
-	      (forward-line 0)
-	      (looking-at org-todo-line-tags-regexp))
-	(push (org-point-in-group p 1 :headline-stars) clist)
-	(push (org-point-in-group p 2 :todo-keyword) clist)
-	(push (org-point-in-group p 4 :tags) clist))
-      (goto-char p)
-      (skip-chars-backward "^[\n\r \t") (or (bobp) (backward-char 1))
-      (when (looking-at "\\[#[A-Z0-9]\\]")
-	(push (org-point-in-group p 0 :priority) clist)))
-
-     ((org-at-item-p)
-      (push (org-point-in-group p 2 :item-bullet) clist)
-      (push (list :item (line-beginning-position)
-		  (save-excursion (org-end-of-item) (point)))
-	    clist)
-      (and (org-at-item-checkbox-p)
-	   (push (org-point-in-group p 0 :checkbox) clist)))
-
-     ((org-at-table-p)
-      (push (list :table (org-table-begin) (org-table-end)) clist)
-      (when (memq 'org-formula faces)
-	(push (list :table-special
-		    (previous-single-property-change p 'face)
-		    (next-single-property-change p 'face))
-	      clist)))
-     ((org-at-table-p 'any)
-      (push (list :table-table) clist)))
-    (goto-char p)
-
-    (let ((case-fold-search t))
-      ;; New the "medium" contexts: clocktables, source blocks
-      (cond ((org-in-clocktable-p)
-	     (push (list :clocktable
-			 (and (or (looking-at "[ \t]*\\(#\\+BEGIN: clocktable\\)")
-				  (re-search-backward "[ \t]*\\(#+BEGIN: clocktable\\)" nil t))
-			      (match-beginning 1))
-			 (and (re-search-forward "[ \t]*#\\+END:?" nil t)
-			      (match-end 0)))
-		   clist))
-	    ((org-in-src-block-p)
-	     (push (list :src-block
-			 (and (or (looking-at "[ \t]*\\(#\\+BEGIN_SRC\\)")
-				  (re-search-backward "[ \t]*\\(#+BEGIN_SRC\\)" nil t))
-			      (match-beginning 1))
-			 (and (search-forward "#+END_SRC" nil t)
-			      (match-beginning 0)))
-		   clist))))
-    (goto-char p)
-
-    ;; Now the small context
-    (cond
-     ((org-at-timestamp-p)
-      (push (org-point-in-group p 0 :timestamp) clist))
-     ((memq 'org-link faces)
-      (push (list :link
-		  (previous-single-property-change p 'face)
-		  (next-single-property-change p 'face))
-	    clist))
-     ((memq 'org-special-keyword faces)
-      (push (list :keyword
-		  (previous-single-property-change p 'face)
-		  (next-single-property-change p 'face))
-	    clist))
-     ((setq o (cl-some
-	       (lambda (o)
-		 (and (eq (overlay-get o 'org-overlay-type) 'org-latex-overlay)
-		      o))
-	       (overlays-at (point))))
-      (push (list :latex-fragment
-		  (overlay-start o) (overlay-end o))
-	    clist)
-      (push (list :latex-preview
-		  (overlay-start o) (overlay-end o))
-	    clist))
-     ((org-inside-LaTeX-fragment-p)
-      ;; FIXME: positions wrong.
-      (push (list :latex-fragment (point) (point)) clist)))
-
-    (setq clist (nreverse (delq nil clist)))
-    clist))
 
 (defun org-back-over-empty-lines ()
   "Move backwards over whitespace, to the beginning of the first empty line.

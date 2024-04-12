@@ -29,6 +29,7 @@
 (require 'org-element)
 (require 'org-time)
 (require 'org-read-date)
+(require 'org-element-context)
 
 (declare-function org-todo "org")
 (declare-function org-at-date-range-p "org")

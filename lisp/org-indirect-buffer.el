@@ -30,6 +30,7 @@
 (require 'org-fold)
 (require 'org-move)
 (require 'org-property)
+(require 'org-element-context)
 
 (defcustom org-indirect-buffer-display 'other-window
   "How should indirect tree buffers be displayed?

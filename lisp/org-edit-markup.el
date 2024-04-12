@@ -27,6 +27,8 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'org-element-context)
+
 ;;; In-paragraph markup
 
 (defvar org-emphasis-regexp-components)

@@ -27,6 +27,7 @@
 (org-assert-version)
 
 (require 'org-move)
+(require 'org-element-context)
 
 (defvar org-loop-over-headlines-in-active-region)
 

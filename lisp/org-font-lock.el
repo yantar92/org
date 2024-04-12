@@ -32,6 +32,7 @@
 (require 'org-fold)
 (require 'org-faces)
 (require 'org-element-timestamp)
+(require 'org-element-context)
 (require 'org-table)
 (require 'org-footnote)
 (require 'org-src)

@@ -44,6 +44,7 @@
 (require 'org-indent-static)
 (require 'org-font-lock)
 (require 'outline)
+(require 'org-element-context)
 
 (require 'cl-lib)
 

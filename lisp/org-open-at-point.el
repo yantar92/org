@@ -28,6 +28,7 @@
 (org-assert-version)
 
 (require 'org-element)
+(require 'org-element-context)
 (require 'org-regexps)
 
 (declare-function org-at-date-range-p "org" (&optional inactive-ok))

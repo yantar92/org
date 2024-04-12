@@ -40,6 +40,7 @@
 
 (require 'org-element)
 (require 'org-move)
+(require 'org-element-context)
 (declare-function org-at-timestamp-p "org" (&optional extended))
 (defvar org-mode-transpose-word-syntax-table)
 

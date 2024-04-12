@@ -29,6 +29,7 @@
 (when (< emacs-major-version 28)  ; preloaded in Emacs 28
   (require 'easymenu))
 (require 'org-element)
+(require 'org-element-context)
 (require 'org-table)
 (require 'org-compat)
 

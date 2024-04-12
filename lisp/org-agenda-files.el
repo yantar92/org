@@ -29,6 +29,7 @@
 
 (require 'org-macs)
 (require 'org-mode)
+(require 'org-element-context)
 
 (defvar org-window-configuration)
 

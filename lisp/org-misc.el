@@ -27,6 +27,7 @@
 (org-assert-version)
 
 (require 'org-element)
+(require 'org-element-context)
 
 (declare-function org-require-autoloaded-modules "org")
 
