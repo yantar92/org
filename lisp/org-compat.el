@@ -131,9 +131,6 @@ Pass COLUMN and FORCE to `move-to-column'."
            buffer-invisibility-spec)))
     (move-to-column column force)))
 
-(defmacro org-find-library-dir (library)
-  `(file-name-directory (or (locate-library ,library) "")))
-
 (defun org-count-lines (s)
   "How many lines in string S?"
   (let ((start 0) (n 1))
@@ -147,24 +144,6 @@ Pass COLUMN and FORCE to `move-to-column'."
   (remove-text-properties 0 (length string) '(line-prefix t wrap-prefix t)
                           string)
   (apply 'kill-new string args))
-
-;;;###autoload
-(defmacro org-check-version ()
-  "Try very hard to provide sensible version strings."
-  (let* ((org-dir        (org-find-library-dir "org"))
-         (org-version.el (concat org-dir "org-version.el"))
-         (org-fixup.el   (concat org-dir "../mk/org-fixup.el")))
-    (if (require 'org-version org-version.el 'noerror)
-        '(progn
-           (autoload 'org-release     "org-version.el")
-           (autoload 'org-git-version "org-version.el"))
-      (if (require 'org-fixup org-fixup.el 'noerror)
-          '(org-fixup)
-        ;; provide fallback definitions and complain
-        (warn "Could not define org version correctly.  Check installation!")
-        '(progn
-           (defun org-release () "N/A")
-           (defun org-git-version () "N/A !!check installation!!"))))))
 
 
 

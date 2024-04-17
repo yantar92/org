@@ -36,6 +36,9 @@
 
 ;;; Org version verification.
 
+(defmacro org-find-library-dir (library)
+  `(file-name-directory (or (locate-library ,library) "")))
+
 (defvar org--inhibit-version-check nil
   "When non-nil, skip the detection of mixed-versions situations.
 For internal use only.  See Emacs bug #62762.
