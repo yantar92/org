@@ -122,11 +122,6 @@
 
 ;;; Invisibility compatibility
 
-(defun org-in-invisibility-spec-p (arg)
-  "Is ARG a member of `buffer-invisibility-spec'?"
-  (when (consp buffer-invisibility-spec)
-    (member arg buffer-invisibility-spec)))
-
 (defun org-move-to-column (column &optional force _buffer)
   "Move to column COLUMN.
 Pass COLUMN and FORCE to `move-to-column'."

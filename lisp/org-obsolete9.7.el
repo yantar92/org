@@ -395,6 +395,12 @@ Unlike to `use-region-p', this function also checks
     (exchange-point-and-mark)))
 (make-obsolete 'org-cursor-to-region-beginning "no longer used" "9.7")
 
+(defun org-in-invisibility-spec-p (arg)
+  "Is ARG a member of `buffer-invisibility-spec'?"
+  (when (consp buffer-invisibility-spec)
+    (member arg buffer-invisibility-spec)))
+(make-obsolete 'org-in-invisibility-spec-p "no longer used" "9.7")
+
 (provide 'org-obsolete9.7)
 
 ;; Local variables:
