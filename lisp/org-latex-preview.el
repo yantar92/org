@@ -660,13 +660,16 @@ This is intended to be placed in `post-command-hook'."
                             'org-latex-overlay)))
     (cond
      ((and into-overlay-p org-latex-preview-auto--from-overlay)
-      (unless (get-char-property (point) 'view-text)
+      (unless (or (get-char-property (point) 'view-text)     ;Moved within Same overlay
+                  (= (point) org-latex-preview-auto--marker) ;Did not move point
+                  (get-char-property (point) 'invisible))    ;Overlay in invisible region
         ;; Jumped from overlay to overlay
         (org-latex-preview-auto--close-previous-overlay)
         (org-latex-preview-auto--open-this-overlay)))
      ((and into-overlay-p (not org-latex-preview-auto--from-overlay))
-      ;; Moved into overlay
-      (org-latex-preview-auto--open-this-overlay))
+      (unless (get-char-property (point) 'invisible) ;Overlay in invisible region
+        ;; Moved into overlay
+        (org-latex-preview-auto--open-this-overlay)))
      (org-latex-preview-auto--from-overlay
       ;; Moved out of overlay
       (org-latex-preview-auto--close-previous-overlay)))
@@ -876,6 +879,14 @@ manual: (elisp) Overlay Properties."
       (if (eq (overlay-get ov 'preview-state) 'active)
           (move-overlay ov (overlay-end ov) beg)))))
 
+(defun org-latex-preview-auto--org-cycle (state)
+  "Close preview overlays at point when cycling visibility.
+
+Check using STATE if the region containing the overlay is hidden
+by `org-cycle', and close any open preview overlays."
+  (when (memq state '(overview content folded children))
+    (org-latex-preview-auto--close-previous-overlay)))
+
 ;;;###autoload
 (define-minor-mode org-latex-preview-auto-mode
   "Minor mode to automatically preview LaTeX fragments.
@@ -899,11 +910,13 @@ customize the variable `org-latex-preview-live'."
         (org-latex-preview-auto--handle-pre-cursor) ; Invoke setup before the hook even fires.
         (add-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor nil 'local)
         (add-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change nil 'local)
+        (add-hook 'org-cycle-hook 'org-latex-preview-auto--org-cycle nil 'local)
         (when org-latex-preview-live
           (org-latex-preview-live--setup)))
     (remove-hook 'pre-command-hook #'org-latex-preview-auto--handle-pre-cursor 'local)
     (remove-hook 'post-command-hook #'org-latex-preview-auto--handle-post-cursor 'local)
     (remove-hook 'after-change-functions #'org-latex-preview-auto--detect-fragments-in-change 'local)
+    (remove-hook 'org-cycle-hook 'org-latex-preview-auto--org-cycle 'local)
     (org-latex-preview-live--teardown)))
 
 ;; Code for "live" preview generation
