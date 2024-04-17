@@ -166,7 +166,7 @@ is, use SPECS to define the face."
     specs))
 (make-obsolete 'org-compatible-face "you can remove it." "9.0")
 
-(declare-function org-link-set-parameters "ol-syntax")
+(declare-function org-link-set-parameters "ol")
 (defun org-add-link-type (type &optional follow export)
   "Add a new TYPE link.
 FOLLOW and EXPORT are two functions.
@@ -193,7 +193,7 @@ type.  For a simple example of an export function, see `org-bbdb.el'.
 
 If TYPE already exists, update it with the arguments.
 See `org-link-parameters' for documentation on the other parameters."
-  (require 'ol-syntax)
+  (require 'ol)
   (org-link-set-parameters type :follow follow :export export)
   (message "Created %s link." type))
 (make-obsolete 'org-add-link-type "use `org-link-set-parameters' instead." "9.0")

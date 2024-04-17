@@ -34,7 +34,6 @@
 (require 'org-macs)
 (require 'org-fold)
 
-(require 'ol-syntax)
 (require 'org-element)
 (require 'org-regexps)
 
@@ -350,6 +349,10 @@ links more efficient."
   :safe #'booleanp)
 
 ;;; Public variables
+
+(defvar-local org-link-abbrev-alist-local nil
+  "Buffer-local version of `org-link-abbrev-alist', which see.
+The value of this is taken from the LINK keywords.")
 
 (defvar org-stored-links nil
   "Contains the links stored with `org-store-link'.")
@@ -668,6 +671,118 @@ Return t when a link has been stored in `org-link-store-props'."
 
 
 ;;; Public API
+
+(defun org-link-get-parameter (type key)
+  "Get TYPE link property for KEY.
+TYPE is a string and KEY is a plist keyword.  See
+`org-link-parameters' for supported keywords."
+  (plist-get (cdr (assoc type org-link-parameters))
+	     key))
+
+(defun org-link-set-parameters (type &rest parameters)
+  "Set link TYPE properties to PARAMETERS.
+PARAMETERS should be keyword value pairs.  See
+`org-link-parameters' for supported keys."
+  (when (member type '("coderef" "custom-id" "fuzzy" "radio"))
+    (error "Cannot override reserved link type: %S" type))
+  (let ((data (assoc type org-link-parameters)))
+    (if data (setcdr data (org-combine-plists (cdr data) parameters))
+      (push (cons type parameters) org-link-parameters)
+      (org-link-make-regexps)
+      (when (featurep 'org-element) (org-element-update-syntax)))))
+
+;; This way, one can add multiple functions as, say, :follow parameter.
+;; For example,
+;; (add-function :before-until (org-link-get-parameter "id" :follow) #'my-function)
+;; See https://orgmode.org/list/a123389c-8f86-4836-a4fe-1e3f4281d33b@app.fastmail.com
+(gv-define-setter org-link-get-parameter (value type key)
+  `(org-link-set-parameters ,type ,key ,value))
+
+;; FIXME: Eventually, we should keep the target regexp updated
+;; automatically, via org-element-cache mechanisms.
+;;;###autoload
+(defun org-update-radio-target-regexp ()
+  "Find all radio targets in this file and update the regular expression."
+  (interactive)
+  (let ((old-regexp org-target-link-regexp)
+	;; Some languages, e.g., Chinese, do not use spaces to
+	;; separate words.  Also allow surrounding radio targets with
+	;; line-breakable characters.
+	(before-re "\\(?:^\\|[^[:alnum:]]\\|\\c|\\)\\(")
+	(after-re "\\)\\(?:$\\|[^[:alnum:]]\\|\\c|\\)")
+	(targets
+	 (org-with-wide-buffer
+	  (goto-char (point-min))
+	  (let (rtn)
+	    (while (re-search-forward org-radio-target-regexp nil t)
+	      ;; Make sure point is really within the object.
+	      (backward-char)
+	      (let ((obj (org-element-context)))
+		(when (org-element-type-p obj 'radio-target)
+		  (cl-pushnew (org-element-property :value obj) rtn
+			      :test #'equal))))
+	    rtn))))
+    (setq targets
+          (sort targets
+                (lambda (a b)
+                  (> (length a) (length b)))))
+    (setq org-target-link-regexp
+	  (and targets
+	       (concat before-re
+		       (mapconcat
+			(lambda (x)
+			  (replace-regexp-in-string
+			   " +" "\\s-+" (regexp-quote x) t t))
+			targets
+			"\\|")
+		       after-re)))
+    (setq org-target-link-regexps nil)
+    (let (current-length sub-targets)
+      (when (<= org-target-link-regexp-limit (length org-target-link-regexp))
+        (while (or targets sub-targets)
+          (when (and sub-targets
+                     (or (not targets)
+                         (>= (+ current-length (length (car targets)))
+                            org-target-link-regexp-limit)))
+            (push (concat before-re
+                          (mapconcat
+			   (lambda (x)
+			     (replace-regexp-in-string
+			      " +" "\\s-+" (regexp-quote x) t t))
+			   (nreverse sub-targets)
+			   "\\|")
+		          after-re)
+                  org-target-link-regexps)
+            (setq current-length nil
+                  sub-targets nil))
+          (unless current-length
+            (setq current-length (+ (length before-re) (length after-re))))
+          (when targets (push (pop targets) sub-targets))
+          (cl-incf current-length (length (car sub-targets))))
+        (setq org-target-link-regexps (nreverse org-target-link-regexps))))
+    (unless (equal old-regexp org-target-link-regexp)
+      ;; Clean-up cache.
+      (let ((regexp (cond ((not old-regexp) org-target-link-regexp)
+			  ((not org-target-link-regexp) old-regexp)
+			  (t
+			   (concat before-re
+				   (mapconcat
+				    (lambda (re)
+				      (substring re (length before-re)
+						 (- (length after-re))))
+				    (list old-regexp org-target-link-regexp)
+				    "\\|")
+				   after-re)))))
+	(when (and (featurep 'org-element)
+                   (not (bound-and-true-p org-mode-loading)))
+          (if org-target-link-regexps
+              (org-element-cache-reset)
+	    (org-with-point-at 1
+	      (while (re-search-forward regexp nil t)
+	        (org-element-cache-refresh (match-beginning 1)))))))
+      ;; Re fontify buffer.
+      (when (memq 'radio org-highlight-links)
+	(org-restart-font-lock)))))
 
 (defun org-link-complete-file (&optional arg)
   "Create a file link using completion.
