@@ -153,14 +153,6 @@ Pass COLUMN and FORCE to `move-to-column'."
                           string)
   (apply 'kill-new string args))
 
-;; `file-local-name' was added in Emacs 26.1.
-(defalias 'org-babel-local-file-name
-  (if (fboundp 'file-local-name)
-      'file-local-name
-    (lambda (file)
-      "Return the local name component of FILE."
-      (or (file-remote-p file 'localname) file))))
-
 ;;;###autoload
 (defmacro org-check-version ()
   "Try very hard to provide sensible version strings."

@@ -51,6 +51,14 @@ is a Lisp timestamp in the same style as `current-time'."
 This is a floating point number if the size is too large for an integer."
     (nth 7 attributes)))
 
+;; `file-local-name' was added in Emacs 26.1.
+(defalias 'org-babel-local-file-name
+  (if (fboundp 'file-local-name)
+      'file-local-name
+    (lambda (file)
+      "Return the local name component of FILE."
+      (or (file-remote-p file 'localname) file))))
+
 (provide 'org-compat-emacs26)
 
 ;; Local variables:
