@@ -27,6 +27,7 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'org-obsolete-helpers)
 (require 'org-element-context)
 
 ;;; In-paragraph markup
