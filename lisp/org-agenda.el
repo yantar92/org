@@ -1770,8 +1770,8 @@ The following commands are available:
     "--"
     ("Tags and Properties"
      ["Show all Tags" org-agenda-show-tags t]
-     ["Set Tags current line" org-agenda-set-tags (not (org-region-active-p))]
-     ["Change tag in region" org-agenda-set-tags (org-region-active-p)]
+     ["Set Tags current line" org-agenda-set-tags (not (use-region-p))]
+     ["Change tag in region" org-agenda-set-tags (use-region-p)]
      "--"
      ["Column View" org-columns t])
     ("Deadline/Schedule"
@@ -2216,7 +2216,7 @@ Agenda views are separated by `org-agenda-block-separator'."
   (catch 'exit
     (let* ((bfn (buffer-file-name (buffer-base-buffer)))
 	   (restrict-ok (and bfn (derived-mode-p 'org-mode)))
-	   (region-p (org-region-active-p))
+	   (region-p (use-region-p))
 	   (custom org-agenda-custom-commands)
 	   (selstring "")
 	   restriction second-time
@@ -6163,7 +6163,7 @@ Pass ARG, FORCE-ARG, DELETE and BODY to `org-agenda-do-in-region'."
   (declare (debug t))
   `(if (and (called-interactively-p 'any)
 	    org-agenda-loop-over-headlines-in-active-region
-	    (org-region-active-p))
+	    (use-region-p))
        (org-agenda-do-in-region
 	(region-beginning) (region-end) ,cmd ,arg ,force-arg ,delete)
      ,@body))
@@ -6811,7 +6811,7 @@ When called programmatically, FORCE-DIRECTION can be `set', `up',
   "Set tags for the current headline."
   (interactive)
   (org-agenda-check-no-diary)
-  (if (and (org-region-active-p) (called-interactively-p 'any))
+  (if (and (use-region-p) (called-interactively-p 'any))
       (call-interactively 'org-change-tag-in-region)
     (let* ((hdmarker (or (org-get-at-bol 'org-hd-marker)
 			 (org-agenda-error)))

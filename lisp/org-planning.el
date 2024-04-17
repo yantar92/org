@@ -212,7 +212,7 @@ With two universal prefix arguments, prompt for a warning delay.
 With argument TIME, set the deadline at the corresponding date.  TIME
 can either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
   (interactive "P")
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (org-map-entries
        (lambda () (org--deadline-or-schedule arg 'deadline time))
        nil
@@ -233,7 +233,7 @@ With two universal prefix arguments, prompt for a delay cookie.
 With argument TIME, scheduled at the corresponding date.  TIME can
 either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
   (interactive "P")
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (org-map-entries
        (lambda () (org--deadline-or-schedule arg 'scheduled time))
        nil

@@ -489,7 +489,7 @@ prefix argument (\\`C-u C-u C-u C-c C-w')."
     (let* ((actionmsg (cond (msg msg)
 			    ((equal arg 3) "Refile (and keep)")
 			    (t "Refile")))
-	   (regionp (org-region-active-p))
+	   (regionp (use-region-p))
 	   (region-start (and regionp (region-beginning)))
 	   (region-end (and regionp (region-end)))
 	   (org-refile-keep (if (equal arg 3) t org-refile-keep))

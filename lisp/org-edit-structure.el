@@ -396,7 +396,7 @@ If the region is active in `transient-mark-mode', promote all
 headings in the region."
   (interactive)
   (save-excursion
-    (if (org-region-active-p)
+    (if (use-region-p)
         (let ((deactivate-mark nil))
           (org-map-region 'org-promote (region-beginning) (region-end)))
       (org-promote)))
@@ -408,7 +408,7 @@ If the region is active in `transient-mark-mode', demote all
 headings in the region."
   (interactive)
   (save-excursion
-    (if (org-region-active-p)
+    (if (use-region-p)
         (let ((deactivate-mark nil))
           (org-map-region 'org-demote (region-beginning) (region-end)))
       (org-demote)))
@@ -1191,7 +1191,7 @@ function is being called interactively."
         txt what tmp)
     ;; Find beginning and end of region to sort
     (cond
-     ((org-region-active-p)
+     ((use-region-p)
       (setq start (region-beginning)
             end (region-end))
       ;; we will sort the region

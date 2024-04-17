@@ -2434,7 +2434,7 @@ subtree, ignoring planning line and any drawer following it."
 	     (_bounds
 	      ;; In a region, start at first item in region.
 	      (cond
-	       ((org-region-active-p)
+	       ((use-region-p)
 		(let ((limit (region-end)))
 		  (goto-char (region-beginning))
 		  (if (org-list-search-forward (org-item-beginning-re) limit t)
@@ -2700,7 +2700,7 @@ STRUCT is the list structure.
 
 Return t if successful."
   (save-excursion
-    (let* ((regionp (org-region-active-p))
+    (let* ((regionp (use-region-p))
 	   (rbeg (and regionp (region-beginning)))
 	   (rend (and regionp (region-end)))
 	   (top (org-list-get-top-point struct))
@@ -2784,7 +2784,7 @@ Return t if successful."
   "Outdent a local list item, but not its children.
 If a region is active, all items inside will be moved."
   (interactive)
-  (let ((regionp (org-region-active-p)))
+  (let ((regionp (use-region-p)))
     (cond
      ((or (org-at-item-p)
 	  (and regionp
@@ -2801,7 +2801,7 @@ If a region is active, all items inside will be moved."
   "Indent a local list item, but not its children.
 If a region is active, all items inside will be moved."
   (interactive)
-  (let ((regionp (org-region-active-p)))
+  (let ((regionp (use-region-p)))
     (cond
      ((or (org-at-item-p)
 	  (and regionp
@@ -2818,7 +2818,7 @@ If a region is active, all items inside will be moved."
   "Outdent a local list item including its children.
 If a region is active, all items inside will be moved."
   (interactive)
-  (let ((regionp (org-region-active-p)))
+  (let ((regionp (use-region-p)))
     (cond
      ((or (org-at-item-p)
 	  (and regionp
@@ -2835,7 +2835,7 @@ If a region is active, all items inside will be moved."
   "Indent a local list item including its children.
 If a region is active, all items inside will be moved."
   (interactive)
-  (let ((regionp (org-region-active-p)))
+  (let ((regionp (use-region-p)))
     (cond
      ((or (org-at-item-p)
 	  (and regionp
@@ -3131,7 +3131,7 @@ With a prefix argument ARG, change the region in a single item."
              (line-beginning-position))))
 	beg end)
     ;; Determine boundaries of changes.
-    (if (org-region-active-p)
+    (if (use-region-p)
 	(setq beg (funcall skip-blanks (region-beginning))
 	      end (copy-marker (region-end)))
       (setq beg (line-beginning-position)

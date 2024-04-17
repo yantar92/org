@@ -2131,11 +2131,11 @@ block of the same language as the previous."
                (before (org-element-begin copy))
                (beyond (org-element-end copy))
                (parts
-                (if (org-region-active-p)
+                (if (use-region-p)
                     (list body-beg (region-beginning) (region-end) body-end)
                   (list body-beg (point) body-end)))
                (pads ;; To calculate left-side white-space padding.
-                (if (org-region-active-p)
+                (if (use-region-p)
                     (list (region-beginning) (region-end))
                   (list (point))))
                (n (- (length parts) 2)) ;; 1 or 2 parts in `dolist' below.
@@ -2211,7 +2211,7 @@ block of the same language as the previous."
 				        (mapcar (lambda (el) (intern (car el)))
 					        org-src-lang-modes)))))))
 	    (body (delete-and-extract-region
-		   (if (org-region-active-p) (mark) (point)) (point))))
+		   (if (use-region-p) (mark) (point)) (point))))
 	(insert (concat (if (looking-at "^") "" "\n")
 			(if arg (concat stars "\n") "")
 			(if upper-case-p "#+BEGIN_SRC " "#+begin_src ")

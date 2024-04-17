@@ -789,7 +789,7 @@ to learn how the prefix argument is interpreted to determine the field
 separator.
 If there is no such region, create an empty table with `org-table-create'."
   (interactive "P")
-  (if (org-region-active-p)
+  (if (use-region-p)
       (org-table-convert-region (region-beginning) (region-end) arg)
     (org-table-create arg)))
 
@@ -1198,7 +1198,7 @@ Return t when the line exists, nil if it does not exist."
   "Blank the current table field or active region."
   (interactive)
   (org-table-check-inside-data-field)
-  (if (and (called-interactively-p 'any) (org-region-active-p))
+  (if (and (called-interactively-p 'any) (use-region-p))
       (let (org-table-clip)
 	(org-table-cut-region (region-beginning) (region-end)))
     (skip-chars-backward "^|")
@@ -1735,8 +1735,8 @@ In particular, this does handle wide and invisible characters."
   "Copy region in table to the clipboard and blank all relevant fields.
 If there is no active region, use just the field at point."
   (interactive (list
-		(if (org-region-active-p) (region-beginning) (point))
-		(if (org-region-active-p) (region-end) (point))))
+		(if () (region-beginning) (point))
+		(if (use-region-p) (region-end) (point))))
   (org-table-copy-region beg end 'cut))
 
 (defun org-table--increment-field (field previous)
@@ -1911,8 +1911,8 @@ A special clipboard is used which can only be accessed with
 `org-table-paste-rectangle'.  Return the region copied, as a list
 of lists of fields."
   (interactive (list
-		(if (org-region-active-p) (region-beginning) (point))
-		(if (org-region-active-p) (region-end) (point))
+		(if (use-region-p) (region-beginning) (point))
+		(if (use-region-p) (region-end) (point))
 		current-prefix-arg))
   (goto-char (min beg end))
   (org-table-check-inside-data-field)
@@ -2307,7 +2307,7 @@ After each change, a message will be displayed indicating the meaning
 of the new mark."
   (interactive)
   (unless (org-at-table-p) (user-error "Not at a table"))
-  (let* ((region (org-region-active-p))
+  (let* ((region (use-region-p))
 	 (l1 (and region
 		  (save-excursion (goto-char (region-beginning))
 				  (copy-marker (line-beginning-position)))))
@@ -4529,7 +4529,7 @@ entries.
 A non-nil value for INTERACTIVE? is used to signal that this
 function is being called interactively."
   (interactive (list current-prefix-arg nil nil nil t))
-  (when (org-region-active-p) (goto-char (region-beginning)))
+  (when (use-region-p) (goto-char (region-beginning)))
   ;; Point must be either within a field or before a data line.
   (save-excursion
     (skip-chars-backward " \t")
@@ -4549,7 +4549,7 @@ function is being called interactively."
 	(end (org-table-end)))
     (save-restriction
       ;; Narrow buffer to appropriate sorting area.
-      (if (org-region-active-p)
+      (if (use-region-p)
 	  (progn (goto-char (region-beginning))
 		 (narrow-to-region
 		  (point)
@@ -4690,7 +4690,7 @@ If there is no region, but you specify a prefix ARG, the current field gets
 blank, and the content is appended to the field above."
   (interactive "P")
   (org-table-check-inside-data-field)
-  (if (org-region-active-p)
+  (if (use-region-p)
       ;; There is a region: fill as a paragraph.
       (let ((start (region-beginning)))
         (save-restriction
@@ -4775,7 +4775,7 @@ If NLAST is a number, only the NLAST fields will actually be summed."
     (let (col (org-timecnt 0) diff h m s org-table-clip)
       (cond
        ((and beg end))			; beg and end given explicitly
-       ((org-region-active-p)
+       ((use-region-p)
 	(setq beg (region-beginning) end (region-end)))
        (t
 	(setq col (org-table-current-column))
@@ -5155,7 +5155,7 @@ When LOCAL is non-nil, show references for the table at point."
     ["Iterate all" (org-table-recalculate '(16)) :active (org-at-table-p) :keys "C-u C-u C-c *"]
     ["Toggle Recalculate Mark" org-table-rotate-recalc-marks :active (org-at-table-p) :keys "C-c #"]
     ["Sum Column/Rectangle" org-table-sum
-     :active (or (org-at-table-p) (org-region-active-p)) :keys "C-c +"]
+     :active (or (org-at-table-p) (use-region-p)) :keys "C-c +"]
     ["Which Column?" org-table-current-column :active (org-at-table-p) :keys "C-c ?"]
     ["Debug Formulas"
      org-table-toggle-formula-debugger :active (org-at-table-p)

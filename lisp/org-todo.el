@@ -494,7 +494,7 @@ When called through ELisp, arg is also interpreted in the following way:
 \"WAITING\"     -> switch to the specified keyword, but only if it
                  really is a member of `org-todo-keywords'."
   (interactive "P")
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
 	    org-loop-over-headlines-in-active-region)

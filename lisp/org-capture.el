@@ -703,7 +703,7 @@ of the day at point (if any) or the current HH:MM time."
 	   (entry (or org-capture-entry (org-capture-select-template keys)))
 	   initial)
       (setq initial (or org-capture-initial
-			(and (org-region-active-p)
+			(and (use-region-p)
 			     (buffer-substring (point) (mark)))))
       (when (stringp initial)
 	(remove-text-properties 0 (length initial) '(read-only t) initial))

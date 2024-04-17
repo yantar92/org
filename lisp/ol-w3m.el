@@ -65,7 +65,7 @@ This will encode `link-title' and `link-location' with
 `org-link-make-string', and insert the transformed test into the kill ring,
 so that it can be yanked into an Org  buffer with links working correctly."
   (interactive)
-  (let* ((regionp (org-region-active-p))
+  (let* ((regionp (use-region-p))
          (transform-start (point-min))
          (transform-end (point-max))
          return-content

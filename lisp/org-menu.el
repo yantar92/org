@@ -164,7 +164,7 @@
      ["Customize feeds" (customize-variable 'org-feed-alist) t])
     ("TAGS and Properties"
      ["Set Tags" org-set-tags-command (not (org-before-first-heading-p))]
-     ["Change tag in region" org-change-tag-in-region (org-region-active-p)]
+     ["Change tag in region" org-change-tag-in-region (use-region-p)]
      "--"
      ["Set property" org-set-property (not (org-before-first-heading-p))]
      ["Column view of properties" org-columns t]
@@ -289,7 +289,7 @@
      ["Toggle Recalculate Mark" org-table-rotate-recalc-marks (org-at-table-p)]
      "--"
      ["Sum Column/Rectangle" org-table-sum
-      (or (org-at-table-p) (org-region-active-p))]
+      (or (org-at-table-p) (use-region-p))]
      ["Which Column?" org-table-current-column (org-at-table-p)])
     ["Debug Formulas"
      org-table-toggle-formula-debugger

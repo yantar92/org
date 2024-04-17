@@ -101,7 +101,7 @@ links working correctly.
 Further lines starting with a star get quoted with a comma to
 keep the structure of the Org file."
   (interactive)
-  (let* ((regionp (org-region-active-p))
+  (let* ((regionp (use-region-p))
          (transform-start (point-min))
          (transform-end (point-max))
          return-content

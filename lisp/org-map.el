@@ -77,7 +77,8 @@
 
 (defun org-map-region (fun beg end)
   "Call FUN for every heading between BEG and END."
-  (let ((org-ignore-region t))
+  (let (;; Force commands ignore region, if any region is active.
+        (transient-mark-mode nil))
     (save-excursion
       (setq end (copy-marker end))
       (goto-char beg)
@@ -427,7 +428,7 @@ to t around the call to `org-entry-properties' to get the same speedup.
 Note that if your function moves around to retrieve tags and properties at
 a *different* entry, you cannot use these techniques."
   (unless (and (or (eq scope 'region) (eq scope 'region-start-level))
-	       (not (org-region-active-p)))
+	       (not (use-region-p)))
     (let* ((org-agenda-archives-mode nil) ; just to make sure
 	   (org-agenda-skip-archived-trees (memq 'archive skip))
 	   (org-agenda-skip-comment-trees (memq 'comment skip))
@@ -454,7 +455,7 @@ a *different* entry, you cannot use these techniques."
 		 (org-narrow-to-subtree)
 		 (setq scope nil))
 		((and (or (eq scope 'region) (eq scope 'region-start-level))
-		      (org-region-active-p))
+		      (use-region-p))
 		 ;; If needed, set start-level to a string like "2"
 		 (when start-level
 		   (save-excursion

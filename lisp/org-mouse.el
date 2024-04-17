@@ -796,7 +796,7 @@ This means, between the beginning of line and the point."
 	 "--"
 	 ["Toggle Recalculate Mark" org-table-rotate-recalc-marks]
 	 ["Sum Column/Rectangle" org-table-sum
-	  :active (or (org-at-table-p) (org-region-active-p))]
+	  :active (or (org-at-table-p) (use-region-p))]
 	 ["Field Info" org-table-field-info]
 	 ["Debug Formulas"
 	  (setq org-table-formula-debug (not org-table-formula-debug))

@@ -576,7 +576,7 @@ in Lisp code use `org-set-tags' instead."
 	 (unless (equal '(16) arg) org-use-fast-tag-selection)))
     (cond
      ((equal '(4) arg) (org-align-tags t))
-     ((and (org-region-active-p) org-loop-over-headlines-in-active-region)
+     ((and (use-region-p) org-loop-over-headlines-in-active-region)
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
             org-loop-over-headlines-in-active-region) ;  hint: infinite recursion.

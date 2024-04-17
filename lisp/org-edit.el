@@ -127,7 +127,7 @@ overwritten, and the table is not marked as requiring realignment."
 	  (call-interactively 'org-self-insert-command)))))
    ((and
      (= N 1)
-     (not (org-region-active-p))
+     (not (use-region-p))
      (org-at-table-p)
      (progn
        ;; Check if we blank the field, and if that triggers align.
@@ -183,7 +183,7 @@ because, in this case the deletion might narrow the column."
   (save-match-data
     (if (and (= N 1)
 	     (not overwrite-mode)
-	     (not (org-region-active-p))
+	     (not (use-region-p))
 	     (not (eq (char-before) ?|))
 	     (save-excursion (skip-chars-backward " \t") (not (bolp)))
 	     (looking-at-p ".*?|")

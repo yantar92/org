@@ -34,7 +34,7 @@
 
 (defvar org-emphasis-regexp-components)
 (defvar org-emphasis-alist)
-(declare-function org-region-active-p "org-compat" ())
+(declare-function use-region-p "org-compat" ())
 ;;;###autoload
 (defun org-emphasize (&optional char)
   "Insert or change an emphasis, i.e. a font like bold or italic.
@@ -50,7 +50,7 @@ prompted for."
   (require 'org-compat)
   (let ((erc org-emphasis-regexp-components)
 	(string "") beg end move s)
-    (if (org-region-active-p)
+    (if (use-region-p)
 	(setq beg (region-beginning)
 	      end (region-end)
 	      string (buffer-substring beg end))
@@ -126,7 +126,7 @@ Point is left between drawer's boundaries."
      ((not (string-match-p org-drawer-regexp (format ":%s:" drawer)))
       (user-error "Invalid drawer name"))
      ;; With an active region, insert a drawer at point.
-     ((not (org-region-active-p))
+     ((not (use-region-p))
       (progn
 	(unless (bolp) (insert "\n"))
 	(insert (format ":%s:\n\n:END:\n" drawer))
@@ -181,7 +181,7 @@ to fixed-width ones.
 Blank lines at the end of the region are ignored unless the
 region only contains such lines."
   (interactive)
-  (if (not (org-region-active-p))
+  (if (not (use-region-p))
       ;; No region:
       ;;
       ;; Remove fixed width marker only in a fixed-with element.

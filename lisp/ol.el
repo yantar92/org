@@ -558,7 +558,7 @@ White spaces are not significant."
 
 (defun org-link--context-from-region ()
   "Return context string from active region, or nil."
-  (when (org-region-active-p)
+  (when (use-region-p)
     (let ((context (buffer-substring (region-beginning) (region-end))))
       (when (and (wholenump org-link-context-for-files)
 		 (> org-link-context-for-files 0))
@@ -1545,7 +1545,7 @@ if at a heading with a CUSTOM_ID property or an element with a
 NAME."
   (interactive "P\np")
   (org-load-modules-maybe)
-  (if (and (equal arg '(64)) (org-region-active-p))
+  (if (and (equal arg '(64)) (use-region-p))
       (save-excursion
 	(let ((end (region-end)))
 	  (goto-char (region-beginning))
@@ -1760,7 +1760,7 @@ non-interactively, don't allow editing the default description."
   (interactive "P")
   (let* ((wcf (current-window-configuration))
 	 (origbuf (current-buffer))
-	 (region (when (org-region-active-p)
+	 (region (when (use-region-p)
 		   (buffer-substring (region-beginning) (region-end))))
 	 (remove (and region (list (region-beginning) (region-end))))
 	 (desc region)

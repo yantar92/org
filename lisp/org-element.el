@@ -1180,7 +1180,7 @@ The function assumes BUFFER's major mode is `org-mode'."
     (let ((str (unless drop-contents (org-with-wide-buffer (buffer-string))))
           (narrowing
            (unless drop-narrowing
-             (if (org-region-active-p)
+             (if (use-region-p)
 	         (list (region-beginning) (region-end))
 	       (list (point-min) (point-max)))))
 	  (pos (point))

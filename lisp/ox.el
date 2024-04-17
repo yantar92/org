@@ -2992,7 +2992,7 @@ Return code as a string."
         ;; Narrow buffer to an appropriate region or subtree for
         ;; parsing.  If parsing subtree, be sure to remove main
         ;; headline, planning data and property drawer.
-        (cond ((org-region-active-p)
+        (cond ((use-region-p)
 	       (narrow-to-region (region-beginning) (region-end)))
 	      (subtreep
 	       (org-narrow-to-subtree)
@@ -3182,7 +3182,7 @@ Return code as a string."
 BACKEND is either an export backend, as returned by, e.g.,
 `org-export-create-backend', or a symbol referring to
 a registered backend."
-  (unless (org-region-active-p) (user-error "No active region to replace"))
+  (unless (use-region-p) (user-error "No active region to replace"))
   (insert
    (org-export-string-as
     (delete-and-extract-region (region-beginning) (region-end)) backend t)))

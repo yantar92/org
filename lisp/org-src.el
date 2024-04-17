@@ -561,7 +561,7 @@ Leave point in edit buffer."
 	     (point-coordinates (and (not remote)
 				     (org-src--coordinates (point) beg end)))
 	     (mark-coordinates (and (not remote)
-				    (org-region-active-p)
+				    (use-region-p)
 				    (let ((m (mark)))
 				      (and (>= m beg) (>= end m)
 					   (org-src--coordinates m beg end)))))

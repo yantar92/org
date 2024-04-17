@@ -246,12 +246,12 @@ same logic."
   (cond
    ((and (eq system-type 'darwin)
          (or (eq org-support-shift-select 'always)
-             (and org-support-shift-select (org-region-active-p))))
+             (and org-support-shift-select (use-region-p))))
     (org-call-for-shift-select 'backward-char))
    ((run-hook-with-args-until-success 'org-shiftmetaleft-hook))
    ((org-at-table-p) (call-interactively 'org-table-delete-column))
    ((org-at-heading-p) (call-interactively 'org-promote-subtree))
-   ((if (not (org-region-active-p)) (org-at-item-p)
+   ((if (not (use-region-p)) (org-at-item-p)
       (save-excursion (goto-char (region-beginning))
 		      (org-at-item-p)))
     (call-interactively 'org-outdent-item-tree))
@@ -273,12 +273,12 @@ same logic."
   (cond
    ((and (eq system-type 'darwin)
          (or (eq org-support-shift-select 'always)
-             (and org-support-shift-select (org-region-active-p))))
+             (and org-support-shift-select (use-region-p))))
     (org-call-for-shift-select 'forward-char))
    ((run-hook-with-args-until-success 'org-shiftmetaright-hook))
    ((org-at-table-p) (call-interactively 'org-table-insert-column))
    ((org-at-heading-p) (call-interactively 'org-demote-subtree))
-   ((if (not (org-region-active-p)) (org-at-item-p)
+   ((if (not (use-region-p)) (org-at-item-p)
       (save-excursion (goto-char (region-beginning))
 		      (org-at-item-p)))
     (call-interactively 'org-indent-item-tree))
@@ -349,7 +349,7 @@ function runs `org-metaleft-final-hook' using the same logic."
    ((org-at-table-p) (org-call-with-arg 'org-table-move-column 'left))
    ((org-with-limited-levels
      (or (org-at-heading-p)
-	 (and (org-region-active-p)
+	 (and (use-region-p)
 	      (save-excursion
 		(goto-char (region-beginning))
 		(org-at-heading-p)))))
@@ -359,7 +359,7 @@ function runs `org-metaleft-final-hook' using the same logic."
    ((org-at-heading-p)
     (call-interactively 'org-inlinetask-promote))
    ((or (org-at-item-p)
-	(and (org-region-active-p)
+	(and (use-region-p)
 	     (save-excursion
 	       (goto-char (region-beginning))
 	       (org-at-item-p))))
@@ -390,7 +390,7 @@ function runs `org-metaright-final-hook' using the same logic."
    ((org-at-block-p) (call-interactively 'org-indent-block))
    ((org-with-limited-levels
      (or (org-at-heading-p)
-	 (and (org-region-active-p)
+	 (and (use-region-p)
 	      (save-excursion
 		(goto-char (region-beginning))
 		(org-at-heading-p)))))
@@ -400,7 +400,7 @@ function runs `org-metaright-final-hook' using the same logic."
    ((org-at-heading-p)
     (call-interactively 'org-inlinetask-demote))
    ((or (org-at-item-p)
-	(and (org-region-active-p)
+	(and (use-region-p)
 	     (save-excursion
 	       (goto-char (region-beginning))
 	       (org-at-item-p))))
@@ -421,7 +421,7 @@ this function returns t, nil otherwise."
 	beg end)
     (save-excursion
       (catch 'exit
-	(unless (org-region-active-p)
+	(unless (use-region-p)
           (setq beg (line-beginning-position))
 	  (forward-line 1)
 	  (while (and (not (eobp)) ;; this is like `next-line'
@@ -450,7 +450,7 @@ function runs `org-metaup-final-hook' using the same logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metaup-hook))
-   ((and (org-region-active-p)
+   ((and (use-region-p)
          (org-with-limited-levels
           (save-excursion
             (goto-char (region-beginning))
@@ -476,7 +476,7 @@ function runs `org-metaup-final-hook' using the same logic."
           (while (< (point) end)
             (let ((deactivate-mark nil))
               (call-interactively 'org-move-subtree-down)))))))
-   ((org-region-active-p)
+   ((use-region-p)
     (let* ((a (save-excursion
                 (goto-char (region-beginning))
                 (line-beginning-position)))
@@ -520,7 +520,7 @@ function runs `org-metadown-final-hook' using the same logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metadown-hook))
-   ((and (org-region-active-p)
+   ((and (use-region-p)
          (org-with-limited-levels
           (save-excursion
             (goto-char (region-beginning))
@@ -542,7 +542,7 @@ function runs `org-metadown-final-hook' using the same logic."
           (while (> (point) beg)
             (let ((deactivate-mark nil))
               (call-interactively 'org-move-subtree-up)))))))
-   ((org-region-active-p)
+   ((use-region-p)
     (let* ((a (save-excursion
                 (goto-char (region-beginning))
                 (line-beginning-position)))
@@ -595,7 +595,7 @@ more information."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-shiftup-hook))
-   ((and org-support-shift-select (org-region-active-p))
+   ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'previous-line))
    ((org-at-timestamp-p 'lax)
     (call-interactively (if org-edit-timestamp-down-means-later
@@ -634,7 +634,7 @@ more information."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-shiftdown-hook))
-   ((and org-support-shift-select (org-region-active-p))
+   ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'next-line))
    ((org-at-timestamp-p 'lax)
     (call-interactively (if org-edit-timestamp-down-means-later
@@ -676,7 +676,7 @@ variable for more information."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-shiftright-hook))
-   ((and org-support-shift-select (org-region-active-p))
+   ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'forward-char))
    ((org-at-timestamp-p 'lax) (call-interactively 'org-timestamp-up-day))
    ((and (not (eq org-support-shift-select 'always))
@@ -725,7 +725,7 @@ variable for more information."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-shiftleft-hook))
-   ((and org-support-shift-select (org-region-active-p))
+   ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'backward-char))
    ((org-at-timestamp-p 'lax) (call-interactively 'org-timestamp-down-day))
    ((and (not (eq org-support-shift-select 'always))
@@ -756,7 +756,7 @@ variable for more information."
   "Switch to next TODO set."
   (interactive)
   (cond
-   ((and org-support-shift-select (org-region-active-p))
+   ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'forward-word))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
@@ -769,7 +769,7 @@ variable for more information."
   "Switch to previous TODO set."
   (interactive)
   (cond
-   ((and org-support-shift-select (org-region-active-p))
+   ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'backward-word))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
@@ -1220,7 +1220,7 @@ Calls `org-table-insert-hline', `org-toggle-item', or
   (cond
    ((org-at-table-p)
     (call-interactively 'org-table-insert-hline))
-   ((org-region-active-p)
+   ((use-region-p)
     (call-interactively 'org-toggle-item))
    ((org-in-item-p)
     (call-interactively 'org-cycle-list-bullet))
@@ -1272,7 +1272,7 @@ number of stars to add."
       (when (listp current-prefix-arg) (setq current-prefix-arg 1))
       (org-mark-element))
 
-    (if (org-region-active-p)
+    (if (use-region-p)
 	(setq beg (funcall skip-blanks (region-beginning))
 	      end (copy-marker (save-excursion
 				 (goto-char (region-end))

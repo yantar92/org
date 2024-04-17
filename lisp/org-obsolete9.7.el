@@ -116,6 +116,14 @@ more information."
  "Only the built-in Python mode is supported in ob-python now."
  "9.7")
 
+(defvar org-ignore-region nil
+  "Non-nil means temporarily disable the active region.")
+
+(make-obsolete-variable
+ 'org-ignore-region
+ "Temporarily bind `transient-mark-mode' or `mark-active' instead."
+ "9.7")
+
 ;;;; Obsolete functions and macros
 
 (defmacro org-no-popups (&rest body)
@@ -373,6 +381,19 @@ package ox-bibtex by Taru Karttunen."
   (require 'org-element)
   (if org-odd-levels-only (1+ (/ n 2)) n))
 (make-obsolete 'org-tr-level "no longer used" "9.7")
+
+(defun org-region-active-p ()
+  "Non-nil when the region active.
+Unlike to `use-region-p', this function also checks
+`org-ignore-region'."
+  (and (not org-ignore-region) (use-region-p)))
+(make-obsolete 'org-region-active-p "no longer used" "9.7")
+
+(defun org-cursor-to-region-beginning ()
+  (when (and (with-no-warnings (org-region-active-p))
+             (> (point) (region-beginning)))
+    (exchange-point-and-mark)))
+(make-obsolete 'org-cursor-to-region-beginning "no longer used" "9.7")
 
 (provide 'org-obsolete9.7)
 

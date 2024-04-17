@@ -118,19 +118,6 @@
 
 ;;; Region compatibility
 
-(defvar org-ignore-region nil
-  "Non-nil means temporarily disable the active region.")
-
-(defun org-region-active-p ()
-  "Non-nil when the region active.
-Unlike to `use-region-p', this function also checks
-`org-ignore-region'."
-  (and (not org-ignore-region) (use-region-p)))
-
-(defun org-cursor-to-region-beginning ()
-  (when (and (org-region-active-p)
-             (> (point) (region-beginning)))
-    (exchange-point-and-mark)))
 
 
 ;;; Invisibility compatibility

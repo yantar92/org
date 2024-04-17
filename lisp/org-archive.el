@@ -302,7 +302,7 @@ cursor is not at a headline when these commands are called, try
 all level 1 trees.  If the cursor is on a headline, only try the
 direct children of this heading."
   (interactive "P")
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
 	    org-loop-over-headlines-in-active-region)
@@ -517,7 +517,7 @@ sibling does not exist, it will be created at the end of the subtree.
 
 Archiving time is retained in the ARCHIVE_TIME node property."
   (interactive)
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (let ((cl (when (eq org-loop-over-headlines-in-active-region 'start-level)
 		  'region-start-level 'region))
 	    org-loop-over-headlines-in-active-region)
@@ -677,7 +677,7 @@ With prefix argument FIND-DONE, check all children of current headline
 and offer tagging the children that do not contain any open TODO
 items."
   (interactive "P")
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
 	    org-loop-over-headlines-in-active-region)
@@ -698,7 +698,7 @@ items."
 (defun org-archive-set-tag ()
   "Set the ARCHIVE tag."
   (interactive)
-  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+  (if (and (use-region-p) org-loop-over-headlines-in-active-region)
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
 	    org-loop-over-headlines-in-active-region)
