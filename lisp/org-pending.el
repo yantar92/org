@@ -329,7 +329,14 @@ error.  The function may use text properties, overlays, etc.  See
 `org-pending-describe-reglock'")
   ( properties nil
     :documentation
-    "A alist of properties.  Useful to attach custom features to this REGLOCK." ))
+    "A alist of properties.  Useful to attach custom features to this REGLOCK." )
+
+  ( -delete-outcome-marks (lambda ())
+    :documentation
+    "Internal.  Used to remove visual outcome hints if any.
+By default, this is a noop.  When, and, if there are visual hints to
+remove, org-pending--update takes care to update that function." ))
+
 
 (defun org-pending-reglock-owner (reglock)
   "The buffer that owns this lock; it may be the base
@@ -387,6 +394,12 @@ Default value for `org-pending-reglock-user-cancel-function'."
   (org-pending-send-update
    reglock (list :failure (list 'org-pending-user-cancel
                                 "Canceled"))))
+
+(defun org-pending-reglock-delete-outcome-marks (reglock)
+  "Delete visual hints of the outcome for this REGLOCK, if any.
+Do nothing if the outcome is not known. Do nothing if there are no
+visual hints."
+  (funcall (org-pending-reglock--delete-outcome-marks reglock)))
 
 ;;;; Locking a region
 ;;
@@ -713,6 +726,14 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
                                          "x" 'display
                                          `(left-fringe ,bitmap ,face)))
             (overlay-put outcome-ovl 'org-pending-reglock reglock)
+
+            ;; How to remove our visual hints.
+            (setf (org-pending-reglock--delete-outcome-marks reglock)
+                  (lambda ()
+                    (when-let ((buf (overlay-buffer outcome-ovl)))
+                      (when (buffer-live-p buf)
+                        (delete-overlay outcome-ovl)))))
+
             (push (cons 'useless-p
                         (lambda ()
                           (if-let ((buf (overlay-buffer outcome-ovl)))
