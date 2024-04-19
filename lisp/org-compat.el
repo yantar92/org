@@ -149,58 +149,6 @@ Pass COLUMN and FORCE to `move-to-column'."
 
 ;;; Integration with and fixes for other packages
 
-(defgroup org-imenu-and-speedbar nil
-  "Options concerning imenu and speedbar in Org mode."
-  :tag "Org Imenu and Speedbar"
-  :group 'org-structure)
-
-(defcustom org-imenu-depth 2
-  "The maximum level for Imenu access to Org headlines.
-This also applied for speedbar access."
-  :type 'integer)
-
-;;;; Imenu
-
-(defvar-local org-imenu-markers nil
-  "All markers currently used by Imenu.")
-
-(defun org-imenu-get-tree ()
-  "Produce the index for Imenu."
-  (dolist (x org-imenu-markers) (move-marker x nil))
-  (setq org-imenu-markers nil)
-  (org-with-wide-buffer
-   (goto-char (point-max))
-   (let* ((re (concat "^" (org-get-limited-outline-regexp)))
-	  (subs (make-vector (1+ org-imenu-depth) nil))
-	  (last-level 0))
-     (while (re-search-backward re nil t)
-       (let ((level (org-reduced-level (funcall outline-level)))
-	     (headline (org-no-properties
-			(org-link-display-format (org-get-heading t t t t)))))
-	 (when (and (<= level org-imenu-depth) (org-string-nw-p headline))
-	   (let* ((m (point-marker))
-		  (item (propertize headline 'org-imenu-marker m 'org-imenu t)))
-	     (push m org-imenu-markers)
-             (push (cons item m) (aref subs level))
-             (unless (>= level last-level)
-	       (push (cons item
-			   (cl-mapcan #'identity (cl-subseq subs (1+ level))))
-		     (aref subs level))
-	       (cl-loop for i from (1+ level) to org-imenu-depth
-			do (aset subs i nil)))
-	     (setq last-level level)))))
-     (aref subs 1))))
-
-(eval-after-load 'imenu
-  '(progn
-     (add-hook 'imenu-after-jump-hook
-	       (lambda ()
-		 (when (derived-mode-p 'org-mode)
-		   (org-fold-show-context 'org-goto))))
-     (add-hook 'org-mode-hook
-	       (lambda ()
-		 (setq imenu-create-index-function 'org-imenu-get-tree)))))
-
 ;;;; Speedbar
 
 (defvar org-speedbar-restriction-lock-overlay (make-overlay 1 1)

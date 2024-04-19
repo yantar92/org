@@ -43,6 +43,7 @@
 (require 'org-menu)
 (require 'org-bookmark)
 (require 'thingatpt)
+(require 'org-imenu)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")
@@ -929,6 +930,7 @@ The following commands are available:
   (org-setup-occur)
   (org-setup-bookmark)
   (org-setup-saveplace)
+  (org-setup-imenu)
   ;; Remove folds when changing major mode
   (add-hook 'change-major-mode-hook
             #'org-fold-show-all 'append 'local))
