@@ -737,6 +737,19 @@ This function ignores inlinetasks.  It is meant to be used as
 `add-log-current-defun-function' value."
   (org-with-limited-levels (org-get-heading t t t t)))
 
+;; Reveal point upon jumping to mark.
+;; FIXME: This ought to be configurable by the means of major mode
+;; setup, but it is not, so we use advice.  We should eventually file
+;; a feature request to Emacs upstream for this.
+(defun org-mark-jump-unhide (&rest _)
+  "Make the point visible with `org-show-context' after jumping to the mark."
+  (when (and (derived-mode-p 'org-mode)
+	     (org-invisible-p))
+    (org-fold-show-context 'mark-goto)))
+(advice-add 'pop-to-mark-command :after #'org-mark-jump-unhide)
+(advice-add 'exchange-point-and-mark :after #'org-mark-jump-unhide)
+(advice-add 'pop-global-mark :after #'org-mark-jump-unhide)
+
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias

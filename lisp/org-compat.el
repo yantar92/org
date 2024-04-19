@@ -157,16 +157,6 @@ Pass COLUMN and FORCE to `move-to-column'."
 
 ;;;; Simple
 
-(defun org-mark-jump-unhide (&rest _)
-  "Make the point visible with `org-show-context' after jumping to the mark."
-  (when (and (derived-mode-p 'org-mode)
-	     (org-invisible-p))
-    (org-fold-show-context 'mark-goto)))
-
-(advice-add 'pop-to-mark-command :after #'org-mark-jump-unhide)
-
-(advice-add 'exchange-point-and-mark :after #'org-mark-jump-unhide)
-(advice-add 'pop-global-mark :after #'org-mark-jump-unhide)
 
 ;;;; Session
 
