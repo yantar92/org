@@ -460,6 +460,13 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 (eval-after-load 'speedbar '(require 'org-speedbar))
 (eval-after-load 'ecb '(require 'org-ecb))
 
+;; Make "session.el" ignore our circular variable.
+;; This is integration with an old third-party package session.el
+;; https://emacs-session.sourceforge.net/news.html
+(defvar session-globals-exclude)
+(eval-after-load 'session
+  '(add-to-list 'session-globals-exclude 'org-mark-ring))
+
 (provide 'org-load)
 
 (run-hooks 'org-load-hook)

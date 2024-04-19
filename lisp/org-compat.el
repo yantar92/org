@@ -170,10 +170,6 @@ Pass COLUMN and FORCE to `move-to-column'."
 
 ;;;; Session
 
-;; Make "session.el" ignore our circular variable.
-(defvar session-globals-exclude)
-(eval-after-load 'session
-  '(add-to-list 'session-globals-exclude 'org-mark-ring))
 
 ;;;; outline-mode
 
