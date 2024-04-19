@@ -955,7 +955,7 @@ its outcome when the cancellation completes.
 
 Return nothing immediately."
   (when (org-pending-reglock-live-p reglock)
-    (funcall (org-pending-reglock-user-cancel-function reglock)))
+    (funcall (org-pending-reglock-user-cancel-function reglock) reglock))
   nil)
 
 ;;; Managing outcomes
