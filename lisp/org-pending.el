@@ -564,11 +564,12 @@ the end of the description buffer, and call that function with REGLOCK,
                 ((markerp value) (insert-link value))
                 ((functionp value) (funcall value))
                 (t (insert (format "%s" value)))))
-             (one-line (label value)
+             (one-line (label value &optional annotate)
                (insert (propertize (format "%13s" label)
                                    'face 'outline-1))
                (insert ": ")
                (insert-value value)
+               (when annotate (funcall annotate))
                (insert "\n"))
              (multi-line (label value)
                (insert (propertize (format "%13s" label)
@@ -595,8 +596,25 @@ the end of the description buffer, and call that function with REGLOCK,
                     (org-pending-reglock-id reglock))
           (one-line "Status"
                     (substring (symbol-name (org-pending-reglock-status reglock)) 1))
-          (one-line "Live?"
-                    (bool-to-string (org-pending-reglock-live-p reglock)))
+          (let ((alive (org-pending-reglock-live-p reglock)))
+            (one-line
+             "Live?"
+             (bool-to-string alive)
+             (lambda ()
+               (insert " ")
+               (if alive
+                   (insert-button "Cancel"
+                                  'action (lambda (&rest _args)
+                                            (interactive)
+                                            (org-pending-cancel reglock)))
+                 (insert-button
+                  "Forget"
+                  'action (lambda (&rest _args)
+                            (interactive)
+                            (org-pending-reglock-delete-outcome-marks
+                             reglock)
+                            (quit-window)))))))
+
           (one-line "Region"
                     (lambda () (insert-region (org-pending-reglock-region reglock))))
           (one-line "Scheduled at"
