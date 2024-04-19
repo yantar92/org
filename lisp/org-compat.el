@@ -263,14 +263,6 @@ To get rid of the restriction, use `\\[org-agenda-remove-restriction-lock]'."
      (add-hook 'speedbar-visiting-tag-hook
 	       (lambda () (and (derived-mode-p 'org-mode) (org-fold-show-context 'org-goto))))))
 
-;;;; Add Log
-
-(defun org-add-log-current-headline ()
-  "Return current headline or nil.
-This function ignores inlinetasks.  It is meant to be used as
-`add-log-current-defun-function' value."
-  (org-with-limited-levels (org-get-heading t t t t)))
-
 ;;;; Ecb
 
 ;; Make sure ecb shows the location if it was hidden

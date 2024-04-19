@@ -730,6 +730,12 @@ Respect keys that are already there."
   ;; Make sure saveplace shows the location if it was hidden
   (advice-add 'save-place-find-file-hook :after #'org-bookmark-jump-unhide))
 
+(defun org-add-log-current-headline ()
+  "Return current headline or nil.
+This function ignores inlinetasks.  It is meant to be used as
+`add-log-current-defun-function' value."
+  (org-with-limited-levels (org-get-heading t t t t)))
+
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
   "Outline-based notes management and organizer, alias
