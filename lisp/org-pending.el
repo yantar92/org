@@ -424,12 +424,26 @@ On receiving the outcome (a :success or :failure message, sent with
 `org-pending-send-update'), remove the region protection.  When
 ON-OUTCOME is non-nil, call it with the reglock and the outcome, from
 the position from where the REGLOCK was created.  If ON-OUTCOME returns
-an region (a pair (start position . end position)), use it to report the
+a region (a pair (start position . end position)), use it to report the
 success/failure using visual hints on that region.  If ON-OUTCOME
 returns nothing, don't display outcome marks.
 
 You may send progress updates, and, eventually, you must send the
-outcome to unlock the region (see `org-pending-send-update')."
+outcome to unlock the region (see `org-pending-send-update').
+
+You may set/update the following fields of your reglock to customize its
+behavior:
+   - Emacs may have to kill your locks; see the field
+     `before-kill-function' if you wish to do something before your
+     lock is killed.
+   - The user may ask Emacs to cancel your lock; see the field
+     `user-cancel-function' to override the default cancel function.
+   - The user may request a description of the lock; see the the field
+     `insert-details-function' to add custom information when your
+     lock is displayed to the user.
+
+You may add/update your own properties to your reglock using the field
+`properties', which is an association list."
   (unless region
     (error "Now illegal"))
 
