@@ -699,7 +699,7 @@ When called through ELisp, arg is also interpreted in the following way:
 			(org-get-heading))))
 	      (org-auto-repeat-maybe org-state))
 	    ;; Fixup cursor location if close to the keyword.
-	    (when (and (outline-on-heading-p)
+	    (when (and (org-at-heading-p t)
 		       (not (bolp))
 		       (save-excursion
                          (forward-line 0)

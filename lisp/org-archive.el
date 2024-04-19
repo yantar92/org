@@ -505,7 +505,7 @@ direct children of this heading."
 		   (concat "in file: " (abbreviate-file-name afile)))))))
     (org-fold-reveal)
     (if (looking-at "^[ \t]*$")
-	(outline-next-visible-heading 1))))
+	(org-next-visible-heading 1))))
 
 ;;;###autoload
 (defun org-archive-to-archive-sibling ()
@@ -583,7 +583,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	(goto-char pos)))
     (org-fold-reveal)
     (if (looking-at "^[ \t]*$")
-	(outline-next-visible-heading 1))))
+	(org-next-visible-heading 1))))
 
 (defun org-archive-all-done (&optional tag)
   "Archive sublevels of the current tree without open TODO items.

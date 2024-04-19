@@ -81,7 +81,6 @@
 (declare-function org-cycle-hide-drawers "org-cycle" (state))
 
 (declare-function outline-show-branches "outline" ())
-(declare-function outline-hide-sublevels "outline" (levels))
 (declare-function outline-get-next-sibling "outline" ())
 (declare-function outline-invisible-p "outline" (&optional pos))
 (declare-function outline-next-heading "outline" ())

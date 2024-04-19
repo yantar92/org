@@ -63,7 +63,7 @@
 (easy-menu-define org-org-menu org-mode-map "Org menu."
   `("Org"
     ("Show/Hide"
-     ["Cycle Visibility" org-cycle :active (or (bobp) (outline-on-heading-p))]
+     ["Cycle Visibility" org-cycle :active (or (bobp) (org-at-heading-p t))]
      ["Cycle Global Visibility" org-shifttab :active (not (org-at-table-p))]
      ["Sparse Tree..." org-sparse-tree t]
      ["Reveal Context" org-fold-reveal t]
@@ -74,7 +74,7 @@
     ["New Heading" org-insert-heading t]
     ("Navigate Headings"
      ["Up" outline-up-heading t]
-     ["Next" outline-next-visible-heading t]
+     ["Next" org-next-visible-heading t]
      ["Previous" outline-previous-visible-heading t]
      ["Next Same Level" outline-forward-same-level t]
      ["Previous Same Level" outline-backward-same-level t]

@@ -393,7 +393,7 @@ If there is no such heading, return nil."
   (let ((opoint (point))
 	(level (funcall outline-level)))
     (outline-previous-heading)
-    (when (and (/= (point) opoint) (outline-on-heading-p t))
+    (when (and (/= (point) opoint) (org-at-heading-p))
       (while (and (> (funcall outline-level) level)
 		  (not (bobp)))
 	(outline-previous-heading))
