@@ -1161,6 +1161,15 @@ When NEXT is non-nil, check the next line instead."
 	(bookmark-jump bookmark)
       (error "Cannot find location"))))
 
+(defun org-move-to-column (column &optional force _buffer)
+  "Move to column COLUMN.
+Pass COLUMN and FORCE to `move-to-column'."
+  (let ((buffer-invisibility-spec
+         (if (listp buffer-invisibility-spec)
+             (remove '(org-filtered) buffer-invisibility-spec)
+           buffer-invisibility-spec)))
+    (move-to-column column force)))
+
 
 ;;; Overlays and text properties
 
@@ -1512,6 +1521,15 @@ STRING width.  When REFERENCE-FACE is nil, `default' face is used."
           (if pixels
               pixel-width
             (round pixel-width symbol-width)))))))
+
+(defun org-count-lines (s)
+  "How many lines in string S?"
+  (let ((start 0) (n 1))
+    (while (string-match "\n" s start)
+      (setq start (match-end 0) n (1+ n)))
+    (when (and (> (length s) 0) (= (aref s (1- (length s))) ?\n))
+      (setq n (1- n)))
+    n))
 
 (defmacro org-current-text-column ()
   "Like `current-column' but ignore display properties.
@@ -2108,6 +2126,11 @@ indirectly called by the latter."
                (or (not (alist-get 'same-frame alist))
                    (eq (window-frame) (window-frame window))))
       (window--display-buffer buffer window 'reuse alist))))
+
+(defun org-kill-new (string &rest args)
+  (remove-text-properties 0 (length string) '(line-prefix t wrap-prefix t)
+                          string)
+  (apply 'kill-new string args))
 
 (provide 'org-macs)
 

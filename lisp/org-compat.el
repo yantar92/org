@@ -30,73 +30,11 @@
 ;;; Code:
 
 
-(require 'cl-lib)
 (require 'org-macs)
-
-(eval-when-compile (require 'subr-x))  ; Emacs < 28
 
 ;; We rely on org-compat when generating Org version.  Checking Org
 ;; version here will interfere with Org build process.
 ;; (org-assert-version)
-
-(declare-function org-agenda-diary-entry "org-agenda")
-(declare-function org-agenda-maybe-redo "org-agenda" ())
-(declare-function org-agenda-set-restriction-lock "org-agenda" (&optional type))
-(declare-function org-agenda-remove-restriction-lock "org-agenda" (&optional noupdate))
-(declare-function org-calendar-goto-agenda "org-agenda" ())
-(declare-function org-align-tags "org" (&optional all))
-(declare-function org-at-heading-p "org" (&optional ignored))
-(declare-function org-at-table.el-p "org-table" ())
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-element-at-point-no-context "org-element" (&optional pom))
-(declare-function org-element-context "org-element" (&optional element))
-(declare-function org-element-lineage "org-element-ast" (blob &optional types with-self))
-(declare-function org-element-type "org-element-ast" (node &optional anonymous))
-(declare-function org-element-type-p "org-element-ast" (node types))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-begin "org-element" (node))
-(declare-function org-element-end "org-element" (node))
-(declare-function org-element-contents-begin "org-element" (node))
-(declare-function org-element-contents-end "org-element" (node))
-(declare-function org-element-post-affiliated "org-element" (node))
-(declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
-(declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
-(declare-function org-get-tags "org" (&optional pos local))
-(declare-function org-fold-hide-block-toggle "org-fold" (&optional force no-error element))
-(declare-function org-link-display-format "ol" (s))
-(declare-function org-link-set-parameters "ol" (type &rest rest))
-(declare-function org-log-into-drawer "org" ())
-(declare-function org-make-tag-string "org" (tags))
-(declare-function org-next-visible-heading "org" (arg))
-(declare-function org-reduced-level "org" (l))
-(declare-function org-return "org" (&optional indent arg interactive))
-(declare-function org-fold-show-context "org-fold" (&optional key))
-(declare-function org-table-end "org-table" (&optional table-type))
-(declare-function outline-next-heading "outline" ())
-(declare-function speedbar-line-directory "speedbar" (&optional depth))
-(declare-function table--at-cell-p "table" (position &optional object at-column))
-(declare-function org-fold-folded-p "org-fold" (&optional pos spec-or-alias))
-(declare-function org-fold-hide-sublevels "org-fold" (levels))
-(declare-function org-fold-hide-subtree "org-fold" ())
-(declare-function org-fold-region "org-fold" (from to flag &optional spec))
-(declare-function org-fold-show-all "org-fold" (&optional types))
-(declare-function org-fold-show-children "org-fold" (&optional level))
-(declare-function org-fold-show-entry "org-fold" (&optional hide-drawers))
-;; `org-string-equal-ignore-case' is in _this_ file but isn't at the
-;; top-level.
-(declare-function org-string-equal-ignore-case "org-compat" (string1 string2))
-
-(defvar calendar-mode-map)
-(defvar org-complex-heading-regexp)
-(defvar org-agenda-diary-file)
-(defvar org-agenda-overriding-restriction)
-(defvar org-agenda-restriction-lock-overlay)
-(defvar org-table-any-border-regexp)
-(defvar org-table-dataline-regexp)
-(defvar org-table-tab-recognizes-table.el)
-(defvar org-table1-hline-regexp)
-(defvar org-fold-core-style)
 
 (require 'org-compat-emacs29)
 (require 'org-compat-emacs28)
@@ -105,67 +43,6 @@
 (require 'org-compat-emacs26)
 
 (require 'org-obsolete)
-
-
-;;; Obsolete aliases (remove them after the next major release).
-
-;;;; Functions and variables from previous releases now obsolete.
-
-
-
-;;; Miscellaneous functions
-
-
-;;; Region compatibility
-
-
-
-;;; Invisibility compatibility
-
-(defun org-move-to-column (column &optional force _buffer)
-  "Move to column COLUMN.
-Pass COLUMN and FORCE to `move-to-column'."
-  (let ((buffer-invisibility-spec
-         (if (listp buffer-invisibility-spec)
-             (remove '(org-filtered) buffer-invisibility-spec)
-           buffer-invisibility-spec)))
-    (move-to-column column force)))
-
-(defun org-count-lines (s)
-  "How many lines in string S?"
-  (let ((start 0) (n 1))
-    (while (string-match "\n" s start)
-      (setq start (match-end 0) n (1+ n)))
-    (when (and (> (length s) 0) (= (aref s (1- (length s))) ?\n))
-      (setq n (1- n)))
-    n))
-
-(defun org-kill-new (string &rest args)
-  (remove-text-properties 0 (length string) '(line-prefix t wrap-prefix t)
-                          string)
-  (apply 'kill-new string args))
-
-
-
-;;; Integration with and fixes for other packages
-
-;;;; Speedbar
-
-
-;;;; Ecb
-
-
-;;;; Simple
-
-
-;;;; Session
-
-
-;;;; outline-mode
-
-;; TODO: outline-headers-as-kill
-
-;;;; Speed commands
 
 (provide 'org-compat)
 
