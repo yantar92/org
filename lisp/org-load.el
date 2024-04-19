@@ -455,6 +455,8 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 		 (if (> (length load-misses) 1) "s" "") load-misses (org-version nil 'full))
       (message "Successfully reloaded Org\n%s" (org-version nil 'full)))))
 
+(eval-after-load 'calendar '(require 'org-calendar))
+
 (provide 'org-load)
 
 (run-hooks 'org-load-hook)

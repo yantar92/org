@@ -7331,6 +7331,7 @@ a timestamp can be added there."
     (when org-adapt-indentation (indent-to-column col)))
   (org-fold-show-set-visibility 'lineage))
 
+;;;###autoload
 (defun org-agenda-diary-entry ()
   "Make a diary entry, like the `i' command from the calendar.
 All the standard commands work: block, weekly etc.
