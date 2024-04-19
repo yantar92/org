@@ -458,6 +458,7 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 (eval-after-load 'calendar '(require 'org-calendar))
 (eval-after-load 'flyspell '(require 'org-flyspell))
 (eval-after-load 'speedbar '(require 'org-speedbar))
+(eval-after-load 'ecb '(require 'org-ecb))
 
 (provide 'org-load)
 

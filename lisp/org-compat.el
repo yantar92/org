@@ -154,12 +154,6 @@ Pass COLUMN and FORCE to `move-to-column'."
 
 ;;;; Ecb
 
-;; Make sure ecb shows the location if it was hidden
-(advice-add 'ecb-method-clicked :after #'org--ecb-show-context)
-(defun org--ecb-show-context (&rest _)
-  "Make hierarchy visible when jumping into location from ECB tree buffer."
-  (when (derived-mode-p 'org-mode)
-    (org-fold-show-context)))
 
 ;;;; Simple
 
