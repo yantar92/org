@@ -456,6 +456,7 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
       (message "Successfully reloaded Org\n%s" (org-version nil 'full)))))
 
 (eval-after-load 'calendar '(require 'org-calendar))
+(eval-after-load 'flyspell '(require 'org-flyspell))
 
 (provide 'org-load)
 
