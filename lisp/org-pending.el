@@ -298,10 +298,6 @@ content may be updated on success.")
     "The outcome. nil when not known yet. Else a list: (:success RESULT)
 or (:failure ERROR)")
 
-  ( -alist nil
-    :documentation
-    "(internal) An alist containing some other information.")
-
   ( before-kill-function nil
     :documentation
     "When non-nil, function called before Emacs kills this REGLOCK, with the
@@ -335,7 +331,40 @@ error.  The function may use text properties, overlays, etc.  See
     :documentation
     "Internal.  Used to remove visual outcome hints if any.
 By default, this is a noop.  When, and, if there are visual hints to
-remove, org-pending--update takes care to update that function." ))
+remove, org-pending--update takes care to update that function." )
+
+  ( -creation-point nil
+    :documentation
+    "Current position (marker) when the lock was created.  Used to run
+updates from the same position." )
+
+  ( -get-status nil
+    :documentation
+    "See `org-pending-reglock-status'." )
+
+  ( -set-status nil
+    :documentation
+    "Function to set the status in `org-pending--update'." )
+
+  ( -get-live-p nil
+    :documentation
+    "See `org-pending-reglock-live-p'. Updated by `org-pending--update'." )
+
+  ( -useless-p nil
+    :documentation
+    "See `org-pending-reglock-useless-p'. Updated by `org-pending--update'." )
+
+  ( -anchor-ovl nil
+    :documentation
+    "Overlay for the anchor. See `org-pending'." )
+
+  ( -region-ovl nil
+    :documentation
+    "Overlay for the region  See `org-pending'." )
+
+  ( -on-outcome nil
+    :documentation
+    "See `org-pending' for the meaning of ON-OUTCOME." ))
 
 
 (defun org-pending-reglock-owner (reglock)
@@ -350,18 +379,18 @@ of that lock must happen in that buffer."
 
 (defun org-pending-reglock-status (reglock)
   "Return the status of REGLOCK: :scheduled, :pending, :success or :failure."
-  (funcall (cdr (assq 'get-status (org-pending-reglock--alist reglock)))))
+  (funcall (org-pending-reglock--get-status reglock)))
 
 (defun org-pending-reglock-live-p (reglock)
   "Return non-nil if REGLOCK is still live.
 A REGLOCK stays live until it receives its outcome: :success or :failure."
-  (funcall (cdr (assq 'get-live-p (org-pending-reglock--alist reglock)))))
+  (funcall (org-pending-reglock--get-live-p reglock)))
 
 (defun org-pending-reglock-useless-p (reglock)
   "Return non-nil if REGLOCK is useless.
 When a REGLOCK becomes useless, org-pending will, at some point, forget
 about it."
-  (funcall (cdr (assq 'useless-p (org-pending-reglock--alist reglock)))))
+  (funcall (org-pending-reglock--useless-p reglock)))
 
 (defun org-pending-reglock-duration (reglock)
   "Return the duration between the scheduling and the outcome.
@@ -446,28 +475,12 @@ You may add/update your own properties to your reglock using the field
 `properties', which is an association list."
   (unless region
     (error "Now illegal"))
-
-  (let* ((to-marker (lambda (p)
+  (let ((to-marker (lambda (p)
                      ;; Make sure P is a marker.
-                      (or (and (markerp p) p)
-                          (save-excursion (goto-char p) (point-marker)))))
-         x-last-status
-         reglock
-         (internals
-          `( (get-status . ,(lambda () x-last-status))
-             (set-status . ,(lambda (v) (setq x-last-status v)))
-             (creation-point . ,(point-marker))
-             (on-outcome . ,on-outcome)
-             ;; useless-p returns non-nil when a reglock becomes
-             ;; useless and we may forget about it.  We'll update the
-             ;; function when we get the outcome.
-             (useless-p . ,(lambda () nil)))))
-
-    (push (cons 'get-live-p
-                (lambda () (when-let ((anchor-ovl (cdr (assq 'anchor-ovl internals))))
-                             (overlay-buffer anchor-ovl))))
-          internals)
-
+                     (or (and (markerp p) p)
+                         (save-excursion (goto-char p) (point-marker)))))
+        x-last-status
+        reglock)
     (setq region (cons (funcall to-marker (car region))
                        (funcall to-marker (cdr region))))
     (save-excursion
@@ -484,6 +497,23 @@ You may add/update your own properties to your reglock using the field
                   (cons abeg aend))
               (cons (funcall to-marker (car anchor))
                     (funcall to-marker (cdr anchor))))))
+    (setq reglock (org-pending--make
+                   :scheduled-at (float-time)
+                   :user-cancel-function #'org-pending--user-cancel-default
+                   :-get-status (lambda () x-last-status)
+                   :-set-status (lambda (v) (setq x-last-status v))
+                   :-creation-point (point-marker)
+                   :-on-outcome on-outcome
+                   ;; useless-p returns non-nil when a reglock becomes
+                   ;; useless and we may forget about it.  We'll update the
+                   ;; function when we get the outcome.
+                   :-useless-p (lambda () nil)
+                   :-get-live-p
+                   (lambda ()
+                     (when-let ((anchor-ovl
+                                 (org-pending-reglock--anchor-ovl reglock)))
+                       (overlay-buffer anchor-ovl)))
+                   :region region))
     (cl-labels
         ((remove-previous-overlays ()
            "Remove previous status overlays.
@@ -517,24 +547,17 @@ You may add/update your own properties to your reglock using the field
       (remove-previous-overlays)
 
       ;; Create the overlays for the anchor and for the region.
-      (push (cons 'region-ovl (org-pending--make-overlay :region region))
-            internals)
-      (push (cons 'anchor-ovl (org-pending--make-overlay :status anchor))
-            internals)
-
-      (setq reglock
-            (org-pending--make
-             :region region
-             :-alist internals
-             :scheduled-at (float-time)
-             :user-cancel-function #'org-pending--user-cancel-default))
+      (setf (org-pending-reglock--region-ovl reglock)
+            (org-pending--make-overlay :region region))
+      (setf (org-pending-reglock--anchor-ovl reglock)
+            (org-pending--make-overlay :status anchor))
 
       ;; Flag the result as ":scheduled".
       (org-pending--update reglock :scheduled nil)
 
-      (overlay-put (cdr (assq 'anchor-ovl internals))
+      (overlay-put (org-pending-reglock--region-ovl reglock)
                    'org-pending-reglock reglock)
-      (overlay-put (cdr (assq 'region-ovl internals))
+      (overlay-put (org-pending-reglock--anchor-ovl reglock)
                    'org-pending-reglock reglock)
       (org-pending--mgr-handle-new-reglock reglock name)
       reglock)))
@@ -610,7 +633,7 @@ the end of the description buffer, and call that function with REGLOCK,
                     (org-pending-reglock-id reglock))
           (one-line "Status"
                     (substring (symbol-name (org-pending-reglock-status reglock)) 1))
-          (let ((alive (org-pending-reglock-live-p reglock)))
+          (let ((alive (funcall (org-pending-reglock--get-live-p reglock))))
             (one-line
              "Live?"
              (bool-to-string alive)
@@ -683,15 +706,14 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
          (if msg
              (car (split-string (format "%s" msg) "\n" :omit-nulls))
            "")))
-    (let* ((internals  (org-pending-reglock--alist reglock))
-           (anchor-ovl (cdr (assq 'anchor-ovl internals)))
-           (region-ovl (cdr (assq 'region-ovl internals)))
-           (on-outcome (cdr (assq 'on-outcome internals)))
+    (let* ((anchor-ovl (org-pending-reglock--anchor-ovl reglock))
+           (region-ovl (org-pending-reglock--region-ovl reglock))
+           (on-outcome (org-pending-reglock--on-outcome reglock))
            outcome-region)
       (unless (memq status '(:scheduled :pending :failure :success))
         (error "Invalid status"))
       ;; Update the title overlay to match STATUS and DATA.
-      (funcall (cdr (assq 'set-status internals)) status)
+      (funcall (org-pending-reglock--set-status reglock) status)
       (overlay-put anchor-ovl
                    'face
                    (org-pending-status-face status))
@@ -736,8 +758,8 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 
       (when (memq status '(:failure :success))
         (if (not outcome-region)
-            (push (cons 'useless-p (lambda () t))
-                  (org-pending-reglock--alist reglock))
+            (setf (org-pending-reglock--useless-p reglock)
+                  (lambda () t))
           ;; We add some outcome decorations to let the user know what
           ;; happened and allow him to explore the details.
           (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
@@ -760,17 +782,16 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
                       (when (buffer-live-p buf)
                         (delete-overlay outcome-ovl)))))
 
-            (push (cons 'useless-p
-                        (lambda ()
-                          (if-let ((buf (overlay-buffer outcome-ovl)))
-                            (not (buffer-live-p buf))
-                            t)))
-                  (org-pending-reglock--alist reglock))))))))
+            (setf (org-pending-reglock--useless-p reglock)
+                  (lambda ()
+                    (if-let ((buf (overlay-buffer outcome-ovl)))
+                        (not (buffer-live-p buf))
+                      t)))))))))
 
 (defun org-pending-send-update (reglock upd-message)
   "Send the update UPD-MESSAGE to REGLOCK.
 
-Use `org-pending' to create a REGLOCK.
+See `org-pending' to create a REGLOCK.
 
 The udpate UPD-MESSAGE must be one of the following:
 
@@ -790,8 +811,7 @@ Eventually, you must send one, and only one, of either a :success or a
 modifications.
 
 Once the REGBLOCK got its outcome, it is dead."
-  (let* ((internals (org-pending-reglock--alist reglock))
-         (pt (cdr (assq 'creation-point internals)))
+  (let* ((pt (org-pending-reglock--creation-point reglock))
          (buf (marker-buffer pt)))
     (message "org-pending: Handling update message at %s@%s: %s"
              pt buf upd-message)
