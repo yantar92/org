@@ -579,6 +579,9 @@ the end of the description buffer, and call that function with REGLOCK,
   (let ((buffer (get-buffer-create "*Region Lock*")))
     (with-output-to-temp-buffer buffer
       (with-current-buffer buffer
+        (erase-buffer)
+        (setq revert-buffer-function
+              (lambda (&rest _) (org-pending-describe-reglock reglock)))
         (cl-labels
             ((time-to-string (x) (if x (format-time-string "%T" x) "-"))
              (bool-to-string (x) (if x "yes" "no"))
