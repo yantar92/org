@@ -810,32 +810,34 @@ Eventually, you must send one, and only one, of either a :success or a
 :failure. Until you do, the region stays locked, and protected from
 modifications.
 
-Once the REGBLOCK got its outcome, it is dead."
-  (let* ((pt (org-pending-reglock--creation-point reglock))
-         (buf (marker-buffer pt)))
-    (message "org-pending: Handling update message at %s@%s: %s"
-             pt buf upd-message)
-    (save-excursion
-      (with-current-buffer buf
-        (save-excursion
-          (goto-char pt)
-          (pcase upd-message
-            (`(:success ,r)
-             ;; Visual beep that the result is available.
-             (org-pending--update reglock :success r))
+Once the REGBLOCK got its outcome, it is dead.  Ignore updates that
+come once the lock is dead."
+  (when (funcall (org-pending-reglock--get-live-p reglock))
+    (let* ((pt (org-pending-reglock--creation-point reglock))
+           (buf (marker-buffer pt)))
+      (message "org-pending: Handling update message at %s@%s: %s"
+               pt buf upd-message)
+      (save-excursion
+        (with-current-buffer buf
+          (save-excursion
+            (goto-char pt)
+            (pcase upd-message
+              (`(:success ,r)
+               ;; Visual beep that the result is available.
+               (org-pending--update reglock :success r))
 
-            (`(:progress ,p)
-             ;; Still waiting for the outcome. Update our
-             ;; overlays with the progress info R.
-             (org-pending--update reglock :pending p))
+              (`(:progress ,p)
+               ;; Still waiting for the outcome. Update our
+               ;; overlays with the progress info R.
+               (org-pending--update reglock :pending p))
 
-            (`(:failure ,err)
-             ;; We didn't get a result.
-             (org-pending--update reglock :failure err))
+              (`(:failure ,err)
+               ;; We didn't get a result.
+               (org-pending--update reglock :failure err))
 
-            (_ (error "Invalid message")))
-          (org-pending--mgr-handle-reglock-update reglock upd-message))))
-    nil))
+              (_ (error "Invalid message")))
+            (org-pending--mgr-handle-reglock-update reglock upd-message))))
+      nil)))
 
 (defun org-pending-sending-outcome-to--worker (reglock todo)
   "See `org-pending-sending-outcome-to'."
