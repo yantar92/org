@@ -338,13 +338,9 @@ remove, org-pending--update takes care to update that function." )
     "Current position (marker) when the lock was created.  Used to run
 updates from the same position." )
 
-  ( -get-status nil
+  ( -status nil
     :documentation
-    "See `org-pending-reglock-status'." )
-
-  ( -set-status nil
-    :documentation
-    "Function to set the status in `org-pending--update'." )
+    "Status. Managed by `org-pending-send-update'." )
 
   ( -get-live-p nil
     :documentation
@@ -378,8 +374,13 @@ of that lock must happen in that buffer."
   (marker-buffer (car (org-pending-reglock-region reglock))))
 
 (defun org-pending-reglock-status (reglock)
-  "Return the status of REGLOCK: :scheduled, :pending, :success or :failure."
-  (funcall (org-pending-reglock--get-status reglock)))
+  "Return the status of REGLOCK.
+The possible status are, in chronological order:
+  :scheduled =>
+     :pending =>
+         :success
+         or :failure."
+  (org-pending-reglock--status reglock))
 
 (defun org-pending-reglock-live-p (reglock)
   "Return non-nil if REGLOCK is still live.
@@ -479,7 +480,6 @@ You may add/update your own properties to your reglock using the field
                      ;; Make sure P is a marker.
                      (or (and (markerp p) p)
                          (save-excursion (goto-char p) (point-marker)))))
-        x-last-status
         reglock)
     (setq region (cons (funcall to-marker (car region))
                        (funcall to-marker (cdr region))))
@@ -500,8 +500,6 @@ You may add/update your own properties to your reglock using the field
     (setq reglock (org-pending--make
                    :scheduled-at (float-time)
                    :user-cancel-function #'org-pending--user-cancel-default
-                   :-get-status (lambda () x-last-status)
-                   :-set-status (lambda (v) (setq x-last-status v))
                    :-creation-point (point-marker)
                    :-on-outcome on-outcome
                    ;; useless-p returns non-nil when a reglock becomes
@@ -716,7 +714,7 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
       (unless (memq status '(:scheduled :pending :failure :success))
         (error "Invalid status"))
       ;; Update the title overlay to match STATUS and DATA.
-      (funcall (org-pending-reglock--set-status reglock) status)
+      (setf (org-pending-reglock--status reglock) status)
       (overlay-put anchor-ovl
                    'face
                    (org-pending-status-face status))
