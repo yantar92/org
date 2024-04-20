@@ -26,13 +26,10 @@
 ;;; Code:
 
 (require 'org-element)
-(require 'org-fold)
+(require 'org-fold-core)
 (require 'outline)
 (require 'org-regexps)
 (require 'org-element-context)
-
-(defvar org-complex-heading-regexp)
-(declare-function org-current-level "org" ())
 
 (defvaralias 'org-special-ctrl-a 'org-special-ctrl-a/e)
 (defcustom org-special-ctrl-a/e nil
@@ -268,7 +265,7 @@ depending on context."
               (org-element-at-point)
               (lambda (el)
                 (goto-char (org-element-begin el))
-                (or invisible-ok (not (org-fold-folded-p))))
+                (or invisible-ok (not (org-fold-core-folded-p))))
             '(headline inlinetask)
             'with-self 'first-match)
         (user-error "Before first headline at position %d in buffer %s"
@@ -533,13 +530,13 @@ With ARG, repeats or can move backward if negative."
     (while (and (< arg 0) (re-search-backward regexp nil :move))
       (unless (bobp)
 	(when (org-invisible-p nil t)
-	  (goto-char (org-fold-previous-visibility-change))
+	  (goto-char (org-fold-core-previous-visibility-change))
           (unless (looking-at-p regexp)
             (re-search-backward regexp nil :mode))))
       (cl-incf arg))
     (while (and (> arg 0) (re-search-forward regexp nil :move))
       (when (org-invisible-p nil t)
-	(goto-char (org-fold-next-visibility-change))
+	(goto-char (org-fold-core-next-visibility-change))
         (skip-chars-forward " \t\n")
 	(end-of-line))
       (cl-decf arg))
@@ -691,7 +688,7 @@ See `org-forward-paragraph'."
      ((eobp) nil)
      ;; When inside a folded part, move out of it.
      ((when (org-invisible-p nil t)
-        (goto-char (cdr (org-fold-get-region-at-point)))
+        (goto-char (cdr (org-fold-core-get-region-at-point)))
         (forward-line)
         t))
      (t
@@ -706,7 +703,7 @@ See `org-forward-paragraph'."
 	  (org--forward-paragraph-once))
 	 ;; If the element is folded, skip it altogether.
          ((when (org-with-point-at post-affiliated (org-invisible-p (line-end-position) t))
-            (goto-char (cdr (org-fold-get-region-at-point
+            (goto-char (cdr (org-fold-core-get-region-at-point
 			     nil
 			     (org-with-point-at post-affiliated
 			       (line-end-position)))))
@@ -764,7 +761,7 @@ See `org-backward-paragraph'."
       (goto-char (point-min)))
      ;; When inside a folded part, move out of it.
      ((when (org-invisible-p (1- (point)) t)
-        (goto-char (1- (car (org-fold-get-region-at-point nil (1- (point))))))
+        (goto-char (1- (car (org-fold-core-get-region-at-point nil (1- (point))))))
 	(org--backward-paragraph-once)
 	t))
      (t
@@ -967,8 +964,7 @@ Throw an error if no block is found."
 	  (setq last-element element)
 	  (cl-decf count))))
     (if (= count 0)
-	(prog1 (goto-char (org-element-post-affiliated last-element))
-	  (save-match-data (org-fold-show-context)))
+	(goto-char (org-element-post-affiliated last-element))
       (goto-char origin)
       (user-error "No %s code blocks" (if backward "previous" "further")))))
 
