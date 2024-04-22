@@ -796,31 +796,6 @@ Optional argument N tells to change by that many units."
 	(org-clock-timestamps-down n))
     (user-error "Not at a clock log")))
 
-(defun org-increase-number-at-point (&optional inc)
-  "Increment the number at point.
-With an optional prefix numeric argument INC, increment using
-this numeric value."
-  (interactive "p")
-  (if (not (number-at-point))
-      (user-error "Not on a number")
-    (unless inc (setq inc 1))
-    (let ((pos (point))
-	  (beg (skip-chars-backward "-+^/*0-9eE."))
-	  (end (skip-chars-forward "-+^/*0-9eE.")) nap)
-      (setq nap (buffer-substring-no-properties
-		 (+ pos beg) (+ pos beg end)))
-      (delete-region (+ pos beg) (+ pos beg end))
-      (insert (calc-eval (concat (number-to-string inc) "+" nap))))
-    (when (org-at-table-p)
-      (org-table-align)
-      (org-table-end-of-field 1))))
-
-(defun org-decrease-number-at-point (&optional inc)
-  "Decrement the number at point.
-With an optional prefix numeric argument INC, decrement using
-this numeric value."
-  (interactive "p")
-  (org-increase-number-at-point (- (or inc 1))))
 
 (defun org-ctrl-c-ret ()
   "Call `org-table-hline-and-move' or `org-insert-heading'."

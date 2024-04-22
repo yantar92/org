@@ -299,5 +299,35 @@ If there is already a time stamp at the cursor position, update it."
       (org-insert-timestamp
        (org-encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
 
+(declare-function org-table-end-of-field "org-table" (&optional n))
+;;;###autoload
+(defun org-increase-number-at-point (&optional inc)
+  "Increment the number at point.
+With an optional prefix numeric argument INC, increment using
+this numeric value."
+  (interactive "p")
+  (if (not (number-at-point))
+      (user-error "Not on a number")
+    (unless inc (setq inc 1))
+    (let ((pos (point))
+	  (beg (skip-chars-backward "-+^/*0-9eE."))
+	  (end (skip-chars-forward "-+^/*0-9eE.")) nap)
+      (setq nap (buffer-substring-no-properties
+		 (+ pos beg) (+ pos beg end)))
+      (delete-region (+ pos beg) (+ pos beg end))
+      (insert (calc-eval (concat (number-to-string inc) "+" nap))))
+    (when (org-at-table-p)
+      (require 'org-table)
+      (org-table-align)
+      (org-table-end-of-field 1))))
+
+;;;###autoload
+(defun org-decrease-number-at-point (&optional inc)
+  "Decrement the number at point.
+With an optional prefix numeric argument INC, decrement using
+this numeric value."
+  (interactive "p")
+  (org-increase-number-at-point (- (or inc 1))))
+
 (provide 'org-misc)
 ;;; org-misc.el ends here
