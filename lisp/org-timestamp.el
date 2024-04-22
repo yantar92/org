@@ -94,6 +94,7 @@ moved to the new date."
 (defvar org-end-time-was-given) ; dynamically scoped parameter
 
 (defalias 'org-time-stamp #'org-timestamp)
+;;;###autoload
 (defun org-timestamp (arg &optional inactive)
   "Prompt for a date/time and insert a time stamp.
 
@@ -167,6 +168,7 @@ non-nil."
 
 ;; FIXME: can we use this for something else, like computing time differences?
 (defalias 'org-time-stamp-inactive #'org-timestamp-inactive)
+;;;###autoload
 (defun org-timestamp-inactive (&optional arg)
   "Insert an inactive time stamp.
 

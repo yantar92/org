@@ -193,6 +193,7 @@ are shown."
 	     org-warn-days)))
 
 (defalias 'org-tags-sparse-tree 'org-match-sparse-tree)
+;;;###autoload
 (defun org-match-sparse-tree (&optional todo-only match start-level)
   "Create a sparse tree according to tags string MATCH.
 
@@ -298,6 +299,7 @@ the scope to headlines matching this string."
     (message "%d entries between %s and %s"
 	     (org-occur regexp nil callback) start-date end-date)))
 
+;;;###autoload
 (defun org-sparse-tree (&optional arg type)
   "Create a sparse tree, prompt for the details.
 This command can create sparse trees.  You first need to select the type

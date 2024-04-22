@@ -50,6 +50,7 @@ Changing this requires a restart of Emacs to work correctly."
 (setcdr (nthcdr (1- org-mark-ring-length) org-mark-ring)
 	org-mark-ring)
 
+;;;###autoload
 (defun org-mark-ring-push (&optional pos buffer)
   "Put the current position into the mark ring and rotate it.
 Also push position into the Emacs mark ring.  If optional
@@ -65,6 +66,7 @@ argument POS and BUFFER are not nil, mark this location instead."
    (substitute-command-keys
     "Position saved to mark ring, go back with `\\[org-mark-ring-goto]'.")))
 
+;;;###autoload
 (defun org-mark-ring-goto (&optional n)
   "Jump to the previous position in the mark ring.
 With prefix arg N, jump back that many stored positions.  When

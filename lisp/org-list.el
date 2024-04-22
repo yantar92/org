@@ -2366,6 +2366,7 @@ is an integer, 0 means `-', 1 means `+' etc.  If WHICH is
   (unless (eq major-mode 'org-mode)
     (user-error "Cannot turn this mode outside org-mode buffers")))
 
+;;;###autoload
 (defun org-toggle-radio-button (&optional arg)
   "Toggle off all checkboxes and toggle on the one at point."
   (interactive "P")
@@ -2409,6 +2410,7 @@ is an integer, 0 means `-', 1 means `+' etc.  If WHICH is
 	      (and (re-search-backward regexp begin t)
 		   (not (string-equal "nil" (match-string 1)))))))))))
 
+;;;###autoload
 (defun org-toggle-checkbox (&optional toggle-presence)
   "Toggle the checkbox in the current line.
 
@@ -3349,6 +3351,7 @@ Point is left at list's end."
 	(when (and (not (looking-at "[ \t]*$")) (looking-at org-list-end-re))
 	  (replace-match ""))))))
 
+;;;###autoload
 (defun org-list-make-subtree ()
   "Convert the plain list at point into a subtree."
   (interactive)

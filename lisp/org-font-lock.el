@@ -762,6 +762,7 @@ by a #."
 				   'font-lock-multiline t))))))
 
 (defalias 'org-toggle-time-stamp-overlays #'org-toggle-timestamp-overlays)
+;;;###autoload
 (defun org-toggle-timestamp-overlays ()
   "Toggle the use of custom time stamp formats."
   (interactive)
@@ -1099,6 +1100,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
     (kill-local-variable 'font-lock-keywords)
     nil))
 
+;;;###autoload
 (defun org-toggle-pretty-entities ()
   "Toggle the composition display of entities as UTF8 characters."
   (interactive)

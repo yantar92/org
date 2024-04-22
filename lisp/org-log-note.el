@@ -197,6 +197,7 @@ timestamps in state change log.")
   "Message to be displayed after a log note has been stored.
 The auto-repeater uses this.")
 
+;;;###autoload
 (defun org-add-note ()
   "Add a note to the current entry.
 This is done in the same way as adding a state change note."

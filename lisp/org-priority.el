@@ -147,6 +147,7 @@ string as an argument and return the numeric priority."
   (interactive)
   (org-priority 'down))
 
+;;;###autoload
 (defun org-priority (&optional action show)
   "Change the priority of an item.
 

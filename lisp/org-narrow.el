@@ -28,6 +28,7 @@
 
 (require 'org-element)
 
+;;;###autoload
 (defun org-narrow-to-subtree (&optional element)
   "Narrow buffer to the current subtree.
 Use the command `\\[widen]' to see the whole buffer again.
@@ -52,6 +53,7 @@ With optional argument ELEMENT narrow to subtree around ELEMENT."
                   end (1- end))))
       (signal 'outline-before-first-heading nil))))
 
+;;;###autoload
 (defun org-toggle-narrow-to-subtree ()
   "Narrow to the subtree at point or widen a narrowed buffer.
 Use the command `\\[widen]' to see the whole buffer again."
@@ -61,6 +63,7 @@ Use the command `\\[widen]' to see the whole buffer again."
     (org-narrow-to-subtree)
     (message "Buffer narrowed to current subtree")))
 
+;;;###autoload
 (defun org-narrow-to-block ()
   "Narrow buffer to the current block.
 Use the command `\\[widen]' to see the whole buffer again."
@@ -71,6 +74,7 @@ Use the command `\\[widen]' to see the whole buffer again."
         (org-narrow-to-element)
       (user-error "Not in a block"))))
 
+;;;###autoload
 (defun org-narrow-to-element ()
   "Narrow buffer to current element.
 Use the command `\\[widen]' to see the whole buffer again."

@@ -70,6 +70,7 @@ This may also be a cons cell where the behavior for `C-a' and
 			(const :tag "on: before tags first" t)
 			(const :tag "reversed: after tags first" reversed)))))
 
+;;;###autoload
 (defun org-beginning-of-line (&optional n)
   "Go to the beginning of the current visible line.
 
@@ -134,6 +135,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
      ;; No special context.  Point is already at beginning of line.
      (t nil))))
 
+;;;###autoload
 (defun org-end-of-line (&optional n)
   "Go to the end of the line, but before ellipsis, if any.
 
@@ -197,6 +199,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
 	  (end-of-line))))
      (t (end-of-line)))))
 
+;;;###autoload
 (defun org-backward-sentence (&optional _arg)
   "Go to beginning of sentence, or beginning of table field.
 This will call `backward-sentence' or `org-table-beginning-of-field',
@@ -220,6 +223,7 @@ depending on context."
 			    (org-element-contents-end element)))
 	(call-interactively #'backward-sentence)))))
 
+;;;###autoload
 (defun org-forward-sentence (&optional _arg)
   "Go to end of sentence, or end of table field.
 This will call `forward-sentence' or `org-table-end-of-field',
@@ -479,6 +483,7 @@ properties, clocking lines and logbook drawers."
       (setq line-pos (1- line-pos)))
     is-invisible))
 
+;;;###autoload
 (defun org-forward-heading-same-level (arg &optional invisible-ok)
   "Move forward to the ARG'th subheading at same level as this one.
 Stop at the first and last subheadings of a superior heading.
@@ -513,12 +518,14 @@ non-nil it will also look at invisible ones."
 	(goto-char result))
       (forward-line 0))))
 
+;;;###autoload
 (defun org-backward-heading-same-level (arg &optional invisible-ok)
   "Move backward to the ARG'th subheading at same level as this one.
 Stop at the first and last subheadings of a superior heading."
   (interactive "p")
   (org-forward-heading-same-level (if arg (- arg) -1) invisible-ok))
 
+;;;###autoload
 (defun org-next-visible-heading (arg)
   "Move to the next visible heading line.
 With ARG, repeats or can move backward if negative."
@@ -542,12 +549,14 @@ With ARG, repeats or can move backward if negative."
       (cl-decf arg))
     (if (> arg 0) (goto-char (point-max)) (forward-line 0))))
 
+;;;###autoload
 (defun org-previous-visible-heading (arg)
   "Move to the previous visible heading.
 With ARG, repeats or can move forward if negative."
   (interactive "p")
   (org-next-visible-heading (- arg)))
 
+;;;###autoload
 (defun org-forward-paragraph (&optional arg)
   "Move forward by a paragraph, or equivalent, unit.
 
@@ -572,6 +581,7 @@ It also provides the following special moves for convenience:
     ;; Return moves left.
     arg))
 
+;;;###autoload
 (defun org-backward-paragraph (&optional arg)
   "Move backward by a paragraph, or equivalent, unit.
 
@@ -843,6 +853,7 @@ See `org-backward-paragraph'."
 	 (t
 	  (funcall reach begin))))))))
 
+;;;###autoload
 (defun org-forward-element ()
   "Move forward by one element.
 Move to the next element at the same level, when possible."
@@ -863,6 +874,7 @@ Move to the next element at the same level, when possible."
 		 ((integer-or-marker-p end) (goto-char end))
 		 (t (message "No element at point")))))))
 
+;;;###autoload
 (defun org-backward-element ()
   "Move backward by one element.
 Move to the previous element at the same level, when possible."
@@ -896,6 +908,7 @@ Move to the previous element at the same level, when possible."
 			       (<= (org-element-end prev) beg))
 		     (goto-char (org-element-begin prev)))))))))))
 
+;;;###autoload
 (defun org-up-element ()
   "Move to upper element."
   (interactive)
@@ -913,6 +926,7 @@ Move to the previous element at the same level, when possible."
 	    (user-error "No surrounding element")
 	  (org-with-limited-levels (org-back-to-heading)))))))
 
+;;;###autoload
 (defun org-down-element ()
   "Move to inner element."
   (interactive)
@@ -928,6 +942,7 @@ Move to the previous element at the same level, when possible."
 		     (user-error "No content for this element"))))
      (t (user-error "No inner element")))))
 
+;;;###autoload
 (defun org-next-block (arg &optional backward block-regexp)
   "Jump to the next block.
 
@@ -968,6 +983,7 @@ Throw an error if no block is found."
       (goto-char origin)
       (user-error "No %s code blocks" (if backward "previous" "further")))))
 
+;;;###autoload
 (defun org-previous-block (arg &optional block-regexp)
   "Jump to the previous block.
 With a prefix argument ARG, jump backward ARG many source blocks.

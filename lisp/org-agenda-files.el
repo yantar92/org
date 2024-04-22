@@ -291,6 +291,7 @@ subtree."
   (when (featurep 'org-agenda)
     (org-agenda-maybe-redo)))
 
+;;;###autoload
 (defun org-agenda-remove-restriction-lock (&optional noupdate)
   "Remove agenda restriction lock."
   (interactive "P")
@@ -514,6 +515,7 @@ the buffer and restores the previous window configuration."
 		       "Edit list and finish with \\[save-buffer]")))
     (customize-variable 'org-agenda-files)))
 
+;;;###autoload
 (defun org-agenda-file-to-front (&optional to-end)
   "Move/add the current file to the top of the agenda file list.
 If the file is not present in the list, it is added to the front.  If it is
@@ -539,6 +541,7 @@ end of the list."
     (message "File %s to %s of agenda file list"
 	     (if had "moved" "added") (if to-end "end" "front"))))
 
+;;;###autoload
 (defun org-remove-file (&optional file)
   "Remove current file from the list of files in variable `org-agenda-files'.
 These are the files which are being checked for agenda entries.

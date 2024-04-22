@@ -57,6 +57,7 @@ new-frame        Make a new frame each time.  Note that in this case
   "This is the frame being used for indirect tree display.")
 (defvar org-last-indirect-buffer nil)
 
+;;;###autoload
 (defun org-tree-to-indirect-buffer (&optional arg)
   "Create indirect buffer and narrow it to current subtree.
 

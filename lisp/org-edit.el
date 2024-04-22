@@ -93,6 +93,7 @@ this function for details."
   :group 'org-edit-structure
   :type 'boolean)
 
+;;;###autoload
 (defun org-force-self-insert (N)
   "Needed to enforce self-insert under remapping."
   (interactive "p")
@@ -108,6 +109,7 @@ Set `org-speed-command' to the appropriate command as a side effect."
                 'org-speed-command-hook
                 (make-string 1 (aref kv (1- (length kv)))))))))
 
+;;;###autoload
 (defun org-self-insert-command (N)
   "Like `self-insert-command', use `overwrite-mode' for whitespace in tables.
 If the cursor is in a table looking at whitespace, the whitespace is
@@ -173,6 +175,7 @@ overwritten, and the table is not marked as requiring realignment."
 	  (setq org-self-insert-command-undo-counter
 		(1+ org-self-insert-command-undo-counter))))))))
 
+;;;###autoload
 (defun org-delete-backward-char (N)
   "Like `delete-backward-char', insert whitespace at field end in tables.
 When deleting backwards, in tables this function will insert whitespace in
@@ -192,6 +195,7 @@ because, in this case the deletion might narrow the column."
       (funcall-interactively #'backward-delete-char N)
       (when org-auto-align-tags (org-fix-tags-on-the-fly)))))
 
+;;;###autoload
 (defun org-delete-char (N)
   "Like `delete-char', but insert whitespace at field end in tables.
 When deleting characters, in tables this function will insert whitespace in
@@ -253,6 +257,7 @@ because, in this case the deletion might narrow the column."
     (dolist (c org-emphasis-alist st)
       (modify-syntax-entry (string-to-char (car c)) "w p" st))))
 
+;;;###autoload
 (defun org-transpose-words ()
   "Transpose words for Org.
 This uses the `org-mode-transpose-word-syntax-table' syntax
@@ -262,6 +267,7 @@ word constituents."
   (with-syntax-table org-mode-transpose-word-syntax-table
     (call-interactively 'transpose-words)))
 
+;;;###autoload
 (defun org-delete-indentation (&optional arg beg end)
   "Join current line to previous and fix whitespace at join.
 
@@ -329,6 +335,7 @@ ignoring region."
           (delete-indentation)
           (forward-line 1))))))
 
+;;;###autoload
 (defun org-open-line (n)
   "Insert a new row in tables, call `open-line' elsewhere.
 If `org-special-ctrl-o' is nil, just call `open-line' everywhere.
@@ -349,6 +356,7 @@ INTERACTIVE, which can trigger indentation if
       (org-newline-and-indent arg)
     (newline arg interactive)))
 
+;;;###autoload
 (defun org-return (&optional indent arg interactive)
   "Goto next table row or insert a newline.
 
@@ -431,6 +439,7 @@ object (e.g., within a comment).  In these case, you need to use
 				     auto-fill-function)))
 	(org--newline indent arg interactive))))))
 
+;;;###autoload
 (defun org-return-and-maybe-indent ()
   "Goto next table row, or insert a newline, maybe indented.
 Call `org-table-next-row' or `org-return', depending on context.
@@ -442,6 +451,7 @@ indent it if it is enabled."
   (interactive)
   (org-return (not electric-indent-mode)))
 
+;;;###autoload
 (defun org-kill-line (&optional _arg)
   "Kill line, to tags or end of line.
 
@@ -560,6 +570,7 @@ see)."
   (interactive "p")
   (org-drag-line-forward (- arg)))
 
+;;;###autoload
 (defun org-transpose-element ()
   "Transpose current and previous elements, keeping blank lines between.
 Point is moved after both elements."
@@ -569,6 +580,7 @@ Point is moved after both elements."
     (org-drag-element-backward)
     (goto-char end)))
 
+;;;###autoload
 (defun org-yank (&optional arg)
   "Yank.  If the kill is a subtree, treat it specially.
 This command will look at the current kill and check if is a single
@@ -671,6 +683,7 @@ interactive command with similar behavior."
 	      (and (bolp) (looking-at-p org-outline-regexp)
 		   (<= (org-outline-level) level))))))))
 
+;;;###autoload
 (defun org-copy-visible (beg end)
   "Copy the visible parts of the region."
   (interactive "r")
@@ -688,6 +701,7 @@ interactive command with similar behavior."
     (kill-new result)
     (message "Visible strings have been copied to the kill ring.")))
 
+;;;###autoload
 (defun org-copy-special ()
   "Copy region in table or copy current subtree.
 Calls `org-table-copy-region' or `org-copy-subtree', depending on
@@ -696,6 +710,7 @@ context.  See the individual commands for more information."
   (call-interactively
    (if (org-at-table-p) #'org-table-copy-region #'org-copy-subtree)))
 
+;;;###autoload
 (defun org-cut-special ()
   "Cut region in table or cut current subtree.
 Calls `org-table-cut-region' or `org-cut-subtree', depending on
@@ -704,6 +719,7 @@ context.  See the individual commands for more information."
   (call-interactively
    (if (org-at-table-p) #'org-table-cut-region #'org-cut-subtree)))
 
+;;;###autoload
 (defun org-paste-special (arg)
   "Paste rectangular region into table, or past subtree relative to level.
 Calls `org-table-paste-rectangle' or `org-paste-subtree', depending on context.

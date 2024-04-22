@@ -303,6 +303,7 @@ Also, see `org-fold-catch-invisible-edits'."
 (defalias 'org-fold-region #'org-fold-core-region)
 (defalias 'org-fold-regions #'org-fold-core-regions)
 
+;;;###autoload
 (defun org-fold-show-all (&optional types)
   "Show all contents in the visible part of the buffer.
 By default, the function expands headings, blocks and drawers.
@@ -446,6 +447,7 @@ Show the heading too, if it is currently invisible."
     (while (org-goto-sibling 'previous)
       (org-fold-heading nil))))
 
+;;;###autoload
 (defun org-fold-show-children (&optional level)
   "Show all direct subheadings of this heading.
 Prefix arg LEVEL is how many levels below the current level should be
@@ -486,6 +488,7 @@ displayed."
                              (max min-level-direct-child max-level))))
           (org-fold-heading nil))))))
 
+;;;###autoload
 (defun org-fold-show-subtree ()
   "Show everything after this heading at deeper levels."
   (interactive)
@@ -701,6 +704,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
 	(when (memq detail '(tree canonical t)) (org-fold-show-children))))))
 
 (defalias 'org-reveal #'org-fold-reveal)
+;;;###autoload
 (defun org-fold-reveal (&optional siblings)
   "Show current entry, hierarchy above it, and the following headline.
 

@@ -280,6 +280,7 @@ FORCE is non-nil, or return nil."
       (?c (call-interactively #'org-compute-property-at-point))
       (otherwise (user-error "No such property action %c" c)))))
 
+;;;###autoload
 (defun org-inc-effort ()
   "Increment the value of the effort property in the current entry."
   (interactive)
@@ -287,6 +288,7 @@ FORCE is non-nil, or return nil."
 
 (defvar org-clock-effort)       ; Defined in org-clock.el.
 (defvar org-clock-current-task) ; Defined in org-clock.el.
+;;;###autoload
 (defun org-set-effort (&optional increment value)
   "Set the effort property of the current entry.
 If INCREMENT is non-nil, set the property to the next allowed
@@ -763,6 +765,7 @@ However, if LITERAL-NIL is set, return the string value \"nil\" instead."
 Each hook function should accept two arguments, the name of the property
 and the new value.")
 
+;;;###autoload
 (defun org-entry-put (epom property value)
   "Set PROPERTY to VALUE for entry at EPOM.
 
@@ -1020,6 +1023,7 @@ Optional argument DEFAULT provides a default value for PROPERTY."
      (mapcar #'list (org-buffer-property-keys nil t t))
      nil nil nil nil default-prop)))
 
+;;;###autoload
 (defun org-set-property-and-value (use-last)
   "Allow setting [PROPERTY]: [value] direction from prompt.
 When use-default, don't even ask, just use the last
@@ -1037,6 +1041,7 @@ When use-default, don't even ask, just use the last
 	    val (match-string 2 pv))
       (org-set-property prop val))))
 
+;;;###autoload
 (defun org-set-property (property value)
   "In the current entry, set PROPERTY to VALUE.
 

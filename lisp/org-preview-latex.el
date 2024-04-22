@@ -447,6 +447,7 @@ BEG and END are buffer positions."
 	 default-directory)
        'overlays nil 'forbuffer org-preview-latex-default-process))))
 
+;;;###autoload
 (defun org-latex-preview (&optional arg)
   "Toggle preview of the LaTeX fragment at point.
 

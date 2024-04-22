@@ -117,7 +117,7 @@ TYPE is the dynamic block type, as a string."
   "List all defined dynamic block types."
   (mapcar #'car org-dynamic-block-alist))
 
-;;;###org-autoload
+;;;###autoload
 (defun org-dynamic-block-define (type func)
   "Define dynamic block TYPE with FUNC.
 TYPE is a string.  FUNC is the function creating the dynamic
@@ -126,6 +126,7 @@ block of such type.  FUNC must be able to accept zero arguments."
     (`nil (push (cons type func) org-dynamic-block-alist))
     (def (setcdr def func))))
 
+;;;###autoload
 (defun org-dynamic-block-insert-dblock (type &optional interactive-p)
   "Insert a dynamic block of type TYPE.
 When used interactively, select the dynamic block types among
@@ -140,6 +141,7 @@ is non-nil, call the dynamic block function interactively."
      (if (and interactive-p (commandp f)) (call-interactively f) (funcall f)))
     (_ (error "Invalid function for dynamic block %S" type))))
 
+;;;###autoload
 (defun org-dblock-update (&optional arg)
   "User command for updating dynamic blocks.
 Update the dynamic block at point.  With prefix ARG, update all dynamic

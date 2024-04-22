@@ -214,6 +214,7 @@ See `org-ctrl-c-ctrl-c-hook' for more information.")
   (let ((this-command-keys-shift-translated t))
     (call-interactively cmd)))
 
+;;;###autoload
 (defun org-shifttab (&optional arg)
   "Global visibility cycling or move to previous table field.
 Call `org-table-previous-field' within a table.
@@ -231,6 +232,7 @@ When ARG is a numeric prefix, show contents of this level."
       (run-hook-with-args 'org-cycle-hook 'overview)))
    (t (call-interactively 'org-cycle-global))))
 
+;;;###autoload
 (defun org-shiftmetaleft ()
   "Promote subtree or delete table column.
 Calls `org-promote-subtree', `org-outdent-item-tree', or
@@ -258,6 +260,7 @@ same logic."
    ((run-hook-with-args-until-success 'org-shiftmetaleft-final-hook))
    (t (org-modifier-cursor-error))))
 
+;;;###autoload
 (defun org-shiftmetaright ()
   "Demote subtree or insert table column.
 Calls `org-demote-subtree', `org-indent-item-tree', or
@@ -285,6 +288,7 @@ same logic."
    ((run-hook-with-args-until-success 'org-shiftmetaright-final-hook))
    (t (org-modifier-cursor-error))))
 
+;;;###autoload
 (defun org-shiftmetaup (&optional _arg)
   "Drag the line at point up.
 In a table, kill the current row.
@@ -306,6 +310,7 @@ logic."
    ((run-hook-with-args-until-success 'org-shiftmetaup-final-hook))
    (t (call-interactively 'org-drag-line-backward))))
 
+;;;###autoload
 (defun org-shiftmetadown (&optional _arg)
   "Drag the line at point down.
 In a table, insert an empty row at the current line.
@@ -331,6 +336,7 @@ same logic."
   (user-error
    "Hidden subtree, open with TAB or use subtree command M-S-<left>/<right>"))
 
+;;;###autoload
 (defun org-metaleft (&optional _arg)
   "Promote heading, list item at point or move table column left.
 
@@ -368,6 +374,7 @@ function runs `org-metaleft-final-hook' using the same logic."
    ((run-hook-with-args-until-success 'org-metaleft-final-hook))
    (t (call-interactively 'backward-word))))
 
+;;;###autoload
 (defun org-metaright (&optional _arg)
   "Demote heading, list item at point or move table column right.
 
@@ -436,6 +443,7 @@ this function returns t, nil otherwise."
 	      (throw 'exit t))))
 	nil))))
 
+;;;###autoload
 (defun org-metaup (&optional _arg)
   "Move subtree up or move table row up.
 Calls `org-move-subtree-up' or `org-table-move-row' or
@@ -506,6 +514,7 @@ function runs `org-metaup-final-hook' using the same logic."
    ((run-hook-with-args-until-success 'org-metaup-final-hook))
    (t (org-drag-element-backward))))
 
+;;;###autoload
 (defun org-metadown (&optional _arg)
   "Move subtree down or move table row down.
 Calls `org-move-subtree-down' or `org-table-move-row' or
@@ -577,6 +586,7 @@ function runs `org-metadown-final-hook' using the same logic."
   (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
     (org-clocktable-shift dir n)))
 
+;;;###autoload
 (defun org-shiftup (&optional arg)
   "Act on current element according to context.
 Call `org-timestamp-up' or `org-priority-up', or
@@ -615,6 +625,7 @@ more information."
     (org-call-for-shift-select 'previous-line))
    (t (org-shiftselect-error))))
 
+;;;###autoload
 (defun org-shiftdown (&optional arg)
   "Act on current element according to context.
 Call `org-timestamp-down' or `org-priority-down', or
@@ -654,6 +665,7 @@ more information."
     (org-call-for-shift-select 'next-line))
    (t (org-shiftselect-error))))
 
+;;;###autoload
 (defun org-shiftright (&optional arg)
   "Act on the current element according to context.
 This does one of the following:
@@ -703,6 +715,7 @@ variable for more information."
     (org-call-for-shift-select 'forward-char))
    (t (org-shiftselect-error))))
 
+;;;###autoload
 (defun org-shiftleft (&optional arg)
   "Act on current element according to context.
 This does one of the following:
@@ -752,6 +765,7 @@ variable for more information."
     (org-call-for-shift-select 'backward-char))
    (t (org-shiftselect-error))))
 
+;;;###autoload
 (defun org-shiftcontrolright ()
   "Switch to next TODO set."
   (interactive)
@@ -765,6 +779,7 @@ variable for more information."
     (org-call-for-shift-select 'forward-word))
    (t (org-shiftselect-error))))
 
+;;;###autoload
 (defun org-shiftcontrolleft ()
   "Switch to previous TODO set."
   (interactive)
@@ -778,6 +793,7 @@ variable for more information."
     (org-call-for-shift-select 'backward-word))
    (t (org-shiftselect-error))))
 
+;;;###autoload
 (defun org-shiftcontrolup (&optional n)
   "Change timestamps synchronously up in CLOCK log lines.
 Optional argument N tells to change by that many units."
@@ -787,6 +803,7 @@ Optional argument N tells to change by that many units."
 	(org-clock-timestamps-up n))
     (user-error "Not at a clock log")))
 
+;;;###autoload
 (defun org-shiftcontroldown (&optional n)
   "Change timestamps synchronously down in CLOCK log lines.
 Optional argument N tells to change by that many units."
@@ -796,7 +813,7 @@ Optional argument N tells to change by that many units."
 	(org-clock-timestamps-down n))
     (user-error "Not at a clock log")))
 
-
+;;;###autoload
 (defun org-ctrl-c-ret ()
   "Call `org-table-hline-and-move' or `org-insert-heading'."
   (interactive)
@@ -804,6 +821,7 @@ Optional argument N tells to change by that many units."
    ((org-at-table-p) (call-interactively 'org-table-hline-and-move))
    (t (call-interactively 'org-insert-heading))))
 
+;;;###autoload
 (defun org-edit-special (&optional arg)
   "Call a special editor for the element at point.
 When at a table, call the formula editor with `org-table-edit-formulas'.
@@ -885,6 +903,7 @@ Otherwise, return a user error."
 	   (`link (call-interactively #'ffap))
 	   (_ (user-error "No special environment to edit here"))))))))
 
+;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
 
@@ -1142,6 +1161,7 @@ Use `\\[org-edit-special]' to edit table.el tables")))
 	  (substitute-command-keys
 	   "`\\[org-ctrl-c-ctrl-c]' can do nothing useful here"))))))))
 
+;;;###autoload
 (defun org-kill-note-or-show-branches ()
   "Abort storing current note, or show just branches."
   (interactive)
@@ -1157,6 +1177,7 @@ Use `\\[org-edit-special]' to edit table.el tables")))
 	   (org-fold-show-branches)
 	   (org-fold-hide-archived-subtrees beg end)))))
 
+;;;###autoload
 (defun org-ctrl-c-tab (&optional arg)
   "Toggle columns width in a table, or show children.
 Call `org-table-toggle-column-width' if point is in a table.
@@ -1174,6 +1195,7 @@ level to hide."
     (org-fold-hide-subtree)
     (org-fold-show-children arg))))
 
+;;;###autoload
 (defun org-ctrl-c-star ()
   "Compute table, or change heading status of lines.
 Calls `org-table-recalculate' or `org-toggle-heading',
@@ -1186,6 +1208,7 @@ depending on context."
     ;; Convert all lines in region to list items
     (call-interactively 'org-toggle-heading))))
 
+;;;###autoload
 (defun org-ctrl-c-minus ()
   "Insert separator line in table or modify bullet status of line.
 Also turns a plain line or a region of lines into list items.
@@ -1312,6 +1335,7 @@ number of stars to add."
 	       (forward-line)))))))
     (unless toggled (message "Cannot toggle heading from here"))))
 
+;;;###autoload
 (defun org-meta-return (&optional arg)
   "Insert a new heading or wrap a region in a table.
 Calls `org-insert-heading', `org-insert-item' or

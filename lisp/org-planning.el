@@ -201,6 +201,7 @@ TYPE is either `deadline' or `scheduled'.  See `org-deadline' or
          (message (if deadline? "Deadline on %s" "Scheduled to %s")
 		  org-last-inserted-timestamp))))))
 
+;;;###autoload
 (defun org-deadline (arg &optional time)
   "Insert a \"DEADLINE:\" string with a timestamp to make a deadline.
 
@@ -222,6 +223,7 @@ can either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
        (lambda () (when (org-invisible-p) (org-end-of-subtree nil t))))
     (org--deadline-or-schedule arg 'deadline time)))
 
+;;;###autoload
 (defun org-schedule (arg &optional time)
   "Insert a \"SCHEDULED:\" string with a timestamp to schedule an item.
 

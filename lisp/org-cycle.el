@@ -441,6 +441,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
 	      (org-cycle))))))))))
 
 (defalias 'org-force-cycle-archived #'org-cycle-force-archived)
+;;;###autoload
 (defun org-cycle-force-archived ()
   "Cycle subtree even if it is archived."
   (interactive)

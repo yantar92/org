@@ -30,6 +30,7 @@
 (require 'org-element-context)
 (require 'org-move)
 
+;;;###autoload
 (defun org-mark-element ()
   "Put point at beginning of this element, mark at end.
 
@@ -51,6 +52,7 @@ ones already marked."
 	(push-mark (min (point-max) (org-element-end element)) t t)
 	(goto-char (org-element-begin element))))))
 
+;;;###autoload
 (defun org-mark-subtree (&optional up)
   "Mark the current subtree.
 This puts point at the start of the current subtree, and mark at

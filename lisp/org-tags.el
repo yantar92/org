@@ -423,6 +423,7 @@ a string, summarizing TAGS, as a list of strings."
 
 (defvar org-inhibit-startup)
 (declare-function org-agenda-redo "org-agenda")
+;;;###autoload
 (defun org-toggle-tags-groups ()
   "Toggle support for group tags.
 Support for group tags is controlled by the option
@@ -555,6 +556,7 @@ instead of the agenda files."
 (defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
 (defvar org-tags-overlay (make-overlay 1 1))
 (delete-overlay org-tags-overlay)
+;;;###autoload
 (defun org-set-tags-command (&optional arg)
   "Set the tags for the current visible entry.
 

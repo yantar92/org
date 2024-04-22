@@ -160,6 +160,7 @@ strictly within a source block, use appropriate comment syntax."
 		  (insert comment-start))
 		(forward-line)))))))))
 
+;;;###autoload
 (defun org-toggle-comment ()
   "Change the COMMENT state of an entry."
   (interactive)
@@ -180,6 +181,7 @@ strictly within a source block, use appropriate comment syntax."
       (insert org-comment-string)
       (unless (eolp) (insert " ")))))
 
+;;;###autoload
 (defun org-comment-dwim (_arg)
   "Call the comment command you mean.
 Call `org-toggle-comment' if on a heading, otherwise call

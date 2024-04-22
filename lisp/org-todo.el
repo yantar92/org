@@ -455,6 +455,7 @@ enough to shift date past today.  Continue? "
 (defvar org-state)
 ;; FIXME: We should refactor this and similar dynamically scoped blocker flags.
 (defvar org-blocked-by-checkboxes nil) ; dynamically scoped
+;;;###autoload
 (defun org-todo (&optional arg)
   "Change the TODO state of an item.
 
@@ -802,6 +803,7 @@ string to select a different tag for this task."
 	  (const :tag "Track with ORDERED tag" t)
 	  (string :tag "Use other tag")))
 
+;;;###autoload
 (defun org-toggle-ordered-property ()
   "Toggle the ORDERED property of the current entry.
 For better visibility, you can track the value of this property with a tag.
@@ -864,6 +866,7 @@ changes because there are unchecked boxes in this entry."
 		   :from 'todo
 		   :to 'done)))))
 
+;;;###autoload
 (defun org-update-statistics-cookies (all)
   "Update the statistics cookie, either from TODO or from checkboxes.
 This should be called with the cursor in a line with a statistics

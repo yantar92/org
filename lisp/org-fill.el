@@ -274,6 +274,7 @@ a footnote definition, try to fill the first paragraph within."
 	;; Ignore every other element.
 	(otherwise t)))))
 
+;;;###autoload
 (defun org-fill-paragraph (&optional justify region)
   "Fill element at point, when applicable.
 

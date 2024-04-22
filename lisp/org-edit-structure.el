@@ -285,11 +285,13 @@ Set it to HEADING when provided."
   (org-move-subtree-down)
   (end-of-line 1))
 
+;;;###autoload
 (defun org-insert-heading-respect-content (&optional invisible-ok)
   "Insert heading with `org-insert-heading-respect-content' set to t."
   (interactive)
   (org-insert-heading '(4) invisible-ok))
 
+;;;###autoload
 (defun org-insert-todo-heading-respect-content (&optional arg)
   "Call `org-insert-todo-heading', inserting after current subtree.
 ARG is passed to `org-insert-todo-heading'.
@@ -298,6 +300,7 @@ This command temporarily sets `org-insert-heading-respect-content' to t."
   (let ((org-insert-heading-respect-content t))
     (org-insert-todo-heading arg t)))
 
+;;;###autoload
 (defun org-insert-todo-heading (arg &optional force-heading)
   "Insert a new heading with the same level and TODO state as current heading.
 
@@ -370,6 +373,7 @@ When a subtree is being demoted, the hook will be called for each node.")
 The cursor will be at the beginning of the entry.
 When a subtree is being promoted, the hook will be called for each node.")
 
+;;;###autoload
 (defun org-promote-subtree ()
   "Promote the entire subtree.
 See also `org-promote'."
@@ -380,6 +384,7 @@ See also `org-promote'."
       (org-with-limited-levels (org-map-tree 'org-promote))))
   (org-fix-position-after-promote))
 
+;;;###autoload
 (defun org-demote-subtree ()
   "Demote the entire subtree.
 See `org-demote' and `org-promote'."
@@ -764,6 +769,7 @@ ring.  We need it to check if the kill was created by `org-copy-subtree'.")
   "Was the last copied subtree folded?
 This is used to fold the tree back after pasting.")
 
+;;;###autoload
 (defun org-cut-subtree (&optional n)
   "Cut the current subtree into the clipboard.
 With prefix arg N, cut this many sequential subtrees.
@@ -975,6 +981,7 @@ If yes, remember the marker and the distance to BEG."
     (move-marker (car x) (+ beg (cdr x))))
   (setq org-markers-to-move nil))
 
+;;;###autoload
 (defun org-clone-subtree-with-time-shift (n &optional shift)
   "Clone the task (subtree) at point N times.
 The clones will be inserted as siblings.
@@ -1090,6 +1097,7 @@ with the original repeater."
 
 ;;; Outline Sorting
 
+;;;###autoload
 (defun org-sort (&optional with-case)
   "Call `org-sort-entries', `org-table-sort-lines' or `org-sort-list'.
 Optional argument WITH-CASE means sort case-sensitively."

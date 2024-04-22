@@ -113,6 +113,7 @@ Possible values:
       (when (memq ov org-inline-image-overlays)
         (push ov result)))))
 
+;;;###autoload
 (defun org-toggle-inline-images (&optional include-linked beg end)
   "Toggle the display of inline images.
 INCLUDE-LINKED is passed to `org-display-inline-images'."
@@ -130,6 +131,7 @@ INCLUDE-LINKED is passed to `org-display-inline-images'."
 			     (length new))
 		   "No images to display inline"))))))
 
+;;;###autoload
 (defun org-redisplay-inline-images ()
   "Assure display of inline images and refresh them."
   (interactive)
