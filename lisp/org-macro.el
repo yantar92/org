@@ -54,18 +54,7 @@
 (require 'org-macs)
 (require 'org-compat)
 (require 'org-element)
-
-(declare-function org-collect-keywords "org" (keywords &optional unique directory))
-(declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
-(declare-function org-file-contents "org" (file &optional noerror nocache))
-(declare-function org-in-commented-heading-p "org" (&optional no-inheritance element))
-(declare-function org-link-search "ol" (s &optional avoid-pos stealth))
-(declare-function org-mode "org" ())
-(declare-function vc-backend "vc-hooks" (f))
-(declare-function vc-call "vc-hooks" (fun file &rest args) t)
-(declare-function vc-exec-after "vc-dispatcher" (code &optional success))
-
-(defvar org-link-search-must-match-exact-headline)
+(require 'org-element-context)
 
 ;;; Variables
 
@@ -281,12 +270,16 @@ a definition in TEMPLATES."
 
 ;;; Helper functions and variables for internal macros
 
+(declare-function org-entry-get "org-property" (pom property &optional inherit literal-nil))
+(declare-function org-link-search "ol" (s &optional avoid-pos stealth))
 (defun org-macro--get-property (property location)
   "Find PROPERTY's value at LOCATION.
 PROPERTY is a string.  LOCATION is a search string, as expected
 by `org-link-search', or the empty string."
   (org-with-wide-buffer
    (when (org-string-nw-p location)
+     (require 'ol)
+     (defvar org-link-search-must-match-exact-headline) ; defined in ol.el
      (condition-case _
 	 (let ((org-link-search-must-match-exact-headline t))
 	   (org-link-search location nil t))
@@ -326,6 +319,9 @@ Return value as a string."
 		value)
       value)))
 
+(declare-function vc-backend "vc-hooks" (f))
+(declare-function vc-call "vc-hooks" (fun file &rest args) t)
+(declare-function vc-exec-after "vc-dispatcher" (code &optional success))
 (defun org-macro--vc-modified-time (file)
   (require 'vc) ; Not everything we need is autoloaded.
   (save-window-excursion
