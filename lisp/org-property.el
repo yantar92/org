@@ -1517,8 +1517,11 @@ Returns nil if there are no #+TITLE property."
                                                  buffer-or-file))
                       (t (current-buffer)))))
     (with-current-buffer buffer
-      (org-macro-initialize-templates)
-      (let ((title (assoc-default "title" org-macro-templates)))
+      (let ((title (org-trim
+                    (mapconcat
+                     #'identity
+                     (org-element-property :TITLE (org-element-org-data))
+                     " "))))
         (unless (string= "" title)
           title)))))
 
