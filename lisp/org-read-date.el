@@ -35,6 +35,31 @@
 (defvar org-timestamp-rounding-minutes)
 (declare-function calendar-iso-to-absolute "cal-iso" (date))
 
+(defvar org-read-date-minibuffer-local-map
+  (let* ((map (make-sparse-keymap)))
+    (set-keymap-parent map minibuffer-local-map)
+    (org-defkey map (kbd ".") #'org-calendar-goto-today-or-insert-dot)
+    (org-defkey map (kbd "C-.") #'org-calendar-goto-today)
+    (org-defkey map (kbd "M-S-<left>") #'org-calendar-backward-month)
+    (org-defkey map (kbd "ESC S-<left>") #'org-calendar-backward-month)
+    (org-defkey map (kbd "M-S-<right>") #'org-calendar-forward-month)
+    (org-defkey map (kbd "ESC S-<right>") #'org-calendar-forward-month)
+    (org-defkey map (kbd "M-S-<up>") #'org-calendar-backward-year)
+    (org-defkey map (kbd "ESC S-<up>") #'org-calendar-backward-year)
+    (org-defkey map (kbd "M-S-<down>") #'org-calendar-forward-year)
+    (org-defkey map (kbd "ESC S-<down>") #'org-calendar-forward-year)
+    (org-defkey map (kbd "S-<up>") #'org-calendar-backward-week)
+    (org-defkey map (kbd "S-<down>") #'org-calendar-forward-week)
+    (org-defkey map (kbd "S-<left>") #'org-calendar-backward-day)
+    (org-defkey map (kbd "S-<right>") #'org-calendar-forward-day)
+    (org-defkey map (kbd "!") #'org-calendar-view-entries)
+    (org-defkey map (kbd ">") #'org-calendar-scroll-month-left)
+    (org-defkey map (kbd "<") #'org-calendar-scroll-month-right)
+    (org-defkey map (kbd "C-v") #'org-calendar-scroll-three-months-left)
+    (org-defkey map (kbd "M-v") #'org-calendar-scroll-three-months-right)
+    map)
+  "Keymap for minibuffer commands when using `org-read-date'.")
+
 (defcustom org-read-date-prefer-future t
   "Non-nil means assume future for incomplete date input from user.
 This affects the following situations:
