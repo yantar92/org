@@ -31,9 +31,7 @@
 (require 'org-element-timestamp)
 (require 'org-keys)
 (require 'org-regexps)
-
-(defvar org-timestamp-rounding-minutes)
-(declare-function calendar-iso-to-absolute "cal-iso" (date))
+(require 'org-timestamp-common)
 
 (defvar org-read-date-minibuffer-local-map
   (let* ((map (make-sparse-keymap)))
@@ -389,6 +387,7 @@ user."
         (overlay-put org-read-date-overlay 'priority 1)
 	(org-overlay-display org-read-date-overlay txt 'secondary-selection)))))
 
+(declare-function calendar-iso-to-absolute "cal-iso" (date))
 (defun org-read-date-analyze (ans def defdecode)
   "Analyze the combined answer of the date prompt."
   ;; FIXME: cleanup and comment
