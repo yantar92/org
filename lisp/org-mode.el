@@ -41,9 +41,7 @@
 (require 'org-pcomplete)
 (require 'org-dnd)
 (require 'org-menu)
-(require 'org-bookmark)
 (require 'thingatpt)
-(require 'org-imenu)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")
@@ -700,6 +698,12 @@ Respect keys that are already there."
   "Setup saveplace support."
   ;; Make sure saveplace shows the location if it was hidden
   (advice-add 'save-place-find-file-hook :after #'org-bookmark-jump-unhide))
+
+(declare-function org-imenu-reveal "org-imenu" ())
+(defun org-setup-imenu ()
+  "Setup imenu integration."
+  (setq imenu-create-index-function 'org-imenu-get-tree)
+  (add-hook 'imenu-after-jump-hook #'org-imenu-reveal nil 'local))
 
 (defun org-add-log-current-headline ()
   "Return current headline or nil.

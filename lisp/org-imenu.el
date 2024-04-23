@@ -44,6 +44,7 @@ This also applied for speedbar access."
 (defvar-local org-imenu-markers nil
   "All markers currently used by Imenu.")
 
+;;;###autoload
 (defun org-imenu-get-tree ()
   "Produce the index for Imenu."
   (dolist (x org-imenu-markers) (move-marker x nil))
@@ -71,15 +72,11 @@ This also applied for speedbar access."
 	     (setq last-level level)))))
      (aref subs 1))))
 
+;;;###autoload
 (defun org-imenu-reveal ()
   "When in Org mode, reveal point after imenu jump."
   (when (derived-mode-p 'org-mode)
     (org-fold-show-context 'org-goto)))
-
-(defun org-setup-imenu ()
-  "Setup imenu integration."
-  (setq imenu-create-index-function 'org-imenu-get-tree)
-  (add-hook 'imenu-after-jump-hook #'org-imenu-reveal nil 'local))
 
 (provide 'org-imenu)
 
