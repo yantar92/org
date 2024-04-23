@@ -98,6 +98,7 @@
 (declare-function org-get-valid-level "org")
 (require 'org-edit-structure)
 (require 'org-mark-ring)
+(require 'org-read-date)
 
 (declare-function url-retrieve-synchronously "url"
                   (url &optional silent inhibit-cookies timeout))

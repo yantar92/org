@@ -32,6 +32,7 @@
 (require 'org-log-note)
 (defvar org-loop-over-headlines-in-active-region)
 (require 'org-map)
+(require 'org-read-date)
 
 (defgroup org-progress nil
   "Options concerning Progress logging in Org mode."

@@ -29,6 +29,7 @@
 
 (require 'org-regexps)
 (require 'org-map)
+(require 'org-read-date)
 
 (defvar org-not-done-regexp)
 (defvar org-todo-keywords-1)

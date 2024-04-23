@@ -28,14 +28,9 @@
 
 (require 'org-element)
 (require 'org-time)
-(require 'org-read-date)
 (require 'org-element-context)
 (require 'org-timestamp-common)
-
-(declare-function org-todo "org")
-(declare-function org-at-date-range-p "org")
-(declare-function org-clock-update-time-maybe "org-clock")
-(declare-function org-get-heading "org")
+(require 'org-element-timestamp)
 
 (defgroup org-time nil
   "Options concerning time stamps and deadlines in Org mode."
@@ -62,6 +57,15 @@ moved to the new date."
 (defvar org-time-was-given) ; dynamically scoped parameter
 (defvar org-end-time-was-given) ; dynamically scoped parameter
 
+(defvar org-clock-adjust-closest nil
+  "When non-nil, `org-timestamp-change' adjusts the recent clock.
+The clock is taken from `org-clock-history'.
+This is a dynamically scoped variable.")
+
+(declare-function org-get-compact-tod "org-read-date" (s))
+(declare-function org-read-date "org-read-date"
+                  (&optional with-time to-time from-string prompt
+			     default-time default-input inactive))
 (defalias 'org-time-stamp #'org-timestamp)
 ;;;###autoload
 (defun org-timestamp (arg &optional inactive)
@@ -83,6 +87,7 @@ with the current time without prompting the user.
 When called from Lisp, the timestamp is inactive if INACTIVE is
 non-nil."
   (interactive "P")
+  (require 'org-read-date)
   (let* ((ts (cond
 	      ((org-at-date-range-p t)
 	       (match-string (if (< (point) (- (match-beginning 2) 2)) 1 2)))
@@ -201,22 +206,24 @@ With prefix ARG, change by that many units."
   (interactive "p")
   (org-timestamp-change (- (prefix-numeric-value arg)) nil 'updown))
 
+(declare-function org-todo "org-todo" (&optional arg))
 (defun org-timestamp-up-day (&optional arg)
   "Increase the date in the time stamp by one day.
 With prefix ARG, change that many days."
   (interactive "p")
   (if (and (not (org-at-timestamp-p 'lax))
 	   (org-at-heading-p))
-      (org-todo 'up)
+      (progn (require 'org-todo) (org-todo 'up))
     (org-timestamp-change (prefix-numeric-value arg) 'day 'updown)))
 
+(declare-function org-todo "org-todo" (&optional arg))
 (defun org-timestamp-down-day (&optional arg)
   "Decrease the date in the time stamp by one day.
 With prefix ARG, change that many days."
   (interactive "p")
   (if (and (not (org-at-timestamp-p 'lax))
 	   (org-at-heading-p))
-      (org-todo 'down)
+      (progn (require 'org-todo) (org-todo 'down))
     (org-timestamp-change (- (prefix-numeric-value arg)) 'day) 'updown))
 
 (defun org-toggle-timestamp-type ()
@@ -248,8 +255,8 @@ With prefix ARG, change that many days."
     (save-match-data
       (calendar-cursor-to-date))))
 
-(defvar org-clock-history)                     ; defined in org-clock.el
-(defvar org-clock-adjust-closest nil)          ; defined in org-clock.el
+(declare-function org-clock-update-time-maybe "org-clock" ())
+(declare-function org-get-heading "org-property" (&optional no-tags no-todo no-priority no-comment))
 (defun org-timestamp-change (n &optional what updown suppress-tmp-delay)
   "Change the date in the time stamp at point.
 
@@ -376,13 +383,19 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 	   ;; have moved into another part.
 	   (_ origin))))
       ;; Update clock if on a CLOCK line.
-      (org-clock-update-time-maybe)
+      (when (org-at-clock-log-p)
+        (require 'org-clock)
+        (org-clock-update-time-maybe))
       ;; Maybe adjust the closest clock in `org-clock-history'
       (when org-clock-adjust-closest
 	(if (not (and (org-at-clock-log-p)
+                    (bound-and-true-p org-clock-history)
 		    (< 1 (length (delq nil (mapcar 'marker-position
 						 org-clock-history))))))
 	    (message "No clock to adjust")
+          ;; we only ever enter this branch of if when
+          ;; `org-clock-history' is bound.
+          (defvar org-clock-history)
 	  (cond ((save-excursion	; fix previous clock?
 		   (re-search-backward org-ts-regexp0 nil t)
 		   (looking-back (concat org-clock-string " \\[")
@@ -410,6 +423,7 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 		    (goto-char (match-beginning 1))
 		    (let (org-clock-adjust-closest)
 		      (org-timestamp-change n timestamp? updown))
+                    (require 'org-property)
 		    (message "Clock adjusted in %s for heading: %s"
 			     (file-name-nondirectory (buffer-file-name))
 			     (org-get-heading t t)))))))))
