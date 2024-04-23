@@ -28,25 +28,19 @@
 
 (require 'org-move)
 (require 'org-element-context)
+(require 'org-mode-common)
 
-(defvar org-loop-over-headlines-in-active-region)
-
-(defvar org-current-tag-alist)
-(defvar org-todo-key-alist)
 (declare-function org-map-entries "org")
 (declare-function org--tag-add-to-alist "org")
 (declare-function org-agenda-files "org")
 (defvar crm-separator)
 (declare-function org-get-heading "org")
 (declare-function org-agenda-change-all-lines "org-agenda")
-(defvar org-done-keywords)
 (declare-function org-get-todo-face "org")
 (declare-function org-todo "org")
 (defvar org-trust-scanner-tags)
 (defvar org-scanner-tags)
-(defvar org-tag-groups-alist)
 (defvar org-tag-groups-alist-for-agenda)
-(defvar org-mode-tags-syntax-table)
 
 ;;;; Customizations
 

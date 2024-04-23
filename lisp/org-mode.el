@@ -134,36 +134,6 @@ will still edit the time stamp - this is just too good to give up."
 	  (const :tag "When outside special context" t)
 	  (const :tag "Everywhere except timestamps" always)))
 
-(defcustom org-loop-over-headlines-in-active-region t
-  "Shall some commands act upon headlines in the active region?
-
-When set to t, some commands will be performed in all headlines
-within the active region.
-
-When set to `start-level', some commands will be performed in all
-headlines within the active region, provided that these headlines
-are of the same level than the first one.
-
-When set to a string, those commands will be performed on the
-matching headlines within the active region.  Such string must be
-a tags/property/todo match as it is used in the agenda tags view.
-
-The list of commands is: `org-schedule', `org-deadline',
-`org-todo', `org-set-tags-command', `org-archive-subtree',
-`org-archive-set-tag', `org-toggle-archive-tag' and
-`org-archive-to-archive-sibling'.  The archiving commands skip
-already archived entries.
-
-See `org-agenda-loop-over-headlines-in-active-region' for the
-equivalent option for agenda views."
-  :type '(choice (const :tag "Don't loop" nil)
-		 (const :tag "All headlines in active region" t)
-		 (const :tag "In active region, headlines at the same level than the first one" start-level)
-		 (string :tag "Tags/Property/Todo matcher"))
-  :package-version '(Org . "9.4")
-  :group 'org-todo
-  :group 'org-archive)
-
 (defgroup org-startup nil
   "Startup options Org uses when first visiting a file."
   :tag "Org Startup"
