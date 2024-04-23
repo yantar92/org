@@ -28,9 +28,7 @@
 (org-assert-version)
 
 (require 'calendar)
-
-(defvar org-timestamp-rounding-minutes)
-(declare-function org-clock-get-last-clock-out-time "org-clock" ())
+(require 'org-timestamp-common)
 
 (defcustom org-extend-today-until 0
   "The hour when your day really ends.  Must be an integer.
@@ -117,6 +115,7 @@ the rounding returns a past time."
 	    res
 	  (time-subtract res (* r 60)))))))
 
+(declare-function org-clock-get-last-clock-out-time "org-clock" ())
 (defun org-current-effective-time ()
   "Return current time adjusted for `org-extend-today-until' variable."
   (let* ((ct (org-current-time))

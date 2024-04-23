@@ -30,6 +30,7 @@
 (require 'org-time)
 (require 'org-read-date)
 (require 'org-element-context)
+(require 'org-timestamp-common)
 
 (declare-function org-todo "org")
 (declare-function org-at-date-range-p "org")
@@ -40,38 +41,6 @@
   "Options concerning time stamps and deadlines in Org mode."
   :tag "Org Time"
   :group 'org)
-
-(defvaralias 'org-time-stamp-rounding-minutes 'org-timestamp-rounding-minutes)
-(defcustom org-timestamp-rounding-minutes '(0 5)
-  "Number of minutes to round time stamps to.
-\\<org-mode-map>\
-These are two values, the first applies when first creating a time stamp.
-The second applies when changing it with the commands `S-up' and `S-down'.
-When changing the time stamp, this means that it will change in steps
-of N minutes, as given by the second value.
-
-When a setting is 0 or 1, insert the time unmodified.  Useful rounding
-numbers should be factors of 60, so for example 5, 10, 15.
-
-When this is larger than 1, you can still force an exact time stamp by using
-a double prefix argument to a time stamp command like \
-`\\[org-timestamp]' or `\\[org-timestamp-inactive],
-and by using a prefix arg to `S-up/down' to specify the exact number
-of minutes to shift."
-  :group 'org-time
-  :get (lambda (var) ; Make sure both elements are there
-	 (if (integerp (default-value var))
-	     (list (default-value var) 5)
-	   (default-value var)))
-  :type '(list
-	  (integer :tag "when inserting times")
-	  (integer :tag "when modifying times")))
-
-;; Normalize old customizations of this variable.
-(when (integerp org-timestamp-rounding-minutes)
-  (setq org-timestamp-rounding-minutes
-	(list org-timestamp-rounding-minutes
-	      org-timestamp-rounding-minutes)))
 
 (defcustom org-edit-timestamp-down-means-later nil
   "Non-nil means S-down will increase the time in a time stamp.
