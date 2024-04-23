@@ -30,8 +30,7 @@
 (require 'org-macs)
 (require 'org-mode)
 (require 'org-element-context)
-
-(defvar org-window-configuration)
+(require 'org-mode-common)
 
 ;;; Customizing files managed by Org mode.
 

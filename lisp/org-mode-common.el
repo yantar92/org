@@ -35,6 +35,9 @@
 (defvar org-mode-loading nil
   "Non-nil during Org mode initialization.")
 
+(defvar org-window-configuration nil
+  "Used in various places to store a window configuration.")
+
 (defvar-local org-done-keywords nil)
 (defvar-local org-todo-heads nil)
 (defvar-local org-todo-sets nil)

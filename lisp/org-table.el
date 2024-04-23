@@ -44,6 +44,7 @@
 (require 'org-fold-core)
 (require 'org-element)
 (require 'org-element-context)
+(require 'org-mode-common)
 
 (declare-function calc-eval "calc" (str &optional separator &rest args))
 (declare-function face-remap-remove-relative "face-remap" (cookie))
@@ -715,9 +716,6 @@ Will be filled automatically during use.")
     ("^" . "Names for values in row above this one.")))
 
 (defvar org-pos nil)
-
-(defvar org-window-configuration nil
-  "Used in various places to store a window configuration.")
 
 
 ;;; Macros and Inlined Functions
