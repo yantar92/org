@@ -37,6 +37,7 @@
 (require 'org-footnote)
 (require 'org-src)
 (require 'org-flyspell)
+(require 'oc)
 
 (defvar org-ellipsis)
 (defvar org-table-may-need-update)

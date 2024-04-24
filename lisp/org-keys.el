@@ -33,7 +33,6 @@
 (require 'cl-lib)
 
 (require 'org-regexps)
-(require 'oc)
 (require 'org-element)
 (require 'org-element-context)
 
@@ -215,6 +214,7 @@
 (declare-function org-update-statistics-cookies "org-todo" (all))
 (declare-function org-yank "org-edit" (&optional arg))
 (declare-function orgtbl-ascii-plot "org-table" (&optional ask))
+(declare-function org-cite-insert "oc" (arg))
 
 
 ;;; Variables
