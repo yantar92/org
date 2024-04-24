@@ -28,7 +28,6 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-menu)
 (require 'org-agenda-files)
 (require 'org-log-note)
 (require 'org-edit-structure)
