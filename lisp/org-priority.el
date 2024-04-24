@@ -130,13 +130,6 @@ string as an argument and return the numeric priority."
 	  (const nil)
 	  (function)))
 
-(defun org-priority-to-value (s)
-  "Convert priority string S to its numeric value."
-  (or (save-match-data
-	(and (string-match "\\([0-9]+\\)" s)
-	     (string-to-number (match-string 1 s))))
-      (string-to-char s)))
-
 (defun org-priority-up ()
   "Increase the priority of the current item."
   (interactive)

@@ -30,6 +30,7 @@
 (require 'outline)
 (require 'org-regexps)
 (require 'org-element-context)
+(require 'org-mode-common)
 
 (defvaralias 'org-special-ctrl-a 'org-special-ctrl-a/e)
 (defcustom org-special-ctrl-a/e nil
@@ -605,9 +606,6 @@ It also provides the following special moves for convenience:
       (cl-decf arg))
     ;; Return moves left.
     arg))
-
-(defvar org--single-lines-list-is-paragraph t
-  "Treat plain lists with single line items as a whole paragraph.")
 
 (defun org--paragraph-at-point ()
   "Return paragraph, or equivalent, element at point.

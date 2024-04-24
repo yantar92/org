@@ -31,6 +31,8 @@
 (require 'org-mode)
 (require 'org-element-context)
 (require 'org-mode-common)
+(require 'org-tags-common)
+(require 'org-move)
 
 ;;; Customizing files managed by Org mode.
 

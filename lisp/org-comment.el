@@ -48,15 +48,6 @@
 (eval-when-compile (require 'org-src)) ; `org-babel-do-in-edit-buffer'
 (defvar org-complex-heading-regexp)
 
-(defun org-setup-comments-handling ()
-  (interactive)
-  (setq-local comment-use-syntax nil)
-  (setq-local comment-start "# ")
-  (setq-local comment-start-skip "^\\s-*#\\(?: \\|$\\)")
-  (setq-local comment-insert-comment-function 'org-insert-comment)
-  (setq-local comment-region-function 'org-comment-or-uncomment-region)
-  (setq-local uncomment-region-function 'org-comment-or-uncomment-region))
-
 (defun org-insert-comment ()
   "Insert an empty comment above current line.
 If the line is empty, insert comment at its beginning.  When

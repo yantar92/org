@@ -44,27 +44,6 @@
 (declare-function org-at-timestamp-p "org" (&optional extended))
 (defvar org-mode-transpose-word-syntax-table)
 
-(defun org-setup-filling ()
-  ;; Prevent auto-fill from inserting unwanted new items.
-  (setq-local fill-nobreak-predicate
-              (org-uniquify
-               (append fill-nobreak-predicate
-                       '(org-fill-line-break-nobreak-p
-                         org-fill-n-macro-as-item-nobreak-p
-                         org-fill-paragraph-with-timestamp-nobreak-p))))
-  (let ((paragraph-ending (substring org-element-paragraph-separate 1)))
-    (setq-local paragraph-start paragraph-ending)
-    (setq-local paragraph-separate paragraph-ending))
-  (setq-local fill-paragraph-function 'org-fill-paragraph)
-  (setq-local fill-forward-paragraph-function
-              (lambda (&optional arg)
-                (let ((org--single-lines-list-is-paragraph nil))
-                  (org-forward-paragraph arg))))
-  (setq-local auto-fill-inhibit-regexp nil)
-  (setq-local adaptive-fill-function 'org-adaptive-fill-function)
-  (setq-local normal-auto-fill-function 'org-auto-fill-function)
-  (setq-local comment-line-break-function 'org-comment-line-break-function))
-
 (defun org-fill-line-break-nobreak-p ()
   "Non-nil when a new line at point would create an Org line break."
   (save-excursion

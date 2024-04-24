@@ -163,6 +163,7 @@ The return value is a string naming the thing at point."
 
 ;;; Completion API
 
+;;;###autoload
 (defun org-command-at-point ()
   "Return the qualified name of the Org completion entity at point.
 When completing for #+STARTUP, for example, this function returns
@@ -176,6 +177,7 @@ When completing for #+STARTUP, for example, this function returns
       (concat (car thing) "/" (downcase (cdr thing))))
      (t (car thing)))))
 
+;;;###autoload
 (defun org-parse-arguments ()
   "Parse whitespace separated arguments in the current region."
   (if (equal (cons "searchhead" nil) (org-thing-at-point))

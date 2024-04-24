@@ -19,7 +19,7 @@
 
 ;;; Commentary:
 
-;; This library contains Org major mode decalration.
+;; This library contains Org major mode declaration.
 
 ;;; Code:
 
@@ -29,19 +29,12 @@
 (require 'org-load)
 (require 'org-mode-common)
 (require 'outline)
-(require 'org-regexps)
-(require 'ol)
-(require 'org-tags)
-(require 'org-property)
-(require 'org-table)
-(require 'org-priority)
+(require 'pcomplete)
+(require 'org-tags-common)
 (require 'org-font-lock)
-(require 'org-macro)
-(require 'org-fill)
-(require 'org-comment)
-(require 'org-pcomplete)
 (require 'org-dnd)
 (require 'thingatpt)
+(require 'org-macro)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")
@@ -661,6 +654,36 @@ Respect keys that are already there."
       (cons (org-element-begin context)
             (org-element-end context)))))
 
+(defun org-setup-comments-handling ()
+  (interactive)
+  (setq-local comment-use-syntax nil)
+  (setq-local comment-start "# ")
+  (setq-local comment-start-skip "^\\s-*#\\(?: \\|$\\)")
+  (setq-local comment-insert-comment-function 'org-insert-comment)
+  (setq-local comment-region-function 'org-comment-or-uncomment-region)
+  (setq-local uncomment-region-function 'org-comment-or-uncomment-region))
+
+(defun org-setup-filling ()
+  ;; Prevent auto-fill from inserting unwanted new items.
+  (setq-local fill-nobreak-predicate
+              (org-uniquify
+               (append fill-nobreak-predicate
+                       '(org-fill-line-break-nobreak-p
+                         org-fill-n-macro-as-item-nobreak-p
+                         org-fill-paragraph-with-timestamp-nobreak-p))))
+  (let ((paragraph-ending (substring org-element-paragraph-separate 1)))
+    (setq-local paragraph-start paragraph-ending)
+    (setq-local paragraph-separate paragraph-ending))
+  (setq-local fill-paragraph-function 'org-fill-paragraph)
+  (setq-local fill-forward-paragraph-function
+              (lambda (&optional arg)
+                (let ((org--single-lines-list-is-paragraph nil))
+                  (org-forward-paragraph arg))))
+  (setq-local auto-fill-inhibit-regexp nil)
+  (setq-local adaptive-fill-function 'org-adaptive-fill-function)
+  (setq-local normal-auto-fill-function 'org-auto-fill-function)
+  (setq-local comment-line-break-function 'org-comment-line-break-function))
+
 (defun org-occur-reveal-occurrence ()
   "Reveal folded text found by Occur in Org mode."
   (when (derived-mode-p 'org-mode) (org-fold-reveal)))
@@ -687,6 +710,8 @@ Respect keys that are already there."
   (setq imenu-create-index-function 'org-imenu-get-tree)
   (add-hook 'imenu-after-jump-hook #'org-imenu-reveal nil 'local))
 
+(declare-function org-get-heading "org-property"
+                  (&optional no-tags no-todo no-priority no-comment))
 (defun org-add-log-current-headline ()
   "Return current headline or nil.
 This function ignores inlinetasks.  It is meant to be used as
@@ -744,6 +769,10 @@ This function ignores inlinetasks.  It is meant to be used as
       (org-indent-mode -1))
     (org-reset-file-cache))
   (message "%s restarted" major-mode))
+
+(declare-function org-parse-arguments "org-pcomplete" ())
+(declare-function org-command-at-point "org-pcomplete" ())
+(declare-function org-pcomplete-initial "org-pcomplete" ())
 
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"

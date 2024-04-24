@@ -228,16 +228,6 @@ Being in this list makes sure that they are offered for completion.")
    (or (equal property "")
        (string-match-p "\\s-" property))))
 
-(defun org--update-property-plist (key val props)
-  "Associate KEY to VAL in alist PROPS.
-Modifications are made by side-effect.  Return new alist."
-  (let* ((appending (string= (substring key -1) "+"))
-	 (key (if appending (substring key 0 -1) key))
-	 (old (assoc-string key props t)))
-    (if (not old) (cons (cons key val) props)
-      (setcdr old (if appending (concat (cdr old) " " val) val))
-      props)))
-
 (defun org-get-property-block (&optional beg force)
   "Return the (beg . end) range of the body of the property drawer.
 BEG is the beginning of the current subtree or the beginning of
@@ -1452,6 +1442,7 @@ nil."
     (when time
       (org-time-string-to-time time))))
 
+;;;###autoload
 (defun org-get-heading (&optional no-tags no-todo no-priority no-comment)
   "Return the heading of the current entry, without the stars.
 When NO-TAGS is non-nil, don't include tags.

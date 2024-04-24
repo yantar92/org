@@ -64,6 +64,7 @@
 (require 'org-agenda-diary)
 (require 'org-edit-structure-common)
 (require 'org-read-date)
+(require 'org-tags-common)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))

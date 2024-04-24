@@ -28,6 +28,7 @@
 (org-assert-version)
 
 (require 'outline)
+(require 'org-regexps)
 
 (defvar org-inhibit-startup nil)        ; Dynamically-scoped param.
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
@@ -37,6 +38,9 @@
 
 (defvar org-window-configuration nil
   "Used in various places to store a window configuration.")
+
+(defvar org--single-lines-list-is-paragraph t
+  "Treat plain lists with single line items as a whole paragraph.")
 
 (defvar-local org-done-keywords nil)
 (defvar-local org-todo-heads nil)
@@ -179,6 +183,81 @@ equivalent option for agenda views."
   :package-version '(Org . "9.4")
   :group 'org-todo
   :group 'org-archive)
+
+(defun org--update-property-plist (key val props)
+  "Associate KEY to VAL in alist PROPS.
+Modifications are made by side-effect.  Return new alist."
+  (let* ((appending (string= (substring key -1) "+"))
+	 (key (if appending (substring key 0 -1) key))
+	 (old (assoc-string key props t)))
+    (if (not old) (cons (cons key val) props)
+      (setcdr old (if appending (concat (cdr old) " " val) val))
+      props)))
+
+(defun org-tag-alist-to-groups (alist)
+  "Return group alist from tag ALIST.
+ALIST is an alist, as defined in `org-tag-alist' or
+`org-tag-persistent-alist', or produced with
+`org-tag-string-to-alist'.  Return value is an alist following
+the pattern (GROUP-TAG TAGS) where GROUP-TAG is the tag, as
+a string, summarizing TAGS, as a list of strings."
+  (let (groups group-status current-group)
+    (dolist (token alist (nreverse groups))
+      (pcase token
+	(`(,(or :startgroup :startgrouptag)) (setq group-status t))
+	(`(,(or :endgroup :endgrouptag))
+	 (when (eq group-status 'append)
+	   (push (nreverse current-group) groups))
+	 (setq group-status nil current-group nil))
+	(`(:grouptags) (setq group-status 'append))
+	((and `(,tag . ,_) (guard group-status))
+	 (if (eq group-status 'append) (push tag current-group)
+	   (setq current-group (list tag))))
+	(_ nil)))))
+
+(defun org-tag-string-to-alist (s)
+  "Return tag alist associated to string S.
+S is a value for TAGS keyword or produced with
+`org-tag-alist-to-string'.  Return value is an alist suitable for
+`org-tag-alist' or `org-tag-persistent-alist'."
+  (let ((lines (mapcar #'split-string (split-string s "\n" t)))
+	(tag-re (concat "\\`\\(" org-tag-re "\\|{.+?}\\)" ; regular expression
+			"\\(?:(\\(.\\))\\)?\\'"))
+	alist group-flag)
+    (dolist (tokens lines (cdr (nreverse alist)))
+      (push '(:newline) alist)
+      (while tokens
+	(let ((token (pop tokens)))
+	  (pcase token
+	    ("{"
+	     (push '(:startgroup) alist)
+	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
+	    ("}"
+	     (push '(:endgroup) alist)
+	     (setq group-flag nil))
+	    ("["
+	     (push '(:startgrouptag) alist)
+	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
+	    ("]"
+	     (push '(:endgrouptag) alist)
+	     (setq group-flag nil))
+	    (":"
+	     (push '(:grouptags) alist))
+	    ((guard (string-match tag-re token))
+	     (let ((tag (match-string 1 token))
+		   (key (and (match-beginning 2)
+			     (string-to-char (match-string 2 token)))))
+	       ;; Push all tags in groups, no matter if they already
+	       ;; appear somewhere else in the list.
+	       (when (or group-flag (not (assoc tag alist)))
+		 (push (cons tag key) alist))))))))))
+
+(defun org-priority-to-value (s)
+  "Convert priority string S to its numeric value."
+  (or (save-match-data
+	(and (string-match "\\([0-9]+\\)" s)
+	     (string-to-number (match-string 1 s))))
+      (string-to-char s)))
 
 (provide 'org-mode-common)
 

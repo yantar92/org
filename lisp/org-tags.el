@@ -29,6 +29,7 @@
 (require 'org-move)
 (require 'org-element-context)
 (require 'org-mode-common)
+(require 'org-tags-common)
 
 (declare-function org-map-entries "org")
 (declare-function org--tag-add-to-alist "org")
@@ -49,78 +50,6 @@
   :tag "Org Tags"
   :group 'org)
 
-(defcustom org-tag-alist nil
-  "Default tags available in Org files.
-
-The value of this variable is an alist.  Associations either:
-
-  (TAG)
-  (TAG . SELECT)
-  (SPECIAL)
-
-where TAG is a tag as a string, SELECT is character, used to
-select that tag through the fast tag selection interface, and
-SPECIAL is one of the following keywords: `:startgroup',
-`:startgrouptag', `:grouptags', `:endgroup', `:endgrouptag' or
-`:newline'.  These keywords are used to define a hierarchy of
-tags.  See manual for details.
-
-When this variable is nil, Org mode bases tag input on what is
-already in the buffer.  The value can be overridden locally by
-using a TAGS keyword, e.g.,
-
-  #+TAGS: tag1 tag2
-
-See also `org-tag-persistent-alist' to sidestep this behavior."
-  :group 'org-tags
-  :type '(repeat
-	  (choice
-	   (cons :tag "Tag with key"
-		 (string    :tag "Tag name")
-		 (character :tag "Access char"))
-	   (list :tag "Tag" (string :tag "Tag name"))
-	   (const :tag "Start radio group" (:startgroup))
-	   (const :tag "Start tag group, non distinct" (:startgrouptag))
-	   (const :tag "Group tags delimiter" (:grouptags))
-	   (const :tag "End radio group" (:endgroup))
-	   (const :tag "End tag group, non distinct" (:endgrouptag))
-	   (const :tag "New line" (:newline)))))
-
-(defcustom org-tag-persistent-alist nil
-  "Tags always available in Org files.
-
-The value of this variable is an alist.  Associations either:
-
-  (TAG)
-  (TAG . SELECT)
-  (SPECIAL)
-
-where TAG is a tag as a string, SELECT is a character, used to
-select that tag through the fast tag selection interface, and
-SPECIAL is one of the following keywords: `:startgroup',
-`:startgrouptag', `:grouptags', `:endgroup', `:endgrouptag' or
-`:newline'.  These keywords are used to define a hierarchy of
-tags.  See manual for details.
-
-Unlike to `org-tag-alist', tags defined in this variable do not
-depend on a local TAGS keyword.  Instead, to disable these tags
-on a per-file basis, insert anywhere in the file:
-
-  #+STARTUP: noptag"
-  :group 'org-tags
-  :type '(repeat
-	  (choice
-	   (cons :tag "Tag with key"
-		 (string    :tag "Tag name")
-		 (character :tag "Access char"))
-	   (list :tag "Tag" (string :tag "Tag name"))
-	   (const :tag "Start radio group" (:startgroup))
-	   (const :tag "Start tag group, non distinct" (:startgrouptag))
-	   (const :tag "Group tags delimiter" (:grouptags))
-	   (const :tag "End radio group" (:endgroup))
-	   (const :tag "End tag group, non distinct" (:endgrouptag))
-	   (const :tag "New line" (:newline)))))
-
 ;; FIXME: This should probably be deprecated in favor of
 ;; (org-element-property :tags (org-element-org-data))
 (defvar org-file-tags nil
@@ -128,14 +57,6 @@ on a per-file basis, insert anywhere in the file:
 The tags will be inherited if the variable `org-use-tag-inheritance'
 says they should be.
 This variable is populated from #+FILETAGS lines.")
-
-(defcustom org-group-tags t
-  "When non-nil (the default), use group tags.
-This can be turned on/off through `org-toggle-tags-groups'."
-  :group 'org-tags
-  :group 'org-startup
-  :type 'boolean)
-
 
 ;; Defined to provide a value for defcustom, since there is no
 ;; string-collate-greaterp in Emacs.
@@ -258,43 +179,6 @@ see the variable `org-use-tag-inheritance'."
 
 ;;;;
 
-(defun org-tag-string-to-alist (s)
-  "Return tag alist associated to string S.
-S is a value for TAGS keyword or produced with
-`org-tag-alist-to-string'.  Return value is an alist suitable for
-`org-tag-alist' or `org-tag-persistent-alist'."
-  (let ((lines (mapcar #'split-string (split-string s "\n" t)))
-	(tag-re (concat "\\`\\(" org-tag-re "\\|{.+?}\\)" ; regular expression
-			"\\(?:(\\(.\\))\\)?\\'"))
-	alist group-flag)
-    (dolist (tokens lines (cdr (nreverse alist)))
-      (push '(:newline) alist)
-      (while tokens
-	(let ((token (pop tokens)))
-	  (pcase token
-	    ("{"
-	     (push '(:startgroup) alist)
-	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
-	    ("}"
-	     (push '(:endgroup) alist)
-	     (setq group-flag nil))
-	    ("["
-	     (push '(:startgrouptag) alist)
-	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
-	    ("]"
-	     (push '(:endgrouptag) alist)
-	     (setq group-flag nil))
-	    (":"
-	     (push '(:grouptags) alist))
-	    ((guard (string-match tag-re token))
-	     (let ((tag (match-string 1 token))
-		   (key (and (match-beginning 2)
-			     (string-to-char (match-string 2 token)))))
-	       ;; Push all tags in groups, no matter if they already
-	       ;; appear somewhere else in the list.
-	       (when (or group-flag (not (assoc tag alist)))
-		 (push (cons tag key) alist))))))))))
-
 (defun org-tag-alist-to-string (alist &optional skip-key)
   "Return tag string associated to ALIST.
 
@@ -393,27 +277,6 @@ either not currently on a tagged headline or on a tag."
     (org-align-tags)))
 
 ;;;; Tag groups
-
-(defun org-tag-alist-to-groups (alist)
-  "Return group alist from tag ALIST.
-ALIST is an alist, as defined in `org-tag-alist' or
-`org-tag-persistent-alist', or produced with
-`org-tag-string-to-alist'.  Return value is an alist following
-the pattern (GROUP-TAG TAGS) where GROUP-TAG is the tag, as
-a string, summarizing TAGS, as a list of strings."
-  (let (groups group-status current-group)
-    (dolist (token alist (nreverse groups))
-      (pcase token
-	(`(,(or :startgroup :startgrouptag)) (setq group-status t))
-	(`(,(or :endgroup :endgrouptag))
-	 (when (eq group-status 'append)
-	   (push (nreverse current-group) groups))
-	 (setq group-status nil current-group nil))
-	(`(:grouptags) (setq group-status 'append))
-	((and `(,tag . ,_) (guard group-status))
-	 (if (eq group-status 'append) (push tag current-group)
-	   (setq current-group (list tag))))
-	(_ nil)))))
 
 (defvar org-inhibit-startup)
 (declare-function org-agenda-redo "org-agenda")
