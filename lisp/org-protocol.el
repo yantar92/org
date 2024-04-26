@@ -132,7 +132,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 
 (declare-function org-publish-get-project-from-filename "ox-publish"
 		  (filename &optional up))

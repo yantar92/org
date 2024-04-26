@@ -58,7 +58,6 @@
 (declare-function org-inlinetask-goto-beginning "org-inlinetask" ())
 (declare-function org-inlinetask-goto-end "org-inlinetask" ())
 (declare-function org-inlinetask-in-task-p "org-inlinetask" ())
-(declare-function org-link-display-format "ol" (s))
 (declare-function org-link-heading-search-string "ol" (&optional string))
 (declare-function org-link-make-string "ol" (link &optional description))
 (declare-function org-table-goto-line "org-table" (n))

@@ -28,8 +28,8 @@
 
 (require 'org-fold)
 (require 'org-element)
-(require 'ol)
 (require 'org-property)
+(require 'org-mode-common)
 
 (defgroup org-imenu-and-speedbar nil
   "Options concerning imenu and speedbar in Org mode."

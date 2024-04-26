@@ -51,7 +51,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 
 (declare-function erc-buffer-filter "erc" (predicate &optional proc))
 (declare-function erc-channel-p "erc" (channel))

@@ -31,7 +31,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 
 (org-link-set-parameters "man"
                          :complete #'org-man-complete

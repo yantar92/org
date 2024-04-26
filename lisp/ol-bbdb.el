@@ -99,7 +99,7 @@
 (require 'cl-lib)
 (require 'org-compat)
 (require 'org-macs)
-(require 'ol)
+(require 'ol-core)
 
 ;;; Declare functions and variables
 

@@ -28,7 +28,7 @@
 
 (require 'org-regexps)
 (require 'org-keys)
-(require 'ol)
+(require 'ol-core)
 (require 'org-fold)
 (require 'org-faces)
 (require 'org-element-timestamp)
@@ -203,6 +203,31 @@ in the Org buffer so that the change takes effect."
 	      (const :tag "Tags" tag)
 	      (const :tag "Timestamps" date)
 	      (const :tag "Footnotes" footnote)))
+
+(defun org-link--set-link-display (symbol value)
+  "Set `org-link-descriptive' (SYMBOL) to VALUE.
+Also, ensure that links are updated in current buffer.
+
+This function is intended to be used as a :set function."
+  (set symbol value)
+  (dolist (buf (org-buffer-list))
+    (with-current-buffer buf
+      (org-restart-font-lock))))
+
+(defcustom org-link-descriptive t
+  "Non-nil means Org displays descriptive links.
+
+E.g. [[https://orgmode.org][Org website]] is displayed as
+\"Org Website\", hiding the link itself and just displaying its
+description.  When set to nil, Org displays the full links
+literally.
+
+You can interactively set the value of this variable by calling
+`org-toggle-link-display' or from the \"Org > Hyperlinks\" menu."
+  :group 'org-link
+  :set #'org-link--set-link-display
+  :type 'boolean
+  :safe #'booleanp)
 
 (defcustom org-highlight-latex-and-related nil
   "Non-nil means highlight LaTeX related syntax in the buffer.
@@ -1330,6 +1355,13 @@ and subscripts."
              "\\S-" (buffer-substring (overlay-start o)
 				     (overlay-end o))))
 	 (delete-overlay o))))
+
+;;;###autoload
+(defun org-toggle-link-display ()
+  "Toggle the literal or descriptive display of links in current buffer."
+  (interactive)
+  (setq org-link-descriptive (not org-link-descriptive))
+  (org-restart-font-lock))
 
 (provide 'org-font-lock)
 

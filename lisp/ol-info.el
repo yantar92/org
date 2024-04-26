@@ -33,7 +33,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 
 ;; Declare external functions and variables
 

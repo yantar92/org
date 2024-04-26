@@ -36,7 +36,7 @@
 
 (require 'cl-lib)
 (require 'org-agenda)
-(require 'ol)
+(require 'ol-core)
 (require 'org-edit-structure-common)
 
 ;;; Code:

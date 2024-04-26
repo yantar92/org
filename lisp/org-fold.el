@@ -237,6 +237,23 @@ Also, see `org-fold-catch-invisible-edits'."
 (defalias 'org-fold-add-folding-spec #'org-fold-core-add-folding-spec)
 (defalias 'org-fold-remove-folding-spec #'org-fold-core-remove-folding-spec)
 
+(defvar-local org-link--link-folding-spec
+    '(org-link
+      (:global t)
+      (:ellipsis . nil)
+      (:isearch-open . t)
+      (:fragile . org-link--reveal-maybe))
+  "Folding spec used to hide invisible parts of links.")
+
+(defvar-local org-link--description-folding-spec
+    '(org-link-description
+      (:global t)
+      (:ellipsis . nil)
+      (:visible . t)
+      (:isearch-open . nil)
+      (:fragile . org-link--reveal-maybe))
+  "Folding spec used to reveal link description.")
+
 (defun org-fold-initialize (ellipsis)
   "Setup folding in current Org buffer."
   (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)

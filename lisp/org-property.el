@@ -55,7 +55,6 @@
 (defvar org-done-keywords)
 (declare-function org-macro-initialize-templates "org-macro")
 (defvar org-macro-templates)
-(declare-function org-link-display-format "ol")
 
 (defgroup org-properties nil
   "Options concerning properties in Org mode."

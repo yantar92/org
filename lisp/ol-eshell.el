@@ -28,7 +28,7 @@
 
 (require 'eshell)
 (require 'esh-mode)
-(require 'ol)
+(require 'ol-core)
 
 (declare-function eshell/pwd "em-dirs.el" (&rest args))
 

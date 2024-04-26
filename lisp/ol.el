@@ -32,30 +32,25 @@
 
 (require 'org-compat)
 (require 'org-macs)
-(require 'org-fold)
-
+(require 'org-mode-common)
 (require 'org-element)
 (require 'org-regexps)
+(require 'org-element-context)
+(require 'org-fold-core)
+
+(require 'ol-core)
 
 (defvar clean-buffer-list-kill-buffer-names)
-(defvar org-agenda-buffer-name)
 (defvar org-highlight-links)
-(defvar org-id-link-to-org-use-id)
-(defvar org-inhibit-startup)
 (defvar org-src-source-file-name)
-(defvar org-ts-regexp)
 
 (declare-function calendar-cursor-to-date "calendar" (&optional error event))
 (declare-function dired-get-filename "dired" (&optional localp no-error-if-not-filep))
-(declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-before-first-heading-p "org" ())
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 (declare-function org-find-property "org" (property &optional value))
 (declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
 (declare-function org-id-find-id-file "org-id" (id))
 (declare-function org-insert-heading "org" (&optional arg invisible-ok top))
-(declare-function org-load-modules-maybe "org" (&optional force))
 (declare-function org-mark-ring-push "org" (&optional pos buffer))
 (declare-function org-mode "org" ())
 (declare-function org-occur "org" (regexp &optional keep-previous callback))
@@ -63,42 +58,15 @@
 (declare-function org-cycle-overview "org-cycle" ())
 (declare-function org-restart-font-lock "org" ())
 (declare-function org-run-like-in-org-mode "org" (cmd))
-(declare-function org-fold-show-context "org-fold" (&optional key))
 (declare-function org-src-coderef-format "org-src" (&optional element))
 (declare-function org-src-coderef-regexp "org-src" (fmt &optional label))
 (declare-function org-src-edit-buffer-p "org-src" (&optional buffer))
 (declare-function org-src-source-buffer "org-src" ())
 (declare-function org-src-source-type "org-src" ())
 (declare-function org-time-stamp-format "org" (&optional long inactive))
-(declare-function outline-next-heading "outline" ())
 
 
 ;;; Customization
-
-(defun org-link--set-link-display (symbol value)
-  "Set `org-link-descriptive' (SYMBOL) to VALUE.
-Also, ensure that links are updated in current buffer.
-
-This function is intended to be used as a :set function."
-  (set symbol value)
-  (dolist (buf (org-buffer-list))
-    (with-current-buffer buf
-      (org-restart-font-lock))))
-
-(defcustom org-link-descriptive t
-  "Non-nil means Org displays descriptive links.
-
-E.g. [[https://orgmode.org][Org website]] is displayed as
-\"Org Website\", hiding the link itself and just displaying its
-description.  When set to nil, Org displays the full links
-literally.
-
-You can interactively set the value of this variable by calling
-`org-toggle-link-display' or from the \"Org > Hyperlinks\" menu."
-  :group 'org-link
-  :set #'org-link--set-link-display
-  :type 'boolean
-  :safe #'booleanp)
 
 (defcustom org-link-make-description-function nil
   "Function to use for generating link descriptions from links.
@@ -320,18 +288,6 @@ Examples: \"%f on: %.30s\", \"Email from %f\", \"Email %c\""
   :type 'string
   :safe #'stringp)
 
-(defcustom org-link-from-user-regexp
-  (let ((mail (and (org-string-nw-p user-mail-address)
-		   (format "\\<%s\\>" (regexp-quote user-mail-address))))
-	(name (and (org-string-nw-p user-full-name)
-		   (format "\\<%s\\>" (regexp-quote user-full-name)))))
-    (if (and mail name) (concat mail "\\|" name) (or mail name)))
-  "Regexp matched against the \"From:\" header of an email or Usenet message.
-It should match if the message is from the user him/herself."
-  :group 'org-link-store
-  :type 'regexp
-  :safe #'stringp)
-
 (defcustom org-link-keep-stored-after-insertion nil
   "Non-nil means keep link in list for entire session.
 \\<org-mode-map>
@@ -353,12 +309,6 @@ links more efficient."
 (defvar-local org-link-abbrev-alist-local nil
   "Buffer-local version of `org-link-abbrev-alist', which see.
 The value of this is taken from the LINK keywords.")
-
-(defvar org-stored-links nil
-  "Contains the links stored with `org-store-link'.")
-
-(defvar org-store-link-plist nil
-  "Plist with info about the most recently link created with `org-store-link'.")
 
 (defvar org-create-file-search-functions nil
   "List of functions to construct the right search string for a file link.
@@ -455,47 +405,6 @@ either a link description or nil."
     (concat (format "%-45s" (substring desc 0 (min (length desc) 40)))
 	    "<" (car link) ">")))
 
-(defun org-link--decode-compound (hex)
-  "Unhexify Unicode hex-chars HEX.
-E.g. \"%C3%B6\" is the German o-Umlaut.  Note: this function also
-decodes single byte encodings like \"%E1\" (a-acute) if not
-followed by another \"%[A-F0-9]{2}\" group."
-  (save-match-data
-    (let* ((bytes (cdr (split-string hex "%")))
-	   (ret "")
-	   (eat 0)
-	   (sum 0))
-      (while bytes
-	(let* ((val (string-to-number (pop bytes) 16))
-	       (shift-xor
-		(if (= 0 eat)
-		    (cond
-		     ((>= val 252) (cons 6 252))
-		     ((>= val 248) (cons 5 248))
-		     ((>= val 240) (cons 4 240))
-		     ((>= val 224) (cons 3 224))
-		     ((>= val 192) (cons 2 192))
-		     (t (cons 0 0)))
-		  (cons 6 128))))
-	  (when (>= val 192) (setq eat (car shift-xor)))
-	  (setq val (logxor val (cdr shift-xor)))
-	  (setq sum (+ (ash sum (car shift-xor)) val))
-	  (when (> eat 0) (setq eat (- eat 1)))
-	  (cond
-	   ((= 0 eat)			;multi byte
-	    (setq ret (concat ret (char-to-string sum)))
-	    (setq sum 0))
-	   ((not bytes)			; single byte(s)
-	    (setq ret (org-link--decode-single-byte-sequence hex))))))
-      ret)))
-
-(defun org-link--decode-single-byte-sequence (hex)
-  "Unhexify hex-encoded single byte character sequence HEX."
-  (mapconcat (lambda (byte)
-	       (char-to-string (string-to-number byte 16)))
-	     (cdr (split-string hex "%"))
-	     ""))
-
 (defun org-link--fontify-links-to-this-file ()
   "Fontify links to the current file in `org-stored-links'."
   (let ((f (buffer-file-name)) a b)
@@ -536,9 +445,11 @@ followed by another \"%[A-F0-9]{2}\" group."
       (with-current-buffer indirect-buffer (org-cycle-overview))
       indirect-buffer))))
 
+(declare-function org-fold-show-context "org-fold" (&optional key))
 (defun org-link--search-radio-target (target)
   "Search a radio target matching TARGET in current buffer.
 White spaces are not significant."
+  (require 'org-fold)
   (let ((re (format "<<<%s>>>"
 		    (mapconcat #'regexp-quote
 			       (split-string target)
@@ -672,32 +583,6 @@ Return t when a link has been stored in `org-link-store-props'."
 
 ;;; Public API
 
-(defun org-link-get-parameter (type key)
-  "Get TYPE link property for KEY.
-TYPE is a string and KEY is a plist keyword.  See
-`org-link-parameters' for supported keywords."
-  (plist-get (cdr (assoc type org-link-parameters))
-	     key))
-
-(defun org-link-set-parameters (type &rest parameters)
-  "Set link TYPE properties to PARAMETERS.
-PARAMETERS should be keyword value pairs.  See
-`org-link-parameters' for supported keys."
-  (when (member type '("coderef" "custom-id" "fuzzy" "radio"))
-    (error "Cannot override reserved link type: %S" type))
-  (let ((data (assoc type org-link-parameters)))
-    (if data (setcdr data (org-combine-plists (cdr data) parameters))
-      (push (cons type parameters) org-link-parameters)
-      (org-link-make-regexps)
-      (when (featurep 'org-element) (org-element-update-syntax)))))
-
-;; This way, one can add multiple functions as, say, :follow parameter.
-;; For example,
-;; (add-function :before-until (org-link-get-parameter "id" :follow) #'my-function)
-;; See https://orgmode.org/list/a123389c-8f86-4836-a4fe-1e3f4281d33b@app.fastmail.com
-(gv-define-setter org-link-get-parameter (value type key)
-  `(org-link-set-parameters ,type ,key ,value))
-
 ;; FIXME: Eventually, we should keep the target regexp updated
 ;; automatically, via org-element-cache mechanisms.
 ;;;###autoload
@@ -829,89 +714,6 @@ according to FMT (default from `org-link-email-description-format')."
 	  (setq fmt (replace-match "to %t" t t fmt))
 	(setq fmt (replace-match "from %f" t t fmt))))
     (org-replace-escapes fmt table)))
-
-(defun org-link-store-props (&rest plist)
-  "Store link properties PLIST.
-The properties are pre-processed by extracting names, addresses
-and dates."
-  (let ((x (plist-get plist :from)))
-    (when x
-      (let ((adr (mail-extract-address-components x)))
-	(setq plist (plist-put plist :fromname (car adr)))
-	(setq plist (plist-put plist :fromaddress (nth 1 adr))))))
-  (let ((x (plist-get plist :to)))
-    (when x
-      (let ((adr (mail-extract-address-components x)))
-	(setq plist (plist-put plist :toname (car adr)))
-	(setq plist (plist-put plist :toaddress (nth 1 adr))))))
-  (let ((x (ignore-errors (date-to-time (plist-get plist :date)))))
-    (when x
-      (setq plist (plist-put plist :date-timestamp
-			     (format-time-string
-			      (org-time-stamp-format t) x)))
-      (setq plist (plist-put plist :date-timestamp-inactive
-			     (format-time-string
-			      (org-time-stamp-format t t) x)))))
-  (let ((from (plist-get plist :from))
-	(to (plist-get plist :to)))
-    (when (and from to org-link-from-user-regexp)
-      (setq plist
-	    (plist-put plist :fromto
-		       (if (string-match org-link-from-user-regexp from)
-			   (concat "to %t")
-			 (concat "from %f"))))))
-  (setq org-store-link-plist plist))
-
-(defun org-link-add-props (&rest plist)
-  "Add these properties to the link property list PLIST."
-  (let (key value)
-    (while plist
-      (setq key (pop plist) value (pop plist))
-      (setq org-store-link-plist
-	    (plist-put org-store-link-plist key value)))))
-
-(defun org-link-encode (text table)
-  "Return percent escaped representation of string TEXT.
-TEXT is a string with the text to escape.  TABLE is a list of
-characters that should be escaped."
-  (mapconcat
-   (lambda (c)
-     (if (memq c table)
-	 (mapconcat (lambda (e) (format "%%%.2X" e))
-		    (or (encode-coding-char c 'utf-8)
-			(error "Unable to percent escape character: %c" c))
-		    "")
-       (char-to-string c)))
-   text ""))
-
-(defun org-link-decode (s)
-  "Decode percent-encoded parts in string S.
-E.g. \"%C3%B6\" becomes the German o-Umlaut."
-  (replace-regexp-in-string "\\(%[0-9A-Za-z]\\{2\\}\\)+"
-			    #'org-link--decode-compound s t t))
-
-(defun org-link-make-string (link &optional description)
-  "Make a bracket link, consisting of LINK and DESCRIPTION.
-LINK is escaped with backslashes for inclusion in buffer."
-  (let* ((zero-width-space (string ?\x200B))
-	 (description
-	  (and (org-string-nw-p description)
-	       ;; Description cannot contain two consecutive square
-	       ;; brackets, or end with a square bracket.  To prevent
-	       ;; this, insert a zero width space character between
-	       ;; the brackets, or at the end of the description.
-	       (replace-regexp-in-string
-		"\\(]\\)\\(]\\)"
-		(concat "\\1" zero-width-space "\\2")
-		(replace-regexp-in-string "]\\'"
-					  (concat "\\&" zero-width-space)
-					  (org-trim description))))))
-    (if (not (org-string-nw-p link))
-        (or description
-            (error "Empty link"))
-      (format "[[%s]%s]"
-	      (org-link-escape link)
-	      (if description (format "[%s]" description) "")))))
 
 (defun org-store-link-functions ()
   "List of functions that are called to create and store a link.
@@ -1208,6 +1010,7 @@ respects buffer narrowing."
 	(error "No match for fuzzy expression: %s" normalized)))
     ;; Disclose surroundings of match, if appropriate.
     (when (and (derived-mode-p 'org-mode) (not stealth))
+      (require 'org-fold)
       (org-fold-show-context 'link-search))
     type))
 
@@ -1313,15 +1116,6 @@ This function is meant to be used as a possible tool for
 		   ((string-match-p "\\`[0-9]+\\'" option)
 		    (list (string-to-number option)))
 		   (t (list nil option)))))))
-
-(defun org-link-display-format (s)
-  "Replace links in string S with their description.
-If there is no description, use the link target."
-  (save-match-data
-    (replace-regexp-in-string
-     org-link-bracket-re
-     (lambda (m) (or (match-string 2 m) (match-string 1 m)))
-     s nil t)))
 
 (defun org-link-add-angle-brackets (s)
   "Wrap string S within angle brackets."
@@ -1494,7 +1288,9 @@ is non-nil, move backward."
 	    (`nil nil)
 	    (link
 	     (goto-char (org-element-begin link))
-	     (when (org-invisible-p) (org-fold-show-context 'link-search))
+	     (when (org-invisible-p)
+               (require 'org-fold)
+               (org-fold-show-context 'link-search))
 	     (throw :found t)))))
       (goto-char pos)
       (setq org-link--search-failed t)
@@ -1506,13 +1302,6 @@ is non-nil, move backward."
 If the link is in hidden text, expose it."
   (interactive)
   (org-next-link t))
-
-;;;###autoload
-(defun org-toggle-link-display ()
-  "Toggle the literal or descriptive display of links in current buffer."
-  (interactive)
-  (setq org-link-descriptive (not org-link-descriptive))
-  (org-restart-font-lock))
 
 ;;;###autoload
 (defun org-store-link (arg &optional interactive?)
@@ -2004,10 +1793,6 @@ This command can be called in any mode to insert a link in Org syntax."
   (interactive)
   (org-load-modules-maybe)
   (org-run-like-in-org-mode 'org-insert-link))
-
-;;; Initialize Regexps
-
-(org-link-make-regexps)
 
 (provide 'ol)
 

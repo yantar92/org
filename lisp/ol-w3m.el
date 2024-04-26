@@ -44,7 +44,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 
 (defvar w3m-current-url)
 (defvar w3m-current-title)

@@ -93,7 +93,6 @@
 (require 'cl-lib)
 (require 'ob)
 (require 'oc)
-(require 'ol)
 (require 'org-attach)
 (require 'org-macro)
 (require 'org-fold)

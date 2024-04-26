@@ -29,7 +29,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 
 (defcustom org-link-doi-server-url "https://doi.org/"
   "The URL of the DOI server."

@@ -259,6 +259,15 @@ S is a value for TAGS keyword or produced with
 	     (string-to-number (match-string 1 s))))
       (string-to-char s)))
 
+(defun org-link-display-format (s)
+  "Replace links in string S with their description.
+If there is no description, use the link target."
+  (save-match-data
+    (replace-regexp-in-string
+     org-link-bracket-re
+     (lambda (m) (or (match-string 2 m) (match-string 1 m)))
+     s nil t)))
+
 (provide 'org-mode-common)
 
 ;;; org-mode-common.el ends here

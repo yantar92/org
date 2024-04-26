@@ -48,7 +48,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ol)
+(require 'ol-core)
 (require 'cl-lib)
 (require 'eww)
 
