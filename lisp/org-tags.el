@@ -30,6 +30,7 @@
 (require 'org-element-context)
 (require 'org-mode-common)
 (require 'org-tags-common)
+(require 'org-fold-core)
 
 (declare-function org-map-entries "org")
 (declare-function org--tag-add-to-alist "org")
@@ -529,7 +530,7 @@ This function assumes point is on a headline."
 	   ;; boundary, it can be inadvertently sucked into
 	   ;; invisibility.
 	   (unless (org-invisible-p (line-beginning-position))
-	     (org-fold-region (point) (line-end-position) nil 'outline))))
+	     (org-fold-core-region (point) (line-end-position) nil 'outline))))
        ;; Align tags, if any.
        (when (and tags org-auto-align-tags) (org-align-tags))
        (when tags-change? (run-hooks 'org-after-tags-change-hook))))))
