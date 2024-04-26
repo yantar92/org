@@ -29,7 +29,7 @@
 (require 'org-regexps)
 (require 'org-keys)
 (require 'ol-core)
-(require 'org-fold)
+(require 'org-fold-core)
 (require 'org-faces)
 (require 'org-element-timestamp)
 (require 'org-element-context)
@@ -38,19 +38,7 @@
 (require 'org-src)
 (require 'org-flyspell)
 (require 'oc)
-
-(defvar org-ellipsis)
-(defvar org-table-may-need-update)
-
-(defvar org-todo-regexp)
-(defvar org-not-done-keywords)
-(defvar org-done-keywords)
-(defvar org-group-tags)
-(defvar org-tag-groups-alist)
-
-(declare-function outline-next-heading "outline")
-(declare-function org-get-property-block "org")
-(declare-function org-fix-decoded-time "org")
+(require 'org-tags-common)
 
 (defgroup org-appearance nil
   "Settings for Org mode appearance."
@@ -481,13 +469,13 @@ This includes angle, plain, and bracket links."
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-				        (match-string 0)))
+				      (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			     (let ((face (get-text-property
-					  (max (1- start) (point-min)) 'face)))
-			       (if (consp face) (memq 'org-tag face)
-			         (eq 'org-tag face))))))
+			   (let ((face (get-text-property
+					(max (1- start) (point-min)) 'face)))
+			     (if (consp face) (memq 'org-tag face)
+			       (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))
@@ -817,6 +805,8 @@ by a #."
       (when (string-match "\\(-[0-9]+:[0-9]+\\)?\\( [.+]?\\+[0-9]+[hdwmy]\\(/[0-9]+[hdwmy]\\)?\\)?\\'" ts)
 	(setq off (- (match-end 0) (match-beginning 0)))))
     (setq end (- end off))
+    (require 'org-time)
+    (declare-function org-fix-decoded-time "org-time" (time))
     (setq with-hm (and (nth 1 t1) (nth 2 t1))
 	  tf (org-time-stamp-format with-hm 'no-brackets 'custom)
 	  time (org-fix-decoded-time t1)
@@ -950,7 +940,7 @@ highlighting was done, nil otherwise."
 (defun org-activate-folds (limit)
   "Arrange trailing newlines after folds to inherit face before the fold."
   (let ((next-unfolded-newline (search-forward "\n" limit 'move)))
-    (while (and next-unfolded-newline (org-fold-folded-p) (not (eobp)))
+    (while (and next-unfolded-newline (org-fold-core-folded-p) (not (eobp)))
       (goto-char (org-fold-core-next-visibility-change nil limit))
       (setq next-unfolded-newline (search-forward "\n" limit 'move)))
     (when next-unfolded-newline
@@ -961,7 +951,7 @@ highlighting was done, nil otherwise."
           (match-beginning 0) (match-end 0)
           'face
           (get-text-property
-           (org-fold-previous-visibility-change
+           (org-fold-core-previous-visibility-change
             (1- (match-beginning 0)))
            'face)))
        t))))
@@ -1151,6 +1141,8 @@ needs to be inserted at a specific position in the font-lock sequence.")
       (progn (mapc #'delete-overlay org-custom-properties-overlays)
 	     (setq org-custom-properties-overlays nil))
     (when org-custom-properties
+      (require 'org-property)
+      (declare-function org-get-property-block "org-property" (&optional beg force))
       (org-with-wide-buffer
        (goto-char (point-min))
        (let ((regexp (org-re-property (regexp-opt org-custom-properties) t t)))
