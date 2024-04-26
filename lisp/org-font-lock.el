@@ -481,13 +481,13 @@ This includes angle, plain, and bracket links."
 	(when (and (memq style org-highlight-links)
 		   ;; Do not span over paragraph boundaries.
 		   (not (string-match-p org-element-paragraph-separate
-				      (match-string 0)))
+				        (match-string 0)))
 		   ;; Do not confuse plain links with tags.
 		   (not (and (eq style 'plain)
-			   (let ((face (get-text-property
-					(max (1- start) (point-min)) 'face)))
-			     (if (consp face) (memq 'org-tag face)
-			       (eq 'org-tag face))))))
+			     (let ((face (get-text-property
+					  (max (1- start) (point-min)) 'face)))
+			       (if (consp face) (memq 'org-tag face)
+			         (eq 'org-tag face))))))
 	  (let* ((link-object (save-excursion
 				(goto-char start)
 				(save-match-data (org-element-link-parser))))

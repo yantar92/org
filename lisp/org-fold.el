@@ -47,6 +47,7 @@
 
 (require 'org-macs)
 (require 'org-fold-core)
+(require 'org-mode-common)
 
 (defvar org-inlinetask-min-level)
 (defvar org-odd-levels-only)
@@ -254,8 +255,36 @@ Also, see `org-fold-catch-invisible-edits'."
       (:fragile . org-link--reveal-maybe))
   "Folding spec used to reveal link description.")
 
-(defun org-fold-initialize (ellipsis)
+(defcustom org-ellipsis nil
+  "The ellipsis to use in the Org mode outline.
+
+When nil, just use the standard three dots.  When a non-empty string,
+use that string instead.
+
+The change affects only Org mode (which will then use its own display table).
+Changing this requires executing `\\[org-mode]' in a buffer to become
+effective.  It cannot be set as a local variable."
+  :group 'org-startup
+  :type '(choice (const :tag "Default" nil)
+		 (string :tag "String" :value "...#")))
+
+(defun org-fold-initialize (&optional ellipsis)
   "Setup folding in current Org buffer."
+  (setq ellipsis (or ellipsis org-ellipsis))
+  (setq ellipsis
+        (or (and (stringp ellipsis)
+                 (not (equal "" ellipsis))
+                 ellipsis)
+            "..."))
+  (when (and (stringp ellipsis) (not (equal "" ellipsis)))
+    (unless org-display-table
+      (setq org-display-table (make-display-table)))
+    (require 'org-faces) ; org-ellipsis face
+    (set-display-table-slot
+     org-display-table 4
+     (vconcat (mapcar (lambda (c) (make-glyph-code c 'org-ellipsis))
+		      ellipsis)))
+    (setq buffer-display-table org-display-table))
   (setq-local org-fold-core-isearch-open-function #'org-fold--isearch-reveal)
   (setq-local org-fold-core-extend-changed-region-functions (list #'org-fold--extend-changed-region))
   ;; FIXME: Converting org-link + org-description to overlays when

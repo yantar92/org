@@ -70,19 +70,6 @@ has been set."
   :group 'org-startup
   :type 'boolean)
 
-(defcustom org-ellipsis nil
-  "The ellipsis to use in the Org mode outline.
-
-When nil, just use the standard three dots.  When a non-empty string,
-use that string instead.
-
-The change affects only Org mode (which will then use its own display table).
-Changing this requires executing `\\[org-mode]' in a buffer to become
-effective.  It cannot be set as a local variable."
-  :group 'org-startup
-  :type '(choice (const :tag "Default" nil)
-		 (string :tag "String" :value "...#")))
-
 (defcustom org-support-shift-select nil
   "Non-nil means make shift-cursor commands select text when possible.
 \\<org-mode-map>
@@ -812,18 +799,9 @@ The following commands are available:
      'match-hash :read-related t))
   (org-set-regexps-and-options)
   (add-to-invisibility-spec '(org-link))
-  (org-fold-initialize (or (and (stringp org-ellipsis) (not (equal "" org-ellipsis)) org-ellipsis)
-                           "..."))
+  (org-fold-initialize)
   (make-local-variable 'org-link-descriptive)
   (when (eq org-fold-core-style 'overlays) (add-to-invisibility-spec '(org-hide-block . t)))
-  (when (and (stringp org-ellipsis) (not (equal "" org-ellipsis)))
-    (unless org-display-table
-      (setq org-display-table (make-display-table)))
-    (set-display-table-slot
-     org-display-table 4
-     (vconcat (mapcar (lambda (c) (make-glyph-code c 'org-ellipsis))
-		      org-ellipsis)))
-    (setq buffer-display-table org-display-table))
   (org-set-font-lock-defaults)
   (when (and org-tag-faces (not org-tags-special-faces-re))
     ;; tag faces set outside customize.... force initialization.
