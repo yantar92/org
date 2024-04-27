@@ -728,28 +728,6 @@ This function ignores inlinetasks.  It is meant to be used as
 (defvar org-agenda-file-menu-enabled t
   "When non-nil, refresh Agenda files in Org menu when loading Org.")
 
-(defun org-install-agenda-files-menu ()
-  "Install agenda file menu."
-  (let ((bl (buffer-list)))
-    (save-excursion
-      (while bl
-	(set-buffer (pop bl))
-	(when (derived-mode-p 'org-mode) (setq bl nil)))
-      (when (derived-mode-p 'org-mode)
-	(easy-menu-change
-	 '("Org") "File List for Agenda"
-	 (append
-	  (list
-	   ["Edit File List" (org-edit-agenda-file-list) t]
-	   ["Add/Move Current File to Front of List" org-agenda-file-to-front t]
-	   ["Remove Current File from List" org-remove-file t]
-	   ["Cycle through agenda files" org-cycle-agenda-files t]
-	   ["Occur in all agenda files" org-occur-in-agenda-files t]
-	   "--")
-	  (mapcar 'org-file-menu-entry
-		  ;; Prevent initialization from failing.
-		  (ignore-errors (org-agenda-files t)))))))))
-
 
 ;;; Define Org major mode
 
