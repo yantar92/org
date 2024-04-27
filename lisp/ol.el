@@ -56,7 +56,6 @@
 (declare-function org-occur "org" (regexp &optional keep-previous callback))
 (declare-function org-open-file "org" (path &optional in-emacs line search))
 (declare-function org-cycle-overview "org-cycle" ())
-(declare-function org-restart-font-lock "org" ())
 (declare-function org-run-like-in-org-mode "org" (cmd))
 (declare-function org-src-coderef-format "org-src" (&optional element))
 (declare-function org-src-coderef-regexp "org-src" (fmt &optional label))

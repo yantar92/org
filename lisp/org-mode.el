@@ -35,6 +35,7 @@
 (require 'org-dnd)
 (require 'thingatpt)
 (require 'org-macro)
+(require 'org-table-core)
 
 (declare-function org-agenda-files "org")
 (declare-function org-beamer-mode "ox-beamer")
@@ -124,6 +125,12 @@ will still edit the time stamp - this is just too good to give up."
   "Options concerning the general structure of Org files."
   :tag "Org Structure"
   :group 'org)
+
+(defcustom org-table-header-line-p nil
+  "Activate `org-table-header-line-mode' by default?"
+  :type 'boolean
+  :package-version '(Org . "9.4")
+  :group 'org-table)
 
 (defcustom org-startup-folded 'showeverything
   "Initial folding state of headings when entering Org mode.
@@ -760,6 +767,8 @@ This function ignores inlinetasks.  It is meant to be used as
 (declare-function org-parse-arguments "org-pcomplete" ())
 (declare-function org-command-at-point "org-pcomplete" ())
 (declare-function org-pcomplete-initial "org-pcomplete" ())
+(declare-function org-table-align "org-table-align" ())
+(declare-function org-table-shrink "org-table-fold" (&optional begin end))
 
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
@@ -894,6 +903,8 @@ The following commands are available:
     (insert "#    -*- mode: org -*-\n\n"))
   (unless org-inhibit-startup
     (when (or org-startup-align-all-tables org-startup-shrink-all-tables)
+      (require 'org-table-align)
+      (require 'org-table-fold)
       (org-table-map-tables
        (cond ((and org-startup-align-all-tables
 		   org-startup-shrink-all-tables)

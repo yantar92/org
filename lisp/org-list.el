@@ -153,7 +153,6 @@
 (declare-function org-set-tags "org" (tags))
 (declare-function org-fold-show-subtree "org-fold" ())
 (declare-function org-fold-region "org-fold" (from to flag &optional spec))
-(declare-function org-sort-remove-invisible "org" (S))
 (declare-function org-time-string-to-seconds "org" (s))
 (declare-function org-timer-hms-to-secs "org-timer" (hms))
 (declare-function org-timer-item "org-timer" (&optional arg))

@@ -30,6 +30,7 @@
 (require 'org-regexps)
 (require 'org-map)
 (require 'org-read-date)
+(require 'org-mode-common)
 
 (defvar org-not-done-regexp)
 (defvar org-todo-keywords-1)
@@ -39,7 +40,6 @@
 
 
 
-(defvar org-inhibit-highlight-removal nil) ; dynamically scoped param
 (defvar org-ts-type nil)
 
 (defgroup org-sparse-trees nil

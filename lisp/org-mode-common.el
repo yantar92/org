@@ -42,6 +42,22 @@
 (defvar org--single-lines-list-is-paragraph t
   "Treat plain lists with single line items as a whole paragraph.")
 
+(defvar org-table-may-need-update t
+  "Indicates that a table might need an update.
+This variable is set by `org-before-change-function'.
+`org-table-align' sets it back to nil.")
+
+(defcustom org-self-insert-cluster-for-undo nil
+  "Non-nil means cluster self-insert commands for undo when possible.
+If this is set, then, like in the Emacs command loop, 20 consecutive
+characters will be undone together.
+This is configurable, because there is some impact on typing performance."
+  :group 'org-table
+  :type 'boolean)
+(defvar org-self-insert-command-undo-counter 0)
+
+(defvar org-inhibit-highlight-removal nil) ; dynamically scoped param
+
 (defvar-local org-done-keywords nil)
 (defvar-local org-todo-heads nil)
 (defvar-local org-todo-sets nil)
@@ -267,6 +283,12 @@ If there is no description, use the link target."
      org-link-bracket-re
      (lambda (m) (or (match-string 2 m) (match-string 1 m)))
      s nil t)))
+
+(defun org-restart-font-lock ()
+  "Restart `font-lock-mode', to force refontification."
+  (when font-lock-mode
+    (font-lock-mode -1)
+    (font-lock-mode 1)))
 
 (provide 'org-mode-common)
 

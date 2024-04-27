@@ -46,6 +46,7 @@
 (declare-function org-add-archive-files "org-archive")
 (declare-function org-agenda-prepare-buffers "org")
 (require 'org-read-date)
+(require 'org-mode-common)
 
 (declare-function notifications-notify "notifications" (&rest params))
 (declare-function org-element-property "org-element-ast" (property node))

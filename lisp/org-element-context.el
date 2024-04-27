@@ -409,8 +409,8 @@ at point."
 
 ;;; `org-context'
 
-(declare-function org-table-begin "org-table" (&optional table-type))
-(declare-function org-table-end "org-table" (&optional table-type))
+(declare-function org-table-begin "org-table-core" (&optional table-type))
+(declare-function org-table-end "org-table-core" (&optional table-type))
 (defun org-context ()
   "Return a list of contexts of the current cursor position.
 If several contexts apply, all are returned.
@@ -469,7 +469,7 @@ and :keyword."
 	   (push (org-point-in-group p 0 :checkbox) clist)))
 
      ((org-at-table-p)
-      (require 'org-table)
+      (require 'org-table-core)
       (push (list :table (org-table-begin) (org-table-end)) clist)
       (when (memq 'org-formula faces)
 	(push (list :table-special

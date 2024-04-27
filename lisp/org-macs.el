@@ -1690,6 +1690,25 @@ so values can contain further %-escapes if they are define later in TABLE."
 	  (setq string (replace-match sref t t string)))))
     string))
 
+(defun org-letters-to-number (s)
+  "Convert a base 26 number represented by letters into an integer.
+For example:  AB -> 28."
+  (let ((n 0))
+    (setq s (upcase s))
+    (while (> (length s) 0)
+      (setq n (+ (* n 26) (string-to-char s) (- ?A) 1)
+	    s (substring s 1)))
+    n))
+
+(defun org-number-to-letters (n)
+  "Convert an integer into a base 26 number represented by letters.
+For example:  28 -> AB."
+  (let ((s ""))
+    (while (> n 0)
+      (setq s (concat (char-to-string (+ (mod (1- n) 26) ?A)) s)
+	    n (/ (1- n) 26)))
+    s))
+
 
 ;;; Text properties
 

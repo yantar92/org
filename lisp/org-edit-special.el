@@ -27,7 +27,6 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-table)
 (require 'org-mode)
 (require 'org-element)
 (require 'org-cycle)
@@ -903,6 +902,8 @@ Otherwise, return a user error."
 	   (`link (call-interactively #'ffap))
 	   (_ (user-error "No special environment to edit here"))))))))
 
+(declare-function org-table-calc-current-TBLFM "org-table-formula" (&optional arg))
+(declare-function orgtbl-send-table "orgtbl-mode" (&optional maybe))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -1137,11 +1138,11 @@ Use `\\[org-edit-special]' to edit table.el tables")))
                (and (eq type 'table-row)
                     (= (point) (org-element-end context))))
            (save-excursion
-             (if (org-at-TBLFM-p)
-                 (progn (require 'org-table)
-                        (org-table-calc-current-TBLFM))
+             (require 'org-table-formula)
+             (if (org-at-TBLFM-p) (org-table-calc-current-TBLFM)
                (goto-char (org-element-contents-begin context))
                (org-call-with-arg 'org-table-recalculate (or arg t))
+               (require 'orgtbl-mode)
                (orgtbl-send-table 'maybe))))
           (t
            (org-table-maybe-eval-formula)

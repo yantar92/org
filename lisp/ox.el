@@ -5220,7 +5220,7 @@ alignment value will be deduced from fraction of numbers in the
 column (see `org-table-number-fraction' for more information).
 Possible values are `left', `right' and `center'."
   ;; Load `org-table-number-fraction' and `org-table-number-regexp'.
-  (require 'org-table)
+  (require 'org-table-align)
   (let* ((row (org-element-parent table-cell))
 	 (table (org-element-parent row))
 	 (cells (org-element-contents row))
@@ -5278,7 +5278,7 @@ Possible values are `left', `right' and `center'."
 		;; Treat an empty cell as a number if it follows
 		;; a number.
 		(if (not (or (string-match org-table-number-regexp value)
-			     (and (string= value "") previous-cell-number-p)))
+			   (and (string= value "") previous-cell-number-p)))
 		    (setq previous-cell-number-p nil)
 		  (setq previous-cell-number-p t)
 		  (cl-incf number-cells))))))

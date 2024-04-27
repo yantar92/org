@@ -26,25 +26,16 @@
 (require 'org-macs)
 (org-assert-version)
 
-(defvar org-self-insert-command-undo-counter 0)
 (defvar org-speed-command nil)
 
 (require 'org-keys)
-(require 'org-table)
 (require 'org-tags)
 (require 'org-edit-structure)
+(require 'org-mode-common)
+(require 'org-table-fold)
 
 (defvar org-emphasis-alist)
-(defvar org-complex-heading-regexp)
 (declare-function org-open-at-point "org-open-at-point")
-
-(defcustom org-self-insert-cluster-for-undo nil
-  "Non-nil means cluster self-insert commands for undo when possible.
-If this is set, then, like in the Emacs command loop, 20 consecutive
-characters will be undone together.
-This is configurable, because there is some impact on typing performance."
-  :group 'org-table
-  :type 'boolean)
 
 (defcustom org-special-ctrl-k nil
   "Non-nil means that \\<org-mode-map>\\[org-kill-line] \
@@ -132,15 +123,16 @@ overwritten, and the table is not marked as requiring realignment."
      (not (use-region-p))
      (org-at-table-p)
      (progn
+       (require 'org-table-edit)
+       (defvar org-table-auto-blank-field)
        ;; Check if we blank the field, and if that triggers align.
-       (and (featurep 'org-table)
-	    org-table-auto-blank-field
+       (and org-table-auto-blank-field
 	    (memq last-command
-		  '(org-cycle org-return org-shifttab org-ctrl-c-ctrl-c))
+	          '(org-cycle org-return org-shifttab org-ctrl-c-ctrl-c))
 	    (if (or (eq (char-after) ?\s) (looking-at "[^|\n]*  |"))
-		;; Got extra space, this field does not determine
-		;; column width.
-		(let (org-table-may-need-update) (org-table-blank-field))
+	        ;; Got extra space, this field does not determine
+	        ;; column width.
+	        (let (org-table-may-need-update) (org-table-blank-field))
 	      ;; No extra space, this field may determine column
 	      ;; width.
 	      (org-table-blank-field)))

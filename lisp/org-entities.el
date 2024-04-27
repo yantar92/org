@@ -547,7 +547,7 @@ This first checks the user list, then the built-in list."
 (defun org-entities-create-table ()
   "Create an Org mode table with all entities."
   (interactive)
-  (declare-function org-table-align            "org-table" ())
+  (declare-function org-table-align            "org-table-align" ())
   (let ((pos (point)))
     (insert "|Name|LaTeX code|LaTeX|HTML code |HTML|ASCII|Latin1|UTF-8\n|-\n")
     (dolist (e org-entities)
@@ -565,7 +565,7 @@ This first checks the user list, then the built-in list."
 		 "|" ascii "|" latin "|" utf8
 		 "|\n"))))
     (goto-char pos)
-    (require 'org-table)
+    (require 'org-table-align)
     (org-table-align)))
 
 (defun org-entities-help ()

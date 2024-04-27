@@ -1108,39 +1108,6 @@ Optional argument WITH-CASE means sort case-sensitively."
 	 (t #'org-sort-entries))
    with-case))
 
-(defun org-sort-remove-invisible (s)
-  "Remove emphasis markers and any invisible property from string S.
-Assume S may contain only objects."
-  ;; org-element-interpret-data clears any text property, including
-  ;; invisible part.
-  (org-element-interpret-data
-   (let ((tree (org-element-parse-secondary-string
-                s (org-element-restriction 'paragraph))))
-     (org-element-map tree '(bold code italic link strike-through underline verbatim)
-       (lambda (o)
-         (pcase (org-element-type o)
-           ;; Terminal object.  Replace it with its value.
-           ((or `code `verbatim)
-            (let ((new (org-element-property :value o)))
-              (org-element-insert-before new o)
-              (org-element-put-property
-               new :post-blank (org-element-post-blank o))))
-           ;; Non-terminal objects.  Splice contents.
-           (type
-            (let ((contents
-                   (or (org-element-contents o)
-                       (and (eq type 'link)
-                            (list (org-element-property :raw-link o)))))
-                  (c nil))
-              (while contents
-                (setq c (pop contents))
-                (org-element-insert-before c o))
-              (org-element-put-property
-               c :post-blank (org-element-post-blank o)))))
-         (org-element-extract o)))
-     ;; Return modified tree.
-     tree)))
-
 (defvar org-after-sorting-entries-or-items-hook nil
   "Hook that is run after a bunch of entries or items have been sorted.
 When children are sorted, the cursor is in the parent line when this

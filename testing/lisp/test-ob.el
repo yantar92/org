@@ -23,7 +23,7 @@
 (require 'ob-core)
 (require 'org-src)
 (require 'ob-ref)
-(require 'org-table)
+(require 'org-table-create)
 (eval-and-compile (require 'cl-lib))
 
 (ert-deftest test-ob/indented-cached-org-bracket-link ()

@@ -33,12 +33,13 @@
 (require 'org-faces)
 (require 'org-element-timestamp)
 (require 'org-element-context)
-(require 'org-table)
+(require 'org-table-core)
 (require 'org-footnote)
 (require 'org-src)
 (require 'org-flyspell)
 (require 'oc)
 (require 'org-tags-common)
+(require 'org-mode-common)
 
 (defgroup org-appearance nil
   "Settings for Org mode appearance."
@@ -921,12 +922,6 @@ highlighting was done, nil otherwise."
 				   '(font-lock-multiline t))
 	      (throw 'found t)))))
 	nil))))
-
-(defun org-restart-font-lock ()
-  "Restart `font-lock-mode', to force refontification."
-  (when font-lock-mode
-    (font-lock-mode -1)
-    (font-lock-mode 1)))
 
 (defun org-activate-tags (limit)
   (when (re-search-forward org-tag-line-re limit t)

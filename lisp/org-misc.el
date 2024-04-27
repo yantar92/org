@@ -183,7 +183,7 @@ Started from `gnus-info-find-node'."
 
 (declare-function org-clock-update-time-maybe "org-clock" ())
 (declare-function org-time-string-to-time "org-time" (s))
-(declare-function org-table-align "org-table" ())
+(declare-function org-table-align "org-table-align" ())
 (declare-function org-make-tdiff-string "org-time" (y d h m))
 (defvar org-tr-regexp-both) ; org-regexps.el
 ;;;###autoload
@@ -250,7 +250,7 @@ days in order to avoid rounding problems."
 	 (if (> d 0) (insert " " (format (if havetime fd fd1) d h m))
 	   (insert " " (format fh h m))))
        (when align
-         (require 'org-table)
+         (require 'org-table-align)
          (org-table-align))
        (message "Time difference inserted")))))
 
@@ -299,7 +299,7 @@ If there is already a time stamp at the cursor position, update it."
       (org-insert-timestamp
        (org-encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
 
-(declare-function org-table-end-of-field "org-table" (&optional n))
+(declare-function org-table-end-of-field "org-table-move" (&optional n))
 ;;;###autoload
 (defun org-increase-number-at-point (&optional inc)
   "Increment the number at point.
@@ -317,7 +317,8 @@ this numeric value."
       (delete-region (+ pos beg) (+ pos beg end))
       (insert (calc-eval (concat (number-to-string inc) "+" nap))))
     (when (org-at-table-p)
-      (require 'org-table)
+      (require 'org-table-align)
+      (require 'org-table-move)
       (org-table-align)
       (org-table-end-of-field 1))))
 
@@ -328,6 +329,91 @@ With an optional prefix numeric argument INC, decrement using
 this numeric value."
   (interactive "p")
   (org-increase-number-at-point (- (or inc 1))))
+
+(defun org-table--number-for-summing (s)
+  (let (n)
+    (if (string-match "^ *|? *" s)
+	(setq s (replace-match "" nil nil s)))
+    (if (string-match " *|? *$" s)
+	(setq s (replace-match "" nil nil s)))
+    (setq n (string-to-number s))
+    (cond
+     ((and (string-match "0" s)
+	   (string-match "\\`[-+ \t0.edED]+\\'" s)) 0)
+     ((string-match "\\`[ \t]+\\'" s) nil)
+     ((string-match "\\`\\([0-9]+\\):\\([0-9]+\\)\\(:\\([0-9]+\\)\\)?\\'" s)
+      (let ((h (string-to-number (or (match-string 1 s) "0")))
+	    (m (string-to-number (or (match-string 2 s) "0")))
+	    (s (string-to-number (or (match-string 4 s) "0"))))
+	(if (boundp 'org-timecnt) (setq org-timecnt (1+ org-timecnt)))
+	(* 1.0 (+ h (/ m 60.0) (/ s 3600.0)))))
+     ((equal n 0) nil)
+     (t n))))
+
+(defvar org-timecnt nil)
+(declare-function org-table-current-column "org-table-core" ())
+;;;###autoload
+(defun org-table-sum (&optional beg end nlast)
+  "Sum numbers in region of current table column.
+The result will be displayed in the echo area, and will be available
+as kill to be inserted with \\[yank].
+
+If there is an active region, it is interpreted as a rectangle and all
+numbers in that rectangle will be summed.  If there is no active
+region and point is located in a table column, sum all numbers in that
+column.
+
+If at least one number looks like a time HH:MM or HH:MM:SS, all other
+numbers are assumed to be times as well (in decimal hours) and the
+numbers are added as such.
+
+If NLAST is a number, only the NLAST fields will actually be summed."
+  (interactive)
+  (require 'org-table-core)
+  (require 'org-table-edit)
+  (defvar org-table-clip)
+  (save-excursion
+    (let (col (org-timecnt 0) diff h m s org-table-clip)
+      (cond
+       ((and beg end))			; beg and end given explicitly
+       ((use-region-p)
+	(setq beg (region-beginning) end (region-end)))
+       (t
+	(setq col (org-table-current-column))
+	(goto-char (org-table-begin))
+	(unless (re-search-forward "^[ \t]*|[^-]" nil t)
+	  (user-error "No table data"))
+	(org-table-goto-column col)
+	(setq beg (point))
+	(goto-char (org-table-end))
+	(unless (re-search-backward "^[ \t]*|[^-]" nil t)
+	  (user-error "No table data"))
+	(org-table-goto-column col)
+	(setq end (point))))
+      (let* ((items (apply 'append (org-table-copy-region beg end)))
+	     (items1 (cond ((not nlast) items)
+			   ((>= nlast (length items)) items)
+			   (t (setq items (reverse items))
+			      (setcdr (nthcdr (1- nlast) items) nil)
+			      (nreverse items))))
+	     (numbers (delq nil (mapcar #'org-table--number-for-summing
+				      items1)))
+	     (res (apply '+ numbers))
+	     (sres (if (= org-timecnt 0)
+		       (number-to-string res)
+		     (setq diff (* 3600 res)
+			   h (floor diff 3600) diff (mod diff 3600)
+			   m (floor diff 60) diff (mod diff 60)
+			   s diff)
+		     (format "%.0f:%02.0f:%02.0f" h m s))))
+	(kill-new sres)
+	(when (called-interactively-p 'interactive)
+	  (message (substitute-command-keys
+		    (format "Sum of %d items: %-20s     \
+\(\\[yank] will insert result into buffer)"
+			    (length numbers)
+			    sres))))
+	sres))))
 
 (provide 'org-misc)
 ;;; org-misc.el ends here

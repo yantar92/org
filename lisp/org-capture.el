@@ -1407,7 +1407,6 @@ may have been stored before."
 
 (defun org-capture-place-table-line ()
   "Place the template as a table line."
-  (require 'org-table)
   (let* ((template (org-trim (org-capture-get :template)))
          (text
 	  (pcase template

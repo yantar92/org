@@ -206,7 +206,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
 This will call `backward-sentence' or `org-table-beginning-of-field',
 depending on context."
   (interactive)
-  (declare-function org-table-beginning-of-field "org-table" (&optional n))
+  (declare-function org-table-beginning-of-field "org-table-move" (&optional n))
   (let* ((element (org-element-at-point))
 	 (contents-begin (org-element-contents-begin element))
 	 (table (org-element-lineage element 'table t)))
@@ -214,7 +214,7 @@ depending on context."
 	     (> (point) contents-begin)
 	     (<= (point) (org-element-contents-end table)))
         (progn
-          (require 'org-table)
+          (require 'org-table-move)
           (call-interactively #'org-table-beginning-of-field))
       (save-restriction
 	(when (and contents-begin
@@ -230,7 +230,7 @@ depending on context."
 This will call `forward-sentence' or `org-table-end-of-field',
 depending on context."
   (interactive)
-  (declare-function org-table-end-of-field "org-table" (&optional n))
+  (declare-function org-table-end-of-field "org-table-move" (&optional n))
   (if (and (org-at-heading-p)
 	   (save-restriction (skip-chars-forward " \t") (not (eolp))))
       (save-restriction
@@ -243,7 +243,7 @@ depending on context."
 	       (>= (point) (org-element-contents-begin table))
 	       (< (point) contents-end))
           (progn
-            (require 'org-table)
+            (require 'org-table-move)
 	    (call-interactively #'org-table-end-of-field))
 	(save-restriction
 	  (when (and contents-end

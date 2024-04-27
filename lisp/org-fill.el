@@ -137,7 +137,7 @@ width for filling.
 
 For convenience, when point is at a plain list, an item or
 a footnote definition, try to fill the first paragraph within."
-  (declare-function org-table-align "org-table" ())
+  (declare-function org-table-align "org-table-align" ())
   (declare-function org-edit-src-exit "org-src" ())
   (declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
   (declare-function org-babel-where-is-src-block-head "ob-core" (&optional src-block))
@@ -165,14 +165,14 @@ a footnote definition, try to fill the first paragraph within."
             (funcall-interactively #'fill-paragraph justify 'region))))
 	;; Align Org tables, leave table.el tables as-is.
 	(table-row
-         (require 'org-table)
+         (require 'org-table-align)
          (org-table-align)
          t)
 	(table
 	 (when (eq (org-element-property :type element) 'org)
 	   (save-excursion
 	     (goto-char (org-element-post-affiliated element))
-             (require 'org-table)
+             (require 'org-table-align)
 	     (org-table-align)))
 	 t)
 	(paragraph

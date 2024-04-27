@@ -27,7 +27,7 @@
 
 ;;; Code:
 
-(require 'org-table)  ; `org-table-make-reference'
+(require 'org-table-formula)  ; `org-table-make-reference'
 (require 'ox)
 
 (ert-deftest test-org-table/simple-formula/no-grouping/no-title-row ()

@@ -4084,8 +4084,8 @@ Assume point is at the beginning of the table."
 CONTENTS is a string, if table's type is `org', or nil."
   (if (eq (org-element-property :type table) 'table.el)
       (org-remove-indentation (org-element-property :value table))
-    (declare-function org-table-align "org-table" ())
-    (require 'org-table)
+    (declare-function org-table-align "org-table-align" ())
+    (require 'org-table-align)
     (concat (with-temp-buffer (insert contents)
 			      (org-table-align)
 			      (buffer-string))
@@ -9860,6 +9860,39 @@ end of ELEM-A."
         ;; Restore ex ELEM-A folds.
         (org-fold-core-regions (cdr folds) :relative beg-A)
         (goto-char (org-element-end elem-B))))))
+
+(defun org-sort-remove-invisible (s)
+  "Remove emphasis markers and any invisible property from string S.
+Assume S may contain only objects."
+  ;; org-element-interpret-data clears any text property, including
+  ;; invisible part.
+  (org-element-interpret-data
+   (let ((tree (org-element-parse-secondary-string
+                s (org-element-restriction 'paragraph))))
+     (org-element-map tree '(bold code italic link strike-through underline verbatim)
+       (lambda (o)
+         (pcase (org-element-type o)
+           ;; Terminal object.  Replace it with its value.
+           ((or `code `verbatim)
+            (let ((new (org-element-property :value o)))
+              (org-element-insert-before new o)
+              (org-element-put-property
+               new :post-blank (org-element-post-blank o))))
+           ;; Non-terminal objects.  Splice contents.
+           (type
+            (let ((contents
+                   (or (org-element-contents o)
+                       (and (eq type 'link)
+                            (list (org-element-property :raw-link o)))))
+                  (c nil))
+              (while contents
+                (setq c (pop contents))
+                (org-element-insert-before c o))
+              (org-element-put-property
+               c :post-blank (org-element-post-blank o)))))
+         (org-element-extract o)))
+     ;; Return modified tree.
+     tree)))
 
 (provide 'org-element)
 

@@ -202,11 +202,11 @@ See `org-link-parameters' for documentation on the other parameters."
 (defvar org-table-dataline-regexp)
 (defvar org-table1-hline-regexp)
 (defvar org-table-any-border-regexp)
-(declare-function org-table-end "org-table")
+(declare-function org-table-end "org-table-core")
 (declare-function table--at-cell-p "table")
 (defun org-table-recognize-table.el ()
   "If there is a table.el table nearby, recognize it and move into it."
-  (require 'org-table)
+  (require 'org-table-core)
   (when (org-at-table.el-p)
     (forward-line 0)
     (unless (or (looking-at org-table-dataline-regexp)
