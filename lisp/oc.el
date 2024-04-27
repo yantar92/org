@@ -1252,10 +1252,13 @@ on the whole citation, and `org-cite-key' face on each key."
         (add-face-text-property (car boundaries) (cdr boundaries)
                                 'org-cite-key)))))
 
+;;;###autoload
 (defun org-cite-activate (limit)
   "Activate citations from up to LIMIT buffer position.
 Each citation encountered is activated using the appropriate function
 from the processor set in `org-cite-activate-processor'."
+  (unless (null org-cite-activate-processor)
+    (org-cite-try-load-processor org-cite-activate-processor))
   (let* ((name org-cite-activate-processor)
          (activate
           (or (and name

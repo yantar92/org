@@ -630,6 +630,7 @@ Leave point in edit buffer."
 ;;; Fontification of source blocks
 
 (defvar org-src-fontify-natively) ; Defined in org.el
+;;;###autoload
 (defun org-src-font-lock-fontify-block (lang start end)
   "Fontify code block between START and END using LANG's syntax.
 This function is called by Emacs's automatic fontification, as long
@@ -728,6 +729,7 @@ as `org-src-fontify-natively' is non-nil."
      '(font-lock-fontified t fontified t font-lock-multiline t))
     (set-buffer-modified-p modified)))
 
+;;;###autoload
 (defun org-fontify-inline-src-blocks (limit)
   "Try to apply `org-fontify-inline-src-blocks-1'."
   (condition-case-unless-debug nil

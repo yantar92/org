@@ -35,11 +35,12 @@
 (require 'org-element-context)
 (require 'org-table-core)
 (require 'org-footnote)
-(require 'org-src)
 (require 'org-flyspell)
-(require 'oc)
 (require 'org-tags-common)
 (require 'org-mode-common)
+
+(declare-function org-src-font-lock-fontify-block "org-src" (lang start end))
+(declare-function org-cite-activate "oc" (limit))
 
 (defgroup org-appearance nil
   "Settings for Org mode appearance."
@@ -625,6 +626,7 @@ by a #."
                    ;; convenience.
                    (member block-type '("src" "example")))
 	      (save-match-data
+                (require 'org-src)
                 (org-src-font-lock-fontify-block (or lang "") block-start block-end))
 	      (add-text-properties bol-after-beginline block-end '(src-block t)))
 	     (quoting
@@ -915,7 +917,9 @@ highlighting was done, nil otherwise."
 		   (start (+ offset (match-beginning 0)))
 		   (end (match-end 0)))
 	      (if (memq 'native org-highlight-latex-and-related)
-		  (org-src-font-lock-fontify-block "latex" start end)
+                  (progn
+                    (require 'org-src)
+		    (org-src-font-lock-fontify-block "latex" start end))
 		(font-lock-prepend-text-property start end
 						 'face 'org-latex-and-related))
 	      (add-text-properties (+ offset (match-beginning 0)) (match-end 0)
@@ -970,6 +974,7 @@ needs to be inserted at a specific position in the font-lock sequence.")
 
 (defun org-set-font-lock-defaults ()
   "Set font lock defaults for the current buffer."
+  (require 'oc)
   (let ((org-font-lock-extra-keywords
          ;; As a general rule, we apply the element (container) faces
          ;; first and then prepend the object faces on top.
@@ -1086,11 +1091,8 @@ needs to be inserted at a specific position in the font-lock sequence.")
           '(org-fontify-inline-src-blocks)
           ;; Citations.  When an activate processor is specified, if
           ;; specified, try loading it beforehand.
-          (progn
-            (unless (null org-cite-activate-processor)
-              (org-cite-try-load-processor org-cite-activate-processor))
-            ;; prepends faces
-            '(org-cite-activate))
+          ;; prepends faces
+          '(org-cite-activate)
 	  ;; COMMENT
           ;; Apply this last, after all the markup is highlighted, so
           ;; that even "bright" markup will become dim.
