@@ -955,12 +955,6 @@ Returns the new tags string, or nil to not change the current settings."
 	    (mapconcat 'identity current-tags ":")
 	  nil)))))
 
-(defun org-make-tag-string (tags)
-  "Return string associated to TAGS.
-TAGS is a list of strings."
-  (if (null tags) ""
-    (format ":%s:" (mapconcat #'identity tags ":"))))
-
 (provide 'org-tags)
 
 ;;; org-tags.el ends here

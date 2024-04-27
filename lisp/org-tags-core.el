@@ -154,6 +154,12 @@ This function may modify the match data."
       (puthash (list tag) t hashed))
     (hash-table-keys hashed)))
 
+(defun org-make-tag-string (tags)
+  "Return string associated to TAGS.
+TAGS is a list of strings."
+  (if (null tags) ""
+    (format ":%s:" (mapconcat #'identity tags ":"))))
+
 (provide 'org-tags-core)
 
 ;;; org-tags-core.el ends here
