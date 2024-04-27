@@ -2124,23 +2124,6 @@ headlines of up to that level."
 	      (goto-char (max (1- end) last-search-end))))))
       (nreverse ee))))
 
-(defvar org-scanner-tags nil
-  "The current tag list while the tags scanner is running.")
-
-(defvar org-scanner-element nil
-  "The current element while the tags scanner is running.")
-
-(defvar org-trust-scanner-tags nil
-  "Should `org-get-tags' use the tags for the scanner.
-This is for internal dynamical scoping only.
-When this is non-nil, the function `org-get-tags' will return the value
-of `org-scanner-tags' instead of building the list by itself.  This
-can lead to large speed-ups when the tags scanner is used in a file with
-many entries, and when the list of tags is retrieved, for example to
-obtain a list of properties.  Building the tags list for each entry in such
-a file becomes an N^2 operation - but with this variable set, it scales
-as N.")
-
 (defun org-agenda-get-tags (matcher &optional todo-only)
   "Return entries matching tag MATCHER for agenda display.
 MATCHER and TODO-ONLY are passed to `org-scan-tags'."

@@ -109,6 +109,23 @@ When set to nil, never show inherited tags in agenda lines."
 	  (repeat :tag "Show inherited tags only in selected agenda types"
 		  (symbol :tag "Agenda type"))))
 
+(defvar org-scanner-tags nil
+  "The current tag list while the tags scanner is running.")
+
+(defvar org-scanner-element nil
+  "The current element while the tags scanner is running.")
+
+(defvar org-trust-scanner-tags nil
+  "Should `org-get-tags' use the tags for the scanner.
+This is for internal dynamical scoping only.
+When this is non-nil, the function `org-get-tags' will return the value
+of `org-scanner-tags' instead of building the list by itself.  This
+can lead to large speed-ups when the tags scanner is used in a file with
+many entries, and when the list of tags is retrieved, for example to
+obtain a list of properties.  Building the tags list for each entry in such
+a file becomes an N^2 operation - but with this variable set, it scales
+as N.")
+
 (provide 'org-agenda-global)
 
 ;;; org-agenda-global.el ends here
