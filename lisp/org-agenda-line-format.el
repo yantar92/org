@@ -26,7 +26,7 @@
 
 (require 'org-priority-common)
 (require 'org-agenda-global)
-(require 'org-property)
+(require 'org-outline)
 (require 'org-duration)
 
 ;;; Customizations

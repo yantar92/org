@@ -28,7 +28,7 @@
 (org-assert-version)
 
 (require 'org-fold)
-(require 'org-move)
+(require 'org-outline)
 (require 'org-property)
 (require 'org-element-context)
 

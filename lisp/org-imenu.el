@@ -28,7 +28,7 @@
 
 (require 'org-fold)
 (require 'org-element)
-(require 'org-property)
+(require 'org-outline)
 (require 'org-mode-common)
 
 (defgroup org-imenu-and-speedbar nil
