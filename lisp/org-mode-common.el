@@ -68,6 +68,10 @@ This is configurable, because there is some impact on typing performance."
 (defvar-local org-todo-keywords-1 nil
   "All TODO and DONE keywords active in a buffer.")
 
+(defvar-local org-link-abbrev-alist-local nil
+  "Buffer-local version of `org-link-abbrev-alist', which see.
+The value of this is taken from the LINK keywords.")
+
 ;; FIXME: Org parser depends on the syntax table implicitly.  We may
 ;; consider moving this table to Org parser and even defining it
 ;; without inheritance to make Org syntax more deterministic.

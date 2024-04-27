@@ -28,30 +28,14 @@
 
 (require 'org-load)
 (require 'org-mode-common)
-(require 'outline)
-(require 'pcomplete)
+
+(require 'org-element-context)
 (require 'org-tags-common)
-(require 'org-font-lock)
-(require 'org-dnd)
 (require 'thingatpt)
-(require 'org-macro)
 (require 'org-table-core)
-
-(declare-function org-agenda-files "org")
-(declare-function org-beamer-mode "ox-beamer")
-(defvar org-enforce-todo-dependencies)
-(defvar org-enforce-todo-checkbox-dependencies)
-(declare-function org-display-inline-images "org")
-(declare-function org-latex-preview "org")
-(declare-function org-num-mode "org-num")
-(declare-function org-indent-mode "org-indent")
-
-(defvar buffer-face-mode-face) ; face-remap.el
-(defvar align-mode-rules-list) ; align.el
-(defvar calc-embedded-open-mode) ; calc.el
-
-(defvar org-columns-default-format)
-(defvar org-archive-location)
+(require 'org-mode-common)
+(require 'org-font-lock)
+(require 'pcomplete)
 
 
 ;;; Org mode options
@@ -747,6 +731,11 @@ This function ignores inlinetasks.  It is meant to be used as
 (declare-function org-pcomplete-initial "org-pcomplete" ())
 (declare-function org-table-align "org-table-align" ())
 (declare-function org-table-shrink "org-table-fold" (&optional begin end))
+(declare-function org-install-agenda-files-menu "org-agenda-files" ())
+(declare-function org-macro-initialize-templates "org-macro" (&optional default))
+(declare-function org-display-inline-images "org-preview-image"
+                  (&optional include-linked refresh beg end))
+(declare-function org-setup-yank-dnd-handlers "org-dnd" ())
 
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
@@ -773,6 +762,7 @@ The following commands are available:
   (setq-local tab-width 8)
   (org-load-modules-maybe)
   (when org-agenda-file-menu-enabled
+    (require 'org-agenda-files)
     (org-install-agenda-files-menu))
   (setq-local outline-regexp org-outline-regexp)
   (setq-local outline-level 'org-outline-level)
@@ -807,6 +797,7 @@ The following commands are available:
   ;; Check for invisible edits.
   (org-fold--advice-edit-commands)
   ;; Initialize macros templates.
+  (require 'org-macro)
   (org-macro-initialize-templates)
   ;; Initialize radio targets.
   (org-update-radio-target-regexp)
@@ -831,14 +822,14 @@ The following commands are available:
   (setq-local add-log-current-defun-function #'org-add-log-current-headline)
   ;; Make sure dependence stuff works reliably, even for users who set it
   ;; too late :-(
-  (if org-enforce-todo-dependencies
+  (if (bound-and-true-p org-enforce-todo-dependencies)
       (add-hook 'org-blocker-hook
-		'org-block-todo-from-children-or-siblings-or-parent)
+	        'org-block-todo-from-children-or-siblings-or-parent)
     (remove-hook 'org-blocker-hook
 		 'org-block-todo-from-children-or-siblings-or-parent))
-  (if org-enforce-todo-checkbox-dependencies
+  (if (bound-and-true-p org-enforce-todo-checkbox-dependencies)
       (add-hook 'org-blocker-hook
-		'org-block-todo-from-checkboxes)
+	        'org-block-todo-from-checkboxes)
     (remove-hook 'org-blocker-hook
 		 'org-block-todo-from-checkboxes))
 
@@ -896,7 +887,9 @@ The following commands are available:
     ;; modifications to make cache updates work reliably.
     (org-unmodified
      (when org-startup-with-beamer-mode (org-beamer-mode))
-     (when org-startup-with-inline-images (org-display-inline-images))
+     (when org-startup-with-inline-images
+       (require 'org-preview-image)
+       (org-display-inline-images))
      (when org-startup-with-latex-preview (org-latex-preview '(16)))
      (unless org-inhibit-startup-visibility-stuff (org-cycle-set-startup-visibility))
      (when org-startup-truncated (setq truncate-lines t))
@@ -929,6 +922,7 @@ The following commands are available:
   (setq-local org-mode-loading nil)
 
   ;; `yank-media' handler and DND support.
+  (require 'org-dnd)
   (org-setup-yank-dnd-handlers)
   ;; `occur' support.
   (org-setup-occur)

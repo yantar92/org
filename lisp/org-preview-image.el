@@ -218,6 +218,7 @@ according to the value of `org-display-remote-inline-images'."
                                 org-image-max-width)))
                     :scale 1))))
 
+;;;###autoload
 (defun org-display-inline-images (&optional include-linked refresh beg end)
   "Display inline images.
 

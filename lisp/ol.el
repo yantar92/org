@@ -305,10 +305,6 @@ links more efficient."
 
 ;;; Public variables
 
-(defvar-local org-link-abbrev-alist-local nil
-  "Buffer-local version of `org-link-abbrev-alist', which see.
-The value of this is taken from the LINK keywords.")
-
 (defvar org-create-file-search-functions nil
   "List of functions to construct the right search string for a file link.
 

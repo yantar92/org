@@ -820,6 +820,7 @@ Optional argument N tells to change by that many units."
    ((org-at-table-p) (call-interactively 'org-table-hline-and-move))
    (t (call-interactively 'org-insert-heading))))
 
+(declare-function org-link-open-from-string "ol" (s &optional arg))
 ;;;###autoload
 (defun org-edit-special (&optional arg)
   "Call a special editor for the element at point.
@@ -868,6 +869,7 @@ Otherwise, return a user error."
 			      (match-string 0 value)))))
 	   (when (org-url-p file)
 	     (user-error "Files located with a URL cannot be edited"))
+           (require 'ol)
 	   (org-link-open-from-string
 	    (format "[[%s]]" (expand-file-name file))))))
       (`table
