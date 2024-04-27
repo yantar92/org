@@ -23,16 +23,19 @@
 
 ;;; Code:
 
-(require 'org-property)
-(require 'org-mode)
+(require 'org-property-core)
+(require 'org-mode-common)
+(require 'org-move)
+(require 'org-element-timestamp)
+(require 'org-fold-core)
+(require 'outline)
+(require 'org-element-context)
 
 (defvar org-log-post-message)
 (defvar org-log-note-purpose)
 (defvar org-log-note-how nil)
 (defvar org-log-note-extra)
 (defvar org-log-setup nil)
-
-(defvar org-inhibit-startup)
 
 (defcustom org-log-buffer-setup-hook nil
   "Hook that is run after an Org log buffer is created."
@@ -168,7 +171,7 @@ are matched against file names, and values."
 This is the value of `org-log-into-drawer'.  However, if the
 current entry has or inherits a LOG_INTO_DRAWER property, it will
 be used instead of the default value."
-  (let ((p (org-entry-get nil "LOG_INTO_DRAWER" 'inherit t)))
+  (let ((p (org-entry-get-with-inheritance "LOG_INTO_DRAWER" t)))
     (cond ((equal p "nil") nil)
 	  ((equal p "t") "LOGBOOK")
 	  ((stringp p) p)
@@ -204,6 +207,7 @@ This is done in the same way as adding a state change note."
   (interactive)
   (org-add-log-setup 'note))
 
+(declare-function org-indent-region "org-indent-static" (start end))
 (defun org-log-beginning (&optional create)
   "Return expected start of log notes in current entry.
 When optional argument CREATE is non-nil, the function creates
@@ -277,8 +281,9 @@ narrowing."
                      ;; Text
                      (insert "\n")
                      (backward-char)))
+                   (require 'org-indent-static)
 	           (org-indent-region beg (point))
-	           (org-fold-region cbeg (point) t 'drawer)))))
+	           (org-fold-core-region cbeg (point) t 'drawer)))))
 	   (end-of-line 0))))
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
@@ -295,11 +300,13 @@ narrowing."
          (when (< (point) endpos) (goto-char endpos))))))
    (if (bolp) (point) (line-beginning-position 2))))
 
+(declare-function org-current-effective-time "org-time" ())
 (defun org-add-log-setup (&optional purpose state prev-state how extra)
   "Set up the post command hook to take a note.
 If this is about to TODO state change, the new state is expected in STATE.
 HOW is an indicator what kind of note should be created.
 EXTRA is additional text that will be inserted into the notes buffer."
+  (require 'org-time)
   (move-marker org-log-note-marker (point))
   (setq org-log-note-purpose purpose
 	org-log-note-state state
@@ -375,6 +382,7 @@ items are State notes."
       (run-hooks 'org-log-buffer-setup-hook))))
 
 (defvar org-note-abort nil) ; dynamically scoped
+(declare-function org-indent-line "org-indent-static" ())
 (defun org-store-log-note ()
   "Finish taking a log note, and insert it to where it belongs."
   (let ((txt (prog1 (buffer-string)
@@ -445,6 +453,7 @@ items are State notes."
 		  (let ((struct (save-excursion
 				  (goto-char itemp) (org-list-struct))))
 		    (org-list-get-ind (org-list-get-top-point struct) struct)))
+               (require 'org-indent-static)
 	       (org-indent-line)))
 	   (insert-and-inherit (org-list-bullet-string "-") (pop lines))
 	   (let ((ind (org-list-item-body-column (line-beginning-position))))

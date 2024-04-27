@@ -28,6 +28,7 @@
 
 (require 'org-element)
 (require 'org-element-context)
+(require 'org-log-note)
 
 (defun org--flyspell-object-check-p (element)
   "Non-nil when Flyspell can check object at point.
