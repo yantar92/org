@@ -28,8 +28,6 @@
 
 (require 'seq) ; for `seq-do-indexed' in older Emacs where seq is not preloaded.
 
-(declare-function org-fold-show-context "org-fold" (&optional key))
-
 (defcustom org-mark-ring-length 4
   "Number of different positions to be recorded in the ring.
 Changing this requires a restart of Emacs to work correctly."
@@ -66,6 +64,7 @@ argument POS and BUFFER are not nil, mark this location instead."
    (substitute-command-keys
     "Position saved to mark ring, go back with `\\[org-mark-ring-goto]'.")))
 
+(declare-function org-fold-show-context "org-fold" (&optional key))
 ;;;###autoload
 (defun org-mark-ring-goto (&optional n)
   "Jump to the previous position in the mark ring.

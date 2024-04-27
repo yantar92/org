@@ -37,35 +37,14 @@
 (require 'org-macs)
 (require 'org-compat)
 (require 'org-edit-structure-common)
-
-(declare-function org-at-comment-p "org" ())
-(declare-function org-at-heading-p "org" (&optional ignored))
-(declare-function org-end-of-meta-data "org" (&optional full))
-(declare-function org-edit-footnote-reference "org-src" ())
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-element-class "org-element" (datum &optional parent))
-(declare-function org-element-context "org-element" (&optional element))
-(declare-function org-element-lineage "org-element-ast" (blob &optional types with-self))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-type "org-element-ast" (node &optional anonymous))
-(declare-function org-element-type-p "org-element-ast" (node types))
-(declare-function org-end-of-subtree "org"  (&optional invisible-ok to-heading))
-(declare-function org-fill-paragraph "org" (&optional justify region))
-(declare-function org-in-block-p "org" (names))
-(declare-function org-in-verbatim-emphasis "org" ())
-(declare-function org-inside-LaTeX-fragment-p "org" ())
-(declare-function org-inside-latex-macro-p "org" ())
-(declare-function org-mark-ring-push "org" (&optional pos buffer))
-(declare-function org-fold-show-context "org-fold" (&optional key))
-(declare-function outline-next-heading "outline")
-
-(defvar electric-indent-mode)
-(defvar org-blank-before-new-entry)	; defined in org.el
-(defvar org-link-bracket-re)	; defined in org.el
-(defvar org-complex-heading-regexp)	; defined in org.el
-(defvar org-odd-levels-only)		; defined in org.el
-(defvar org-outline-regexp)		; defined in org.el
-(defvar org-outline-regexp-bol)		; defined in org.el
+(require 'org-element-context)
+(require 'org-element)
+(require 'org-element-ast)
+(require 'org-mode-common)
+(require 'org-regexps)
+(require 'org-mark-ring)
+(require 'org-move)
+(require 'outline)
 
 
 ;;;; Constants
@@ -504,6 +483,7 @@ This function is meant to be used for fontification only."
 				       (1+ end)))))))))
 	 (t nil))))))
 
+(declare-function org-fold-show-context "org-fold" (&optional key))
 (defun org-footnote-goto-definition (label &optional location)
   "Move point to the definition of the footnote LABEL.
 
@@ -525,6 +505,7 @@ value if point was successfully moved."
     (goto-char def-start)
     (looking-at (format "\\[fn:%s[]:]" (regexp-quote label)))
     (goto-char (match-end 0))
+    (require 'org-fold)
     (org-fold-show-context 'link-search)
     (when (derived-mode-p 'org-mode)
       (message "%s" (substitute-command-keys
@@ -532,6 +513,7 @@ value if point was successfully moved."
 `\\[org-mark-ring-goto]' or, if unique, with `\\[org-ctrl-c-ctrl-c]'.")))
     t))
 
+(declare-function org-fold-show-context "org-fold" (&optional key))
 (defun org-footnote-goto-previous-reference (label)
   "Find the first closest (to point) reference of footnote with label LABEL."
   (interactive "sLabel: ")
@@ -551,6 +533,7 @@ value if point was successfully moved."
 	   (user-error "Reference is outside narrowed part of buffer")))
     (org-mark-ring-push)
     (goto-char start)
+    (require 'org-fold)
     (org-fold-show-context 'link-search)))
 
 
@@ -622,6 +605,7 @@ buffer."
 
 ;;;; Adding, Deleting Footnotes
 
+(declare-function org-edit-footnote-reference "org-src" ())
 (defun org-footnote-new ()
   "Insert a new footnote.
 This command prompts for a label.  If this is a label referencing an
@@ -666,12 +650,14 @@ or new, let the user edit the definition of the footnote."
 	       ;; Definition was created outside current scope: edit
 	       ;; it remotely.
 	       (org-footnote-auto-adjust-maybe)
+               (require 'org-src)
 	       (org-edit-footnote-reference)))))))
 
 (defun org-footnote-create-definition (label)
   "Start the definition of a footnote with label LABEL.
 Return buffer position at the beginning of the definition.  This
 function doesn't move point."
+  (defvar electric-indent-mode) ; defined in electric.el
   (let ((label (org-footnote-normalize-label label))
 	electric-indent-mode)		; Prevent wrong indentation.
     (org-preserve-local-variables
@@ -826,6 +812,7 @@ to `org-footnote-section'.  Inline definitions are ignored."
 	      (unless (member label inserted)
 	        (insert "\n" definition "\n"))))))))))
 
+(declare-function org-fill-paragraph "org-fill" (&optional justify region))
 (defun org-footnote-normalize ()
   "Turn every footnote in buffer into a numbered one."
   (interactive)
@@ -868,11 +855,12 @@ to `org-footnote-section'.  Inline definitions are ignored."
 			    1)))))
 		(push (cons (if anonymous new label) def) definitions)
 		(when org-footnote-fill-after-inline-note-extraction
+                  (require 'org-fill)
 		  (org-fill-paragraph)))))))
       ;; Collect definitions.  Update labels according to ALIST.
       (let ((definitions
-	      (nconc definitions
-		     (org-footnote--collect-definitions 'delete)))
+	     (nconc definitions
+		    (org-footnote--collect-definitions 'delete)))
 	    (inserted))
 	(org-footnote--clear-footnote-section)
 	(dolist (cell references)
@@ -928,6 +916,7 @@ to `org-footnote-section'.  Inline definitions are ignored."
 
 ;;;; End-user interface
 
+(declare-function org-edit-footnote-reference "org-src" ())
 ;;;###autoload
 (defun org-footnote-action (&optional special)
   "Do the right thing for footnotes.
@@ -970,7 +959,9 @@ offer additional commands in a menu."
 	    (or (ignore-errors (org-footnote-goto-definition label p))
 		;; Since definition was created outside current scope,
 		;; edit it remotely.
-		(org-edit-footnote-reference)))))))
+                (progn
+                  (require 'org-src)
+		  (org-edit-footnote-reference))))))))
      ((eq type 'footnote-definition)
       (org-footnote-goto-previous-reference
        (org-element-property :label context)))
