@@ -24,7 +24,7 @@
 
 ;;; Code:
 
-(require 'org-priority)
+(require 'org-priority-common)
 (require 'org-agenda-global)
 (require 'org-property)
 (require 'org-duration)

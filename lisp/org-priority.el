@@ -29,6 +29,7 @@
 (require 'org-regexps)
 (require 'org-move)
 (require 'org-tags)
+(require 'org-priority-common)
 
 (defvar org-todo-line-regexp)
 
@@ -37,75 +38,6 @@
   :tag "Org Priorities"
   :group 'org-todo)
 
-(defvaralias 'org-enable-priority-commands 'org-priority-enable-commands)
-(defcustom org-priority-enable-commands t
-  "Non-nil means priority commands are active.
-When nil, these commands will be disabled, so that you never accidentally
-set a priority."
-  :group 'org-priorities
-  :type 'boolean)
-
-(defvaralias 'org-highest-priority 'org-priority-highest)
-
-(defcustom org-priority-highest ?A
-  "The highest priority of TODO items.
-
-A character like ?A, ?B, etc., or a numeric value like 1, 2, etc.
-
-The default is the character ?A, which is 65 as a numeric value.
-
-If you set `org-priority-highest' to a numeric value inferior to
-65, Org assumes you want to use digits for the priority cookie.
-If you set it to >=65, Org assumes you want to use alphabetical
-characters.
-
-In both cases, the value of `org-priority-highest' must be
-smaller than `org-priority-lowest': for example, if \"A\" is the
-highest priority, it is smaller than the lowest \"C\" priority:
-65 < 67."
-  :group 'org-priorities
-  :type '(choice
-	  (character :tag "Character")
-	  (integer :tag "Integer (< 65)")))
-
-(defvaralias 'org-lowest-priority 'org-priority-lowest)
-(defcustom org-priority-lowest ?C
-  "The lowest priority of TODO items.
-
-A character like ?C, ?B, etc., or a numeric value like 9, 8, etc.
-
-The default is the character ?C, which is 67 as a numeric value.
-
-If you set `org-priority-lowest' to a numeric value inferior to
-65, Org assumes you want to use digits for the priority cookie.
-If you set it to >=65, Org assumes you want to use alphabetical
-characters.
-
-In both cases, the value of `org-priority-lowest' must be greater
-than `org-priority-highest': for example, if \"C\" is the lowest
-priority, it is greater than the highest \"A\" priority: 67 >
-65."
-  :group 'org-priorities
-  :type '(choice
-	  (character :tag "Character")
-	  (integer :tag "Integer (< 65)")))
-
-(defvaralias 'org-default-priority 'org-priority-default)
-(defcustom org-priority-default ?B
-  "The default priority of TODO items.
-This is the priority an item gets if no explicit priority is given.
-When starting to cycle on an empty priority the first step in the cycle
-depends on `org-priority-start-cycle-with-default'.  The resulting first
-step priority must not exceed the range from `org-priority-highest' to
-`org-priority-lowest' which means that `org-priority-default' has to be
-in this range exclusive or inclusive to the range boundaries.  Else the
-first step refuses to set the default and the second will fall back on
-\(depending on the command used) the highest or lowest priority."
-  :group 'org-priorities
-  :type '(choice
-	  (character :tag "Character")
-	  (integer :tag "Integer (< 65)")))
-
 (defcustom org-priority-start-cycle-with-default t
   "Non-nil means start with default priority when starting to cycle.
 When this is nil, the first step in the cycle will be (depending on the
@@ -113,22 +45,6 @@ command used) one higher or lower than the default priority.
 See also `org-priority-default'."
   :group 'org-priorities
   :type 'boolean)
-
-(defvaralias 'org-get-priority-function 'org-priority-get-priority-function)
-(defcustom org-priority-get-priority-function nil
-  "Function to extract the priority from a string.
-The string is normally the headline.  If this is nil, Org
-computes the priority from the priority cookie like [#A] in the
-headline.  It returns an integer, increasing by 1000 for each
-priority level.
-
-The user can set a different function here, which should take a
-string as an argument and return the numeric priority."
-  :group 'org-priorities
-  :version "24.1"
-  :type '(choice
-	  (const nil)
-	  (function)))
 
 (defun org-priority-up ()
   "Increase the priority of the current item."
@@ -262,20 +178,6 @@ Return the priority value."
                  (when (org-element-type-p heading 'headline)
                    (org-get-priority (org-element-property :raw-value (org-element-at-point))))))))
     (message "Priority is %d" (if pri pri -1000))))
-
-(defun org-get-priority (s)
-  "Find priority cookie and return priority.
-S is a string against which you can match `org-priority-regexp'.
-If `org-priority-get-priority-function' is set to a custom
-function, use it.  Otherwise process S and output the priority
-value, an integer."
-  (save-match-data
-    (if (functionp org-priority-get-priority-function)
-	(funcall org-priority-get-priority-function s)
-      (if (not (string-match org-priority-regexp s))
-	  (* 1000 (- org-priority-lowest org-priority-default))
-	(* 1000 (- org-priority-lowest
-		   (org-priority-to-value (match-string 2 s))))))))
 
 (provide 'org-priority)
 

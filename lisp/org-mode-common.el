@@ -272,13 +272,6 @@ S is a value for TAGS keyword or produced with
 	       (when (or group-flag (not (assoc tag alist)))
 		 (push (cons tag key) alist))))))))))
 
-(defun org-priority-to-value (s)
-  "Convert priority string S to its numeric value."
-  (or (save-match-data
-	(and (string-match "\\([0-9]+\\)" s)
-	     (string-to-number (match-string 1 s))))
-      (string-to-char s)))
-
 (defun org-link-display-format (s)
   "Replace links in string S with their description.
 If there is no description, use the link target."

@@ -36,6 +36,7 @@
 (require 'org-mode-common)
 (require 'org-font-lock)
 (require 'pcomplete)
+(require 'org-priority-common)
 
 
 ;;; Org mode options
