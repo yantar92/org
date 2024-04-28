@@ -43,10 +43,7 @@
 (require 'cl-lib)
 (require 'format-spec)
 (require 'ox)
-
-(declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-next-visible-heading "org" (arg))
+(require 'org-element-context)
 
 
 ;;; Variables
