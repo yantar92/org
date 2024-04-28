@@ -31,8 +31,6 @@
 (require 'org-element)
 (require 'org-element-context)
 (require 'org-src)
-(declare-function org-current-level "org" ())
-(declare-function org-log-into-drawer "org" ())
 
 (defcustom org-adapt-indentation nil
   "Non-nil means adapt indentation to outline node level.
@@ -70,6 +68,7 @@ time in Emacs."
 	  (const :tag "Do not adapt indentation at all" nil))
   :safe (lambda (x) (memq x '(t nil headline-data))))
 
+(declare-function org-log-into-drawer "org" ())
 (defun org--at-headline-data-p (&optional beg element)
   "Return non-nil when `point' or BEG is inside headline metadata.
 
@@ -92,6 +91,7 @@ Optional argument ELEMENT contains element at BEG."
         t)
        (`drawer
         ;; LOGBOOK drawer with appropriate name.
+        (require 'org-log-note)
         (equal
          (org-log-into-drawer)
          (org-element-property :drawer-name element)))
