@@ -45,6 +45,7 @@
 (defvar org-todo-key-alist)
 (require 'org-time)
 (require 'org-planning)
+(require 'org-tags)
 
 (defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
 (defvar org-inhibit-logging nil)        ; Dynamically-scoped param.

@@ -30,10 +30,10 @@
 (require 'org-macs)
 (require 'org-move)
 (require 'org-element)
-(require 'org-tags)
 (require 'org-mode)
 (require 'org-agenda-files)
 (require 'org-agenda-search)
+(require 'org-tags-common)
 
 (defvar org-not-done-regexp)
 (defvar org-todo-regexp)
@@ -125,6 +125,7 @@ Optional arguments START and END can be used to limit the range."
 			   (setq org-cached-props (org-entry-properties pom)))
 		       t))))
 
+(declare-function org-global-tags-completion-table "org-tags" (&optional files))
 (defun org-make-tags-matcher (match &optional only-local-tags)
   "Create the TAGS/TODO matcher form for the selection string MATCH.
 
@@ -150,6 +151,8 @@ See also `org-scan-tags'."
   (unless match
     ;; Get a new match request, with completion against the global
     ;; tags table and the local tags in current buffer.
+    (require 'org-tags)
+    (defvar org-last-tags-completion-table)
     (let ((org-last-tags-completion-table
 	   (org--tag-add-to-alist
             (when (derived-mode-p 'org-mode)

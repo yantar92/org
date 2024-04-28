@@ -700,6 +700,8 @@ Where possible, use the standard interface for changing this line."
 		 (call-interactively #'org-priority))))
 	    ("TAGS"
 	     (lambda ()
+               (require 'org-tags)
+               (defvar org-fast-tag-selection-single-key)
 	       (org-with-point-at pom
 		 (let ((org-fast-tag-selection-single-key
 			(if (eq org-fast-tag-selection-single-key 'expert)
