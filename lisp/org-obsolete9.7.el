@@ -481,6 +481,18 @@ Unlike to `use-region-p', this function also checks
     (member arg buffer-invisibility-spec)))
 (make-obsolete 'org-in-invisibility-spec-p "no longer used" "9.7")
 
+(defun org-export-get-parent-headline (blob)
+  "Return BLOB parent headline or nil.
+BLOB is the element or object being considered."
+  (org-element-lineage blob 'headline))
+(make-obsolete 'org-export-get-parent-headline "no longer used" "9.7")
+
+(defun org-export-get-parent-table (object)
+  "Return OBJECT parent table or nil.
+OBJECT is either a `table-cell' or `table-element' type object."
+  (org-element-lineage object 'table))
+(make-obsolete 'org-export-get-parent-table "no longer used" "9.7")
+
 (provide 'org-obsolete9.7)
 
 ;; Local variables:

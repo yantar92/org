@@ -1036,6 +1036,61 @@ skipped."
         (setq node (org-element-parent node)))
       acc)))
 
+(defalias 'org-export-get-previous-element #'org-element-previous)
+(defun org-element-previous (node &optional info n)
+  "Return previous AST node.
+
+NODE is an AST node.  INFO is a plist used as
+a communication channel.  Return previous exportable element or
+object, a string, or nil.  Nodes listed in :ignore-list plist property
+are skipped.
+
+When optional argument N is a positive integer, return a list
+containing up to N siblings before NODE, from farthest to
+closest.  With any other non-nil value, return a list containing
+all of them."
+  (let* ((secondary (org-element-secondary-p node))
+	 (parent (org-element-parent node))
+	 (siblings
+	  (if secondary (org-element-property secondary parent)
+	    (org-element-contents parent)))
+	 prev)
+    (catch 'exit
+      (dolist (obj (cdr (memq node (reverse siblings))) prev)
+	(cond ((memq obj (plist-get info :ignore-list)))
+	      ((null n) (throw 'exit obj))
+	      ((not (wholenump n)) (push obj prev))
+	      ((zerop n) (throw 'exit prev))
+	      (t (cl-decf n) (push obj prev)))))))
+
+(defalias 'org-export-get-next-element #'org-element-next)
+(defun org-element-next (node &optional info n)
+  "Return next AST node.
+
+NODE is an AST node.  INFO is a plist used as
+a communication channel.  Return next exportable element or
+object, a string, or nil.  Nodes listed in :ignore-list plist property
+are skipped.
+
+When optional argument N is a positive integer, return a list
+containing up to N siblings after NODE, from closest to farthest.
+With any other non-nil value, return a list containing all of
+them."
+  (let* ((secondary (org-element-secondary-p node))
+	 (parent (org-element-parent node))
+	 (siblings
+	  (cdr (memq node
+		     (if secondary (org-element-property secondary parent)
+		       (org-element-contents parent)))))
+	 next)
+    (catch 'exit
+      (dolist (obj siblings (nreverse next))
+	(cond ((memq obj (plist-get info :ignore-list)))
+	      ((null n) (throw 'exit obj))
+	      ((not (wholenump n)) (push obj next))
+	      ((zerop n) (throw 'exit (nreverse next)))
+	      (t (cl-decf n) (push obj next)))))))
+
 ;;;; AST modification
 
 (defalias 'org-element-adopt-elements #'org-element-adopt)
