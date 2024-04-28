@@ -38,8 +38,8 @@
 (require 'org-flyspell)
 (require 'org-tags-common)
 (require 'org-mode-common)
+(require 'org-src)
 
-(declare-function org-src-font-lock-fontify-block "org-src" (lang start end))
 (declare-function org-cite-activate "oc" (limit))
 
 (defgroup org-appearance nil
@@ -852,6 +852,153 @@ by a #."
 				   'org-linked-text t))
 	(org-rear-nonsticky-at (match-end 1))
 	t))))
+
+;;;###autoload
+(defun org-src-font-lock-fontify-block (lang start end)
+  "Fontify code block between START and END using LANG's syntax.
+This function is called by Emacs's automatic fontification, as long
+as `org-src-fontify-natively' is non-nil."
+  (let ((modified (buffer-modified-p)) native-tab-width)
+    (remove-text-properties start end '(face nil))
+    (let ((lang-mode (org-src-get-lang-mode lang)))
+      (when (fboundp lang-mode)
+        (let ((string (buffer-substring-no-properties start end))
+	      (org-buffer (current-buffer)))
+	  (with-current-buffer
+	      (get-buffer-create
+	       (format " *org-src-fontification:%s*" lang-mode))
+	    (let ((inhibit-modification-hooks nil))
+	      (erase-buffer)
+	      ;; Add string and a final space to ensure property change.
+	      (insert string " "))
+	    (unless (eq major-mode lang-mode) (funcall lang-mode))
+            (setq native-tab-width tab-width)
+            (font-lock-ensure)
+	    (let ((pos (point-min)) next
+	          ;; Difference between positions here and in org-buffer.
+	          (offset (- start (point-min))))
+	      (while (setq next (next-property-change pos))
+	        ;; Handle additional properties from font-lock, so as to
+	        ;; preserve, e.g., composition.
+                ;; FIXME: We copy 'font-lock-face property explicitly because
+                ;; `font-lock-mode' is not enabled in the buffers starting from
+                ;; space and the remapping between 'font-lock-face and 'face
+                ;; text properties may thus not be set.  See commit
+                ;; 453d634bc.
+	        (dolist (prop (append '(font-lock-face face) font-lock-extra-managed-props))
+		  (let ((new-prop (get-text-property pos prop)))
+                    (when new-prop
+                      (if (not (eq prop 'invisible))
+		          (put-text-property
+		           (+ offset pos) (+ offset next) prop new-prop
+		           org-buffer)
+                        ;; Special case.  `invisible' text property may
+                        ;; clash with Org folding.  Do not assign
+                        ;; `invisible' text property directly.  Use
+                        ;; property alias instead.
+                        (let ((invisibility-spec
+                               (or
+                                ;; ATOM spec.
+                                (and (memq new-prop buffer-invisibility-spec)
+                                     new-prop)
+                                ;; (ATOM . ELLIPSIS) spec.
+                                (assq new-prop buffer-invisibility-spec))))
+                          (with-current-buffer org-buffer
+                            ;; Add new property alias.
+                            (unless (memq 'org-src-invisible
+                                          (cdr (assq 'invisible char-property-alias-alist)))
+                              (setq-local
+                               char-property-alias-alist
+                               (cons (cons 'invisible
+			                   (nconc (cdr (assq 'invisible char-property-alias-alist))
+                                                  '(org-src-invisible)))
+		                     (remove (assq 'invisible char-property-alias-alist)
+			                     char-property-alias-alist))))
+                            ;; Carry over the invisibility spec, unless
+                            ;; already present.  Note that there might
+                            ;; be conflicting invisibility specs from
+                            ;; different major modes.  We cannot do much
+                            ;; about this then.
+                            (when invisibility-spec
+                              (add-to-invisibility-spec invisibility-spec))
+                            (put-text-property
+		             (+ offset pos) (+ offset next)
+                             'org-src-invisible new-prop
+		             org-buffer)))))))
+	        (setq pos next)))
+            (set-buffer-modified-p nil)))))
+    ;; Add Org faces.
+    (let ((src-face (nth 1 (assoc-string lang org-src-block-faces t))))
+      (when (or (facep src-face) (listp src-face))
+        (font-lock-append-text-property start end 'face src-face))
+      (font-lock-append-text-property start end 'face 'org-block))
+    ;; Display native tab indentation characters as spaces
+    (save-excursion
+      (goto-char start)
+      (let ((indent-offset
+	     (if (org-src-preserve-indentation-p) 0
+	       (+ (progn (backward-char)
+                         (org-current-text-indentation))
+	          org-edit-src-content-indentation))))
+        (while (re-search-forward "^[ ]*\t" end t)
+          (let* ((b (and (eq indent-offset (move-to-column indent-offset))
+                         (point)))
+                 (e (progn (skip-chars-forward "\t") (point)))
+                 (s (and b (make-string (* (- e b) native-tab-width) ? ))))
+            (when (and b (< b e)) (add-text-properties b e `(display ,s)))
+            (forward-char)))))
+    (add-text-properties
+     start end
+     '(font-lock-fontified t fontified t font-lock-multiline t))
+    (set-buffer-modified-p modified)))
+
+;;;###autoload
+(defun org-fontify-inline-src-blocks (limit)
+  "Try to apply `org-fontify-inline-src-blocks-1'."
+  (condition-case-unless-debug nil
+      (org-fontify-inline-src-blocks-1 limit)
+    (error (message "Org mode fontification error in %S at %d"
+                    (current-buffer)
+                    (line-number-at-pos)))))
+
+(defun org-fontify-inline-src-blocks-1 (limit)
+  "Fontify inline src_LANG blocks, from `point' up to LIMIT."
+  (let ((case-fold-search t))
+    ;; The regexp below is copied from `org-element-inline-src-block-parser'.
+    (while (re-search-forward "\\_<src_\\([^ \t\n[{]+\\)[{[]?" limit t)
+      (let ((beg (match-beginning 0))
+            (lang-beg (match-beginning 1))
+            (lang-end (match-end 1))
+            pt)
+        (add-face-text-property beg lang-end 'org-inline-src-block)
+        (add-face-text-property beg lang-beg 'shadow)
+        (add-face-text-property lang-beg lang-end 'org-meta-line)
+        (setq pt (goto-char lang-end))
+        ;; `org-element--parse-paired-brackets' doesn't take a limit, so to
+        ;; prevent it searching the entire rest of the buffer we temporarily
+        ;; narrow the active region.
+        (save-restriction
+          (narrow-to-region beg
+                            (min limit (or (save-excursion
+                                             (and (search-forward"\n" limit t 2)
+                                                  (point)))
+                                           (point-max))))
+          (when (ignore-errors (org-element--parse-paired-brackets ?\[))
+            (add-face-text-property pt (point) 'org-inline-src-block)
+            (setq pt (point)))
+          (when (ignore-errors (org-element--parse-paired-brackets ?\{))
+            (remove-text-properties pt (point) '(face nil))
+            (add-face-text-property pt (1+ pt) '(org-inline-src-block shadow))
+            (unless (= (1+ pt) (1- (point)))
+              (if org-src-fontify-natively
+                  (org-src-font-lock-fontify-block
+                   (buffer-substring-no-properties lang-beg lang-end)
+                   (1+ pt) (1- (point)))
+                (font-lock-append-text-property
+                 (1+ pt) (1- (point)) 'face 'org-inline-src-block)))
+            (add-face-text-property (1- (point)) (point) '(org-inline-src-block shadow))
+            (setq pt (point)))))
+      t)))
 
 (defvar org-latex-and-related-regexp nil
   "Regular expression for highlighting LaTeX, entities and sub/superscript.")
