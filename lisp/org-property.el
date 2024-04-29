@@ -41,7 +41,6 @@
 (require 'org-macro)
 
 (declare-function org-clock-update-mode-line "org-clock")
-(declare-function org-entry-blocked-p "org")
 (declare-function org-todo "org")
 (declare-function org-priority "org")
 (declare-function org-schedule "org")
@@ -201,6 +200,17 @@ variables is set."
       (setq org-clock-effort value)
       (org-clock-update-mode-line))
     (message "%s is now %s" org-effort-property value)))
+
+(defun org-entry-blocked-p ()
+  "Non-nil if entry at point is blocked."
+  (and (not (org-entry-get nil "NOBLOCKING"))
+       (member (org-entry-get nil "TODO") org-not-done-keywords)
+       (not (run-hook-with-args-until-failure
+	   'org-blocker-hook
+	   (list :type 'todo-state-change
+		 :position (point)
+		 :from 'todo
+		 :to 'done)))))
 
 (defun org-entry-properties (&optional epom which)
   "Get all properties of the current entry.
