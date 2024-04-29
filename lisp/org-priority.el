@@ -30,8 +30,7 @@
 (require 'org-move)
 (require 'org-tags)
 (require 'org-priority-common)
-
-(defvar org-todo-line-regexp)
+(require 'org-mode-common)
 
 (defgroup org-priorities nil
   "Priorities in Org mode."
