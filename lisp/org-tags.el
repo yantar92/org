@@ -31,18 +31,13 @@
 (require 'org-mode-common)
 (require 'org-tags-common)
 (require 'org-fold-core)
-
+(require 'org-mode)
+(require 'org-agenda-files)
+(require 'org-outline)
+(require 'org-font-lock)
 (require 'org-tags-core)
 
-(declare-function org-map-entries "org")
-(declare-function org--tag-add-to-alist "org")
-(declare-function org-agenda-files "org")
 (defvar crm-separator)
-(declare-function org-get-heading "org")
-(declare-function org-agenda-change-all-lines "org-agenda")
-(declare-function org-get-todo-face "org")
-(declare-function org-todo "org")
-(defvar org-tag-groups-alist-for-agenda)
 
 ;;;; Customizations
 
@@ -296,6 +291,7 @@ instead of the agenda files."
 (defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
 (defvar org-tags-overlay (make-overlay 1 1))
 (delete-overlay org-tags-overlay)
+(declare-function org-map-entries "org")
 ;;;###autoload
 (defun org-set-tags-command (&optional arg)
   "Set the tags for the current visible entry.
@@ -322,6 +318,7 @@ in Lisp code use `org-set-tags' instead."
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
             org-loop-over-headlines-in-active-region) ;  hint: infinite recursion.
+        (require 'org-map)
 	(org-map-entries
 	 #'org-set-tags-command
 	 nil cl
@@ -436,6 +433,7 @@ If ONOFF is `on' or `off', don't toggle but set to this state."
       (org-set-tags (nreverse current))
       res)))
 
+(declare-function org-agenda-change-all-lines "org-agenda")
 (defun org-change-tag-in-region (beg end tag off)
   "Add or remove TAG for each entry in the region.
 This works in the agenda, and also in an Org buffer."
@@ -554,6 +552,7 @@ CURRENT-TAGS may be modified by side effect."
     (cons tag current-tags)))
 
 (defvar org-last-tag-selection-key nil)
+(declare-function org-todo "org")
 (defun org-fast-tag-selection (current-tags inherited-tags tag-table &optional todo-table)
   "Fast tag selection with single keys.
 CURRENT-TAGS is the current list of tags in the headline,
@@ -822,6 +821,7 @@ Returns the new tags string, or nil to not change the current settings."
 		    ((let (and todo-keyword (guard todo-keyword))
                        (car (rassoc input-char todo-table)))
 		     (with-current-buffer origin-buffer
+                       (require 'org-todo)
 		       (save-excursion (org-todo todo-keyword)))
 		     (when exit-after-next (setq exit-after-next 'now)))
                     ;; INPUT-CHAR is for a tag.
