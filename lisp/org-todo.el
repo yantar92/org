@@ -36,6 +36,9 @@
 (require 'org-time)
 (require 'org-planning)
 (require 'org-tags)
+(require 'org-mode)
+(require 'org-map)
+(require 'org-property)
 
 (defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
 (defvar org-inhibit-logging nil)        ; Dynamically-scoped param.

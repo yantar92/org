@@ -3238,7 +3238,9 @@ block but are passed literally to the \"example-block\"."
                             (gethash id org-babel-expand-noweb-references--cache))
                        (expand-references id))
 		      ;; Return the contents of headlines literally.
-		      ((org-babel-ref-goto-headline-id id)
+		      ((progn
+                         (require 'ob-ref)
+                         (org-babel-ref-goto-headline-id id))
 		       (org-babel-ref-headline-body))
 		      ;; Look for a source block named SOURCE-NAME.  If
 		      ;; found, assume it is unique; do not look after
@@ -3253,7 +3255,9 @@ block but are passed literally to the \"example-block\"."
                                   (push info (gethash id  org-babel-expand-noweb-references--cache))
 			          (expand-body info))))))
 		      ;; Retrieve from the Library of Babel.
-		      ((nth 2 (assoc-string id org-babel-library-of-babel)))
+		      ((progn
+                         (require 'ob-lob)
+                         (nth 2 (assoc-string id org-babel-library-of-babel))))
 		      ;; All Noweb references were cached in a previous
 		      ;; run.  Yet, ID is not in cache (see the above
 		      ;; condition).  Process missing reference in

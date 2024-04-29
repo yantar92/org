@@ -9630,6 +9630,18 @@ This function may modify the match data."
               (org-element-at-point (1+ epom) cached-only))))))))
 
 ;;;###autoload
+(defun org-headline-at-point (&optional epom)
+  "Determine closest headline around point or EPOM.
+
+When EPOM is a headline, return it immediately.
+Otherwise, determine headline at EPOM marker or position.
+
+When before first heading, return nil.
+
+The return value is an AST node, as in `org-element-at-point'."
+  (org-element-lineage (org-element-at-point epom) '(headline) t))
+
+;;;###autoload
 (defun org-element-at-point-no-context (&optional pom)
   "Quickly find element at point or POM.
 

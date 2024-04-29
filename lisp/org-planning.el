@@ -28,11 +28,11 @@
 (org-assert-version)
 
 (require 'org-move)
-(require 'org-property)
 (require 'org-log-note)
-(defvar org-loop-over-headlines-in-active-region)
-(require 'org-map)
+(require 'org-mode-common)
 (require 'org-read-date)
+(require 'org-timestamp)
+(require 'org-indent-static)
 
 (defgroup org-progress nil
   "Options concerning Progress logging in Org mode."
@@ -125,7 +125,11 @@ TYPE is either `deadline' or `scheduled'.  See `org-deadline' or
     (let* ((deadline? (eq type 'deadline))
 	   (keyword (if deadline? org-deadline-string org-scheduled-string))
 	   (log (if deadline? org-log-redeadline org-log-reschedule))
-	   (old-date (org-entry-get nil (if deadline? "DEADLINE" "SCHEDULED")))
+	   (old-date
+            (thread-last
+              (org-headline-at-point)
+              (org-element-property (if deadline? :deadline :scheduled))
+              (org-element-property :raw-value)))
 	   (old-date-time (and old-date (org-time-string-to-time old-date)))
 	   ;; Save repeater cookie from either TIME or current scheduled
 	   ;; time stamp.  We are going to insert it back at the end of
@@ -202,6 +206,8 @@ TYPE is either `deadline' or `scheduled'.  See `org-deadline' or
          (message (if deadline? "Deadline on %s" "Scheduled to %s")
 		  org-last-inserted-timestamp))))))
 
+(declare-function org-map-entries "org-map"
+                  (func &optional match scope &rest skip))
 ;;;###autoload
 (defun org-deadline (arg &optional time)
   "Insert a \"DEADLINE:\" string with a timestamp to make a deadline.
@@ -215,13 +221,15 @@ With argument TIME, set the deadline at the corresponding date.  TIME
 can either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
   (interactive "P")
   (if (and (use-region-p) org-loop-over-headlines-in-active-region)
-      (org-map-entries
-       (lambda () (org--deadline-or-schedule arg 'deadline time))
-       nil
-       (if (eq org-loop-over-headlines-in-active-region 'start-level)
-	   'region-start-level
-	 'region)
-       (lambda () (when (org-invisible-p) (org-end-of-subtree nil t))))
+      (progn
+        (require 'org-map)
+        (org-map-entries
+         (lambda () (org--deadline-or-schedule arg 'deadline time))
+         nil
+         (if (eq org-loop-over-headlines-in-active-region 'start-level)
+	     'region-start-level
+           'region)
+         (lambda () (when (org-invisible-p) (org-end-of-subtree nil t)))))
     (org--deadline-or-schedule arg 'deadline time)))
 
 ;;;###autoload
