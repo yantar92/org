@@ -58,7 +58,7 @@
 (require 'org-clock)
 (require 'org-diary-lib)
 (require 'org-agenda-files)
-(require 'org-agenda-global)
+(require 'org-agenda-common)
 (require 'org-agenda-search)
 (require 'org-agenda-line-format)
 (require 'org-agenda-diary)

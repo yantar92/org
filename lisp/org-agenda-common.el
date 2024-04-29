@@ -1,4 +1,4 @@
-;;; org-agenda-global.el --- Global agenda definitions         -*- lexical-binding: t; -*-
+;;; org-agenda-common.el --- Global agenda definitions         -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2012-2024 Free Software Foundation, Inc.
 
@@ -126,8 +126,8 @@ obtain a list of properties.  Building the tags list for each entry in such
 a file becomes an N^2 operation - but with this variable set, it scales
 as N.")
 
-(provide 'org-agenda-global)
+(provide 'org-agenda-common)
 
-;;; org-agenda-global.el ends here
+;;; org-agenda-common.el ends here
 
 

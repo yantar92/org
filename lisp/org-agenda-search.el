@@ -24,7 +24,7 @@
 
 ;;; Code:
 
-(require 'org-agenda-global)
+(require 'org-agenda-common)
 (require 'org-agenda-files)
 (require 'org-agenda-line-format)
 (require 'org-element-context)

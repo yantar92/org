@@ -24,7 +24,7 @@
 ;;; Code:
 
 (require 'org-element)
-(require 'org-agenda-global)
+(require 'org-agenda-common)
 
 (defcustom org-use-tag-inheritance t
   "Non-nil means tags in levels apply also for sublevels.
