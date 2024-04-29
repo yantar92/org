@@ -1916,6 +1916,18 @@ This will add overlays to the date lines, to show the summary for each day."
 		      (equal (nth 3 a) (nth 3 spec))))
 	       (org-columns-compute prop))))))))))
 
+(defun org-compute-property-at-point ()
+  "Compute the property at point.
+This looks for an enclosing column format, extracts the operator and
+then applies it to the property in the column format's scope."
+  (interactive)
+  (unless (org-at-property-p)
+    (user-error "Not at a property"))
+  (let ((prop (match-string-no-properties 2)))
+    (org-columns-get-format-and-top-level)
+    (unless (nth 3 (assoc-string prop org-columns-current-fmt-compiled t))
+      (user-error "No operator defined for property %s" prop))
+    (org-columns-compute prop)))
 
 (provide 'org-colview)
 

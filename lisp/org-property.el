@@ -39,14 +39,11 @@
 (require 'org-mode-common)
 (require 'org-priority-common)
 (require 'org-macro)
+(require 'org-planning)
 
 (declare-function org-clock-update-mode-line "org-clock")
 (declare-function org-todo "org")
 (declare-function org-priority "org")
-(declare-function org-schedule "org")
-(declare-function org-deadline "org")
-(declare-function org-columns-compute "org-colview")
-(declare-function org-columns-get-format-and-top-level "org-colview")
 
 (defgroup org-properties nil
   "Options concerning properties in Org mode."
@@ -144,6 +141,7 @@ FORCE is non-nil, or return nil."
 				       (line-beginning-position))))
 	      (cons pos pos)))))))
 
+(declare-function org-compute-property-at-point "org-colview" ())
 (defun org-property-action ()
   "Do an action on properties."
   (interactive)
@@ -153,7 +151,9 @@ FORCE is non-nil, or return nil."
       (?s (call-interactively #'org-set-property))
       (?d (call-interactively #'org-delete-property))
       (?D (call-interactively #'org-delete-property-globally))
-      (?c (call-interactively #'org-compute-property-at-point))
+      (?c (progn
+            (require 'org-colview)
+            (call-interactively #'org-compute-property-at-point)))
       (otherwise (user-error "No such property action %c" c)))))
 
 ;;;###autoload
@@ -998,21 +998,6 @@ This function ignores narrowing, if any."
      (while (re-search-forward re nil t)
        (when (org-entry-delete (point) property) (cl-incf count)))
      (message "Property \"%s\" removed from %d entries" property count))))
-
-(defvar org-columns-current-fmt-compiled) ; defined in org-colview.el
-
-(defun org-compute-property-at-point ()
-  "Compute the property at point.
-This looks for an enclosing column format, extracts the operator and
-then applies it to the property in the column format's scope."
-  (interactive)
-  (unless (org-at-property-p)
-    (user-error "Not at a property"))
-  (let ((prop (match-string-no-properties 2)))
-    (org-columns-get-format-and-top-level)
-    (unless (nth 3 (assoc-string prop org-columns-current-fmt-compiled t))
-      (user-error "No operator defined for property %s" prop))
-    (org-columns-compute prop)))
 
 (defvar org-property-allowed-value-functions nil
   "Hook for functions supplying allowed values for a specific property.
