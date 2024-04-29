@@ -40,13 +40,10 @@
 (require 'org-priority)
 (require 'org-narrow)
 (require 'org-duration)
+(require 'org-sparse-tree)
+(require 'org-archive-core)
 
-(declare-function org-remove-occur-highlights "org")
-(defvar org-highlight-sparse-tree-matches)
-(declare-function org-highlight-new-match "org")
-(defvar org-sparse-tree-open-archived-trees)
-(declare-function org-add-archive-files "org-archive")
-(declare-function org-cycle-overview "org-cycle")
+(defvar org-agenda-archives-mode)
 
 (defun org-map-tree (fun)
   "Call FUN for every heading underneath the current one."
@@ -90,10 +87,7 @@ Optional arguments START and END can be used to limit the range."
             (when (org-at-block-p)
               (funcall function))))))))
 
-(defvar org-agenda-archives-mode)
 
-(defvar org-agenda-skip-comment-trees)
-(defvar org-agenda-skip-function)
 (defun org-map-entries (func &optional match scope &rest skip)
   "Call FUNC at each headline selected by MATCH in SCOPE.
 
