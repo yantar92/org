@@ -28,17 +28,11 @@
 (org-assert-version)
 
 (require 'org-regexps)
-(require 'org-map)
 (require 'org-read-date)
 (require 'org-mode-common)
-
-(defvar org-not-done-regexp)
-(defvar org-todo-keywords-1)
-(defvar org-deadline-warning-days)
-(declare-function org-deadline-close-p "org")
-(declare-function org-agenda-prepare-buffers "org")
-
-
+(require 'org-property)
+(require 'org-agenda-search)
+(require 'org-agenda-files)
 
 (defvar org-ts-type nil)
 
