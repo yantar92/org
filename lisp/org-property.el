@@ -37,13 +37,11 @@
 (require 'org-tags-core)
 (require 'org-property-core)
 (require 'org-mode-common)
-(require 'org-priority-common)
 (require 'org-macro)
 (require 'org-planning)
+(require 'org-priority)
 
 (declare-function org-clock-update-mode-line "org-clock")
-(declare-function org-todo "org")
-(declare-function org-priority "org")
 
 (defgroup org-properties nil
   "Options concerning properties in Org mode."
@@ -558,6 +556,7 @@ EPOM is an element, marker, or buffer position."
 Each hook function should accept two arguments, the name of the property
 and the new value.")
 
+(declare-function org-todo "org-todo" (&optional arg))
 ;;;###autoload
 (defun org-entry-put (epom property value)
   "Set PROPERTY to VALUE for entry at EPOM.
@@ -590,6 +589,7 @@ decreases scheduled or deadline date by one day."
 	 (cond ((not (org-string-nw-p value)) (setq value 'none))
 	       ((not (member value org-todo-keywords-1))
 	        (user-error "\"%s\" is not a valid TODO state" value)))
+         (require 'org-todo)
 	 (org-todo value))
         ((equal property "PRIORITY")
 	 (org-priority (if (org-string-nw-p value) (string-to-char value) ?\s)))
