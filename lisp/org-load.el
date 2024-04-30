@@ -224,14 +224,15 @@ For export specific modules, see also `org-export-backends'."
 (defun org-babel-do-load-languages (sym value)
   "Load the languages defined in `org-babel-load-languages'."
   (set-default-toplevel-value sym value)
-  (dolist (pair org-babel-load-languages)
-    (let ((active (cdr pair)) (lang (symbol-name (car pair))))
-      (if active
-	  (require (intern (concat "ob-" lang)))
-	(fmakunbound
-	 (intern (concat "org-babel-execute:" lang)))
-	(fmakunbound
-	 (intern (concat "org-babel-expand-body:" lang)))))))
+  (eval-after-load 'org-load
+    '(dolist (pair org-babel-load-languages)
+       (let ((active (cdr pair)) (lang (symbol-name (car pair))))
+         (if active
+	     (require (intern (concat "ob-" lang)))
+	   (fmakunbound
+	    (intern (concat "org-babel-execute:" lang)))
+	   (fmakunbound
+	    (intern (concat "org-babel-expand-body:" lang))))))))
 
 (defcustom org-babel-load-languages '((emacs-lisp . t))
   "Languages which can be evaluated in Org buffers.

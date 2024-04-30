@@ -56,19 +56,14 @@
 (require 'ob-core)
 (require 'org-macs)
 (require 'cl-lib)
+(require 'org-id-search)
+(require 'org-property-search)
+(require 'org-element)
+(require 'org-element-context)
+(require 'org-narrow)
+(require 'org-move)
 
 (declare-function org-babel-lob-get-info "ob-lob" (&optional datum no-eval))
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-post-affiliated "org-element" (node))
-(declare-function org-element-type "org-element-ast" (node &optional anonymous))
-(declare-function org-end-of-meta-data "org" (&optional full))
-(declare-function org-find-property "org" (property &optional value))
-(declare-function org-id-find-id-file "org-id" (id))
-(declare-function org-id-find-id-in-file "org-id" (id file &optional markerp))
-(declare-function org-in-commented-heading-p "org" (&optional no-inheritance))
-(declare-function org-narrow-to-subtree "org" (&optional element))
-(declare-function org-fold-show-context "org-fold" (&optional key))
 
 (defvar org-babel-update-intermediate nil
   "Update the in-buffer results of code blocks executed to resolve references.")
@@ -109,7 +104,6 @@ Emacs Lisp representation of the value of the variable."
 	  (pop-to-buffer-same-window (marker-buffer m))
 	  (goto-char m)
 	  (move-marker m nil)
-	  (org-fold-show-context)
 	  t))))
 
 (defun org-babel-ref-headline-body ()
