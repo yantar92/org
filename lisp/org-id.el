@@ -74,13 +74,11 @@
 (org-assert-version)
 
 (require 'org-element-ast)
-(require 'org-refile)
+(require 'org-element)
+(require 'org-property)
+(require 'org-move)
+(require 'org-agenda-files)
 (require 'ol)
-
-(declare-function message-make-fqdn "message" ())
-(declare-function org-goto-location "org-goto" (&optional _buf help))
-;; Declared inside `org-element-with-disabled-cache' macro.
-(declare-function org-element--cache-active-p "org-element.el" (&optional called-from-cache-change-func-p))
 
 ;;; Customization
 
@@ -346,6 +344,10 @@ to `org-id-new'."
 			         (buffer-file-name (buffer-base-buffer)))))
       id))))
 
+(defvar org-refile-use-outline-path)
+(defvar org-refile-target-verify-function)
+(declare-function org-refile-get-location "org-refile"
+                  (&optional prompt default-buffer new-nodes))
 ;;;###autoload
 (defun org-id-get-with-outline-path-completion (&optional targets)
   "Use `outline-path-completion' to retrieve the ID of an entry.
@@ -353,6 +355,7 @@ TARGETS may be a setting for `org-refile-targets' to define
 eligible headlines.  When omitted, all headlines in the current
 file are eligible.  This function returns the ID of the entry.
 If necessary, the ID is created."
+  (require 'org-refile)
   (let* ((org-refile-targets (or targets '((nil . (:maxlevel . 10)))))
 	 (org-refile-use-outline-path
 	  (if (caar org-refile-targets) 'file t))
@@ -363,16 +366,19 @@ If necessary, the ID is created."
     (prog1 (org-id-get pom 'create)
       (move-marker pom nil))))
 
+(declare-function org-goto-location "org-goto" (&optional _buf help))
 ;;;###autoload
 (defun org-id-get-with-outline-drilling ()
   "Use an outline-cycling interface to retrieve the ID of an entry.
 This only finds entries in the current buffer, using `org-goto-location'.
 It returns the ID of the entry.  If necessary, the ID is created."
+  (require 'org-goto)
   (let* ((spos (org-goto-location))
 	 (pom (and spos (move-marker (make-marker) (car spos)))))
     (prog1 (org-id-get pom 'create)
       (move-marker pom nil))))
 
+(declare-function org-fold-show-context "org-fold" (&optional key))
 ;;;###autoload
 (defun org-id-goto (id)
   "Switch to the buffer containing the entry with id ID.
@@ -396,7 +402,7 @@ With optional argument MARKERP, return the position as a new marker."
    ((symbolp id) (setq id (symbol-name id)))
    ((numberp id) (setq id (number-to-string id))))
   (let ((file (org-id-find-id-file id))
-	org-agenda-new-buffers where)
+	where)
     (when file
       (setq where (org-id-find-id-in-file id file markerp)))
     (unless where
@@ -410,6 +416,7 @@ With optional argument MARKERP, return the position as a new marker."
 
 ;; Creating new IDs
 
+(declare-function message-make-fqdn "message" ())
 ;;;###autoload
 (defun org-id-new (&optional prefix)
   "Create a new globally unique ID.
