@@ -32,7 +32,10 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'ox)
+(require 'org-element-context)
+(require 'org-table-edit)
+(require 'org-table-core)
+(require 'org-table-align)
 
 (defgroup org-table-settings nil
   "Settings for tables in Org mode."
