@@ -37,6 +37,7 @@
 (require 'ob-core)
 (require 'org-compat)
 (require 'comint)
+(require 'org-move)
 
 (defun org-babel-comint-buffer-livep (buffer)
   "Check if BUFFER is a comint buffer with a live process."
@@ -292,7 +293,7 @@ STRING contains the output originally inserted into the comint buffer."
 			    (save-excursion
 			      (goto-char (point-min))
 			      (when (search-forward tmp-file nil t)
-			        (org-babel-previous-src-block)
+			        (org-previous-block nil org-babel-src-block-regexp)
                                 (let* ((info (org-babel-get-src-block-info))
                                        (params (nth 2 info))
                                        (result-params
@@ -337,7 +338,7 @@ STRING contains the output originally inserted into the comint buffer."
 			       (save-excursion
 			         (goto-char (point-min))
 			         (when (search-forward uuid nil t)
-				   (org-babel-previous-src-block)
+				   (org-previous-block nil org-babel-src-block-regexp)
                                    (let* ((info (org-babel-get-src-block-info))
                                           (params (nth 2 info))
                                           (result-params

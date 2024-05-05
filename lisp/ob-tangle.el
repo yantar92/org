@@ -676,6 +676,8 @@ of the current buffer."
         (goto-char end))
       (prog1 counter (message "Detangled %d code blocks" counter)))))
 
+(declare-function org-babel-goto-named-src-block "ob-commands" name)
+(declare-function org-babel-next-src-block "ob-commands" (&optional arg))
 (defun org-babel-tangle-jump-to-org ()
   "Jump from a tangled code file to the related Org mode file."
   (interactive)
@@ -710,6 +712,7 @@ of the current buffer."
 	    (if (org-before-first-heading-p) (goto-char (point-min))
 	      (org-back-to-heading t))
 	    ;; Do not skip the first block if it begins at point min.
+            (require 'ob-commands)
 	    (cond ((or (org-at-heading-p)
 		       (not (org-element-type-p (org-element-at-point) 'src-block)))
 		   (org-babel-next-src-block n))
