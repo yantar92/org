@@ -933,6 +933,7 @@ Return VTODO component as a string."
               (with-temp-buffer
 	        (insert dl-raw)
                 (goto-char (point-min))
+                (delay-mode-hooks (org-mode))
 	        (org-timestamp-down-day (org-get-wdays dl-raw))
 	        (org-element-timestamp-parser)))))))
     (concat "BEGIN:VTODO\n"
