@@ -108,44 +108,44 @@
 	    ;; Old style:
 	    ;; - multiple slashes
 	    ("/some/directory/org-protocol:/capture:/URL/TITLE"
-	     . "** TODO\n\n\n\n[[URL][TITLE]]\n")
+	     . "* TODO\n\n\n\n[[URL][TITLE]]\n")
 	    ;; - body specification
 	    ("/some/directory/org-protocol:/capture:/URL/TITLE/BODY"
-	     . "** TODO\n\nBODY\n\n[[URL][TITLE]]\n")
+	     . "* TODO\n\nBODY\n\n[[URL][TITLE]]\n")
 	    ;; - template
 	    ("/some/directory/org-protocol:/capture:/x/URL/TITLE/BODY"
-	     . "** SOMEDAY\n\nBODY\n\n[[URL][TITLE]]\n")
+	     . "* SOMEDAY\n\nBODY\n\n[[URL][TITLE]]\n")
 	    ;; - query parameters, not sure how to include them in template
 	    ("/some/directory/org-protocol:/capture:/x/URL/TITLE/BODY/from/example"
-	     . "** SOMEDAY\n\nBODY\n\n[[URL][TITLE]]\n")
+	     . "* SOMEDAY\n\nBODY\n\n[[URL][TITLE]]\n")
 	    ;; New style:
 	    ;; - multiple slashes
 	    ("/some/directory/org-protocol:/capture?url=NEWURL&title=TITLE"
-	     . "** TODO\n\n\n\n[[NEWURL][TITLE]]\n")
+	     . "* TODO\n\n\n\n[[NEWURL][TITLE]]\n")
 	    ;; - body specification
 	    ("/some/directory/org-protocol:/capture?url=NEWURL&title=TITLE&body=BODY"
-	     . "** TODO\n\nBODY\n\n[[NEWURL][TITLE]]\n")
+	     . "* TODO\n\nBODY\n\n[[NEWURL][TITLE]]\n")
 	    ;; - template
 	    ("/some/directory/org-protocol:/capture?template=x&url=NEWURL&title=TITLE&body=BODY"
-	     . "** SOMEDAY\n\nBODY\n\n[[NEWURL][TITLE]]\n")
+	     . "* SOMEDAY\n\nBODY\n\n[[NEWURL][TITLE]]\n")
 	    ;; - no url specified
 	    ("/some/directory/org-protocol:/capture?template=x&title=TITLE&body=BODY"
-	    . "** SOMEDAY\n\nBODY\n\nTITLE\n")
+	    . "* SOMEDAY\n\nBODY\n\nTITLE\n")
 	    ;; - no title specified
 	    ("/some/directory/org-protocol:/capture?template=x&url=NEWURL&body=BODY"
-	     . "** SOMEDAY\n\nBODY\n\n[[NEWURL][NEWURL]]\n")
+	     . "* SOMEDAY\n\nBODY\n\n[[NEWURL][NEWURL]]\n")
 	    ;; - just the template
 	    ("/some/directory/org-protocol:/capture?template=X"
-	     . "** Hello World\n\n\n\nGoodbye World\n")
+	     . "* Hello World\n\n\n\nGoodbye World\n")
 	    ;; - query parameters, not sure how to include them in template
 	    ("/some/directory/org-protocol:/capture?template=x&url=URL&title=TITLE&body=BODY&from=example"
-	     . "** SOMEDAY\n\nBODY\n\n[[URL][TITLE]]\n")
+	     . "* SOMEDAY\n\nBODY\n\n[[URL][TITLE]]\n")
             ;; - "+" is not decoded to space in old-style URIs
             ("/org-protocol:/capture:/t/https%3A%2F%2Forgmode.org%2Fsome+thing/org+mode/Body+plus"
-             . "** TODO\n\nBody+plus\n\n[[https://orgmode.org/some+thing][org+mode]]\n")
+             . "* TODO\n\nBody+plus\n\n[[https://orgmode.org/some+thing][org+mode]]\n")
             ;; - decode "+" to space
             ("/org-protocol:/capture?template=t&url=URL&title=Mailing+list&body=Body+no+plus"
-             . "** TODO\n\nBody no plus\n\n[[URL][Mailing list]]\n")
+             . "* TODO\n\nBody no plus\n\n[[URL][Mailing list]]\n")
 	    )))
     ;; Old link style
     (mapc
