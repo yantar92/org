@@ -25,7 +25,8 @@
 ;;; Commentary:
 
 ;; This library implements user-facing commands to work with code
-;; blocks.
+;; blocks.  These commands are not used internally and are just aiming
+;; to users.
 
 ;;; Code:
 
