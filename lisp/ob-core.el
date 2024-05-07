@@ -896,35 +896,7 @@ lines will be added after `:prologue' parameter and before BODY."
 				results))))))
     results))
 
-;;;###autoload
-(defun org-babel-load-in-session (&optional _arg info)
-  "Load the body of the current source-code block.
-When optional argument INFO is non-nil, use source block defined in
-INFO, as returned by `org-babel-get-src-block-info'.
-
-Evaluate the header arguments for the source block before
-entering the session.  After loading the body this pops open the
-session."
-  (interactive)
-  (let* ((info (or info (org-babel-get-src-block-info)))
-         (lang (nth 0 info))
-         (params (nth 2 info))
-         (body (if (not info)
-		   (user-error "No src code block at point")
-		 (setf (nth 1 info)
-		       (if (org-babel-noweb-p params :eval)
-			   (org-babel-expand-noweb-references info)
-			 (nth 1 info)))))
-         (session (cdr (assq :session params)))
-	 (dir (cdr (assq :dir params)))
-	 (default-directory
-	  (or (and dir (file-name-as-directory dir)) default-directory))
-	 (cmd (intern (concat "org-babel-load-session:" lang))))
-    (unless (fboundp cmd)
-      (error "No org-babel-load-session function for %s!" lang))
-    (pop-to-buffer (funcall cmd session body params))
-    (end-of-line 1)))
-
+(defvar org-src-window-setup)
 ;;;###autoload
 (defmacro org-babel-do-in-edit-buffer (&rest body)
   "Evaluate BODY in edit buffer if there is a code block at point.
@@ -952,21 +924,6 @@ Return t if a code block was found at point, nil otherwise."
 	 (org-edit-src-exit)
 	 (when outside-position (goto-char outside-position)))
        t)))
-
-(defvar org-src-window-setup)
-(defun org-babel-do-key-sequence-in-edit-buffer (key)
-  "Read key sequence KEY and execute the command in edit buffer.
-Enter a key sequence to be executed in the language major-mode
-edit buffer.  For example, TAB will alter the contents of the
-Org code block according to the effect of TAB in the language
-major mode buffer.  For languages that support interactive
-sessions, this can be used to send code from the Org buffer
-to the session for evaluation using the native major mode
-evaluation mechanisms."
-  (interactive "kEnter key-sequence to execute in edit buffer: ")
-  (org-babel-do-in-edit-buffer
-   (call-interactively
-    (key-binding (or key (read-key-sequence nil))))))
 
 (defvar org-link-bracket-re)
 
@@ -1230,17 +1187,6 @@ the `org-mode-hook'."
 	(org-babel-hide-hash)
 	(goto-char (match-end 0))))))
 (add-hook 'org-mode-hook #'org-babel-hide-all-hashes)
-
-(defun org-babel-hash-at-point (&optional point)
-  "Return the value of the hash at POINT.
-\\<org-mode-map>\
-The hash is also added as the last element of the kill ring.
-This can be called with `\\[org-ctrl-c-ctrl-c]'."
-  (interactive)
-  (let ((hash (car (delq nil (mapcar
-			      (lambda (ol) (overlay-get ol 'babel-hash))
-                              (overlays-at (or point (point))))))))
-    (when hash (kill-new hash) (message hash))))
 
 (defun org-babel-result-hide-spec ()
   "Hide portions of results lines.
