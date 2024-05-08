@@ -33,9 +33,111 @@
 
 (eval-when-compile (require 'subr-x))  ; For `string-empty-p', Emacs < 29
 
+;;; Temporary staging area for script evaluation in tmp dir.
+
+(defvar org-babel-temporary-directory
+  (unless noninteractive
+    (make-temp-file "babel-" t))
+  "Directory to hold temporary files created to execute code blocks.
+Used by `org-babel-temp-file'.  This directory will be removed on
+Emacs shutdown.")
+
+(defvar org-babel-temporary-stable-directory
+  (unless noninteractive
+    (let (dir)
+      (while (or (not dir) (file-exists-p dir))
+        (setq dir (expand-file-name
+                   (format "babel-stable-%d" (random 1000))
+                   temporary-file-directory)))
+      (make-directory dir)
+      dir))
+  "Directory to hold temporary files created to execute code blocks.
+Used by `org-babel-temp-file'.  This directory will be removed on
+Emacs shutdown.")
+
+(defcustom org-babel-remote-temporary-directory "/tmp/"
+  "Directory to hold temporary files on remote hosts."
+  :group 'org-babel
+  :type 'string)
+
+(defmacro org-babel-temp-directory ()
+  "Return temporary directory suitable for `default-directory'."
+  `(if (file-remote-p default-directory)
+       (concat (file-remote-p default-directory)
+	       org-babel-remote-temporary-directory)
+     (or (and org-babel-temporary-directory
+	      (file-exists-p org-babel-temporary-directory)
+	      org-babel-temporary-directory)
+	 temporary-file-directory)))
+
+(defun org-babel-temp-file (prefix &optional suffix)
+  "Create a temporary file in the `org-babel-temporary-directory'.
+Passes PREFIX and SUFFIX directly to `make-temp-file' with the
+value of function `temporary-file-directory' temporarily set to the
+value of `org-babel-temporary-directory'."
+  (make-temp-file
+   (concat (file-name-as-directory (org-babel-temp-directory)) prefix)
+   nil
+   suffix))
+
+(defmacro org-babel-temp-stable-directory ()
+  "Return temporary stable directory."
+  `(let ((org-babel-temporary-directory org-babel-temporary-stable-directory))
+     (org-babel-temp-directory)))
+
+(defun org-babel-temp-stable-file (data prefix &optional suffix)
+  "Create a temporary file in the `org-babel-remove-temporary-stable-directory'.
+The file name is stable with respect to DATA.  The file name is
+constructed like the following: <PREFIX><DATAhash><SUFFIX>."
+  (let ((path
+         (format
+          "%s%s%s%s"
+          (file-name-as-directory (org-babel-temp-stable-directory))
+          prefix
+          (org-sxhash-safe data)
+          (or suffix ""))))
+    ;; Create file.
+    (with-temp-file path)
+    ;; Return it.
+    path))
+
+(defun org-babel-remove-temporary-directory ()
+  "Remove `org-babel-temporary-directory' on Emacs shutdown."
+  (when (and org-babel-temporary-directory
+	     (file-exists-p org-babel-temporary-directory))
+    ;; taken from `delete-directory' in files.el
+    (condition-case nil
+	(progn
+	  (mapc (lambda (file)
+		  ;; This test is equivalent to
+		  ;; (and (file-directory-p fn) (not (file-symlink-p fn)))
+		  ;; but more efficient
+		  (if (eq t (car (file-attributes file)))
+		      (delete-directory file)
+		    (delete-file file)))
+		(directory-files org-babel-temporary-directory 'full
+				 directory-files-no-dot-files-regexp))
+	  (delete-directory org-babel-temporary-directory))
+      (error
+       (message "Failed to remove temporary Org-babel directory %s"
+		(or org-babel-temporary-directory
+		    "[directory not defined]"))))))
+
+(defun org-babel-remove-temporary-stable-directory ()
+  "Remove `org-babel-temporary-stable-directory' and on Emacs shutdown."
+  (when (and org-babel-temporary-stable-directory
+	     (file-exists-p org-babel-temporary-stable-directory))
+    (let ((org-babel-temporary-directory
+           org-babel-temporary-stable-directory))
+      (org-babel-remove-temporary-directory))))
+
+(add-hook 'kill-emacs-hook #'org-babel-remove-temporary-directory)
+(add-hook 'kill-emacs-hook #'org-babel-remove-temporary-stable-directory)
+
+;;; Code evaluation helpers
+
 (defvar org-babel-error-buffer-name "*Org-Babel Error Output*"
   "The buffer name Org Babel evaluate error output.")
-(declare-function org-babel-temp-file "ob-core" (prefix &optional suffix))
 
 (defun org-babel-eval-error-notify (exit-code stderr)
   "Open a buffer to display STDERR and a message with the value of EXIT-CODE.
