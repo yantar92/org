@@ -83,6 +83,15 @@
           (org-fold-show-context))
       (message "source-code block `%s' not found in this buffer" name))))
 
+(defun org-babel-result-names (&optional file)
+  "Return the names of results in FILE or the current buffer."
+  (with-current-buffer (if file (find-file-noselect file) (current-buffer))
+    (org-with-point-at 1
+      (let ((case-fold-search t) names)
+        (while (re-search-forward org-babel-result-w-name-regexp nil t)
+	  (setq names (cons (match-string-no-properties 9) names)))
+        names))))
+
 ;;;###autoload
 (defun org-babel-goto-named-result (name)
   "Go to a result with NAME."

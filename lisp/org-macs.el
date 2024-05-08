@@ -1355,6 +1355,16 @@ at the beginning of the string does not affect leading indentation."
    (if keep-lead "\\`\\([ \t]*\n\\)+" "\\`[ \t\n\r]+") ""
    (replace-regexp-in-string "[ \t\n\r]+\\'" "" s)))
 
+(defun org-babel-chomp (string &optional regexp)
+  "Strip a trailing space or carriage return from STRING.
+The default regexp used is \"[ \\f\\t\\n\\r\\v]\" but another one
+can be specified as the REGEXP argument."
+  (let ((regexp (or regexp "[ \f\t\n\r\v]")))
+    (while (and (> (length string) 0)
+                (string-match regexp (substring string -1)))
+      (setq string (substring string 0 -1)))
+    string))
+
 (defun org-string-nw-p (s)
   "Return S if S is a string containing a non-blank character.
 Otherwise, return nil."
