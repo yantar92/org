@@ -211,7 +211,7 @@ a link."
 		     (if begin (< (point) begin)
 		       (= (org-element-post-affiliated context)
 			  (line-beginning-position)))))))
-        (require 'org-footenote)
+        (require 'org-footnote)
 	(org-footnote-action))
        ;; On a planning line.  Check if we are really on a timestamp.
        ((and (eq type 'planning)
