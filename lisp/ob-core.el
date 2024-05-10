@@ -809,35 +809,6 @@ lines will be added after `:prologue' parameter and before BODY."
 				results))))))
     results))
 
-(defvar org-src-window-setup)
-;;;###autoload
-(defmacro org-babel-do-in-edit-buffer (&rest body)
-  "Evaluate BODY in edit buffer if there is a code block at point.
-Return t if a code block was found at point, nil otherwise."
-  (declare (debug (body)))
-  `(let* ((element (org-element-at-point))
-	  ;; This function is not supposed to move point.  However,
-	  ;; `org-edit-src-code' always moves point back into the
-	  ;; source block.  It is problematic if the point was before
-	  ;; the code, e.g., on block's opening line.  In this case,
-	  ;; we want to restore this location after executing BODY.
-	  (outside-position
-	   (and (<= (line-beginning-position)
-		   (org-element-post-affiliated element))
-		(point-marker)))
-	  (org-src-window-setup 'switch-invisibly))
-     (when (and (org-babel-where-is-src-block-head element)
-		(condition-case nil
-                    (org-edit-src-code)
-                  (t
-                   (org-edit-src-exit)
-                   (when outside-position (goto-char outside-position))
-                   nil)))
-       (unwind-protect (progn ,@body)
-	 (org-edit-src-exit)
-	 (when outside-position (goto-char outside-position)))
-       t)))
-
 (defvar org-link-bracket-re)
 
 (defun org-babel-active-location-p ()

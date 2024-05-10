@@ -35,13 +35,13 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob-comint)
 (require 'org-macs)
 (require 'org-compat)
 (require 'org-keys)
 (require 'sh-script) ; for `org-src-lang-modes'
 (require 'org-element)
 (require 'org-fold-core)
+(require 'ob-core)
 
 (defcustom org-edit-src-turn-on-auto-save nil
   "Non-nil means turn `auto-save-mode' on when editing a source block.
@@ -711,6 +711,48 @@ INFO should be a list similar in format to the return value of
 
 ;;; Public API
 
+;;;###autoload
+(defmacro org-babel-do-in-edit-buffer (&rest body)
+  "Evaluate BODY in edit buffer if there is a code block at point.
+Return t if a code block was found at point, nil otherwise."
+  (declare (debug (body)))
+  `(let* ((element (org-element-at-point))
+	  ;; This function is not supposed to move point.  However,
+	  ;; `org-edit-src-code' always moves point back into the
+	  ;; source block.  It is problematic if the point was before
+	  ;; the code, e.g., on block's opening line.  In this case,
+	  ;; we want to restore this location after executing BODY.
+	  (outside-position
+	   (and (<= (line-beginning-position)
+		   (org-element-post-affiliated element))
+		(point-marker)))
+	  (org-src-window-setup 'switch-invisibly))
+     (when (and (org-element-type-p element 'src-block)
+		(condition-case nil
+                    (org-edit-src-code)
+                  (t
+                   (org-edit-src-exit)
+                   (when outside-position (goto-char outside-position))
+                   nil)))
+       (unwind-protect (progn ,@body)
+	 (org-edit-src-exit)
+	 (when outside-position (goto-char outside-position)))
+       t)))
+
+(defun org-babel-do-key-sequence-in-edit-buffer (key)
+  "Read key sequence KEY and execute the command in edit buffer.
+Enter a key sequence to be executed in the language major-mode
+edit buffer.  For example, TAB will alter the contents of the
+Org code block according to the effect of TAB in the language
+major mode buffer.  For languages that support interactive
+sessions, this can be used to send code from the Org buffer
+to the session for evaluation using the native major mode
+evaluation mechanisms."
+  (interactive "kEnter key-sequence to execute in edit buffer: ")
+  (org-babel-do-in-edit-buffer
+   (call-interactively
+    (key-binding (or key (read-key-sequence nil))))))
+
 (defmacro org-src-do-at-code-block (&rest body)
   "Execute BODY from an edit buffer in the Org mode buffer."
   (declare (debug (body)))
@@ -1267,7 +1309,7 @@ EVENT is passed to `mouse-set-point'."
       (goto-char beg)
       (cond
        ;; Block is hidden; move at start of block.
-       ((org-fold-folded-p nil 'block) (forward-line -1))
+       ((org-fold-core-folded-p nil 'block) (forward-line -1))
        (write-back (org-src--goto-coordinates coordinates beg end))))
     ;; Clean up left-over markers and restore window configuration.
     (set-marker beg nil)

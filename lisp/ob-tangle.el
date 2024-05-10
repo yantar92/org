@@ -31,9 +31,10 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-src)
 (require 'org-macs)
 (require 'ol)
+(require 'ob-core)
+(require 'org-src)
 
 (declare-function make-directory "files" (dir &optional parents))
 (declare-function org-at-heading-p "org" (&optional ignored))

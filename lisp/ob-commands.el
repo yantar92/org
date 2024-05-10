@@ -733,20 +733,6 @@ buffer."
       (org-babel-map-src-blocks nil (org-babel-remove-result))
     (org-babel-remove-result)))
 
-(defun org-babel-do-key-sequence-in-edit-buffer (key)
-  "Read key sequence KEY and execute the command in edit buffer.
-Enter a key sequence to be executed in the language major-mode
-edit buffer.  For example, TAB will alter the contents of the
-Org code block according to the effect of TAB in the language
-major mode buffer.  For languages that support interactive
-sessions, this can be used to send code from the Org buffer
-to the session for evaluation using the native major mode
-evaluation mechanisms."
-  (interactive "kEnter key-sequence to execute in edit buffer: ")
-  (org-babel-do-in-edit-buffer
-   (call-interactively
-    (key-binding (or key (read-key-sequence nil))))))
-
 (provide 'ob-commands)
 
 ;;; ob-commands.el ends here

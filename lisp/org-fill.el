@@ -119,7 +119,7 @@ matches in paragraphs or comments, use it."
 		    (match-string 0)
 		  ""))))))))))
 
-(eval-when-compile (require 'ob-core)) ; `org-babel-do-in-edit-buffer'
+(eval-when-compile (require 'org-src)) ; `org-babel-do-in-edit-buffer'
 
 (defun org-fill-element (&optional justify)
   "Fill element at point, when applicable.
