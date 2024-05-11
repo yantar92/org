@@ -41,7 +41,6 @@
 (require 'sh-script) ; for `org-src-lang-modes'
 (require 'org-element)
 (require 'org-fold-core)
-(require 'ob-core)
 
 (defcustom org-edit-src-turn-on-auto-save nil
   "Non-nil means turn `auto-save-mode' on when editing a source block.
@@ -1096,6 +1095,7 @@ Throw an error when not at a comment block."
      (org-unescape-code-in-string (org-element-property :value element)))
     t))
 
+(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
 (defun org-edit-src-code (&optional code edit-buffer-name)
   "Edit the source or example block at point.
 \\<org-src-mode-map>
@@ -1122,6 +1122,7 @@ name of the sub-editing buffer."
 	      "example"))
 	   (lang-f (and (eq type 'src-block) (org-src-get-lang-mode lang)))
 	   (babel-info (and (eq type 'src-block)
+                            (require 'ob-core)
 			    (org-babel-get-src-block-info 'no-eval)))
 	   deactivate-mark)
       (when (and (eq type 'src-block) (not (functionp lang-f)))

@@ -30,7 +30,6 @@
 
 (require 'org-element)
 (require 'org-element-context)
-(require 'org-src)
 
 (defcustom org-adapt-indentation nil
   "Non-nil means adapt indentation to outline node level.
@@ -232,6 +231,9 @@ Alignment is done according to `org-property-format', which see."
         (delete-region (match-beginning 0) (match-end 0))
         (insert-and-inherit newtext)))))
 
+(eval-when-compile (require 'org-src)) ; for `org-babel-do-in-edit-buffer'
+(declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
+(declare-function org-edit-src-exit "org-src" ())
 (defun org-indent-line ()
   "Indent line depending on context.
 
@@ -307,6 +309,8 @@ Also align node properties according to `org-property-format'."
 		     (org-with-point-at (org-element-end element)
 		       (skip-chars-backward " \t\n")
 		       (line-beginning-position))))
+             (require 'org-src)
+             (defvar org-edit-src-content-indentation)
              (let ((block-content-ind
                     (when (not (org-src-preserve-indentation-p element))
                       (org-with-point-at (org-element-property :begin element)

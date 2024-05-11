@@ -38,6 +38,7 @@
 (require 'org-element-context)
 (require 'org-element)
 (require 'org-move)
+(require 'org-property)
 
 (require 'ob-core-read)
 (require 'ob-core-result)
@@ -58,7 +59,6 @@
 (declare-function org-babel-ref-parse "ob-ref" (assignment))
 (declare-function org-babel-ref-resolve "ob-ref" (ref))
 (declare-function org-babel-tangle-comment-links "ob-tangle" (&optional info))
-(declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 (declare-function org-forward-heading-same-level "org" (arg &optional invisible-ok))
 (declare-function org-src-coderef-format "org-src" (&optional element))
 (declare-function org-src-coderef-regexp "org-src" (fmt &optional label))
