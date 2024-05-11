@@ -224,7 +224,7 @@ For export specific modules, see also `org-export-backends'."
 (defun org-babel-do-load-languages (sym value)
   "Load the languages defined in `org-babel-load-languages'."
   (set-default-toplevel-value sym value)
-  (eval-after-load 'org-load
+  (eval-after-load 'ob-core
     '(dolist (pair org-babel-load-languages)
        (let ((active (cdr pair)) (lang (symbol-name (car pair))))
          (if active

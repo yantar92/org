@@ -701,10 +701,12 @@ This function ignores inlinetasks.  It is meant to be used as
 ;; FIXME: This ought to be configurable by the means of major mode
 ;; setup, but it is not, so we use advice.  We should eventually file
 ;; a feature request to Emacs upstream for this.
+(declare-function org-fold-show-context "org-fold" (&optional key))
 (defun org-mark-jump-unhide (&rest _)
   "Make the point visible with `org-show-context' after jumping to the mark."
   (when (and (derived-mode-p 'org-mode)
 	     (org-invisible-p))
+    (require 'org-fold)
     (org-fold-show-context 'mark-goto)))
 (advice-add 'pop-to-mark-command :after #'org-mark-jump-unhide)
 (advice-add 'exchange-point-and-mark :after #'org-mark-jump-unhide)
@@ -737,6 +739,9 @@ This function ignores inlinetasks.  It is meant to be used as
 (declare-function org-display-inline-images "org-preview-image"
                   (&optional include-linked refresh beg end))
 (declare-function org-setup-yank-dnd-handlers "org-dnd" ())
+(declare-function org-cycle-set-startup-visibility "org-cycle" ())
+(declare-function org-fold--advice-edit-commands "org-fold" ())
+(declare-function org-fold-initialize "org-fold" (&optional ellipsis))
 
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
@@ -777,6 +782,7 @@ The following commands are available:
      'match-hash :read-related t))
   (org-set-regexps-and-options)
   (add-to-invisibility-spec '(org-link))
+  (require 'org-fold)
   (org-fold-initialize)
   (make-local-variable 'org-link-descriptive)
   (when (eq org-fold-core-style 'overlays) (add-to-invisibility-spec '(org-hide-block . t)))
@@ -892,7 +898,9 @@ The following commands are available:
        (require 'org-preview-image)
        (org-display-inline-images))
      (when org-startup-with-latex-preview (org-latex-preview '(16)))
-     (unless org-inhibit-startup-visibility-stuff (org-cycle-set-startup-visibility))
+     (unless org-inhibit-startup-visibility-stuff
+       (require 'org-cycle)
+       (org-cycle-set-startup-visibility))
      (when org-startup-truncated (setq truncate-lines t))
      (when org-startup-numerated (require 'org-num) (org-num-mode 1))
      (when org-startup-indented (require 'org-indent) (org-indent-mode 1))))

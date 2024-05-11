@@ -41,6 +41,7 @@
 (require 'org-macro)
 (require 'org-planning)
 (require 'org-priority)
+(require 'org-fold-core)
 
 (declare-function org-clock-update-mode-line "org-clock")
 
@@ -747,7 +748,7 @@ drawer is immediately hidden."
 	   (inhibit-read-only t))
        (unless (bobp) (insert "\n"))
        (insert ":PROPERTIES:\n:END:")
-       (org-fold-region (line-end-position 0) (point) t 'drawer)
+       (org-fold-core-region (line-end-position 0) (point) t 'drawer)
        (when (or (eobp) (= begin (point-min))) (insert "\n"))
        (org-indent-region begin (point))))))
 

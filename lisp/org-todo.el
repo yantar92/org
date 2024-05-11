@@ -625,9 +625,10 @@ When called through ELisp, arg is also interpreted in the following way:
               ;; `save-excursion' is relying on markers saved before.
               (insert-before-markers-and-inherit next)
               (unless (org-invisible-p (line-beginning-position))
-                (org-fold-region (line-beginning-position)
-                                 (line-end-position)
-                                 nil 'outline)))
+                (org-fold-core-region
+                 (line-beginning-position)
+                 (line-end-position)
+                 nil 'outline)))
 	    (cond ((and org-state (equal this org-state))
 		   (message "TODO state was already %s" (org-trim next)))
 		  ((not (pos-visible-in-window-p hl-pos))

@@ -377,6 +377,7 @@ direct children of this heading."
     (if (looking-at "^[ \t]*$")
 	(org-next-visible-heading 1))))
 
+(declare-function org-cycle-show-empty-lines "org-cycle" (state))
 ;;;###autoload
 (defun org-archive-to-archive-sibling ()
   "Archive the current heading by moving it under the archive sibling.
@@ -446,6 +447,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
           (org-time-stamp-format 'with-time 'no-brackets)))
 	(outline-up-heading 1 t)
 	(org-fold-subtree t)
+        (require 'org-cycle)
 	(org-cycle-show-empty-lines 'folded)
 	(when org-provide-todo-statistics
 	  ;; Update TODO statistics of parent.

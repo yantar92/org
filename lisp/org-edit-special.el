@@ -906,6 +906,8 @@ Otherwise, return a user error."
 
 (declare-function org-table-calc-current-TBLFM "org-table-formula" (&optional arg))
 (declare-function orgtbl-send-table "orgtbl-mode" (&optional maybe))
+(declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
+(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -998,7 +1000,10 @@ This command does many different things, depending on context:
       ;; a block and then if it is at a blank line.
       (pcase type
 	((or `inline-src-block `src-block)
+         (require 'ob-core)
+         (defvar org-babel-no-eval-on-ctrl-c-ctrl-c)
 	 (unless org-babel-no-eval-on-ctrl-c-ctrl-c
+           (require 'ob-eval)
 	   (org-babel-eval-wipe-error-buffer)
 	   (org-babel-execute-src-block
 	    current-prefix-arg (org-babel-get-src-block-info nil context))))

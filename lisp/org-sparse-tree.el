@@ -33,6 +33,7 @@
 (require 'org-property)
 (require 'org-agenda-search)
 (require 'org-agenda-files)
+(require 'org-cycle)
 
 (defvar org-ts-type nil)
 

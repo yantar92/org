@@ -222,6 +222,8 @@ This is the compiled version of the format.")
   "Map operators to summarize functions.
 See `org-columns-summary-types' for details.")
 
+(declare-function org-cycle-overview "org-cycle" ())
+(declare-function org-cycle-content "org-cycle" (&optional arg))
 (defun org-columns-content ()
   "Switch to contents view while in columns view."
   (interactive)
@@ -229,7 +231,7 @@ See `org-columns-summary-types' for details.")
   (org-cycle-content))
 
 (org-defkey org-columns-map "c"        #'org-columns-content)
-(org-defkey org-columns-map "o"        #'org-overview)
+(org-defkey org-columns-map "o"        #'org-cycle-overview)
 (org-defkey org-columns-map "e"        #'org-columns-edit-value)
 (org-defkey org-columns-map "\C-c\C-t" #'org-columns-todo)
 (org-defkey org-columns-map "\C-c\C-c" #'org-columns-toggle-or-columns-quit)
@@ -1659,6 +1661,7 @@ PARAMS is a property list of parameters:
                        #'org-columns-dblock-write-default)))
     (funcall formatter (point) table params)))
 
+(declare-function org-link-heading-search-string "ol" (&optional string))
 (defun org-columns-dblock-write-default (ipos table params)
   "Write out a columnview table at position IPOS in the current buffer.
 TABLE is a table with data as produced by `org-columns--capture-view'.
@@ -1694,6 +1697,7 @@ definition."
 	      (let* ((raw (nth item-index (cdr row)))
 		     (cleaned (org-columns--clean-item raw))
 		     (item (if (not link) cleaned
+                             (require 'ol)
 			     (let ((search (org-link-heading-search-string raw)))
 			       (org-link-make-string
 				(if (not (buffer-file-name)) search
