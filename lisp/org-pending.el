@@ -23,6 +23,9 @@
 
 ;;; Commentary:
 
+;;;; Overview
+;;
+;;
 ;; This library contains an API to lock a region while it is "being
 ;; updated"; the content of the region is "pending" and cannot be
 ;; modified.  It will be updated, later, when the new content is
@@ -31,6 +34,10 @@
 ;; Locking regions is useful when the update is computed
 ;; asynchronously and/or depends on external events.
 ;;
+
+;;;; How to use locks in your library
+;;
+
 ;; To lock a region, you need to do something like this:
 ;;
 ;;    1. Call the function `org-pending' with the region to lock; use
@@ -46,11 +53,49 @@
 ;;       region (using your ON-OUTCOME) and unlock it; at this point
 ;;       the lock is "dead" (not live-p).
 ;;
-;; A lock is "live" (blocking a region) from its creation until its
-;; outcome.  Once the lock receives its outcome, it's dead.
+;; A lock is "live" (blocking its region) from when it's created until
+;; it receives its outcome (success or failure).  Once the lock
+;; receives its outcome, it's dead.
 ;;
-;; The two functions`org-pending' and `org-pending-send-update' should
-;; be enough for most use cases.
+;;
+;;;; Interface provided to the Emacs user
+;;
+;; The library makes locks visible to the user using text properties
+;; and/or overlays.  It diplays and updates the status while the
+;; region is locked: the initial status is "scheduled", then, when
+;; receiving progress it becomes "pending" (with progress information
+;; if any).  Emacs allows to diplay a description of the lock.  From
+;; that description, the user may request to cancel that lock; see the
+;; field `user-cancel-function' of the REGLOCK object if you need to
+;; customize what to do on cancel.
+;;
+;; When receiving the outcome (success or failure), after unlocking
+;; the region, the library may leave information about the outcome
+;; (using text properties/overlays).  If that outcome information is
+;; (still) displayed, Emacs allows to display a description of that
+;; lock.  From that description, the user may decide to "forget" that
+;; lock; "forgetting the lock" removes the outcome visual marks, and,
+;; it allows Emacs to discard any information related to this lock.
+
+;; Note that the visual marks of an outcome are silently removed if
+;; the library needs to (like when creating a new lock, or when
+;; reverting the buffer).
+;;
+;; The description of a lock (live or dead) provides information like
+;; the schedule time, the duration, the outcome time, the result (in
+;; case of success), the error (in case of failure), etc.  Customize
+;; the field `insert-details-function' of REGLOCK object to add your
+;; own information.
+;;
+;; If the user kills a buffer, or, kills Emacs, some locks may have to
+;; be killed too be killed too.  The library will ask the user to
+;; confirm if an operation requires to kill some locks.  See the field
+;; `before-kill-function' of REGLOCK object, if you need to do
+;; something before a lock is really killed.
+;;
+;;
+
+;;;; Examples of functions using this library
 ;;
 ;; Here are examples of functions using this library:
 ;;     - `org-pending-user-edit': prompt the user to edit a region,
@@ -60,6 +105,9 @@
 ;;       asynchronously.
 ;;     - and `org-dblock-update': execute dynamic blocks
 ;;       asynchronously.
+;;
+
+;;;; Content of this file
 ;;
 ;; The section "REGLOCK" describes the REGLOCK structure, how to lock
 ;; pending regions, how to describe them to the user and how to update
