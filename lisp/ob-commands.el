@@ -698,18 +698,6 @@ a window into the `org-babel-get-src-block-info' function."
 		 header name))))
     (message "No suspicious header arguments found.")))
 
-;;;###autoload
-(defun org-babel-hash-at-point (&optional point)
-  "Return the value of the hash at POINT.
-\\<org-mode-map>\
-The hash is also added as the last element of the kill ring.
-This can be called with `\\[org-ctrl-c-ctrl-c]'."
-  (interactive)
-  (let ((hash (car (delq nil (mapcar
-			    (lambda (ol) (overlay-get ol 'babel-hash))
-                            (overlays-at (or point (point))))))))
-    (when hash (kill-new hash) (message hash))))
-
 (defvar org-babel-load-languages)
 
 ;;;###autoload
