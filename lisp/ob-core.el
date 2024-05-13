@@ -132,18 +132,6 @@ When matching, reference is stored in match group 1."
   "^[ \t]*#\\+headers?:[ \t]*\\([^\n]*\\)$"
   "Regular expression used to match multi-line header arguments.")
 
-(defvar org-babel-src-block-regexp
-  (concat
-   ;; (1) indentation                 (2) lang
-   "^\\([ \t]*\\)#\\+begin_src[ \t]+\\([^ \f\t\n\r\v]+\\)[ \t]*"
-   ;; (3) switches
-   "\\([^\":\n]*\"[^\"\n*]*\"[^\":\n]*\\|[^\":\n]*\\)"
-   ;; (4) header arguments
-   "\\([^\n]*\\)\n"
-   ;; (5) body
-   "\\(\\(?:.\\|\n\\)*?\n\\)??[ \t]*#\\+end_src")
-  "Regexp used to identify code blocks.")
-
 (defun org-babel--get-vars (params)
   "Return the babel variable assignments in PARAMS.
 
@@ -602,7 +590,7 @@ guess will be made."
   (let* ((org-babel-current-src-block-location
           (or org-babel-current-src-block-location
               (nth 5 info)
-              (org-babel-where-is-src-block-head)))
+              (org-src-block-head)))
          (info (if info (copy-tree info) (org-babel-get-src-block-info)))
          (executor-type
           (or executor-type
@@ -1283,28 +1271,6 @@ to the table for reinsertion to `org-mode'."
             (org-babel-put-colnames table colnames) table))
     table))
 
-(defun org-babel-where-is-src-block-head (&optional src-block)
-  "Find where the current source block begins.
-
-If optional argument SRC-BLOCK is `src-block' type element, find
-its current beginning instead.
-
-Return the point at the beginning of the current source block.
-Specifically at the beginning of the #+BEGIN_SRC line.  Also set
-`match-data' relatively to `org-babel-src-block-regexp', which see.
-If the point is not on a source block or within blank lines after an
-src block, then return nil."
-  (let ((element (or src-block (org-element-at-point))))
-    (when (org-element-type-p element 'src-block)
-      (let ((end (org-element-end element)))
-	(org-with-wide-buffer
-	 ;; Ensure point is not on a blank line after the block.
-	 (forward-line 0)
-	 (skip-chars-forward " \r\t\n" end)
-	 (when (< (point) end)
-	   (prog1 (goto-char (org-element-post-affiliated element))
-	     (looking-at org-babel-src-block-regexp))))))))
-
 (defun org-babel-find-named-block (name)
   "Find a named source-code block.
 Return the location of the source block identified by source
@@ -1337,7 +1303,7 @@ to `org-babel-named-src-block-regexp'."
   (let ((element (org-element-at-point)))
     (unless (org-element-type-p element 'src-block)
       (error "Not in a source block"))
-    (goto-char (org-babel-where-is-src-block-head element))
+    (goto-char (org-src-block-head element))
     (let* ((ind (org-current-text-indentation))
 	   (body-start (line-beginning-position 2))
 	   (body (org-element-normalize-string

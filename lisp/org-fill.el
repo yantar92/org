@@ -139,7 +139,6 @@ a footnote definition, try to fill the first paragraph within."
   (declare-function org-table-align "org-table-align" ())
   (declare-function org-edit-src-exit "org-src" ())
   (declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
-  (declare-function org-babel-where-is-src-block-head "ob-core" (&optional src-block))
   (defvar org-src-window-setup)
   (with-syntax-table org-mode-transpose-word-syntax-table
     ;; Move to end of line in order to get the first paragraph within

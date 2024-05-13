@@ -75,6 +75,18 @@ This regular expression matches these groups:
 (defconst org-dblock-end-re "^[ \t]*#\\+\\(?:END\\|end\\)\\([: \t\r\n]\\|$\\)"
   "Matches the end of a dynamic block.")
 
+(defvar org-babel-src-block-regexp
+  (concat
+   ;; (1) indentation                 (2) lang
+   "^\\([ \t]*\\)#\\+begin_src[ \t]+\\([^ \f\t\n\r\v]+\\)[ \t]*"
+   ;; (3) switches
+   "\\([^\":\n]*\"[^\"\n*]*\"[^\":\n]*\\|[^\":\n]*\\)"
+   ;; (4) header arguments
+   "\\([^\n]*\\)\n"
+   ;; (5) body
+   "\\(\\(?:.\\|\n\\)*?\n\\)??[ \t]*#\\+end_src")
+  "Regexp used to identify code blocks.")
+
 ;;;; Keyword
 (defconst org-keyword-regexp "^[ \t]*#\\+\\(\\S-+?\\):[ \t]*\\(.*\\)$"
   "Regular expression for keyword-lines.")

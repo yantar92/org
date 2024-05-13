@@ -56,7 +56,6 @@ major mode."
   (declare-function org-indent-line "org-indent-static" ())
   (declare-function org-edit-src-exit "org-src")
   (declare-function org-edit-src-code "org-src")
-  (declare-function org-babel-where-is-src-block-head "org-src")
   (if (let ((element (org-element-at-point)))
 	(and (org-element-type-p element 'src-block)
 	     (< (save-excursion

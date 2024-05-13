@@ -256,7 +256,7 @@ matching a regular expression."
   (save-restriction
     (save-excursion
       (when (equal arg '(4))
-	(let ((head (org-babel-where-is-src-block-head)))
+	(let ((head (org-src-block-head)))
 	  (if head
 	      (goto-char head)
 	    (user-error "Point is not in a source code block"))))
@@ -720,7 +720,7 @@ of the current buffer."
 		  ((= n 1))
 		  (t (org-babel-next-src-block (1- n)))))
         (org-babel-goto-named-src-block block-name))
-      (goto-char (org-babel-where-is-src-block-head))
+      (goto-char (org-src-block-head))
       (forward-line 1)
       ;; Try to preserve location of point within the source code in
       ;; tangled code file.

@@ -42,7 +42,7 @@
 (defun org-babel-goto-src-block-head ()
   "Go to the beginning of the current code block."
   (interactive)
-  (let ((head (org-babel-where-is-src-block-head)))
+  (let ((head (org-src-block-head)))
     (if head (goto-char head) (error "Not currently in a code block"))))
 
 (declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
@@ -413,7 +413,7 @@ completion from lists of common args and values."
 ;; Add support for completing-read insertion of header arguments after ":"
 (defun org-babel-header-arg-expand ()
   "Call `org-babel-enter-header-arg-w-completion' in appropriate contexts."
-  (when (and (equal (char-before) ?\:) (org-babel-where-is-src-block-head))
+  (when (and (equal (char-before) ?\:) (org-src-block-head))
     (org-babel-enter-header-arg-w-completion (match-string 2))))
 
 (defun org-babel-enter-header-arg-w-completion (&optional lang)
@@ -449,7 +449,7 @@ When called within blank lines after a code block, create a new code
 block of the same language as the previous."
   (interactive "P")
   (let* ((info (org-babel-get-src-block-info 'no-eval))
-	 (start (org-babel-where-is-src-block-head))
+	 (start (org-src-block-head))
          ;; `start' will be nil when within space lines after src block.
 	 (block (and start (match-string 0)))
          (body-beg (and start (match-beginning 5)))
@@ -686,7 +686,7 @@ a window into the `org-babel-get-src-block-info' function."
   (let ((too-close 2) ;; <- control closeness to report potential match
 	(names (mapcar #'symbol-name org-babel-header-arg-names)))
     (dolist (header (mapcar (lambda (arg) (substring (symbol-name (car arg)) 1))
-			    (and (org-babel-where-is-src-block-head)
+			    (and (org-src-block-head)
 				 (org-babel-parse-header-arguments
 				  (org-no-properties
 				   (match-string 4))))))
@@ -704,7 +704,7 @@ a window into the `org-babel-get-src-block-info' function."
 (defun org-babel-mark-block ()
   "Mark current source block."
   (interactive)
-  (let ((head (org-babel-where-is-src-block-head)))
+  (let ((head (org-src-block-head)))
     (when head
       (save-excursion
         (goto-char head)

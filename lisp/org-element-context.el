@@ -326,6 +326,29 @@ When ELEMENT is provided, it is considered to be element at point."
                     (skip-chars-backward " \t\n\r")
                     (point))))))))
 
+(defalias 'org-babel-where-is-src-block-head #'org-src-block-head)
+(defun org-src-block-head (&optional src-block)
+  "Find where the current source block begins.
+
+If optional argument SRC-BLOCK is `src-block' type element, find
+its current beginning instead.
+
+Return the point at the beginning of the current source block.
+Specifically at the beginning of the #+BEGIN_SRC line.  Also set
+`match-data' relatively to `org-babel-src-block-regexp', which see.
+If the point is not on a source block or within blank lines after an
+src block, then return nil."
+  (let ((element (or src-block (org-element-at-point))))
+    (when (org-element-type-p element 'src-block)
+      (let ((end (org-element-end element)))
+	(org-with-wide-buffer
+	 ;; Ensure point is not on a blank line after the block.
+	 (forward-line 0)
+	 (skip-chars-forward " \r\t\n" end)
+	 (when (< (point) end)
+	   (prog1 (goto-char (org-element-post-affiliated element))
+	     (looking-at org-babel-src-block-regexp))))))))
+
 (defun org-at-property-drawer-p ()
   "Non-nil when point is at the first line of a property drawer."
   (let ((pdrawer (org-element-at-point)))
