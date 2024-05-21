@@ -201,15 +201,21 @@ target       Specification of where the captured item should be placed.
                  File as child of this entry, or in the body of the entry
 
              (file+headline \"path/to/file\" \"node headline\")
+             (file+headline \"path/to/file\" function-returning-headline)
+             (file+headline \"path/to/file\" symbol-containing-headline)
                  Fast configuration if the target heading is unique in the file
 
              (file+olp \"path/to/file\" \"Level 1 heading\" \"Level 2\" ...)
+             (file+olp \"path/to/file\" function-returning-outline-path)
+             (file+olp \"path/to/file\" symbol-containing-outline-path)
                  For non-unique headings, the full outline path is safer
 
              (file+regexp  \"path/to/file\" \"regexp to find location\")
                  File to the entry matching regexp
 
              (file+olp+datetree \"path/to/file\" \"Level 1 heading\" ...)
+             (file+olp+datetree \"path/to/file\" function-returning-outline-path)
+             (file+olp+datetree \"path/to/file\" symbol-containing-outline-path)
                  Will create a heading in a date tree for today's date.
                  If no heading is given, the tree will be on top level.
                  To prompt for date instead of using TODAY, use the
@@ -411,7 +417,13 @@ you can escape ambiguous cases with a backward slash, e.g., \\%i."
 				(file :tag "Literal")
 				(function :tag "Function")
 				(variable :tag "Variable")
-				(sexp :tag "Form"))))
+				(sexp :tag "Form")))
+        (olp-variants '(choice :tag "Outline path"
+                               (repeat :tag "Outline path" :inline t
+				       (string :tag "Headline"))
+			       (function :tag "Function")
+			       (variable :tag "Variable")
+			       (sexp :tag "Form"))))
     `(repeat
       (choice :value ("" "" entry (file "~/org/notes.org") "")
 	      (list :tag "Multikey description"
@@ -436,12 +448,15 @@ you can escape ambiguous cases with a backward slash, e.g., \\%i."
 			    (list :tag "File & Headline"
 				  (const :format "" file+headline)
 				  ,file-variants
-				  (string :tag "  Headline"))
+				  (choice :tag "Headline"
+				          (string   :tag "Headline")
+				          (function :tag "Function")
+				          (variable :tag "Variable")
+				          (sexp :tag "Form")))
 			    (list :tag "File & Outline path"
 				  (const :format "" file+olp)
 				  ,file-variants
-				  (repeat :tag "Outline path" :inline t
-					  (string :tag "Headline")))
+				  ,olp-variants)
 			    (list :tag "File & Regexp"
 				  (const :format "" file+regexp)
 				  ,file-variants
@@ -449,8 +464,7 @@ you can escape ambiguous cases with a backward slash, e.g., \\%i."
 			    (list :tag "File [ & Outline path ] & Date tree"
 				  (const :format "" file+olp+datetree)
 				  ,file-variants
-				  (option (repeat :tag "Outline path" :inline t
-						  (string :tag "Headline"))))
+				  ,olp-variants)
 			    (list :tag "File & function"
 				  (const :format "" file+function)
 				  ,file-variants
@@ -1014,7 +1028,7 @@ Store them in the capture property list."
 	    (org-capture-put-target-region-and-position)
 	    (goto-char position))
 	   (_ (error "Cannot find target ID \"%s\"" id))))
-	(`(file+headline ,path ,(and headline (pred stringp)))
+	(`(file+headline ,path ,headline)
 	 (set-buffer (org-capture-target-buffer path))
 	 ;; Org expects the target file to be in Org mode, otherwise
 	 ;; it throws an error.  However, the default notes files
@@ -1028,6 +1042,7 @@ Store them in the capture property list."
 	 (org-capture-put-target-region-and-position)
 	 (widen)
 	 (goto-char (point-min))
+         (setq headline (org-capture-expand-headline headline))
 	 (if (re-search-forward (format org-complex-heading-regexp-format
 					(regexp-quote headline))
 				nil t)
@@ -1037,8 +1052,9 @@ Store them in the capture property list."
 	   (insert "* " headline "\n")
 	   (forward-line -1)))
 	(`(file+olp ,path . ,(and outline-path (guard outline-path)))
-	 (let ((m (org-find-olp (cons (org-capture-expand-file path)
-				      outline-path))))
+	 (let* ((expanded-file-path (org-capture-expand-file path))
+                (m (org-find-olp (cons expanded-file-path
+				       (apply #'org-capture-expand-olp expanded-file-path outline-path)))))
 	   (set-buffer (marker-buffer m))
 	   (org-capture-put-target-region-and-position)
 	   (widen)
@@ -1059,8 +1075,9 @@ Store them in the capture property list."
 		 (and (derived-mode-p 'org-mode) (org-at-heading-p)))))
 	(`(file+olp+datetree ,path . ,outline-path)
 	 (let ((m (if outline-path
-		      (org-find-olp (cons (org-capture-expand-file path)
-					  outline-path))
+		      (let ((expanded-file-path (org-capture-expand-file path)))
+                        (org-find-olp (cons expanded-file-path
+					    (apply #'org-capture-expand-olp expanded-file-path outline-path))))
 		    (set-buffer (org-capture-target-buffer path))
 		    (point-marker))))
 	   (set-buffer (marker-buffer m))
@@ -1144,6 +1161,34 @@ Store them in the capture property list."
 			    (save-excursion
 			      (org-decrypt-entry)
 			      (and (org-back-to-heading t) (point))))))))
+
+(defun org-capture-expand-headline (headline)
+  "Expand functions, symbols and headline names for HEADLINE.
+When HEADLINE is a function, call it. When it is a variable,
+return its value. When it is a string, return it.  In any other
+case, return `nil'."
+  (let* ((final-headline (cond ((stringp headline) headline)
+                               ((functionp headline) (funcall headline))
+                               ((and (symbolp headline) (boundp headline))
+                                (symbol-value headline))
+                               (t nil))))
+    final-headline))
+
+(defun org-capture-expand-olp (file &rest olp)
+  "Expand functions, symbols and outline paths for OLP.
+When OLP is a function, call it with no arguments while
+the current buffer is the FILE-visiting buffer. When it
+is a variable, return its value. When it is a list of
+string, return it. In any other case, signal an error."
+  (let* ((first (car olp))
+         (final-olp (cond ((or (not first) (stringp first)) olp)
+                          ((and (not (cdr olp)) (functionp first))
+                           (with-current-buffer (find-file-noselect file)
+                             (funcall first)))
+                          ((and (not (cdr olp)) (symbolp first) (boundp first))
+                           (symbol-value first))
+                          (t (error "Invalid outline path: %S" olp)))))
+      final-olp))
 
 (defun org-capture-expand-file (file)
   "Expand functions, symbols and file names for FILE.

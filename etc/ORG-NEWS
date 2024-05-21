@@ -644,6 +644,12 @@ Users who do not want variable expansion can set
 
 This new hook runs when a note has been stored.
 
+*** New customization options for ~org-capture-templates~
+
+The variable ~org-capture-templates~ accepts a target specification
+for headline (~file+headline~) and olp (~file+olp~ and
+~file+olp+datetree~) as function and symbol.
+
 *** New option controlling how Org mode sorts things ~org-sort-function~
 
 Sorting of agenda items, tables, menus, headlines, etc can now be
