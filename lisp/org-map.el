@@ -227,6 +227,163 @@ a *different* entry, you cannot use these techniques."
 			 func matcher org--matcher-tags-todo-only)))))))))
       res)))
 
+(defun org-babel-active-location-p ()
+  "Return non-nil, when at executable element."
+  (org-element-type-p
+   (save-match-data (org-element-context))
+   '(babel-call inline-babel-call inline-src-block src-block)))
+
+;;;###autoload
+(defmacro org-babel-map-src-blocks (file &rest body)
+  "Evaluate BODY forms on each source-block in FILE.
+If FILE is nil evaluate BODY forms on source blocks in current
+buffer.  During evaluation of BODY the following local variables
+are set relative to the currently matched code block.
+
+full-block ------- string holding the entirety of the code block
+beg-block -------- point at the beginning of the code block
+end-block -------- point at the end of the matched code block
+lang ------------- string holding the language of the code block
+beg-lang --------- point at the beginning of the lang
+end-lang --------- point at the end of the lang
+switches --------- string holding the switches
+beg-switches ----- point at the beginning of the switches
+end-switches ----- point at the end of the switches
+header-args ------ string holding the header-args
+beg-header-args -- point at the beginning of the header-args
+end-header-args -- point at the end of the header-args
+body ------------- string holding the body of the code block
+beg-body --------- point at the beginning of the body
+end-body --------- point at the end of the body"
+  (declare (indent 1) (debug t))
+  (let ((tempvar (make-symbol "file")))
+    `(let* ((case-fold-search t)
+	    (,tempvar ,file)
+	    (visited-p (or (null ,tempvar)
+			   (get-file-buffer (expand-file-name ,tempvar))))
+	    (point (point)) to-be-removed)
+       (save-window-excursion
+	 (when ,tempvar (find-file ,tempvar))
+	 (setq to-be-removed (current-buffer))
+	 (goto-char (point-min))
+	 (while (re-search-forward org-babel-src-block-regexp nil t)
+	   (when (org-babel-active-location-p)
+	     (goto-char (match-beginning 0))
+	     (let ((full-block (match-string 0))
+		   (beg-block (match-beginning 0))
+		   (end-block (match-end 0))
+		   (lang (match-string 2))
+		   (beg-lang (match-beginning 2))
+		   (end-lang (match-end 2))
+		   (switches (match-string 3))
+		   (beg-switches (match-beginning 3))
+		   (end-switches (match-end 3))
+		   (header-args (match-string 4))
+		   (beg-header-args (match-beginning 4))
+		   (end-header-args (match-end 4))
+		   (body (match-string 5))
+		   (beg-body (match-beginning 5))
+		   (end-body (match-end 5)))
+               ;; Silence byte-compiler in case `body' doesn't use all
+               ;; those variables.
+               (ignore full-block beg-block end-block lang
+                       beg-lang end-lang switches beg-switches
+                       end-switches header-args beg-header-args
+                       end-header-args body beg-body end-body)
+               ,@body
+	       (goto-char end-block)))))
+       (unless visited-p (kill-buffer to-be-removed))
+       (goto-char point))))
+
+;;;###autoload
+(defmacro org-babel-map-inline-src-blocks (file &rest body)
+  "Evaluate BODY forms on each inline source block in FILE.
+If FILE is nil evaluate BODY forms on source blocks in current
+buffer."
+  (declare (indent 1) (debug (form body)))
+  (org-with-gensyms (datum end point tempvar to-be-removed visitedp)
+    `(let* ((case-fold-search t)
+	    (,tempvar ,file)
+	    (,visitedp (or (null ,tempvar)
+			   (get-file-buffer (expand-file-name ,tempvar))))
+	    (,point (point))
+	    ,to-be-removed)
+       (save-window-excursion
+	 (when ,tempvar (find-file ,tempvar))
+	 (setq ,to-be-removed (current-buffer))
+	 (goto-char (point-min))
+	 (while (re-search-forward "src_\\S-" nil t)
+	   (let ((,datum (org-element-context)))
+	     (when (org-element-type-p ,datum 'inline-src-block)
+	       (goto-char (org-element-begin ,datum))
+	       (let ((,end (copy-marker (org-element-end ,datum))))
+		 ,@body
+		 (goto-char ,end)
+		 (set-marker ,end nil))))))
+       (unless ,visitedp (kill-buffer ,to-be-removed))
+       (goto-char ,point))))
+
+;;;###autoload
+(defmacro org-babel-map-call-lines (file &rest body)
+  "Evaluate BODY forms on each call line in FILE.
+If FILE is nil evaluate BODY forms on source blocks in current
+buffer."
+  (declare (indent 1) (debug (form body)))
+  (org-with-gensyms (datum end point tempvar to-be-removed visitedp)
+    `(let* ((case-fold-search t)
+	    (,tempvar ,file)
+	    (,visitedp (or (null ,tempvar)
+			   (get-file-buffer (expand-file-name ,tempvar))))
+	    (,point (point))
+	    ,to-be-removed)
+       (save-window-excursion
+	 (when ,tempvar (find-file ,tempvar))
+	 (setq ,to-be-removed (current-buffer))
+	 (goto-char (point-min))
+	 (while (re-search-forward "call_\\S-\\|^[ \t]*#\\+CALL:" nil t)
+	   (let ((,datum (org-element-context)))
+	     (when (org-element-type-p ,datum '(babel-call inline-babel-call))
+	       (goto-char (or (org-element-post-affiliated datum)
+                              (org-element-begin datum)))
+	       (let ((,end (copy-marker (org-element-end ,datum))))
+		 ,@body
+		 (goto-char ,end)
+		 (set-marker ,end nil))))))
+       (unless ,visitedp (kill-buffer ,to-be-removed))
+       (goto-char ,point))))
+
+;;;###autoload
+(defmacro org-babel-map-executables (file &rest body)
+  "Evaluate BODY forms on each active Babel code in FILE.
+If FILE is nil evaluate BODY forms on source blocks in current
+buffer."
+  (declare (indent 1) (debug (form body)))
+  (org-with-gensyms (datum end point tempvar to-be-removed visitedp)
+    `(let* ((case-fold-search t)
+	    (,tempvar ,file)
+	    (,visitedp (or (null ,tempvar)
+			   (get-file-buffer (expand-file-name ,tempvar))))
+	    (,point (point))
+	    ,to-be-removed)
+       (save-window-excursion
+	 (when ,tempvar (find-file ,tempvar))
+	 (setq ,to-be-removed (current-buffer))
+	 (goto-char (point-min))
+	 (while (re-search-forward
+		 "\\(call\\|src\\)_\\|^[ \t]*#\\+\\(BEGIN_SRC\\|CALL:\\)" nil t)
+	   (let ((,datum (org-element-context)))
+	     (when (org-element-type-p
+                    ,datum
+                    '(babel-call inline-babel-call inline-src-block src-block))
+	       (goto-char (or (org-element-post-affiliated ,datum)
+                              (org-element-begin ,datum)))
+	       (let ((,end (copy-marker (org-element-end ,datum))))
+		 ,@body
+		 (goto-char ,end)
+		 (set-marker ,end nil))))))
+       (unless ,visitedp (kill-buffer ,to-be-removed))
+       (goto-char ,point))))
+
 (provide 'org-map)
 
 ;;; org-map.el ends here

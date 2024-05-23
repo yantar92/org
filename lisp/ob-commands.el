@@ -123,6 +123,9 @@ With optional prefix argument ARG, jump backward ARG many source blocks."
   (require 'org-move)
   (org-previous-block arg org-babel-src-block-regexp))
 
+(defvar org-babel-results-buffer-name "*Org Babel Results*"
+  "The buffer name of Org Babel evaluate results.")
+
 (declare-function org-open-at-point "org-open-at-point" (&optional arg))
 ;;;###autoload
 (defun org-babel-open-src-block-result (&optional re-run)
