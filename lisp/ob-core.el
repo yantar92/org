@@ -40,6 +40,7 @@
 (require 'org-move)
 (require 'org-property)
 (require 'org-map)
+(require 'org-src)
 
 (require 'ob-core-read)
 (require 'ob-core-result)
@@ -50,20 +51,11 @@
     nil))
 
 (defvar org-babel-library-of-babel)
-(defvar org-edit-src-content-indentation)
-(defvar org-link-file-path-type)
-(defvar org-src-lang-modes)
-(defvar org-babel-tangle-uncomment-comments)
 
 (declare-function org-babel-ref-goto-headline-id "ob-ref" (id))
 (declare-function org-babel-ref-headline-body "ob-ref" ())
 (declare-function org-babel-ref-parse "ob-ref" (assignment))
 (declare-function org-babel-ref-resolve "ob-ref" (ref))
-(declare-function org-babel-tangle-comment-links "ob-tangle" (&optional info))
-(declare-function org-forward-heading-same-level "org" (arg &optional invisible-ok))
-(declare-function org-src-coderef-format "org-src" (&optional element))
-(declare-function org-src-coderef-regexp "org-src" (fmt &optional label))
-(declare-function org-src-get-lang-mode "org-src" (lang))
 
 (defgroup org-babel nil
   "Code block evaluation and management in `org-mode' documents."
@@ -1285,6 +1277,8 @@ CONTEXT may be one of :tangle, :export or :eval."
     (cl-some (lambda (v) (member v allowed-values))
 	     (split-string (or (cdr (assq :noweb params)) "")))))
 
+(declare-function org-babel-tangle-comment-links "ob-tangle" (&optional info))
+(defvar org-babel-tangle-uncomment-comments) ; defined in ob-tangle.el
 (defvar org-babel-expand-noweb-references--cache nil
   "Noweb reference cache used during expansion.")
 (defvar org-babel-expand-noweb-references--cache-buffer nil
@@ -1364,6 +1358,7 @@ block but are passed literally to the \"example-block\"."
 			          (org-babel-expand-noweb-references ,i)
 		                (nth 1 ,i))))
 	               (if (not comment) b
+                         (require 'ob-tangle)
 		         (let ((cs (org-babel-tangle-comment-links ,i)))
 		           (concat (c-wrap (car cs)) "\n"
 			           b "\n"
