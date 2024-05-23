@@ -51,31 +51,71 @@
 ;;       :success or :failure message (using
 ;;       `org-pending-send-update'): Emacs will update the pending
 ;;       region (using your ON-OUTCOME) and unlock it; at this point
-;;       the lock is "dead" (not live-p).
+;;       the lock is "dead" (see `org-pending-reglock-live-p').
 ;;
 ;; A lock is "live" (blocking its region) from when it's created until
 ;; it receives its outcome (success or failure).  Once the lock
 ;; receives its outcome, it's dead.
+;;
+;; You may read the current status using `org-pending-reglock-status'.
+;; The status is automatically updated when you send updates using
+;; `org-pending-send-update'.
+;;
+;; | Status    | Type     | Region   | Live ? | Possible updates              | Outcome available | Outcome marks                  |
+;; |-----------+----------+----------+--------+-------------------------------+-------------------+--------------------------------|
+;; | :schedule | initial  | locked   | alive  | :progress, :success, :failure | no                | no                             |
+;; | :pending  |          | locked   | alive  | :progress, :success, :failure | no                | no                             |
+;; | :success  | terminal | unlocked | dead   |                               | yes               | if ON-OUTCOME returns a region |
+;; | :failure  | terminal | unlocked | dead   |                               | yes               | if ON-OUTCOME returns a region |
+;;
+;; For example, the following code will lock the current region, and
+;; insert the result on :success, or, display a message on :failure:
+;;
+;; 1. Locking a region:
+;;        (setq my-rlock
+;;              (org-pending (cons (point) (mark))
+;;                           (lambda (outcome)
+;;                             (pcase outcome
+;;                               (`(:success ,result) (goto-char END) (insert result))
+;;                               (`(:failure ,err) (message "Failed: %s" err))))))
+;;
+;; 2. Sending progress feedbacks:
+;;
+;;        (org-pending-send-update my-rlock  (list :progress "Not ready yet."))
+;;        (org-pending-send-update my-rlock  (list :progress "Coming soon."))
+;;
+;; 3. Either reporting success:
+;;
+;;        (org-pending-send-update my-rlock (list :success 1))
+;;
+;;    or failure:
+;;
+;;        (org-pending-send-update my-rlock (list :failure "Some error!"))
 ;;
 ;;
 ;;;; Interface provided to the Emacs user
 ;;
 ;; The library makes locks visible to the user using text properties
 ;; and/or overlays.  It diplays and updates the status while the
-;; region is locked: the initial status is "scheduled", then, when
-;; receiving progress it becomes "pending" (with progress information
-;; if any).  Emacs allows to diplay a description of the lock.  From
-;; that description, the user may request to cancel that lock; see the
-;; field `user-cancel-function' of the REGLOCK object if you need to
-;; customize what to do on cancel.
+;; region is locked: the initial status is :scheduled, then, when
+;; receiving progress it becomes :pending (with progress information
+;; if any).  Emacs allows to diplay a description of the lock in a new
+;; buffer, like, for example, `describe-package'.  From that
+;; description buffer, the user may request to cancel that lock; see
+;; the field `user-cancel-function' of the REGLOCK object if you need
+;; to customize what to do on cancel.  By default, Emacs will just
+;; send the update (list :failure 'org-pending-user-cancel) so that
+;; the region is unlocked.
 ;;
 ;; When receiving the outcome (success or failure), after unlocking
 ;; the region, the library may leave information about the outcome
-;; (using text properties/overlays).  If that outcome information is
-;; (still) displayed, Emacs allows to display a description of that
-;; lock.  From that description, the user may decide to "forget" that
-;; lock; "forgetting the lock" removes the outcome visual marks, and,
-;; it allows Emacs to discard any information related to this lock.
+;; (using text properties/overlays); it will leave an outcome mark
+;; only if the ON-OUTCOME function returns the outcome region (see
+;; `org-pending`). If that outcome information is (still) displayed,
+;; Emacs allows to display a description of that lock.  From that
+;; description, the user may decide to "forget" that lock; "forgetting
+;; the lock" removes the outcome visual marks, and, it allows Emacs to
+;; discard any information related to this lock.
 
 ;; Note that the visual marks of an outcome are silently removed if
 ;; the library needs to (like when creating a new lock, or when
@@ -85,15 +125,24 @@
 ;; the schedule time, the duration, the outcome time, the result (in
 ;; case of success), the error (in case of failure), etc.  Customize
 ;; the field `insert-details-function' of REGLOCK object to add your
-;; own information.
+;; own information.  For example, to add the value of the reglock
+;; property :my-prop to a reglock description, you can do:
+;;
+;;    (setf (org-pending-reglock-insert-details-function my-reglock)
+;;          (lambda (rl _start _end)
+;;            (insert (format "%s" (org-pending-reglock-property rl :my-prop)))))
 ;;
 ;; If the user kills a buffer, or, kills Emacs, some locks may have to
-;; be killed too be killed too.  The library will ask the user to
-;; confirm if an operation requires to kill some locks.  See the field
+;; be killed too.  The library will ask the user to confirm if an
+;; operation requires to kill some locks.  See the field
 ;; `before-kill-function' of REGLOCK object, if you need to do
-;; something before a lock is really killed.
+;; something before a lock is really killed.  For example, if you like
+;; to kill a MY-BUFFER before MY-LOCK is killed, you can do:
 ;;
+;;    (setf (org-pending-reglock-before-kill-function my-reglock)
+;;          (lambda (_rl) (kill-buffer my-buffer)))
 ;;
+
 
 ;;;; Examples of functions using this library
 ;;
