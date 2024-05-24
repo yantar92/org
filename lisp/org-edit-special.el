@@ -908,6 +908,8 @@ Otherwise, return a user error."
 (declare-function orgtbl-send-table "orgtbl-mode" (&optional maybe))
 (declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
 (declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
+(declare-function org-table-align "org-table-align" ())
+(declare-function org-babel-hash-at-point "ob-core" (&optional point))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -968,7 +970,8 @@ This command does many different things, depending on context:
    ((and (local-variable-p 'org-finish-function)
 	 (fboundp org-finish-function))
     (funcall org-finish-function))
-   ((org-babel-hash-at-point))
+   ((progn (require 'ob-core)
+           (org-babel-hash-at-point)))
    ((run-hook-with-args-until-success 'org-ctrl-c-ctrl-c-hook))
    (t
     (let* ((context
@@ -1152,10 +1155,13 @@ Use `\\[org-edit-special]' to edit table.el tables")))
                (require 'orgtbl-mode)
                (orgtbl-send-table 'maybe))))
           (t
+           (require 'org-table-formula)
            (org-table-maybe-eval-formula)
            (cond (arg (call-interactively #'org-table-recalculate))
                  ((org-table-maybe-recalculate-line))
-                 (t (org-table-align))))))
+                 (t
+                  (require 'org-table-align)
+                  (org-table-align))))))
 	((or `timestamp (and `planning (guard (org-at-timestamp-p 'lax))))
 	 (org-timestamp-change 0 'day))
 	((and `nil (guard (org-at-heading-p)))

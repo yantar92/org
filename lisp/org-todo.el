@@ -450,6 +450,7 @@ enough to shift date past today.  Continue? "
 (defvar org-state)
 ;; FIXME: We should refactor this and similar dynamically scoped blocker flags.
 (defvar org-blocked-by-checkboxes nil) ; dynamically scoped
+(declare-function org-toggle-comment "org-comment" ())
 ;;;###autoload
 (defun org-todo (&optional arg)
   "Change the TODO state of an item.
@@ -514,6 +515,7 @@ When called through ELisp, arg is also interpreted in the following way:
 	(catch 'exit
 	  (org-back-to-heading t)
 	  (when (org-in-commented-heading-p t)
+            (require 'org-comment)
 	    (org-toggle-comment)
 	    (setq commentp t))
 	  (when (looking-at org-outline-regexp) (goto-char (1- (match-end 0))))

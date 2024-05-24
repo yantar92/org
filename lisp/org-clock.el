@@ -2772,6 +2772,7 @@ the currently selected interval size."
 		 tables
 		 (org-combine-plists params `(:multifile ,multifile)))))))
 
+(declare-function org-table-align "org-table-align" ())
 (defun org-clocktable-write-default (ipos tables params)
   "Write out a clock table at position IPOS in the current buffer.
 TABLES is a list of tables with clocking data as produced by
@@ -3011,6 +3012,7 @@ from the dynamic block definition."
     ;; Back to beginning, align the table, recalculate if necessary.
     (goto-char ipos)
     (skip-chars-forward "^|")
+    (require 'org-table-align)
     (org-table-align)
     (when org-hide-emphasis-markers
       ;; We need to align a second time.

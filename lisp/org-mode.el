@@ -742,6 +742,9 @@ This function ignores inlinetasks.  It is meant to be used as
 (declare-function org-cycle-set-startup-visibility "org-cycle" ())
 (declare-function org-fold--advice-edit-commands "org-fold" ())
 (declare-function org-fold-initialize "org-fold" (&optional ellipsis))
+(declare-function org-fold-show-all "org-fold" (&optional types))
+(declare-function org-fold-reveal "org-fold" (&optional siblings))
+(declare-function org-latex-preview "org-preview-latex" (&optional arg))
 
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
@@ -897,7 +900,9 @@ The following commands are available:
      (when org-startup-with-inline-images
        (require 'org-preview-image)
        (org-display-inline-images))
-     (when org-startup-with-latex-preview (org-latex-preview '(16)))
+     (when org-startup-with-latex-preview
+       (require 'org-preview-latex)
+       (org-latex-preview '(16)))
      (unless org-inhibit-startup-visibility-stuff
        (require 'org-cycle)
        (org-cycle-set-startup-visibility))

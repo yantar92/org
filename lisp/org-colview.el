@@ -1662,6 +1662,8 @@ PARAMS is a property list of parameters:
     (funcall formatter (point) table params)))
 
 (declare-function org-link-heading-search-string "ol" (&optional string))
+(declare-function org-table-recalculate "org-table-formula" (&optional all noalign))
+(declare-function org-table-align "org-table-align" ())
 (defun org-columns-dblock-write-default (ipos table params)
   "Write out a columnview table at position IPOS in the current buffer.
 TABLE is a table with data as produced by `org-columns--capture-view'.
@@ -1741,6 +1743,8 @@ definition."
 	      (when (string-match-p "\\`[ \t]*#\\+TBLFM:" line)
 		(insert "\n" (string-trim-left line))
 		(unless recalc (setq recalc t))))))
+        (require 'org-table-formula)
+        (require 'org-table-align)
 	(when recalc (org-table-recalculate 'all t))
 	(org-table-align)
         (when (seq-find #'identity width-specs)

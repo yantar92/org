@@ -791,6 +791,7 @@ If LOCAL is non-nil use the buffer-local value of `org-capture-plist'."
         (funcall value)
       (mapc #'funcall value))))
 
+(declare-function org-table-align "org-table-align" ())
 (defun org-capture-finalize (&optional stay-with-capture)
   "Finalize the capture process.
 With prefix argument STAY-WITH-CAPTURE, jump to the location of the
@@ -852,7 +853,10 @@ captured item after finalizing."
 	;; If we have added a table line, maybe recompute?
 	(when (and (eq (org-capture-get :type 'local) 'table-line)
 		   (org-at-table-p))
-	  (if (not (org-table-get-stored-formulas)) (org-table-align)
+	  (if (not (org-table-get-stored-formulas))
+              (progn
+                (require 'org-table-align)
+                (org-table-align))
 	    ;; Adjust formulas, if necessary.  We assume a non-nil
 	    ;; `:immediate-finish' means that no confirmation is
 	    ;; required.  Else, obey `org-table-fix-formulas-confirm'.
