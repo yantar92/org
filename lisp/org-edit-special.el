@@ -909,7 +909,7 @@ Otherwise, return a user error."
 (declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
 (declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
 (declare-function org-table-align "org-table-align" ())
-(declare-function org-babel-hash-at-point "ob-core" (&optional point))
+(declare-function org-babel-hash-at-point "ob-core-result" (&optional point))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -970,7 +970,7 @@ This command does many different things, depending on context:
    ((and (local-variable-p 'org-finish-function)
 	 (fboundp org-finish-function))
     (funcall org-finish-function))
-   ((progn (require 'ob-core)
+   ((progn (require 'ob-core-result)
            (org-babel-hash-at-point)))
    ((run-hook-with-args-until-success 'org-ctrl-c-ctrl-c-hook))
    (t
