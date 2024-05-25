@@ -22,7 +22,6 @@
 
 (require 'ob-core)
 (require 'org-src)
-(require 'ob-ref)
 (require 'org-table-create)
 (eval-and-compile (require 'cl-lib))
 

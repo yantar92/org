@@ -34,7 +34,6 @@
 (org-assert-version)
 
 (require 'ob-core)
-(require 'ob-lob)
 
 ;;; Navigate src blocks
 

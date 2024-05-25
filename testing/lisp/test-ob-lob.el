@@ -19,7 +19,7 @@
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 (eval-and-compile (require 'cl-lib))
-(require 'ob-lob)
+(require 'ob-core)
 
 
 ;;; Tests

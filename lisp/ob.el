@@ -36,8 +36,6 @@
 (require 'ob-comint)
 (require 'ob-exp)
 (require 'ob-table)
-(require 'ob-lob)
-(require 'ob-ref)
 (require 'ob-tangle)
 
 (provide 'ob)

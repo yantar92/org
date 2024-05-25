@@ -43,7 +43,7 @@
 (defvar org-occur-highlights)
 (declare-function org-clock-remove-overlays "org-clock")
 (declare-function org-remove-occur-highlights "org-sparse-tree")
-(declare-function org-babel-lob-get-info "ob-lob")
+(declare-function org-babel-lob-get-info "ob-core")
 (declare-function org-clock-update-time-maybe "org-clock")
 (declare-function org-update-dblock "org-dblock")
 (declare-function org-plot/gnuplot "org-plot")
