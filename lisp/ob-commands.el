@@ -35,6 +35,45 @@
 
 (require 'ob-core)
 
+;;; Helpers
+
+(defmacro org-babel-when-in-src-block (&rest body)
+  "Execute BODY if point is in a source block and return t.
+
+Otherwise do nothing and return nil."
+  `(if (org-element-type-p (org-element-context) '(inline-src-block src-block))
+       (progn
+	 ,@body
+	 t)
+     nil))
+
+(defun org-babel-src-block-names (&optional file)
+  "Return the names of source blocks in FILE or the current buffer."
+  (with-current-buffer (if file (find-file-noselect file) (current-buffer))
+    (org-with-point-at 1
+      (let ((regexp "^[ \t]*#\\+begin_src ")
+	    (case-fold-search t)
+	    (names nil))
+	(while (re-search-forward regexp nil t)
+	  (let ((element (org-element-at-point)))
+	    (when (org-element-type-p element 'src-block)
+	      (let ((name (org-element-property :name element)))
+		(when name (push name names))))))
+	names))))
+
+(defun org-babel-find-named-block (name)
+  "Find a named source-code block.
+Return the location of the source block identified by source
+NAME, or nil if no such block exists.  Set match data according
+to `org-babel-named-src-block-regexp'."
+  (save-excursion
+    (goto-char (point-min))
+    (let ((regexp (org-babel-named-src-block-regexp-for-name name)))
+      (or (and (looking-at regexp)
+	       (progn (goto-char (match-beginning 1))
+		      (line-beginning-position)))
+	  (ignore-errors (org-next-block 1 nil regexp))))))
+
 ;;; Navigate src blocks
 
 ;;;###autoload
