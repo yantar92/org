@@ -24,6 +24,58 @@
 
 ;;; Commentary:
 
+;; This library implements Org mode Babel support.
+;; The library implements the functionality described in
+;; `(org)Working with Source Code' section of Org mode manual.
+;; The manual should be the main source of truth here, while the below
+;; commentary describes some technical Elisp-level details of the
+;; implementation and should be read in the context of the manual.
+
+;; In Org mode, code blocks written in arbitrary programming languages
+;; can be evaluated.  To evaluate a code block, an appropriate babel
+;; backend (Elisp library) that implements programming language/Elisp
+;; interface must be loaded.  This file implements high-level
+;; API that makes use of the backends during evaluation.  The main
+;; entry point is `org-babel-execute-src-block'.
+
+;; The body of the code blocks can be programatically generated using
+;; noweb syntax.  See "Noweb expansion" section of this file.
+
+;; Further, Org Babel provides the means to transfer input/output data
+;; between the code blocks, including code blocks written in different
+;; programming languages.  This is done using intermediate data
+;; representation in Elisp, which is then converted from/to individual
+;; programming language format.  The specific conversion must be
+;; implemented as a part of babel backend.
+
+;; The data or generated source code can be derived from Org mode text
+;; (like tables, paragraphs, example blocks, etc), from other code
+;; blocks, from their results of evaluation, or from calling Elisp
+;; functions directly.  See "Executing babel functions and referencing
+;; external data" section of this file and ob-core-read library.
+
+;; The code block output/results is also converted to Elisp, according
+;; to the babel backend implementation.  ob-core-read library
+;; functions could be utilized by the babel backends to convert string
+;; data into Elisp.  Org Babel later use the Elisp output to insert it
+;; into Org mode documents as Org markup - see ob-core-results
+;; library.
+
+;; The code block input, configuration, and output can be all
+;; controlled by the users using header arguments.  The API provided
+;; in this file implements the unified treatment of certain header
+;; arguments that must be common across all the individual babel
+;; backends, although some addition header arguments can be supported
+;; by the backends if necessary.
+
+;; Some code blocks can be taken from other files.  In particular, Org
+;; Babel provides the means to maintain a personal library of useful
+;; code blocks that can be reused or called from anywhere.  See
+;; "Library of Babel" section of this file.
+
+;; Section "Babel backend API" provides some useful functions that can
+;; be called by individual backends.
+
 ;;; Code:
 
 (require 'org-macs)
@@ -904,6 +956,7 @@ see."
 	(_ nil)))))
 
 ;;; Executing babel functions and referencing external data
+
 ;; Functions for referencing data from the header arguments of a
 ;; org-babel block.  The syntax of such a reference should be
 
