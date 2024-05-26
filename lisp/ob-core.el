@@ -99,7 +99,9 @@
 (require 'org-map)
 (require 'org-src)
 
+;; Convert data from Org markup or plain text to Elisp.
 (require 'ob-core-read)
+;; Convert data from Elisp to Org markup and insert it into Org files.
 (require 'ob-core-result)
 
 (defgroup org-babel nil
@@ -677,6 +679,15 @@ environment, to override this check."
 
 ;;; Noweb expansion
 
+;; Some constructs inside code blocks can be treated specially and
+;; replaced by generated code.  By default, <<name>> strings are
+;; replaced by the corresponding code blocks with NAME.  Or they can
+;; be replaced with results of evaluation of a code block.xs
+;; Entry point: `org-babel-expand-noweb-references', which see.
+
+;; Check "Noweb Reference Syntax" section of Org mode manual for more
+;; details.
+
 (defcustom org-babel-noweb-wrap-start "<<"
   "String used to begin a noweb reference in a code block.
 See also `org-babel-noweb-wrap-end'."
@@ -906,6 +917,12 @@ block but are passed literally to the \"example-block\"."
        body t t 2))))
 
 ;;; Library of Babel
+
+;; The functions below implement centralized library of code blocks
+;; that can be called from anywhere.  The blocks a stored in
+;; `org-babel-library-of-babel' variable.  The blocks can be added by
+;; user via `org-babel-lob-ingest'.  Other parts of Org Babel consult
+;; `org-babel-library-of-babel' when looking up code blocks.
 
 (defvar org-babel-library-of-babel nil
   "Library of source-code blocks.
@@ -1243,6 +1260,26 @@ to \"0:-1\"."
   (mapcar #'org-trim (org-babel-balanced-split arg-string 44)))
 
 ;;; Parsing header arguments
+
+;; Header arguments configure the way code blocks are expanded,
+;; evaluated, and how results of evaluation are handled.  They also
+;; define foreign data to be passed as input to the code blocks.
+
+;; The functions below implement header argument parsing.
+
+;; Header argument values can be defined verbatim or as a result of
+;; evaluation of inline Elisp snippets.  In addition, :var header
+;; argument can take values that are converted from name Org markup
+;; elements, other src blocks, or their evaluation results.
+
+;; The deader arguments are derived from the code block in Org buffer,
+;; parent headings, and global Elisp variables.  See "Using Header
+;; Arguments" section of Org mode manual for details.
+
+;; The table data is treated specially, possibly stripping column and
+;; row names before passing them to the code block.
+
+;; The main entry point is `org-babel-get-src-block-info'.
 
 (defconst org-babel-common-header-args-w-values
   '((cache	. ((no yes)))
@@ -1779,6 +1816,12 @@ Otherwise, return a list with the following pattern:
 	info))))
 
 ;;; Executing src blocks
+
+;; `org-babel-execute-src-block' takes expanded code block body,
+;; its parsed header arguments, and passes it to appropriate babel
+;; backend for evaluation.  The results are then inserted (if
+;; requested) at the appropriate location in Org mode buffer using the
+;; means provided by ob-core-results library.
 
 (defvar org-babel-after-execute-hook nil
   "Hook for functions to be called after `org-babel-execute-src-block'.")
