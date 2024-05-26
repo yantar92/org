@@ -30,22 +30,13 @@
 (org-assert-version)
 
 (require 'ob-core)
+(require 'org-element)
+(require 'org-element-context)
 
-(declare-function org-babel-lob-get-info "ob-lob" (&optional datum no-eval))
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-element-context "org-element" (&optional element))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-begin "org-element" (node))
-(declare-function org-element-end "org-element" (node))
-(declare-function org-element-type "org-element-ast" (node &optional anonymous))
-(declare-function org-escape-code-in-string "org-src" (s))
 (declare-function org-export-copy-buffer "ox"
                   (&optional buffer drop-visibility
                              drop-narrowing drop-contents
                              drop-locals))
-(declare-function org-in-commented-heading-p "org" (&optional no-inheritance element))
-(declare-function org-in-archived-heading-p "org" (&optional no-inheritance element))
-(declare-function org-src-preserve-indentation-p "org-src" (node))
 
 (defcustom org-export-use-babel t
   "Switch controlling code evaluation and header processing during export.
