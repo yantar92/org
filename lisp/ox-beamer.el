@@ -1135,6 +1135,8 @@ Return PDF file's name."
       async subtreep visible-only body-only ext-plist
       #'org-latex-compile)))
 
+(declare-function org-entry-delete "org-property-set" (epom property))
+(declare-function org-delete-property "org-property-set" (property))
 ;;;###autoload
 (defun org-beamer-select-environment ()
   "Select the environment to be used by beamer for this entry.
@@ -1153,7 +1155,7 @@ aid, but the tag does not have any semantic meaning."
 	 (org-current-tag-alist
 	  (append '((:startgroup))
 		  (mapcar (lambda (e) (cons (concat "B_" (car e))
-				            (string-to-char (nth 1 e))))
+				       (string-to-char (nth 1 e))))
 			  envs)
 		  '((:endgroup))
 		  '(("BMCOL" . ?|))))
@@ -1165,6 +1167,7 @@ aid, but the tag does not have any semantic meaning."
       (cond
        ;; For a column, automatically ask for its width.
        ((eq org-last-tag-selection-key ?|)
+        (require 'org-property-set)
 	(if (member "BMCOL" tags)
 	    (org-set-property "BEAMER_col" (read-string "Column width: "))
 	  (org-delete-property "BEAMER_col")))
@@ -1172,9 +1175,11 @@ aid, but the tag does not have any semantic meaning."
        ;; to resumed frame and overlay specifications.
        ((eq org-last-tag-selection-key ?A)
 	(if (equal (org-entry-get nil "BEAMER_env") "againframe")
-	    (progn (org-entry-delete nil "BEAMER_env")
-		   (org-entry-delete nil "BEAMER_ref")
-		   (org-entry-delete nil "BEAMER_act"))
+	    (progn
+              (require 'org-property-set)
+              (org-entry-delete nil "BEAMER_env")
+	      (org-entry-delete nil "BEAMER_ref")
+	      (org-entry-delete nil "BEAMER_act"))
 	  (org-entry-put nil "BEAMER_env" "againframe")
 	  (org-set-property
 	   "BEAMER_ref"

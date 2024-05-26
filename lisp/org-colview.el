@@ -673,6 +673,8 @@ dynamic scoping for `org-overriding-columns-format'.")
 (declare-function org-deadline "org-planning" (arg &optional time))
 (declare-function org-todo "org-todo" (&optional arg))
 (declare-function org-edit-headline "org-edit-structure" (&optional heading))
+(declare-function org-property-get-allowed-values "org-property-set"
+                  (epom property &optional table))
 (defun org-columns-edit-value (&optional key)
   "Edit the value of the property at point in column view.
 Where possible, use the standard interface for changing this line."
@@ -723,6 +725,7 @@ Where possible, use the standard interface for changing this line."
 	       (org-with-point-at pom
 		 (call-interactively #'org-beamer-select-environment))))
 	    (_
+             (require 'org-property-set)
 	     (let* ((allowed (org-property-get-allowed-values pom key 'table))
 		    (value (get-char-property (point) 'org-columns-value))
 		    (nval (org-trim

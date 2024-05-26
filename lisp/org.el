@@ -134,6 +134,7 @@
 (require 'org-font-lock)
 (require 'org-dblock)
 (require 'org-property)
+(require 'org-property-set)
 (require 'org-priority)
 (require 'org-log-note)
 (require 'org-agenda-files)

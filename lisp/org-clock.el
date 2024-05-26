@@ -1922,6 +1922,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 	   (let ((re (format "^[ \t]*:%s:[ \t]*$" (regexp-quote drawer)))
 		 (end (save-excursion (outline-next-heading))))
 	     (while (re-search-forward re end t)
+               (require 'org-property-set)
 	       (org-remove-empty-drawer-at (point))))))))))
 
 (defun org-clock-timestamps-up (&optional n)

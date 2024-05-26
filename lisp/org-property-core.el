@@ -26,6 +26,11 @@
 
 (require 'org-element)
 
+(defgroup org-properties nil
+  "Options concerning properties in Org mode."
+  :tag "Org Properties"
+  :group 'org)
+
 (defcustom org-use-property-inheritance nil
   "Non-nil means properties apply also for sublevels.
 
@@ -130,6 +135,53 @@ or by adding lines like
   :type '(repeat
 	  (cons (string :tag "Property")
 		(string :tag "Value"))))
+
+(defcustom org-properties-postprocess-alist nil
+  "Alist of properties and functions to adjust inserted values.
+Elements of this alist must be of the form
+
+  ([string] [function])
+
+where [string] must be a property name and [function] must be a
+lambda expression: this lambda expression must take one argument,
+the value to adjust, and return the new value as a string.
+
+For example, this element will allow the property \"Remaining\"
+to be updated wrt the relation between the \"Effort\" property
+and the clock summary:
+
+ ((\"Remaining\" (lambda(value)
+                   (let ((clocksum (org-clock-sum-current-item))
+                         (effort (org-duration-to-minutes
+                                   (org-entry-get (point) \"Effort\"))))
+                     (org-minutes-to-clocksum-string (- effort clocksum))))))"
+  :group 'org-properties
+  :version "24.1"
+  :type '(alist :key-type (string     :tag "Property")
+		:value-type (function :tag "Function")))
+
+(defvar org-property-changed-functions nil
+  "Hook called when the value of a property has changed.
+Each hook function should accept two arguments, the name of the property
+and the new value.")
+
+(defvar org-property-set-functions-alist nil
+  "Property set function alist.
+Each entry should have the following format:
+
+ (PROPERTY . READ-FUNCTION)
+
+The read function will be called with the same argument as
+`org-completing-read'.")
+
+(defvar org-property-allowed-value-functions nil
+  "Hook for functions supplying allowed values for a specific property.
+The functions must take a single argument, the name of the property, and
+return a flat list of allowed values.  If \":ETC\" is one of
+the values, this means that these values are intended as defaults for
+completion, but that other values should be allowed too.
+The functions must return nil if they are not responsible for this
+property.")
 
 (defun org--property-local-values (property literal-nil &optional epom)
   "Return value for PROPERTY in current entry or at EPOM.

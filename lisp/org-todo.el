@@ -801,6 +801,7 @@ string to select a different tag for this task."
 	  (const :tag "Track with ORDERED tag" t)
 	  (string :tag "Use other tag")))
 
+(declare-function org-delete-property "org-property-set" (property))
 ;;;###autoload
 (defun org-toggle-ordered-property ()
   "Toggle the ORDERED property of the current entry.
@@ -813,6 +814,7 @@ See variable `org-track-ordered-property-with-tag'."
       (org-back-to-heading)
       (if (org-entry-get nil "ORDERED")
 	  (progn
+            (require 'org-property-set)
 	    (org-delete-property "ORDERED")
 	    (and tag (org-toggle-tag tag 'off))
 	    (message "Subtasks can be completed in arbitrary order"))

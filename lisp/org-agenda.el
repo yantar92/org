@@ -7967,11 +7967,13 @@ tag and (if present) the flagging note."
 kill ring.  Press `\\[org-agenda-show-the-flagging-note]' again to remove \
 tag and note")))))
 
+(declare-function org-entry-delete "org-property-set" (epom property))
 (defun org-agenda-remove-flag (marker)
   "Remove the FLAGGED tag and any flagging note in the entry."
   (let ((newhead
          (org-with-point-at marker
            (org-toggle-tag "FLAGGED" 'off)
+           (require 'org-property-set)
            (org-entry-delete nil "THEFLAGGINGNOTE")
            (org-get-heading))))
     (org-agenda-change-all-lines newhead marker)

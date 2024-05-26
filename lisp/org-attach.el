@@ -519,6 +519,7 @@ Return the directory."
         (delete-directory old t)))
     new))
 
+(declare-function org-entry-delete "org-property-set" (epom property))
 (defun org-attach-unset-directory ()
   "Remove DIR node property.
 If attachment folder is changed due to removal of DIR-property
@@ -532,6 +533,7 @@ DIR-property exists (that is different from the unset one)."
   (let ((old (org-attach-dir))
 	(new
          (progn
+           (require 'org-property-set)
 	   (org-entry-delete nil "DIR")
 	   ;; ATTACH-DIR is deprecated and removed from documentation,
 	   ;; but still works. Remove code for it after major nr change.

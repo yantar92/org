@@ -27,6 +27,8 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'org-element)
+
 (defgroup org-edit-structure nil
   "Options concerning structure editing in Org mode."
   :tag "Org Edit Structure"
@@ -123,6 +125,21 @@ If optional TXT is given, check this string instead of the current kill."
 	  (when (< (- (match-end 0) (match-beginning 0) 1) start-level)
 	    (throw 'exit nil)))
 	t))))
+
+(defun org-remove-empty-drawer-at (pos)
+  "Remove an empty drawer at position POS.
+POS may also be a marker."
+  (with-current-buffer (if (markerp pos) (marker-buffer pos) (current-buffer))
+    (org-with-wide-buffer
+     (goto-char pos)
+     (let ((drawer (org-element-at-point)))
+       (when (and (org-element-type-p drawer '(drawer property-drawer))
+		  (not (org-element-contents-begin drawer)))
+	 (delete-region (org-element-begin drawer)
+			(progn (goto-char (org-element-end drawer))
+			       (skip-chars-backward " \r\t\n")
+			       (forward-line)
+			       (point))))))))
 
 (provide 'org-edit-structure-common)
 

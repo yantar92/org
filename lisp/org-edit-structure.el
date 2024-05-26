@@ -48,7 +48,6 @@
 (declare-function org-agenda-save-markers-for-cut-and-paste "org-agenda")
 (defvar org-id-overriding-file-name)
 (declare-function org-id-get-create "org-id")
-(declare-function org-remove-empty-drawer-at "org")
 (declare-function org-clock-sum "org-clock")
 (declare-function org-clocking-buffer "org")
 (defvar org-clock-marker)
@@ -981,6 +980,7 @@ If yes, remember the marker and the distance to BEG."
     (move-marker (car x) (+ beg (cdr x))))
   (setq org-markers-to-move nil))
 
+(declare-function org-entry-delete "org-property-set" (epom property))
 ;;;###autoload
 (defun org-clone-subtree-with-time-shift (n &optional shift)
   "Clone the task (subtree) at point N times.
@@ -1072,7 +1072,9 @@ with the original repeater."
 		  (goto-char (point-min))
 		  (org-fold-show-subtree)
 		  (and idprop (if org-clone-delete-id
-				  (org-entry-delete nil "ID")
+                                  (progn
+                                    (require 'org-property-set)
+				    (org-entry-delete nil "ID"))
 				(org-id-get-create t)))
 		  (unless (= n 0)
 		    (while (re-search-forward org-clock-line-re nil t)

@@ -1697,6 +1697,8 @@ Lisp programs can force the template by setting KEYS to a string."
 (defvar org-capture--clipboards nil
   "List various clipboards values.")
 
+(declare-function org-read-property-value "org-property-set"
+                  (property &optional epom default))
 (defun org-capture-fill-template (&optional template initial annotation)
   "Fill a TEMPLATE and return the filled template as a string.
 The template may still contain \"%?\" for cursor positioning.
@@ -1922,7 +1924,7 @@ Expansion occurs in a temporary Org mode buffer."
 		           ;; target buffer so `org-read-property-value' has
 		           ;; a chance to find allowed values in sub-trees
 		           ;; from the target buffer.
-		           (setq-local org-keyword-properties nil)
+                           (require 'org-property-set)
 		           (let* ((origin (set-marker (make-marker)
 						      (org-capture-get :pos)
 						      (org-capture-get :buffer)))
