@@ -76,6 +76,11 @@
 ;; Section "Babel backend API" provides some useful functions that can
 ;; be called by individual backends.
 
+;; Any code evaluated by this library is potenially coming from
+;; arbitrary Org files, maybe downloaded from untrusted sources.  It
+;; is thus a subject of safety API.  See "Code evaluation safety"
+;; section in this file.
+
 ;;; Code:
 
 (require 'org-macs)
