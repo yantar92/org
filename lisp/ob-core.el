@@ -118,17 +118,90 @@
 	  (regexp-opt '("NAME" "TBLNAME")))
   "Regexp matching a NAME keyword.")
 
+(defvar org-babel-exp-reference-buffer nil
+  "Buffer containing original contents of the exported buffer.
+This is used by Babel to resolve references in source blocks.
+Its value is dynamically bound during export.")
+
 ;;; Babel backend API
+
+;; Babel backends define a series of specially named functions
+;; and variables that contain the backend name <lang>:
+;; - (mandatory) Function org-babel-execute:<lang>
+;;    Accept two arguments: BODY string and PARAMS plist.  Evaluate
+;;    BODY according to header arguments in PARAMS.  Return Elisp
+;;    representation of the result.
+;;    It is advised to use `org-babel-result-cond' and
+;;    `org-babel-reassemble-table' to return the results.
+;;     `org-babel-result-cond' auto-selects string or Elisp
+;;     representation of the results according to PARAMS.
+;;    `org-babel-reassemble-table' adds user column and row names if
+;;    result should be interpreted as a table.
+;; - Variable org-babel-default-header-args:<lang>
+;;   Contains default values for header arguments, if they needs to be
+;;   different from global defaults.
+;; - Variable org-babel-header-args:<lang>
+;;   Defines allowed values of header arguments, just as
+;;   `org-babel-common-header-args-w-values'.
+;; - (optional) Function org-babel-expand-body:<lang>
+;;   Accept two arguments: BODY string and PARAMS plist.  Convert BODY
+;;   of the source block (with noweb references already expanded),
+;;   adding language specific variable assignments (:var property),
+;;   :prologue and :epilogue header arguments, and possibly language
+;;   specific header arguments.  See `org-babel-C-expand-C' as an
+;;   example.
+;; FIXME: in theory, org-babel-variable-assignments:<lang> should be
+;; used as a fallback when "expand-body" is not defined, but it is not
+;; consistent across Org mode, so "expand-body" is de-facto mandatory
+;; because otherwise some things will not work.
+;; - Function org-babel-variable-assignments:<lang>
+;; Optional session support:
+;; - Function org-babel-session-buffer:<lang>
+;;   Accept two arguments: SESSION name and INFO as returned by
+;;   `org-babel-get-src-block-info' and returns the session buffer
+;;   associated with src block.
+;; - Function org-babel-<lang>-associate-session
+;;   Accept a single argument: SESSION name.  Called for side effects
+;;   of associating current code buffer with SESSION.  Used by
+;;   org-src-mode, when editing code blocks in separate buffer.
+;; FIXME: In theory, "prep-session" should arrange the interpreter to
+;; be started up, however, in practice, its use is inconsistent in Org
+;; mode and all the work must be de-facto done in
+;; "initiate-session" function.
+;; - Function org-babel-<lang>-initiate-session
+;; - Function org-babel-prep-session:<lang>
+
+;; FIXME: Maybe we should simply put it as a part of
+;; `org-babel-reassemble-table' itself, so that we do not need to make
+;; every backend duplicate the code.
+;; We advice using `org-babel-reassemble-table' as the following:
+;;
+;; (org-babel-reassemble-table
+;;  result-as-list
+;;  (org-babel-pick-name
+;;   (cdr (assq :colname-names params)) (cdr (assq :colnames params)))
+;;  (org-babel-pick-name
+;;   (cdr (assq :rowname-names params)) (cdr (assq :rownames params))))
+
+;; When babel backend supports multiple programming languages or wants
+;; to create an alias for programming language name, it can use
+;; `org-babel-make-language-alias'.
+
+;; Code blocks that support producing graphical output to file should
+;; call `org-babel-graphical-output-file' to determine the output file
+;; name.
+
+;; When dealing with file names, we advice using
+;; `org-babel-process-file-name' to strip remote TRAMP host from file.
+;; This is mostly useful when the file name is to be used as a part of
+;; shell command executed on the remote host (usually Org Babel
+;; arranges `default-directory' to point to an appropriate remote host
+;; and TRAMP makes commands work transparently on remote machines).
 
 (defconst org-babel-exeext
   (if (memq system-type '(windows-nt cygwin))
       ".exe"
     nil))
-
-(defvar org-babel-exp-reference-buffer nil
-  "Buffer containing original contents of the exported buffer.
-This is used by Babel to resolve references in source blocks.
-Its value is dynamically bound during export.")
 
 (defun org-babel-expand-body:generic (body params &optional var-lines)
   "Expand BODY with PARAMS.
