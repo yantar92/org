@@ -37,7 +37,6 @@
 (require 'ob-core)
 (require 'org-compat)
 (require 'comint)
-(require 'org-move)
 
 (defun org-babel-comint-buffer-livep (buffer)
   "Check if BUFFER is a comint buffer with a live process."
