@@ -34,6 +34,7 @@
 (require 'cl-lib)
 (require 'org-agenda-search)
 (require 'org-map)
+(require 'org-property-search)
 
 (defvar org-ts-regexp)
 

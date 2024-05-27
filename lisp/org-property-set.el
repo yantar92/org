@@ -27,6 +27,8 @@
 (org-assert-version)
 
 (require 'org-property)
+(require 'org-property-core)
+(require 'org-indent-static)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
 
@@ -61,6 +63,7 @@
 
 (defvar org-clock-effort)       ; Defined in org-clock.el.
 (defvar org-clock-current-task) ; Defined in org-clock.el.
+(declare-function org-duration-to-minutes "org-duration" (duration &optional canonical))
 ;;;###autoload
 (defun org-set-effort (&optional increment value)
   "Set the effort property of the current entry.
@@ -88,6 +91,7 @@ variables is set."
 	      (completing-read "Effort: " allowed nil must-match))))))
     ;; Test whether the value can be interpreted as a duration before
     ;; inserting it in the buffer:
+    (require 'org-duration)
     (org-duration-to-minutes value)
     ;; Maybe update the effort value:
     (unless (equal current value)
@@ -151,6 +155,11 @@ EPOM is an element, marker, or buffer position."
     (mapcar #'org-entry-restore-space values)))
 
 (declare-function org-todo "org-todo" (&optional arg))
+(declare-function org-deadline "org-planning" (arg &optional time))
+(declare-function org-schedule "org-planning" (arg &optional time))
+(declare-function org-priority "org-priority" (&optional action show))
+(declare-function org-timestamp-change "org-timestamp"
+                  (n &optional what updown suppress-tmp-delay))
 ;;;###autoload
 (defun org-entry-put (epom property value)
   "Set PROPERTY to VALUE for entry at EPOM.
@@ -186,16 +195,23 @@ decreases scheduled or deadline date by one day."
          (require 'org-todo)
 	 (org-todo value))
         ((equal property "PRIORITY")
+         (require 'org-priority)
 	 (org-priority (if (org-string-nw-p value) (string-to-char value) ?\s)))
         ((equal property "SCHEDULED")
 	 (forward-line)
 	 (if (and (looking-at-p org-planning-line-re)
 		  (re-search-forward
 		   org-scheduled-time-regexp (line-end-position) t))
-	     (cond ((string= value "earlier") (org-timestamp-change -1 'day))
-		   ((string= value "later") (org-timestamp-change 1 'day))
-		   ((string= value "") (org-schedule '(4)))
-		   (t (org-schedule nil value)))
+             (progn
+               (require 'org-timestamp)
+	       (cond ((string= value "earlier") (org-timestamp-change -1 'day))
+		     ((string= value "later") (org-timestamp-change 1 'day))
+		     ((string= value "")
+                      (require 'org-planning)
+                      (org-schedule '(4)))
+		     (t
+                      (require 'org-planning)
+                      (org-schedule nil value))))
 	   (if (member value '("earlier" "later" ""))
 	       (call-interactively #'org-schedule)
 	     (org-schedule nil value))))
@@ -206,8 +222,12 @@ decreases scheduled or deadline date by one day."
 		   org-deadline-time-regexp (line-end-position) t))
 	     (cond ((string= value "earlier") (org-timestamp-change -1 'day))
 		   ((string= value "later") (org-timestamp-change 1 'day))
-		   ((string= value "") (org-deadline '(4)))
-		   (t (org-deadline nil value)))
+		   ((string= value "")
+                    (require 'org-planning)
+                    (org-deadline '(4)))
+		   (t
+                    (require 'org-planning)
+                    (org-deadline nil value)))
 	   (if (member value '("earlier" "later" ""))
 	       (call-interactively #'org-deadline)
 	     (org-deadline nil value))))
@@ -401,6 +421,9 @@ completion."
       (setq vals (org-with-point-at epom
 		   (append org-todo-keywords-1 '("")))))
      ((equal property "PRIORITY")
+      (require 'org-priority)
+      (defvar org-priority-lowest)
+      (defvar org-priority-highest)
       (let ((n org-priority-lowest))
 	(while (>= n org-priority-highest)
 	  (push (char-to-string n) vals)

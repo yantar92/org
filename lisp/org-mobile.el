@@ -38,6 +38,7 @@
 (require 'org-agenda)
 (require 'ol-core)
 (require 'org-edit-structure-common)
+(require 'org-property-search)
 
 ;;; Code:
 

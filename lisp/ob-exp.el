@@ -440,6 +440,7 @@ replaced with its value."
 	       (nth 2 info))
      ("name"  . ,(or (nth 4 info) "")))))
 
+(declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
 (defun org-babel-exp-results (info type &optional silent hash)
   "Evaluate and return the results of the current code block for export.
 INFO is as returned by `org-babel-get-src-block-info'.  TYPE is the
@@ -460,6 +461,7 @@ inhibit insertion of results into the buffer."
       ;; Skip code blocks which we can't evaluate.
       (if (not (fboundp (intern (concat "org-babel-execute:" lang))))
           (warn "org-export: No org-babel-execute function for %s.  Not updating exported results." lang)
+        (require 'ob-eval)
 	(org-babel-eval-wipe-error-buffer)
 	(setf (nth 1 info) body)
 	(setf (nth 2 info)

@@ -29,6 +29,8 @@
 (require 'org-agenda-line-format)
 (require 'org-element-context)
 (require 'org-property)
+(require 'org-tags-core)
+(require 'org-time)
 (defvar org-agenda-show-log-scoped) ;; FIXME: in future org-agenda-mode.el
 
 ;;; FIXME:

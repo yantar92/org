@@ -29,6 +29,7 @@
 
 (require 'org-edit-structure-common)
 
+(require 'org-indent-static)
 (require 'org-fold)
 (require 'org-element)
 (require 'outline)
@@ -981,6 +982,8 @@ If yes, remember the marker and the distance to BEG."
   (setq org-markers-to-move nil))
 
 (declare-function org-entry-delete "org-property-set" (epom property))
+(declare-function org-timestamp-change "org-timestamp"
+                  (n &optional what updown suppress-tmp-delay))
 ;;;###autoload
 (defun org-clone-subtree-with-time-shift (n &optional shift)
   "Clone the task (subtree) at point N times.
@@ -1085,6 +1088,7 @@ with the original repeater."
 		      (org-remove-empty-drawer-at (point))))
 		  (goto-char (point-min))
 		  (when doshift
+                    (require 'org-timestamp)
 		    (while (re-search-forward org-ts-regexp-both nil t)
 		      (org-timestamp-change (* n shift-n) shift-what))
 		    (unless (= n n-no-remove)

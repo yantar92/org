@@ -87,17 +87,16 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ob-eval)
 (require 'org-macs)
-(require 'org-fold)
 (require 'org-compat)
-(require 'org-cycle)
 (require 'org-element-context)
 (require 'org-element)
 (require 'org-move)
 (require 'org-property)
 (require 'org-map)
 (require 'org-src)
+(require 'org-id-search)
+(require 'org-property-search)
 
 ;; Convert data from Org markup or plain text to Elisp.
 (require 'ob-core-read)
@@ -1069,11 +1068,8 @@ Emacs Lisp representation of the value of the variable."
 		    (org-babel-ref-resolve ref))
 		out))))))
 
-(declare-function org-id-find-id-file "org-id-search" (id))
-(declare-function org-id-find-id-in-file "org-id-search" (id file &optional markerp))
 (defun org-babel-ref-goto-headline-id (id)
   "Move point to headline with \"CUSTOM_ID\" or \"ID\" property ID."
-  (require 'org-id-search)
   (or (let ((h (org-find-property "CUSTOM_ID" id)))
 	(when h (goto-char h)))
       (let* ((file (org-id-find-id-file id))

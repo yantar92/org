@@ -197,6 +197,7 @@ exist."
 
 ;;; Execute src blocks
 
+(declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
 ;;;###autoload
 (defun org-babel-execute-buffer (&optional arg)
   "Execute source code blocks in a buffer.
@@ -204,6 +205,7 @@ Prefix argument ARG is passed to `org-babel-execute-src-block'.
 Call `org-babel-execute-src-block' on every source block in
 the current buffer."
   (interactive "P")
+  (require 'ob-eval)
   (org-babel-eval-wipe-error-buffer)
   (org-save-outline-visibility t
     (org-babel-map-executables nil

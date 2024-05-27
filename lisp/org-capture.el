@@ -1013,6 +1013,7 @@ for `entry'-type templates"))
   (org-capture-put :initial-target-position (point)))
 
 (defvar org-time-was-given) ; dynamically scoped parameter
+(declare-function org-find-olp "org-property-search" (path &optional this-buffer))
 (defun org-capture-set-target-location (&optional target)
   "Find TARGET buffer and position.
 Store them in the capture property list."
@@ -1059,6 +1060,7 @@ Store them in the capture property list."
 	   (insert "* " headline "\n")
 	   (forward-line -1)))
 	(`(file+olp ,path . ,(and outline-path (guard outline-path)))
+         (require 'org-property-search)
 	 (let* ((expanded-file-path (org-capture-expand-file path))
                 (m (org-find-olp (cons expanded-file-path
 				       (apply #'org-capture-expand-olp expanded-file-path outline-path)))))

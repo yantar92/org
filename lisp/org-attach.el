@@ -40,6 +40,7 @@
 (require 'cl-lib)
 (require 'ol)
 (require 'org-id)
+(require 'org-tags)
 
 (declare-function dired-dwim-target-directory "dired-aux")
 (declare-function dired-get-marked-files "dired" (&optional localp arg filter distinguish-one-marked error))

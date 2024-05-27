@@ -27,23 +27,10 @@
 (org-assert-version)
 
 (require 'org-element)
-(require 'org-move)
-(require 'org-duration)
-(require 'org-timestamp)
-(require 'org-indent-static)
 (require 'org-element-context)
 (require 'org-outline)
-(require 'org-tags-core)
 (require 'org-property-core)
-(require 'org-property-search)
-(require 'org-mode-common)
-(require 'org-macro)
-(require 'org-planning)
-(require 'org-priority)
-(require 'org-fold-core)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
-
-(defvar org-property-format)
 
 (defvar-local org-keyword-properties nil
   "List of property/value pairs inherited by any entry.
@@ -117,6 +104,10 @@ FORCE is non-nil, or return nil."
 		 :from 'todo
 		 :to 'done)))))
 
+(declare-function org-get-tags "org-tags-core" (&optional epom local))
+(declare-function org-make-tag-string "org-tags-core" (tags))
+(declare-function org-duration-from-minutes "org-duration"
+                  (minutes &optional fmt canonical))
 (defun org-entry-properties (&optional epom which)
   "Get all properties of the current entry.
 
@@ -148,6 +139,7 @@ strings."
 	    (when (or (not specific) (string= specific "CLOCKSUM"))
 	      (let ((clocksum (get-text-property (point) :org-clock-minutes)))
 		(when clocksum
+                  (require 'org-duration)
 		  (push (cons "CLOCKSUM" (org-duration-from-minutes clocksum))
 			props)))
 	      (when specific (throw 'exit props)))
@@ -155,6 +147,7 @@ strings."
 	      (let ((clocksumt (get-text-property (point)
 						  :org-clock-minutes-today)))
 		(when clocksumt
+                  (require 'org-duration)
 		  (push (cons "CLOCKSUM_T"
 			      (org-duration-from-minutes clocksumt))
 			props)))
@@ -175,6 +168,8 @@ strings."
 		  (push (cons "TODO" (match-string-no-properties 2)) props)))
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "PRIORITY"))
+              (require 'org-priority)
+              (defvar org-priority-default)
 	      (push (cons "PRIORITY"
 			  (if (looking-at org-priority-regexp)
 			      (match-string-no-properties 2)
@@ -186,6 +181,7 @@ strings."
 		    props)
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "TAGS"))
+              (require 'org-tags-core)
 	      (let ((tags (org-get-tags nil t)))
 		(when tags
 		  (push (cons "TAGS" (org-make-tag-string tags))
@@ -587,12 +583,14 @@ repeater from there instead."
 	      (when (save-match-data (org-at-timestamp-p 'agenda))
 		(throw :repeat (match-string-no-properties 1)))))))))))
 
+(declare-function org-time-string-to-time "org-time" (s))
 (defun org-get-scheduled-time (pom &optional inherit)
   "Get the scheduled time as a time tuple, of a format suitable
 for calling org-schedule with, or if there is no scheduling,
 returns nil."
   (let ((time (org-entry-get pom "SCHEDULED" inherit)))
     (when time
+      (require 'org-time)
       (org-time-string-to-time time))))
 
 (defun org-get-deadline-time (pom &optional inherit)
@@ -616,6 +614,10 @@ nil."
   (nth (if (eq stringp 'time) 2 (if stringp 1 0)) op))
 
 (defvar org--matcher-tags-todo-only nil)
+(declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
+(declare-function org-global-tags-completion-table "org-tags" (&optional files))
+(declare-function org-tags-expand "org-tags-common" (match &optional single-as-list))
+(declare-function org-get-buffer-tags "org-tags-core" ())
 (defun org-make-tags-matcher (match &optional only-local-tags)
   "Create the TAGS/TODO matcher form for the selection string MATCH.
 
@@ -638,6 +640,8 @@ When ONLY-LOCAL-TAGS is non-nil, ignore the global tag completion
 table, only get buffer tags.
 
 See also `org-scan-tags'."
+  (require 'org-tags)
+  (require 'org-mode)
   (unless match
     ;; Get a new match request, with completion against the global
     ;; tags table and the local tags in current buffer.
