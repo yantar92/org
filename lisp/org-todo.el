@@ -37,6 +37,7 @@
 (require 'org-planning)
 (require 'org-tags)
 (require 'org-mode)
+(require 'org-agenda-search)
 (require 'org-map)
 (require 'org-property)
 

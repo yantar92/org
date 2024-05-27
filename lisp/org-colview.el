@@ -35,6 +35,7 @@
 (require 'org-agenda-search)
 (require 'org-map)
 (require 'org-property-search)
+(require 'org-fold)
 
 (defvar org-ts-regexp)
 

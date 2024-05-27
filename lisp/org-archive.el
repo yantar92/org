@@ -34,7 +34,7 @@
 (require 'cl-lib)
 (require 'org-property)
 (require 'org-mode-common)
-(require 'org-map)
+(require 'org-agenda-search)
 (require 'org-edit-structure)
 (require 'org-narrow)
 (require 'org-todo)

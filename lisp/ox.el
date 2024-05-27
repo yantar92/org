@@ -86,7 +86,7 @@
 (require 'tabulated-list)
 (require 'org-element-timestamp)
 (require 'org-timestamp)
-(require 'org-map)
+(require 'org-agenda-search)
 (require 'org-property)
 (require 'org-move)
 (require 'org-narrow)

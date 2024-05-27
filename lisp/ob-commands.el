@@ -84,6 +84,7 @@ to `org-babel-named-src-block-regexp'."
     (if head (goto-char head) (error "Not currently in a code block"))))
 
 (declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
+(declare-function org-fold-show-context "org-fold" (&optional key))
 ;;;###autoload
 (defun org-babel-goto-named-src-block (name)
   "Go to a source-code block with NAME."
@@ -118,6 +119,7 @@ to `org-babel-named-src-block-regexp'."
           (require 'org-mark-ring)
           (org-mark-ring-push)
           (goto-char point)
+          (require 'org-fold)
           (org-fold-show-context))
       (message "source-code block `%s' not found in this buffer" name))))
 

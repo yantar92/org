@@ -33,6 +33,7 @@
 (require 'org-edit-structure)
 (require 'org-mode-common)
 (require 'org-table-fold)
+(require 'org-cycle)
 
 (defvar org-emphasis-alist)
 (declare-function org-open-at-point "org-open-at-point")
