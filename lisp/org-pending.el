@@ -26,10 +26,17 @@
 ;;;; Overview
 ;;
 ;;
-;; This library contains an API to lock a region while it is "being
+;; This library provides an API to lock a region while it is "being
 ;; updated"; the content of the region is "pending" and cannot be
 ;; modified.  It will be updated, later, when the new content is
 ;; available.
+;;
+;; While region is "pending", the library will mark it for the user,
+;; displaying the current update progress.
+;;
+;; The update may yield success or failure.  On success, the region
+;; content will be updated, and the update summary will be indicated.
+;; On failure, the error log will be displayed.
 ;;
 ;; Locking regions is useful when the update is computed
 ;; asynchronously and/or depends on external events.
@@ -38,7 +45,7 @@
 ;;;; How to use locks in your library
 ;;
 
-;; To lock a region, you need to do something like this:
+;; To lock a region, you need to:
 ;;
 ;;    1. Call the function `org-pending' with the region to lock; use
 ;;       the ON-OUTCOME argument to tell Emacs how to update the
@@ -47,18 +54,19 @@
 ;;
 ;;    2. Start "something" that computes the new content.  That
 ;;       "something" may be a thread, a timer, a notification, a
-;;       process, etc.  That "something" must eventually send a
-;;       :success or :failure message (using
-;;       `org-pending-send-update'): Emacs will update the pending
-;;       region (using your ON-OUTCOME) and unlock it; at this point
-;;       the lock is "dead" (see `org-pending-reglock-live-p').
+;;       process, etc.  That "something" might optionally report
+;;       :progress, and must eventually send a :success or :failure
+;;       message (using `org-pending-send-update'): org-pending will
+;;       update the pending region (using your ON-OUTCOME) and unlock
+;;       it; at this point the lock is "dead" (see
+;;       `org-pending-reglock-live-p').
 ;;
 ;; A lock is "live" (blocking its region) from when it's created until
-;; it receives its outcome (success or failure).  Once the lock
+;; it receives its outcome (:success or :failure).  Once the lock
 ;; receives its outcome, it's dead.
 ;;
 ;; You may read the current status using `org-pending-reglock-status'.
-;; The status is automatically updated when you send updates using
+;; The status is updated when you send updates using
 ;; `org-pending-send-update'.
 ;;
 ;; | Status    | Type     | Region   | Live ? | Possible updates              | Outcome available | Outcome marks                  |
@@ -99,23 +107,23 @@
 ;; and/or overlays.  It diplays and updates the status while the
 ;; region is locked: the initial status is :scheduled, then, when
 ;; receiving progress it becomes :pending (with progress information
-;; if any).  Emacs allows to diplay a description of the lock in a new
-;; buffer, like, for example, `describe-package'.  From that
+;; if any).  org-pending allows to diplay a description of the lock in
+;; a new buffer, like, for example, `describe-package'.  From that
 ;; description buffer, the user may request to cancel that lock; see
 ;; the field `user-cancel-function' of the REGLOCK object if you need
-;; to customize what to do on cancel.  By default, Emacs will just
-;; send the update (list :failure 'org-pending-user-cancel) so that
-;; the region is unlocked.
+;; to customize what to do on cancel.  By default, org-pending will
+;; just send the update (list :failure 'org-pending-user-cancel) so
+;; that the region is unlocked.
 ;;
-;; When receiving the outcome (success or failure), after unlocking
+;; When receiving the outcome (:success or :failure), after unlocking
 ;; the region, the library may leave information about the outcome
 ;; (using text properties/overlays); it will leave an outcome mark
 ;; only if the ON-OUTCOME function returns the outcome region (see
-;; `org-pending`). If that outcome information is (still) displayed,
+;; `org-pending').  If that outcome information is (still) displayed,
 ;; Emacs allows to display a description of that lock.  From that
 ;; description, the user may decide to "forget" that lock; "forgetting
-;; the lock" removes the outcome visual marks, and, it allows Emacs to
-;; discard any information related to this lock.
+;; the lock" removes the outcome visual marks, and, it allows
+;; org-pending to discard any information related to this lock.
 
 ;; Note that the visual marks of an outcome are silently removed if
 ;; the library needs to (like when creating a new lock, or when
@@ -172,7 +180,7 @@
 ;; and block the user.  The section "Dev & debug" contains tools that
 ;; are useful only for development and debugging.
 ;;
-;; This file does *NOT* depend on Org.
+;; This file does *NOT* depend on Org mode.
 
 ;;; Code:
 
