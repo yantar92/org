@@ -39,7 +39,6 @@
 (require 'org-footnote)
 (require 'org-tags-common)
 (require 'org-mode-common)
-(require 'org-src)
 
 (declare-function org-cite-activate "oc" (limit))
 
@@ -741,6 +740,7 @@ See also the `org-block' face."
 	(org-rear-nonsticky-at (match-end 1))
 	t))))
 
+(declare-function org-src-get-lang-mode "org-src" (lang))
 ;;;###autoload
 (defun org-src-font-lock-fontify-block (lang start end)
   "Fontify code block between START and END using LANG's syntax.
@@ -748,6 +748,7 @@ This function is called by Emacs's automatic fontification, as long
 as `org-src-fontify-natively' is non-nil."
   (let ((modified (buffer-modified-p)) native-tab-width)
     (remove-text-properties start end '(face nil))
+    (require 'org-src)
     (let ((lang-mode (org-src-get-lang-mode lang)))
       (when (fboundp lang-mode)
         (let ((string (buffer-substring-no-properties start end))
@@ -816,6 +817,7 @@ as `org-src-fontify-natively' is non-nil."
 	        (setq pos next)))
             (set-buffer-modified-p nil)))))
     ;; Add Org faces.
+    (defvar org-src-block-faces)
     (let ((src-face (nth 1 (assoc-string lang org-src-block-faces t))))
       (when (or (facep src-face) (listp src-face))
         (font-lock-append-text-property start end 'face src-face))
