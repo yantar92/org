@@ -1060,7 +1060,7 @@ This command does many different things, depending on context:
 	 ;; Without a universal argument, if the item has a checkbox,
 	 ;; toggle it.  Otherwise repair the list.
 	 (if (or radio-list-p
-		 (and (boundp org-list-checkbox-radio-mode)
+		 (and (boundp 'org-list-checkbox-radio-mode)
 		      org-list-checkbox-radio-mode))
 	     (org-toggle-radio-button arg)
 	   (let* ((box (org-element-property :checkbox context))
