@@ -34,7 +34,6 @@
 (require 'org-mode)
 (require 'org-agenda-files)
 (require 'org-outline)
-(require 'org-font-lock)
 (require 'org-tags-core)
 
 (defvar crm-separator)

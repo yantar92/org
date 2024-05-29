@@ -29,7 +29,7 @@
 (require 'org-element)
 (require 'org-element-context)
 (require 'org-move)
-(require 'org-font-lock)
+(require 'org-font-lock-common)
 (declare-function org-entry-end-position "org")
 (declare-function org-latex-make-preamble "ox-latex")
 (declare-function org-export-get-environment "ox")

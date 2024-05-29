@@ -79,6 +79,13 @@ identifier."
   :version "24.1"
   :group 'org-id)
 
+(defcustom org-allow-promoting-top-level-subtree nil
+  "When non-nil, allow promoting a top level subtree.
+The leading star of the top level headline will be replaced
+by a #."
+  :type 'boolean
+  :version "24.1"
+  :group 'org-appearance)
 
 ;;; Inserting headlines
 

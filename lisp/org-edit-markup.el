@@ -46,7 +46,7 @@ remove the emphasis of the selected region.
 If CHAR is not given (for example in an interactive call) it will be
 prompted for."
   (interactive)
-  (require 'org-font-lock)
+  (require 'org-font-lock-common)
   (require 'org-compat)
   (let ((erc org-emphasis-regexp-components)
 	(string "") beg end move s)
