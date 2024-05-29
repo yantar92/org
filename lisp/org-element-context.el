@@ -31,6 +31,7 @@
 (require 'org-element)
 (require 'org-regexps)
 (require 'org-mode-common)
+(require 'org-list)
 
 ;;; Querying heading at point
 

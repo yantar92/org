@@ -83,6 +83,7 @@
 (require 'org-macs)
 (require 'org-compat)
 (require 'org-fold-core)
+(require 'org-element)
 
 (defvar org-footnote-definition-re)
 (defvar org-M-RET-may-split-line)
@@ -233,52 +234,6 @@ into
 		   (const "1.")
 		   (const "1)")))))
 
-(defcustom org-plain-list-ordered-item-terminator t
-  "The character that makes a line with leading number an ordered list item.
-Valid values are ?. and ?\\).  To get both terminators, use t.
-
-This variable needs to be set before org.el is loaded.  If you
-need to make a change while Emacs is running, use the customize
-interface or run the following code after updating it:
-
-  `\\[org-element-update-syntax]'"
-  :group 'org-plain-lists
-  :type '(choice (const :tag "dot like in \"2.\"" ?.)
-		 (const :tag "paren like in \"2)\"" ?\))
-		 (const :tag "both" t))
-  :set (lambda (var val) (set-default-toplevel-value var val)
-	 (when (featurep 'org-element) (org-element-update-syntax))))
-
-(defcustom org-list-allow-alphabetical nil
-  "Non-nil means single character alphabetical bullets are allowed.
-
-Both uppercase and lowercase are handled.  Lists with more than
-26 items will fallback to standard numbering.  Alphabetical
-counters like \"[@c]\" will be recognized.
-
-This variable needs to be set before org.el is loaded.  If you
-need to make a change while Emacs is running, use the customize
-interface or run the following code after updating it:
-
-  `\\[org-element-update-syntax]'"
-  :group 'org-plain-lists
-  :version "24.1"
-  :type 'boolean
-  :set (lambda (var val) (set-default-toplevel-value var val)
-	 (when (featurep 'org-element) (org-element-update-syntax))))
-
-(defcustom org-list-two-spaces-after-bullet-regexp nil
-  "A regular expression matching bullets that should have 2 spaces after them.
-When nil, no bullet will have two spaces after them.  When
-a string, it will be used as a regular expression.  When the
-bullet type of a list is changed, the new bullet type will be
-matched against this regexp.  If it matches, there will be two
-spaces instead of one after the bullet in each item of the list."
-  :group 'org-plain-lists
-  :type '(choice
-	  (const :tag "never" nil)
-	  (regexp)))
-
 (defcustom org-list-automatic-rules '((checkbox . t)
 				      (indent . t))
   "Non-nil means apply set of rules when acting on lists.
@@ -356,47 +311,6 @@ Names must be in lower case.")
 
 
 ;;; Predicates and regexps
-
-(defconst org-list-end-re "^[ \t]*\n[ \t]*\n"
-  "Regex matching the end of a plain list.")
-
-(defconst org-list-full-item-re
-  (concat "^[ \t]*\\(\\(?:[-+*]\\|\\(?:[0-9]+\\|[A-Za-z]\\)[.)]\\)\\(?:[ \t]+\\|$\\)\\)"
-	  "\\(?:\\[@\\(?:start:\\)?\\([0-9]+\\|[A-Za-z]\\)\\][ \t]*\\)?"
-	  "\\(?:\\(\\[[ X-]\\]\\)\\(?:[ \t]+\\|$\\)\\)?"
-	  "\\(?:\\(.*\\)[ \t]+::\\(?:[ \t]+\\|$\\)\\)?")
-  "Matches a list item and puts everything into groups:
-group 1: bullet
-group 2: counter
-group 3: checkbox
-group 4: description tag")
-
-(defvar org--item-re-cache nil
-  "Results cache for `org-item-re'.")
-(defsubst org-item-re ()
-  "Return the correct regular expression for plain lists."
-  (or (plist-get
-       (plist-get org--item-re-cache
-                  org-list-allow-alphabetical)
-       org-plain-list-ordered-item-terminator)
-      (let* ((term (cond
-	            ((eq org-plain-list-ordered-item-terminator t) "[.)]")
-	            ((= org-plain-list-ordered-item-terminator ?\)) ")")
-	            ((= org-plain-list-ordered-item-terminator ?.) "\\.")
-	            (t "[.)]")))
-	     (alpha (if org-list-allow-alphabetical "\\|[A-Za-z]" ""))
-             (re (concat "\\([ \t]*\\([-+]\\|\\(\\([0-9]+" alpha "\\)" term
-	                 "\\)\\)\\|[ \t]+\\*\\)\\([ \t]+\\|$\\)")))
-        (setq org--item-re-cache
-              (plist-put
-               org--item-re-cache
-               org-list-allow-alphabetical
-               (plist-put
-                (plist-get org--item-re-cache
-                           org-list-allow-alphabetical)
-                org-plain-list-ordered-item-terminator
-                re)))
-        re)))
 
 (defsubst org-item-beginning-re ()
   "Regexp matching the beginning of a plain list item."
@@ -854,54 +768,6 @@ Metadata are tags, planning information and properties drawers."
 
 ;;; Accessors
 
-(defsubst org-list-get-nth (n key struct)
-  "Return the Nth value of KEY in STRUCT."
-  (nth n (assq key struct)))
-
-(defun org-list-set-nth (n key struct new)
-  "Set the Nth value of KEY in STRUCT to NEW.
-\nThis function modifies STRUCT."
-  (setcar (nthcdr n (assq key struct)) new))
-
-(defsubst org-list-get-ind (item struct)
-  "Return indentation of ITEM in STRUCT."
-  (org-list-get-nth 1 item struct))
-
-(defun org-list-set-ind (item struct ind)
-  "Set indentation of ITEM in STRUCT to IND.
-\nThis function modifies STRUCT."
-  (org-list-set-nth 1 item struct ind))
-
-(defsubst org-list-get-bullet (item struct)
-  "Return bullet of ITEM in STRUCT."
-  (org-list-get-nth 2 item struct))
-
-(defun org-list-set-bullet (item struct bullet)
-  "Set bullet of ITEM in STRUCT to BULLET.
-\nThis function modifies STRUCT."
-  (org-list-set-nth 2 item struct bullet))
-
-(defsubst org-list-get-counter (item struct)
-  "Return counter of ITEM in STRUCT."
-  (org-list-get-nth 3 item struct))
-
-(defsubst org-list-get-checkbox (item struct)
-  "Return checkbox of ITEM in STRUCT or nil."
-  (org-list-get-nth 4 item struct))
-
-(defun org-list-set-checkbox (item struct checkbox)
-  "Set checkbox of ITEM in STRUCT to CHECKBOX.
-\nThis function modifies STRUCT."
-  (org-list-set-nth 4 item struct checkbox))
-
-(defsubst org-list-get-tag (item struct)
-  "Return end position of ITEM in STRUCT."
-  (org-list-get-nth 5 item struct))
-
-(defun org-list-get-item-end (item struct)
-  "Return end position of ITEM in STRUCT."
-  (org-list-get-nth 6 item struct))
-
 (defun org-list-get-item-end-before-blank (item struct)
   "Return point at end of ITEM in STRUCT, before any blank line.
 Point returned is at end of line."
@@ -1098,20 +964,6 @@ Arguments REGEXP, BOUND and NOERROR are similar to those used in
 
 
 ;;; Methods on structures
-
-(defsubst org-list-bullet-string (bullet)
-  "Return BULLET with the correct number of whitespaces.
-It determines the number of whitespaces to append by looking at
-`org-list-two-spaces-after-bullet-regexp'."
-  (save-match-data
-    (let ((spaces (if (and org-list-two-spaces-after-bullet-regexp
-			   (string-match
-			    org-list-two-spaces-after-bullet-regexp bullet))
-		      "  "
-		    " ")))
-      (if (string-match "\\S-+\\([ \t]*\\)" bullet)
-	  (replace-match spaces nil nil bullet 1)
-	bullet))))
 
 (defun org-list-swap-items (beg-A beg-B struct)
   "Swap item starting at BEG-A with item starting at BEG-B in STRUCT.

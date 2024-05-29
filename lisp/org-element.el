@@ -73,10 +73,6 @@
 (require 'org-persist) ; Used to store cache between Emacs sessions
 
 (require 'org-entities) ; Defines what constitutes an entity object
-;; FIXME: List parsing is currently implemented outside, in
-;; org-list.el.  Should ideally put everything parser-related into
-;; org-element.el.
-(require 'org-list)
 
 (defvar org-inhibit-startup) ; defined in org.el
 (defvar org--warnings) ; defined in org.el
@@ -258,6 +254,52 @@ according to this format, mainly to make sure that the values are
 lined-up with respect to each other."
   :group 'org-properties
   :type 'string)
+
+(defcustom org-plain-list-ordered-item-terminator t
+  "The character that makes a line with leading number an ordered list item.
+Valid values are ?. and ?\\).  To get both terminators, use t.
+
+This variable needs to be set before org.el is loaded.  If you
+need to make a change while Emacs is running, use the customize
+interface or run the following code after updating it:
+
+  `\\[org-element-update-syntax]'"
+  :group 'org-plain-lists
+  :type '(choice (const :tag "dot like in \"2.\"" ?.)
+		 (const :tag "paren like in \"2)\"" ?\))
+		 (const :tag "both" t))
+  :set (lambda (var val) (set-default-toplevel-value var val)
+	 (when (featurep 'org-element) (org-element-update-syntax))))
+
+(defcustom org-list-allow-alphabetical nil
+  "Non-nil means single character alphabetical bullets are allowed.
+
+Both uppercase and lowercase are handled.  Lists with more than
+26 items will fallback to standard numbering.  Alphabetical
+counters like \"[@c]\" will be recognized.
+
+This variable needs to be set before org.el is loaded.  If you
+need to make a change while Emacs is running, use the customize
+interface or run the following code after updating it:
+
+  `\\[org-element-update-syntax]'"
+  :group 'org-plain-lists
+  :version "24.1"
+  :type 'boolean
+  :set (lambda (var val) (set-default-toplevel-value var val)
+	 (when (featurep 'org-element) (org-element-update-syntax))))
+
+(defcustom org-list-two-spaces-after-bullet-regexp nil
+  "A regular expression matching bullets that should have 2 spaces after them.
+When nil, no bullet will have two spaces after them.  When
+a string, it will be used as a regular expression.  When the
+bullet type of a list is changed, the new bullet type will be
+matched against this regexp.  If it matches, there will be two
+spaces instead of one after the bullet in each item of the list."
+  :group 'org-plain-lists
+  :type '(choice
+	  (const :tag "never" nil)
+	  (regexp)))
 
 (defcustom org-edit-src-content-indentation 2
   "Indentation for the content of a source code block.
@@ -488,6 +530,47 @@ The number of levels is controlled by `org-inlinetask-min-level'."
 
 (defconst org-element-archive-tag "ARCHIVE"
   "Tag marking a subtree as archived.")
+
+(defconst org-list-end-re "^[ \t]*\n[ \t]*\n"
+  "Regex matching the end of a plain list.")
+
+(defconst org-list-full-item-re
+  (concat "^[ \t]*\\(\\(?:[-+*]\\|\\(?:[0-9]+\\|[A-Za-z]\\)[.)]\\)\\(?:[ \t]+\\|$\\)\\)"
+	  "\\(?:\\[@\\(?:start:\\)?\\([0-9]+\\|[A-Za-z]\\)\\][ \t]*\\)?"
+	  "\\(?:\\(\\[[ X-]\\]\\)\\(?:[ \t]+\\|$\\)\\)?"
+	  "\\(?:\\(.*\\)[ \t]+::\\(?:[ \t]+\\|$\\)\\)?")
+  "Matches a list item and puts everything into groups:
+group 1: bullet
+group 2: counter
+group 3: checkbox
+group 4: description tag")
+
+(defvar org--item-re-cache nil
+  "Results cache for `org-item-re'.")
+(defsubst org-item-re ()
+  "Return the correct regular expression for plain lists."
+  (or (plist-get
+       (plist-get org--item-re-cache
+                  org-list-allow-alphabetical)
+       org-plain-list-ordered-item-terminator)
+      (let* ((term (cond
+	            ((eq org-plain-list-ordered-item-terminator t) "[.)]")
+	            ((= org-plain-list-ordered-item-terminator ?\)) ")")
+	            ((= org-plain-list-ordered-item-terminator ?.) "\\.")
+	            (t "[.)]")))
+	     (alpha (if org-list-allow-alphabetical "\\|[A-Za-z]" ""))
+             (re (concat "\\([ \t]*\\([-+]\\|\\(\\([0-9]+" alpha "\\)" term
+	                 "\\)\\)\\|[ \t]+\\*\\)\\([ \t]+\\|$\\)")))
+        (setq org--item-re-cache
+              (plist-put
+               org--item-re-cache
+               org-list-allow-alphabetical
+               (plist-put
+                (plist-get org--item-re-cache
+                           org-list-allow-alphabetical)
+                org-plain-list-ordered-item-terminator
+                re)))
+        re)))
 
 (defconst org-element-citation-key-re
   (rx "@" (group (one-or-more (any word "-.:?!`'/*@+|(){}<>&_^$#%~"))))
@@ -2651,6 +2734,138 @@ CONTENTS is the contents of inlinetask."
 
 ;;;; Item
 
+(defsubst org-list-get-nth (n key struct)
+  "Return the Nth value of KEY in STRUCT."
+  (nth n (assq key struct)))
+
+(defun org-list-set-nth (n key struct new)
+  "Set the Nth value of KEY in STRUCT to NEW.
+\nThis function modifies STRUCT."
+  (setcar (nthcdr n (assq key struct)) new))
+
+(defsubst org-list-get-ind (item struct)
+  "Return indentation of ITEM in STRUCT."
+  (org-list-get-nth 1 item struct))
+
+(defun org-list-set-ind (item struct ind)
+  "Set indentation of ITEM in STRUCT to IND.
+\nThis function modifies STRUCT."
+  (org-list-set-nth 1 item struct ind))
+
+(defsubst org-list-get-bullet (item struct)
+  "Return bullet of ITEM in STRUCT."
+  (org-list-get-nth 2 item struct))
+
+(defun org-list-set-bullet (item struct bullet)
+  "Set bullet of ITEM in STRUCT to BULLET.
+\nThis function modifies STRUCT."
+  (org-list-set-nth 2 item struct bullet))
+
+(defsubst org-list-get-counter (item struct)
+  "Return counter of ITEM in STRUCT."
+  (org-list-get-nth 3 item struct))
+
+(defsubst org-list-get-checkbox (item struct)
+  "Return checkbox of ITEM in STRUCT or nil."
+  (org-list-get-nth 4 item struct))
+
+(defun org-list-set-checkbox (item struct checkbox)
+  "Set checkbox of ITEM in STRUCT to CHECKBOX.
+\nThis function modifies STRUCT."
+  (org-list-set-nth 4 item struct checkbox))
+
+(defsubst org-list-get-tag (item struct)
+  "Return end position of ITEM in STRUCT."
+  (org-list-get-nth 5 item struct))
+
+(defun org-list-get-item-end (item struct)
+  "Return end position of ITEM in STRUCT."
+  (org-list-get-nth 6 item struct))
+
+(defun org-element--list-struct (limit)
+  "Return structure of list at point.
+Do not parse past LIMIT.
+
+Internal function.  See `org-list-struct' for details."
+  (let ((case-fold-search t)
+	(top-ind limit)
+	(item-re (org-item-re))
+	(inlinetask-re (and (featurep 'org-inlinetask)
+                            (boundp 'org-inlinetask-min-level)
+                            (boundp 'org-inlinetask-max-level)
+                            (org-inlinetask-outline-regexp)))
+	items struct)
+    (save-excursion
+      (catch :exit
+	(while t
+	  (cond
+	   ;; At limit: end all items.
+	   ((>= (point) limit)
+	    (let ((end (progn (skip-chars-backward " \r\t\n")
+			      (line-beginning-position 2))))
+	      (dolist (item items) (setcar (nthcdr 6 item) end)))
+	    (throw :exit (sort (nconc items struct) #'car-less-than-car)))
+	   ;; At list end: end all items.
+	   ((looking-at-p org-list-end-re)
+	    (dolist (item items) (setcar (nthcdr 6 item) (point)))
+	    (throw :exit (sort (nconc items struct) #'car-less-than-car)))
+	   ;; At a new item: end previous sibling.
+	   ((looking-at-p item-re)
+	    (let ((ind (save-excursion (skip-chars-forward " \t")
+				       (org-current-text-column))))
+	      (setq top-ind (min top-ind ind))
+	      (while (and items (<= ind (nth 1 (car items))))
+		(let ((item (pop items)))
+		  (setcar (nthcdr 6 item) (point))
+		  (push item struct)))
+	      (push (progn (looking-at org-list-full-item-re)
+			   (let ((bullet (match-string-no-properties 1)))
+			     (list (point)
+				   ind
+				   bullet
+				   (match-string-no-properties 2) ; counter
+				   (match-string-no-properties 3) ; checkbox
+				   ;; Description tag.
+				   (and
+				    (string-match-p "[-+*]" bullet)
+				    (match-string-no-properties 4))
+				   ;; Ending position, unknown so far.
+				   nil)))
+		    items))
+	    (forward-line))
+	   ;; Skip empty lines.
+	   ((looking-at-p "^[ \t]*$") (forward-line))
+	   ;; Skip inline tasks and blank lines along the way.
+	   ((and inlinetask-re (looking-at-p inlinetask-re))
+	    (forward-line)
+	    (let ((origin (point)))
+	      (when (re-search-forward inlinetask-re limit t)
+		(if (looking-at-p "END[ \t]*$") (forward-line)
+		  (goto-char origin)))))
+	   ;; At some text line.  Check if it ends any previous item.
+	   (t
+	    (let ((ind (save-excursion
+			 (skip-chars-forward " \t")
+			 (org-current-text-column)))
+		  (end (save-excursion
+			 (skip-chars-backward " \r\t\n")
+			 (line-beginning-position 2))))
+	      (while (<= ind (nth 1 (car items)))
+		(let ((item (pop items)))
+		  (setcar (nthcdr 6 item) end)
+		  (push item struct)
+		  (unless items
+		    (throw :exit (sort struct #'car-less-than-car))))))
+	    ;; Skip blocks (any type) and drawers contents.
+	    (cond
+	     ((and (looking-at "[ \t]*#\\+BEGIN\\(:\\|_\\S-+\\)")
+		   (re-search-forward
+		    (format "^[ \t]*#\\+END%s[ \t]*$" (match-string 1))
+		    limit t)))
+	     ((and (looking-at-p org-element-drawer-re)
+		   (re-search-forward "^[ \t]*:END:[ \t]*$" limit t))))
+	    (forward-line))))))))
+
 (defun org-element-item-parser (limit struct &optional raw-secondary-p)
   "Parse an item up to LIMIT.
 
@@ -2738,6 +2953,20 @@ Assume point is at the beginning of the item."
 	      (org-element-restriction 'item)
 	      item))))))))
 
+(defsubst org-list-bullet-string (bullet)
+  "Return BULLET with the correct number of whitespaces.
+It determines the number of whitespaces to append by looking at
+`org-list-two-spaces-after-bullet-regexp'."
+  (save-match-data
+    (let ((spaces (if (and org-list-two-spaces-after-bullet-regexp
+			   (string-match
+			    org-list-two-spaces-after-bullet-regexp bullet))
+		      "  "
+		    " ")))
+      (if (string-match "\\S-+\\([ \t]*\\)" bullet)
+	  (replace-match spaces nil nil bullet 1)
+	bullet))))
+
 (defun org-element-item-interpreter (item contents)
   "Interpret ITEM element as Org syntax.
 CONTENTS is the contents of the element."
@@ -2781,90 +3010,6 @@ CONTENTS is the contents of the element."
 
 
 ;;;; Plain List
-
-(defun org-element--list-struct (limit)
-"Return structure of list at point.
-Do not parse past LIMIT.
-
-Internal function.  See `org-list-struct' for details."
-  (let ((case-fold-search t)
-	(top-ind limit)
-	(item-re (org-item-re))
-	(inlinetask-re (and (featurep 'org-inlinetask)
-                            (boundp 'org-inlinetask-min-level)
-                            (boundp 'org-inlinetask-max-level)
-                            (org-inlinetask-outline-regexp)))
-	items struct)
-    (save-excursion
-      (catch :exit
-	(while t
-	  (cond
-	   ;; At limit: end all items.
-	   ((>= (point) limit)
-	    (let ((end (progn (skip-chars-backward " \r\t\n")
-			      (line-beginning-position 2))))
-	      (dolist (item items) (setcar (nthcdr 6 item) end)))
-	    (throw :exit (sort (nconc items struct) #'car-less-than-car)))
-	   ;; At list end: end all items.
-	   ((looking-at-p org-list-end-re)
-	    (dolist (item items) (setcar (nthcdr 6 item) (point)))
-	    (throw :exit (sort (nconc items struct) #'car-less-than-car)))
-	   ;; At a new item: end previous sibling.
-	   ((looking-at-p item-re)
-	    (let ((ind (save-excursion (skip-chars-forward " \t")
-				       (org-current-text-column))))
-	      (setq top-ind (min top-ind ind))
-	      (while (and items (<= ind (nth 1 (car items))))
-		(let ((item (pop items)))
-		  (setcar (nthcdr 6 item) (point))
-		  (push item struct)))
-	      (push (progn (looking-at org-list-full-item-re)
-			   (let ((bullet (match-string-no-properties 1)))
-			     (list (point)
-				   ind
-				   bullet
-				   (match-string-no-properties 2) ; counter
-				   (match-string-no-properties 3) ; checkbox
-				   ;; Description tag.
-				   (and
-				    (string-match-p "[-+*]" bullet)
-				    (match-string-no-properties 4))
-				   ;; Ending position, unknown so far.
-				   nil)))
-		    items))
-	    (forward-line))
-	   ;; Skip empty lines.
-	   ((looking-at-p "^[ \t]*$") (forward-line))
-	   ;; Skip inline tasks and blank lines along the way.
-	   ((and inlinetask-re (looking-at-p inlinetask-re))
-	    (forward-line)
-	    (let ((origin (point)))
-	      (when (re-search-forward inlinetask-re limit t)
-		(if (looking-at-p "END[ \t]*$") (forward-line)
-		  (goto-char origin)))))
-	   ;; At some text line.  Check if it ends any previous item.
-	   (t
-	    (let ((ind (save-excursion
-			 (skip-chars-forward " \t")
-			 (org-current-text-column)))
-		  (end (save-excursion
-			 (skip-chars-backward " \r\t\n")
-			 (line-beginning-position 2))))
-	      (while (<= ind (nth 1 (car items)))
-		(let ((item (pop items)))
-		  (setcar (nthcdr 6 item) end)
-		  (push item struct)
-		  (unless items
-		    (throw :exit (sort struct #'car-less-than-car))))))
-	    ;; Skip blocks (any type) and drawers contents.
-	    (cond
-	     ((and (looking-at "[ \t]*#\\+BEGIN\\(:\\|_\\S-+\\)")
-		   (re-search-forward
-		    (format "^[ \t]*#\\+END%s[ \t]*$" (match-string 1))
-		    limit t)))
-	     ((and (looking-at-p org-element-drawer-re)
-		   (re-search-forward "^[ \t]*:END:[ \t]*$" limit t))))
-	    (forward-line))))))))
 
 (defun org-element-plain-list-parser (limit affiliated structure)
   "Parse a plain list.
@@ -2914,6 +3059,7 @@ Assume point is at the beginning of the list."
 	      :post-affiliated contents-begin)
 	(cdr affiliated))))))
 
+(declare-function org-list-repair "org-list" ())
 (defun org-element-plain-list-interpreter (_ contents)
   "Interpret plain-list element as Org syntax.
 CONTENTS is the contents of the element."
@@ -2927,6 +3073,7 @@ CONTENTS is the contents of the element."
    ;; into a read-only state.  Make sure we can insert CONTENTS.
    (let ((inhibit-read-only t)) (erase-buffer) (insert contents))
    (goto-char (point-min))
+   (require 'org-list)
    (org-list-repair)
    ;; Prevent "Buffer *temp* modified; kill anyway?".
    (restore-buffer-modified-p nil)
