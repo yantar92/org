@@ -37,7 +37,6 @@
 (require 'org-element-context)
 (require 'org-table-core)
 (require 'org-footnote)
-(require 'org-flyspell)
 (require 'org-tags-common)
 (require 'org-mode-common)
 (require 'org-src)
@@ -315,8 +314,9 @@ hide them with `org-toggle-custom-properties-visibility'."
 	      (font-lock-prepend-text-property
 	       (match-beginning m) (match-end m) 'face face)
 	      (when verbatim?
-		(org-remove-flyspell-overlays-in
-		 (match-beginning 0) (match-end 0))
+                (when (fboundp 'org-remove-flyspell-overlays-in)
+		  (org-remove-flyspell-overlays-in
+		   (match-beginning 0) (match-end 0)))
 		(remove-text-properties (match-beginning 2) (match-end 2)
 					'(display t invisible t intangible t)))
 	      (add-text-properties (match-beginning 2) (match-end 2)
@@ -386,7 +386,8 @@ This includes angle, plain, and bracket links."
 					((and (pred functionp) f) (funcall f))
 					(_ `(:uri ,link)))
 			'font-lock-multiline t)))
-	    (org-remove-flyspell-overlays-in start end)
+            (when (fboundp 'org-remove-flyspell-overlays-in)
+	      (org-remove-flyspell-overlays-in start end))
 	    (org-rear-nonsticky-at end)
 	    (if (not (eq 'bracket style))
 		(progn
@@ -415,7 +416,8 @@ This includes angle, plain, and bracket links."
 
 (defun org-activate-code (limit)
   (when (re-search-forward "^[ \t]*\\(:\\(?: .*\\|$\\)\n?\\)" limit t)
-    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+    (when (fboundp 'org-remove-flyspell-overlays-in)
+      (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0)))
     (remove-text-properties (match-beginning 0) (match-end 0)
 			    '(display t invisible t intangible t))
     t))
@@ -483,13 +485,15 @@ See also the `org-block' face."
 		  nl-before-endline (1- (match-beginning 0)))
 	    (setq block-end (match-beginning 0)) ; Include the final newline.
 	    (when quoting
-	      (org-remove-flyspell-overlays-in bol-after-beginline nl-before-endline)
+              (when (fboundp 'org-remove-flyspell-overlays-in)
+	        (org-remove-flyspell-overlays-in bol-after-beginline nl-before-endline))
 	      (remove-text-properties beg end-of-endline
 				      '(display t invisible t intangible t)))
 	    (add-text-properties
 	     beg end-of-endline '(font-lock-fontified t font-lock-multiline t))
-	    (org-remove-flyspell-overlays-in beg bol-after-beginline)
-	    (org-remove-flyspell-overlays-in nl-before-endline end-of-endline)
+            (when (fboundp 'org-remove-flyspell-overlays-in)
+	      (org-remove-flyspell-overlays-in beg bol-after-beginline)
+	      (org-remove-flyspell-overlays-in nl-before-endline end-of-endline))
             (cond
 	     ((and org-src-fontify-natively
                    ;; Technically, according to
@@ -534,9 +538,10 @@ See also the `org-block' face."
 	       '(face org-block-end-line)))
 	    t))
 	 ((member dc1 '("+title:" "+subtitle:" "+author:" "+email:" "+date:"))
-	  (org-remove-flyspell-overlays-in
-	   (match-beginning 0)
-	   (if (equal "+title:" dc1) (match-end 2) (match-end 0)))
+          (when (fboundp 'org-remove-flyspell-overlays-in)
+	    (org-remove-flyspell-overlays-in
+	     (match-beginning 0)
+	     (if (equal "+title:" dc1) (match-end 2) (match-end 0))))
 	  (add-text-properties
 	   beg (match-end 3)
 	   (if (member (intern (substring dc1 1 -1)) org-hidden-keywords)
@@ -548,7 +553,8 @@ See also the `org-block' face."
 	       '(font-lock-fontified t face org-document-title)
 	     '(font-lock-fontified t face org-document-info))))
 	 ((string-prefix-p "+caption" dc1)
-	  (org-remove-flyspell-overlays-in (match-end 2) (match-end 0))
+          (when (fboundp 'org-remove-flyspell-overlays-in)
+	    (org-remove-flyspell-overlays-in (match-end 2) (match-end 0)))
 	  (remove-text-properties (match-beginning 0) (match-end 0)
 				  '(display t invisible t intangible t))
 	  ;; Handle short captions
@@ -566,12 +572,14 @@ See also the `org-block' face."
 	  t)
 	 ((member dc3 '(" " ""))
 	  ;; Just a comment, the plus was not there
-	  (org-remove-flyspell-overlays-in beg (match-end 0))
+          (when (fboundp 'org-remove-flyspell-overlays-in)
+	    (org-remove-flyspell-overlays-in beg (match-end 0)))
 	  (add-text-properties
 	   beg (match-end 0)
 	   '(font-lock-fontified t face font-lock-comment-face)))
 	 (t ;; Just any other in-buffer setting, but not indented
-	  (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+          (when (fboundp 'org-remove-flyspell-overlays-in)
+	    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0)))
 	  (remove-text-properties (match-beginning 0) (match-end 0)
 				  '(display t invisible t intangible t))
 	  (add-text-properties beg (match-end 0)
@@ -583,8 +591,9 @@ See also the `org-block' face."
   (when (re-search-forward org-drawer-regexp limit t)
     (add-text-properties (1- (match-beginning 1)) (1+ (match-end 1))
 			 '(font-lock-fontified t face org-drawer))
-    (org-remove-flyspell-overlays-in
-     (line-beginning-position) (line-beginning-position 2))
+    (when (fboundp 'org-remove-flyspell-overlays-in)
+      (org-remove-flyspell-overlays-in
+       (line-beginning-position) (line-beginning-position 2)))
     t))
 
 (defun org-fontify-macros (limit)
@@ -600,7 +609,8 @@ See also the `org-block' face."
 	  (add-text-properties
 	   begin end
 	   '(font-lock-multiline t font-lock-fontified t))
-	  (org-remove-flyspell-overlays-in begin end)
+          (when (fboundp 'org-remove-flyspell-overlays-in)
+	    (org-remove-flyspell-overlays-in begin end))
 	  (when org-hide-macro-markers
 	    (add-text-properties begin opening-end '(invisible t))
 	    (add-text-properties closing-start end '(invisible t)))
@@ -642,7 +652,8 @@ See also the `org-block' face."
 	  (save-excursion
 	    (goto-char beg)
 	    (search-forward (or label "fn:"))
-	    (org-remove-flyspell-overlays-in beg (match-end 0))))
+            (when (fboundp 'org-remove-flyspell-overlays-in)
+	      (org-remove-flyspell-overlays-in beg (match-end 0)))))
         (add-face-text-property beg end 'org-footnote)
 	(add-text-properties beg end
 			     (list 'mouse-face 'highlight
@@ -697,7 +708,8 @@ See also the `org-block' face."
   "Add text properties for dates."
   (when (and (re-search-forward org-tsr-regexp-both limit t)
 	     (not (equal (char-before (match-beginning 0)) 91)))
-    (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0))
+    (when (fboundp 'org-remove-flyspell-overlays-in)
+      (org-remove-flyspell-overlays-in (match-beginning 0) (match-end 0)))
     (add-text-properties (match-beginning 0) (match-end 0)
 			 (list 'mouse-face 'highlight
 			       'keymap org-mouse-map))
@@ -719,7 +731,8 @@ See also the `org-block' face."
       (when (if org-target-link-regexps
                 (org--re-list-search-forward org-target-link-regexps limit t)
               (re-search-forward org-target-link-regexp limit t))
-	(org-remove-flyspell-overlays-in (match-beginning 1) (match-end 1))
+        (when (fboundp 'org-remove-flyspell-overlays-in)
+	  (org-remove-flyspell-overlays-in (match-beginning 1) (match-end 1)))
 	(add-text-properties (match-beginning 1) (match-end 1)
 			     (list 'mouse-face 'highlight
 				   'keymap org-mouse-map
@@ -951,7 +964,8 @@ highlighting was done, nil otherwise."
 
 (defun org-activate-tags (limit)
   (when (re-search-forward org-tag-line-re limit t)
-    (org-remove-flyspell-overlays-in (match-beginning 1) (match-end 1))
+    (when (fboundp 'org-remove-flyspell-overlays-in)
+      (org-remove-flyspell-overlays-in (match-beginning 1) (match-end 1)))
     (add-text-properties (match-beginning 1) (match-end 1)
 			 (list 'mouse-face 'highlight
 			       'keymap org-mouse-map))
