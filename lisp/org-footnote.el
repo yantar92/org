@@ -42,7 +42,6 @@
 (require 'org-element-ast)
 (require 'org-mode-common)
 (require 'org-regexps)
-(require 'org-mark-ring)
 (require 'org-move)
 (require 'outline)
 
@@ -484,6 +483,7 @@ This function is meant to be used for fontification only."
 	 (t nil))))))
 
 (declare-function org-fold-show-context "org-fold" (&optional key))
+(declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
 (defun org-footnote-goto-definition (label &optional location)
   "Move point to the definition of the footnote LABEL.
 
@@ -501,6 +501,7 @@ value if point was successfully moved."
       (user-error "Cannot find definition of footnote %s" label))
      ((or (> def-start (point-max)) (< def-start (point-min)))
       (user-error "Definition is outside narrowed part of buffer")))
+    (require 'org-mark-ring)
     (org-mark-ring-push)
     (goto-char def-start)
     (looking-at (format "\\[fn:%s[]:]" (regexp-quote label)))
@@ -514,6 +515,7 @@ value if point was successfully moved."
     t))
 
 (declare-function org-fold-show-context "org-fold" (&optional key))
+(declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
 (defun org-footnote-goto-previous-reference (label)
   "Find the first closest (to point) reference of footnote with label LABEL."
   (interactive "sLabel: ")
@@ -531,6 +533,7 @@ value if point was successfully moved."
 	   (user-error "Cannot find reference of footnote %S" label))
 	  ((or (> start (point-max)) (< start (point-min)))
 	   (user-error "Reference is outside narrowed part of buffer")))
+    (require 'org-mark-ring)
     (org-mark-ring-push)
     (goto-char start)
     (require 'org-fold)
