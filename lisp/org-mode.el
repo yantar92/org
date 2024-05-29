@@ -34,7 +34,6 @@
 (require 'thingatpt)
 (require 'org-table-core)
 (require 'org-mode-common)
-(require 'org-font-lock)
 (require 'pcomplete)
 (require 'org-priority-common)
 
@@ -537,8 +536,7 @@ related expressions."
 		      "\\(?: +" org-todo-regexp "\\)?"
 		      "\\(?: +\\(.*?\\)\\)??"
 		      "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
-		      "[ \t]*$"))
-	(org-compute-latex-and-related-regexp)))))
+		      "[ \t]*$"))))))
 
 (defun org--tag-add-to-alist (alist1 alist2)
   "Merge tags from ALIST1 into ALIST2.
@@ -607,20 +605,6 @@ Respect keys that are already there."
 	      (cl-incf alt)))
 	  (push (cons (car e) (or (car clist) alt)) new))))
     (nreverse new)))
-
-(defun org-find-invisible-foreground ()
-  (let ((candidates (remove
-		     "unspecified-bg"
-		     (nconc
-		      (list (face-background 'default)
-			    (face-background 'org-default))
-		      (mapcar
-		       (lambda (alist)
-			 (when (boundp alist)
-			   (cdr (assq 'background-color (symbol-value alist)))))
-		       '(default-frame-alist initial-frame-alist window-system-default-frame-alist))
-		      (list (face-foreground 'org-hide))))))
-    (car (remove nil candidates))))
 
 (defun org--link-at-point ()
   "`thing-at-point' provider function."
@@ -745,6 +729,7 @@ This function ignores inlinetasks.  It is meant to be used as
 (declare-function org-fold-show-all "org-fold" (&optional types))
 (declare-function org-fold-reveal "org-fold" (&optional siblings))
 (declare-function org-latex-preview "org-preview-latex" (&optional arg))
+(declare-function org-set-font-lock-defaults "org-font-lock" ())
 
 ;;;###autoload
 (define-derived-mode org-mode outline-mode "Org"
@@ -789,10 +774,8 @@ The following commands are available:
   (org-fold-initialize)
   (make-local-variable 'org-link-descriptive)
   (when (eq org-fold-core-style 'overlays) (add-to-invisibility-spec '(org-hide-block . t)))
+  (require 'org-font-lock)
   (org-set-font-lock-defaults)
-  (when (and org-tag-faces (not org-tags-special-faces-re))
-    ;; tag faces set outside customize.... force initialization.
-    (org-set-tag-faces 'org-tag-faces org-tag-faces))
   ;; Calc embedded
   (setq-local calc-embedded-open-mode "# ")
   ;; Set syntax table.  Ensure that buffer-local changes to the syntax
@@ -925,14 +908,6 @@ The following commands are available:
   ;; Activate `org-table-header-line-mode'
   (when org-table-header-line-p
     (org-table-header-line-mode 1))
-  ;; Try to set `org-hide' face correctly.
-  (let ((foreground (org-find-invisible-foreground)))
-    (when foreground
-      (set-face-foreground 'org-hide foreground)))
-  ;; Set face extension as requested.
-  (org--set-faces-extend '(org-block-begin-line org-block-end-line)
-                         org-fontify-whole-block-delimiter-line)
-  (org--set-faces-extend org-level-faces org-fontify-whole-heading-line)
   (setq-local org-mode-loading nil)
 
   ;; `yank-media' handler and DND support.

@@ -1006,6 +1006,20 @@ This is called after `org-font-lock-extra-keywords' is defined, but before
 it is installed to be used by font lock.  This can be useful if something
 needs to be inserted at a specific position in the font-lock sequence.")
 
+(defun org-find-invisible-foreground ()
+  (let ((candidates (remove
+		     "unspecified-bg"
+		     (nconc
+		      (list (face-background 'default)
+			    (face-background 'org-default))
+		      (mapcar
+		       (lambda (alist)
+			 (when (boundp alist)
+			   (cdr (assq 'background-color (symbol-value alist)))))
+		       '(default-frame-alist initial-frame-alist window-system-default-frame-alist))
+		      (list (face-foreground 'org-hide))))))
+    (car (remove nil candidates))))
+
 (defun org-font-lock-hook (limit)
   "Run `org-font-lock-hook' within LIMIT."
   (run-hook-with-args 'org-font-lock-hook limit))
@@ -1013,6 +1027,18 @@ needs to be inserted at a specific position in the font-lock sequence.")
 (defun org-set-font-lock-defaults ()
   "Set font lock defaults for the current buffer."
   (require 'oc)
+  (org-compute-latex-and-related-regexp)
+  (when (and org-tag-faces (not org-tags-special-faces-re))
+    ;; tag faces set outside customize.... force initialization.
+    (org-set-tag-faces 'org-tag-faces org-tag-faces))
+  ;; Try to set `org-hide' face correctly.
+  (let ((foreground (org-find-invisible-foreground)))
+    (when foreground
+      (set-face-foreground 'org-hide foreground)))
+  ;; Set face extension as requested.
+  (org--set-faces-extend '(org-block-begin-line org-block-end-line)
+                         org-fontify-whole-block-delimiter-line)
+  (org--set-faces-extend org-level-faces org-fontify-whole-heading-line)
   (let ((org-font-lock-extra-keywords
          ;; As a general rule, we apply the element (container) faces
          ;; first and then prepend the object faces on top.
