@@ -31,7 +31,6 @@
 (require 'org-element)
 (require 'org-regexps)
 (require 'org-mode-common)
-(require 'org-list)
 
 ;;; Querying heading at point
 
@@ -431,10 +430,24 @@ at point."
   "Return non-nil, when point is at code or verbatim emphasis."
   (org-element-lineage (org-element-context) '(code verbatim)))
 
+(defun org-at-item-p ()
+  "Is point in a line starting a hand-formatted item?
+Modify match data, matching against `org-item-re'."
+  (save-excursion
+    (forward-line 0)
+    (and
+     (org-element-type-p
+      (org-element-at-point)
+      '(plain-list item))
+     ;; Set match data.
+     (looking-at (org-item-re)))))
+
 ;;; `org-context'
 
 (declare-function org-table-begin "org-table-core" (&optional table-type))
 (declare-function org-table-end "org-table-core" (&optional table-type))
+(declare-function org-end-of-item "org-list" ())
+(declare-function org-at-item-checkbox-p "org-list" ())
 (defun org-context ()
   "Return a list of contexts of the current cursor position.
 If several contexts apply, all are returned.
@@ -485,6 +498,7 @@ and :keyword."
 	(push (org-point-in-group p 0 :priority) clist)))
 
      ((org-at-item-p)
+      (require 'org-list)
       (push (org-point-in-group p 2 :item-bullet) clist)
       (push (list :item (line-beginning-position)
 		  (save-excursion (org-end-of-item) (point)))

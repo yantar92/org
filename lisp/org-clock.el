@@ -1390,6 +1390,7 @@ so long."
 (defvar org-clock-out-time nil) ; store the time of the last clock-out
 (defvar org--msg-extra)
 
+(declare-function org-in-item-p "org-list" ())
 ;;;###autoload
 (defun org-clock-in (&optional select start-time)
   "Start the clock on the current item.
@@ -1520,6 +1521,7 @@ the default behavior."
            ;; point was right where the clock is inserted.
 	   (insert-before-markers-and-inherit "\n")
 	   (backward-char 1)
+           (require 'org-list)
 	   (when (and (save-excursion
 			(end-of-line 0)
 			(org-in-item-p)))

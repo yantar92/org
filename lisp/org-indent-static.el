@@ -100,6 +100,7 @@ Optional argument ELEMENT contains element at BEG."
         (or (org-at-heading-p)
             (org--at-headline-data-p)))))))
 
+(declare-function org-list-item-body-column "org-list" (item))
 (defun org--get-expected-indentation (element contentsp)
   "Expected indentation column for current line, according to ELEMENT.
 ELEMENT is an element containing point.  CONTENTSP is non-nil
@@ -121,7 +122,9 @@ ELEMENT."
 	  (if (not org-adapt-indentation) 0
 	    (let ((level (org-current-level)))
 	      (if level (1+ level) 0))))
-	 ((item plain-list) (org-list-item-body-column post-affiliated))
+	 ((item plain-list)
+          (require 'org-list)
+          (org-list-item-body-column post-affiliated))
 	 (t
 	  (when start (goto-char start))
 	  (current-indentation))))

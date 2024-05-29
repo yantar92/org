@@ -39,6 +39,7 @@
 (require 'org-footnote)
 (require 'org-tags-common)
 (require 'org-mode-common)
+(require 'org-list)
 
 (declare-function org-cite-activate "oc" (limit))
 

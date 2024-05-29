@@ -40,6 +40,7 @@
 
 (require 'cl-lib)
 (require 'org-clock)
+(require 'org-list)
 
 (declare-function org-agenda-error "org-agenda" ())
 

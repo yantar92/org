@@ -29,6 +29,7 @@
 
 (require 'org-edit-structure-common)
 
+(require 'org-list)
 (require 'org-indent-static)
 (require 'org-fold)
 (require 'org-element)

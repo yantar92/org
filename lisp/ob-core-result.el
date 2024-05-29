@@ -129,6 +129,7 @@ When `:file-desc' is missing, return nil."
 (declare-function org-table-end "org-table-core" (&optional table-type))
 (declare-function orgtbl-to-orgtbl "org-table-export" (table params))
 (declare-function org-escape-code-in-region "org-src" (beg end))
+(declare-function org-list-to-org "org-list" (list &optional params))
 (defun org-babel-insert-result (result &optional result-params info hash lang exec-time)
   "Insert RESULT into the current buffer.
 
@@ -311,6 +312,7 @@ result:
 		   ((null result))
 		   ;; Insert a list if preferred.
 		   ((member "list" result-params)
+                    (require 'org-list)
 		    (insert
 		     (org-trim
 		      (org-list-to-org

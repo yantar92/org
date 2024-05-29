@@ -56,6 +56,7 @@
 (require 'org-bookmark)
 (require 'org-edit-structure-common)
 (require 'org-read-date)
+(require 'org-list)
 
 (declare-function org-at-encrypted-entry-p "org-crypt" ())
 (declare-function org-at-table-p "org-table" (&optional table-type))

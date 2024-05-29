@@ -32,6 +32,7 @@
 (defvar org-support-shift-select)
 (defvar org-clock-adjust-closest)
 (require 'org-regexps)
+(require 'org-list)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 (require 'org-edit)
 (declare-function org-clocktable-shift "org-clock")
@@ -1103,7 +1104,7 @@ This command does many different things, depending on context:
 	 ;; first item in the list.  Without an argument, repair the
 	 ;; list.
 	 (if (or radio-list-p
-		 (and (boundp org-list-checkbox-radio-mode)
+		 (and (boundp 'org-list-checkbox-radio-mode)
 		      org-list-checkbox-radio-mode))
 	     (org-toggle-radio-button arg)
 	   (let* ((begin (org-element-contents-begin context))
