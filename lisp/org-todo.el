@@ -36,7 +36,6 @@
 (require 'org-time)
 (require 'org-planning)
 (require 'org-tags)
-(require 'org-mode)
 (require 'org-agenda-search)
 (require 'org-map)
 (require 'org-property)
@@ -320,6 +319,7 @@ nil or a string to be used for the todo mark." )
 (defvar org-block-entry-blocking ""
   "First entry preventing the TODO state change.")
 
+(declare-function org-entry-put "org-property-set" (epom property value))
 (defun org-auto-repeat-maybe (done-word)
   "Check if the current headline contains a repeated timestamp.
 
@@ -357,6 +357,7 @@ This function is run automatically after each state change to a DONE state."
 		  (save-excursion
 		    (while (re-search-forward org-clock-line-re end t)
 		      (when (org-at-clock-log-p) (throw :clock t))))))
+        (require 'org-property-set)
 	(org-entry-put nil "LAST_REPEAT" (format-time-string
 					(org-time-stamp-format t t)
                                         (org-current-effective-time))))
@@ -1038,12 +1039,15 @@ This hook runs even if there is no statistics cookie present, in which case
     (dolist (c changes)
       (org-toggle-tag (car c) (if (cdr c) 'on 'off)))))
 
+(declare-function org-extract-log-state-settings "org-mode" (x))
 (defun org-local-logging (value)
   "Get logging settings from a property VALUE."
   ;; Directly set the variables, they are already local.
   (setq org-log-done nil
         org-log-repeat nil
         org-todo-log-states nil)
+  (require 'org-mode)
+  (defvar org-startup-options)
   (dolist (w (split-string value))
     (let (a)
       (cond
@@ -1071,6 +1075,7 @@ right sequence."
       (car org-todo-keywords-1))
      (t (nth 2 (assoc kwd org-todo-kwd-alist))))))
 
+(declare-function org-get-todo-face "org-font-lock" (kwd))
 (defun org-fast-todo-selection (&optional current-todo-keyword)
   "Fast TODO keyword selection with single keys.
 Returns the new TODO keyword, or nil if no state change should occur.
@@ -1148,6 +1153,7 @@ where CURRENT-TODO-KEYWORD belongs over on in another sequence."
              ;; Store the preferred todo keyword sequence.
 	     (when in-preferred-sequence (push todo-binding-spec preferred-todo-alist))
              ;; Assign face to the todo keyword.
+             (require 'org-font-lock)
 	     (setq todo-keyword
                    (org-add-props
                        todo-keyword nil

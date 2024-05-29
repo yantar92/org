@@ -148,6 +148,7 @@
 (require 'org-sparse-tree)
 (declare-function org-context "org")
 (require 'org-open-at-point)
+(require 'org-footnote)
 
 (defvar org-agenda-allow-remote-undo)
 (defvar org-agenda-undo-list)
@@ -380,8 +381,10 @@ nor a function, elements of KEYWORDS are used directly."
   (let ((org-cycle-global-status nil))
     (org-cycle '(4))))
 
+(declare-function org-priority "org-priority" (&optional action show))
 (defun org-mouse-set-priority (priority)
   "Set the priority of the current headline to PRIORITY."
+  (require 'org-priority)
   (org-priority priority))
 
 (defvar org-mouse-priority-regexp "\\[#\\([A-Z]\\)\\]"
@@ -643,6 +646,8 @@ This means, between the beginning of line and the point."
 		   (save-excursion (goto-char (region-end)) (insert "]]")))]
 	   ["Insert Link Here" (org-mouse-yank-link ',event)]))))
      ((save-excursion (forward-line 0) (looking-at "[ \t]*#\\+STARTUP: \\(.*\\)"))
+      (require 'org-mode)
+      (defvar org-startup-options)
       (popup-menu
        `(nil
 	 ,@(org-mouse-list-options-menu (mapcar #'car org-startup-options)

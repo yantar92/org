@@ -1081,7 +1081,9 @@ Emacs Lisp representation of the value of the variable."
 	  (move-marker m nil)
 	  t))))
 
+(declare-function org-narrow-to-subtree "org-narrow" (&optional element))
 (defun org-babel-ref-headline-body ()
+  (require 'org-narrow)
   (save-restriction
     (org-narrow-to-subtree)
     (buffer-substring

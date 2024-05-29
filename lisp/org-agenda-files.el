@@ -28,7 +28,6 @@
 ;;; Code:
 
 (require 'org-macs)
-(require 'org-mode)
 (require 'org-element-context)
 (require 'org-mode-common)
 (require 'org-tags-common)
@@ -435,6 +434,8 @@ The agenda files are the files processed by
 		  ;; Prevent initialization from failing.
 		  (ignore-errors (org-agenda-files t)))))))))
 
+(declare-function org-set-regexps-and-options "org-mode" (&optional tags-only))
+(declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
 (defun org-agenda-prepare-buffers (files)
   "Create buffers for all agenda files, protect archived trees and comments.
 
@@ -466,6 +467,7 @@ The agenda files are the files processed by
               (org-check-agenda-file file)
               (org-get-agenda-file-buffer file))
           (org-with-wide-buffer
+           (require 'org-mode)
 	   (org-set-regexps-and-options 'tags-only)
 	   (or (memq 'stats org-agenda-ignore-properties)
 	       (org-refresh-stats-properties))
@@ -512,6 +514,9 @@ The agenda files are the files processed by
 		f))
 	    list "\n")
 	   "\n")))
+    (require 'org-mode)
+    (defvar org-mode-hook)
+    (defvar org-insert-mode-line-in-empty-file)
     (let ((org-mode-hook nil) (org-inhibit-startup t)
 	  (org-insert-mode-line-in-empty-file nil))
       (setq org-agenda-files list)

@@ -27,7 +27,6 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-mode)
 (require 'org-element)
 (require 'org-cycle)
 (defvar org-support-shift-select)
@@ -585,6 +584,7 @@ function runs `org-metadown-final-hook' using the same logic."
   (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
     (org-clocktable-shift dir n)))
 
+(declare-function org-table-move-cell-up "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftup (&optional arg)
   "Act on current element according to context.
@@ -618,12 +618,14 @@ more information."
    ((org-clocktable-try-shift 'up arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
+    (require 'org-table-edit)
     (org-table-move-cell-up))
    ((run-hook-with-args-until-success 'org-shiftup-final-hook))
    (org-support-shift-select
     (org-call-for-shift-select 'previous-line))
    (t (org-shiftselect-error))))
 
+(declare-function org-table-move-cell-down "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftdown (&optional arg)
   "Act on current element according to context.
@@ -658,12 +660,14 @@ more information."
    ((org-clocktable-try-shift 'down arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
+    (require 'org-table-edit)
     (org-table-move-cell-down))
    ((run-hook-with-args-until-success 'org-shiftdown-final-hook))
    (org-support-shift-select
     (org-call-for-shift-select 'next-line))
    (t (org-shiftselect-error))))
 
+(declare-function org-table-move-cell-right "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftright (&optional arg)
   "Act on the current element according to context.
@@ -708,12 +712,14 @@ variable for more information."
    ((org-clocktable-try-shift 'right arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
+    (require 'org-table-edit)
     (org-table-move-cell-right))
    ((run-hook-with-args-until-success 'org-shiftright-final-hook))
    (org-support-shift-select
     (org-call-for-shift-select 'forward-char))
    (t (org-shiftselect-error))))
 
+(declare-function org-table-move-cell-left "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftleft (&optional arg)
   "Act on current element according to context.
@@ -758,6 +764,7 @@ variable for more information."
    ((org-clocktable-try-shift 'left arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
+    (require 'org-table-edit)
     (org-table-move-cell-left))
    ((run-hook-with-args-until-success 'org-shiftleft-final-hook))
    (org-support-shift-select
@@ -911,6 +918,14 @@ Otherwise, return a user error."
 (declare-function org-table-align "org-table-align" ())
 (declare-function org-babel-hash-at-point "ob-core-result" (&optional point))
 (declare-function org-property-action "org-property-set" ())
+(declare-function org-table-maybe-eval-formula "org-table-formula" ())
+(declare-function org-table-maybe-recalculate-line "org-table-formula" ())
+(declare-function org-table-recalculate "org-table-formula" (&optional all noalign))
+(declare-function org-update-radio-target-regexp "ol" ())
+(declare-function org-mode-restart "org-mode" ())
+(declare-function org-footnote-action "org-footnote" (&optional special))
+(declare-function org-babel-execute-src-block "ob-core"
+                  (&optional arg info params executor-type))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -1009,6 +1024,7 @@ This command does many different things, depending on context:
 	 (unless org-babel-no-eval-on-ctrl-c-ctrl-c
            (require 'ob-eval)
 	   (org-babel-eval-wipe-error-buffer)
+           (require 'ob-core)
 	   (org-babel-execute-src-block
 	    current-prefix-arg (org-babel-get-src-block-info nil context))))
 	((guard (org-match-line "[ \t]*$"))
@@ -1032,7 +1048,9 @@ This command does many different things, depending on context:
 	(`footnote-definition
 	 (goto-char (org-element-post-affiliated context))
 	 (call-interactively 'org-footnote-action))
-	(`footnote-reference (call-interactively #'org-footnote-action))
+	(`footnote-reference
+         (require 'org-footnote)
+         (call-interactively #'org-footnote-action))
 	((or `headline `inlinetask)
 	 (save-excursion (goto-char (org-element-begin context))
 			 (call-interactively #'org-set-tags-command)))
@@ -1117,6 +1135,8 @@ This command does many different things, depending on context:
 	       (message "Cannot update this checkbox"))
 	     (org-update-checkbox-count-maybe))))
 	(`keyword
+         (require 'org-mode)
+         (defvar org-startup-align-all-tables)
 	 (let ((org-inhibit-startup-visibility-stuff t)
 	       (org-startup-align-all-tables nil))
 	   (when (boundp 'org-table-coordinate-overlays)
@@ -1127,6 +1147,7 @@ This command does many different things, depending on context:
 	((or `property-drawer `node-property)
 	 (call-interactively #'org-property-action))
 	(`radio-target
+         (require 'ol)
 	 (call-interactively #'org-update-radio-target-regexp))
 	(`statistics-cookie
 	 (call-interactively #'org-update-statistics-cookies))
@@ -1192,6 +1213,7 @@ Use `\\[org-edit-special]' to edit table.el tables")))
 	   (org-fold-show-branches)
 	   (org-fold-hide-archived-subtrees beg end)))))
 
+(declare-function org-table-toggle-column-width "org-table-fold" (&optional arg))
 ;;;###autoload
 (defun org-ctrl-c-tab (&optional arg)
   "Toggle columns width in a table, or show children.
@@ -1201,6 +1223,7 @@ level to hide."
   (interactive "p")
   (cond
    ((org-at-table-p)
+    (require 'org-table-fold)
     (call-interactively #'org-table-toggle-column-width))
    ((org-before-first-heading-p)
     (save-excursion
@@ -1350,6 +1373,7 @@ number of stars to add."
 	       (forward-line)))))))
     (unless toggled (message "Cannot toggle heading from here"))))
 
+(declare-function org-table-wrap-region "org-table-edit" (arg))
 ;;;###autoload
 (defun org-meta-return (&optional arg)
   "Insert a new heading or wrap a region in a table.
@@ -1359,7 +1383,9 @@ an argument, unconditionally call `org-insert-heading'."
   (interactive "P")
   (or (run-hook-with-args-until-success 'org-metareturn-hook)
       (call-interactively (cond (arg #'org-insert-heading)
-				((org-at-table-p) #'org-table-wrap-region)
+				((org-at-table-p)
+                                 (require 'org-table-edit)
+                                 #'org-table-wrap-region)
 				((org-in-item-p) #'org-insert-item)
 				(t #'org-insert-heading)))))
 

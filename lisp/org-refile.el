@@ -224,11 +224,13 @@ converted to a headline before refiling."
   "All the markers used for caching refile locations.")
 
 ;; Add org refile commands to the main org menu
-(mapc (lambda (i) (easy-menu-add-item
-		   org-org-menu
-		   '("Edit Structure") i))
-      '(["Refile Subtree" org-refile (org-in-subtree-not-table-p)]
-	["Refile and copy Subtree" org-refile-copy (org-in-subtree-not-table-p)]))
+(defvar org-org-menu)
+(eval-after-load 'org-mode
+  '(mapc (lambda (i) (easy-menu-add-item
+	         org-org-menu
+	         '("Edit Structure") i))
+         '(["Refile Subtree" org-refile (org-in-subtree-not-table-p)]
+	   ["Refile and copy Subtree" org-refile-copy (org-in-subtree-not-table-p)])))
 
 (defun org-refile-marker (pos)
   "Return a new refile marker at POS, but only if caching is in use.

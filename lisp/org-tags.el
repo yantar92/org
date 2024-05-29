@@ -31,7 +31,6 @@
 (require 'org-mode-common)
 (require 'org-tags-common)
 (require 'org-fold-core)
-(require 'org-mode)
 (require 'org-agenda-files)
 (require 'org-outline)
 (require 'org-tags-core)
@@ -268,6 +267,7 @@ Support for group tags is controlled by the option
   "Return the list of all tags in all agenda buffer/files.
 Optional FILES argument is a list of files which can be used
 instead of the agenda files."
+  (require 'org-mode)
   (save-excursion
     (org-uniquify
      (delq nil
@@ -328,6 +328,7 @@ in Lisp code use `org-set-tags' instead."
         (when (org-before-first-heading-p)
           (user-error "Setting file tags is not supported yet"))
 	(org-back-to-heading)
+        (require 'org-mode)
 	(let* ((all-tags (org-get-tags))
                (local-table (or org-current-tag-alist (org-get-buffer-tags)))
 	       (table (setq org-last-tags-completion-table
@@ -552,6 +553,8 @@ CURRENT-TAGS may be modified by side effect."
 
 (defvar org-last-tag-selection-key nil)
 (declare-function org-todo "org")
+(declare-function org-get-todo-face "org-font-lock" (kwd))
+(declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
 (defun org-fast-tag-selection (current-tags inherited-tags tag-table &optional todo-table)
   "Fast tag selection with single keys.
 CURRENT-TAGS is the current list of tags in the headline,
@@ -729,6 +732,7 @@ Returns the new tags string, or nil to not change the current settings."
 				  (cond
 				   ((not (assoc current-tag tag-table))
                                     ;; The tag is from TODO-TABLE.
+                                    (require 'org-font-lock)
 				    (org-get-todo-face current-tag))
 				   ((member current-tag current-tags) current-face)
 				   ((member current-tag inherited-tags) inherited-face))))

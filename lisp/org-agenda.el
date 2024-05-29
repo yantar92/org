@@ -65,6 +65,7 @@
 (require 'org-edit-structure-common)
 (require 'org-read-date)
 (require 'org-tags-common)
+(require 'org-font-lock)
 
 (declare-function diary-add-to-list "diary-lib"
                   (date string specifier &optional marker globcolor literal))
@@ -101,6 +102,11 @@
 (declare-function org-capture "org-capture" (&optional goto keys))
 (declare-function org-clock-modify-effort-estimate "org-clock" (&optional value))
 (declare-function org-info-find-node "org-misc" (&optional nodename))
+(declare-function org-mobile-push "org-mobile" ())
+(declare-function org-mobile-pull "org-mobile" ())
+(declare-function org-timer-stop "org-timer" ())
+(declare-function org-timer-set-timer "org-timer" (&optional opt))
+(declare-function org-attach "org-attach" ())
 
 (defvar calendar-mode-map)
 (defvar org-clock-current-task)
@@ -1479,6 +1485,8 @@ The following commands are available:
   (setq mode-name "Org-Agenda")
   (setq indent-tabs-mode nil)
   (use-local-map org-agenda-mode-map)
+  (require 'org-mode)
+  (defvar org-startup-truncated)
   (when org-startup-truncated (setq truncate-lines t))
   (setq-local line-move-visual nil)
   (add-hook 'post-command-hook #'org-agenda-update-agenda-type nil 'local)
@@ -3233,6 +3241,8 @@ agenda display, configure `org-agenda-finalize-hook'."
 		    (1+ (match-end 2))
                   (line-end-position))
 	      ov (make-overlay b e))
+        (require 'org-faces)
+        (defvar org-priority-faces)
 	(overlay-put
 	 ov 'face
 	 (let ((special-face
@@ -6738,8 +6748,8 @@ When optional argument LINE is non-nil, align tags only on the
 current line."
   (let ((inhibit-read-only t)
 	(org-agenda-tags-column (if (eq 'auto org-agenda-tags-column)
-			  (- (window-max-chars-per-line))
-			org-agenda-tags-column))
+			            (- (window-max-chars-per-line))
+			          org-agenda-tags-column))
 	(end (and line (line-end-position)))
 	l c)
     (org-fold-core-ignore-modifications
@@ -6778,6 +6788,7 @@ current line."
   (interactive)
   (org-agenda-priority 'down))
 
+(declare-function org-priority "org-priority" (&optional action show))
 (defun org-agenda-priority (&optional force-direction)
   "Set the priority of line at point, also in Org file.
 This changes the line at point, all other lines in the agenda
@@ -6804,6 +6815,7 @@ When called programmatically, FORCE-DIRECTION can be `set', `up',
 	(widen)
 	(goto-char pos)
 	(org-fold-show-context 'agenda)
+        (require 'org-priority)
 	(org-priority force-direction)
 	(end-of-line 1)
 	(setq newhead (org-get-heading)))

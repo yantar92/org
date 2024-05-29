@@ -230,6 +230,7 @@ people to make this necessary."
 
 ;;; The API functions
 
+(declare-function org-entry-put "org-property-set" (epom property value))
 ;;;###autoload
 (defun org-id-get-create (&optional force)
   "Create an ID for the current entry and return it.
@@ -237,7 +238,9 @@ If the entry already has an ID, just return it.
 With optional argument FORCE, force the creation of a new ID."
   (interactive "P")
   (when force
-    (org-entry-put (point) "ID" nil))
+    (progn
+      (require 'org-property-set)
+      (org-entry-put (point) "ID" nil)))
   (org-id-get (point) 'create))
 
 ;;;###autoload
@@ -252,6 +255,7 @@ Create an ID if necessary."
 This is useful when working with contents in a temporary buffer
 that will be copied back to the original.")
 
+(declare-function org-entry-put "org-property-set" (epom property value))
 ;;;###autoload
 (defun org-id-get (&optional epom create prefix inherit)
   "Get the ID of the entry at EPOM.
@@ -273,6 +277,7 @@ to `org-id-new'."
       id)
      (create
       (setq id (org-id-new prefix))
+      (require 'org-property-set)
       (org-entry-put epom "ID" id)
       (org-with-point-at epom
         (org-id-add-location id

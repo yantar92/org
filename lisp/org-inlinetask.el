@@ -82,10 +82,9 @@
 (org-assert-version)
 
 (defvar org-inlinetask-min-level)
-(declare-function org-inlinetask-outline-regexp "org-element" ())
+(require 'org-element)
 (require 'org-compat)
 (require 'org-mode)
-(declare-function org-get-valid-level "org")
 (require 'org-edit-structure)
 
 (defgroup org-inlinetask nil

@@ -492,6 +492,7 @@ Throw an error if we cannot root the directory."
       (buffer-file-name (buffer-base-buffer))
       (error "Need absolute `org-attach-id-dir' to attach in buffers without filename")))
 
+(declare-function org-entry-put "org-property-set" (epom property value))
 (defun org-attach-set-directory ()
   "Set the DIR node property and ask to move files there.
 The property defines the directory that is used for attachments

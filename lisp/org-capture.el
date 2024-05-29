@@ -654,6 +654,7 @@ When nil, you can still capture using the date at point with
   :type 'boolean)
 
 (declare-function org-get-cursor-date "org-agenda" (&optional with-time))
+(declare-function org-store-link "ol" (arg &optional interactive?))
 ;;;###autoload
 (defun org-capture (&optional goto keys)
   "Capture something.
@@ -792,6 +793,10 @@ If LOCAL is non-nil use the buffer-local value of `org-capture-plist'."
       (mapc #'funcall value))))
 
 (declare-function org-table-align "org-table-align" ())
+(declare-function org-table-get-stored-formulas "org-table-formula"
+                  (&optional noerror location))
+(declare-function org-table-recalculate "org-table-formula"
+                  (&optional all noalign))
 (defun org-capture-finalize (&optional stay-with-capture)
   "Finalize the capture process.
 With prefix argument STAY-WITH-CAPTURE, jump to the location of the
@@ -853,6 +858,7 @@ captured item after finalizing."
 	;; If we have added a table line, maybe recompute?
 	(when (and (eq (org-capture-get :type 'local) 'table-line)
 		   (org-at-table-p))
+          (require 'org-table-formula)
 	  (if (not (org-table-get-stored-formulas))
               (progn
                 (require 'org-table-align)
@@ -1014,6 +1020,9 @@ for `entry'-type templates"))
 
 (defvar org-time-was-given) ; dynamically scoped parameter
 (declare-function org-find-olp "org-property-search" (path &optional this-buffer))
+(declare-function org-datetree-find-iso-week-create "org-datetree"
+                  (d &optional keep-restriction))
+(declare-function org-id-find "org-id-search" (id &optional markerp))
 (defun org-capture-set-target-location (&optional target)
   "Find TARGET buffer and position.
 Store them in the capture property list."
@@ -1029,6 +1038,7 @@ Store them in the capture property list."
 	 (widen)
 	 (setq target-entry-p nil))
 	(`(id ,(and id (or (pred stringp) (pred symbolp))))
+         (require 'org-id-search)
 	 (pcase (org-id-find id)
 	   (`(,path . ,position)
 	    (set-buffer (org-capture-target-buffer path))
@@ -1414,8 +1424,10 @@ may have been stored before."
 	(org-capture-narrow beg (1- end))
 	(org-capture--position-cursor beg end)))))
 
+(declare-function org-table-end "org-table-core" (&optional table-type))
 (defun org-capture-place-table-line ()
   "Place the template as a table line."
+  (require 'org-table-core)
   (let* ((template (org-trim (org-capture-get :template)))
          (text
 	  (pcase template
@@ -1701,6 +1713,7 @@ Lisp programs can force the template by setting KEYS to a string."
 
 (declare-function org-read-property-value "org-property-set"
                   (property &optional epom default))
+(declare-function org-set-property "org-property-set" (property value))
 (defun org-capture-fill-template (&optional template initial annotation)
   "Fill a TEMPLATE and return the filled template as a string.
 The template may still contain \"%?\" for cursor positioning.

@@ -32,10 +32,10 @@
 (require 'org-tags)
 (require 'org-edit-structure)
 (require 'org-mode-common)
-(require 'org-table-fold)
 (require 'org-cycle)
+(require 'org-font-lock-common)
+(require 'org-table-fold)
 
-(defvar org-emphasis-alist)
 (declare-function org-open-at-point "org-open-at-point")
 
 (defcustom org-special-ctrl-k nil
@@ -101,6 +101,7 @@ Set `org-speed-command' to the appropriate command as a side effect."
                 'org-speed-command-hook
                 (make-string 1 (aref kv (1- (length kv)))))))))
 
+(declare-function org-table-blank-field "org-table-edit" ())
 ;;;###autoload
 (defun org-self-insert-command (N)
   "Like `self-insert-command', use `overwrite-mode' for whitespace in tables.
@@ -133,7 +134,9 @@ overwritten, and the table is not marked as requiring realignment."
 	    (if (or (eq (char-after) ?\s) (looking-at "[^|\n]*  |"))
 	        ;; Got extra space, this field does not determine
 	        ;; column width.
-	        (let (org-table-may-need-update) (org-table-blank-field))
+	        (let (org-table-may-need-update)
+                  (require 'org-table-edit)
+                  (org-table-blank-field))
 	      ;; No extra space, this field may determine column
 	      ;; width.
 	      (org-table-blank-field)))
@@ -328,6 +331,7 @@ ignoring region."
           (delete-indentation)
           (forward-line 1))))))
 
+(declare-function org-table-insert-row "org-table-edit" (&optional arg))
 ;;;###autoload
 (defun org-open-line (n)
   "Insert a new row in tables, call `open-line' elsewhere.
@@ -336,7 +340,9 @@ As a special case, when a document starts with a table, allow
 calling `open-line' on the very first character."
   (interactive "*p")
   (if (and org-special-ctrl-o (/= (point) 1) (org-at-table-p))
-      (org-table-insert-row)
+      (progn
+        (require 'org-table-edit)
+        (org-table-insert-row))
     (open-line n)))
 
 (defun org--newline (indent arg interactive)
@@ -349,6 +355,8 @@ INTERACTIVE, which can trigger indentation if
       (org-newline-and-indent arg)
     (newline arg interactive)))
 
+(declare-function org-table-next-row "org-table-move" ())
+(declare-function org-table-justify-field-maybe "org-table-align" (&optional new))
 ;;;###autoload
 (defun org-return (&optional indent arg interactive)
   "Goto next table row or insert a newline.
@@ -379,7 +387,9 @@ object (e.g., within a comment).  In these case, you need to use
       (if (or (looking-at-p "[ \t]*$")
 	      (save-excursion (skip-chars-backward " \t") (bolp)))
 	  (insert "\n")
+        (require 'org-table-align)
 	(org-table-justify-field-maybe)
+        (require 'org-table-move)
 	(call-interactively #'org-table-next-row)))
      ;; On a link, a timestamp or a citation, call `org-open-at-point'
      ;; if `org-return-follows-link' allows it.  Tolerate fuzzy
@@ -694,6 +704,7 @@ interactive command with similar behavior."
     (kill-new result)
     (message "Visible strings have been copied to the kill ring.")))
 
+(declare-function org-table-copy-region "org-table-edit" (beg end &optional cut))
 ;;;###autoload
 (defun org-copy-special ()
   "Copy region in table or copy current subtree.
@@ -701,8 +712,13 @@ Calls `org-table-copy-region' or `org-copy-subtree', depending on
 context.  See the individual commands for more information."
   (interactive)
   (call-interactively
-   (if (org-at-table-p) #'org-table-copy-region #'org-copy-subtree)))
+   (if (org-at-table-p)
+       (progn
+         (require 'org-table-edit)
+         #'org-table-copy-region)
+     #'org-copy-subtree)))
 
+(declare-function org-table-cut-region "org-table-edit" (beg end))
 ;;;###autoload
 (defun org-cut-special ()
   "Cut region in table or cut current subtree.
@@ -710,8 +726,13 @@ Calls `org-table-cut-region' or `org-cut-subtree', depending on
 context.  See the individual commands for more information."
   (interactive)
   (call-interactively
-   (if (org-at-table-p) #'org-table-cut-region #'org-cut-subtree)))
+   (if (org-at-table-p)
+       (progn
+         (require 'org-table-edit)
+         #'org-table-cut-region)
+     #'org-cut-subtree)))
 
+(declare-function org-table-paste-rectangle "org-table-edit" ())
 ;;;###autoload
 (defun org-paste-special (arg)
   "Paste rectangular region into table, or past subtree relative to level.
@@ -719,7 +740,9 @@ Calls `org-table-paste-rectangle' or `org-paste-subtree', depending on context.
 See the individual commands for more information."
   (interactive "P")
   (if (org-at-table-p)
-      (org-table-paste-rectangle)
+      (progn
+        (require 'org-table-edit)
+        (org-table-paste-rectangle))
     (org-paste-subtree arg)))
 
 

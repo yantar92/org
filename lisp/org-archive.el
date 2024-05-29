@@ -155,6 +155,7 @@ archive location, but not yet deleted from the original file.")
 
 (declare-function org-datetree-find-date-create "org-datetree" (date &optional keep-restriction))
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
+(declare-function org-entry-put "org-property-set" (epom property value))
 ;;;###autoload
 (defun org-archive-subtree (&optional find-done)
   "Move the current subtree to the archive.
@@ -259,6 +260,8 @@ direct children of this heading."
 	    (let (this-command) (org-copy-subtree 1 nil t))
 	    (set-buffer buffer)
 	    ;; Enforce Org mode for the archive buffer
+            (require 'org-mode)
+            (defvar org-insert-mode-line-in-empty-file)
 	    (if (not (derived-mode-p 'org-mode))
 		;; Force the mode for future visits.
 		(let ((org-insert-mode-line-in-empty-file t)
@@ -341,6 +344,7 @@ direct children of this heading."
 	      (dolist (item org-archive-save-context-info)
 		(let ((value (cdr (assq item context))))
 		  (when (org-string-nw-p value)
+                    (require 'org-property-set)
 		    (org-entry-put
 		     (point)
 		     (concat "ARCHIVE_" (upcase (symbol-name item)))
@@ -378,6 +382,7 @@ direct children of this heading."
 	(org-next-visible-heading 1))))
 
 (declare-function org-cycle-show-empty-lines "org-cycle" (state))
+(declare-function org-set-property "org-property-set" (property value))
 ;;;###autoload
 (defun org-archive-to-archive-sibling ()
   "Archive the current heading by moving it under the archive sibling.
@@ -441,6 +446,7 @@ Archiving time is retained in the ARCHIVE_TIME node property."
 	  (goto-char pos)
 	  (let ((this-command this-command)) (org-cut-subtree)))
 	(org-paste-subtree (org-get-valid-level level 1))
+        (require 'org-property-set)
 	(org-set-property
 	 "ARCHIVE_TIME"
 	 (format-time-string

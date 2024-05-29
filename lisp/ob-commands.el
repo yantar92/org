@@ -584,6 +584,8 @@ block of the same language as the previous."
                       (progn
                         (require 'org-src)
                         (defvar org-src-lang-modes)
+                        (require 'org-load)
+                        (defvar org-babel-load-languages)
                         (completing-read
 		         "Lang: "
 		         (mapcar #'symbol-name

@@ -66,6 +66,8 @@ agenda display."
 (defun org-agenda-deadline-face (fraction)
   "Return the face to displaying a deadline item.
 FRACTION is what fraction of the head-warning time has passed."
+  (require 'org-faces)
+  (defvar org-agenda-deadline-faces)
   (assoc-default fraction org-agenda-deadline-faces #'<=))
 
 ;;; General agenda search customization
@@ -782,6 +784,9 @@ FILE is the path to a file to be checked for entries.  DATE is date like
 the one returned by `calendar-current-date'.  ARGS are symbols indicating
 which kind of entries should be extracted.  For details about these, see
 the documentation of `org-diary'."
+  (require 'org-mode)
+  (defvar org-startup-folded)
+  (defvar org-startup-align-all-tables)
   (let* ((org-startup-folded nil)
 	 (org-startup-align-all-tables nil)
 	 (buffer (if (file-exists-p file) (org-get-agenda-file-buffer file)
@@ -2286,6 +2291,8 @@ When NO-AGENDA-SKIP is non-nil, do not skip entries skipped by
          :narrow t))
       (nreverse rtn)))))
 
+(declare-function org-add-archive-files "org-archive" (files))
+(declare-function org-narrow-to-subtree "org-narrow" (&optional element))
 (defun org-map-entries (func &optional match scope &rest skip)
   "Call FUNC at each headline selected by MATCH in SCOPE.
 
@@ -2371,6 +2378,7 @@ a *different* entry, you cannot use these techniques."
 	(save-restriction
 	  (cond ((eq scope 'tree)
 		 (org-back-to-heading t)
+                 (require 'org-narrow)
 		 (org-narrow-to-subtree)
 		 (setq scope nil))
 		((and (or (eq scope 'region) (eq scope 'region-start-level))

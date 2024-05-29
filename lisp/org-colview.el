@@ -672,6 +672,10 @@ dynamic scoping for `org-overriding-columns-format'.")
 (declare-function org-edit-headline "org-edit-structure" (&optional heading))
 (declare-function org-property-get-allowed-values "org-property-set"
                   (epom property &optional table))
+(declare-function org-entry-put "org-property-set" (epom property value))
+(declare-function org-beamer-select-environment "ox-beamer" ())
+(declare-function org-set-tags-command "org-tags" (&optional arg))
+(declare-function org-priority "org-priority" (&optional action show))
 (defun org-columns-edit-value (&optional key)
   "Edit the value of the property at point in column view.
 Where possible, use the standard interface for changing this line."
@@ -698,6 +702,7 @@ Where possible, use the standard interface for changing this line."
 	    ("PRIORITY"
 	     (lambda ()
 	       (org-with-point-at pom
+                 (require 'org-priority)
 		 (call-interactively #'org-priority))))
 	    ("TAGS"
 	     (lambda ()
@@ -720,6 +725,7 @@ Where possible, use the standard interface for changing this line."
 	    ("BEAMER_ENV"
 	     (lambda ()
 	       (org-with-point-at pom
+                 (require 'ox-beamer)
 		 (call-interactively #'org-beamer-select-environment))))
 	    (_
              (require 'org-property-set)
@@ -852,11 +858,14 @@ an integer, select that value."
 	(org-columns-update key)
 	(org-move-to-column visible-column))))))
 
+(declare-function org-time-stamp-format "org-element-timestamp"
+                  (&optional with-time inactive custom))
 (defun org-colview-construct-allowed-dates (s)
   "Construct a list of three dates around the date in S.
 This respects the format of the time stamp in S, active or non-active,
 and also including time or not.  S must be just a time stamp, no text
 around it."
+  (require 'org-element-timestamp)
   (when (and s (string-match (concat "^" org-ts-regexp3 "$") s))
     (let* ((time (org-parse-time-string s 'nodefaults))
 	   (active (equal (string-to-char s) ?<))
@@ -919,6 +928,8 @@ Also sets `org-columns-top-level-marker' to the new position."
 	  ((org-entry-get nil "COLUMNS" t) org-entry-property-inherited-from)
 	  (t (org-back-to-heading) (point))))))
 
+(declare-function org-clock-sum "org-clock"
+                  (&optional tstart tend headline-filter propname))
 ;;;###autoload
 (defun org-columns (&optional global columns-fmt-string)
   "Turn on column view on an Org mode file.
@@ -948,6 +959,7 @@ When COLUMNS-FMT-STRING is non-nil, use it as the column format."
 	(when (and (not global) (org-at-heading-p))
 	  (narrow-to-region (point) (org-end-of-subtree t t)))
 	(when (assoc "CLOCKSUM" org-columns-current-fmt-compiled)
+          (require 'org-clock)
 	  (org-clock-sum))
 	(when (assoc "CLOCKSUM_T" org-columns-current-fmt-compiled)
 	  (org-clock-sum-today))

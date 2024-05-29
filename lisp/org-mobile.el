@@ -39,6 +39,10 @@
 (require 'ol-core)
 (require 'org-edit-structure-common)
 (require 'org-property-search)
+(require 'org-id)
+(require 'org-property-set)
+(require 'org-archive)
+(require 'org-priority)
 
 ;;; Code:
 
@@ -263,15 +267,17 @@ the old and new values for the entry.")
 (defvar org-mobile-checksum-files nil)
 
 ;; Add org mobile commands to the main org menu
-(easy-menu-add-item
- org-org-menu
- nil
- '("MobileOrg"
-   ["Push Files and Views" org-mobile-push t]
-   ["Get Captured and Flagged" org-mobile-pull t]
-   ["Find FLAGGED Tasks" (org-agenda nil "?") :active t :keys "\\[org-agenda] ?"]
-   "--"
-   ["Setup" (customize-group 'org-mobile) t]))
+(defvar org-org-menu)
+(eval-after-load 'org-mode
+  '(easy-menu-add-item
+    org-org-menu
+    nil
+    '("MobileOrg"
+      ["Push Files and Views" org-mobile-push t]
+      ["Get Captured and Flagged" org-mobile-pull t]
+      ["Find FLAGGED Tasks" (org-agenda nil "?") :active t :keys "\\[org-agenda] ?"]
+      "--"
+      ["Setup" (customize-group 'org-mobile) t])))
 
 (defun org-mobile-prepare-file-lists ()
   (setq org-mobile-files-alist (org-mobile-files-alist))
@@ -801,7 +807,6 @@ If nothing new has been added, return nil."
   "Apply all change requests in the current buffer.
 If BEG and END are given, only do this in that region."
   (interactive)
-  (require 'org-archive)
   (setq org-mobile-last-flagged-files nil)
   (setq beg (or beg (point-min)) end (or end (point-max)))
 

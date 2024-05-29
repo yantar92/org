@@ -75,12 +75,14 @@
         (widen)
         (narrow-to-region (nth 1 narrow) (nth 2 narrow))))))
 
+(declare-function org-store-link "ol" (arg &optional interactive?))
 ;;;###autoload
 (defun org-occur-link-in-agenda-files ()
   "Create a link and search for it in the agendas.
 The link is not stored in `org-stored-links', it is just created
 for the search purpose."
   (interactive)
+  (require 'ol)
   (let ((link (condition-case nil
 		  (org-store-link nil)
 		(error "Unable to create a link to here"))))

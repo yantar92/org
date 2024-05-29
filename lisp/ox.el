@@ -95,7 +95,6 @@
 (require 'org-src)
 (require 'org-element-context)
 (require 'org-table-align)
-(require 'org-mode)
 
 (require 'ox-backend)
 
@@ -2634,6 +2633,7 @@ Return code as a string."
 	       (plist-get info :filter-final-output)
 	       output info)))))))))
 
+(declare-function org-set-regexps-and-options "org-mode" (&optional tags-only))
 (defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
   "Annotate the INFO plist according to the BACKEND.
 
@@ -2665,6 +2665,7 @@ still inferior to file-local settings."
       (org-macro-replace-all org-macro-templates parsed-keywords))
     ;; Refresh buffer properties and radio targets after previous
     ;; potentially invasive changes.
+    (require 'org-mode)
     (org-set-regexps-and-options)
     (org-update-radio-target-regexp)
     (setq modified-tick (buffer-chars-modified-tick))
@@ -2775,6 +2776,7 @@ a registered backend."
    (org-export-string-as
     (delete-and-extract-region (region-beginning) (region-end)) backend t)))
 
+(declare-function org-entry-put "org-property-set" (epom property value))
 ;;;###autoload
 (defun org-export-insert-default-template (&optional backend subtreep)
   "Insert all export keywords with default values at beginning of line.
@@ -2828,8 +2830,10 @@ locally for the subtree through node properties."
               (lambda (opt) (format "%s:%S" (car opt) (cdr opt)))
 	      (sort options (lambda (k1 k2) (string< (car k1) (car k2)))))))
 	(if subtreep
-	    (org-entry-put
-	     node "EXPORT_OPTIONS" (mapconcat #'identity items " "))
+            (progn
+              (require 'org-property-set)
+	      (org-entry-put
+	       node "EXPORT_OPTIONS" (mapconcat #'identity items " ")))
 	  (while items
 	    (insert "#+options:")
 	    (let ((width 10))

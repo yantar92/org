@@ -45,6 +45,7 @@
 (require 'org-agenda-files)
 (require 'org-mode-common)
 (require 'org-element)
+(require 'org-font-lock-common)
 
 (declare-function notifications-notify "notifications" (&rest params))
 (declare-function org-inlinetask-at-task-p "org-inlinetask" ())
@@ -762,11 +763,14 @@ there is no recent clock to choose from."
 	 ((assoc rpl sel-list) (cdr (assoc rpl sel-list)))
 	 (t (user-error "Invalid task choice %c" rpl)))))))
 
+(declare-function org-fontify-like-in-org-mode "org-font-lock"
+                  (s &optional odd-levels))
 (defun org-clock-insert-selection-line (i marker)
   "Insert a line for the clock selection menu.
 And return a cons cell with the selection character integer and the marker
 pointing to it."
   (when (marker-buffer marker)
+    (require 'org-font-lock)
     (let (cat task heading prefix)
       (with-current-buffer (org-base-buffer (marker-buffer marker))
 	(org-with-wide-buffer
@@ -864,6 +868,7 @@ previous clocking intervals."
 		60)))
     (+ currently-clocked-time (or org-clock-total-time 0))))
 
+(declare-function org-entry-put "org-property-set" (epom property value))
 ;;;###autoload
 (defun org-clock-modify-effort-estimate (&optional value)
   "Add to or set the effort estimate of the item currently being clocked.
@@ -899,6 +904,7 @@ clocked item, and the value displayed in the mode line."
 	    (if (equal ?+ sign) (setq value (+ current value)))))
 	(setq value (max 0 value)
 	      org-clock-effort (org-duration-from-minutes value))
+        (require 'org-property-set)
 	(org-entry-put org-clock-marker "Effort" org-clock-effort)
 	(org-clock-update-mode-line)
 	(message "Effort is now %s" org-clock-effort))
@@ -2774,6 +2780,12 @@ the currently selected interval size."
 		 (org-combine-plists params `(:multifile ,multifile)))))))
 
 (declare-function org-table-align "org-table-align" ())
+(declare-function org-table-recalculate "org-table-formula"
+                  (&optional all noalign))
+(declare-function org-table-sort-lines "org-table-edit"
+                  (&optional with-case sorting-type getkey-func compare-func interactive?))
+(declare-function org-table-goto-column "org-table-core"
+                  (n &optional on-delim force))
 (defun org-clocktable-write-default (ipos tables params)
   "Write out a clock table at position IPOS in the current buffer.
 TABLES is a list of tables with clocking data as produced by
@@ -3020,10 +3032,13 @@ from the dynamic block definition."
       (org-table-align))
     (when sort
       (save-excursion
+        (require 'org-table-edit)
 	(org-table-goto-line 3)
 	(org-table-goto-column (car sort))
 	(org-table-sort-lines nil (cdr sort))))
-    (when recalc (org-table-recalculate 'all))
+    (when recalc
+      (require 'org-table-formula)
+      (org-table-recalculate 'all))
     total-time))
 
 (defun org-clocktable-indent-string (level)

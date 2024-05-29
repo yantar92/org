@@ -1113,13 +1113,17 @@ with the original repeater."
 
 ;;; Outline Sorting
 
+(declare-function org-table-sort-lines "org-table-edit"
+                  (&optional with-case sorting-type getkey-func compare-func interactive?))
 ;;;###autoload
 (defun org-sort (&optional with-case)
   "Call `org-sort-entries', `org-table-sort-lines' or `org-sort-list'.
 Optional argument WITH-CASE means sort case-sensitively."
   (interactive "P")
   (org-call-with-arg
-   (cond ((org-at-table-p) #'org-table-sort-lines)
+   (cond ((org-at-table-p)
+          (require 'org-table-edit)
+          #'org-table-sort-lines)
 	 ((org-at-item-p) #'org-sort-list)
 	 (t #'org-sort-entries))
    with-case))
@@ -1345,6 +1349,8 @@ function is being called interactively."
 	     ((= dcst ?p)
               (if (re-search-forward org-priority-regexp (line-end-position) t)
 		  (string-to-char (match-string 2))
+                (require 'org-priority-common)
+                (defvar org-priority-default)
 		org-priority-default))
 	     ((= dcst ?r)
 	      (or (org-entry-get nil property) ""))

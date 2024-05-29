@@ -161,8 +161,8 @@ a link."
        ;; On a headline or an inlinetask, but not on a timestamp,
        ;; a link, a footnote reference or a citation.
        ((memq type '(headline inlinetask))
-        (require 'org-mode)
-        (defvar org-complex-heading-regexp) ; org-mode.el
+        (require 'org-mode-common)
+        (defvar org-complex-heading-regexp) ; org-mode-common.el
 	(org-match-line org-complex-heading-regexp)
 	(let ((tags-beg (match-beginning 5))
 	      (tags-end (match-end 5)))
