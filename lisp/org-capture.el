@@ -51,44 +51,11 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-refile)
-(require 'org-clock)
-(require 'org-bookmark)
 (require 'org-edit-structure-common)
 (require 'org-read-date)
-
-(declare-function org-at-encrypted-entry-p "org-crypt" ())
-(declare-function org-at-table-p "org-table" (&optional table-type))
-(declare-function org-clock-update-mode-line "org-clock" (&optional refresh))
-(declare-function org-datetree-find-date-create "org-datetree" (date &optional keep-restriction))
-(declare-function org-datetree-find-month-create "org-datetree" (d &optional keep-restriction))
-(declare-function org-decrypt-entry "org-crypt" ())
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-element-lineage "org-element-ast" (datum &optional types with-self))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-contents-end "org-element" (node))
-(declare-function org-element-post-affiliated "org-element" (node))
-(declare-function org-encrypt-entry "org-crypt" ())
-(declare-function org-insert-link "ol" (&optional complete-file link-location default-description))
-(declare-function org-link-make-string "ol" (link &optional description))
-(declare-function org-table-analyze "org-table" ())
-(declare-function org-table-current-dline "org-table" ())
-(declare-function org-table-fix-formulas "org-table" (key replace &optional limit delta remove))
-(declare-function org-table-goto-line "org-table" (N))
-
-(defvar dired-buffers)
-(defvar crm-separator)
-(defvar org-end-time-was-given)
-(defvar org-keyword-properties)
-(defvar org-remember-default-headline)
-(defvar org-remember-templates)
-(defvar org-store-link-plist)
-(defvar org-table-border-regexp)
-(defvar org-table-current-begin-pos)
-(defvar org-table-dataline-regexp)
-(defvar org-table-fix-formulas-confirm)
-(defvar org-table-hline-regexp)
-(defvar org-table-hlines)
+(require 'ol)
+(require 'org-clock)
+(require 'org-bookmark)
 
 (defvar org-capture-clock-was-started nil
   "Internal flag, keeping marker to the started clock.")
@@ -654,7 +621,6 @@ When nil, you can still capture using the date at point with
   :type 'boolean)
 
 (declare-function org-get-cursor-date "org-agenda" (&optional with-time))
-(declare-function org-store-link "ol" (arg &optional interactive?))
 ;;;###autoload
 (defun org-capture (&optional goto keys)
   "Capture something.
@@ -723,6 +689,7 @@ of the day at point (if any) or the current HH:MM time."
 	(org-capture-put :original-buffer orig-buf
 			 :original-file (or (buffer-file-name orig-buf)
 					    (and (featurep 'dired)
+                                                 (boundp 'dired-buffers)
 						 (car (rassq orig-buf
 							     dired-buffers))))
 			 :original-file-nondirectory
@@ -795,8 +762,12 @@ If LOCAL is non-nil use the buffer-local value of `org-capture-plist'."
 (declare-function org-table-align "org-table-align" ())
 (declare-function org-table-get-stored-formulas "org-table-formula"
                   (&optional noerror location))
+(declare-function org-table-fix-formulas "org-table-edit"
+                  (key replace &optional limit delta remove))
 (declare-function org-table-recalculate "org-table-formula"
                   (&optional all noalign))
+(declare-function org-table-current-dline "org-table-core" ())
+(declare-function org-encrypt-entry "org-crypt" ())
 (defun org-capture-finalize (&optional stay-with-capture)
   "Finalize the capture process.
 With prefix argument STAY-WITH-CAPTURE, jump to the location of the
@@ -869,6 +840,8 @@ captured item after finalizing."
 	    ;;
 	    ;; The delta required to fix formulas depends on the
 	    ;; number of rows inserted by the template.
+            (require 'org-table-edit)
+            (defvar org-table-fix-formulas-confirm)
 	    (when (or (org-capture-get :immediate-finish)
 		      (not org-table-fix-formulas-confirm)
 		      (funcall org-table-fix-formulas-confirm "Fix formulas? "))
@@ -889,6 +862,7 @@ captured item after finalizing."
     (when (org-capture-get :decrypted)
       (save-excursion
 	(goto-char (org-capture-get :decrypted))
+        (require 'org-crypt)
 	(org-encrypt-entry)))
 
     (unless (org-capture-get :no-save) (save-buffer))
@@ -960,6 +934,8 @@ cleaned up correctly"))))
 Refiling is done from the base buffer, because the indirect buffer is then
 already gone.  Any prefix argument will be passed to the refile command."
   (interactive)
+  (require 'org-refile)
+  (defvar org-refile-targets)
   (unless (eq (org-capture-get :type 'local) 'entry)
     (user-error "Refiling from a capture buffer makes only sense \
 for `entry'-type templates"))
@@ -1021,6 +997,10 @@ for `entry'-type templates"))
 (defvar org-time-was-given) ; dynamically scoped parameter
 (declare-function org-find-olp "org-property-search" (path &optional this-buffer))
 (declare-function org-datetree-find-iso-week-create "org-datetree"
+                  (d &optional keep-restriction))
+(declare-function org-datetree-find-month-create "org-datetree"
+                  (d &optional keep-restriction))
+(declare-function org-datetree-find-date-create "org-datetree"
                   (d &optional keep-restriction))
 (declare-function org-id-find "org-id-search" (id &optional markerp))
 (defun org-capture-set-target-location (&optional target)
@@ -1125,6 +1105,7 @@ Store them in the capture property list."
                ;; Prompt for date.  Bind `org-end-time-was-given' so
                ;; that `org-read-date-analyze' handles the time range
                ;; case and returns `prompt-time' with the start value.
+               (defvar org-end-time-was-given)
                (let* ((org-time-was-given nil)
                       (org-end-time-was-given nil)
                       (prompt-time (org-read-date
@@ -1176,6 +1157,8 @@ Store them in the capture property list."
 		       :target-entry-p target-entry-p
 		       :decrypted
 		       (and (featurep 'org-crypt)
+                            (fboundp 'org-at-encrypted-entry-p)
+                            (fboundp 'org-decrypt-entry)
 			    (org-at-encrypted-entry-p)
 			    (save-excursion
 			      (org-decrypt-entry)
@@ -1427,9 +1410,13 @@ may have been stored before."
 	(org-capture--position-cursor beg end)))))
 
 (declare-function org-table-end "org-table-core" (&optional table-type))
+(declare-function org-table-analyze "org-table-core" ())
 (defun org-capture-place-table-line ()
   "Place the template as a table line."
   (require 'org-table-core)
+  (defvar org-table-border-regexp)
+  (defvar org-table-dataline-regexp)
+  (defvar org-table-hlines)
   (let* ((template (org-trim (org-capture-get :template)))
          (text
 	  (pcase template
@@ -1566,6 +1553,7 @@ Of course, if exact position has been required, just put it there."
 			   (org-table-current-dline))))
    (t (error "This should not happen"))))
 
+(declare-function org-table-goto-line "org-table-move" (N))
 (defun org-capture-store-last-position ()
   "Store the last-captured position."
   (let* ((where (org-capture-get :position-for-last-stored 'local))
@@ -1576,6 +1564,7 @@ Of course, if exact position has been required, just put it there."
 	       ((and (listp where) (eq (car where) 'table-line))
 		(if (org-at-table-p)
 		    (save-excursion
+                      (require 'org-table-move)
 		      (org-table-goto-line (nth 1 where))
                       (line-beginning-position))
 		  (point))))))
@@ -1628,8 +1617,6 @@ If N is nil, :empty-lines-after or :empty-lines are considered."
   (let ((pos (point)))
     (when (> n 0) (newline n))
     (goto-char pos)))
-
-(defvar org-clock-marker) ; Defined in org.el
 
 (defun org-capture-set-plist (entry)
   "Initialize the property list for ENTRY from the template definition."
@@ -1897,6 +1884,8 @@ Expansion occurs in a temporary Org mode buffer."
 		        (set-marker end nil)
 		        (pcase key
 		          ((or "G" "g")
+                           (require 'crm)
+                           (defvar crm-separator)
 		           (let* ((org-last-tags-completion-table
 			           (org-global-tags-completion-table
 			            (cond ((equal key "G") (org-agenda-files))
