@@ -49,18 +49,6 @@ changed by an edit command."
   :group 'org-sparse-trees
   :type 'boolean)
 
-(defcustom org-remove-highlights-with-change t
-  "Non-nil means any change to the buffer will remove temporary highlights.
-\\<org-mode-map>\
-Such highlights are created by `org-occur' and `org-clock-display'.
-When nil, `\\[org-ctrl-c-ctrl-c]' needs to be used \
-to get rid of the highlights.
-The highlights created by `org-latex-preview' always need
-`\\[org-latex-preview]' to be removed."
-  :group 'org-sparse-trees
-  :group 'org-time
-  :type 'boolean)
-
 (defcustom org-occur-case-fold-search t
   "Non-nil means `org-occur' should be case-insensitive.
 If set to `smart' the search will be case-insensitive only if it

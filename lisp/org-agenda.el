@@ -2009,6 +2009,8 @@ to limit entries to in this type."
 (defvar org-agenda-keep-restricted-file-list nil)
 (defvar org-keys nil)
 (defvar org-match nil)
+(declare-function org-occur "org-sparse-tree" (regexp &optional keep-previous callback))
+(declare-function org-match-sparse-tree "org-sparse-tree" (&optional todo-only match start-level))
 ;;;###autoload
 (defun org-agenda (&optional arg keys restriction)
   "Dispatch agenda commands to collect entries to the agenda buffer.
@@ -2147,9 +2149,11 @@ Pressing `<' twice means to restrict to the current subtree or region
 		   (org-todo-list org-match))
 		  (`tags-tree
 		   (org-check-for-org-mode)
+                   (require 'org-sparse-tree)
 		   (org-match-sparse-tree arg org-match))
 		  (`todo-tree
 		   (org-check-for-org-mode)
+                   (require 'org-sparse-tree)
 		   (org-occur (concat "^" org-outline-regexp "[ \t]*"
 				      (regexp-quote org-match) "\\(?:[\t ]\\|$\\)")))
 		  (`occur-tree

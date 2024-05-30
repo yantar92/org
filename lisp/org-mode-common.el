@@ -56,6 +56,18 @@ This is configurable, because there is some impact on typing performance."
   :type 'boolean)
 (defvar org-self-insert-command-undo-counter 0)
 
+(defcustom org-remove-highlights-with-change t
+  "Non-nil means any change to the buffer will remove temporary highlights.
+\\<org-mode-map>\
+Such highlights are created by `org-occur' and `org-clock-display'.
+When nil, `\\[org-ctrl-c-ctrl-c]' needs to be used \
+to get rid of the highlights.
+The highlights created by `org-latex-preview' always need
+`\\[org-latex-preview]' to be removed."
+  :group 'org-sparse-trees
+  :group 'org-time
+  :type 'boolean)
+
 (defvar org-inhibit-highlight-removal nil) ; dynamically scoped param
 
 (defvar-local org-keyword-properties nil

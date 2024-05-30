@@ -51,11 +51,13 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-edit-structure-common)
 (require 'org-read-date)
 (require 'ol)
 (require 'org-clock)
 (require 'org-bookmark)
+(require 'org-tags)
+(require 'org-todo)
+(require 'org-edit-structure)
 
 (defvar org-capture-clock-was-started nil
   "Internal flag, keeping marker to the started clock.")
