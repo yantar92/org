@@ -685,24 +685,33 @@ the end of the description buffer, and call that function with REGLOCK,
       (with-current-buffer buffer
         (erase-buffer)
         (setq revert-buffer-function
-              (lambda (&rest _) (org-pending-describe-reglock reglock)))
+              (lambda (&rest _)
+                ;; Revert if not killed.
+                (if (org-pending-reglock-region reglock)
+                    (org-pending-describe-reglock reglock)
+                  (user-error "This region lock has been killed."))))
         (cl-labels
             ((time-to-string (x) (if x (format-time-string "%T" x) "-"))
              (bool-to-string (x) (if x "yes" "no"))
              (insert-link (m)
-               (insert-button
-                (format "pos %s in buffer %s" (+ 0 m) (marker-buffer m))
-                'action (lambda (&rest _)
-                          (interactive)
-                          (let ((b (marker-buffer m)))
-                            (pop-to-buffer b)
-                            (goto-char m)))))
+               (let ((b (marker-buffer m)))
+                 (if (buffer-live-p b)
+                   (insert-button
+                    (format "pos %s in buffer %s" (+ 0 m) (marker-buffer m))
+                    'action (lambda (&rest _)
+                              (interactive)
+                              (pop-to-buffer b)
+                              (goto-char m)))
+                   (insert "n.a."))))
              (insert-region (r)
-               (insert "[")
-               (insert-link (car r))
-               (insert "..")
-               (insert-link (cdr r))
-               (insert "]"))
+               (if (buffer-live-p (marker-buffer (car r)))
+                   (progn
+                     (insert "[")
+                     (insert-link (car r))
+                     (insert "..")
+                     (insert-link (cdr r))
+                     (insert "]"))
+                 (insert "n.a.")))
              (insert-value (value)
                (cond
                 ((markerp value) (insert-link value))
