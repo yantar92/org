@@ -33,36 +33,10 @@
 
 (require 'cl-lib)
 (require 'org-agenda-search)
-(require 'org-map)
-(require 'org-property-search)
 (require 'org-fold)
 (require 'org-keys)
 (require 'org-font-lock)
-
-(defvar org-ts-regexp)
-
-(declare-function org-agenda-redo "org-agenda" (&optional all))
-(declare-function org-agenda-do-context-action "org-agenda" ())
-(declare-function org-clock-sum-today "org-clock" (&optional headline-filter))
-(declare-function org-element-extract "org-element-ast" (node))
-(declare-function org-element-interpret-data "org-element" (data))
-(declare-function org-element-map "org-element" (data types fun &optional info first-match no-recursion with-affiliated))
-(declare-function org-element-parse-secondary-string "org-element" (string restriction &optional parent))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-restriction "org-element" (element))
-(declare-function org-reduced-level "org-element" (stars))
-(declare-function org-element-type-p "org-element-ast" (node types))
-(declare-function org-dynamic-block-define "org" (type func))
-(declare-function org-link-open-from-string "ol" (s &optional arg))
-(declare-function face-remap-remove-relative "face-remap" (cookie))
-(declare-function face-remap-add-relative "face-remap" (face &rest specs))
-
-(defvar org-agenda-columns-add-appointments-to-effort-sum)
-(defvar org-agenda-columns-compute-summary-properties)
-(defvar org-agenda-columns-show-summaries)
-(defvar org-agenda-view-columns-initially)
-(defvar org-inlinetask-min-level)
-(defvar org-agenda-contributing-files)
+(require 'face-remap)
 
 
 ;;; Configuration
@@ -87,18 +61,6 @@ This variable can be set on the per-file basis by inserting a line
 #+COLUMNS: %25ITEM ....."
   :group 'org-properties
   :type 'string)
-
-(defcustom org-columns-default-format-for-agenda nil
-  "The default column format in an agenda buffer.
-This will be used for column view in the agenda unless a format has
-been set by adding `org-overriding-columns-format' to the local
-settings list of a custom agenda view.  When nil, the columns format
-for the first item in the agenda list will be used, or as a fall-back,
-`org-columns-default-format'."
-  :group 'org-properties
-  :type '(choice
-	  (const :tag "No default" nil)
-	  (string :tag "Format string")))
 
 (defcustom org-columns-ellipses ".."
   "The ellipses to be used when a field in column view is truncated.
@@ -337,6 +299,7 @@ possible to override it with optional argument COMPILED-FMT."
 			(and compiled-fmt ;assume `org-agenda-columns'
 			     ;; Effort property is not defined.  Try
 			     ;; to use appointment duration.
+                             (boundp 'org-agenda-columns-add-appointments-to-effort-sum)
 			     org-agenda-columns-add-appointments-to-effort-sum
 			     (string= p (upcase org-effort-property))
 			     (get-text-property (point) 'duration)
@@ -676,6 +639,7 @@ dynamic scoping for `org-overriding-columns-format'.")
 (declare-function org-beamer-select-environment "ox-beamer" ())
 (declare-function org-set-tags-command "org-tags" (&optional arg))
 (declare-function org-priority "org-priority" (&optional action show))
+(declare-function org-agenda-columns "org-colview-agenda" ())
 (defun org-columns-edit-value (&optional key)
   "Edit the value of the property at point in column view.
 Where possible, use the standard interface for changing this line."
@@ -750,6 +714,7 @@ Where possible, use the standard interface for changing this line."
 	     (org-agenda-contributing-files
 	      (list (with-current-buffer buffer
 		      (buffer-file-name (buffer-base-buffer))))))
+        (require 'org-colview-agenda)
 	(org-agenda-columns)))
      (t
       (let ((inhibit-read-only t))
@@ -881,9 +846,11 @@ around it."
       (mapcar (lambda (x) (format-time-string fmt (org-encode-time x)))
 	      (list time-before time time-after)))))
 
+(declare-function org-link-open-from-string "ol" (s &optional arg))
 (defun org-columns-open-link (&optional arg)
   (interactive "P")
   (let ((value (get-char-property (point) 'org-columns-value)))
+    (require 'ol)
     (org-link-open-from-string value arg)))
 
 ;;;###autoload
@@ -930,6 +897,7 @@ Also sets `org-columns-top-level-marker' to the new position."
 
 (declare-function org-clock-sum "org-clock"
                   (&optional tstart tend headline-filter propname))
+(declare-function org-clock-sum-today "org-clock" (&optional headline-filter))
 ;;;###autoload
 (defun org-columns (&optional global columns-fmt-string)
   "Turn on column view on an Org mode file.
@@ -962,6 +930,7 @@ When COLUMNS-FMT-STRING is non-nil, use it as the column format."
           (require 'org-clock)
 	  (org-clock-sum))
 	(when (assoc "CLOCKSUM_T" org-columns-current-fmt-compiled)
+          (require 'org-clock)
 	  (org-clock-sum-today))
 	(let ((cache
 	       ;; Collect contents of columns ahead of time so as to
@@ -1065,6 +1034,7 @@ details."
   (interactive "p")
   (org-columns-widen (- arg)))
 
+(declare-function org-agenda-do-context-action "org-agenda" ())
 (defun org-columns-move-up ()
   "In column view, move cursor up one row.
 When in agenda column view, also call `org-agenda-do-context-action'."
@@ -1074,9 +1044,11 @@ When in agenda column view, also call `org-agenda-do-context-action'."
     (while (and (org-invisible-p2) (not (bobp)))
       (forward-line -1))
     (move-to-column col)
-    (if (eq major-mode 'org-agenda-mode)
-	(org-agenda-do-context-action))))
+    (when (eq major-mode 'org-agenda-mode)
+      (require 'org-agenda)
+      (org-agenda-do-context-action))))
 
+(declare-function org-agenda-do-context-action "org-agenda" ())
 (defun org-columns-move-down ()
   "In column view, move cursor down one row.
 When in agenda column view, also call `org-agenda-do-context-action'."
@@ -1086,8 +1058,9 @@ When in agenda column view, also call `org-agenda-do-context-action'."
     (while (and (org-invisible-p2) (not (eobp)))
       (forward-line 1))
     (move-to-column col)
-    (if (derived-mode-p 'org-agenda-mode)
-	(org-agenda-do-context-action))))
+    (when (derived-mode-p 'org-agenda-mode)
+      (require 'org-agenda)
+      (org-agenda-do-context-action))))
 
 (defun org-columns-move-right ()
   "Swap this column with the one to the right."
@@ -1204,6 +1177,7 @@ the current buffer."
 			      (org-columns--overlay-text
 			       displayed format width property value)))))))))))
 
+(declare-function org-agenda-redo "org-agenda" (&optional all))
 (defun org-columns-redo ()
   "Construct the column display again."
   (interactive)
@@ -1215,6 +1189,7 @@ the current buffer."
 	  ;; Since we already know the columns format, provide it
 	  ;; instead of computing again.
 	  (funcall-interactively #'org-columns org-columns-global org-columns-current-fmt)
+        (require 'org-agenda)
 	(org-agenda-redo)
 	(call-interactively #'org-agenda-columns)))
     (message "Recomputing columns...done")))
@@ -1501,156 +1476,6 @@ and variances (respectively) of the individual estimates."
       (format "%s-%s"
 	      (format "%.0f" (- mean sd))
 	      (format "%.0f" (+ mean sd))))))
-
-
-;;; Column view in the agenda
-
-;;;###autoload
-(defun org-agenda-columns ()
-  "Turn on or update column view in the agenda."
-  (interactive)
-  (org-columns-remove-overlays)
-  (if (markerp org-columns-begin-marker)
-      (move-marker org-columns-begin-marker (point))
-    (setq org-columns-begin-marker (point-marker)))
-  (let* ((org-columns--time (float-time))
-	 (org-done-keywords org-done-keywords-for-agenda)
-	 (fmt
-	  (cond
-	   ((bound-and-true-p org-overriding-columns-format))
-	   ((bound-and-true-p org-local-columns-format))
-	   ((bound-and-true-p org-columns-default-format-for-agenda))
-	   ((let ((m (org-get-at-bol 'org-hd-marker)))
-	      (and m
-		   (or (org-entry-get m "COLUMNS" t)
-		       (with-current-buffer (marker-buffer m)
-			 org-columns-default-format)))))
-	   ((and (local-variable-p 'org-columns-current-fmt)
-		 org-columns-current-fmt))
-	   ((let ((m (next-single-property-change (point-min) 'org-hd-marker)))
-	      (and m
-		   (let ((m (get-text-property m 'org-hd-marker)))
-		     (or (org-entry-get m "COLUMNS" t)
-			 (with-current-buffer (marker-buffer m)
-			   org-columns-default-format))))))
-	   (t org-columns-default-format)))
-	 (compiled-fmt (org-columns-compile-format fmt)))
-    (setq org-columns-current-fmt fmt)
-    (when org-agenda-columns-compute-summary-properties
-      (org-agenda-colview-compute org-columns-current-fmt-compiled))
-    (save-excursion
-      ;; Collect properties for each headline in current view.
-      (goto-char (point-min))
-      (let (cache)
-	(while (not (eobp))
-	  (let ((m (org-get-at-bol 'org-hd-marker)))
-	    (when m
-	      (push (cons (line-beginning-position)
-			  ;; `org-columns-current-fmt-compiled' is
-			  ;; initialized but only set locally to the
-			  ;; agenda buffer.  Since current buffer is
-			  ;; changing, we need to force the original
-			  ;; compiled-fmt there.
-			  (org-with-point-at m
-			    (org-columns--collect-values compiled-fmt)))
-		    cache)))
-	  (forward-line))
-	(when cache
-	  (org-columns--set-widths cache)
-	  (org-columns--display-here-title)
-	  (when (setq-local org-columns-flyspell-was-active
-			    (bound-and-true-p flyspell-mode))
-	    (flyspell-mode 0))
-	  (dolist (entry cache)
-	    (goto-char (car entry))
-	    (org-columns--display-here (cdr entry)))
-	  (setq-local org-agenda-columns-active t)
-	  (when org-agenda-columns-show-summaries
-	    (org-agenda-colview-summarize cache)))))))
-
-(defun org-agenda-colview-summarize (cache)
-  "Summarize the summarizable columns in column view in the agenda.
-This will add overlays to the date lines, to show the summary for each day."
-  (let ((fmt (mapcar
-	      (lambda (spec)
-		(pcase spec
-		  (`(,property ,title ,width . ,_)
-		   (if (member property '("CLOCKSUM" "CLOCKSUM_T"))
-		       (list property title width ":" nil)
-		     spec))))
-	      org-columns-current-fmt-compiled)))
-    ;; Ensure there's at least one summation column.
-    (when (cl-some (lambda (spec) (nth 3 spec)) fmt)
-      (goto-char (point-max))
-      (catch :complete
-	(while t
-	  (when (or (get-text-property (point) 'org-date-line)
-		    (eq (get-text-property (point) 'face)
-			'org-agenda-structure))
-	    ;; OK, this is a date line that should be used.
-	    (let (entries)
-	      (let (rest)
-		(dolist (c cache)
-		  (if (> (car c) (point))
-		      (push c entries)
-		    (push c rest)))
-		(setq cache rest))
-	      ;; ENTRIES contains entries below the current one.
-	      ;; CACHE is the rest.  Compute the summaries for the
-	      ;; properties we want, set nil properties for the rest.
-	      (when (setq entries (mapcar #'cdr entries))
-		(org-columns--display-here
-		 (mapcar
-		  (lambda (spec)
-		    (pcase spec
-		      (`("ITEM" . ,_)
-		       ;; Replace ITEM with current date.  Preserve
-		       ;; properties for fontification.
-		       (let ((date (buffer-substring
-				    (line-beginning-position)
-				    (line-end-position))))
-			 (list spec date date)))
-		      (`(,_ ,_ ,_ nil ,_) (list spec "" ""))
-		      (`(,_ ,_ ,_ ,operator ,printf)
-		       (let* ((summarize (org-columns--summarize operator))
-			      (values
-			       ;; Use real values for summary, not
-			       ;; those prepared for display.
-			       (delq nil
-				     (mapcar
-				      (lambda (e) (org-string-nw-p
-					           (nth 1 (assoc spec e))))
-				      entries)))
-			      (final (if values
-					 (funcall summarize values printf)
-				       "")))
-			 (unless (equal final "")
-			   (put-text-property 0 (length final)
-					      'face 'bold final))
-			 (list spec final final)))))
-		  fmt)
-		 'dateline))))
-	  (if (bobp) (throw :complete t) (forward-line -1)))))))
-
-(defun org-agenda-colview-compute (fmt)
-  "Compute the relevant columns in the contributing source buffers."
-  (dolist (file org-agenda-contributing-files)
-    (let ((b (find-buffer-visiting file)))
-      (with-current-buffer (or (buffer-base-buffer b) b)
-	(org-with-wide-buffer
-	 (with-silent-modifications
-	   (remove-text-properties (point-min) (point-max) '(org-summaries t)))
-	 (goto-char (point-min))
-	 (org-columns-get-format-and-top-level)
-	 (dolist (spec fmt)
-	   (let ((prop (car spec)))
-	     (cond
-	      ((equal prop "CLOCKSUM") (org-clock-sum))
-	      ((equal prop "CLOCKSUM_T") (org-clock-sum-today))
-	      ((and (nth 3 spec)
-		    (let ((a (assoc prop org-columns-current-fmt-compiled)))
-		      (equal (nth 3 a) (nth 3 spec))))
-	       (org-columns-compute prop))))))))))
 
 (defun org-compute-property-at-point ()
   "Compute the property at point.
