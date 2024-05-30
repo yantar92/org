@@ -76,29 +76,101 @@
 ;; | :success  | terminal | unlocked | dead   |                               | yes               | if ON-OUTCOME returns a region |
 ;; | :failure  | terminal | unlocked | dead   |                               | yes               | if ON-OUTCOME returns a region |
 ;;
-;; For example, the following code will lock the current region, and
-;; insert the result on :success, or, display a message on :failure:
 ;;
-;; 1. Locking a region:
-;;        (setq my-rlock
-;;              (org-pending (cons (point) (mark))
-;;                           (lambda (outcome)
-;;                             (pcase outcome
-;;                               (`(:success ,result) (goto-char END) (insert result))
-;;                               (`(:failure ,err) (message "Failed: %s" err))))))
+;; Let's write an example that will lock a region, then, insert a
+;; result on :success, and display a message on :failure.  The example
+;; is written so that you can just uncomment it and run it.
 ;;
-;; 2. Sending progress feedbacks:
+
+;; ;; First, let's declare some buffer local variables that we will need.
+;; (defvar-local my-state nil) ; will be init = 0 => 1 => 2 => 3 = done.
+;; (defvar-local my-lock nil)  ; our region lock
+;; (defvar-local my-timer nil) ; our timer to compute the next state.
 ;;
-;;        (org-pending-send-update my-rlock  (list :progress "Not ready yet."))
-;;        (org-pending-send-update my-rlock  (list :progress "Coming soon."))
+;; ;; We will call the function 'my-next-state' every few seconds to
+;; ;; compute the next state until we reach the final state.
+;; (defun my-next-state (buf timer-ref)
+;;   "Compute the next state in the buffer BUF.
+;; TIMER-REF is a symbol that holds our timer."
+;;   (if (not (buffer-live-p buf))
+;;       ;; If the buffer is not there anymore,
+;;       ;; we cancel the timer.
+;;       (cancel-timer (symbol-value timer-ref))
+;;     (with-current-buffer buf
+;;       (if (< my-state 3)
+;;           (progn
+;;             ;; Not done yet, we send a progress messsage and increment
+;;             ;; our state value.
+;;             (org-pending-send-update my-lock
+;;                                      (list :progress
+;;                                            (pcase my-state
+;;                                              (0 "Taking off ...")
+;;                                              (1 "Flying ...")
+;;                                              (2 "Landing ..."))))
+;;             (setq my-state (1+ my-state)))
+;;         ;; We have reached our final state.  We compute the outcome
+;;         ;; and send it to the lock to unlock the region.
+;;         (let ((outcome (if (= (random 2) 0)
+;;                            (list :success (random 100))
+;;                          (list :failure "Failed."))))
+;;           (org-pending-send-update my-lock outcome))
+;;         (cancel-timer my-timer)))))
 ;;
-;; 3. Either reporting success:
 ;;
-;;        (org-pending-send-update my-rlock (list :success 1))
+;; (let ((lock-buffer (generate-new-buffer "*Pending region example*"))
+;;       (region (cons nil nil)) ; We'll lock this region
+;;       (time-between-transition 1.1) ; seconds
+;;       )
+;;   (with-current-buffer lock-buffer
+;;     ;; We set our state to its initial value.
+;;     (setq my-state 0)
 ;;
-;;    or failure:
+;;     ;; We add some content to the buffer.  Updating 'region' so that
+;;     ;; it contains our region.
+;;     (insert "Buffer displaying pending content.\n")
+;;     (insert "OUTPUT>>>\n")
+;;     (setcar region (point))
+;;     (insert "TO REPLACE\n")
+;;     (setcdr region (point))
+;;     (insert "<<<OUTPUT\n")
+;;     (insert "Some other useless text\n")
 ;;
-;;        (org-pending-send-update my-rlock (list :failure "Some error!"))
+;;     ;; We lock the 'region', defining how to update it when the
+;;     ;; outcome is available.
+;;     (setq my-lock (org-pending
+;;                    region
+;;                    :on-outcome
+;;                    (lambda (_rl outcome)
+;;                      (pcase outcome
+;;                        (`(:success ,value)
+;;                         ;; On :success, we replace the region with the
+;;                         ;; value.
+;;                         (let ((tmp-end (cdr region)))
+;;                           (goto-char tmp-end)
+;;                           (insert (format "%s\n" value))
+;;                           (setcdr region (point))
+;;                           (delete-region (car region) tmp-end)))
+;;                        (`(:failure ,err)
+;;                         ;; On :failure, we just display a message.  We
+;;                         ;; could also choose to replace the region
+;;                         ;; with some text.
+;;                         (message "Failed: %s" err)))
+;;                      ;; We return the outcome region; org-pending will
+;;                      ;; use it to add a :success or :failure mark, and
+;;                      ;; will describe the lock when clicked.
+;;                      region)))
+;;
+;;     ;; We create a timer to update our state every few seconds.
+;;     ;; NOTE: We need to keep a direct reference to the timer
+;;     ;;       ('time-ref') to be able to cancel if the buffer
+;;     ;;       disappears for some reason.
+;;     (let ((timer-ref (make-symbol "timer-ref")))
+;;       (setq my-timer (run-with-timer time-between-transition
+;;                                      time-between-transition
+;;                                      #'my-next-state lock-buffer timer-ref))
+;;       (set timer-ref my-timer))
+;;
+;;     (pop-to-buffer lock-buffer)))
 ;;
 ;;
 ;;;; Interface provided to the Emacs user
@@ -115,6 +187,28 @@
 ;; just send the update (list :failure 'org-pending-user-cancel) so
 ;; that the region is unlocked.
 ;;
+;;
+;; In our example above, we could customize the `user-cancel-function'
+;; like this:
+;;
+;;     (setf (org-pending-reglock-user-cancel-function my-lock)
+;;           (let ((this-timer my-timer))
+;;             (lambda (_rl)
+;;               (cancel-timer this-timer)
+;;               (when (buffer-live-p lock-buffer)
+;;                 (with-current-buffer lock-buffer
+;;                   (let ((best-outcome
+;;                          ;; Let say that if my-state > 2 we can
+;;                          ;; compute the outcome immediately.
+;;                          (if (> my-state 2)
+;;                              (if (= (random 2) 0)
+;;                                  (list :success (random 100))
+;;                                (list :failure "Failed."))
+;;                            ;; Else, the outcome is a failure.
+;;                            (list :failure (list 'org-pending-user-cancel
+;;                                                 "Canceled")))))
+;;                     (org-pending-send-update my-lock best-outcome)))))))
+;;
 ;; When receiving the outcome (:success or :failure), after unlocking
 ;; the region, the library may leave information about the outcome
 ;; (using text properties/overlays); it will leave an outcome mark
@@ -124,7 +218,7 @@
 ;; description, the user may decide to "forget" that lock; "forgetting
 ;; the lock" removes the outcome visual marks, and, it allows
 ;; org-pending to discard any information related to this lock.
-
+;;
 ;; Note that the visual marks of an outcome are silently removed if
 ;; the library needs to (like when creating a new lock, or when
 ;; reverting the buffer).
@@ -133,22 +227,33 @@
 ;; the schedule time, the duration, the outcome time, the result (in
 ;; case of success), the error (in case of failure), etc.  Customize
 ;; the field `insert-details-function' of REGLOCK object to add your
-;; own information.  For example, to add the value of the reglock
-;; property :my-prop to a reglock description, you can do:
+;; own information.
 ;;
-;;    (setf (org-pending-reglock-insert-details-function my-reglock)
-;;          (lambda (rl _start _end)
-;;            (insert (format "%s" (org-pending-reglock-property rl :my-prop)))))
+;; In our example above, we could customize the
+;; `insert-details-function' like this:
+;;
+;;     (setf (org-pending-reglock-insert-details-function my-lock)
+;;           (lambda (rl _start _end)
+;;             (insert (format "State: %s\n"
+;;                             (buffer-local-value 'my-state lock-buffer)))
+;;             (insert (format "Planed outcome: %s\n"
+;;                             (buffer-local-value 'my-final-outcome lock-buffer)))))
+;;
 ;;
 ;; If the user kills a buffer, or, kills Emacs, some locks may have to
 ;; be killed too.  The library will ask the user to confirm if an
 ;; operation requires to kill some locks.  See the field
 ;; `before-kill-function' of REGLOCK object, if you need to do
-;; something before a lock is really killed.  For example, if you like
-;; to kill a MY-BUFFER before MY-LOCK is killed, you can do:
+;; something before a lock is really killed.
 ;;
-;;    (setf (org-pending-reglock-before-kill-function my-reglock)
-;;          (lambda (_rl) (kill-buffer my-buffer)))
+;; In our example above, we could customize the function
+;; `before-kill-function' like this:
+;;
+;;     (setf (org-pending-reglock-before-kill-function my-lock)
+;;           (let ((this-timer my-timer))
+;;             (lambda (_rl)
+;;               (message "Killing %s" this-timer)
+;;               (cancel-timer this-timer))))
 ;;
 
 
