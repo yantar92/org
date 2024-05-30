@@ -1163,7 +1163,7 @@ Return nothing."
     (when (org-pending-reglock-live-p reglock)
       (org-pending-send-update
        reglock (list :failure (list 'org-pending-user-cancel
-                                    "Canceled"))))
+                                    "Killed"))))
     (setf (org-pending-reglock-region reglock) nil)
     nil))
 
