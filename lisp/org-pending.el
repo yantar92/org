@@ -663,6 +663,9 @@ You may add/update your own properties to your reglock using the field
       (overlay-put (org-pending-reglock--anchor-ovl reglock)
                    'org-pending-reglock reglock)
       (org-pending--mgr-handle-new-reglock reglock name)
+
+      (org-pending--ensure-buffer-setup)
+
       reglock)))
 
 
@@ -1222,6 +1225,15 @@ Fix our data, after creating an indirect clone."
                 (inhibit-read-only t))
             (remove-text-properties (car region) (cdr region)
                                     (list 'face :not-used))))))))
+
+
+(defun org-pending--ensure-buffer-setup ()
+  "Ensure the buffer is configured to handle region locks.
+Safe to call many times in a given buffer."
+  (add-hook 'kill-buffer-query-functions
+            #'org-pending--kill-buffer-query nil :local)
+  (add-hook 'clone-indirect-buffer-hook
+            #'org-pending--after-indirect-clone :local))
 
 
 ;;; Basic use of locks
