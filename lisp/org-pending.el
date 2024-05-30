@@ -579,8 +579,6 @@ behavior:
 
 You may add/update your own properties to your reglock using the field
 `properties', which is an association list."
-  (unless region
-    (error "Now illegal"))
   (let ((to-marker (lambda (p)
                      ;; Make sure P is a marker.
                      (or (and (markerp p) p)
