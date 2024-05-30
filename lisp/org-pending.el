@@ -870,7 +870,15 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
         (setf (org-pending-reglock-outcome-at reglock) (float-time))
 
         (when on-outcome
-          (setq outcome-region (funcall on-outcome reglock (list status data)))))
+          (setq outcome-region (funcall on-outcome reglock (list status data)))
+          (when outcome-region
+            ;; We got a region. Check it's really one.
+            (unless (and (consp outcome-region)
+                         (or (integerp (car outcome-region))
+                             (markerp (car outcome-region)))
+                         (or (integerp (cdr outcome-region))
+                             (markerp (cdr outcome-region))))
+              (error "Not a region")))))
 
       (when (memq status '(:failure :success))
         (if (not outcome-region)
