@@ -2093,50 +2093,6 @@ Assume sexps have been marked with
 `org-capture-expand-embedded-elisp' beforehand."
   (get-text-property (point) 'org-embedded-elisp))
 
-;;;###autoload
-(defun org-capture-import-remember-templates ()
-  "Set `org-capture-templates' to be similar to `org-remember-templates'."
-  (interactive)
-  (when (and (yes-or-no-p
-	      "Import old remember templates into org-capture-templates? ")
-	     (yes-or-no-p
-	      "Note that this will remove any templates currently defined in `org-capture-templates'.  Do you still want to go ahead? "))
-    (require 'org-remember)
-    (setq org-capture-templates
-	  (mapcar
-	   (lambda (entry)
-	     (let ((desc (car entry))
-		   (key (char-to-string (nth 1 entry)))
-		   (template (nth 2 entry))
-		   (file (or (nth 3 entry) org-default-notes-file))
-		   (position (or (nth 4 entry) org-remember-default-headline))
-		   (type 'entry)
-		   (prepend org-reverse-note-order)
-		   immediate target jump-to-captured)
-	       (cond
-		((member position '(top bottom))
-		 (setq target (list 'file file)
-		       prepend (eq position 'top)))
-		((eq position 'date-tree)
-		 (setq target (list 'file+datetree file)
-		       prepend nil))
-		(t (setq target (list 'file+headline file position))))
-
-	       (when (string-match "%!" template)
-		 (setq template (replace-match "" t t template)
-		       immediate t))
-
-	       (when (string-match "%&" template)
-		 (setq jump-to-captured t))
-
-	       (append (list key desc type target template)
-		       (and prepend '(:prepend t))
-		       (and immediate '(:immediate-finish t))
-		       (and jump-to-captured '(:jump-to-captured t)))))
-
-	   org-remember-templates))))
-
-
 (provide 'org-capture)
 
 ;;; org-capture.el ends here
