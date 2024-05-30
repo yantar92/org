@@ -55,15 +55,7 @@
 (require 'org-tags-core)
 (require 'org-element-context)
 (require 'org-map)
-
-(defvar org-inlinetask-min-level)
-(defvar org-link-descriptive)
-(defvar org-custom-properties-overlays)
-
-(declare-function org-toggle-custom-properties-visibility "org" ())
-(declare-function org-item-re "org-list" ())
-(declare-function org-cycle-hide-drawers "org-cycle" (state))
-
+(require 'org-outline)
 
 ;;; Customization
 
@@ -459,7 +451,9 @@ Show the heading too, if it is currently invisible."
          (point-max)))
      nil
      'outline)
-    (when hide-drawers (org-cycle-hide-drawers 'children))))
+    (when hide-drawers
+      (org-fold--hide-drawers
+       (line-beginning-position) (org-entry-end-position)))))
 
 (defalias 'org-fold-show-hidden-entry #'org-fold-show-entry
   "Show an entry where even the heading is hidden.")
@@ -689,6 +683,7 @@ DETAIL is either nil, `minimal', `local', `ancestors',
       (redisplay)
       ;; Reveal emphasis markers.
       (when (eq detail 'local)
+        (defvar org-link-descriptive)
         (let (org-hide-emphasis-markers
               org-link-descriptive
               org-pretty-entities
@@ -937,8 +932,11 @@ The detailed reaction depends on the user option
       (when (or invisible-at-point invisible-before-point)
 	(when (eq org-fold-catch-invisible-edits 'error)
 	  (user-error "Editing in invisible areas is prohibited, make them visible first"))
-	(if (and org-custom-properties-overlays
-		 (y-or-n-p "Display invisible properties in this buffer? "))
+	(if (and
+             (boundp 'org-custom-properties-overlays)
+             org-custom-properties-overlays
+             (fboundp 'org-toggle-custom-properties-visibility)
+	     (y-or-n-p "Display invisible properties in this buffer? "))
 	    (org-toggle-custom-properties-visibility)
 	  ;; Make the area visible
           (save-excursion
