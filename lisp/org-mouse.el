@@ -149,7 +149,6 @@
 (declare-function org-context "org")
 (require 'org-open-at-point)
 (require 'org-footnote)
-(require 'org-list)
 
 (defvar org-agenda-allow-remote-undo)
 (defvar org-agenda-undo-list)
@@ -922,11 +921,14 @@ This means, between the beginning of line and the point."
 
             (advice-add 'org-open-at-point :around #'org--mouse-open-at-point)))
 
+(declare-function org-toggle-checkbox "org-list-commands" (&optional toggle-presence))
 (defun org--mouse-open-at-point (orig-fun &rest args)
   (let ((context (org-context)))
     (cond
      ((assq :headline-stars context) (org-cycle))
-     ((assq :checkbox context) (org-toggle-checkbox))
+     ((assq :checkbox context)
+      (require 'org-list-commands)
+      (org-toggle-checkbox))
      ((assq :item-bullet context)
       (let ((org-cycle-include-plain-lists t)) (org-cycle)))
      ((org-footnote-at-reference-p) nil)

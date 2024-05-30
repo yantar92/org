@@ -30,7 +30,7 @@
 (require 'org-fold-core)
 (require 'outline)
 (require 'org-element-context)
-(require 'org-list)
+(require 'org-list-core)
 
 (defvar org-log-post-message)
 (defvar org-log-note-purpose)

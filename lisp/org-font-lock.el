@@ -39,7 +39,7 @@
 (require 'org-footnote)
 (require 'org-tags-common)
 (require 'org-mode-common)
-(require 'org-list)
+(require 'org-list-core)
 
 (declare-function org-cite-activate "oc" (limit))
 
@@ -1020,6 +1020,19 @@ needs to be inserted at a specific position in the font-lock sequence.")
 		       '(default-frame-alist initial-frame-alist window-system-default-frame-alist))
 		      (list (face-foreground 'org-hide))))))
     (car (remove nil candidates))))
+
+(defun org-get-checkbox-statistics-face ()
+  "Select the face for checkbox statistics.
+The face will be `org-done' when all relevant boxes are checked.
+Otherwise it will be `org-todo'."
+  (if (match-end 1)
+      (if (equal (match-string 1) "100%")
+	  'org-checkbox-statistics-done
+	'org-checkbox-statistics-todo)
+    (if (and (> (match-end 2) (match-beginning 2))
+	     (equal (match-string 2) (match-string 3)))
+	'org-checkbox-statistics-done
+      'org-checkbox-statistics-todo)))
 
 (defun org-font-lock-hook (limit)
   "Run `org-font-lock-hook' within LIMIT."

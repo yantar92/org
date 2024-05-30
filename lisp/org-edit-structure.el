@@ -29,7 +29,6 @@
 
 (require 'org-edit-structure-common)
 
-(require 'org-list)
 (require 'org-indent-static)
 (require 'org-fold)
 (require 'org-element)
@@ -311,6 +310,7 @@ This command temporarily sets `org-insert-heading-respect-content' to t."
   (let ((org-insert-heading-respect-content t))
     (org-insert-todo-heading arg t)))
 
+(declare-function org-insert-item "org-list-commands" (&optional checkbox))
 ;;;###autoload
 (defun org-insert-todo-heading (arg &optional force-heading)
   "Insert a new heading with the same level and TODO state as current heading.
@@ -324,6 +324,7 @@ parent subtree.
 When called at a plain list item, insert a new item with an
 unchecked check box."
   (interactive "P")
+  (require 'org-list-commands)
   (when (or force-heading (not (org-insert-item 'checkbox)))
     (org-insert-heading (or (and (equal arg '(16)) '(16))
 			    force-heading))
@@ -349,6 +350,7 @@ unchecked check box."
     (when org-provide-todo-statistics
       (org-update-parent-todo-statistics))))
 
+(declare-function org-indent-item "org-list-commands" ())
 (defun org-insert-subheading (arg)
   "Insert a new subheading and demote it.
 Works for outline headings and for plain lists alike.
@@ -360,7 +362,9 @@ heading, still insert the new sub-heading below."
   (org-insert-heading arg)
   (cond
    ((org-at-heading-p) (org-do-demote))
-   ((org-at-item-p) (org-indent-item))))
+   ((org-at-item-p)
+    (require 'org-list-commands)
+    (org-indent-item))))
 
 (defun org-insert-todo-subheading (arg)
   "Insert a new subheading with TODO keyword or checkbox and demote it.
@@ -1116,6 +1120,8 @@ with the original repeater."
 
 (declare-function org-table-sort-lines "org-table-edit"
                   (&optional with-case sorting-type getkey-func compare-func interactive?))
+(declare-function org-sort-list "org-list-commands"
+                  (&optional with-case sorting-type getkey-func compare-func interactive?))
 ;;;###autoload
 (defun org-sort (&optional with-case)
   "Call `org-sort-entries', `org-table-sort-lines' or `org-sort-list'.
@@ -1125,7 +1131,9 @@ Optional argument WITH-CASE means sort case-sensitively."
    (cond ((org-at-table-p)
           (require 'org-table-edit)
           #'org-table-sort-lines)
-	 ((org-at-item-p) #'org-sort-list)
+	 ((org-at-item-p)
+          (require 'org-list-commands)
+          #'org-sort-list)
 	 (t #'org-sort-entries))
    with-case))
 

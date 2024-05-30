@@ -446,7 +446,7 @@ Modify match data, matching against `org-item-re'."
 
 (declare-function org-table-begin "org-table-core" (&optional table-type))
 (declare-function org-table-end "org-table-core" (&optional table-type))
-(declare-function org-end-of-item "org-list" ())
+(declare-function org-end-of-item "org-list-commands" ())
 (declare-function org-at-item-checkbox-p "org-list" ())
 (defun org-context ()
   "Return a list of contexts of the current cursor position.
@@ -498,7 +498,7 @@ and :keyword."
 	(push (org-point-in-group p 0 :priority) clist)))
 
      ((org-at-item-p)
-      (require 'org-list)
+      (require 'org-list-commands)
       (push (org-point-in-group p 2 :item-bullet) clist)
       (push (list :item (line-beginning-position)
 		  (save-excursion (org-end-of-item) (point)))

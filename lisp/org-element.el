@@ -3059,7 +3059,7 @@ Assume point is at the beginning of the list."
 	      :post-affiliated contents-begin)
 	(cdr affiliated))))))
 
-(declare-function org-list-repair "org-list" ())
+(declare-function org-list-repair "org-list-core" ())
 (defun org-element-plain-list-interpreter (_ contents)
   "Interpret plain-list element as Org syntax.
 CONTENTS is the contents of the element."
@@ -3073,7 +3073,7 @@ CONTENTS is the contents of the element."
    ;; into a read-only state.  Make sure we can insert CONTENTS.
    (let ((inhibit-read-only t)) (erase-buffer) (insert contents))
    (goto-char (point-min))
-   (require 'org-list)
+   (require 'org-list-core)
    (org-list-repair)
    ;; Prevent "Buffer *temp* modified; kill anyway?".
    (restore-buffer-modified-p nil)

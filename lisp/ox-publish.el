@@ -905,11 +905,13 @@ PROJECT is the current project."
 	 (file-name-nondirectory (directory-file-name entry)))
 	(t entry)))
 
+(declare-function org-list-to-org "org-list-export" (list &optional params))
 (defun org-publish-sitemap-default (title list)
   "Default site map, as a string.
 TITLE is the title of the site map.  LIST is an internal
 representation for the files to include, as returned by
 `org-list-to-lisp'.  PROJECT is the current project."
+  (require 'org-list-export)
   (concat "#+TITLE: " title "\n\n"
 	  (org-list-to-org list)))
 

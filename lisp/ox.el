@@ -4377,9 +4377,9 @@ matching DATUM before creating a new reference."
 	  (plist-put info :internal-references cache)
 	  reference-string))))
 
-(declare-function org-list-parents-alist "org-list" (struct))
-(declare-function org-list-prevs-alist "org-list" (struct))
-(declare-function org-list-get-item-number "org-list" (item struct prevs parents))
+(declare-function org-list-parents-alist "org-list-core" (struct))
+(declare-function org-list-prevs-alist "org-list-core" (struct))
+(declare-function org-list-get-item-number "org-list-core" (item struct prevs parents))
 (defun org-export-get-ordinal (element info &optional types predicate)
   "Return ordinal number of an element or object.
 
@@ -4415,7 +4415,7 @@ objects of the same type."
     (headline (org-export-get-headline-number element info))
     ;; Special case 2: An item returns its number as a list.
     (item (let ((struct (org-element-property :structure element)))
-            (require 'org-list)
+            (require 'org-list-core)
 	    (org-list-get-item-number
 	     (org-element-begin element)
 	     struct

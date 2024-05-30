@@ -27,12 +27,13 @@
 (require 'org-macs)
 (org-assert-version)
 
+(require 'org-src)
 (require 'org-element)
 (require 'org-cycle)
 (defvar org-support-shift-select)
 (defvar org-clock-adjust-closest)
 (require 'org-regexps)
-(require 'org-list)
+(require 'org-list-core)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 (require 'org-edit)
 (declare-function org-clocktable-shift "org-clock")
@@ -927,6 +928,7 @@ Otherwise, return a user error."
 (declare-function org-footnote-action "org-footnote" (&optional special))
 (declare-function org-babel-execute-src-block "ob-core"
                   (&optional arg info params executor-type))
+(declare-function org-toggle-radio-button "org-list-commands" (&optional arg))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -1063,7 +1065,9 @@ This command does many different things, depending on context:
 	 (if (or radio-list-p
 		 (and (boundp 'org-list-checkbox-radio-mode)
 		      org-list-checkbox-radio-mode))
-	     (org-toggle-radio-button arg)
+             (progn
+               (require 'org-list-commands)
+	       (org-toggle-radio-button arg))
 	   (let* ((box (org-element-property :checkbox context))
 		  (struct (org-element-property :structure context))
 		  (old-struct (copy-tree struct))
@@ -1264,6 +1268,9 @@ Calls `org-table-insert-hline', `org-toggle-item', or
    (t
     (call-interactively 'org-toggle-item))))
 
+(declare-function org-list-to-subtree "org-list-export"
+                  (list &optional start-level params))
+(declare-function org-list-to-lisp "org-list-export" (&optional delete))
 (defun org-toggle-heading (&optional nstars)
   "Convert headings to normal text, or items or text to headings.
 If there is no active region, only convert the current line.
@@ -1339,6 +1346,7 @@ number of stars to add."
 		     (min (org-list-get-bottom-point struct) (1+ end))))
 	       (save-restriction
 		 (narrow-to-region (point) list-end)
+                 (require 'org-list-export)
 		 (insert (org-list-to-subtree
 			  (org-list-to-lisp t)
 			  (pcase (org-current-level)
@@ -1375,6 +1383,7 @@ number of stars to add."
     (unless toggled (message "Cannot toggle heading from here"))))
 
 (declare-function org-table-wrap-region "org-table-edit" (arg))
+(declare-function org-insert-item "org-list-commands" (&optional checkbox))
 ;;;###autoload
 (defun org-meta-return (&optional arg)
   "Insert a new heading or wrap a region in a table.
@@ -1387,7 +1396,9 @@ an argument, unconditionally call `org-insert-heading'."
 				((org-at-table-p)
                                  (require 'org-table-edit)
                                  #'org-table-wrap-region)
-				((org-in-item-p) #'org-insert-item)
+				((org-in-item-p)
+                                 (require 'org-list-commands)
+                                 #'org-insert-item)
 				(t #'org-insert-heading)))))
 
 (provide 'org-edit-special)

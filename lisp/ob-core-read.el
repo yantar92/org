@@ -266,7 +266,7 @@ Return nil if ELEMENT cannot be read."
               (mapcar (lambda (el) (org-babel-read el 'inhibit-lisp-eval)) row)))
           (org-table-to-lisp)))
 
-(declare-function org-list-to-lisp "org-list" (&optional delete))
+(declare-function org-list-to-lisp "org-list-export" (&optional delete))
 (defun org-babel-read-list ()
   "Read the list at point into emacs-lisp.
 
@@ -276,7 +276,7 @@ Return the list of strings representing top level items:
 
 Only consider top level items.  See Info node
 `(org)Environment of a Code Block'."
-  (require 'org-list)
+  (require 'org-list-export)
   (mapcar (lambda (el) (org-babel-read (car el) 'inhibit-lisp-eval))
 	  (cdr (org-list-to-lisp))))
 

@@ -56,7 +56,6 @@
 (require 'org-bookmark)
 (require 'org-edit-structure-common)
 (require 'org-read-date)
-(require 'org-list)
 
 (declare-function org-at-encrypted-entry-p "org-crypt" ())
 (declare-function org-at-table-p "org-table" (&optional table-type))
@@ -1313,6 +1312,7 @@ may have been stored before."
 	(org-capture-narrow beg (if (eobp) (point) (1- (point))))
 	(org-capture--position-cursor beg (point))))))
 
+(declare-function org-cycle-list-bullet "org-list-commands" (&optional which))
 (defun org-capture-place-item ()
   "Place the template as a new plain list item."
   (let ((prepend? (org-capture-get :prepend))
@@ -1406,6 +1406,7 @@ may have been stored before."
 		  (when (org-xor ordered?
 				 (string-match-p "\\`[A-Za-z0-9]\\([.)]\\)"
 						 template))
+                    (require 'org-list-commands)
 		    (org-cycle-list-bullet (if ordered? "1." "-")))))
 	      ;; Eventually repair the list for proper indentation and
 	      ;; bullets.

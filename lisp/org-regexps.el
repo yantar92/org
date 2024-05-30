@@ -87,6 +87,12 @@ This regular expression matches these groups:
    "\\(\\(?:.\\|\n\\)*?\n\\)??[ \t]*#\\+end_src")
   "Regexp used to identify code blocks.")
 
+;;;; List
+
+(defsubst org-item-beginning-re ()
+  "Regexp matching the beginning of a plain list item."
+  (concat "^" (org-item-re)))
+
 ;;;; Keyword
 (defconst org-keyword-regexp "^[ \t]*#\\+\\(\\S-+?\\):[ \t]*\\(.*\\)$"
   "Regular expression for keyword-lines.")

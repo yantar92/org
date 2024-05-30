@@ -61,7 +61,7 @@
   ;; parenthesis can end up being parsed as a new list item.
   (looking-at-p "[ \t]*{{{n\\(?:([^\n)]*)\\)?}}}[.)]\\(?:$\\| \\)"))
 
-(declare-function org-list-item-body-column "org-list" (item))
+(declare-function org-list-item-body-column "org-list-core" (item))
 (defun org-adaptive-fill-function ()
   "Compute a fill prefix for the current line.
 Return fill prefix, as a string, or nil if current line isn't
@@ -84,7 +84,7 @@ matches in paragraphs or comments, use it."
 	      (concat (match-string 0) "# ")))
 	   (footnote-definition "")
 	   ((item plain-list)
-            (require 'org-list)
+            (require 'org-list-core)
 	    (make-string (org-list-item-body-column post-affiliated) ?\s))
 	   (paragraph
 	    ;; Fill prefix is usually the same as the current line,

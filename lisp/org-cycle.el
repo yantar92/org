@@ -236,6 +236,29 @@ normal outline commands like `show-all', but not with the cycling commands."
   :group 'org-cycle
   :type 'boolean)
 
+(defcustom org-cycle-include-plain-lists t
+  "When t, make TAB cycle visibility on plain list items.
+Cycling plain lists works only when the cursor is on a plain list
+item.  When the cursor is on an outline heading, plain lists are
+treated as text.  This is the most stable way of handling this,
+which is why it is the default.
+
+When this is the symbol `integrate', then integrate plain list
+items when cycling, as if they were children of outline headings.
+
+This setting can lead to strange effects when switching visibility
+to `children', because the first \"child\" in a subtree decides
+what children should be listed.  If that first \"child\" is a
+plain list item with an implied large level number, all true
+children and grand children of the outline heading will be
+exposed in a children' view."
+  :group 'org-plain-lists
+  :group 'org-cycle
+  :type '(choice
+	  (const :tag "Never" nil)
+	  (const :tag "With cursor in plain list (recommended)" t)
+	  (const :tag "As children of outline headings" integrate)))
+
 (defcustom org-cycle-inline-images-display nil
   "Non-nil means auto display inline images under subtree when cycling."
   :group 'org-startup
