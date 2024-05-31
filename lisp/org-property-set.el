@@ -32,7 +32,7 @@
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
 
-(declare-function org-clock-update-mode-line "org-clock")
+(declare-function org-clock-update-clock-status "org-clock")
 
 (defun org--valid-property-p (property)
   "Non-nil when string PROPERTY is a valid property name."
@@ -99,7 +99,7 @@ variables is set."
     (when (equal (org-get-heading t t t t)
 		 (bound-and-true-p org-clock-current-task))
       (setq org-clock-effort value)
-      (org-clock-update-mode-line))
+      (org-clock-update-clock-status))
     (message "%s is now %s" org-effort-property value)))
 
 (defun org-entry-delete (epom property)
@@ -481,7 +481,7 @@ completion."
     (when (equal prop org-effort-property)
       (when (string= org-clock-current-task heading)
 	(setq org-clock-effort nval)
-	(org-clock-update-mode-line)))
+	(org-clock-update-clock-status)))
     (run-hook-with-args 'org-property-changed-functions key nval)))
 
 (provide 'org-property-set)

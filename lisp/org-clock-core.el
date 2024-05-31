@@ -645,13 +645,57 @@ If not, show simply the clocked time like 01:50."
 			       end t)
 	(org-time-string-to-time (match-string 1))))))
 
+(defun org-clock-restore-global-mode-string ()
+  "Remove `org-mode-line-string' from `global-mode-string'."
+  (setq global-mode-string
+	(delq 'org-mode-line-string global-mode-string)))
+
+(defun org-clock-set-global-mode-string-maybe ()
+  "Add `'org-mode-line-string' to `global-mode-string'.
+Do nothing when `org-clock-clocked-in-display' does not specify mode
+line."
+  (when (or (eq org-clock-clocked-in-display 'mode-line)
+	    (eq org-clock-clocked-in-display 'both))
+    (or global-mode-string (setq global-mode-string '("")))
+    (or (memq 'org-mode-line-string global-mode-string)
+	(setq global-mode-string
+	      (append global-mode-string '(org-mode-line-string))))))
+
+(defvar org-clock-notification-was-shown nil
+  "Shows if we have shown notification already.")
+
+(defalias 'org-clock-update-clock-status #'org-clock-update-mode-line)
 (defun org-clock-update-mode-line (&optional refresh)
-  "Update mode line with clock information.
-When optional argument is non-nil, refresh cached heading."
+  "Update mode line/frame title with clock information.
+When optional argument REFRESH is non-nil, refresh cached heading.
+When REFRESH is symbol `restore', restore mode line/frame title."
   (if org-clock-effort
       (org-clock-notify-once-if-expired)
     (setq org-clock-task-overrun nil))
-  (when refresh (setq org-clock-heading (org-clock--mode-line-heading)))
+  (when (and refresh (not (eq refresh 'restore)))
+    (setq org-clock-heading (org-clock--mode-line-heading))
+    ;; Reset `org-clock-notify-once-if-expired'.
+    (setq org-clock-notification-was-shown nil)
+    ;; Set mode line and frame title.
+    (org-clock-set-frame-title-format-maybe)
+    (org-clock-set-global-mode-string-maybe)
+    ;; Reset timer.
+    (when org-clock-mode-line-timer
+      (cancel-timer org-clock-mode-line-timer)
+      (setq org-clock-mode-line-timer nil))
+    (when org-clock-clocked-in-display
+      (setq org-clock-mode-line-timer
+	    (run-with-timer org-clock-update-period
+			    org-clock-update-period
+			    #'org-clock-update-clock-status))))
+  (when (eq refresh 'restore)
+    (org-clock-restore-frame-title-format)
+    (org-clock-restore-global-mode-string)
+    ;; Cancel timer.
+    (when org-clock-mode-line-timer
+      (cancel-timer org-clock-mode-line-timer)
+      (setq org-clock-mode-line-timer nil)))
+  
   (setq org-mode-line-string
 	(propertize
 	 (let ((clock-string (org-clock-get-clock-string))
@@ -721,12 +765,9 @@ clocked item, and the value displayed in the mode line."
 	      org-clock-effort (org-duration-from-minutes value))
         (require 'org-property-set)
 	(org-entry-put org-clock-marker "Effort" org-clock-effort)
-	(org-clock-update-mode-line)
+	(org-clock-update-clock-status)
 	(message "Effort is now %s" org-clock-effort))
     (message "Clock is not currently active")))
-
-(defvar org-clock-notification-was-shown nil
-  "Shows if we have shown notification already.")
 
 (defun org-clock-notify-once-if-expired ()
   "Show notification if we spent more time than we estimated before.
@@ -1234,7 +1275,6 @@ When SELECT is `\\[universal-argument] \\[universal-argument] \
 time as the start time.  See `org-clock-continuously' to make this
 the default behavior."
   (interactive "P")
-  (setq org-clock-notification-was-shown nil)
   (catch 'abort
     (let ((interrupting (and (not org-clock-resolving-clocks-due-to-idleness)
 			     (org-clocking-p)))
@@ -1314,10 +1354,10 @@ the default behavior."
                     (org-todo newstate))))
 	       ((and org-clock-in-switch-to-state
 		     (not (looking-at (concat org-outline-regexp "[ \t]*"
-					      org-clock-in-switch-to-state
-					      "\\(?:[ \t]\\|$\\)"))))
+					    org-clock-in-switch-to-state
+					    "\\(?:[ \t]\\|$\\)"))))
 		(org-todo org-clock-in-switch-to-state)))
-	 (setq org-clock-heading (org-clock--mode-line-heading))
+	 (org-clock-update-clock-status)
 	 (org-clock-find-position org-clock-in-resume)
 	 (cond
 	  ((and org-clock-in-resume
@@ -1378,27 +1418,8 @@ the default behavior."
 		      (save-excursion (org-back-to-heading t) (point))
 		      (buffer-base-buffer))
 	 (setq org-clock-has-been-used t)
-	 ;; add to mode line
-	 (when (or (eq org-clock-clocked-in-display 'mode-line)
-		   (eq org-clock-clocked-in-display 'both))
-	   (or global-mode-string (setq global-mode-string '("")))
-	   (or (memq 'org-mode-line-string global-mode-string)
-	       (setq global-mode-string
-		     (append global-mode-string '(org-mode-line-string)))))
-	 ;; add to frame title
-	 (when (or (eq org-clock-clocked-in-display 'frame-title)
-		   (eq org-clock-clocked-in-display 'both))
-	   (setq org-frame-title-format-backup frame-title-format)
-	   (setq frame-title-format org-clock-frame-title-format))
-	 (org-clock-update-mode-line)
-	 (when org-clock-mode-line-timer
-	   (cancel-timer org-clock-mode-line-timer)
-	   (setq org-clock-mode-line-timer nil))
-	 (when org-clock-clocked-in-display
-	   (setq org-clock-mode-line-timer
-		 (run-with-timer org-clock-update-period
-				 org-clock-update-period
-				 #'org-clock-update-mode-line)))
+	 ;; add to frame title/mode line
+	 (org-clock-update-clock-status t)
 	 (when org-clock-idle-timer
 	   (cancel-timer org-clock-idle-timer)
 	   (setq org-clock-idle-timer nil))
@@ -1640,6 +1661,15 @@ and current `frame-title-format' is equal to `org-clock-frame-title-format'."
 	     (equal frame-title-format org-clock-frame-title-format))
     (setq frame-title-format org-frame-title-format-backup)))
 
+(defun org-clock-set-frame-title-format-maybe ()
+  "Set `frame-title-format' to `org-clock-frame-title-format'.
+Do nothing when `org-clock-clocked-in-display' does not specify frame
+title."
+  (when (or (eq org-clock-clocked-in-display 'frame-title)
+	    (eq org-clock-clocked-in-display 'both))
+    (setq org-frame-title-format-backup frame-title-format)
+    (setq frame-title-format org-clock-frame-title-format)))
+
 (defvar org-clock-out-removed-last-clock nil
   "When non-nil, the last `org-clock-out' removed the clock line.
 This can happen when `org-clock-out-remove-zero-time-clocks' is set to
@@ -1654,10 +1684,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
   (interactive "P")
   (catch 'exit
     (when (not (org-clocking-p))
-      (setq global-mode-string
-	    (delq 'org-mode-line-string global-mode-string))
-      (org-clock-restore-frame-title-format)
-      (force-mode-line-update)
+      (org-clock-update-clock-status 'restore)
       (if fail-quietly (throw 'exit t) (user-error "No active clock")))
     (let ((org-clock-out-switch-to-state
 	   (if switch-to-state
@@ -1701,15 +1728,10 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
               (delete-region (line-beginning-position)
 		             (line-beginning-position 2)))
             (org-clock-remove-empty-clock-drawer))
-	  (when org-clock-mode-line-timer
-	    (cancel-timer org-clock-mode-line-timer)
-	    (setq org-clock-mode-line-timer nil))
 	  (when org-clock-idle-timer
 	    (cancel-timer org-clock-idle-timer)
 	    (setq org-clock-idle-timer nil))
-	  (setq global-mode-string
-		(delq 'org-mode-line-string global-mode-string))
-	  (org-clock-restore-frame-title-format)
+          (org-clock-update-clock-status 'restore)
 	  (when org-clock-out-switch-to-state
 	    (save-excursion
 	      (org-back-to-heading t)
@@ -1825,10 +1847,7 @@ Optional argument N tells to change by that many units."
   "Cancel the running clock by removing the start timestamp."
   (interactive)
   (when (not (org-clocking-p))
-    (setq global-mode-string
-	  (delq 'org-mode-line-string global-mode-string))
-    (org-clock-restore-frame-title-format)
-    (force-mode-line-update)
+    (org-clock-update-clock-status 'restore)
     (user-error "No active clock"))
   (save-excursion    ; Do not replace this with `with-current-buffer'.
     (with-no-warnings (set-buffer (org-clocking-buffer)))
@@ -1842,10 +1861,7 @@ Optional argument N tells to change by that many units."
   (move-marker org-clock-marker nil)
   (move-marker org-clock-hd-marker nil)
   (setq org-clock-current-task nil)
-  (setq global-mode-string
-	(delq 'org-mode-line-string global-mode-string))
-  (org-clock-restore-frame-title-format)
-  (force-mode-line-update)
+  (org-clock-update-clock-status 'restore)
   (message "Clock canceled")
   (run-hooks 'org-clock-cancel-hook))
 
@@ -2028,7 +2044,7 @@ Otherwise, return nil."
 	          ;; The clock is running here
 	          (setq org-clock-start-time
 		        (org-time-string-to-time (match-string 1)))
-	          (org-clock-update-mode-line)))
+	          (org-clock-update-clock-status)))
 	       (t
                 ;; Prevent recursive call from `org-timestamp-change'.
                 (cl-letf (((symbol-function 'org-clock-update-time-maybe) #'ignore))

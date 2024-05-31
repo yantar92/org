@@ -795,8 +795,8 @@ captured item after finalizing."
     ;; Looks like the clock we started is still running.
     (if org-capture-clock-keep
 	;; User may have completed clocked heading from the template.
-	;; Refresh clock mode line.
-	(org-clock-update-mode-line t)
+	;; Refresh clock indication in the mode line/frame title.
+	(org-clock-update-clock-status t)
       ;; Clock out.  Possibly resume interrupted clock.
       (let (org-log-note-clock-out) (org-clock-out))
       (when (and (org-capture-get :clock-resume 'local)
