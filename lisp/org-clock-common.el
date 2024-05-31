@@ -31,6 +31,13 @@
 (require 'org-macs)
 (org-assert-version)
 
+;; Keep track of some markers for cut and paste.
+(require 'org-track-markers)
+(org-track-markers-register
+ 'org-clock-marker 'org-clock-hd-marker
+ 'org-clock-default-task 'org-clock-interrupted-task
+ 'org-clock-history)
+
 (defvar org-clock-has-been-used nil
   "Has the clock been used during the current Emacs session?")
 

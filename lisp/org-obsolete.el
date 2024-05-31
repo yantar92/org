@@ -29,6 +29,7 @@
 
 ;;; Code:
 
+(require 'org-obsolete9.8)
 (require 'org-obsolete9.7)
 (require 'org-obsolete9.6)
 (require 'org-obsolete9.5)

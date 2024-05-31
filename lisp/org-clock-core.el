@@ -497,21 +497,6 @@ BUFFER."
 		     (nreverse org-clock-history)))))
     (push m org-clock-history)))
 
-(declare-function org-check-and-save-marker "org-edit-structure"
-                  (marker beg end))
-(defun org-clock-save-markers-for-cut-and-paste (beg end)
-  "Save relative positions of markers in region BEG..END.
-Save `org-clock-marker', `org-clock-hd-marker',
-`org-clock-default-task', `org-clock-interrupted-task', and the
-markers in `org-clock-history'."
-  (require 'org-edit-structure)
-  (org-check-and-save-marker org-clock-marker beg end)
-  (org-check-and-save-marker org-clock-hd-marker beg end)
-  (org-check-and-save-marker org-clock-default-task beg end)
-  (org-check-and-save-marker org-clock-interrupted-task beg end)
-  (dolist (m org-clock-history)
-    (org-check-and-save-marker m beg end)))
-
 (defun org-clock-drawer-name ()
   "Return clock drawer's name for current entry, or nil."
   (let ((drawer (org-clock-into-drawer)))

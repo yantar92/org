@@ -29,6 +29,7 @@
 
 (require 'org-edit-structure-common)
 
+(require 'org-track-markers)
 (require 'org-indent-static)
 (require 'org-fold)
 (require 'org-element)
@@ -959,42 +960,6 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
          (org-fold-subtree t))
        (when for-yank (goto-char newend))
        (when remove (pop kill-ring))))))
-
-(defvar org-markers-to-move nil
-  "Markers that should be moved with a cut-and-paste operation.
-Those markers are stored together with their positions relative to
-the start of the region.")
-
-(defvar org-log-note-marker) ; defined later
-(defun org-save-markers-in-region (beg end)
-  "Check markers in region.
-If these markers are between BEG and END, record their position relative
-to BEG, so that after moving the block of text, we can put the markers back
-into place.
-This function gets called just before an entry or tree gets cut from the
-buffer.  After re-insertion, `org-reinstall-markers-in-region' must be
-called immediately, to move the markers with the entries."
-  (setq org-markers-to-move nil)
-  (org-check-and-save-marker org-log-note-marker beg end)
-  (when (featurep 'org-clock)
-    (org-clock-save-markers-for-cut-and-paste beg end))
-  (when (featurep 'org-agenda)
-    (org-agenda-save-markers-for-cut-and-paste beg end)))
-
-(defun org-check-and-save-marker (marker beg end)
-  "Check if MARKER is between BEG and END.
-If yes, remember the marker and the distance to BEG."
-  (when (and (marker-buffer marker)
-	     (or (equal (marker-buffer marker) (current-buffer))
-                 (equal (marker-buffer marker) (buffer-base-buffer (current-buffer))))
-	     (>= marker beg) (< marker end))
-    (push (cons marker (- marker beg)) org-markers-to-move)))
-
-(defun org-reinstall-markers-in-region (beg)
-  "Move all remembered markers to their position relative to BEG."
-  (dolist (x org-markers-to-move)
-    (move-marker (car x) (+ beg (cdr x))))
-  (setq org-markers-to-move nil))
 
 (declare-function org-entry-delete "org-property-set" (epom property))
 (declare-function org-timestamp-change "org-timestamp"

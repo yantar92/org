@@ -32,6 +32,10 @@
 (require 'org-element-context)
 (require 'org-list-core)
 
+;; Keep track of some markers for cut and paste.
+(require 'org-track-markers)
+(org-track-markers-register 'org-log-note-marker)
+
 (defvar org-log-post-message)
 (defvar org-log-note-purpose)
 (defvar org-log-note-how nil)

@@ -70,16 +70,16 @@ of these markers and resets them when they are no longer in use."
   (while org-agenda-markers
     (move-marker (pop org-agenda-markers) nil)))
 
-(declare-function org-check-and-save-marker "org-edit-structure" (marker beg end))
-(defun org-agenda-save-markers-for-cut-and-paste (beg end)
-  "Save relative positions of markers in region.
-This check for agenda markers in all agenda buffers currently active."
+;; Keep track of some markers for cut and paste.
+(require 'org-track-markers)
+(defun org-agenda-markers-for-cut-and-paste (_beg _end)
+  "List markers to be tracked in BEG..END region.
+To be used with `org-track-markers-register'."
   (dolist (buf (buffer-list))
     (with-current-buffer buf
       (when (eq major-mode 'org-agenda-mode)
-        (require 'org-edit-structure)
-	(mapc (lambda (m) (org-check-and-save-marker m beg end))
-	      org-agenda-markers)))))
+        org-agenda-markers))))
+(org-track-markers-register #'org-agenda-markers-for-cut-and-paste)
 
 ;;; Customization affecting multiple aspects of agenda
 
