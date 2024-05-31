@@ -115,6 +115,13 @@ the rounding returns a past time."
 	    res
 	  (time-subtract res (* r 60)))))))
 
+(defun org-day-of-week (day month year)
+  "Return the day of the week as an integer."
+  (nth 6
+       (decode-time
+	(date-to-time
+	 (format "%d-%02d-%02dT00:00:00" year month day)))))
+
 (declare-function org-clock-get-last-clock-out-time "org-clock" ())
 (defun org-current-effective-time ()
   "Return current time adjusted for `org-extend-today-until' variable."

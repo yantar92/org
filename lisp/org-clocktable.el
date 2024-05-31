@@ -178,13 +178,6 @@ in the buffer and update it."
 (eval-after-load 'org-dblock
   '(org-dynamic-block-define "clocktable" #'org-clock-report))
 
-(defun org-day-of-week (day month year)
-  "Return the day of the week as an integer."
-  (nth 6
-       (decode-time
-	(date-to-time
-	 (format "%d-%02d-%02dT00:00:00" year month day)))))
-
 (defun org-quarter-to-date (quarter year)
   "Get the date (week day year) of the first day of a given quarter."
   (let (startday)

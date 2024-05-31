@@ -32,6 +32,7 @@
 (org-assert-version)
 
 (require 'org-clock-core)
+(require 'org-clock-sum)
 (require 'org-clock-persist)
 (require 'org-clocktable)
 
