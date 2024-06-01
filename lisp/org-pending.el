@@ -130,36 +130,15 @@
 ;;     (insert "Buffer displaying pending content.\n")
 ;;     (insert "OUTPUT>>>\n")
 ;;     (setcar region (point))
-;;     (insert "TO REPLACE\n")
+;;     (insert "TO REPLACE")
 ;;     (setcdr region (point))
-;;     (insert "<<<OUTPUT\n")
+;;     (insert "\n<<<OUTPUT\n")
 ;;     (insert "Some other useless text\n")
-;;
+
 ;;     ;; We lock the 'region', defining how to update it when the
 ;;     ;; outcome is available.
-;;     (setq my-lock (org-pending
-;;                    region
-;;                    :on-outcome
-;;                    (lambda (_rl outcome)
-;;                      (pcase outcome
-;;                        (`(:success ,value)
-;;                         ;; On :success, we replace the region with the
-;;                         ;; value.
-;;                         (let ((tmp-end (cdr region)))
-;;                           (goto-char tmp-end)
-;;                           (insert (format "%s\n" value))
-;;                           (setcdr region (point))
-;;                           (delete-region (car region) tmp-end)))
-;;                        (`(:failure ,err)
-;;                         ;; On :failure, we just display a message.  We
-;;                         ;; could also choose to replace the region
-;;                         ;; with some text.
-;;                         (message "Failed: %s" err)))
-;;                      ;; We return the outcome region; org-pending will
-;;                      ;; use it to add a :success or :failure mark, and
-;;                      ;; will describe the lock when clicked.
-;;                      region)))
-;;
+;;     (setq my-lock (org-pending region))
+
 ;;     ;; We create a timer to update our state every few seconds.
 ;;     ;; NOTE: We need to keep a direct reference to the timer
 ;;     ;;       ('time-ref') to be able to cancel if the buffer
@@ -660,11 +639,13 @@ is not given, use the first line of REGION.
 
 Assume the region REGION contains the region ANCHOR.
 
-On receiving the outcome (a :success or :failure message, sent with
-`org-pending-send-update'), remove the region protection.  When
-ON-OUTCOME is non-nil, call it with the reglock and the outcome, from
-the position from where the REGLOCK was created.  If ON-OUTCOME returns
-a region (a pair (start position . end position)), use it to report the
+Use the function ON-OUTCOME to update the region with the outcome; if it
+is nil, set it to the function `org-pending-on-outcome-replace'.  On
+receiving the outcome (a :success or :failure message, sent with
+`org-pending-send-update'), remove the region protection.  Call
+ON-OUTCOME with the reglock and the outcome, from the position from
+where the REGLOCK was created.  If ON-OUTCOME returns a region (a
+pair (start position . end position)), use it to report the
 success/failure using visual hints on that region.  If ON-OUTCOME
 returns nothing, don't display outcome marks.
 
@@ -705,6 +686,9 @@ You may add/update your own properties to your reglock using the field
                   (cons abeg aend))
               (cons (funcall to-marker (car anchor))
                     (funcall to-marker (cdr anchor))))))
+    (unless on-outcome
+      (setq on-outcome #'org-pending-on-outcome-replace))
+
     (setq reglock (org-pending--make
                    :scheduled-at (float-time)
                    :user-cancel-function #'org-pending--user-cancel-default
@@ -1378,16 +1362,21 @@ Use the ON-OUTCOME property to update the region if/when you need to."
 
 
 ;;;; Prompt the user to edit a region
-(defun org-pending-user-edit--on-outcome (reglock outcome)
-  "Helper for `org-pending-user-edit'.
-Return a function that takes some text and replaces the region between
-START and END in buffer BUF with it.  Return the new region as a
-pair (start point . end point).
+(defun org-pending-on-outcome-replace (reglock outcome)
+  "Replace the REGLOCK region with the outcome value.
 
-The returned function silently do nothing when the buffer is dead."
+On :success, if the REGLOCK buffer is still live, replace the region
+with the value and return the region spanning the new text; if the
+REGLOCK buffer isn't live, do nothing and return nil.
+
+On :failure, do nothing and return the REGLOCK region.
+
+This is the default :on-outcome handler for the function `org-pending'."
   (pcase outcome
-    (`(:failure ,_) nil)
+    (`(:failure ,_) (org-pending-reglock-region reglock))
     (`(:success ,new-text)
+     (unless (stringp new-text)
+       (setq new-text (format "%s" new-text)))
      (let* ((reg  (org-pending-reglock-region reglock))
             (start (car reg))
             (end (cdr reg))
@@ -1442,7 +1431,7 @@ unique if needed."
   (let* ((to-update (buffer-substring start end))
          (reglock (org-pending
                    (cons start end)
-                   :on-outcome #'org-pending-user-edit--on-outcome))
+                   :on-outcome #'org-pending-on-outcome-replace))
          edit-buffer
          closing)
     (string-edit prompt to-update
