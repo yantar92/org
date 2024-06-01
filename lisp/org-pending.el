@@ -1075,6 +1075,51 @@ error to send a :failure outcome to REGLOCK."
   (declare (indent 1) (debug (form body)))
   `(org-pending-sending-outcome-to--worker ,reglock (lambda () ,@body)))
 
+;;;; Helpers to define on-outcome handlers
+;;
+(defun org-pending-on-outcome-replace (reglock outcome)
+  "Replace the REGLOCK region with the outcome value.
+
+On :success, if the REGLOCK buffer is still live, replace the region
+with the value and return the region spanning the new text; if the
+REGLOCK buffer isn't live, do nothing and return nil.
+
+On :failure, do nothing and return the REGLOCK region.
+
+This is the default :on-outcome handler for the function `org-pending'."
+  (pcase outcome
+    (`(:failure ,_) (org-pending-reglock-region reglock))
+    (`(:success ,new-text)
+     (unless (stringp new-text)
+       (setq new-text (format "%s" new-text)))
+     (let* ((reg  (org-pending-reglock-region reglock))
+            (start (car reg))
+            (end (cdr reg))
+            (buf (marker-buffer start)))
+       (when (buffer-live-p buf)
+         (with-current-buffer buf
+           (save-excursion
+             (if (> (- end start) 1)
+                 ;; Insert in the middle as it's more robust to
+                 ;; keep existing data (text properties, markers,
+                 ;; overlays).
+                 (let ((ipoint (+ 0 (goto-char (1+ start)))))
+                   (setq end (progn (goto-char end) (point-marker)))
+                   (goto-char ipoint)
+                   (insert new-text)
+                   (delete-region (point) end)
+                   (delete-region start ipoint)
+                   (cons start (point)))
+               ;; Can't insert in the middle.
+               (let ((old-end (point-marker))
+                     new-end)
+                 (set-marker-insertion-type old-end nil)
+                 (insert new-text)
+                 (setq new-end (point-marker))
+                 (delete-region start old-end)
+                 (cons start new-end)
+                 )))))))))
+
 
 ;;; Checking for reglocks
 
@@ -1364,48 +1409,6 @@ Use the ON-OUTCOME property to update the region if/when you need to."
 
 
 ;;;; Prompt the user to edit a region
-(defun org-pending-on-outcome-replace (reglock outcome)
-  "Replace the REGLOCK region with the outcome value.
-
-On :success, if the REGLOCK buffer is still live, replace the region
-with the value and return the region spanning the new text; if the
-REGLOCK buffer isn't live, do nothing and return nil.
-
-On :failure, do nothing and return the REGLOCK region.
-
-This is the default :on-outcome handler for the function `org-pending'."
-  (pcase outcome
-    (`(:failure ,_) (org-pending-reglock-region reglock))
-    (`(:success ,new-text)
-     (unless (stringp new-text)
-       (setq new-text (format "%s" new-text)))
-     (let* ((reg  (org-pending-reglock-region reglock))
-            (start (car reg))
-            (end (cdr reg))
-            (buf (marker-buffer start)))
-       (when (buffer-live-p buf)
-         (with-current-buffer buf
-           (save-excursion
-             (if (> (- end start) 1)
-                 ;; Insert in the middle as it's more robust to
-                 ;; keep existing data (text properties, markers,
-                 ;; overlays).
-                 (let ((ipoint (+ 0 (goto-char (1+ start)))))
-                   (setq end (progn (goto-char end) (point-marker)))
-                   (goto-char ipoint)
-                   (insert new-text)
-                   (delete-region (point) end)
-                   (delete-region start ipoint)
-                   (cons start (point)))
-               ;; Can't insert in the middle.
-               (let ((old-end (point-marker))
-                     new-end)
-                 (set-marker-insertion-type old-end nil)
-                 (insert new-text)
-                 (setq new-end (point-marker))
-                 (delete-region start old-end)
-                 (cons start new-end)
-                 )))))))))
 
 (cl-defun org-pending-user-edit (prompt start end &key edit-name)
   "Ask the user to edit the region BEGIN .. END.
