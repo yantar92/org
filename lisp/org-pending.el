@@ -213,10 +213,9 @@
 ;;
 ;;     (setf (org-pending-reglock-insert-details-function my-lock)
 ;;           (lambda (rl _start _end)
-;;             (insert (format "State: %s\n"
-;;                             (buffer-local-value 'my-state lock-buffer)))
-;;             (insert (format "Planed outcome: %s\n"
-;;                             (buffer-local-value 'my-final-outcome lock-buffer)))))
+;;             (let ((buf (org-pending-reglock-owner rl)))
+;;               (insert (format "State: %s\n"
+;;                               (buffer-local-value 'my-state buf))))))
 ;;
 ;;
 ;; If the user kills a buffer, or, kills Emacs, some locks may have to
