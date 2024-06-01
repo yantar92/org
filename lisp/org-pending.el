@@ -473,7 +473,9 @@ Assume OVL has been created with `org-pending--make-overlay'."
     :documentation
     "(read-only constant) The locked region: a pair of positions
 (begin marker . end marker). This is the target of the update. Its
-content may be updated on success.")
+content may be updated on success.
+
+Becomes nil when the lock has been killed.")
 
   ( scheduled-at nil
     :documentation
@@ -1292,11 +1294,11 @@ Remove them in any buffer (base or indirect, owned or not)."
   "Kill this REGLOCK.
 Do not ask for confirmation or interact in any way, just kill it.
 
-Do nothing if this REGLOCK is not live anymore.
+If this REGLOCK is alive and the REGLOCK field `before-kill-function' is
+non-nil, call it with REGLOCK.  If the REGLOCK is still live, make it
+fail with org-pending-user-cancel error.
 
-When the REGLOCK field `before-kill-function' is non-nil, call it with
-REGLOCK.  If the REGLOCK is still live, make it fail with
-org-pending-user-cancel error.
+Set the REGLOCK region to nil to indicate that it has been killed.
 
 Return nothing."
   (when (org-pending-reglock-live-p reglock)
@@ -1307,9 +1309,9 @@ Return nothing."
     (when (org-pending-reglock-live-p reglock)
       (org-pending-send-update
        reglock (list :failure (list 'org-pending-user-cancel
-                                    "Killed"))))
-    (setf (org-pending-reglock-region reglock) nil)
-    nil))
+                                    "Killed")))))
+  (setf (org-pending-reglock-region reglock) nil)
+  nil)
 
 
 (defun org-pending--kill-buffer-query ()
