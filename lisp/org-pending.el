@@ -1016,7 +1016,8 @@ The udpate UPD-MESSAGE must be one of the following:
 
     - (:progress P): Content is still pending; current progress is P;
       Emacs may display this progress P using the lock anchor (see
-      `org-pending').
+      `org-pending').  The progress P may be any data; org-pending will
+      format it as a string that fits on one line when displaying it.
 
 You may send as many :progress updates as you want (including none).
 Eventually, you must send one, and only one, of either a :success or a
