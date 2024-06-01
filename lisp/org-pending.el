@@ -172,21 +172,23 @@
 ;;
 ;;     (setf (org-pending-reglock-user-cancel-function my-lock)
 ;;           (let ((this-timer my-timer))
-;;             (lambda (_rl)
+;;             (lambda (rl)
 ;;               (cancel-timer this-timer)
-;;               (when (buffer-live-p lock-buffer)
-;;                 (with-current-buffer lock-buffer
-;;                   (let ((best-outcome
-;;                          ;; Let say that if my-state > 2 we can
-;;                          ;; compute the outcome immediately.
-;;                          (if (> my-state 2)
-;;                              (if (= (random 2) 0)
-;;                                  (list :success (random 100))
-;;                                (list :failure "Failed."))
-;;                            ;; Else, the outcome is a failure.
-;;                            (list :failure (list 'org-pending-user-cancel
-;;                                                 "Canceled")))))
-;;                     (org-pending-send-update my-lock best-outcome)))))))
+;;               (let ((buf (org-pending-reglock-owner rl)))
+;;                 (when (buffer-live-p buf)
+;;                   (with-current-buffer buf
+;;                     (let ((best-outcome
+;;                            ;; Let say that if my-state > 2 we can
+;;                            ;; compute the outcome immediately.
+;;                            (if (> my-state 2)
+;;                                (if (= (random 2) 0)
+;;                                    (list :success (random 100))
+;;                                  (list :failure "Failed."))
+;;                              ;; Else, the outcome is a failure.
+;;                              (list :failure (list 'org-pending-user-cancel
+;;                                                   "Canceled")))))
+;;                       (org-pending-send-update rl best-outcome))))))))
+;;
 ;;
 ;; When receiving the outcome (:success or :failure), after unlocking
 ;; the region, the library may leave information about the outcome
