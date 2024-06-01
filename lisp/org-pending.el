@@ -1284,10 +1284,10 @@ If the current buffer contains locks, offer to abort killing the buffer."
       (when (y-or-n-p (format (concat "There are pending locks in buffer '%s'"
                                       " (or its indirect buffers), kill anyway?")
 			      (buffer-name)))
-        ;; Force killed: cancel all the locks of this buffer.
+        ;; Force killed: destroy all the locks of this buffer.
         (without-restriction
           (dolist (pi (org-pending-locks-in (point-min) (point-max)
-                                               :owned-only))
+                                            :owned-only))
             (org-pending--forced-kill pi)))
         :forced-kill))))
 
