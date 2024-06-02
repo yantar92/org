@@ -1650,8 +1650,7 @@ Optional argument N tells to change by that many units."
   (save-excursion    ; Do not replace this with `with-current-buffer'.
     (with-no-warnings (set-buffer (org-clocking-buffer)))
     (goto-char org-clock-marker)
-    (if (looking-back (concat "^[ \t]*" org-clock-string ".*")
-		      (line-beginning-position))
+    (if (org-element-type-p (org-element-at-point) 'clock)
         (progn (delete-region (1- (line-beginning-position)) (line-end-position))
 	       (org-remove-empty-drawer-at (point)))
       (message "Clock gone, cancel the timer anyway")
