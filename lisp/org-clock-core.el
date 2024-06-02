@@ -46,6 +46,7 @@
 
 (declare-function haiku-notifications-notify "haikuselect.c")
 (declare-function android-notifications-notify "androidselect.c")
+(declare-function w32-notification-close "w32fns.c" (&rest params))
 
 (defvar org-frame-title-format-backup nil)
 (require 'org-clock-common)
