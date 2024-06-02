@@ -1222,8 +1222,7 @@ so long."
 	    (time-since org-clock-user-idle-seconds))
 	   (org-clock-resolving-clocks-due-to-idleness t))
       (when (> org-clock-user-idle-seconds (* 60 org-clock-idle-time))
-        (cancel-timer org-clock-idle-timer)
-        (setq org-clock-idle-timer nil)
+        (org-clock-idle-update 'cancel)
 	(org-clock-resolve
 	 (cons org-clock-marker
 	       org-clock-start-time)
@@ -1233,9 +1232,22 @@ so long."
 		       (time-since org-clock-user-idle-start))
 		      60)))
 	 org-clock-user-idle-start)
-        (when (and (org-clocking-p) (not org-clock-idle-timer))
-          (setq org-clock-idle-timer
-	        (run-with-timer 60 60 #'org-resolve-clocks-if-idle)))))))
+        (when (org-clocking-p) (org-clock-idle-update 'start))))))
+
+(defun org-clock-idle-update (status)
+  "Refresh idle tracking of Org clock.
+STATUS may be symbol `start' or `cancel' - to start, or cancel idle
+time tracking."
+  (pcase status
+    (`start
+     (org-clock-idle-update 'cancel)
+     (setq org-clock-idle-timer
+	   (run-with-timer 60 60 #'org-resolve-clocks-if-idle)))
+    (`cancel
+     (when org-clock-idle-timer
+       (cancel-timer org-clock-idle-timer)
+       (setq org-clock-idle-timer nil)))
+    (_ (error "Unknown argument: %S" status))))
 
 (defvar org--msg-extra)
 
@@ -1406,11 +1418,7 @@ the default behavior."
 	 (setq org-clock-has-been-used t)
 	 ;; add to frame title/mode line
 	 (org-clock-update-clock-status t)
-	 (when org-clock-idle-timer
-	   (cancel-timer org-clock-idle-timer)
-	   (setq org-clock-idle-timer nil))
-	 (setq org-clock-idle-timer
-	       (run-with-timer 60 60 #'org-resolve-clocks-if-idle))
+         (org-clock-idle-update 'start)
 	 (message "Clock starts at %s - %s" ts org--msg-extra)
 	 (run-hooks 'org-clock-in-hook))))))
 
@@ -1714,9 +1722,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
               (delete-region (line-beginning-position)
 		             (line-beginning-position 2)))
             (org-clock-remove-empty-clock-drawer))
-	  (when org-clock-idle-timer
-	    (cancel-timer org-clock-idle-timer)
-	    (setq org-clock-idle-timer nil))
+          (org-clock-idle-update 'cancel)
           (org-clock-update-clock-status 'restore)
 	  (when org-clock-out-switch-to-state
 	    (save-excursion
