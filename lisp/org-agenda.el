@@ -107,6 +107,7 @@
 (declare-function org-timer-stop "org-timer" ())
 (declare-function org-timer-set-timer "org-timer" (&optional opt))
 (declare-function org-attach "org-attach" ())
+(declare-function org-clock-goto "org-clock-commands" (&optional select))
 
 (defvar calendar-mode-map)
 (defvar org-clock-current-task)

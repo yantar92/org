@@ -160,7 +160,8 @@ heading).
 When called with a prefix argument, move to the first clock table
 in the buffer and update it."
   (interactive "P")
-  (org-clock-remove-overlays)
+  (when (fboundp 'org-clock-remove-overlays)
+    (org-clock-remove-overlays))
   (when arg
     (org-find-dblock "clocktable")
     (org-fold-show-entry))
