@@ -1175,10 +1175,7 @@ the default behavior."
 	 (org-clock-find-position org-clock-in-resume)
 	 (cond
 	  ((and org-clock-in-resume
-		(looking-at
-		 (concat "^[ \t]*" org-clock-string
-			 " \\[\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}"
-			 " *\\sw+.? +[012][0-9]:[0-5][0-9]\\)\\][ \t]*$")))
+		(looking-at org-clock-running-re))
 	   (message "Matched %s" (match-string 1))
 	   (setq ts (concat "[" (match-string 1) "]"))
 	   (goto-char (match-end 1))
@@ -1377,17 +1374,12 @@ line and position cursor in that line."
 	   (drawer (org-clock-drawer-name)))
       ;; Look for a running clock if FIND-UNCLOSED in non-nil.
       (when find-unclosed
-	(let ((open-clock-re
-	       (concat "^[ \t]*"
-		       org-clock-string
-		       " \\[\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}"
-		       " *\\sw+ +[012][0-9]:[0-5][0-9]\\)\\][ \t]*$")))
-	  (while (re-search-forward open-clock-re end t)
-	    (let ((element (org-element-at-point)))
-	      (when (and (org-element-type-p element 'clock)
-			 (eq (org-element-property :status element) 'running))
-		(forward-line 0)
-		(throw 'exit t))))))
+	(while (re-search-forward org-clock-running-re end t)
+	  (let ((element (org-element-at-point)))
+	    (when (and (org-element-type-p element 'clock)
+		       (eq (org-element-property :status element) 'running))
+	      (forward-line 0)
+	      (throw 'exit t)))))
       ;; Look for an existing clock drawer.
       (when drawer
 	(goto-char beg)
@@ -1401,12 +1393,10 @@ line and position cursor in that line."
 		    (forward-line))
 		  (throw 'exit t)))))))
       (goto-char beg)
-      (let ((clock-re (concat "^[ \t]*" org-clock-string))
-	    (count 0)
-	    positions)
+      (let ((count 0) positions)
 	;; Count the CLOCK lines and store their positions.
 	(save-excursion
-	  (while (re-search-forward clock-re end t)
+	  (while (re-search-forward org-clock-line-re end t)
 	    (let ((element (org-element-at-point)))
 	      (when (org-element-type-p element 'clock)
 		(setq positions (cons (line-beginning-position) positions)

@@ -271,6 +271,14 @@ Matched keyword is in group 1.")
 		org-clock-string org-closed-string))
   "List of time keywords.")
 
+(defconst org-clock-running-re
+  (concat "^[ \t]*"
+	  org-clock-string
+	  " \\[\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}"
+	  " *\\sw+ +[012][0-9]:[0-5][0-9]\\)\\][ \t]*$")
+  "Regexp matching running clock line.
+Group 1 contains the starting time without brackets.")
+
 ;;;; Drawer
 
 (defvaralias 'org-drawer-regexp 'org-element-drawer-re)
