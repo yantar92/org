@@ -1042,6 +1042,20 @@ so long."
 	 org-clock-user-idle-start)
         (when (org-clocking-p) (org-clock-idle-update 'start))))))
 
+(defun org-clock-resolve-clock-maybe ()
+  "Resolve unclosed clocks if appropriate.
+Clock resolution is done according to
+`org-clock-auto-clock-resolution'."
+  (when (and org-clock-auto-clock-resolution
+	     (or (not (org-clocking-p))
+                 org-clock-resolving-clocks-due-to-idleness
+	         (eq t org-clock-auto-clock-resolution))
+	     (not org-clock-clocking-in)
+	     (not org-clock-resolving-clocks))
+    (setq org-clock-leftover-time nil)
+    (let ((org-clock-clocking-in t))
+      (org-resolve-clocks))))
+
 (defun org-clock-idle-update (status)
   "Refresh idle tracking of Org clock.
 STATUS may be symbol `start' or `cancel' - to start, or cancel idle
@@ -1082,20 +1096,14 @@ time as the start time.  See `org-clock-continuously' to make this
 the default behavior."
   (interactive "P")
   (catch 'abort
+
+    (org-clock-resolve-clock-maybe); check if any clocks are dangling
+
     (let ((interrupting (and (not org-clock-resolving-clocks-due-to-idleness)
 			     (org-clocking-p)))
 	  ts selected-task target-pos (org--msg-extra "")
 	  (leftover (and (not org-clock-resolving-clocks)
 			 org-clock-leftover-time)))
-
-      (when (and org-clock-auto-clock-resolution
-		 (or (not interrupting)
-		     (eq t org-clock-auto-clock-resolution))
-		 (not org-clock-clocking-in)
-		 (not org-clock-resolving-clocks))
-	(setq org-clock-leftover-time nil)
-	(let ((org-clock-clocking-in t))
-	  (org-resolve-clocks)))    ; check if any clocks are dangling
 
       (when (equal select '(64))
 	;; Set start-time to `org-clock-out-time'
