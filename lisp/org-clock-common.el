@@ -90,6 +90,20 @@ of a different task.")
 Return nil if no clock is running."
   (marker-buffer org-clock-marker))
 
+(declare-function org-clock-out "org-clock-core"
+                  (&optional switch-to-state fail-quietly at-time))
+;;;###autoload
+(defun org-check-running-clock ()
+  "Check if the current buffer contains the running clock.
+If yes, offer to stop it and to save the buffer with the changes."
+  (when (and (equal (marker-buffer org-clock-marker) (current-buffer))
+	     (y-or-n-p (format "Clock-out in buffer %s before killing it? "
+			       (buffer-name))))
+    (require 'org-clock-core)
+    (org-clock-out)
+    (when (y-or-n-p "Save changed buffer?")
+      (save-buffer))))
+
 (provide 'org-clock-common)
 
 ;;; org-clock-common.el ends here

@@ -73,6 +73,17 @@ for a todo state to switch to, overriding the existing value
 
 ;;; Goto a clock
 
+(defcustom org-clock-goto-may-find-recent-task t
+  "Non-nil means `org-clock-goto' can go to recent task if no active clock."
+  :group 'org-clock
+  :type 'boolean)
+
+(defcustom org-clock-goto-before-context 2
+  "Number of lines of context to display before currently clocked-in entry.
+This applies when using `org-clock-goto'."
+  :group 'org-clock
+  :type 'integer)
+
 (defvar org-clock-goto-hook nil
   "Hook run when selecting the currently clocked-in entry.")
 
@@ -211,6 +222,23 @@ Otherwise, return nil."
 
 ;;; Display clock sums in overlays
 
+(defcustom org-clock-display-default-range 'thisyear
+  "Default range when displaying clocks with `org-clock-display'.
+Valid values are: `today', `yesterday', `thisweek', `lastweek',
+`thismonth', `lastmonth', `thisyear', `lastyear' and `untilnow'."
+  :group 'org-clock
+  :type '(choice (const today)
+		 (const yesterday)
+		 (const thisweek)
+		 (const lastweek)
+		 (const thismonth)
+		 (const lastmonth)
+		 (const thisyear)
+		 (const lastyear)
+		 (const untilnow)
+		 (const :tag "Select range interactively" interactive))
+  :safe #'symbolp)
+
 ;;;###autoload
 (defun org-clock-display (&optional arg)
   "Show subtree times in the entire buffer.
@@ -309,6 +337,71 @@ If NOREMOVE is nil, remove this function from the
     (unless noremove
       (remove-hook 'before-change-functions
 		   #'org-clock-remove-overlays 'local))))
+
+;;; Working with timestamps inside CLOCK: line
+
+(defun org-clock-timestamps-up (&optional n)
+  "Increase CLOCK timestamps at cursor.
+Optional argument N tells to change by that many units."
+  (interactive "P")
+  (org-clock-timestamps-change 'up n))
+
+(defun org-clock-timestamps-down (&optional n)
+  "Decrease CLOCK timestamps at cursor.
+Optional argument N tells to change by that many units."
+  (interactive "P")
+  (org-clock-timestamps-change 'down n))
+
+(defun org-clock-timestamps-change (updown &optional n)
+  "Change CLOCK timestamps synchronously at cursor.
+UPDOWN tells whether to change `up' or `down'.
+Optional argument N tells to change by that many units."
+  (let ((tschange (if (eq updown 'up) 'org-timestamp-up
+		    'org-timestamp-down))
+	(timestamp? (org-at-timestamp-p 'lax))
+	ts1 begts1 ts2 begts2 updatets1 tdiff)
+    (when timestamp?
+      (save-excursion
+	(move-beginning-of-line 1)
+	(re-search-forward org-ts-regexp3 nil t)
+	(setq ts1 (match-string 0) begts1 (match-beginning 0))
+	(when (re-search-forward org-ts-regexp3 nil t)
+	  (setq ts2 (match-string 0) begts2 (match-beginning 0))))
+      ;; Are we on the second timestamp?
+      (if (<= begts2 (point)) (setq updatets1 t))
+      (if (not ts2)
+	  ;; fall back on org-timestamp-up if there is only one
+	  (funcall tschange n)
+	(funcall tschange n)
+	(let ((ts (if updatets1 ts2 ts1))
+	      (begts (if updatets1 begts1 begts2)))
+	  (setq tdiff
+		(time-subtract
+		 (org-time-string-to-time
+                  (save-excursion
+                    (goto-char (if updatets1 begts2 begts1))
+                    (looking-at org-ts-regexp3)
+                    (match-string 0)))
+		 (org-time-string-to-time ts)))
+          ;; `save-excursion' won't work because
+          ;; `org-timestamp-change' deletes and re-inserts the
+          ;; timestamp.
+	  (let ((origin (point)))
+            (save-excursion
+	      (goto-char begts)
+	      (org-timestamp-change
+	       (round (/ (float-time tdiff)
+		         (pcase timestamp?
+			   (`minute 60)
+			   (`hour 3600)
+			   (`day (* 24 3600))
+			   (`month (* 24 3600 31))
+			   (`year (* 24 3600 365.2)))))
+	       timestamp? 'updown))
+            ;; Move back to initial position, but never beyond updated
+            ;; clock.
+            (unless (< (point) origin)
+              (goto-char origin))))))))
 
 (provide 'org-clock-commands)
 

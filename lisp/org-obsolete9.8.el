@@ -41,6 +41,9 @@
 
 ;;;; Obsolete variables
 
+(defvar org-clock-mode-line-entry nil
+  "Information for the mode line about the running clock.")
+(make-obsolete 'org-clock-mode-line-entry "unused" "9.8")
 
 ;;;; Obsolete functions and macros
 

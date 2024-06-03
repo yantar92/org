@@ -84,6 +84,18 @@ For more information, see `org-clocktable-write-default'."
   :version "24.1"
   :type 'function)
 
+(defcustom org-clock-total-time-cell-format "*%s*"
+  "Format string for the total time cells."
+  :group 'org-clock
+  :version "24.1"
+  :type 'string)
+
+(defcustom org-clock-file-time-cell-format "*%s*"
+  "Format string for the file time cells."
+  :group 'org-clock
+  :version "24.1"
+  :type 'string)
+
 (defcustom org-clock-clocktable-language-setup
   '(("en" "File"     "L" "Timestamp" "Headline" "Time" "ALL" "Total time" "File time" "Clock summary at")
     ("de" "Datei"    "E" "Zeitstempel" "Kopfzeile" "Dauer" "GESAMT" "Gesamtdauer" "Dateizeit" "Erstellt am")
