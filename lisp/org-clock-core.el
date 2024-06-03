@@ -50,8 +50,6 @@
 (require 'org-clock-sum)
 (require 'org-clock-notify)
 
-(defvar org-state) ; dynamically scoped in org-todo.el
-
 (defgroup org-clock nil
   "Options concerning clocking working time in Org mode."
   :tag "Org Clock"
@@ -119,21 +117,6 @@ Return value is either a string, an integer, or nil."
 	  ((not org-clock-into-drawer) nil)
 	  ((org-log-into-drawer))
 	  (t "LOGBOOK"))))
-
-(defcustom org-clock-out-when-done t
-  "When non-nil, clock will be stopped when the clocked entry is marked DONE.
-\\<org-mode-map>\
-DONE here means any DONE-like state.
-A nil value means clock will keep running until stopped explicitly with
-`\\[org-clock-out]', or until the clock is started in a different item.
-Instead of t, this can also be a list of TODO states that should trigger
-clocking out."
-  :group 'org-clock
-  :type '(choice
-	  (const :tag "No" nil)
-	  (const :tag "Yes, when done" t)
-	  (repeat :tag "State list"
-		  (string :tag "TODO keyword"))))
 
 (defcustom org-clock-rounding-minutes 0
   "Rounding minutes when clocking in or out.
@@ -1583,31 +1566,6 @@ Optional argument N tells to change by that many units."
   (org-clock-update-clock-status 'restore)
   (message "Clock canceled")
   (run-hooks 'org-clock-cancel-hook))
-
-;;;###autoload
-(defun org-clock-out-if-current ()
-  "Clock out if the current entry contains the running clock.
-This is used to stop the clock after a TODO entry is marked DONE,
-and is only done if the variable `org-clock-out-when-done' is not nil."
-  (when (and (org-clocking-p)
-	     org-clock-out-when-done
-	     (marker-buffer org-clock-marker)
-	     (or (and (eq t org-clock-out-when-done)
-		      (member org-state org-done-keywords))
-		 (and (listp org-clock-out-when-done)
-		      (member org-state org-clock-out-when-done)))
-	     (equal (or (buffer-base-buffer (org-clocking-buffer))
-			(org-clocking-buffer))
-		    (or (buffer-base-buffer (current-buffer))
-			(current-buffer)))
-	     (< (point) org-clock-marker)
-	     (> (org-with-wide-buffer (org-entry-end-position))
-		org-clock-marker))
-    ;; Clock out, but don't accept a logging message for this.
-    (let ((org-log-note-clock-out nil)
-	  (org-clock-out-switch-to-state nil))
-      (org-clock-out))))
-
 
 ;; Saving and loading the clock
 

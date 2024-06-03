@@ -32,13 +32,13 @@
 (require 'org-mode-common)
 (require 'org-log-note)
 (require 'org-outline)
-(declare-function org-clock-out-if-current "org-clock")
 (require 'org-time)
 (require 'org-planning)
 (require 'org-tags)
 (require 'org-agenda-search)
 (require 'org-map)
 (require 'org-property)
+(require 'org-clock-common)
 
 (defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
 (defvar org-inhibit-logging nil)        ; Dynamically-scoped param.
@@ -210,6 +210,22 @@ or `done', meaning any not-done or done state, respectively."
 		 (cons :tag "Tag action"
 		       (string :tag "Tag")
 		       (choice (const :tag "Add" t) (const :tag "Remove" nil)))))))
+
+(defcustom org-clock-out-when-done t
+  "When non-nil, clock will be stopped when the clocked entry is marked DONE.
+\\<org-mode-map>\
+DONE here means any DONE-like state.
+A nil value means clock will keep running until stopped explicitly with
+`\\[org-clock-out]', or until the clock is started in a different item.
+Instead of t, this can also be a list of TODO states that should trigger
+clocking out."
+  :group 'org-clock
+  :group 'org-todo
+  :type '(choice
+	  (const :tag "No" nil)
+	  (const :tag "Yes, when done" t)
+	  (repeat :tag "State list"
+		  (string :tag "TODO keyword"))))
 
 (defcustom org-log-done nil
   "Information to record when a task moves to the DONE state.
@@ -714,6 +730,35 @@ When called through ELisp, arg is also interpreted in the following way:
 	      (save-excursion
 		(run-hook-with-args 'org-trigger-hook change-plist)))
 	    (when commentp (org-toggle-comment))))))))
+
+(declare-function org-clock-out "org-clock-core"
+                  (&optional switch-to-state fail-quietly at-time))
+;;;###autoload
+(defun org-clock-out-if-current ()
+  "Clock out if the current entry contains the running clock.
+This is used to stop the clock after a TODO entry is marked DONE,
+and is only done if the variable `org-clock-out-when-done' is not nil."
+  (when (and (org-clocking-p)
+	     org-clock-out-when-done
+	     (marker-buffer org-clock-marker)
+	     (or (and (eq t org-clock-out-when-done)
+		      (member org-state org-done-keywords))
+		 (and (listp org-clock-out-when-done)
+		      (member org-state org-clock-out-when-done)))
+	     (equal (or (buffer-base-buffer (org-clocking-buffer))
+			(org-clocking-buffer))
+		    (or (buffer-base-buffer (current-buffer))
+			(current-buffer)))
+	     (< (point) org-clock-marker)
+	     (> (org-with-wide-buffer (org-entry-end-position))
+		org-clock-marker))
+    (require 'org-clock-core)
+    (defvar org-log-note-clock-out)
+    (defvar org-clock-out-switch-to-state)
+    ;; Clock out, but don't accept a logging message for this.
+    (let ((org-log-note-clock-out nil)
+	  (org-clock-out-switch-to-state nil))
+      (org-clock-out))))
 
 (defun org-block-todo-from-children-or-siblings-or-parent (change-plist)
   "Block turning an entry into a TODO, using the hierarchy.
