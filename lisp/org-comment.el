@@ -69,7 +69,7 @@ major mode."
 		(point))))
       (progn
         (require 'org-src)
-        (org-babel-do-in-edit-buffer (call-interactively 'comment-dwim)))
+        (org-babel-do-in-edit-buffer (call-interactively #'comment-dwim)))
     (forward-line 0)
     (if (looking-at "\\s-*$") (delete-region (point) (line-end-position))
       (open-line 1))

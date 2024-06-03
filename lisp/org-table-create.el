@@ -76,7 +76,7 @@ and table.el tables."
 	 (y-or-n-p "Convert table to table.el table? "))
     (org-table-align)
     (org-table-convert))
-   (t (call-interactively 'table-insert))))
+   (t (call-interactively #'table-insert))))
 
 ;;;###autoload
 (defun org-table-create-or-convert-from-region (arg)

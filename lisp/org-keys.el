@@ -661,7 +661,7 @@ hook.  The default setting is `org-speed-command-activate'."
     ("l" . org-metaleft)
     ("R" . org-shiftmetaright)
     ("L" . org-shiftmetaleft)
-    ("i" . (progn (forward-char 1) (call-interactively 'org-insert-heading-respect-content)))
+    ("i" . (progn (forward-char 1) (call-interactively #'org-insert-heading-respect-content)))
     ("^" . org-sort)
     ("w" . org-refile)
     ("a" . org-archive-subtree-default-with-confirmation)

@@ -337,7 +337,7 @@ With prefix ARG, apply the new formulas to the table."
     (cond
      ((looking-at "[ \t]")
       (goto-char pos)
-      (call-interactively 'lisp-indent-line))
+      (call-interactively #'lisp-indent-line))
      ((looking-at "[$&@0-9a-zA-Z]+ *= *[^ \t\n']") (goto-char pos))
      ((looking-at "[$&@0-9a-zA-Z]+ *= *'(")
       (goto-char (- (match-end 0) 2))

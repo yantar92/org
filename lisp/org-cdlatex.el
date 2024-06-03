@@ -32,6 +32,8 @@
 (declare-function cdlatex-compute-tables "ext:cdlatex" ())
 (declare-function cdlatex-tab "ext:cdlatex" ())
 (declare-function cdlatex-environment "ext:cdlatex" (environment item))
+(declare-function cdlatex-math-modify "ext:cdlatex" (arg))
+(declare-function cdlatex-sub-superscript "ext:cdlatex" ())
 
 (defvar org-cdlatex-mode-map (make-sparse-keymap)
   "Keymap for the minor `org-cdlatex-mode'.")
@@ -118,7 +120,7 @@ It makes sense to do so if `org-cdlatex-mode' is active and if the cursor is
 Revert to the normal definition outside of these fragments."
   (interactive "P")
   (if (org-inside-LaTeX-fragment-p)
-      (call-interactively 'cdlatex-sub-superscript)
+      (call-interactively #'cdlatex-sub-superscript)
     (let (org-cdlatex-mode)
       (call-interactively (key-binding (vector last-input-event))))))
 
@@ -127,7 +129,7 @@ Revert to the normal definition outside of these fragments."
 Revert to the normal definition outside of these fragments."
   (interactive "P")
   (if (org-inside-LaTeX-fragment-p)
-      (call-interactively 'cdlatex-math-modify)
+      (call-interactively #'cdlatex-math-modify)
     (let (org-cdlatex-mode)
       (call-interactively (key-binding (vector last-input-event))))))
 

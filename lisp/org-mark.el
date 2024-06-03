@@ -65,7 +65,7 @@ hierarchy of headlines by UP levels before marking the subtree."
 	 (t (outline-previous-visible-heading 1))))
   (when up (while (and (> up 0) (org-up-heading-safe)) (cl-decf up)))
   (if (called-interactively-p 'any)
-      (call-interactively 'org-mark-element)
+      (call-interactively #'org-mark-element)
     (org-mark-element)))
 
 (provide 'org-mark)

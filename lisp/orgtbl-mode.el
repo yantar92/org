@@ -387,9 +387,9 @@ With prefix arg, also recompute table."
       (goto-char action)
       (org-table-maybe-eval-formula)
       (if arg
-	  (call-interactively 'org-table-recalculate)
+	  (call-interactively #'org-table-recalculate)
 	(org-table-maybe-recalculate-line))
-      (call-interactively 'org-table-align)
+      (call-interactively #'org-table-align)
       (when (orgtbl-send-table 'maybe)
 	(run-hooks 'orgtbl-after-send-table-hook)))
      ((eq action 'recalc)
@@ -401,6 +401,7 @@ With prefix arg, also recompute table."
      (t (let (orgtbl-mode)
 	  (call-interactively (key-binding "\C-c\C-c")))))))
 
+(declare-function org-table-create-or-convert-from-region "org-table-create" (arg))
 (defun orgtbl-create-or-convert-from-region (_arg)
   "Create table or convert region to table, if no conflicting binding.
 This installs the table binding `C-c |', but only if there is no
@@ -409,7 +410,7 @@ conflicting binding to this key outside `orgtbl-mode'."
   (let* (orgtbl-mode (cmd (key-binding "\C-c|")))
     (if cmd
 	(call-interactively cmd)
-      (call-interactively 'org-table-create-or-convert-from-region))))
+      (call-interactively #'org-table-create-or-convert-from-region))))
 
 (defun orgtbl-tab (arg)
   "Justification and field motion for `orgtbl-mode'."

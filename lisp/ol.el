@@ -1337,7 +1337,7 @@ NAME."
           (while (< (line-end-position) end)
 	    (move-end-of-line 1) (activate-mark)
 	    (let (current-prefix-arg)
-	      (call-interactively 'org-store-link))
+	      (call-interactively #'org-store-link))
 	    (move-beginning-of-line 2)
 	    (set-mark (point)))))
     (setq org-store-link-plist nil)

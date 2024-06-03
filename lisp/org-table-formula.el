@@ -37,6 +37,8 @@
 (require 'org-element-timestamp)
 (require 'org-table-edit)
 
+(declare-function org-return "org-edit" (&optional indent arg interactive))
+
 (defcustom org-table-duration-hour-zero-padding t
   "Non-nil means hours in table duration computations should be zero-padded.
 So this is about 08:32:34 versus 8:33:34."
@@ -711,7 +713,7 @@ location of point."
 		     formrg)
 		   keep-empty numbers lispp)))
 	  (if (not (save-match-data
-		   (string-match (regexp-quote form) formrpl)))
+		     (string-match (regexp-quote form) formrpl)))
 	      (setq form (replace-match formrpl t t form))
 	    (user-error "Spreadsheet error: invalid reference \"%s\"" form)))
 	;; Insert simple ranges, i.e. included in the current row.
@@ -825,7 +827,7 @@ $1->    %s\n" orig formula form0 form))
 		  ;; agenda.
 		  (t (replace-regexp-in-string org-ts-regexp "[\\1]" ev)))))
 	(if (and down (> ndown 0) (looking-at ".*\n[ \t]*|[^-]"))
-	    (call-interactively 'org-return)
+	    (call-interactively #'org-return)
 	  (setq ndown 0)))
       (and down (org-table-maybe-recalculate-line))
       (or suppress-align (and org-table-may-need-update

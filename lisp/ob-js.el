@@ -50,6 +50,7 @@
 (declare-function skewer-repl "ext:skewer-repl" ())
 (declare-function indium-run-node "ext:indium-nodejs" (command))
 (declare-function indium-eval "ext:indium-interaction" (string &optional callback))
+(declare-function run-js "ext:js-comint" (cmd))
 
 (defvar org-babel-default-header-args:js '()
   "Default header arguments for js code blocks.")
@@ -189,7 +190,7 @@ Return the initialized session."
       (if (and (org-babel-comint-buffer-livep (get-buffer session-buffer))
 	       (comint-check-proc session-buffer))
 	  session-buffer
-	(call-interactively 'run-js)
+	(call-interactively #'run-js)
 	(sit-for .5)
 	session-buffer)))
    ((string= "mozrepl" org-babel-js-cmd)

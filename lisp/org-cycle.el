@@ -58,6 +58,7 @@
 (declare-function org-cycle-level "org" ())
 (declare-function org-table-next-field "org-table" ())
 (declare-function org-table-justify-field-maybe "org-table" (&optional new))
+(declare-function org-table-previous-field "org-table-move" ())
 (declare-function org-inlinetask-at-task-p "org-inlinetask" ())
 (declare-function org-inlinetask-toggle-visibility "org-inlinetask" ())
 (declare-function org-list-get-all-items "org-list" (item struct prevs))
@@ -491,7 +492,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
   (interactive)
   (setq this-command 'org-cycle)
   (let ((org-cycle-open-archived-trees t))
-    (call-interactively 'org-cycle)))
+    (call-interactively #'org-cycle)))
 
 (defun org-cycle-internal-global ()
   "Do the global cycling action."
@@ -651,9 +652,7 @@ When ARG is nil, cycle globally through visibility states.
 When ARG is a numeric prefix, show contents of this level."
   (interactive "P")
   (cond
-   ((org-at-table-p)
-    (require 'org-table-move)
-    (call-interactively 'org-table-previous-field))
+   ((org-at-table-p) (call-interactively #'org-table-previous-field))
    ((integerp arg)
     (let ((arg2 (if org-odd-levels-only (1- (* 2 arg)) arg)))
       (message "Content view to level: %d" arg)
@@ -661,7 +660,7 @@ When ARG is a numeric prefix, show contents of this level."
       (org-cycle-show-empty-lines t)
       (setq org-cycle-global-status 'overview)
       (run-hook-with-args 'org-cycle-hook 'overview)))
-   (t (call-interactively 'org-cycle-global))))
+   (t (call-interactively #'org-cycle-global))))
 
 (defalias 'org-global-cycle #'org-cycle-global)
 ;;;###autoload

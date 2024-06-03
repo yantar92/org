@@ -119,7 +119,7 @@ overwritten, and the table is not marked as requiring realignment."
      ((consp org-speed-command)
       (eval org-speed-command t))
      (t (let (org-use-speed-commands)
-	  (call-interactively 'org-self-insert-command)))))
+	  (call-interactively #'org-self-insert-command)))))
    ((and
      (= N 1)
      (not (use-region-p))
@@ -261,7 +261,7 @@ table, which interprets characters in `org-emphasis-alist' as
 word constituents."
   (interactive)
   (with-syntax-table org-mode-transpose-word-syntax-table
-    (call-interactively 'transpose-words)))
+    (call-interactively #'transpose-words)))
 
 ;;;###autoload
 (defun org-delete-indentation (&optional arg beg end)

@@ -4184,7 +4184,7 @@ MathML source to kill ring depending on the value of
 Use `org-odt-export-as-odf' to read LaTeX fragment and OpenDocument
 formula file."
   (interactive)
-  (org-open-file (call-interactively 'org-odt-export-as-odf) 'system))
+  (org-open-file (call-interactively #'org-odt-export-as-odf) 'system))
 
 
 ;;;; Export to OpenDocument Text

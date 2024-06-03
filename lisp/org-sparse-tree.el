@@ -320,13 +320,13 @@ D      Show deadlines and scheduled items between a date range."
 	arg
 	(cadr
 	 (memq type '(nil all scheduled deadline active inactive closed)))))
-      (?d (call-interactively 'org-check-deadlines))
-      (?b (call-interactively 'org-check-before-date))
-      (?a (call-interactively 'org-check-after-date))
-      (?D (call-interactively 'org-check-dates-range))
-      (?t (call-interactively 'org-show-todo-tree))
+      (?d (call-interactively #'org-check-deadlines))
+      (?b (call-interactively #'org-check-before-date))
+      (?a (call-interactively #'org-check-after-date))
+      (?D (call-interactively #'org-check-dates-range))
+      (?t (call-interactively #'org-show-todo-tree))
       (?T (org-show-todo-tree '(4)))
-      (?m (call-interactively 'org-match-sparse-tree))
+      (?m (call-interactively #'org-match-sparse-tree))
       ((?p ?P)
        (let* ((kwd (completing-read
 		    "Property: " (mapcar #'list (org-buffer-property-keys))))
@@ -338,7 +338,7 @@ D      Show deadlines and scheduled items between a date range."
 	 (unless (string-match "\\`{.*}\\'" value)
 	   (setq value (concat "\"" value "\"")))
 	 (org-match-sparse-tree arg (concat kwd "=" value))))
-      ((?r ?R ?/) (call-interactively 'org-occur))
+      ((?r ?R ?/) (call-interactively #'org-occur))
       (otherwise (user-error "No such sparse tree command \"%c\"" answer)))))
 
 (defvar-local org-occur-highlights nil

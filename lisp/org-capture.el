@@ -939,6 +939,7 @@ cleaned up correctly"))))
     ;; Return if we did store something
     (not abort-note)))
 
+(declare-function org-refile "org-refile" (&optional arg default-buffer rfloc msg))
 (defun org-capture-refile ()
   "Finalize the current capture and then refile the entry.
 Refiling is done from the base buffer, because the indirect buffer is then
@@ -969,7 +970,7 @@ for `entry'-type templates"))
       (save-window-excursion
         (with-current-buffer base
 	  (org-with-point-at pos
-	    (call-interactively 'org-refile)))))
+	    (call-interactively #'org-refile)))))
     (when kill-buffer
       (with-current-buffer base (save-buffer))
       (kill-buffer base))
