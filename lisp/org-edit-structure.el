@@ -113,6 +113,7 @@ headline instead of current one."
     (`(heading . ,value) value)
     (_ nil)))
 
+;;;###autoload
 (defun org-insert-heading (&optional arg invisible-ok level)
   "Insert a new heading or an item with the same depth at point.
 
@@ -411,6 +412,7 @@ See `org-demote' and `org-promote'."
       (org-with-limited-levels (org-map-tree 'org-demote))))
   (org-fix-position-after-promote))
 
+;;;###autoload
 (defun org-do-promote ()
   "Promote the current heading higher up the tree.
 If the region is active in `transient-mark-mode', promote all
@@ -683,6 +685,7 @@ case."
 
 ;;; Vertical tree motion, cutting and pasting of subtrees
 
+;;;###autoload
 (defun org-move-subtree-up (&optional arg)
   "Move the current subtree up past ARG headlines of the same level."
   (interactive "p")
@@ -718,6 +721,7 @@ case."
 	(org-cycle-hide-drawers 'all)
 	(org-cycle-show-empty-lines 'overview)))))
 
+;;;###autoload
 (defun org-move-subtree-down (&optional arg)
   "Move the current subtree down past ARG headlines of the same level."
   (interactive "p")

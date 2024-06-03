@@ -32,15 +32,13 @@
 (require 'org-log-note)
 (require 'org-edit-structure)
 (require 'org-edit-structure-common)
-(require 'org-edit-special)
-(defvar org-clock-hd-marker)
-(defvar org-clock-heading)
-(defvar org-loop-over-headlines-in-active-region)
+(require 'org-clock-common)
+(require 'org-mode-common)
 (require 'org-bookmark)
 (require 'org-element)
 
 (declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
-(defvar org-odd-levels-only)
+(declare-function org-toggle-heading "org-edit-special" (&optional nstars))
 
 (defgroup org-refile nil
   "Options concerning refiling entries in Org mode."

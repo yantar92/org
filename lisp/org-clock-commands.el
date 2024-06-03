@@ -340,12 +340,14 @@ If NOREMOVE is nil, remove this function from the
 
 ;;; Working with timestamps inside CLOCK: line
 
+;;;###autoload
 (defun org-clock-timestamps-up (&optional n)
   "Increase CLOCK timestamps at cursor.
 Optional argument N tells to change by that many units."
   (interactive "P")
   (org-clock-timestamps-change 'up n))
 
+;;;###autoload
 (defun org-clock-timestamps-down (&optional n)
   "Decrease CLOCK timestamps at cursor.
 Optional argument N tells to change by that many units."

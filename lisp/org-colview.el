@@ -577,6 +577,7 @@ for the duration of the command.")
 
 (defvar org-agenda-columns-active) ;; defined in org-agenda.el
 
+;;;###autoload
 (defun org-columns-quit ()
   "Remove the column overlays and in this way exit column editing."
   (interactive)

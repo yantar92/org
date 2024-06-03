@@ -329,12 +329,13 @@ When optional argument TYPES is a list of symbols among `blocks',
   (interactive)
   (dolist (type (or types '(blocks drawers headings)))
     (org-fold-region (point-min) (point-max) nil
-	     (pcase type
-	       (`blocks 'block)
-	       (`drawers 'drawer)
-	       (`headings 'headline)
-	       (_ (error "Invalid type: %S" type))))))
+	             (pcase type
+	               (`blocks 'block)
+	               (`drawers 'drawer)
+	               (`headings 'headline)
+	               (_ (error "Invalid type: %S" type))))))
 
+;;;###autoload
 (defun org-fold-flag-above-first-heading (&optional arg)
   "Hide from bob up to the first heading.
 Move point to the beginning of first heading or end of buffer."
@@ -379,7 +380,7 @@ When ENTRY is non-nil, show the entire entry."
        'outline))))
 
 (defun org-fold-subtree (flag)
-"Hide (when FLAG) or reveal subtree at point."
+  "Hide (when FLAG) or reveal subtree at point."
   (save-excursion
     (org-back-to-heading t)
     (org-fold-region
@@ -389,12 +390,14 @@ When ENTRY is non-nil, show the entire entry."
      'outline)))
 
 ;; Replaces `outline-hide-subtree'.
+;;;###autoload
 (defun org-fold-hide-subtree ()
   "Hide everything after this heading at deeper levels."
   (interactive)
   (org-fold-subtree t))
 
 ;; Replaces `outline-hide-sublevels'
+;;;###autoload
 (defun org-fold-hide-sublevels (levels)
   "Hide everything but the top LEVELS levels of headers, in whole buffer.
 This also unhides the top heading-less body, if any.
@@ -514,11 +517,13 @@ displayed."
   (org-fold-region
    (point) (save-excursion (org-end-of-subtree t t)) nil 'outline))
 
+;;;###autoload
 (defun org-fold-show-branches ()
   "Show all subheadings of this heading, but not their bodies."
   (interactive)
   (org-fold-show-children 1000))
 
+;;;###autoload
 (defun org-fold-show-branches-buffer ()
   "Show all branches in the buffer."
   (org-fold-flag-above-first-heading)
@@ -639,6 +644,7 @@ Return a non-nil value when toggling is successful."
             ;; `org-drawer-regexp'.
             (goto-char (org-element-end drawer))))))))
 
+;;;###autoload
 (defun org-fold-hide-archived-subtrees (beg end)
   "Re-hide all archived subtrees after a visibility state change."
   (org-with-wide-buffer

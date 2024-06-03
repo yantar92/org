@@ -45,11 +45,13 @@ See also `org-priority-default'."
   :group 'org-priorities
   :type 'boolean)
 
+;;;###autoload
 (defun org-priority-up ()
   "Increase the priority of the current item."
   (interactive)
   (org-priority 'up))
 
+;;;###autoload
 (defun org-priority-down ()
   "Decrease the priority of the current item."
   (interactive)

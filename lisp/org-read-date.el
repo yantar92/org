@@ -177,6 +177,7 @@ Return nil when S is not a time range."
 		(and (/= 0 dm) (format ":%02d" dm)))))))
 
 (defvar calendar-setup)			; Dynamically scoped.
+;;;###autoload
 (defun org-read-date (&optional with-time to-time from-string prompt
 				default-time default-input inactive)
   "Read a date, possibly a time, and make things smooth for the user.

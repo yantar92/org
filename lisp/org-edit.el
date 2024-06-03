@@ -487,6 +487,7 @@ see)."
     (if (and (org-at-heading-p) org-auto-align-tags) (org-align-tags)))
    (t (kill-region (point) (line-end-position)))))
 
+;;;###autoload
 (defun org-drag-element-backward ()
   "Move backward element at point."
   (interactive)
@@ -519,6 +520,7 @@ see)."
 	    (goto-char (+ (org-element-begin prev-elem)
 			  (- pos (org-element-begin elem))))))))))
 
+;;;###autoload
 (defun org-drag-element-forward ()
   "Move forward element at point."
   (interactive)
@@ -554,6 +556,7 @@ see)."
 	(org-element-swap-A-B elem next-elem)
 	(goto-char (+ pos size-next size-blank))))))
 
+;;;###autoload
 (defun org-drag-line-forward (arg)
   "Drag the line at point ARG lines forward."
   (interactive "p")
@@ -568,6 +571,7 @@ see)."
 	(forward-line -2))
       (org-move-to-column c))))
 
+;;;###autoload
 (defun org-drag-line-backward (arg)
   "Drag the line at point ARG lines backward."
   (interactive "p")

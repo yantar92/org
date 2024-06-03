@@ -447,6 +447,7 @@ completion."
       (org-add-props (car vals) '(org-unrestricted t)))
     (if table (mapcar 'list vals) vals)))
 
+;;;###autoload
 (defun org-property-previous-allowed-value (&optional _previous)
   "Switch to the next allowed value for this property."
   (interactive)

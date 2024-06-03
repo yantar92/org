@@ -153,6 +153,7 @@ blocks in the buffer."
 	(org-beginning-of-dblock))
     (org-update-dblock)))
 
+;;;###autoload
 (defun org-update-dblock ()
   "Update the dynamic block at point.
 This means to empty the block, parse for parameters and then call

@@ -435,6 +435,7 @@ match is found."
     (overlay-put ov 'org-type 'org-occur)
     (push ov org-occur-highlights)))
 
+;;;###autoload
 (defun org-remove-occur-highlights (&optional _beg _end noremove)
   "Remove the occur highlights from the buffer.
 BEG and END are ignored.  If NOREMOVE is nil, remove this function

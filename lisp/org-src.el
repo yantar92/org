@@ -403,12 +403,12 @@ DATUM is an element or an object.  Consider blank lines or white
 spaces after it as being outside."
   (and (>= (point) (org-element-begin datum))
        (<= (point)
-	  (org-with-wide-buffer
-	   (goto-char (org-element-end datum))
-	   (skip-chars-backward " \r\t\n")
-	   (if (eq (org-element-class datum) 'element)
-	       (line-end-position)
-	     (point))))))
+	   (org-with-wide-buffer
+	    (goto-char (org-element-end datum))
+	    (skip-chars-backward " \r\t\n")
+	    (if (eq (org-element-class datum) 'element)
+	        (line-end-position)
+	      (point))))))
 
 (defun org-src--contents-for-write-back-1
     ( write-back-buf contents
@@ -723,7 +723,7 @@ Return t if a code block was found at point, nil otherwise."
 	  ;; we want to restore this location after executing BODY.
 	  (outside-position
 	   (and (<= (line-beginning-position)
-		   (org-element-post-affiliated element))
+		    (org-element-post-affiliated element))
 		(point-marker)))
 	  (org-src-window-setup 'switch-invisibly))
      (when (and (org-element-type-p element 'src-block)
@@ -894,6 +894,7 @@ A coderef format regexp can only match at the end of a line."
 (declare-function org-footnote-goto-definition "org-footnote"
 		  (label &optional location))
 (declare-function org-mode "org-mode" ())
+;;;###autoload
 (defun org-edit-footnote-reference ()
   "Edit definition of footnote reference at point."
   (interactive)
@@ -956,6 +957,7 @@ A coderef format regexp can only match at the end of a line."
     ;; Report success.
     t))
 
+;;;###autoload
 (defun org-edit-table.el ()
   "Edit \"table.el\" table at point.
 \\<org-src-mode-map>
@@ -980,6 +982,7 @@ Throw an error when not at such a table."
     (table-recognize)
     t))
 
+;;;###autoload
 (defun org-edit-latex-fragment ()
   "Edit LaTeX fragment at point."
   (interactive)
@@ -1020,6 +1023,7 @@ Throw an error when not at such a table."
        contents))
     t))
 
+;;;###autoload
 (defun org-edit-latex-environment ()
   "Edit LaTeX environment at point.
 \\<org-src-mode-map>
@@ -1042,6 +1046,7 @@ the LaTeX environment in the Org mode buffer."
      t)
     t))
 
+;;;###autoload
 (defun org-edit-export-block ()
   "Edit export block at point.
 \\<org-src-mode-map>
@@ -1072,6 +1077,7 @@ Throw an error when not at an export block."
        (lambda () (org-escape-code-in-region (point-min) (point-max)))))
     t))
 
+;;;###autoload
 (defun org-edit-comment-block ()
   "Edit comment block at point.
 \\<org-src-mode-map>
@@ -1096,6 +1102,7 @@ Throw an error when not at a comment block."
     t))
 
 (declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
+;;;###autoload
 (defun org-edit-src-code (&optional code edit-buffer-name)
   "Edit the source or example block at point.
 \\<org-src-mode-map>
@@ -1148,6 +1155,7 @@ name of the sub-editing buffer."
 	    (funcall edit-prep-func babel-info))))
       t)))
 
+;;;###autoload
 (defun org-edit-inline-src-code ()
   "Edit inline source code at point."
   (interactive)

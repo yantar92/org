@@ -261,6 +261,7 @@ With prefix ARG, change that many days."
 
 (declare-function org-clock-update-time-maybe "org-clock-commands" ())
 (declare-function org-get-heading "org-property" (&optional no-tags no-todo no-priority no-comment))
+;;;###autoload
 (defun org-timestamp-change (n &optional what updown suppress-tmp-delay)
   "Change the date in the time stamp at point.
 
@@ -393,9 +394,9 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
       ;; Maybe adjust the closest clock in `org-clock-history'
       (when org-clock-adjust-closest
 	(if (not (and (org-at-clock-log-p)
-                    (bound-and-true-p org-clock-history)
-		    (< 1 (length (delq nil (mapcar 'marker-position
-						 org-clock-history))))))
+                      (bound-and-true-p org-clock-history)
+		      (< 1 (length (delq nil (mapcar 'marker-position
+						     org-clock-history))))))
 	    (message "No clock to adjust")
           ;; we only ever enter this branch of if when
           ;; `org-clock-history' is bound.

@@ -27,30 +27,113 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-src)
-(require 'org-element)
-(require 'org-cycle)
-(defvar org-support-shift-select)
-(defvar org-clock-adjust-closest)
+(require 'org-element-context)
 (require 'org-regexps)
+(require 'org-priority-common)
 (require 'org-list-core)
-(declare-function org-inlinetask-in-task-p "org-inlinetask")
-(require 'org-edit)
-(declare-function org-clocktable-shift "org-clock")
-(require 'org-todo)
-(declare-function org-clock-timestamps-up "org-clock")
-(declare-function org-clock-timestamps-down "org-clock")
-(declare-function org-columns-quit "org-colview")
-(defvar org-occur-highlights)
-(declare-function org-clock-remove-overlays "org-clock")
-(declare-function org-remove-occur-highlights "org-sparse-tree")
-(declare-function org-babel-lob-get-info "ob-core")
-(declare-function org-clock-update-time-maybe "org-clock")
-(declare-function org-update-dblock "org-dblock")
-(declare-function org-plot/gnuplot "org-plot")
-(declare-function org-indent-mode "org-indent")
-(declare-function org-mark-element "org")
-(defvar org-done-keywords)
+(require 'org-indent-static)
+(require 'org-fold-core)
+
+(declare-function org-columns-quit "org-colview" ())
+(declare-function org-clock-remove-overlays "org-clock-commands" (&optional _beg _end noremove))
+(declare-function org-clock-update-time-maybe "org-clock-commands" ())
+(declare-function org-clock-timestamps-up "org-clock-commands" (&optional n))
+(declare-function org-clock-timestamps-down "org-clock-commands" (&optional n))
+(declare-function org-remove-occur-highlights "org-sparse-tree" (&optional _beg _end noremove))
+(declare-function org-table-move-cell-up "org-table-edit" ())
+(declare-function org-table-move-cell-down "org-table-edit" ())
+(declare-function org-table-move-cell-right "org-table-edit" ())
+(declare-function org-table-move-cell-left "org-table-edit" ())
+(declare-function org-table-wrap-region "org-table-edit" (arg))
+(declare-function org-table-insert-hline "org-table-edit" (&optional above))
+(declare-function org-table-hline-and-move "org-table-edit" (&optional same-column))
+(declare-function org-table-move-row "org-table-edit" (&optional up))
+(declare-function org-table-delete-column "org-table-edit" ())
+(declare-function org-table-insert-column "org-table-edit" ())
+(declare-function org-table-kill-row "org-table-edit" ())
+(declare-function org-table-insert-row "org-table-edit" (&optional arg))
+(declare-function org-table-move-column "org-table-edit" (&optional left))
+(declare-function org-table-align "org-table-align" ())
+(declare-function org-table-toggle-column-width "org-table-fold" (&optional arg))
+(declare-function org-list-to-subtree "org-list-export"
+                  (list &optional start-level params))
+(declare-function org-table-maybe-eval-formula "org-table-formula" ())
+(declare-function org-table-maybe-recalculate-line "org-table-formula" ())
+(declare-function org-table-recalculate "org-table-formula" (&optional all noalign))
+(declare-function org-table-calc-current-TBLFM "org-table-formula" (&optional arg))
+(declare-function org-table-edit-formulas "org-table-formula-edit" ())
+(declare-function orgtbl-send-table "orgtbl-mode" (&optional maybe))
+(declare-function org-babel-hash-at-point "ob-core-result" (&optional point))
+(declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
+(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
+(declare-function org-babel-execute-src-block "ob-core"
+                  (&optional arg info params executor-type))
+(declare-function org-babel-lob-get-info "ob-core" (&optional datum no-eval))
+(declare-function org-list-to-lisp "org-list-export" (&optional delete))
+(declare-function org-toggle-radio-button "org-list-commands" (&optional arg))
+(declare-function org-insert-item "org-list-commands" (&optional checkbox))
+(declare-function org-cycle-list-bullet "org-list-commands" (&optional which))
+(declare-function org-toggle-item "org-list-commands" (arg))
+(declare-function org-next-item "org-list-commands" ())
+(declare-function org-previous-item "org-list-commands" ())
+(declare-function org-indent-item "org-list-commands" ())
+(declare-function org-indent-item-tree "org-list-commands" ())
+(declare-function org-outdent-item "org-list-commands" ())
+(declare-function org-outdent-item-tree "org-list-commands" ())
+(declare-function org-move-item-down "org-list-commands" ())
+(declare-function org-move-item-up "org-list-commands" ())
+(declare-function org-link-open-from-string "ol" (s &optional arg))
+(declare-function org-update-radio-target-regexp "ol" ())
+(declare-function org-property-action "org-property-set" ())
+(declare-function org-mode-restart "org-mode" ())
+(declare-function org-footnote-action "org-footnote" (&optional special))
+(declare-function org-fold-show-branches-buffer "org-fold" ())
+(declare-function org-fold-hide-archived-subtrees "org-fold" (beg end))
+(declare-function org-fold-flag-above-first-heading "org-fold" (&optional arg))
+(declare-function org-fold-hide-sublevels "org-fold" (levels))
+(declare-function org-fold-show-children "org-fold" (&optional level))
+(declare-function org-fold-hide-subtree "org-fold" ())
+(declare-function org-fold-show-branches "org-fold" ())
+(declare-function org-insert-heading "org-edit-structure" (&optional arg invisible-ok level))
+(declare-function org-move-subtree-up "org-edit-structure" (&optional arg))
+(declare-function org-move-subtree-down "org-edit-structure" (&optional arg))
+(declare-function org-promote-subtree "org-edit-structure" ())
+(declare-function org-demote-subtree "org-edit-structure" ())
+(declare-function org-do-promote "org-edit-structure" ())
+(declare-function org-do-demote "org-edit-structure" ())
+(declare-function org-drag-element-backward "org-edit" ())
+(declare-function org-drag-element-forward "org-edit" ())
+(declare-function org-drag-line-backward "org-edit" (arg))
+(declare-function org-drag-line-forward "org-edit" (arg))
+(declare-function org-mark-element "org-mark" ())
+(declare-function org-plot/gnuplot "org-plot" (&optional params))
+(declare-function org-update-statistics-cookies "org-todo" (all))
+(declare-function org-set-tags-command "org-tags" (&optional arg))
+(declare-function org-update-dblock "org-dblock" ())
+(declare-function org-clocktable-try-shift "org-clocktable" (dir n))
+(declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
+(declare-function org-edit-table.el "org-src" ())
+(declare-function org-edit-latex-fragment "org-src" ())
+(declare-function org-edit-inline-src-code "org-src" ())
+(declare-function org-edit-footnote-reference "org-src" ())
+(declare-function org-edit-latex-environment "org-src" ())
+(declare-function org-edit-fixed-width-region "org-src" ())
+(declare-function org-edit-comment-block "org-src" ())
+(declare-function org-edit-export-block "org-src" ())
+(declare-function org-timestamp-change "org-timestamp" (n &optional what updown suppress-tmp-delay))
+(declare-function org-timestamp "org-timestamp" (arg &optional inactive))
+(declare-function org-timestamp-inactive "org-timestamp" (&optional arg))
+(declare-function org-timestamp-down-day "org-timestamp" (&optional arg))
+(declare-function org-timestamp-up-day "org-timestamp" (&optional arg))
+(declare-function org-timestamp-up "org-timestamp" (&optional arg))
+(declare-function org-timestamp-down "org-timestamp" (&optional arg))
+(declare-function org-schedule "org-planning" (arg &optional time))
+(declare-function org-deadline "org-planning" (arg &optional time))
+(declare-function org-property-previous-allowed-value "org-property-set" (&optional _previous))
+(declare-function org-property-next-allowed-value "org-property-set" (&optional previous))
+(declare-function org-priority-down "org-priority" ())
+(declare-function org-priority-up "org-priority" ())
+(declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
 
 (defcustom org-treat-S-cursor-todo-selection-as-state-change t
   "Non-nil means switching TODO states with S-cursor counts as state change.
@@ -256,12 +339,12 @@ same logic."
              (and org-support-shift-select (use-region-p))))
     (org-call-for-shift-select 'backward-char))
    ((run-hook-with-args-until-success 'org-shiftmetaleft-hook))
-   ((org-at-table-p) (call-interactively 'org-table-delete-column))
-   ((org-at-heading-p) (call-interactively 'org-promote-subtree))
+   ((org-at-table-p) (call-interactively #'org-table-delete-column))
+   ((org-at-heading-p) (call-interactively #'org-promote-subtree))
    ((if (not (use-region-p)) (org-at-item-p)
       (save-excursion (goto-char (region-beginning))
 		      (org-at-item-p)))
-    (call-interactively 'org-outdent-item-tree))
+    (call-interactively #'org-outdent-item-tree))
    ((run-hook-with-args-until-success 'org-shiftmetaleft-final-hook))
    (t (org-modifier-cursor-error))))
 
@@ -284,12 +367,12 @@ same logic."
              (and org-support-shift-select (use-region-p))))
     (org-call-for-shift-select 'forward-char))
    ((run-hook-with-args-until-success 'org-shiftmetaright-hook))
-   ((org-at-table-p) (call-interactively 'org-table-insert-column))
-   ((org-at-heading-p) (call-interactively 'org-demote-subtree))
+   ((org-at-table-p) (call-interactively #'org-table-insert-column))
+   ((org-at-heading-p) (call-interactively #'org-demote-subtree))
    ((if (not (use-region-p)) (org-at-item-p)
       (save-excursion (goto-char (region-beginning))
 		      (org-at-item-p)))
-    (call-interactively 'org-indent-item-tree))
+    (call-interactively #'org-indent-item-tree))
    ((run-hook-with-args-until-success 'org-shiftmetaright-final-hook))
    (t (org-modifier-cursor-error))))
 
@@ -309,14 +392,14 @@ logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-shiftmetaup-hook))
-   ((org-at-table-p) (call-interactively 'org-table-kill-row))
+   ((org-at-table-p) (call-interactively #'org-table-kill-row))
    ((org-at-clock-log-p)
     (require 'org-timestamp)
     (defvar org-clock-adjust-closest)
     (let ((org-clock-adjust-closest t))
-      (call-interactively 'org-timestamp-up)))
+      (call-interactively #'org-timestamp-up)))
    ((run-hook-with-args-until-success 'org-shiftmetaup-final-hook))
-   (t (call-interactively 'org-drag-line-backward))))
+   (t (call-interactively #'org-drag-line-backward))))
 
 ;;;###autoload
 (defun org-shiftmetadown (&optional _arg)
@@ -334,14 +417,14 @@ same logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-shiftmetadown-hook))
-   ((org-at-table-p) (call-interactively 'org-table-insert-row))
+   ((org-at-table-p) (call-interactively #'org-table-insert-row))
    ((org-at-clock-log-p)
     (require 'org-timestamp)
     (defvar org-clock-adjust-closest)
     (let ((org-clock-adjust-closest t))
-      (call-interactively 'org-timestamp-down)))
+      (call-interactively #'org-timestamp-down)))
    ((run-hook-with-args-until-success 'org-shiftmetadown-final-hook))
-   (t (call-interactively 'org-drag-line-forward))))
+   (t (call-interactively #'org-drag-line-forward))))
 
 (defsubst org-hidden-tree-error ()
   (user-error
@@ -371,19 +454,20 @@ function runs `org-metaleft-final-hook' using the same logic."
 		(goto-char (region-beginning))
 		(org-at-heading-p)))))
     (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
-    (call-interactively 'org-do-promote))
+    (call-interactively #'org-do-promote))
    ;; At an inline task.
-   ((org-at-heading-p)
-    (call-interactively 'org-inlinetask-promote))
+   ((and (org-at-heading-p)
+         (fboundp 'org-inlinetask-promote))
+    (call-interactively #'org-inlinetask-promote))
    ((or (org-at-item-p)
 	(and (use-region-p)
 	     (save-excursion
 	       (goto-char (region-beginning))
 	       (org-at-item-p))))
     (when (org-check-for-hidden 'items) (org-hidden-tree-error))
-    (call-interactively 'org-outdent-item))
+    (call-interactively #'org-outdent-item))
    ((run-hook-with-args-until-success 'org-metaleft-final-hook))
-   (t (call-interactively 'backward-word))))
+   (t (call-interactively #'backward-word))))
 
 ;;;###autoload
 (defun org-metaright (&optional _arg)
@@ -403,9 +487,9 @@ function runs `org-metaright-final-hook' using the same logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metaright-hook))
-   ((org-at-table-p) (call-interactively 'org-table-move-column))
-   ((org-at-drawer-p) (call-interactively 'org-indent-drawer))
-   ((org-at-block-p) (call-interactively 'org-indent-block))
+   ((org-at-table-p) (call-interactively #'org-table-move-column))
+   ((org-at-drawer-p) (call-interactively #'org-indent-drawer))
+   ((org-at-block-p) (call-interactively #'org-indent-block))
    ((org-with-limited-levels
      (or (org-at-heading-p)
 	 (and (use-region-p)
@@ -413,19 +497,20 @@ function runs `org-metaright-final-hook' using the same logic."
 		(goto-char (region-beginning))
 		(org-at-heading-p)))))
     (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
-    (call-interactively 'org-do-demote))
+    (call-interactively #'org-do-demote))
    ;; At an inline task.
-   ((org-at-heading-p)
-    (call-interactively 'org-inlinetask-demote))
+   ((and (org-at-heading-p)
+         (fboundp 'org-inlinetask-demote))
+    (call-interactively #'org-inlinetask-demote))
    ((or (org-at-item-p)
 	(and (use-region-p)
 	     (save-excursion
 	       (goto-char (region-beginning))
 	       (org-at-item-p))))
     (when (org-check-for-hidden 'items) (org-hidden-tree-error))
-    (call-interactively 'org-indent-item))
+    (call-interactively #'org-indent-item))
    ((run-hook-with-args-until-success 'org-metaright-final-hook))
-   (t (call-interactively 'forward-word))))
+   (t (call-interactively #'forward-word))))
 
 (defun org-check-for-hidden (what)
   "Check if there are hidden headlines/items in the current visual line.
@@ -494,7 +579,7 @@ function runs `org-metaup-final-hook' using the same logic."
           ;; Drag first subtree above below the selected.
           (while (< (point) end)
             (let ((deactivate-mark nil))
-              (call-interactively 'org-move-subtree-down)))))))
+              (call-interactively #'org-move-subtree-down)))))))
    ((use-region-p)
     (let* ((a (save-excursion
                 (goto-char (region-beginning))
@@ -518,10 +603,11 @@ function runs `org-metaup-final-hook' using the same logic."
       (when swap? (exchange-point-and-mark))))
    ((org-at-table-p) (org-call-with-arg 'org-table-move-row 'up))
    ((and (featurep 'org-inlinetask)
+         (fboundp 'org-inlinetask-in-task-p)
          (org-inlinetask-in-task-p))
     (org-drag-element-backward))
-   ((org-at-heading-p) (call-interactively 'org-move-subtree-up))
-   ((org-at-item-p) (call-interactively 'org-move-item-up))
+   ((org-at-heading-p) (call-interactively #'org-move-subtree-up))
+   ((org-at-item-p) (call-interactively #'org-move-item-up))
    ((run-hook-with-args-until-success 'org-metaup-final-hook))
    (t (org-drag-element-backward))))
 
@@ -561,7 +647,7 @@ function runs `org-metadown-final-hook' using the same logic."
           ;; Drag first subtree below above the selected.
           (while (> (point) beg)
             (let ((deactivate-mark nil))
-              (call-interactively 'org-move-subtree-up)))))))
+              (call-interactively #'org-move-subtree-up)))))))
    ((use-region-p)
     (let* ((a (save-excursion
                 (goto-char (region-beginning))
@@ -583,21 +669,16 @@ function runs `org-metadown-final-hook' using the same logic."
       (set-mark (+ 1 a (- d c)))
       (goto-char (+ 1 a (- d c) (- b a)))
       (when swap? (exchange-point-and-mark))))
-   ((org-at-table-p) (call-interactively 'org-table-move-row))
+   ((org-at-table-p) (call-interactively #'org-table-move-row))
    ((and (featurep 'org-inlinetask)
+         (fboundp 'org-inlinetask-in-task-p)
          (org-inlinetask-in-task-p))
     (org-drag-element-forward))
-   ((org-at-heading-p) (call-interactively 'org-move-subtree-down))
-   ((org-at-item-p) (call-interactively 'org-move-item-down))
+   ((org-at-heading-p) (call-interactively #'org-move-subtree-down))
+   ((org-at-item-p) (call-interactively #'org-move-item-down))
    ((run-hook-with-args-until-success 'org-metadown-final-hook))
    (t (org-drag-element-forward))))
 
-(defun org-clocktable-try-shift (dir n)
-  "Check if this line starts a clock table, if yes, shift the time block."
-  (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
-    (org-clocktable-shift dir n)))
-
-(declare-function org-table-move-cell-up "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftup (&optional arg)
   "Act on current element according to context.
@@ -627,20 +708,18 @@ more information."
    ((and (not (eq org-support-shift-select 'always))
 	 org-priority-enable-commands
 	 (org-at-heading-p))
-    (call-interactively 'org-priority-up))
+    (call-interactively #'org-priority-up))
    ((and (not org-support-shift-select) (org-at-item-p))
-    (call-interactively 'org-previous-item))
+    (call-interactively #'org-previous-item))
    ((org-clocktable-try-shift 'up arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
-    (require 'org-table-edit)
     (org-table-move-cell-up))
    ((run-hook-with-args-until-success 'org-shiftup-final-hook))
    (org-support-shift-select
     (org-call-for-shift-select 'previous-line))
    (t (org-shiftselect-error))))
 
-(declare-function org-table-move-cell-down "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftdown (&optional arg)
   "Act on current element according to context.
@@ -671,20 +750,18 @@ more information."
    ((and (not (eq org-support-shift-select 'always))
 	 org-priority-enable-commands
 	 (org-at-heading-p))
-    (call-interactively 'org-priority-down))
+    (call-interactively #'org-priority-down))
    ((and (not org-support-shift-select) (org-at-item-p))
-    (call-interactively 'org-next-item))
+    (call-interactively #'org-next-item))
    ((org-clocktable-try-shift 'down arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
-    (require 'org-table-edit)
     (org-table-move-cell-down))
    ((run-hook-with-args-until-success 'org-shiftdown-final-hook))
    (org-support-shift-select
     (org-call-for-shift-select 'next-line))
    (t (org-shiftselect-error))))
 
-(declare-function org-table-move-cell-right "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftright (&optional arg)
   "Act on the current element according to context.
@@ -710,7 +787,7 @@ variable for more information."
    ((run-hook-with-args-until-success 'org-shiftright-hook))
    ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'forward-char))
-   ((org-at-timestamp-p 'lax) (call-interactively 'org-timestamp-up-day))
+   ((org-at-timestamp-p 'lax) (call-interactively #'org-timestamp-up-day))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
     (require 'org-todo)
@@ -728,18 +805,16 @@ variable for more information."
     (org-call-with-arg 'org-cycle-list-bullet nil))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-property-p))
-    (call-interactively 'org-property-next-allowed-value))
+    (call-interactively #'org-property-next-allowed-value))
    ((org-clocktable-try-shift 'right arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
-    (require 'org-table-edit)
     (org-table-move-cell-right))
    ((run-hook-with-args-until-success 'org-shiftright-final-hook))
    (org-support-shift-select
     (org-call-for-shift-select 'forward-char))
    (t (org-shiftselect-error))))
 
-(declare-function org-table-move-cell-left "org-table-edit" ())
 ;;;###autoload
 (defun org-shiftleft (&optional arg)
   "Act on current element according to context.
@@ -765,7 +840,7 @@ variable for more information."
    ((run-hook-with-args-until-success 'org-shiftleft-hook))
    ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'backward-char))
-   ((org-at-timestamp-p 'lax) (call-interactively 'org-timestamp-down-day))
+   ((org-at-timestamp-p 'lax) (call-interactively #'org-timestamp-down-day))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
     (require 'org-todo)
@@ -783,11 +858,10 @@ variable for more information."
     (org-call-with-arg 'org-cycle-list-bullet 'previous))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-property-p))
-    (call-interactively 'org-property-previous-allowed-value))
+    (call-interactively #'org-property-previous-allowed-value))
    ((org-clocktable-try-shift 'left arg))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-table-p))
-    (require 'org-table-edit)
     (org-table-move-cell-left))
    ((run-hook-with-args-until-success 'org-shiftleft-final-hook))
    (org-support-shift-select
@@ -847,10 +921,9 @@ Optional argument N tells to change by that many units."
   "Call `org-table-hline-and-move' or `org-insert-heading'."
   (interactive)
   (cond
-   ((org-at-table-p) (call-interactively 'org-table-hline-and-move))
-   (t (call-interactively 'org-insert-heading))))
+   ((org-at-table-p) (call-interactively #'org-table-hline-and-move))
+   (t (call-interactively #'org-insert-heading))))
 
-(declare-function org-link-open-from-string "ol" (s &optional arg))
 ;;;###autoload
 (defun org-edit-special (&optional arg)
   "Call a special editor for the element at point.
@@ -899,15 +972,14 @@ Otherwise, return a user error."
 			      (match-string 0 value)))))
 	   (when (org-url-p file)
 	     (user-error "Files located with a URL cannot be edited"))
-           (require 'ol)
 	   (org-link-open-from-string
 	    (format "[[%s]]" (expand-file-name file))))))
       (`table
        (if (eq (org-element-property :type element) 'table.el)
            (org-edit-table.el)
-         (call-interactively 'org-table-edit-formulas)))
+         (call-interactively #'org-table-edit-formulas)))
       ;; Only Org tables contain `table-row' type elements.
-      (`table-row (call-interactively 'org-table-edit-formulas))
+      (`table-row (call-interactively #'org-table-edit-formulas))
       (`example-block (org-edit-src-code))
       (`export-block (org-edit-export-block))
       (`comment-block (org-edit-comment-block))
@@ -916,10 +988,11 @@ Otherwise, return a user error."
       (`planning
        (let ((proplist (cadr element)))
          (mapc #'call-interactively
-               (remq nil
-                     (list
-                      (when (plist-get proplist :deadline) #'org-deadline)
-                      (when (plist-get proplist :scheduled) #'org-schedule))))))
+               (remq
+                nil
+                (list
+                 (when (plist-get proplist :deadline) #'org-deadline)
+                 (when (plist-get proplist :scheduled) #'org-schedule))))))
       (_
        ;; No notable element at point.  Though, we may be at a link or
        ;; a footnote reference, which are objects.  Thus, scan deeper.
@@ -934,22 +1007,6 @@ Otherwise, return a user error."
 	   (`link (call-interactively #'ffap))
 	   (_ (user-error "No special environment to edit here"))))))))
 
-(declare-function org-table-calc-current-TBLFM "org-table-formula" (&optional arg))
-(declare-function orgtbl-send-table "orgtbl-mode" (&optional maybe))
-(declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
-(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
-(declare-function org-table-align "org-table-align" ())
-(declare-function org-babel-hash-at-point "ob-core-result" (&optional point))
-(declare-function org-property-action "org-property-set" ())
-(declare-function org-table-maybe-eval-formula "org-table-formula" ())
-(declare-function org-table-maybe-recalculate-line "org-table-formula" ())
-(declare-function org-table-recalculate "org-table-formula" (&optional all noalign))
-(declare-function org-update-radio-target-regexp "ol" ())
-(declare-function org-mode-restart "org-mode" ())
-(declare-function org-footnote-action "org-footnote" (&optional special))
-(declare-function org-babel-execute-src-block "ob-core"
-                  (&optional arg info params executor-type))
-(declare-function org-toggle-radio-button "org-list-commands" (&optional arg))
 ;;;###autoload
 (defun org-ctrl-c-ctrl-c (&optional arg)
   "Set tags in headline, or update according to changed information at point.
@@ -1003,15 +1060,15 @@ This command does many different things, depending on context:
   (interactive "P")
   (cond
    ((bound-and-true-p org-columns-overlays) (org-columns-quit))
-   ((or (bound-and-true-p org-clock-overlays) org-occur-highlights)
+   ((or (bound-and-true-p org-clock-overlays)
+        (bound-and-true-p org-occur-highlights))
     (when (boundp 'org-clock-overlays) (org-clock-remove-overlays))
-    (org-remove-occur-highlights)
+    (when (boundp 'org-occur-highlights) (org-remove-occur-highlights))
     (message "Temporary highlights/overlays removed from current buffer"))
    ((and (local-variable-p 'org-finish-function)
 	 (fboundp org-finish-function))
     (funcall org-finish-function))
-   ((progn (require 'ob-core-result)
-           (org-babel-hash-at-point)))
+   ((org-babel-hash-at-point))
    ((run-hook-with-args-until-success 'org-ctrl-c-ctrl-c-hook))
    (t
     (let* ((context
@@ -1046,9 +1103,7 @@ This command does many different things, depending on context:
          (require 'ob-core)
          (defvar org-babel-no-eval-on-ctrl-c-ctrl-c)
 	 (unless org-babel-no-eval-on-ctrl-c-ctrl-c
-           (require 'ob-eval)
 	   (org-babel-eval-wipe-error-buffer)
-           (require 'ob-core)
 	   (org-babel-execute-src-block
 	    current-prefix-arg (org-babel-get-src-block-info nil context))))
 	((guard (org-match-line "[ \t]*$"))
@@ -1071,13 +1126,13 @@ This command does many different things, depending on context:
 	   (org-update-dblock)))
 	(`footnote-definition
 	 (goto-char (org-element-post-affiliated context))
-	 (call-interactively 'org-footnote-action))
+	 (call-interactively #'org-footnote-action))
 	(`footnote-reference
-         (require 'org-footnote)
          (call-interactively #'org-footnote-action))
 	((or `headline `inlinetask)
-	 (save-excursion (goto-char (org-element-begin context))
-			 (call-interactively #'org-set-tags-command)))
+	 (save-excursion
+           (goto-char (org-element-begin context))
+	   (call-interactively #'org-set-tags-command)))
 	(`item
 	 ;; At an item: `C-u C-u' sets checkbox to "[-]"
 	 ;; unconditionally, whereas `C-u' will toggle its presence.
@@ -1086,9 +1141,7 @@ This command does many different things, depending on context:
 	 (if (or radio-list-p
 		 (and (boundp 'org-list-checkbox-radio-mode)
 		      org-list-checkbox-radio-mode))
-             (progn
-               (require 'org-list-commands)
-	       (org-toggle-radio-button arg))
+	     (org-toggle-radio-button arg)
 	   (let* ((box (org-element-property :checkbox context))
 		  (struct (org-element-property :structure context))
 		  (old-struct (copy-tree struct))
@@ -1168,12 +1221,11 @@ This command does many different things, depending on context:
 	   (when (boundp 'org-table-coordinate-overlays)
 	     (mapc #'delete-overlay org-table-coordinate-overlays)
 	     (setq org-table-coordinate-overlays nil))
-	   (org-save-outline-visibility 'use-markers (org-mode-restart)))
+	   (org-fold-core-save-visibility 'use-markers (org-mode-restart)))
 	 (message "Local setup has been refreshed"))
 	((or `property-drawer `node-property)
 	 (call-interactively #'org-property-action))
 	(`radio-target
-         (require 'ol)
 	 (call-interactively #'org-update-radio-target-regexp))
 	(`statistics-cookie
 	 (call-interactively #'org-update-statistics-cookies))
@@ -1196,20 +1248,16 @@ Use `\\[org-edit-special]' to edit table.el tables")))
                (and (eq type 'table-row)
                     (= (point) (org-element-end context))))
            (save-excursion
-             (require 'org-table-formula)
              (if (org-at-TBLFM-p) (org-table-calc-current-TBLFM)
                (goto-char (org-element-contents-begin context))
                (org-call-with-arg 'org-table-recalculate (or arg t))
-               (require 'orgtbl-mode)
                (orgtbl-send-table 'maybe))))
           (t
            (require 'org-table-formula)
            (org-table-maybe-eval-formula)
            (cond (arg (call-interactively #'org-table-recalculate))
                  ((org-table-maybe-recalculate-line))
-                 (t
-                  (require 'org-table-align)
-                  (org-table-align))))))
+                 (t (org-table-align))))))
 	((or `timestamp (and `planning (guard (org-at-timestamp-p 'lax))))
 	 (org-timestamp-change 0 'day))
 	((and `nil (guard (org-at-heading-p)))
@@ -1227,19 +1275,20 @@ Use `\\[org-edit-special]' to edit table.el tables")))
 (defun org-kill-note-or-show-branches ()
   "Abort storing current note, or show just branches."
   (interactive)
-  (cond (org-finish-function
-	 (let ((org-note-abort t)) (funcall org-finish-function)))
-	((org-before-first-heading-p)
-	 (org-fold-show-branches-buffer)
-	 (org-fold-hide-archived-subtrees (point-min) (point-max)))
-	(t
-	 (let ((beg (progn (org-back-to-heading) (point)))
-	       (end (save-excursion (org-end-of-subtree t t) (point))))
-	   (org-fold-hide-subtree)
-	   (org-fold-show-branches)
-	   (org-fold-hide-archived-subtrees beg end)))))
+  (cond
+   (org-finish-function
+    (defvar org-note-abort) ; declared in org-log-note.el
+    (let ((org-note-abort t)) (funcall org-finish-function)))
+   ((org-before-first-heading-p)
+    (org-fold-show-branches-buffer)
+    (org-fold-hide-archived-subtrees (point-min) (point-max)))
+   (t
+    (let ((beg (progn (org-back-to-heading) (point)))
+	  (end (save-excursion (org-end-of-subtree t t) (point))))
+      (org-fold-hide-subtree)
+      (org-fold-show-branches)
+      (org-fold-hide-archived-subtrees beg end)))))
 
-(declare-function org-table-toggle-column-width "org-table-fold" (&optional arg))
 ;;;###autoload
 (defun org-ctrl-c-tab (&optional arg)
   "Toggle columns width in a table, or show children.
@@ -1249,7 +1298,6 @@ level to hide."
   (interactive "p")
   (cond
    ((org-at-table-p)
-    (require 'org-table-fold)
     (call-interactively #'org-table-toggle-column-width))
    ((org-before-first-heading-p)
     (save-excursion
@@ -1267,10 +1315,10 @@ depending on context."
   (interactive)
   (cond
    ((org-at-table-p)
-    (call-interactively 'org-table-recalculate))
+    (call-interactively #'org-table-recalculate))
    (t
     ;; Convert all lines in region to list items
-    (call-interactively 'org-toggle-heading))))
+    (call-interactively #'org-toggle-heading))))
 
 ;;;###autoload
 (defun org-ctrl-c-minus ()
@@ -1280,18 +1328,12 @@ Calls `org-table-insert-hline', `org-toggle-item', or
 `org-cycle-list-bullet', depending on context."
   (interactive)
   (cond
-   ((org-at-table-p)
-    (call-interactively 'org-table-insert-hline))
-   ((use-region-p)
-    (call-interactively 'org-toggle-item))
-   ((org-in-item-p)
-    (call-interactively 'org-cycle-list-bullet))
-   (t
-    (call-interactively 'org-toggle-item))))
+   ((org-at-table-p) (call-interactively #'org-table-insert-hline))
+   ((use-region-p) (call-interactively #'org-toggle-item))
+   ((org-in-item-p) (call-interactively #'org-cycle-list-bullet))
+   (t (call-interactively #'org-toggle-item))))
 
-(declare-function org-list-to-subtree "org-list-export"
-                  (list &optional start-level params))
-(declare-function org-list-to-lisp "org-list-export" (&optional delete))
+;;;###autoload
 (defun org-toggle-heading (&optional nstars)
   "Convert headings to normal text, or items or text to headings.
 If there is no active region, only convert the current line.
@@ -1367,7 +1409,6 @@ number of stars to add."
 		     (min (org-list-get-bottom-point struct) (1+ end))))
 	       (save-restriction
 		 (narrow-to-region (point) list-end)
-                 (require 'org-list-export)
 		 (insert (org-list-to-subtree
 			  (org-list-to-lisp t)
 			  (pcase (org-current-level)
@@ -1403,24 +1444,19 @@ number of stars to add."
 	       (forward-line)))))))
     (unless toggled (message "Cannot toggle heading from here"))))
 
-(declare-function org-table-wrap-region "org-table-edit" (arg))
-(declare-function org-insert-item "org-list-commands" (&optional checkbox))
 ;;;###autoload
 (defun org-meta-return (&optional arg)
   "Insert a new heading or wrap a region in a table.
 Calls `org-insert-heading', `org-insert-item' or
 `org-table-wrap-region', depending on context.  When called with
-an argument, unconditionally call `org-insert-heading'."
+prefix ARG, unconditionally call `org-insert-heading'."
   (interactive "P")
   (or (run-hook-with-args-until-success 'org-metareturn-hook)
-      (call-interactively (cond (arg #'org-insert-heading)
-				((org-at-table-p)
-                                 (require 'org-table-edit)
-                                 #'org-table-wrap-region)
-				((org-in-item-p)
-                                 (require 'org-list-commands)
-                                 #'org-insert-item)
-				(t #'org-insert-heading)))))
+      (call-interactively
+       (cond (arg #'org-insert-heading)
+	     ((org-at-table-p) #'org-table-wrap-region)
+	     ((org-in-item-p) #'org-insert-item)
+	     (t #'org-insert-heading)))))
 
 (provide 'org-edit-special)
 

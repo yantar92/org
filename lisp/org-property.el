@@ -315,6 +315,7 @@ strings."
 	  ;; Return value.
 	  props)))))
 
+;;;###autoload
 (defun org-entry-get (epom property &optional inherit literal-nil)
   "Get value of PROPERTY for entry or content at EPOM.
 
