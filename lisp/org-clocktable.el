@@ -31,7 +31,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-clock-core)
+(require 'org-clock-sum)
 (require 'org-property)
 (require 'ol)
 (require 'org-table-move)
@@ -40,6 +40,7 @@
 (require 'org-element-timestamp)
 (require 'org-dblock)
 (require 'org-font-lock-common)
+(require 'org-tags-core)
 
 (defgroup org-clocktable nil
   "Options concerning the clock table in Org mode."
@@ -154,6 +155,8 @@ fontified, and then returned."
 				(re-search-forward "^[ \t]*#\\+END" nil t)
                                 (line-beginning-position)))))
 
+(declare-function org-fold-show-entry "org-fold"
+                  (&optional hide-drawers))
 ;;;###autoload
 (defun org-clock-report (&optional arg)
   "Update or create a table containing a report about clocked time.
@@ -176,6 +179,7 @@ in the buffer and update it."
     (org-clock-remove-overlays))
   (when arg
     (org-find-dblock "clocktable")
+    (require 'org-fold)
     (org-fold-show-entry))
   (pcase (org-in-clocktable-p)
     (`nil

@@ -255,7 +255,7 @@ With prefix ARG, change that many days."
     (save-match-data
       (calendar-cursor-to-date))))
 
-(declare-function org-clock-update-time-maybe "org-clock" ())
+(declare-function org-clock-update-time-maybe "org-clock-commands" ())
 (declare-function org-get-heading "org-property" (&optional no-tags no-todo no-priority no-comment))
 (defun org-timestamp-change (n &optional what updown suppress-tmp-delay)
   "Change the date in the time stamp at point.
@@ -384,7 +384,7 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 	   (_ origin))))
       ;; Update clock if on a CLOCK line.
       (when (org-at-clock-log-p)
-        (require 'org-clock)
+        (require 'org-clock-commands)
         (org-clock-update-time-maybe))
       ;; Maybe adjust the closest clock in `org-clock-history'
       (when org-clock-adjust-closest

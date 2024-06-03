@@ -181,7 +181,7 @@ Started from `gnus-info-find-node'."
 
 ;;;; Describe point
 
-(declare-function org-clock-update-time-maybe "org-clock" ())
+(declare-function org-clock-update-time-maybe "org-clock-commands" ())
 (declare-function org-time-string-to-time "org-time" (s))
 (declare-function org-table-align "org-table-align" ())
 (declare-function org-make-tdiff-string "org-time" (y d h m))
@@ -196,7 +196,7 @@ next column.
 For time difference computation, a year is assumed to be exactly 365
 days in order to avoid rounding problems."
   (interactive "P")
-  (require 'org-clock)
+  (require 'org-clock-commands)
   (require 'org-time)
   (require 'org-regexps)
   (or

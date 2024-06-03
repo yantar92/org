@@ -895,9 +895,9 @@ Also sets `org-columns-top-level-marker' to the new position."
 	  ((org-entry-get nil "COLUMNS" t) org-entry-property-inherited-from)
 	  (t (org-back-to-heading) (point))))))
 
-(declare-function org-clock-sum "org-clock"
+(declare-function org-clock-sum "org-clock-sum"
                   (&optional tstart tend headline-filter propname))
-(declare-function org-clock-sum-today "org-clock" (&optional headline-filter))
+(declare-function org-clock-sum-today "org-clock-sum" (&optional headline-filter))
 ;;;###autoload
 (defun org-columns (&optional global columns-fmt-string)
   "Turn on column view on an Org mode file.
@@ -927,10 +927,10 @@ When COLUMNS-FMT-STRING is non-nil, use it as the column format."
 	(when (and (not global) (org-at-heading-p))
 	  (narrow-to-region (point) (org-end-of-subtree t t)))
 	(when (assoc "CLOCKSUM" org-columns-current-fmt-compiled)
-          (require 'org-clock)
+          (require 'org-clock-sum)
 	  (org-clock-sum))
 	(when (assoc "CLOCKSUM_T" org-columns-current-fmt-compiled)
-          (require 'org-clock)
+          (require 'org-clock-sum)
 	  (org-clock-sum-today))
 	(let ((cache
 	       ;; Collect contents of columns ahead of time so as to

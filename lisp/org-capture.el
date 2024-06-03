@@ -53,7 +53,7 @@
 (require 'cl-lib)
 (require 'org-read-date)
 (require 'ol)
-(require 'org-clock)
+(require 'org-clock-common)
 (require 'org-bookmark)
 (require 'org-tags)
 (require 'org-todo)
@@ -623,6 +623,7 @@ When nil, you can still capture using the date at point with
   :type 'boolean)
 
 (declare-function org-get-cursor-date "org-agenda" (&optional with-time))
+(declare-function org-clock-in "org-clock-core" (&optional select start-time))
 ;;;###autoload
 (defun org-capture (&optional goto keys)
   "Capture something.
@@ -727,6 +728,7 @@ of the day at point (if any) or the current HH:MM time."
 		(when (org-clock-is-active)
 		  (org-capture-put :interrupted-clock
 				   (copy-marker org-clock-marker)))
+                (require 'org-clock-core)
 		(org-clock-in)
 		(setq-local org-capture-clock-was-started
                             (copy-marker org-clock-marker)))
@@ -770,6 +772,10 @@ If LOCAL is non-nil use the buffer-local value of `org-capture-plist'."
                   (&optional all noalign))
 (declare-function org-table-current-dline "org-table-core" ())
 (declare-function org-encrypt-entry "org-crypt" ())
+(declare-function org-clock-update-clock-status "org-clock-core"
+                  (&optional refresh))
+(declare-function org-clock-out "org-clock-core"
+                  (&optional switch-to-state fail-quietly at-time))
 (defun org-capture-finalize (&optional stay-with-capture)
   "Finalize the capture process.
 With prefix argument STAY-WITH-CAPTURE, jump to the location of the
@@ -792,6 +798,8 @@ captured item after finalizing."
   ;; Did we start the clock in this capture buffer?
   (when (and org-capture-clock-was-started
 	     (equal org-clock-marker org-capture-clock-was-started))
+    (require 'org-clock-core)
+    (defvar org-log-note-clock-out)
     ;; Looks like the clock we started is still running.
     (if org-capture-clock-keep
 	;; User may have completed clocked heading from the template.

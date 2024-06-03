@@ -55,7 +55,6 @@
 (require 'org-indirect-buffer)
 (require 'org-refile)
 (require 'org-element)
-(require 'org-clock)
 (require 'org-diary-lib)
 (require 'org-agenda-files)
 (require 'org-agenda-common)
@@ -110,7 +109,6 @@
 (declare-function org-clock-goto "org-clock-commands" (&optional select))
 
 (defvar calendar-mode-map)
-(defvar org-clock-current-task)
 (defvar org-current-tag-alist)
 (defvar org-mobile-force-id-on-agenda-items)
 (defvar org-habit-show-habits)
@@ -3398,6 +3396,7 @@ and agenda spans 7 or 14 days.")
 (defvar org-starting-day nil) ; local variable in the agenda buffer
 (defvar org-arg-loc nil) ; local variable
 
+(declare-function org-clock-get-clocktable "org-clocktable" (&rest props))
 ;;;###autoload
 (defun org-agenda-list (&optional arg start-day span with-hour)
   "Produce a daily/weekly view from all files in variable `org-agenda-files'.
@@ -3577,6 +3576,7 @@ items if they have an hour specification like [h]h:mm."
 	  (setq p (plist-put p :tstart clocktable-start))
 	  (setq p (plist-put p :tend clocktable-end))
 	  (setq p (plist-put p :scope 'agenda))
+          (require 'org-clocktable)
 	  (setq tbl (apply #'org-clock-get-clocktable p))
           (when org-agenda-clock-report-header
             (insert (propertize org-agenda-clock-report-header 'face 'org-agenda-structure))
@@ -7104,10 +7104,13 @@ ARG is passed through to `org-deadline'."
        (org-agenda-show-new-time marker ts " D"))
      (message "%s" ts))))
 
+(declare-function org-clock-in "org-clock-core"
+                  (&optional select start-time))
 (defun org-agenda-clock-in (&optional arg)
   "Start the clock on the currently selected item."
   (interactive "P")
   (org-agenda-check-no-diary)
+  (require 'org-clock-core)
   (if (equal arg '(4))
       (org-clock-in arg)
     (let* ((marker (or (org-get-at-bol 'org-marker)
@@ -7126,11 +7129,14 @@ ARG is passed through to `org-deadline'."
 	(org-agenda-change-all-lines newhead hdmarker))
       (org-move-to-column col))))
 
+(declare-function org-clock-out "org-clock-core"
+                  (&optional switch-to-state fail-quietly at-time))
 (defun org-agenda-clock-out ()
   "Stop the currently running clock."
   (interactive)
   (unless (marker-buffer org-clock-marker)
     (user-error "No running clock"))
+  (require 'org-clock-core)
   (let ((marker (make-marker)) (col (current-column)) newhead)
     (org-with-remote-undo (marker-buffer org-clock-marker)
       (with-current-buffer (marker-buffer org-clock-marker)
@@ -7145,9 +7151,11 @@ ARG is passed through to `org-deadline'."
     (org-move-to-column col)
     (org-agenda-unmark-clocking-task)))
 
+(declare-function org-clock-cancel "org-clock-core" ())
 (defun org-agenda-clock-cancel (&optional _arg)
   "Cancel the currently running clock."
   (interactive) ;; "P"
+  (require 'org-clock-core)
   (unless (marker-buffer org-clock-marker)
     (user-error "No running clock"))
   (org-with-remote-undo (marker-buffer org-clock-marker)

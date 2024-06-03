@@ -33,6 +33,7 @@
 
 (require 'org-colview)
 (require 'org-agenda)
+(require 'org-clock-sum)
 
 
 ;;; Configuration
@@ -193,10 +194,8 @@ This will add overlays to the date lines, to show the summary for each day."
 	   (let ((prop (car spec)))
 	     (cond
 	      ((equal prop "CLOCKSUM")
-               (require 'org-clock)
                (org-clock-sum))
 	      ((equal prop "CLOCKSUM_T")
-               (require 'org-clock)
                (org-clock-sum-today))
 	      ((and (nth 3 spec)
 		    (let ((a (assoc prop org-columns-current-fmt-compiled)))
