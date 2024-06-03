@@ -55,51 +55,6 @@ has been set."
   :group 'org-startup
   :type 'boolean)
 
-(defcustom org-support-shift-select nil
-  "Non-nil means make shift-cursor commands select text when possible.
-\\<org-mode-map>
-In Emacs 23, when `shift-select-mode' is on, shifted cursor keys
-start selecting a region, or enlarge regions started in this way.
-In Org mode, in special contexts, these same keys are used for
-other purposes, important enough to compete with shift selection.
-Org tries to balance these needs by supporting `shift-select-mode'
-outside these special contexts, under control of this variable.
-
-The default of this variable is nil, to avoid confusing behavior.  Shifted
-cursor keys will then execute Org commands in the following contexts:
-- on a headline, changing TODO state (left/right) and priority (up/down)
-- on a time stamp, changing the time
-- in a plain list item, changing the bullet type
-- in a property definition line, switching between allowed values
-- in the BEGIN line of a clock table (changing the time block).
-- in a table, moving the cell in the specified direction.
-Outside these contexts, the commands will throw an error.
-
-When this variable is t and the cursor is not in a special
-context, Org mode will support shift-selection for making and
-enlarging regions.  To make this more effective, the bullet
-cycling will no longer happen anywhere in an item line, but only
-if the cursor is exactly on the bullet.
-
-If you set this variable to the symbol `always', then the keys
-will not be special in headlines, property lines, item lines, and
-table cells, to make shift selection work there as well.  If this is
-what you want, you can use the following alternative commands:
-`\\[org-todo]' and `\\[org-priority]' \
-to change TODO state and priority,
-`\\[universal-argument] \\[universal-argument] \\[org-todo]' \
-can be used to switch TODO sets,
-`\\[org-ctrl-c-minus]' to cycle item bullet types,
-and properties can be edited by hand or in column view.
-
-However, when the cursor is on a timestamp, shift-cursor commands
-will still edit the time stamp - this is just too good to give up."
-  :group 'org
-  :type '(choice
-	  (const :tag "Never" nil)
-	  (const :tag "When outside special context" t)
-	  (const :tag "Everywhere except timestamps" always)))
-
 (defgroup org-startup nil
   "Startup options Org uses when first visiting a file."
   :tag "Org Startup"

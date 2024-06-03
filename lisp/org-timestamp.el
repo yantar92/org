@@ -188,6 +188,7 @@ The command returns the inserted time stamp."
       (insert-before-markers-and-inherit (or post ""))
       (setq org-last-inserted-timestamp stamp))))
 
+;;;###autoload
 (defun org-timestamp-up (&optional arg)
   "Increase the date item at the cursor by one.
 If the cursor is on the year, change the year.  If it is on the month,
@@ -197,6 +198,7 @@ With prefix ARG, change by that many units."
   (interactive "p")
   (org-timestamp-change (prefix-numeric-value arg) nil 'updown))
 
+;;;###autoload
 (defun org-timestamp-down (&optional arg)
   "Decrease the date item at the cursor by one.
 If the cursor is on the year, change the year.  If it is on the month,
@@ -207,6 +209,7 @@ With prefix ARG, change by that many units."
   (org-timestamp-change (- (prefix-numeric-value arg)) nil 'updown))
 
 (declare-function org-todo "org-todo" (&optional arg))
+;;;###autoload
 (defun org-timestamp-up-day (&optional arg)
   "Increase the date in the time stamp by one day.
 With prefix ARG, change that many days."
@@ -217,6 +220,7 @@ With prefix ARG, change that many days."
     (org-timestamp-change (prefix-numeric-value arg) 'day 'updown)))
 
 (declare-function org-todo "org-todo" (&optional arg))
+;;;###autoload
 (defun org-timestamp-down-day (&optional arg)
   "Decrease the date in the time stamp by one day.
 With prefix ARG, change that many days."

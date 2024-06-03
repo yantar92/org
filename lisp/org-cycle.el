@@ -89,7 +89,6 @@
 
 ;;;; Customization:
 
-
 (defgroup org-cycle nil
   "Options concerning visibility cycling in Org mode."
   :tag "Org Cycle"
@@ -226,6 +225,28 @@ the values `folded', `children', or `subtree'."
   :group 'org-cycle
   :package-version '(Org . "9.4")
   :type 'hook)
+
+(defvar org-tab-after-check-for-cycling-hook nil
+  "Hook for functions to attach themselves to TAB.
+See `org-ctrl-c-ctrl-c-hook' for more information.
+This hook runs after it has been established that not table field motion and
+not visibility should be done because of current context.  This is probably
+the place where a package like yasnippets can hook in.")
+
+(defvar org-tab-after-check-for-table-hook nil
+  "Hook for functions to attach themselves to TAB.
+See `org-ctrl-c-ctrl-c-hook' for more information.
+This hook runs after it has been established that the cursor is not in a
+table, but before checking if the cursor is in a headline or if global cycling
+should be done.
+If any function in this hook returns t, not other actions like visibility
+cycling will be done.")
+
+(defvar org-tab-before-tab-emulation-hook nil
+  "Hook for functions to attach themselves to TAB.
+See `org-ctrl-c-ctrl-c-hook' for more information.
+This hook runs after every other options for TAB have been exhausted, but
+before indentation and \t insertion takes place.")
 
 (defcustom org-cycle-open-archived-trees nil
   "Non-nil means `org-cycle' will open archived trees.
@@ -621,6 +642,26 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (setq org-cycle-subtree-status 'folded)
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-cycle-hook 'folded))))))
+
+;;;###autoload
+(defun org-shifttab (&optional arg)
+  "Global visibility cycling or move to previous table field.
+Call `org-table-previous-field' within a table.
+When ARG is nil, cycle globally through visibility states.
+When ARG is a numeric prefix, show contents of this level."
+  (interactive "P")
+  (cond
+   ((org-at-table-p)
+    (require 'org-table-move)
+    (call-interactively 'org-table-previous-field))
+   ((integerp arg)
+    (let ((arg2 (if org-odd-levels-only (1- (* 2 arg)) arg)))
+      (message "Content view to level: %d" arg)
+      (org-cycle-content (prefix-numeric-value arg2))
+      (org-cycle-show-empty-lines t)
+      (setq org-cycle-global-status 'overview)
+      (run-hook-with-args 'org-cycle-hook 'overview)))
+   (t (call-interactively 'org-cycle-global))))
 
 (defalias 'org-global-cycle #'org-cycle-global)
 ;;;###autoload

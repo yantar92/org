@@ -60,6 +60,51 @@ with that."
   :group 'org-todo
   :type 'boolean)
 
+(defcustom org-support-shift-select nil
+  "Non-nil means make shift-cursor commands select text when possible.
+\\<org-mode-map>
+In Emacs 23, when `shift-select-mode' is on, shifted cursor keys
+start selecting a region, or enlarge regions started in this way.
+In Org mode, in special contexts, these same keys are used for
+other purposes, important enough to compete with shift selection.
+Org tries to balance these needs by supporting `shift-select-mode'
+outside these special contexts, under control of this variable.
+
+The default of this variable is nil, to avoid confusing behavior.  Shifted
+cursor keys will then execute Org commands in the following contexts:
+- on a headline, changing TODO state (left/right) and priority (up/down)
+- on a time stamp, changing the time
+- in a plain list item, changing the bullet type
+- in a property definition line, switching between allowed values
+- in the BEGIN line of a clock table (changing the time block).
+- in a table, moving the cell in the specified direction.
+Outside these contexts, the commands will throw an error.
+
+When this variable is t and the cursor is not in a special
+context, Org mode will support shift-selection for making and
+enlarging regions.  To make this more effective, the bullet
+cycling will no longer happen anywhere in an item line, but only
+if the cursor is exactly on the bullet.
+
+If you set this variable to the symbol `always', then the keys
+will not be special in headlines, property lines, item lines, and
+table cells, to make shift selection work there as well.  If this is
+what you want, you can use the following alternative commands:
+`\\[org-todo]' and `\\[org-priority]' \
+to change TODO state and priority,
+`\\[universal-argument] \\[universal-argument] \\[org-todo]' \
+can be used to switch TODO sets,
+`\\[org-ctrl-c-minus]' to cycle item bullet types,
+and properties can be edited by hand or in column view.
+
+However, when the cursor is on a timestamp, shift-cursor commands
+will still edit the time stamp - this is just too good to give up."
+  :group 'org
+  :type '(choice
+	  (const :tag "Never" nil)
+	  (const :tag "When outside special context" t)
+	  (const :tag "Everywhere except timestamps" always)))
+
 (defvar org-ctrl-c-ctrl-c-hook nil
   "Hook for functions attaching themselves to \\`C-c C-c'.
 
@@ -85,28 +130,6 @@ Each function will be called with no arguments.  The function
 must check if the context is appropriate for it to act.  If yes,
 it should do its thing and then return a non-nil value.  If the
 context is wrong, just do nothing and return nil.")
-
-(defvar org-tab-after-check-for-table-hook nil
-  "Hook for functions to attach themselves to TAB.
-See `org-ctrl-c-ctrl-c-hook' for more information.
-This hook runs after it has been established that the cursor is not in a
-table, but before checking if the cursor is in a headline or if global cycling
-should be done.
-If any function in this hook returns t, not other actions like visibility
-cycling will be done.")
-
-(defvar org-tab-after-check-for-cycling-hook nil
-  "Hook for functions to attach themselves to TAB.
-See `org-ctrl-c-ctrl-c-hook' for more information.
-This hook runs after it has been established that not table field motion and
-not visibility should be done because of current context.  This is probably
-the place where a package like yasnippets can hook in.")
-
-(defvar org-tab-before-tab-emulation-hook nil
-  "Hook for functions to attach themselves to TAB.
-See `org-ctrl-c-ctrl-c-hook' for more information.
-This hook runs after every other options for TAB have been exhausted, but
-before indentation and \t insertion takes place.")
 
 (defvar org-metaleft-hook nil
   "Hook for functions attaching themselves to `M-left'.
@@ -215,24 +238,6 @@ See `org-ctrl-c-ctrl-c-hook' for more information.")
     (call-interactively cmd)))
 
 ;;;###autoload
-(defun org-shifttab (&optional arg)
-  "Global visibility cycling or move to previous table field.
-Call `org-table-previous-field' within a table.
-When ARG is nil, cycle globally through visibility states.
-When ARG is a numeric prefix, show contents of this level."
-  (interactive "P")
-  (cond
-   ((org-at-table-p) (call-interactively 'org-table-previous-field))
-   ((integerp arg)
-    (let ((arg2 (if org-odd-levels-only (1- (* 2 arg)) arg)))
-      (message "Content view to level: %d" arg)
-      (org-cycle-content (prefix-numeric-value arg2))
-      (org-cycle-show-empty-lines t)
-      (setq org-cycle-global-status 'overview)
-      (run-hook-with-args 'org-cycle-hook 'overview)))
-   (t (call-interactively 'org-cycle-global))))
-
-;;;###autoload
 (defun org-shiftmetaleft ()
   "Promote subtree or delete table column.
 Calls `org-promote-subtree', `org-outdent-item-tree', or
@@ -305,8 +310,11 @@ logic."
   (cond
    ((run-hook-with-args-until-success 'org-shiftmetaup-hook))
    ((org-at-table-p) (call-interactively 'org-table-kill-row))
-   ((org-at-clock-log-p) (let ((org-clock-adjust-closest t))
-			   (call-interactively 'org-timestamp-up)))
+   ((org-at-clock-log-p)
+    (require 'org-timestamp)
+    (defvar org-clock-adjust-closest)
+    (let ((org-clock-adjust-closest t))
+      (call-interactively 'org-timestamp-up)))
    ((run-hook-with-args-until-success 'org-shiftmetaup-final-hook))
    (t (call-interactively 'org-drag-line-backward))))
 
@@ -327,8 +335,11 @@ same logic."
   (cond
    ((run-hook-with-args-until-success 'org-shiftmetadown-hook))
    ((org-at-table-p) (call-interactively 'org-table-insert-row))
-   ((org-at-clock-log-p) (let ((org-clock-adjust-closest t))
-			   (call-interactively 'org-timestamp-down)))
+   ((org-at-clock-log-p)
+    (require 'org-timestamp)
+    (defvar org-clock-adjust-closest)
+    (let ((org-clock-adjust-closest t))
+      (call-interactively 'org-timestamp-down)))
    ((run-hook-with-args-until-success 'org-shiftmetadown-final-hook))
    (t (call-interactively 'org-drag-line-forward))))
 
@@ -609,6 +620,8 @@ more information."
    ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'previous-line))
    ((org-at-timestamp-p 'lax)
+    (require 'org-timestamp)
+    (defvar org-edit-timestamp-down-means-later)
     (call-interactively (if org-edit-timestamp-down-means-later
 			    'org-timestamp-down 'org-timestamp-up)))
    ((and (not (eq org-support-shift-select 'always))
@@ -651,6 +664,8 @@ more information."
    ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'next-line))
    ((org-at-timestamp-p 'lax)
+    (require 'org-timestamp)
+    (defvar org-edit-timestamp-down-means-later)
     (call-interactively (if org-edit-timestamp-down-means-later
 			    'org-timestamp-up 'org-timestamp-down)))
    ((and (not (eq org-support-shift-select 'always))
@@ -698,6 +713,9 @@ variable for more information."
    ((org-at-timestamp-p 'lax) (call-interactively 'org-timestamp-up-day))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
+    (require 'org-todo)
+    (defvar org-inhibit-logging)
+    (defvar org-inhibit-blocking)
     (let ((org-inhibit-logging
 	   (not org-treat-S-cursor-todo-selection-as-state-change))
 	  (org-inhibit-blocking
@@ -750,6 +768,9 @@ variable for more information."
    ((org-at-timestamp-p 'lax) (call-interactively 'org-timestamp-down-day))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
+    (require 'org-todo)
+    (defvar org-inhibit-logging)
+    (defvar org-inhibit-blocking)
     (let ((org-inhibit-logging
 	   (not org-treat-S-cursor-todo-selection-as-state-change))
 	  (org-inhibit-blocking
