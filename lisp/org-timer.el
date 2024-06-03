@@ -39,11 +39,13 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-clock)
 (require 'org-list-core)
 (require 'org-list-edit)
-
-(declare-function org-agenda-error "org-agenda" ())
+(require 'org-outline)
+(require 'org-clock-notify)
+(require 'org-duration)
+(require 'org-property)
+(require 'org-indent-static)
 
 (defvar org-timer-start-time nil
   "Start time for the running timer.")
