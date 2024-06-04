@@ -312,6 +312,8 @@ See `org-ctrl-c-ctrl-c-hook' for more information.")
 This one runs after all other options except shift-select have been excluded.
 See `org-ctrl-c-ctrl-c-hook' for more information.")
 
+;;; Helpers
+
 (defun org-modifier-cursor-error ()
   "Throw an error, a modified cursor command was applied in wrong context."
   (user-error "This command is active in special context like tables, headlines or items"))
@@ -322,201 +324,13 @@ See `org-ctrl-c-ctrl-c-hook' for more information.")
       (user-error "To use shift-selection with Org mode, customize `org-support-shift-select'")
     (user-error "This command works only in special context like headlines or timestamps")))
 
-(defun org-call-for-shift-select (cmd)
-  (let ((this-command-keys-shift-translated t))
-    (call-interactively cmd)))
-
-;;;###autoload
-(defun org-shiftmetaleft ()
-  "Promote subtree or delete table column.
-Calls `org-promote-subtree', `org-outdent-item-tree', or
-`org-table-delete-column', depending on context.  See the
-individual commands for more information.
-
-This function runs the functions in `org-shiftmetaleft-hook' one
-by one as a first step, and exits immediately if a function from
-the hook returns non-nil.  In the absence of a specific context,
-the function also runs `org-shiftmetaleft-final-hook' using the
-same logic."
-  (interactive)
-  (cond
-   ((and (eq system-type 'darwin)
-         (or (eq org-support-shift-select 'always)
-             (and org-support-shift-select (use-region-p))))
-    (org-call-for-shift-select 'backward-char))
-   ((run-hook-with-args-until-success 'org-shiftmetaleft-hook))
-   ((org-at-table-p) (call-interactively #'org-table-delete-column))
-   ((org-at-heading-p) (call-interactively #'org-promote-subtree))
-   ((if (not (use-region-p)) (org-at-item-p)
-      (save-excursion (goto-char (region-beginning))
-		      (org-at-item-p)))
-    (call-interactively #'org-outdent-item-tree))
-   ((run-hook-with-args-until-success 'org-shiftmetaleft-final-hook))
-   (t (org-modifier-cursor-error))))
-
-;;;###autoload
-(defun org-shiftmetaright ()
-  "Demote subtree or insert table column.
-Calls `org-demote-subtree', `org-indent-item-tree', or
-`org-table-insert-column', depending on context.  See the
-individual commands for more information.
-
-This function runs the functions in `org-shiftmetaright-hook' one
-by one as a first step, and exits immediately if a function from
-the hook returns non-nil.  In the absence of a specific context,
-the function also runs `org-shiftmetaright-final-hook' using the
-same logic."
-  (interactive)
-  (cond
-   ((and (eq system-type 'darwin)
-         (or (eq org-support-shift-select 'always)
-             (and org-support-shift-select (use-region-p))))
-    (org-call-for-shift-select 'forward-char))
-   ((run-hook-with-args-until-success 'org-shiftmetaright-hook))
-   ((org-at-table-p) (call-interactively #'org-table-insert-column))
-   ((org-at-heading-p) (call-interactively #'org-demote-subtree))
-   ((if (not (use-region-p)) (org-at-item-p)
-      (save-excursion (goto-char (region-beginning))
-		      (org-at-item-p)))
-    (call-interactively #'org-indent-item-tree))
-   ((run-hook-with-args-until-success 'org-shiftmetaright-final-hook))
-   (t (org-modifier-cursor-error))))
-
-;;;###autoload
-(defun org-shiftmetaup (&optional _arg)
-  "Drag the line at point up.
-In a table, kill the current row.
-On a clock timestamp, update the value of the timestamp like `S-<up>'
-but also adjust the previous clocked item in the clock history.
-Everywhere else, drag the line at point up.
-
-This function runs the functions in `org-shiftmetaup-hook' one by
-one as a first step, and exits immediately if a function from the
-hook returns non-nil.  In the absence of a specific context, the
-function also runs `org-shiftmetaup-final-hook' using the same
-logic."
-  (interactive "P")
-  (cond
-   ((run-hook-with-args-until-success 'org-shiftmetaup-hook))
-   ((org-at-table-p) (call-interactively #'org-table-kill-row))
-   ((org-at-clock-log-p)
-    (require 'org-timestamp)
-    (defvar org-clock-adjust-closest)
-    (let ((org-clock-adjust-closest t))
-      (call-interactively #'org-timestamp-up)))
-   ((run-hook-with-args-until-success 'org-shiftmetaup-final-hook))
-   (t (call-interactively #'org-drag-line-backward))))
-
-;;;###autoload
-(defun org-shiftmetadown (&optional _arg)
-  "Drag the line at point down.
-In a table, insert an empty row at the current line.
-On a clock timestamp, update the value of the timestamp like `S-<down>'
-but also adjust the previous clocked item in the clock history.
-Everywhere else, drag the line at point down.
-
-This function runs the functions in `org-shiftmetadown-hook' one
-by one as a first step, and exits immediately if a function from
-the hook returns non-nil.  In the absence of a specific context,
-the function also runs `org-shiftmetadown-final-hook' using the
-same logic."
-  (interactive "P")
-  (cond
-   ((run-hook-with-args-until-success 'org-shiftmetadown-hook))
-   ((org-at-table-p) (call-interactively #'org-table-insert-row))
-   ((org-at-clock-log-p)
-    (require 'org-timestamp)
-    (defvar org-clock-adjust-closest)
-    (let ((org-clock-adjust-closest t))
-      (call-interactively #'org-timestamp-down)))
-   ((run-hook-with-args-until-success 'org-shiftmetadown-final-hook))
-   (t (call-interactively #'org-drag-line-forward))))
-
 (defsubst org-hidden-tree-error ()
   (user-error
    "Hidden subtree, open with TAB or use subtree command M-S-<left>/<right>"))
 
-;;;###autoload
-(defun org-metaleft (&optional _arg)
-  "Promote heading, list item at point or move table column left.
-
-Calls `org-do-promote', `org-outdent-item' or `org-table-move-column',
-depending on context.  With no specific context, calls the Emacs
-default `backward-word'.  See the individual commands for more
-information.
-
-This function runs the functions in `org-metaleft-hook' one by
-one as a first step, and exits immediately if a function from the
-hook returns non-nil.  In the absence of a specific context, the
-function runs `org-metaleft-final-hook' using the same logic."
-  (interactive "P")
-  (cond
-   ((run-hook-with-args-until-success 'org-metaleft-hook))
-   ((org-at-table-p) (org-call-with-arg 'org-table-move-column 'left))
-   ((org-with-limited-levels
-     (or (org-at-heading-p)
-	 (and (use-region-p)
-	      (save-excursion
-		(goto-char (region-beginning))
-		(org-at-heading-p)))))
-    (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
-    (call-interactively #'org-do-promote))
-   ;; At an inline task.
-   ((and (org-at-heading-p)
-         (fboundp 'org-inlinetask-promote))
-    (call-interactively #'org-inlinetask-promote))
-   ((or (org-at-item-p)
-	(and (use-region-p)
-	     (save-excursion
-	       (goto-char (region-beginning))
-	       (org-at-item-p))))
-    (when (org-check-for-hidden 'items) (org-hidden-tree-error))
-    (call-interactively #'org-outdent-item))
-   ((run-hook-with-args-until-success 'org-metaleft-final-hook))
-   (t (call-interactively #'backward-word))))
-
-;;;###autoload
-(defun org-metaright (&optional _arg)
-  "Demote heading, list item at point or move table column right.
-
-In front of a drawer or a block keyword, indent it correctly.
-
-Calls `org-do-demote', `org-indent-item', `org-table-move-column',
-`org-indent-drawer' or `org-indent-block' depending on context.
-With no specific context, calls the Emacs default `forward-word'.
-See the individual commands for more information.
-
-This function runs the functions in `org-metaright-hook' one by
-one as a first step, and exits immediately if a function from the
-hook returns non-nil.  In the absence of a specific context, the
-function runs `org-metaright-final-hook' using the same logic."
-  (interactive "P")
-  (cond
-   ((run-hook-with-args-until-success 'org-metaright-hook))
-   ((org-at-table-p) (call-interactively #'org-table-move-column))
-   ((org-at-drawer-p) (call-interactively #'org-indent-drawer))
-   ((org-at-block-p) (call-interactively #'org-indent-block))
-   ((org-with-limited-levels
-     (or (org-at-heading-p)
-	 (and (use-region-p)
-	      (save-excursion
-		(goto-char (region-beginning))
-		(org-at-heading-p)))))
-    (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
-    (call-interactively #'org-do-demote))
-   ;; At an inline task.
-   ((and (org-at-heading-p)
-         (fboundp 'org-inlinetask-demote))
-    (call-interactively #'org-inlinetask-demote))
-   ((or (org-at-item-p)
-	(and (use-region-p)
-	     (save-excursion
-	       (goto-char (region-beginning))
-	       (org-at-item-p))))
-    (when (org-check-for-hidden 'items) (org-hidden-tree-error))
-    (call-interactively #'org-indent-item))
-   ((run-hook-with-args-until-success 'org-metaright-final-hook))
-   (t (call-interactively #'forward-word))))
+(defun org-call-for-shift-select (cmd)
+  (let ((this-command-keys-shift-translated t))
+    (call-interactively cmd)))
 
 (defun org-check-for-hidden (what)
   "Check if there are hidden headlines/items in the current visual line.
@@ -545,6 +359,188 @@ this function returns t, nil otherwise."
 	      (throw 'exit t))))
 	nil))))
 
+(defmacro org--at-region-beg (&rest body)
+  "When region is active run BODY with point at region beginning.
+Otherwise, do nothing."
+  (declare (debug (form body)))
+  `(when (use-region-p)
+     (save-excursion
+       (goto-char (region-beginning))
+       ,@body)))
+
+(defmacro org-edit--region-or (&rest body)
+  "Test if BODY returns non-nil at point or region beginning."
+  (declare (debug (form body)))
+  `(or (progn ,@body) (org--at-region-beg ,@body)))
+
+;;; Commands
+
+;;;###autoload
+(defun org-shiftmetaleft ()
+  "Promote subtree or delete table column.
+Calls `org-promote-subtree', `org-outdent-item-tree', or
+`org-table-delete-column', depending on context.  See the
+individual commands for more information.
+
+This function runs the functions in `org-shiftmetaleft-hook' one
+by one as a first step, and exits immediately if a function from
+the hook returns non-nil.  In the absence of a specific context,
+the function also runs `org-shiftmetaleft-final-hook' using the
+same logic."
+  (interactive)
+  (cond
+   ((and (eq system-type 'darwin)
+         (or (eq org-support-shift-select 'always)
+             (and org-support-shift-select (use-region-p))))
+    (org-call-for-shift-select 'backward-char))
+   ((run-hook-with-args-until-success 'org-shiftmetaleft-hook))
+   ((org-at-table-p) (call-interactively #'org-table-delete-column))
+   ((org-at-heading-p) (call-interactively #'org-promote-subtree))
+   ((org-edit--region-or (org-at-item-p))
+    (call-interactively #'org-outdent-item-tree))
+   ((run-hook-with-args-until-success 'org-shiftmetaleft-final-hook))
+   (t (org-modifier-cursor-error))))
+
+;;;###autoload
+(defun org-shiftmetaright ()
+  "Demote subtree or insert table column.
+Calls `org-demote-subtree', `org-indent-item-tree', or
+`org-table-insert-column', depending on context.  See the
+individual commands for more information.
+
+This function runs the functions in `org-shiftmetaright-hook' one
+by one as a first step, and exits immediately if a function from
+the hook returns non-nil.  In the absence of a specific context,
+the function also runs `org-shiftmetaright-final-hook' using the
+same logic."
+  (interactive)
+  (cond
+   ((and (eq system-type 'darwin)
+         (or (eq org-support-shift-select 'always)
+             (and org-support-shift-select (use-region-p))))
+    (org-call-for-shift-select 'forward-char))
+   ((run-hook-with-args-until-success 'org-shiftmetaright-hook))
+   ((org-at-table-p) (call-interactively #'org-table-insert-column))
+   ((org-at-heading-p) (call-interactively #'org-demote-subtree))
+   ((org-edit--region-or (org-at-item-p))
+    (call-interactively #'org-indent-item-tree))
+   ((run-hook-with-args-until-success 'org-shiftmetaright-final-hook))
+   (t (org-modifier-cursor-error))))
+
+;;;###autoload
+(defun org-shiftmetaup (&optional _arg)
+  "Drag the line at point up.
+In a table, kill the current row.
+On a clock timestamp, update the value of the timestamp like `S-<up>'
+but also adjust the previous clocked item in the clock history.
+Everywhere else, drag the line at point up.
+
+This function runs the functions in `org-shiftmetaup-hook' one by
+one as a first step, and exits immediately if a function from the
+hook returns non-nil.  In the absence of a specific context, the
+function also runs `org-shiftmetaup-final-hook' using the same
+logic."
+  (interactive "P")
+  (cond
+   ((run-hook-with-args-until-success 'org-shiftmetaup-hook))
+   ((org-at-table-p) (call-interactively #'org-table-kill-row))
+   ((org-at-clock-log-p)
+    (defvar org-clock-adjust-closest)
+    (let ((org-clock-adjust-closest t))
+      (call-interactively #'org-timestamp-up)))
+   ((run-hook-with-args-until-success 'org-shiftmetaup-final-hook))
+   (t (call-interactively #'org-drag-line-backward))))
+
+;;;###autoload
+(defun org-shiftmetadown (&optional _arg)
+  "Drag the line at point down.
+In a table, insert an empty row at the current line.
+On a clock timestamp, update the value of the timestamp like `S-<down>'
+but also adjust the previous clocked item in the clock history.
+Everywhere else, drag the line at point down.
+
+This function runs the functions in `org-shiftmetadown-hook' one
+by one as a first step, and exits immediately if a function from
+the hook returns non-nil.  In the absence of a specific context,
+the function also runs `org-shiftmetadown-final-hook' using the
+same logic."
+  (interactive "P")
+  (cond
+   ((run-hook-with-args-until-success 'org-shiftmetadown-hook))
+   ((org-at-table-p) (call-interactively #'org-table-insert-row))
+   ((org-at-clock-log-p)
+    (defvar org-clock-adjust-closest)
+    (let ((org-clock-adjust-closest t))
+      (call-interactively #'org-timestamp-down)))
+   ((run-hook-with-args-until-success 'org-shiftmetadown-final-hook))
+   (t (call-interactively #'org-drag-line-forward))))
+
+;;;###autoload
+(defun org-metaleft (&optional _arg)
+  "Promote heading, list item at point or move table column left.
+
+Calls `org-do-promote', `org-outdent-item' or `org-table-move-column',
+depending on context.  With no specific context, calls the Emacs
+default `backward-word'.  See the individual commands for more
+information.
+
+This function runs the functions in `org-metaleft-hook' one by
+one as a first step, and exits immediately if a function from the
+hook returns non-nil.  In the absence of a specific context, the
+function runs `org-metaleft-final-hook' using the same logic."
+  (interactive "P")
+  (cond
+   ((run-hook-with-args-until-success 'org-metaleft-hook))
+   ((org-at-table-p) (org-call-with-arg 'org-table-move-column 'left))
+   ((org-with-limited-levels
+     (org-edit--region-or (org-at-heading-p)))
+    (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
+    (call-interactively #'org-do-promote))
+   ;; At an inline task.
+   ((and (org-at-heading-p)
+         (fboundp 'org-inlinetask-promote))
+    (call-interactively #'org-inlinetask-promote))
+   ((org-edit--region-or (org-at-item-p))
+    (when (org-check-for-hidden 'items) (org-hidden-tree-error))
+    (call-interactively #'org-outdent-item))
+   ((run-hook-with-args-until-success 'org-metaleft-final-hook))
+   (t (call-interactively #'backward-word))))
+
+;;;###autoload
+(defun org-metaright (&optional _arg)
+  "Demote heading, list item at point or move table column right.
+
+In front of a drawer or a block keyword, indent it correctly.
+
+Calls `org-do-demote', `org-indent-item', `org-table-move-column',
+`org-indent-drawer' or `org-indent-block' depending on context.
+With no specific context, calls the Emacs default `forward-word'.
+See the individual commands for more information.
+
+This function runs the functions in `org-metaright-hook' one by
+one as a first step, and exits immediately if a function from the
+hook returns non-nil.  In the absence of a specific context, the
+function runs `org-metaright-final-hook' using the same logic."
+  (interactive "P")
+  (cond
+   ((run-hook-with-args-until-success 'org-metaright-hook))
+   ((org-at-table-p) (call-interactively #'org-table-move-column))
+   ((org-at-drawer-p) (call-interactively #'org-indent-drawer))
+   ((org-at-block-p) (call-interactively #'org-indent-block))
+   ((org-with-limited-levels
+     (org-edit--region-or (org-at-heading-p)))
+    (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
+    (call-interactively #'org-do-demote))
+   ;; At an inline task.
+   ((and (org-at-heading-p)
+         (fboundp 'org-inlinetask-demote))
+    (call-interactively #'org-inlinetask-demote))
+   ((org-edit--region-or (org-at-item-p))
+    (when (org-check-for-hidden 'items) (org-hidden-tree-error))
+    (call-interactively #'org-indent-item))
+   ((run-hook-with-args-until-success 'org-metaright-final-hook))
+   (t (call-interactively #'forward-word))))
+
 ;;;###autoload
 (defun org-metaup (&optional _arg)
   "Move subtree up or move table row up.
@@ -560,11 +556,7 @@ function runs `org-metaup-final-hook' using the same logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metaup-hook))
-   ((and (use-region-p)
-         (org-with-limited-levels
-          (save-excursion
-            (goto-char (region-beginning))
-            (org-at-heading-p))))
+   ((org--at-region-beg (org-at-heading-p))
     (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
     (let ((beg (region-beginning))
           (end (region-end)))
@@ -632,11 +624,7 @@ function runs `org-metadown-final-hook' using the same logic."
   (interactive "P")
   (cond
    ((run-hook-with-args-until-success 'org-metadown-hook))
-   ((and (use-region-p)
-         (org-with-limited-levels
-          (save-excursion
-            (goto-char (region-beginning))
-            (org-at-heading-p))))
+   ((org--at-region-beg (org-at-heading-p))
     (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
     (let ((beg (region-beginning))
           (end (region-end)))
@@ -800,7 +788,6 @@ variable for more information."
    ((org-at-timestamp-p 'lax) (call-interactively #'org-timestamp-up-day))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
-    (require 'org-todo)
     (defvar org-inhibit-logging)
     (defvar org-inhibit-blocking)
     (let ((org-inhibit-logging
@@ -853,7 +840,6 @@ variable for more information."
    ((org-at-timestamp-p 'lax) (call-interactively #'org-timestamp-down-day))
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
-    (require 'org-todo)
     (defvar org-inhibit-logging)
     (defvar org-inhibit-blocking)
     (let ((org-inhibit-logging
