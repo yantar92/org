@@ -578,6 +578,57 @@ see)."
   (org-drag-line-forward (- arg)))
 
 ;;;###autoload
+(defun org-drag-region-forward (&optional arg)
+  "Drag the region at point ARG lines forward."
+  (interactive "p")
+  (setq arg (prefix-numeric-value arg))
+  (when (use-region-p)
+    (dotimes (_ (abs arg))
+      (let* ((a (save-excursion
+                  (goto-char (region-beginning))
+                  (line-beginning-position)))
+	     (b (save-excursion
+                  (goto-char (region-end))
+                  (if (bolp) (1- (point)) (line-end-position))))
+	     (c
+              (if (> arg 0)
+                  (save-excursion
+                    (goto-char b)
+                    (move-beginning-of-line (if (bolp) 1 2))
+                    (point))
+                (save-excursion
+                  (goto-char a)
+                  (move-beginning-of-line 0)
+                  (point))))
+	     (d
+              (if (> arg 0)
+                  (save-excursion
+                    (goto-char b)
+                    (move-end-of-line (if (bolp) 1 2))
+                    (point))
+                (save-excursion
+                  (goto-char a)
+                  (move-end-of-line 0)
+                  (point))))
+             (deactivate-mark nil)
+             (swap? (< (point) (mark))))
+        (transpose-regions a b c d)
+        (if (> arg 0)
+            (progn
+              (set-mark (+ 1 a (- d c)))
+              (goto-char (+ 1 a (- d c) (- b a))))
+          (set-mark c)
+          (goto-char (+ c (- b a))))
+        (when swap? (exchange-point-and-mark))))))
+
+;;;###autoload
+(defun org-drag-region-backward (&optional arg)
+  "Drag the region at point ARG lines backward."
+  (interactive "p")
+  (setq arg (prefix-numeric-value arg))
+  (org-drag-region-forward (- arg)))
+
+;;;###autoload
 (defun org-transpose-element ()
   "Transpose current and previous elements, keeping blank lines between.
 Point is moved after both elements."
