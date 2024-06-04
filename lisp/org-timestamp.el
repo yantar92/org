@@ -37,12 +37,6 @@
   :tag "Org Time"
   :group 'org)
 
-(defcustom org-edit-timestamp-down-means-later nil
-  "Non-nil means S-down will increase the time in a time stamp.
-When nil, S-up will increase."
-  :group 'org-time
-  :type 'boolean)
-
 (defcustom org-calendar-follow-timestamp-change t
   "Non-nil means make the calendar window follow timestamp changes.
 When a timestamp is modified and the calendar window is visible, it will be

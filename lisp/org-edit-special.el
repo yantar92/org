@@ -143,6 +143,12 @@ with that."
   :group 'org-todo
   :type 'boolean)
 
+(defcustom org-edit-timestamp-down-means-later nil
+  "Non-nil means S-down will increase the time in a time stamp.
+When nil, S-up will increase."
+  :group 'org-time
+  :type 'boolean)
+
 (defcustom org-support-shift-select nil
   "Non-nil means make shift-cursor commands select text when possible.
 \\<org-mode-map>
@@ -708,10 +714,9 @@ more information."
    ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'previous-line))
    ((org-at-timestamp-p 'lax)
-    (require 'org-timestamp)
-    (defvar org-edit-timestamp-down-means-later)
-    (call-interactively (if org-edit-timestamp-down-means-later
-			    'org-timestamp-down 'org-timestamp-up)))
+    (call-interactively
+     (if org-edit-timestamp-down-means-later
+	 'org-timestamp-down 'org-timestamp-up)))
    ((and (not (eq org-support-shift-select 'always))
 	 org-priority-enable-commands
 	 (org-at-heading-p))
@@ -750,8 +755,6 @@ more information."
    ((and org-support-shift-select (use-region-p))
     (org-call-for-shift-select 'next-line))
    ((org-at-timestamp-p 'lax)
-    (require 'org-timestamp)
-    (defvar org-edit-timestamp-down-means-later)
     (call-interactively (if org-edit-timestamp-down-means-later
 			    'org-timestamp-up 'org-timestamp-down)))
    ((and (not (eq org-support-shift-select 'always))
