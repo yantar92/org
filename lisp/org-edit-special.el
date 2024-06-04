@@ -110,7 +110,7 @@
 (declare-function org-update-statistics-cookies "org-todo" (all))
 (declare-function org-set-tags-command "org-tags" (&optional arg))
 (declare-function org-update-dblock "org-dblock" ())
-(declare-function org-clocktable-try-shift "org-clocktable" (dir n))
+(declare-function org-clocktable-shift "org-clocktable" (dir n))
 (declare-function org-edit-src-code "org-src" (&optional code edit-buffer-name))
 (declare-function org-edit-table.el "org-src" ())
 (declare-function org-edit-latex-fragment "org-src" ())
@@ -678,6 +678,13 @@ function runs `org-metadown-final-hook' using the same logic."
    ((org-at-item-p) (call-interactively #'org-move-item-down))
    ((run-hook-with-args-until-success 'org-metadown-final-hook))
    (t (org-drag-element-forward))))
+
+;;;###autoload
+(defun org-clocktable-try-shift (dir n)
+  "Check if this line starts a clock table, if yes, shift the time block.
+Pass DIR and N argument to `org-clocktable-shirt'."
+  (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
+    (org-clocktable-shift dir n)))
 
 ;;;###autoload
 (defun org-shiftup (&optional arg)

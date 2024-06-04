@@ -251,13 +251,6 @@ in the buffer and update it."
    ((= n 3) "3rd")
    ((= n 4) "4th")))
 
-;;;###autoload
-(defun org-clocktable-try-shift (dir n)
-  "Check if this line starts a clock table, if yes, shift the time block.
-Pass DIR and N argument to `org-clocktable-shirt'."
-  (when (org-match-line "^[ \t]*#\\+BEGIN:[ \t]+clocktable\\>")
-    (org-clocktable-shift dir n)))
-
 (declare-function calendar-iso-to-absolute "cal-iso" (date))
 ;;;###autoload
 (defun org-clocktable-shift (dir n)
