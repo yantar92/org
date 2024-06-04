@@ -558,26 +558,7 @@ function runs `org-metaup-final-hook' using the same logic."
    ((run-hook-with-args-until-success 'org-metaup-hook))
    ((org--at-region-beg (org-at-heading-p))
     (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
-    (let ((beg (region-beginning))
-          (end (region-end)))
-      (save-excursion
-        ;; Go a little earlier because `org-move-subtree-down' will
-        ;; insert before markers and we may overshoot in some cases.
-        (goto-char (max beg (1- end)))
-        (setq end (point-marker))
-        (goto-char beg)
-        (let ((level (org-current-level)))
-          (when (or (and (> level 1) (re-search-forward (format "^\\*\\{1,%s\\} " (1- level)) end t))
-                    ;; Search previous subtree.
-                    (progn
-                      (goto-char beg)
-                      (forward-line 0)
-                      (not (re-search-backward (format "^\\*\\{%s\\} " level) nil t))))
-            (user-error "Cannot move past superior level or buffer limit"))
-          ;; Drag first subtree above below the selected.
-          (while (< (point) end)
-            (let ((deactivate-mark nil))
-              (call-interactively #'org-move-subtree-down)))))))
+    (call-interactively #'org-move-subtree-up))
    ((use-region-p)
     (let* ((a (save-excursion
                 (goto-char (region-beginning))
@@ -626,22 +607,7 @@ function runs `org-metadown-final-hook' using the same logic."
    ((run-hook-with-args-until-success 'org-metadown-hook))
    ((org--at-region-beg (org-at-heading-p))
     (when (org-check-for-hidden 'headlines) (org-hidden-tree-error))
-    (let ((beg (region-beginning))
-          (end (region-end)))
-      (save-excursion
-        (goto-char beg)
-        (setq beg (point-marker))
-        (let ((level (org-current-level)))
-          (when (or (and (> level 1) (re-search-forward (format "^\\*\\{1,%s\\} " (1- level)) end t))
-                    ;; Search next subtree.
-                    (progn
-                      (goto-char end)
-                      (not (re-search-forward (format "^\\*\\{%s\\} " level) nil t))))
-            (user-error "Cannot move past superior level or buffer limit"))
-          ;; Drag first subtree below above the selected.
-          (while (> (point) beg)
-            (let ((deactivate-mark nil))
-              (call-interactively #'org-move-subtree-up)))))))
+    (call-interactively #'org-move-subtree-down))
    ((use-region-p)
     (let* ((a (save-excursion
                 (goto-char (region-beginning))

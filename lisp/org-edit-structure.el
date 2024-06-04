@@ -721,11 +721,8 @@ case."
 	(org-cycle-hide-drawers 'all)
 	(org-cycle-show-empty-lines 'overview)))))
 
-;;;###autoload
-(defun org-move-subtree-down (&optional arg)
-  "Move the current subtree down past ARG headlines of the same level."
-  (interactive "p")
-  (setq arg (prefix-numeric-value arg))
+(defun org--move-subtree-down-1 (&optional arg)
+  "Move current subtree down past ARG headlines of the same level."
   (org-preserve-local-variables
    (let ((movfunc (if (> arg 0) 'org-get-next-sibling
 		    'org-get-previous-sibling))
@@ -779,6 +776,52 @@ case."
      (org-clean-visibility-after-subtree-move)
      ;; move back to the initial column we were at
      (move-to-column col))))
+
+;;;###autoload
+(defun org-move-subtree-down (&optional arg)
+  "Move the current subtree down past ARG headlines of the same level.
+When region is active, move all the subtrees in region."
+  (interactive "p")
+  (setq arg (prefix-numeric-value arg))
+  (if (and (use-region-p)
+           (save-excursion
+             (goto-char (region-beginning))
+             (org-at-heading-p)))
+      (while (< 0 (abs arg))
+        (let ((beg (region-beginning))
+              (end (region-end))
+              (deactivate-mark nil))
+          (save-excursion
+            (when (< arg 0)
+              ;; Go a little earlier because `org-move-subtree-down' will
+              ;; insert before markers and we may overshoot in some cases.
+              (goto-char (max beg (1- end)))
+              (setq end (point-marker)))
+            (goto-char beg)
+            (setq beg (point-marker))
+            (let ((level (org-current-level)))
+              (when (or (and (> level 1)
+                             (re-search-forward
+                              (format "^\\*\\{1,%s\\} " (1- level))
+                              end t))
+                        ;; Search next/previous subtree.
+                        (progn
+                          (if (< arg 0)
+                              (progn
+                                (goto-char beg)
+                                (forward-line 0))
+                            (goto-char end)
+                            (end-of-line))
+                          (not (funcall (if (< arg 0) #'re-search-backward #'re-search-forward)
+                                      (format "^\\*\\{%s\\} " level) nil t))))
+                (user-error "Cannot move past superior level or buffer limit"))
+              ;; Drag first subtree above/below above the selected.
+              (let ((transient-mark-mode nil))
+                (while (if (< arg 0) (< (point) end)
+                         (> (point) beg))
+                  (org--move-subtree-down-1 (- (cl-signum arg))))))))
+        (if (< arg 0) (cl-incf arg) (cl-decf arg)))
+    (org--move-subtree-down-1 arg)))
 
 (defvar org-subtree-clip ""
   "Clipboard for cut and paste of subtrees.
