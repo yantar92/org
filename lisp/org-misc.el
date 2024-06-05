@@ -179,7 +179,7 @@ Started from `gnus-info-find-node'."
                  default-org-info-node)))
           (t default-org-info-node))))))
 
-;;;; Describe point
+;;; Describe point
 
 (declare-function org-clock-update-time-maybe "org-clock-commands" ())
 (declare-function org-time-string-to-time "org-time" (s))
@@ -254,7 +254,7 @@ days in order to avoid rounding problems."
          (org-table-align))
        (message "Time difference inserted")))))
 
-;;;; Calendar
+;;; Calendar
 
 (declare-function calendar-goto-today "cal-move" ())
 (declare-function calendar-forward-day "cal-move" (arg))
@@ -299,6 +299,8 @@ If there is already a time stamp at the cursor position, update it."
       (org-insert-timestamp
        (org-encode-time 0 0 0 (nth 1 cal-date) (car cal-date) (nth 2 cal-date))))))
 
+;;; Edit at point
+
 (declare-function org-table-end-of-field "org-table-move" (&optional n))
 ;;;###autoload
 (defun org-increase-number-at-point (&optional inc)
@@ -329,6 +331,29 @@ With an optional prefix numeric argument INC, decrement using
 this numeric value."
   (interactive "p")
   (org-increase-number-at-point (- (or inc 1))))
+
+(declare-function org-link-open-from-string "ol" (s &optional arg))
+;;;###autoload
+(defun org-edit-keyword (&optional element)
+  "Edit file in keyword value at point or in ELEMENT."
+  (interactive)
+  (setq element (or element (org-element-at-point)))
+  (if (not (org-element-type-p element 'keyword))
+      (user-error "No keyword at point")
+    (unless (member (org-element-property :key element)
+		    '("BIBLIOGRAPHY" "INCLUDE" "SETUPFILE"))
+      (user-error "No special environment to edit here"))
+    (let ((value (org-element-property :value element)))
+      (unless (org-string-nw-p value) (user-error "No file to edit"))
+      (let ((file (and (string-match "\\`\"\\(.*?\\)\"\\|\\S-+" value)
+		       (or (match-string 1 value)
+			   (match-string 0 value)))))
+        (when (org-url-p file)
+	  (user-error "Files located with a URL cannot be edited"))
+        (org-link-open-from-string
+         (format "[[%s]]" (expand-file-name file)))))))
+
+;;; Table
 
 (defun org-table--number-for-summing (s)
   (let (n)

@@ -139,6 +139,7 @@
 (declare-function org-priority-down "org-priority" ())
 (declare-function org-priority-up "org-priority" ())
 (declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
+(declare-function org-edit-keyword "org-misc" (&optional element))
 
 (defcustom org-treat-S-cursor-todo-selection-as-state-change t
   "Non-nil means switching TODO states with S-cursor counts as state change.
@@ -878,19 +879,7 @@ Otherwise, return a user error."
       (`src-block
        (if (not arg) (org-edit-src-code)
          (org-babel-switch-to-session t)))
-      (`keyword
-       (unless (member (org-element-property :key element)
-		       '("BIBLIOGRAPHY" "INCLUDE" "SETUPFILE"))
-	 (user-error "No special environment to edit here"))
-       (let ((value (org-element-property :value element)))
-	 (unless (org-string-nw-p value) (user-error "No file to edit"))
-	 (let ((file (and (string-match "\\`\"\\(.*?\\)\"\\|\\S-+" value)
-			  (or (match-string 1 value)
-			      (match-string 0 value)))))
-	   (when (org-url-p file)
-	     (user-error "Files located with a URL cannot be edited"))
-	   (org-link-open-from-string
-	    (format "[[%s]]" (expand-file-name file))))))
+      (`keyword (org-edit-keyword element))
       (`table
        (if (eq (org-element-property :type element) 'table.el)
            (org-edit-table.el)

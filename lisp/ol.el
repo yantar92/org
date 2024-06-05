@@ -797,6 +797,7 @@ for internal and \"file\" links, or stored as a parameter in
 	     (wrong-number-of-arguments
 	      (funcall f path)))))))))
 
+;;;###autoload
 (defun org-link-open-from-string (s &optional arg)
   "Open a link in the string S, as if it was in Org mode.
 Optional argument ARG is passed to `org-open-file' when S is a
