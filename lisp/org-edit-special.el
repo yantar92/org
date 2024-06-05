@@ -70,6 +70,7 @@
                   (&optional arg info params executor-type))
 (declare-function org-babel-lob-get-info "ob-core" (&optional datum no-eval))
 (declare-function org-babel-switch-to-session "ob-commands" (&optional arg info))
+(declare-function org-babel-execute-safely-maybe "ob-commands" ())
 (declare-function org-list-to-lisp "org-list-export" (&optional delete))
 (declare-function org-toggle-radio-button "org-list-commands" (&optional arg))
 (declare-function org-insert-item "org-list-commands" (&optional checkbox))
@@ -1015,21 +1016,13 @@ This command does many different things, depending on context:
       ;; a source block.  Hence, we first check if point is in such
       ;; a block and then if it is at a blank line.
       (pcase type
-	((or `inline-src-block `src-block)
-         (require 'ob-core)
-         (defvar org-babel-no-eval-on-ctrl-c-ctrl-c)
-	 (unless org-babel-no-eval-on-ctrl-c-ctrl-c
-	   (org-babel-eval-wipe-error-buffer)
-	   (org-babel-execute-src-block
-	    current-prefix-arg (org-babel-get-src-block-info nil context))))
+	((or `inline-src-block `src-block `babel-call `inline-babel-call)
+         (org-babel-execute-safely-maybe))
 	((guard (org-match-line "[ \t]*$"))
 	 (or (run-hook-with-args-until-success 'org-ctrl-c-ctrl-c-final-hook)
 	     (user-error
 	      (substitute-command-keys
 	       "`\\[org-ctrl-c-ctrl-c]' can do nothing useful here"))))
-	((or `babel-call `inline-babel-call)
-	 (let ((info (org-babel-lob-get-info context)))
-	   (when info (org-babel-execute-src-block nil info nil type))))
 	(`clock
          (if (org-at-timestamp-p 'lax)
              ;; Update the timestamp as well.  `org-timestamp-change'
