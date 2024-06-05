@@ -532,6 +532,7 @@ After top level, it switches back to sibling level."
 
 (defvar org-property-drawer-re)
 
+;; FIXME: This probably belongs to org-indent-static.el
 (defun org-fixup-indentation (diff)
   "Change the indentation in the current entry by DIFF.
 
@@ -682,6 +683,116 @@ case."
 	    (org-promote))
 	  (end-of-line 1))))))
 
+(defun org--heading-to-plain (&optional limit)
+  "De-star all headings from point to LIMIT or `point-max'.
+Return non-nil if at least one heading was de-starred."
+  (setq limit (or limit (point-max)))
+  (let ((toggled nil))
+    (while (< (point) limit)
+      (when (org-at-heading-p)
+        (looking-at org-outline-regexp) (replace-match "")
+        (setq toggled t))
+      (forward-line))
+    toggled))
+
+(defun org--lines-to-heading (&optional nstars limit)
+  "Convert every line from point to LIMIT or `point-max' to heading.
+
+With a `\\[universal-argument]' prefix, convert the whole list at
+point into heading.
+
+The number of stars is chosen such that the lines become children of
+the current entry.  However, when NSTARS is non-nil is given, its value
+determines the number of stars to add.
+
+The checkboxes are converted to appropriate TODO or DONE keywords
+(using `car' or `org-done-keywords' and `org-not-done-keywords' when
+available).
+
+Return non-nil if at least one line line was converted."
+  (setq limit (or limit (point-max)))
+  (let* ((toggled nil)
+         (stars
+	  (make-string
+	   (if (numberp nstars) nstars (or (org-current-level) 0)) ?*))
+	 (add-stars
+	  (cond (nstars "")	; stars from prefix only
+		((equal stars "") "*")	; before first heading
+		(org-odd-levels-only "**") ; inside heading, odd
+		(t "*")))	; inside heading, oddeven
+	 (rpl (concat stars add-stars " "))
+	 (lend (when (listp nstars) (save-excursion (end-of-line) (point)))))
+    (while (< (point) (if (equal nstars '(4)) lend limit))
+      (when (and (not (or (org-at-heading-p) (org-at-item-p) (org-at-comment-p)))
+		 (looking-at "\\([ \t]*\\)\\(\\S-\\)"))
+	(replace-match (concat rpl (match-string 2))) (setq toggled t))
+      (forward-line))
+    toggled))
+
+(declare-function org--list-to-heading "org-list-commands" (&optional limit))
+(declare-function org-mark-element "org-mark" ())
+;;;###autoload
+(defun org-toggle-heading (&optional nstars)
+  "Convert headings to normal text, or items or text to headings.
+If there is no active region, only convert the current line.
+
+With a `\\[universal-argument]' prefix, convert the whole list at
+point into heading.
+
+In a region:
+
+- If the first non blank line is a headline, remove the stars
+  from all headlines in the region.
+
+- If it is a normal line, turn each and every normal line (i.e.,
+  not an heading or an item) in the region into headings.  If you
+  want to convert only the first line of this region, use one
+  universal prefix argument.
+
+- If it is a plain list item, turn all plain list items into headings.
+  The checkboxes are converted to appropriate TODO or DONE keywords
+  (using `car' or `org-done-keywords' and `org-not-done-keywords' when
+  available).
+
+When converting a line into a heading, the number of stars is chosen
+such that the lines become children of the current entry.  However,
+when a numeric prefix argument is given, its value determines the
+number of stars to add."
+  (interactive "P")
+  (let (beg end toggled)
+    ;; Determine boundaries of changes.  If a universal prefix has
+    ;; been given, put the list in a region.  If region ends at a bol,
+    ;; do not consider the last line to be in the region.
+
+    (when (and current-prefix-arg (org-at-item-p))
+      (when (listp current-prefix-arg) (setq current-prefix-arg 1))
+      (org-mark-element))
+
+    (if (use-region-p)
+	(setq beg (save-excursion
+                    (org-skip-blanks-and-comments (region-beginning)))
+	      end (copy-marker (save-excursion
+				 (goto-char (region-end))
+                                 (if (bolp) (point) (line-end-position)))))
+      (setq beg (save-excursion
+                  (org-skip-blanks-and-comments (line-beginning-position)))
+            end (copy-marker (line-end-position))))
+    ;; Ensure inline tasks don't count as headings.
+    (org-with-limited-levels
+     (save-excursion
+       (goto-char beg)
+       (cond
+	;; Case 1. Started at an heading: de-star headings.
+	((org-at-heading-p)
+         (setq toggled (org--heading-to-plain end)))
+	;; Case 2. Started at an item: change items into headlines.
+	;;         One star will be added by `org-list-to-subtree'.
+	((org-at-item-p)
+	 (setq toggled (org--list-to-heading end)))
+	;; Case 3. Started at normal text: make every line an heading,
+	;;         skipping headlines and items.
+	(t (setq toggled (org--lines-to-heading nstars end))))))
+    (unless toggled (message "Cannot toggle heading from here"))))
 
 ;;; Vertical tree motion, cutting and pasting of subtrees
 

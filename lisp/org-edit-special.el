@@ -102,6 +102,7 @@
 (declare-function org-demote-subtree "org-edit-structure" ())
 (declare-function org-do-promote "org-edit-structure" ())
 (declare-function org-do-demote "org-edit-structure" ())
+(declare-function org-toggle-heading "org-edit-structure" (&optional nstars))
 (declare-function org-drag-element-backward "org-edit" ())
 (declare-function org-drag-element-forward "org-edit" ())
 (declare-function org-drag-line-backward "org-edit" (arg))
@@ -1247,117 +1248,6 @@ Calls `org-table-insert-hline', `org-toggle-item', or
    ((use-region-p) (call-interactively #'org-toggle-item))
    ((org-in-item-p) (call-interactively #'org-cycle-list-bullet))
    (t (call-interactively #'org-toggle-item))))
-
-;;;###autoload
-(defun org-toggle-heading (&optional nstars)
-  "Convert headings to normal text, or items or text to headings.
-If there is no active region, only convert the current line.
-
-With a `\\[universal-argument]' prefix, convert the whole list at
-point into heading.
-
-In a region:
-
-- If the first non blank line is a headline, remove the stars
-  from all headlines in the region.
-
-- If it is a normal line, turn each and every normal line (i.e.,
-  not an heading or an item) in the region into headings.  If you
-  want to convert only the first line of this region, use one
-  universal prefix argument.
-
-- If it is a plain list item, turn all plain list items into headings.
-  The checkboxes are converted to appropriate TODO or DONE keywords
-  (using `car' or `org-done-keywords' and `org-not-done-keywords' when
-  available).
-
-When converting a line into a heading, the number of stars is chosen
-such that the lines become children of the current entry.  However,
-when a numeric prefix argument is given, its value determines the
-number of stars to add."
-  (interactive "P")
-  (let ((skip-blanks
-	 ;; Return beginning of first non-blank line, starting from
-	 ;; line at POS.
-	 (lambda (pos)
-	   (save-excursion
-	     (goto-char pos)
-	     (while (org-at-comment-p) (forward-line))
-	     (skip-chars-forward " \r\t\n")
-             (line-beginning-position))))
-	beg end toggled)
-    ;; Determine boundaries of changes.  If a universal prefix has
-    ;; been given, put the list in a region.  If region ends at a bol,
-    ;; do not consider the last line to be in the region.
-
-    (when (and current-prefix-arg (org-at-item-p))
-      (when (listp current-prefix-arg) (setq current-prefix-arg 1))
-      (org-mark-element))
-
-    (if (use-region-p)
-	(setq beg (funcall skip-blanks (region-beginning))
-	      end (copy-marker (save-excursion
-				 (goto-char (region-end))
-                                 (if (bolp) (point) (line-end-position)))))
-      (setq beg (funcall skip-blanks (line-beginning-position))
-            end (copy-marker (line-end-position))))
-    ;; Ensure inline tasks don't count as headings.
-    (org-with-limited-levels
-     (save-excursion
-       (goto-char beg)
-       (cond
-	;; Case 1. Started at an heading: de-star headings.
-	((org-at-heading-p)
-	 (while (< (point) end)
-	   (when (org-at-heading-p)
-	     (looking-at org-outline-regexp) (replace-match "")
-	     (setq toggled t))
-	   (forward-line)))
-	;; Case 2. Started at an item: change items into headlines.
-	;;         One star will be added by `org-list-to-subtree'.
-	((org-at-item-p)
-	 (while (< (point) end)
-	   (when (org-at-item-p)
-	     ;; Pay attention to cases when region ends before list.
-	     (let* ((struct (org-list-struct))
-		    (list-end
-		     (min (org-list-get-bottom-point struct) (1+ end))))
-	       (save-restriction
-		 (narrow-to-region (point) list-end)
-		 (insert (org-list-to-subtree
-			  (org-list-to-lisp t)
-			  (pcase (org-current-level)
-			    (`nil 1)
-			    (l (1+ (org-reduced-level l))))
-                          ;; Keywords to replace checkboxes.
-                          (list
-                           ;; [X]
-                           :cbon (concat (or (car org-done-keywords) "DONE") " ")
-                           ;; [ ]
-                           :cboff (concat (or (car org-not-done-keywords) "TODO") " ")
-                           ;; [-]
-                           :cbtrans (concat (or (car org-not-done-keywords) "TODO") " ")))
-			 "\n")))
-	     (setq toggled t))
-	   (forward-line)))
-	;; Case 3. Started at normal text: make every line an heading,
-	;;         skipping headlines and items.
-	(t (let* ((stars
-		   (make-string
-		    (if (numberp nstars) nstars (or (org-current-level) 0)) ?*))
-		  (add-stars
-		   (cond (nstars "")	; stars from prefix only
-			 ((equal stars "") "*")	; before first heading
-			 (org-odd-levels-only "**") ; inside heading, odd
-			 (t "*")))	; inside heading, oddeven
-		  (rpl (concat stars add-stars " "))
-		  (lend (when (listp nstars) (save-excursion (end-of-line) (point)))))
-	     (while (< (point) (if (equal nstars '(4)) lend end))
-	       (when (and (not (or (org-at-heading-p) (org-at-item-p) (org-at-comment-p)))
-			  (looking-at "\\([ \t]*\\)\\(\\S-\\)"))
-		 (replace-match (concat rpl (match-string 2))) (setq toggled t))
-	       (forward-line)))))))
-    (unless toggled (message "Cannot toggle heading from here"))))
 
 ;;;###autoload
 (defun org-meta-return (&optional arg)

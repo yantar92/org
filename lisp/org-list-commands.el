@@ -874,6 +874,223 @@ Metadata are tags, planning information and properties drawers."
 		      (org-skip-whitespace)
 		      (if (eobp) (point) (line-beginning-position)))))))
 
+(defun org-list--to-plain (&optional limit)
+  "De-itemize all the lists from point to LIMIT or `point-max'."
+  (setq limit (or limit (point-max)))
+  (while (< (point) limit)
+    (when (org-at-item-p)
+      (skip-chars-forward " \t")
+      (delete-region (point) (match-end 0)))
+    (forward-line)))
+
+(defun org-list--extract-footnote-definitions (&optional limit)
+  "Extract footnote definitions between point and LIMIT or `point-max'.
+Return the list of strings - the extracted definitions."
+  (setq limit (or limit (point-max)))
+  (let (definitions element)
+    (save-excursion
+      (while (re-search-forward org-footnote-definition-re limit t)
+        (setq element (org-element-at-point))
+        (when (org-element-type-p element 'footnote-definition)
+          (push (buffer-substring-no-properties
+                 (org-element-begin element)
+                 (org-element-end element))
+                definitions)
+          ;; Ensure at least 2 blank lines after the last
+          ;; footnote definition, thus not slurping the
+          ;; following element.
+          (unless (<= 2 (org-element-post-blank
+                        (org-element-at-point)))
+            (setf (car definitions)
+                  (concat (car definitions)
+                          (make-string
+                           (- 2 (org-element-post-blank
+                                 (org-element-at-point)))
+                           ?\n))))
+          (delete-region
+           (org-element-begin element)
+           (org-element-end element))))
+      definitions)))
+
+;; FIXME: This probably belongs to org-indent-static.el
+(defun org--indent-to (ind &optional limit)
+  "Indent text from point to LIMIT or `point-max' to IND.
+Leave point at LIMIT."
+  (setq limit (or limit (point-max)))
+  (let ((min-i 1000) (limit (copy-marker limit)))
+    ;; First determine the minimum indentation (MIN-I) of
+    ;; the text.
+    (save-excursion
+      (catch 'exit
+	(while (< (point) limit)
+	  (let ((i (org-current-text-indentation)))
+	    (cond
+	     ;; Skip blank lines and inline tasks.
+	     ((looking-at "^[ \t]*$"))
+	     ((looking-at org-outline-regexp-bol))
+	     ;; We can't find less than 0 indentation.
+	     ((zerop i) (throw 'exit (setq min-i 0)))
+	     ((< i min-i) (setq min-i i))))
+	  (forward-line))))
+    ;; Then indent each line so that a line indented to
+    ;; MIN-I becomes indented to IND.  Ignore blank lines
+    ;; and inline tasks in the process.
+    (let ((delta (- ind min-i)))
+      (while (< (point) limit)
+	(unless (or (looking-at "^[ \t]*$")
+		    (looking-at org-outline-regexp-bol))
+	  (indent-line-to (+ (org-current-text-indentation) delta)))
+	(forward-line)))))
+
+(defun org--heading-to-list (&optional limit)
+  "Convert headings from point to LIMIT or `point-max' to a list."
+  (setq limit (or limit (point-max)))
+  ;; Remove metadata
+  (let (org-loop-over-headlines-in-active-region)
+    (org-list--delete-metadata))
+  (require 'org-indent-static)
+  (defvar org-adapt-indentation)
+  (let* ((bul (org-list-bullet-string "-"))
+	 (bul-len (length bul))
+	 ;; Indentation of the first heading.  It should be
+	 ;; relative to the indentation of its parent, if any.
+	 (start-ind (save-excursion
+		      (cond
+		       ((not org-adapt-indentation) 0)
+		       ((not (outline-previous-heading)) 0)
+		       (t (length (match-string 0))))))
+	 ;; Level of first heading.  Further headings will be
+	 ;; compared to it to determine hierarchy in the list.
+	 (ref-level (org-reduced-level (org-outline-level)))
+         (footnote-definitions
+          (org-list--extract-footnote-definitions limit)))
+    (require 'org-property)
+    (while (< (point) limit)
+      (let* ((level (org-reduced-level (org-outline-level)))
+	     (delta (max 0 (- level ref-level)))
+	     (todo-state (org-get-todo-state)))
+	;; If current headline is less indented than the first
+	;; one, set it as reference, in order to preserve
+	;; subtrees.
+	(when (< level ref-level) (setq ref-level level))
+	;; Remove metadata
+	(let (org-loop-over-headlines-in-active-region)
+	  (org-list--delete-metadata))
+	;; Remove stars and TODO keyword.
+	(let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
+	(delete-region (point) (or (match-beginning 3)
+				   (line-end-position)))
+	(insert bul)
+	(indent-line-to (+ start-ind (* delta bul-len)))
+	;; Turn TODO keyword into a check box.
+	(when todo-state
+	  (let* ((struct (org-list-struct))
+		 (old (copy-tree struct)))
+	    (org-list-set-checkbox
+	     (line-beginning-position)
+	     struct
+	     (if (member todo-state org-done-keywords)
+		 "[X]"
+	       "[ ]"))
+	    (org-list-write-struct struct
+				   (org-list-parents-alist struct)
+				   old)))
+	;; Ensure all text down to END (or SECTION-END) belongs
+	;; to the newly created item.
+	(let ((section-end (save-excursion
+			     (or (outline-next-heading) (point)))))
+	  (forward-line)
+	  (org--indent-to
+	   (+ start-ind (* (1+ delta) bul-len))
+	   (min limit section-end)))))
+    (when footnote-definitions
+      (goto-char limit)
+      ;; Insert footnote definitions after the list.
+      (unless (bolp) (forward-line 1))
+      ;; At (point-max).
+      (unless (bolp) (insert "\n"))
+      (dolist (def footnote-definitions)
+        (insert def)))))
+
+(declare-function org-list-to-subtree "org-list-export" (list &optional start-level params))
+(declare-function org-list-to-lisp "org-list-export" (&optional delete))
+(defun org--list-to-heading (&optional limit)
+  "Convert lists from point to LIMIT or `point-max' to headings.
+Return non-nil when at least one list is converted."
+  (setq limit (or limit (point-max)))
+  (require 'org-list-export)
+  (let ((toggled nil))
+    (while (< (point) limit)
+      (when (org-at-item-p)
+        ;; Pay attention to cases when region ends before list.
+        (let* ((struct (org-list-struct))
+	       (list-end
+	        (min (org-list-get-bottom-point struct) (1+ limit))))
+	  (save-restriction
+	    (narrow-to-region (point) list-end)
+	    (insert (org-list-to-subtree
+		     (org-list-to-lisp t)
+		     (pcase (org-current-level)
+		       (`nil 1)
+		       (l (1+ (org-reduced-level l))))
+                     ;; Keywords to replace checkboxes.
+                     (list
+                      ;; [X]
+                      :cbon (concat (or (car org-done-keywords) "DONE") " ")
+                      ;; [ ]
+                      :cboff (concat (or (car org-not-done-keywords) "TODO") " ")
+                      ;; [-]
+                      :cbtrans (concat (or (car org-not-done-keywords) "TODO") " ")))
+		    "\n")))
+        (setq toggled t))
+      (forward-line))
+    toggled))
+
+(defun org--line-to-list (&optional limit)
+  "Convert line at point to item and the rest to item body.
+All the text starting from next line up to LIMIT or `point-max'
+becomes the item body."
+  (setq limit (or limit (point-max)))
+  (let* ((bul (org-list-bullet-string "-"))
+	 (bul-len (length bul))
+	 (ref-ind (org-current-text-indentation))
+         (footnote-definitions
+          (org-list--extract-footnote-definitions limit)))
+    (skip-chars-forward " \t")
+    (insert bul)
+    (forward-line)
+    (while (< (point) limit)
+      ;; Ensure that lines less indented than first one
+      ;; still get included in item body.
+      (org--indent-to
+       (+ ref-ind bul-len)
+       (min limit (save-excursion (or (outline-next-heading)
+				      (point)))))
+      (forward-line))
+    (when footnote-definitions
+      ;; If the new list is followed by same-level items,
+      ;; move past them as well.
+      (goto-char (org-element-end
+                  (org-element-lineage
+                   (org-element-at-point (1- limit))
+                   'plain-list t)))
+      ;; Insert footnote definitions after the list.
+      (unless (bolp) (forward-line 1))
+      ;; At (point-max).
+      (unless (bolp) (insert "\n"))
+      (dolist (def footnote-definitions)
+        (insert def)))))
+
+(defun org--lines-to-list (&optional limit)
+  "Itemize all the lines from point to LIMIT or `point-max'."
+  (setq limit (or limit (point-max)))
+  (while (< (point) limit)
+    (unless (or (org-at-heading-p) (org-at-item-p))
+      (when (looking-at "\\([ \t]*\\)\\(\\S-\\)")
+	(replace-match
+	 (concat "\\1" (org-list-bullet-string "-") "\\2"))))
+    (forward-line)))
+
 (declare-function org-get-todo-state "org-property" ())
 ;;;###autoload
 (defun org-toggle-item (arg)
@@ -888,74 +1105,11 @@ If it is an item, convert all items to normal lines.
 If it is normal text, change region into a list of items.
 With a prefix argument ARG, change the region in a single item."
   (interactive "P")
-  (let ((extract-footnote-definitions
-         (lambda (end)
-           ;; Remove footnote definitions from point to END.
-           ;; Return the list of the extracted definitions.
-           (let (definitions element)
-             (save-excursion
-               (while (re-search-forward org-footnote-definition-re end t)
-                 (setq element (org-element-at-point))
-                 (when (org-element-type-p element 'footnote-definition)
-                   (push (buffer-substring-no-properties
-                          (org-element-begin element)
-                          (org-element-end element))
-                         definitions)
-                   ;; Ensure at least 2 blank lines after the last
-                   ;; footnote definition, thus not slurping the
-                   ;; following element.
-                   (unless (<= 2 (org-element-post-blank
-                                 (org-element-at-point)))
-                     (setf (car definitions)
-                           (concat (car definitions)
-                                   (make-string
-                                    (- 2 (org-element-post-blank
-                                          (org-element-at-point)))
-                                    ?\n))))
-                   (delete-region
-                    (org-element-begin element)
-                    (org-element-end element))))
-               definitions))))
-        (shift-text
-	 (lambda (ind end)
-	   ;; Shift text in current section to IND, from point to END.
-	   ;; The function leaves point to END line.
-	   (let ((min-i 1000) (end (copy-marker end)))
-	     ;; First determine the minimum indentation (MIN-I) of
-	     ;; the text.
-	     (save-excursion
-	       (catch 'exit
-		 (while (< (point) end)
-		   (let ((i (org-current-text-indentation)))
-		     (cond
-		      ;; Skip blank lines and inline tasks.
-		      ((looking-at "^[ \t]*$"))
-		      ((looking-at org-outline-regexp-bol))
-		      ;; We can't find less than 0 indentation.
-		      ((zerop i) (throw 'exit (setq min-i 0)))
-		      ((< i min-i) (setq min-i i))))
-		   (forward-line))))
-	     ;; Then indent each line so that a line indented to
-	     ;; MIN-I becomes indented to IND.  Ignore blank lines
-	     ;; and inline tasks in the process.
-	     (let ((delta (- ind min-i)))
-	       (while (< (point) end)
-		 (unless (or (looking-at "^[ \t]*$")
-			     (looking-at org-outline-regexp-bol))
-		   (indent-line-to (+ (org-current-text-indentation) delta)))
-		 (forward-line))))))
-	(skip-blanks
-	 (lambda (pos)
-	   ;; Return beginning of first non-blank line, starting from
-	   ;; line at POS.
-	   (save-excursion
-	     (goto-char pos)
-	     (skip-chars-forward " \r\t\n")
-             (line-beginning-position))))
-	beg end)
+  (let (beg end)
     ;; Determine boundaries of changes.
     (if (use-region-p)
-	(setq beg (funcall skip-blanks (region-beginning))
+	(setq beg (save-excursion
+                    (org-skip-blanks-and-comments (region-beginning)))
 	      end (copy-marker (region-end)))
       (setq beg (line-beginning-position)
             end (copy-marker (line-end-position))))
@@ -968,121 +1122,16 @@ With a prefix argument ARG, change the region in a single item."
 	;; Case 1. Start at an item: de-itemize.  Note that it only
 	;;         happens when a region is active: `org-ctrl-c-minus'
 	;;         would call `org-cycle-list-bullet' otherwise.
-	((org-at-item-p)
-	 (while (< (point) end)
-	   (when (org-at-item-p)
-	     (skip-chars-forward " \t")
-	     (delete-region (point) (match-end 0)))
-	   (forward-line)))
+	((org-at-item-p) (org-list--to-plain end))
 	;; Case 2. Start at a heading: convert to items.
-	((org-at-heading-p)
-	 ;; Remove metadata
-	 (let (org-loop-over-headlines-in-active-region)
-	   (org-list--delete-metadata))
-         (require 'org-indent-static)
-         (defvar org-adapt-indentation)
-	 (let* ((bul (org-list-bullet-string "-"))
-		(bul-len (length bul))
-		;; Indentation of the first heading.  It should be
-		;; relative to the indentation of its parent, if any.
-		(start-ind (save-excursion
-			     (cond
-			      ((not org-adapt-indentation) 0)
-			      ((not (outline-previous-heading)) 0)
-			      (t (length (match-string 0))))))
-		;; Level of first heading.  Further headings will be
-		;; compared to it to determine hierarchy in the list.
-		(ref-level (org-reduced-level (org-outline-level)))
-                (footnote-definitions
-                 (funcall extract-footnote-definitions end)))
-           (require 'org-property)
-	   (while (< (point) end)
-	     (let* ((level (org-reduced-level (org-outline-level)))
-		    (delta (max 0 (- level ref-level)))
-		    (todo-state (org-get-todo-state)))
-	       ;; If current headline is less indented than the first
-	       ;; one, set it as reference, in order to preserve
-	       ;; subtrees.
-	       (when (< level ref-level) (setq ref-level level))
-	       ;; Remove metadata
-	       (let (org-loop-over-headlines-in-active-region)
-		 (org-list--delete-metadata))
-	       ;; Remove stars and TODO keyword.
-	       (let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
-	       (delete-region (point) (or (match-beginning 3)
-					  (line-end-position)))
-	       (insert bul)
-	       (indent-line-to (+ start-ind (* delta bul-len)))
-	       ;; Turn TODO keyword into a check box.
-	       (when todo-state
-		 (let* ((struct (org-list-struct))
-			(old (copy-tree struct)))
-		   (org-list-set-checkbox
-		    (line-beginning-position)
-		    struct
-		    (if (member todo-state org-done-keywords)
-			"[X]"
-		      "[ ]"))
-		   (org-list-write-struct struct
-				          (org-list-parents-alist struct)
-				          old)))
-	       ;; Ensure all text down to END (or SECTION-END) belongs
-	       ;; to the newly created item.
-	       (let ((section-end (save-excursion
-				    (or (outline-next-heading) (point)))))
-		 (forward-line)
-		 (funcall shift-text
-			  (+ start-ind (* (1+ delta) bul-len))
-			  (min end section-end)))))
-           (when footnote-definitions
-             (goto-char end)
-             ;; Insert footnote definitions after the list.
-             (unless (bolp) (forward-line 1))
-             ;; At (point-max).
-             (unless (bolp) (insert "\n"))
-             (dolist (def footnote-definitions)
-               (insert def)))))
+	((org-at-heading-p) (org--heading-to-list end))
 	;; Case 3. Normal line with ARG: make the first line of region
 	;;         an item, and shift indentation of others lines to
 	;;         set them as item's body.
-	(arg (let* ((bul (org-list-bullet-string "-"))
-		    (bul-len (length bul))
-		    (ref-ind (org-current-text-indentation))
-                    (footnote-definitions
-                     (funcall extract-footnote-definitions end)))
-	       (skip-chars-forward " \t")
-	       (insert bul)
-	       (forward-line)
-	       (while (< (point) end)
-		 ;; Ensure that lines less indented than first one
-		 ;; still get included in item body.
-		 (funcall shift-text
-			  (+ ref-ind bul-len)
-			  (min end (save-excursion (or (outline-next-heading)
-						       (point)))))
-		 (forward-line))
-               (when footnote-definitions
-                 ;; If the new list is followed by same-level items,
-                 ;; move past them as well.
-                 (goto-char (org-element-end
-                             (org-element-lineage
-                              (org-element-at-point (1- end))
-                              'plain-list t)))
-                 ;; Insert footnote definitions after the list.
-                 (unless (bolp) (forward-line 1))
-                 ;; At (point-max).
-                 (unless (bolp) (insert "\n"))
-                 (dolist (def footnote-definitions)
-                   (insert def)))))
+	(arg (org--line-to-list end))
 	;; Case 4. Normal line without ARG: turn each non-item line
 	;;         into an item.
-	(t
-	 (while (< (point) end)
-	   (unless (or (org-at-heading-p) (org-at-item-p))
-	     (when (looking-at "\\([ \t]*\\)\\(\\S-\\)")
-	       (replace-match
-		(concat "\\1" (org-list-bullet-string "-") "\\2"))))
-	   (forward-line))))))))
+	(t (org--lines-to-list end)))))))
 
 (provide 'org-list-commands)
 
