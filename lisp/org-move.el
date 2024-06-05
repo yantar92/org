@@ -72,6 +72,19 @@ This may also be a cons cell where the behavior for `C-a' and
 			(const :tag "reversed: after tags first" reversed)))))
 
 ;;;###autoload
+(defun org-skip-blanks-and-comments (&optional pos)
+  "Skip from `point' or POS over comment and blank lines.
+Leave point at the beginning of the first non-blank non-comment line.
+Return point."
+  (when pos (goto-char pos))
+  (while (org-at-comment-p)
+    (forward-line)
+    (skip-chars-forward " \t\n\r"))
+  (skip-chars-forward " \t\n\r")
+  (forward-line 0)
+  (point))
+
+;;;###autoload
 (defun org-beginning-of-line (&optional n)
   "Go to the beginning of the current visible line.
 
