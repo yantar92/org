@@ -69,6 +69,7 @@
 (declare-function org-babel-execute-src-block "ob-core"
                   (&optional arg info params executor-type))
 (declare-function org-babel-lob-get-info "ob-core" (&optional datum no-eval))
+(declare-function org-babel-switch-to-session "ob-commands" (&optional arg info))
 (declare-function org-list-to-lisp "org-list-export" (&optional delete))
 (declare-function org-toggle-radio-button "org-list-commands" (&optional arg))
 (declare-function org-insert-item "org-list-commands" (&optional checkbox))
@@ -874,17 +875,7 @@ Otherwise, return a user error."
     (pcase (org-element-type element)
       (`src-block
        (if (not arg) (org-edit-src-code)
-	 (let* ((info (org-babel-get-src-block-info))
-		(lang (nth 0 info))
-		(params (nth 2 info))
-		(session (cdr (assq :session params))))
-	   (if (not session) (org-edit-src-code)
-	     ;; At a source block with a session and function called
-	     ;; with an ARG: switch to the buffer related to the
-	     ;; inferior process.
-	     (switch-to-buffer
-	      (funcall (intern (concat "org-babel-prep-session:" lang))
-		       session params))))))
+         (org-babel-switch-to-session t)))
       (`keyword
        (unless (member (org-element-property :key element)
 		       '("BIBLIOGRAPHY" "INCLUDE" "SETUPFILE"))
