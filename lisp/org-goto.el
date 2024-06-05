@@ -96,8 +96,10 @@ When nil, you can use these keybindings to navigate the buffer:
 
 ;;; Internal functions
 
+(declare-function org-defkey "org-keys" (keymap key def))
 (defun org-goto--set-map ()
   "Set the keymap `org-goto'."
+  (require 'org-keys)
   (setq org-goto-map
 	(let ((map (make-sparse-keymap)))
 	  (let ((cmds '(isearch-forward isearch-backward kill-ring-save set-mark-command
