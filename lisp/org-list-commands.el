@@ -459,6 +459,48 @@ subtree, ignoring planning line and any drawer following it."
 	(move-marker lim-down nil))))
   (org-update-checkbox-count-maybe))
 
+;;;###autoload
+(defun org-toggle-checkbox-in-list (&optional toggle-presence)
+  "Toggle the checkbox in the current list.
+At a plain list, with `\\[universal-argument]' `\\[universal-argument]'
+prefix argument TOGGLE-PRESENCE, set checkboxes of each item to
+\"[-]\", whereas `\\[universal-argument]' will toggle their presence
+according to the state of the first item in the list.  Without an
+argument, repair the list."
+  (if (or (org-at-radio-list-p)
+	  (and (boundp 'org-list-checkbox-radio-mode)
+	       org-list-checkbox-radio-mode))
+      (org-toggle-radio-button toggle-presence)
+    (let* ((context (org-element-lineage (org-element-at-point) 'plain-list t))
+           (begin (org-element-contents-begin context))
+	   (struct (org-element-property :structure context))
+	   (old-struct (copy-tree struct))
+	   (first-box (save-excursion
+			(goto-char begin)
+			(looking-at org-list-full-item-re)
+			(match-string-no-properties 3)))
+	   (new-box (cond ((equal toggle-presence '(16)) "[-]")
+			  ((equal toggle-presence '(4)) (unless first-box "[ ]"))
+			  ((equal first-box "[X]") "[ ]")
+			  (t "[X]"))))
+      (cond
+       (toggle-presence
+	(dolist (pos
+		 (org-list-get-all-items
+		  begin struct (org-list-prevs-alist struct)))
+	  (org-list-set-checkbox pos struct new-box)))
+       ((and first-box (eq (point) begin))
+	;; For convenience, when point is at bol on the first
+	;; item of the list and no argument is provided, simply
+	;; toggle checkbox of that item, if any.
+	(org-list-set-checkbox begin struct new-box)))
+      (when (equal
+	     (org-list-write-struct
+	      struct (org-list-parents-alist struct) old-struct)
+	     old-struct)
+	(message "Cannot update this checkbox"))
+      (org-update-checkbox-count-maybe))))
+
 (declare-function org-narrow-to-subtree "org-narrow" (&optional element))
 (declare-function org-fold-show-subtree "org-fold" ())
 ;;;###autoload
