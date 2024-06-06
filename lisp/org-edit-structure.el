@@ -480,6 +480,7 @@ first headline."
 		(save-excursion (forward-line -1) (org-current-level)))
 	   0)))
 
+;;;###autoload
 (defun org-cycle-level ()
   "Cycle the level of an empty headline through possible states.
 This goes first to child, then to parent, level, then up the hierarchy.

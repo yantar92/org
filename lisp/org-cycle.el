@@ -32,56 +32,8 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-macs)
 (require 'org-fold)
-
-(declare-function org-element-type-p "org-element-ast" (node types))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-post-affiliated "org-element" (node))
-(declare-function org-element-lineage "org-element-ast" (datum &optional types with-self))
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-display-inline-images "org" (&optional include-linked refresh beg end))
-(declare-function org-get-tags "org" (&optional pos local fontify))
-(declare-function org-narrow-to-subtree "org" (&optional element))
-(declare-function org-next-visible-heading "org" (arg))
-(declare-function org-at-property-p "org" ())
-(declare-function org-re-property "org" (property &optional literal allow-null value))
-(declare-function org-remove-inline-images "org" (&optional beg end))
-(declare-function org-item-beginning-re "org" ())
-(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
-(declare-function org-at-item-p "org" ())
-(declare-function org-before-first-heading-p "org" ())
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading))
-(declare-function org-entry-end-position "org" ())
-(declare-function org-try-cdlatex-tab "org" ())
-(declare-function org-cycle-level "org" ())
-(declare-function org-table-next-field "org-table" ())
-(declare-function org-table-justify-field-maybe "org-table" (&optional new))
-(declare-function org-table-previous-field "org-table-move" ())
-(declare-function org-inlinetask-at-task-p "org-inlinetask" ())
-(declare-function org-inlinetask-toggle-visibility "org-inlinetask" ())
-(declare-function org-list-get-all-items "org-list" (item struct prevs))
-(declare-function org-list-get-bottom-point "org-list" (struct))
-(declare-function org-list-prevs-alist "org-list" (struct))
-(declare-function org-list-set-item-visibility "org-list" (item struct view))
-(declare-function org-list-search-forward "org-list" (regexp &optional bound noerror))
-(declare-function org-list-has-child-p "org-list" (item struct))
-(declare-function org-list-get-item-end-before-blank "org-list" (item struct))
-(declare-function org-list-struct "org-list" ())
-(declare-function org-cycle-item-indentation "org-list" ())
-
-(declare-function outline-previous-heading "outline" ())
-(declare-function outline-next-heading "outline" ())
-(declare-function outline-end-of-heading "outline" ())
-(declare-function outline-up-heading "outline" (arg &optional invisible-ok))
-
-(defvar org-drawer-regexp)
-(defvar org-odd-levels-only)
-(defvar org-startup-folded)
-(defvar org-archive-tag)
-(defvar org-cycle-include-plain-lists)
-(defvar org-outline-regexp-bol)
+(require 'org-list-core)
 
 (defvar-local org-cycle-global-status nil)
 (put 'org-cycle-global-status 'org-state t)
@@ -324,6 +276,11 @@ STATE should be one of the symbols listed in the docstring of
              (when (< beg end)
                (org-fold--hide-drawers beg end)))))))
 
+(declare-function org-cycle-level "org-edit-structure" ())
+(declare-function org-cycle-item-indentation "org-list-commands" ())
+(declare-function org-try-cdlatex-tab "org-cdlatex" ())
+(declare-function org-table-next-field "org-table-move" ())
+(declare-function org-table-justify-field-maybe "org-table-align" (&optional new))
 ;;;###autoload
 (defun org-cycle (&optional arg)
   "TAB-action and visibility cycling for Org mode.
@@ -379,11 +336,12 @@ is non-nil, this function acts as if called with prefix argument \
 \(`\\[universal-argument] TAB',
 same as `S-TAB') also when called without prefix argument."
   (interactive "P")
-  (org-load-modules-maybe)
   (unless (or (run-hook-with-args-until-success 'org-cycle-tab-first-hook)
 	      (and org-cycle-level-after-item/entry-creation
-		   (or (org-cycle-level)
-		       (org-cycle-item-indentation))))
+		   (or (and (org-point-at-end-of-empty-headline)
+                            (org-cycle-level))
+		       (and (org-at-item-p)
+                            (org-cycle-item-indentation)))))
     (when (and org-cycle-max-level
                (or (not (integerp org-cycle-max-level))
                    (< org-cycle-max-level 1)))
@@ -425,9 +383,12 @@ same as `S-TAB') also when called without prefix argument."
 		     org-cycle-hook)))
 	  (org-cycle-internal-global)))
        ;; Try CDLaTeX TAB completion.
-       ((org-try-cdlatex-tab))
+       ((and (bound-and-true-p org-cdlatex-mode)
+             (org-try-cdlatex-tab)))
        ;; Inline task: delegate to `org-inlinetask-toggle-visibility'.
        ((and (featurep 'org-inlinetask)
+             (fboundp 'org-inlinetask-at-task-p)
+             (fboundp 'org-inlinetask-toggle-visibility)
 	     (org-inlinetask-at-task-p)
 	     (or (bolp) (not (eq org-cycle-emulate-tab 'exc-hl-bol))))
 	(org-inlinetask-toggle-visibility))
@@ -644,6 +605,7 @@ Use `\\[org-edit-special]' to edit table.el tables"))
       (unless (org-before-first-heading-p)
 	(run-hook-with-args 'org-cycle-hook 'folded))))))
 
+(declare-function org-table-previous-field "org-table-move" ())
 ;;;###autoload
 (defun org-shifttab (&optional arg)
   "Global visibility cycling or move to previous table field.
@@ -708,6 +670,7 @@ With a numeric prefix, show all headlines up to that level."
     (when org-cycle-hide-drawer-startup (org-cycle-hide-drawers 'all))
     (org-cycle-show-empty-lines t)))
 
+(declare-function org-narrow-to-subtree "org-narrow" (&optional element))
 (defun org-cycle-set-visibility-according-to-property ()
   "Switch subtree visibility according to VISIBILITY property."
   (interactive)
@@ -884,12 +847,17 @@ STATE should be one of the symbols listed in the docstring of
 		       "Subtree is archived and stays closed.  Use \
 `\\[org-cycle-force-archived]' to cycle it anyway."))))))
 
+(declare-function org-display-inline-images "org-preview-image"
+                  (&optional include-linked refresh beg end))
+(declare-function org-remove-inline-images "org-preview-image"
+                  (&optional beg end))
 (defun org-cycle-display-inline-images (state)
   "Auto display inline images under subtree when cycling.
 It works when `org-cycle-inline-images-display' is non-nil.
 STATE is the current outline visibility state.  It should be one of
 symbols `content', `all', `folded', `children', or `subtree'."
   (when org-cycle-inline-images-display
+    (require 'org-preview-image)
     (pcase state
       ('children
        (org-with-wide-buffer
