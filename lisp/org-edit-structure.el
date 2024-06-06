@@ -38,25 +38,9 @@
 (require 'org-cycle)
 (require 'outline)
 (require 'org-move)
-(defvar org-complex-heading-regexp)
 (require 'org-tags)
 (require 'org-map)
-(defvar org-todo-line-regexp)
-(defvar org-done-keywords)
-(defvar org-todo-keywords-1)
-(declare-function org-todo "org")
-(defvar org-provide-todo-statistics)
-(declare-function org-update-parent-todo-statistics "org")
-(declare-function org-inlinetask-in-task-p "org-inlinetask")
-(declare-function org-inlinetask-goto-end "org-inlinetask")
-(declare-function org-clock-save-markers-for-cut-and-paste "org-clock")
-(declare-function org-agenda-save-markers-for-cut-and-paste "org-agenda")
-(defvar org-id-overriding-file-name)
-(declare-function org-id-get-create "org-id")
-(declare-function org-clock-sum "org-clock")
-(declare-function org-clocking-buffer "org")
-(defvar org-clock-marker)
-(declare-function org-get-heading "org")
+(require 'org-clock-common)
 
 (defcustom org-insert-heading-hook nil
   "Hook being run after inserting a new heading."
@@ -313,6 +297,8 @@ This command temporarily sets `org-insert-heading-respect-content' to t."
     (org-insert-todo-heading arg t)))
 
 (declare-function org-insert-item "org-list-commands" (&optional checkbox))
+(declare-function org-todo "org-todo" (&optional arg))
+(declare-function org-update-parent-todo-statistics "org-todo" ())
 ;;;###autoload
 (defun org-insert-todo-heading (arg &optional force-heading)
   "Insert a new heading with the same level and TODO state as current heading.
@@ -327,6 +313,8 @@ When called at a plain list item, insert a new item with an
 unchecked check box."
   (interactive "P")
   (require 'org-list-commands)
+  (require 'org-todo)
+  (defvar org-provide-todo-statistics)
   (when (or force-heading (not (org-insert-item 'checkbox)))
     (org-insert-heading (or (and (equal arg '(16)) '(16))
 			    force-heading))
@@ -500,7 +488,8 @@ After top level, it switches back to sibling level."
   (let ((org-adapt-indentation nil))
     (when (and (org-point-at-end-of-empty-headline)
                (not (and (featurep 'org-inlinetask)
-                         (org-inlinetask-in-task-p))))
+                       (fboundp 'org-inlinetask-in-task-p)
+                       (org-inlinetask-in-task-p))))
       (setq this-command 'org-cycle-level) ; Only needed for caching
       (let ((cur-level (org-current-level))
             (prev-level (org-get-previous-line-level)))
@@ -558,7 +547,9 @@ Assume point is at a heading or an inlinetask beginning."
 		     (save-excursion
 		       (if (org-with-limited-levels (org-at-heading-p))
 			   (org-with-limited-levels (outline-next-heading))
-			 (org-inlinetask-goto-end))
+                         (if (fboundp 'org-inlinetask-goto-end)
+			     (org-inlinetask-goto-end)
+                           (error "This should not happen")))
 		       (point)))
    (forward-line)
    ;; Indent properly planning info and property drawer.
@@ -1122,6 +1113,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
 (declare-function org-entry-delete "org-property-set" (epom property))
 (declare-function org-timestamp-change "org-timestamp"
                   (n &optional what updown suppress-tmp-delay))
+(declare-function org-id-get-create "org-id" (&optional force))
 ;;;###autoload
 (defun org-clone-subtree-with-time-shift (n &optional shift)
   "Clone the task (subtree) at point N times.
@@ -1161,6 +1153,8 @@ with the original repeater."
   (interactive "nNumber of clones to produce: ")
   (unless (wholenump n) (user-error "Invalid number of replications %s" n))
   (when (org-before-first-heading-p) (user-error "No subtree to clone"))
+  (require 'org-id)
+  (defvar org-id-overriding-file-name)
   (let* ((beg (save-excursion (org-back-to-heading t) (point)))
 	 (end-of-tree (save-excursion (org-end-of-subtree t t) (point)))
 	 (shift
@@ -1266,6 +1260,8 @@ When children are sorted, the cursor is in the parent line when this
 hook gets called.  When a region or a plain list is sorted, the cursor
 will be in the first entry of the sorted region/list.")
 
+(declare-function org-clock-sum "org-clock-sum"
+                  (&optional tstart tend headline-filter propname))
 (defun org-sort-entries
     (&optional with-case sorting-type getkey-func compare-func property
 	       interactive?)
