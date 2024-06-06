@@ -859,7 +859,6 @@ number of stars to add."
      (setq txt (buffer-substring beg end))
      (org-save-markers-in-region beg end)
      (delete-region beg end)
-     (when (eq org-fold-core-style 'overlays) (org-remove-empty-overlays-at beg))
      (unless (= beg (point-min)) (org-fold-region (1- beg) beg nil 'outline))
      (unless (bobp) (org-fold-region (1- (point)) (point) nil 'outline))
      (and (not (bolp)) (looking-at "\n") (forward-char 1))

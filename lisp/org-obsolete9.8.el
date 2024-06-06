@@ -82,6 +82,16 @@ markers in `org-clock-history'."
     (org-check-and-save-marker m beg end)))
 (make-obsolete 'org-clock-save-markers-for-cut-and-paste "no longer user" "9.8")
 
+(defun org-remove-empty-overlays-at (pos)
+  "Remove outline overlays that do not contain non-white stuff."
+  (dolist (o (overlays-at pos))
+    (and (eq 'outline (overlay-get o 'invisible))
+	 (not (string-match-p
+             "\\S-" (buffer-substring (overlay-start o)
+				     (overlay-end o))))
+	 (delete-overlay o))))
+(make-obsolete 'org-remove-empty-overlays-at "no longer user" "9.8")
+
 (provide 'org-obsolete9.8)
 
 ;; Local variables:

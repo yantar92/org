@@ -1414,15 +1414,6 @@ and subscripts."
 			       (list 'invisible t))))
       t)))
 
-(defun org-remove-empty-overlays-at (pos)
-  "Remove outline overlays that do not contain non-white stuff."
-  (dolist (o (overlays-at pos))
-    (and (eq 'outline (overlay-get o 'invisible))
-	 (not (string-match-p
-             "\\S-" (buffer-substring (overlay-start o)
-				     (overlay-end o))))
-	 (delete-overlay o))))
-
 ;;;###autoload
 (defun org-toggle-link-display ()
   "Toggle the literal or descriptive display of links in current buffer."
