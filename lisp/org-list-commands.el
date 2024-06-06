@@ -436,7 +436,7 @@ subtree, ignoring planning line and any drawer following it."
 	       ;; If there is no box at item, leave as-is unless
 	       ;; function was called with C-u prefix.
 	       (let ((cur-box (org-list-get-checkbox e struct)))
-		 (if (or cur-box (equal toggle-presence '(4)))
+		 (if (or cur-box (member toggle-presence '((4) (16))))
 		     ref-checkbox
 		   cur-box))))
 	    (setq block-item (org-list-struct-fix-box
