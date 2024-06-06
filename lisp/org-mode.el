@@ -657,15 +657,22 @@ This function ignores inlinetasks.  It is meant to be used as
 
 ;;; Define Org major mode
 
+;;;###autoload
 (defun org-mode-restart ()
   "Restart `org-mode'."
   (interactive)
-  (let ((indent-status (bound-and-true-p org-indent-mode)))
-    (funcall major-mode)
-    (hack-local-variables)
-    (when (and indent-status (not (bound-and-true-p org-indent-mode)))
-      (org-indent-mode -1))
-    (org-reset-file-cache))
+  (let ((org-inhibit-startup-visibility-stuff t)
+	(org-startup-align-all-tables nil))
+    (when (boundp 'org-table-coordinate-overlays)
+      (mapc #'delete-overlay org-table-coordinate-overlays)
+      (setq org-table-coordinate-overlays nil))
+    (org-fold-core-save-visibility 'use-markers
+      (let ((indent-status (bound-and-true-p org-indent-mode)))
+        (funcall major-mode)
+        (hack-local-variables)
+        (when (and indent-status (not (bound-and-true-p org-indent-mode)))
+          (org-indent-mode -1))
+        (org-reset-file-cache))))
   (message "%s restarted" major-mode))
 
 (declare-function org-parse-arguments "org-pcomplete" ())

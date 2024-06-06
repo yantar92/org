@@ -1111,16 +1111,7 @@ This command does many different things, depending on context:
 		    old-struct)
 	       (message "Cannot update this checkbox"))
 	     (org-update-checkbox-count-maybe))))
-	(`keyword
-         (require 'org-mode)
-         (defvar org-startup-align-all-tables)
-	 (let ((org-inhibit-startup-visibility-stuff t)
-	       (org-startup-align-all-tables nil))
-	   (when (boundp 'org-table-coordinate-overlays)
-	     (mapc #'delete-overlay org-table-coordinate-overlays)
-	     (setq org-table-coordinate-overlays nil))
-	   (org-fold-core-save-visibility 'use-markers (org-mode-restart)))
-	 (message "Local setup has been refreshed"))
+	(`keyword (org-mode-restart))
 	((or `property-drawer `node-property)
 	 (call-interactively #'org-property-action))
 	(`radio-target
