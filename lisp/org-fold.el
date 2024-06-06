@@ -223,7 +223,7 @@ effective.  It cannot be set as a local variable."
 		 (string :tag "String" :value "...#")))
 
 (defun org-fold-initialize (&optional ellipsis)
-  "Setup folding in current Org buffer."
+  "Setup folding in current Org buffer; use ELLIPSIS to mark folds."
   (setq ellipsis (or ellipsis org-ellipsis))
   (setq ellipsis
         (or (and (stringp ellipsis)
