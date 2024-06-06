@@ -31,8 +31,7 @@
 (require 'org-regexps)
 (require 'org-priority-common)
 (require 'org-list-core)
-(require 'org-indent-static)
-(require 'org-fold-core)
+(require 'org-move)
 
 (declare-function org-columns-quit "org-colview" ())
 (declare-function org-clock-remove-overlays "org-clock-commands" (&optional _beg _end noremove))
@@ -64,15 +63,8 @@
 (declare-function org-table-edit-formulas "org-table-formula-edit" ())
 (declare-function orgtbl-send-table "orgtbl-mode" (&optional maybe))
 (declare-function org-babel-hash-at-point "ob-core-result" (&optional point))
-(declare-function org-babel-eval-wipe-error-buffer "ob-eval" ())
-(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
-(declare-function org-babel-execute-src-block "ob-core"
-                  (&optional arg info params executor-type))
-(declare-function org-babel-lob-get-info "ob-core" (&optional datum no-eval))
 (declare-function org-babel-switch-to-session "ob-commands" (&optional arg info))
 (declare-function org-babel-execute-safely-maybe "ob-commands" ())
-(declare-function org-list-to-lisp "org-list-export" (&optional delete))
-(declare-function org-toggle-radio-button "org-list-commands" (&optional arg))
 (declare-function org-insert-item "org-list-commands" (&optional checkbox))
 (declare-function org-cycle-list-bullet "org-list-commands" (&optional which))
 (declare-function org-toggle-item "org-list-commands" (arg))
@@ -86,6 +78,7 @@
 (declare-function org-move-item-up "org-list-commands" ())
 (declare-function org-toggle-checkbox  "org-list-commands" (&optional toggle-presence))
 (declare-function org-toggle-checkbox-in-list  "org-list-commands" (&optional toggle-presence))
+(declare-function org-link-open-from-string "ol" (s &optional arg))
 (declare-function org-link-open-from-string "ol" (s &optional arg))
 (declare-function org-update-radio-target-regexp "ol" ())
 (declare-function org-property-action "org-property-set" ())
@@ -112,7 +105,6 @@
 (declare-function org-drag-line-forward "org-edit" (arg))
 (declare-function org-drag-region-forward "org-edit" (&optional arg))
 (declare-function org-drag-region-backward "org-edit" (&optional arg))
-(declare-function org-mark-element "org-mark" ())
 (declare-function org-plot/gnuplot "org-plot" (&optional params))
 (declare-function org-update-statistics-cookies "org-todo" (all))
 (declare-function org-set-tags-command "org-tags" (&optional arg))
@@ -140,8 +132,9 @@
 (declare-function org-property-next-allowed-value "org-property-set" (&optional previous))
 (declare-function org-priority-down "org-priority" ())
 (declare-function org-priority-up "org-priority" ())
-(declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
 (declare-function org-edit-keyword "org-misc" (&optional element))
+(declare-function org-indent-drawer "org-indent-static" ())
+(declare-function org-indent-block "org-indent-static" ())
 
 (defcustom org-treat-S-cursor-todo-selection-as-state-change t
   "Non-nil means switching TODO states with S-cursor counts as state change.

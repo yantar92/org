@@ -460,6 +460,7 @@ assumed to be significant there."
 	    (set-marker element-end nil))))
       (set-marker end nil))))
 
+;;;###autoload
 (defun org-indent-drawer ()
   "Indent the drawer at point.
 Signal an error when not at a drawer."
@@ -472,6 +473,7 @@ Signal an error when not at a drawer."
 			(org-element-end element))))
   (message "Drawer at point indented"))
 
+;;;###autoload
 (defun org-indent-block ()
   "Indent the block at point.
 Signal an error when not at a block."
