@@ -556,7 +556,7 @@ Some of the options can be changed using the variable
 		    (beg (org-element-begin context))
 		    (end (save-excursion
 			   (goto-char (org-element-end context))
-			   (skip-chars-backward " \r\t\n")
+			   (org-skip-whitespace 'back)
 			   (point))))
 		(cond
 		 ((eq processing-type 'mathjax)

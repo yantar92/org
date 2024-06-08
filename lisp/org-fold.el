@@ -543,18 +543,18 @@ Return a non-nil value when toggling is successful."
                       (line-end-position)))
              (end (save-excursion
                     (goto-char (org-element-end element))
-                    (skip-chars-backward " \t\n")
+                    (org-skip-whitespace 'back)
                     (line-end-position))))
         ;; Do nothing when not before or at the block opening line or
         ;; at the block closing line.
         (unless (let ((eol (line-end-position)))
                   (and (> eol start) (/= eol end)))
           (org-fold-region start end
-                   (cond ((eq force 'off) nil)
-                         (force t)
-                         ((org-fold-folded-p start category) nil)
-                         (t t))
-                   category)
+                           (cond ((eq force 'off) nil)
+                                 (force t)
+                                 ((org-fold-folded-p start category) nil)
+                                 (t t))
+                           category)
           ;; When the block is hidden away, make sure point is left in
           ;; a visible part of the buffer.
           (when (invisible-p (max (1- (point)) (point-min)))
@@ -771,13 +771,13 @@ Assume that point is located at the header line."
     (let ((endl (line-end-position)))
       (save-excursion
         (goto-char endl)
-        (skip-chars-forward "\n\t\r ")
+        (org-skip-whitespace)
         ;; Unfold blank lines after newly inserted headline.
         (if (equal (point)
                    (save-excursion
                      (goto-char endl)
                      (org-end-of-subtree t)
-                     (skip-chars-forward "\n\t\r ")))
+                     (org-skip-whitespace)))
             (point)
           endl)))
     nil 'headline)))

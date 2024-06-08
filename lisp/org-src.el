@@ -336,10 +336,8 @@ where BEG and END are buffer positions and CONTENTS is a string."
 	      (end (or (org-element-contents-end datum) beg)))
 	 (list beg end (buffer-substring-no-properties beg end))))
       ((eq type 'inline-src-block)
-       (let ((beg (progn (goto-char (org-element-begin datum))
-			 (search-forward "{" (line-end-position) t)))
-	     (end (progn (goto-char (org-element-end datum))
-			 (search-backward "}" (line-beginning-position) t))))
+       (let ((beg (org-element-value-begin datum))
+	     (end (org-element-value-end datum)))
 	 (list beg end (buffer-substring-no-properties beg end))))
       ((eq type 'latex-fragment)
        (let ((beg (org-element-begin datum))
@@ -352,17 +350,12 @@ where BEG and END are buffer positions and CONTENTS is a string."
 	     (end (org-element-contents-end datum)))
 	 (list beg end (buffer-substring-no-properties beg end))))
       ((memq type '(example-block export-block src-block comment-block))
-       (list (progn (goto-char (org-element-post-affiliated datum))
-		    (line-beginning-position 2))
-	     (progn (goto-char (org-element-end datum))
-		    (skip-chars-backward " \r\t\n")
-		    (line-beginning-position 1))
+       (list (org-element-value-begin datum)
+	     (org-element-value-end datum)
 	     (org-element-property :value datum)))
       ((memq type '(fixed-width latex-environment table))
        (let ((beg (org-element-post-affiliated datum))
-	     (end (progn (goto-char (org-element-end datum))
-			 (skip-chars-backward " \r\t\n")
-			 (line-beginning-position 2))))
+	     (end (org-element-pos-before-blank datum)))
 	 (list beg
 	       end
 	       (if (eq type 'fixed-width) (org-element-property :value datum)
@@ -402,13 +395,7 @@ END."
 DATUM is an element or an object.  Consider blank lines or white
 spaces after it as being outside."
   (and (>= (point) (org-element-begin datum))
-       (<= (point)
-	   (org-with-wide-buffer
-	    (goto-char (org-element-end datum))
-	    (skip-chars-backward " \r\t\n")
-	    (if (eq (org-element-class datum) 'element)
-	        (line-end-position)
-	      (point))))))
+       (< (point) (org-element-pos-before-blank datum))))
 
 (defun org-src--contents-for-write-back-1
     ( write-back-buf contents
@@ -588,7 +575,7 @@ Leave point in edit buffer."
 	      (goto-char
 	       (or (text-property-any (point-min) (point-max) 'read-only nil)
 		   (point-max)))
-	      (skip-chars-forward " \r\t\n"))
+              (org-skip-whitespace))
 	  ;; Set mark and point.
 	  (when mark-coordinates
 	    (org-src--goto-coordinates mark-coordinates (point-min) (point-max))

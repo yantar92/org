@@ -215,7 +215,7 @@ inserted into the buffer."
       (org-datetree-insert-line year month day insert)))))
 
 (defun org-datetree-insert-line (year &optional month day text)
-  (delete-region (save-excursion (skip-chars-backward " \t\n") (point)) (point))
+  (delete-region (save-excursion (org-skip-whitespace 'back) (point)) (point))
   (when (org--blank-before-heading-p) (insert "\n"))
   (insert "\n" (make-string org-datetree-base-level ?*) " \n")
   (backward-char)

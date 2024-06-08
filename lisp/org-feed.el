@@ -513,7 +513,7 @@ This will find DRAWER and extract the alist."
 	(error "Wrong position"))
       (setq level (org-get-valid-level (length (match-string 1)) 1))
       (org-end-of-subtree t t)
-      (skip-chars-backward " \t\n")
+      (org-skip-whitespace 'back)
       (forward-line 1)
       (setq pos (point))
       (while (setq entry (pop entries))

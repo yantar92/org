@@ -85,7 +85,7 @@ ELEMENT is the element at point."
 	   (and (> (line-beginning-position) post-affiliated)
 		(save-excursion
 		  (end-of-line)
-		  (skip-chars-forward " \r\t\n")
+		  (org-skip-whitespace)
 		  (< (point) (org-element-end element)))))
 	  ;; Arbitrary list of keywords where checks are meaningful.
 	  ;; Make sure point is on the value part of the element.

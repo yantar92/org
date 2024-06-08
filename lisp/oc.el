@@ -1523,11 +1523,7 @@ CONTEXT is the element or object at point, as returned by `org-element-context'.
 		   (< (point) (match-beginning 5))))))
      ;; White spaces after an object or blank lines after an element
      ;; are OK.
-     ((>= (point)
-	 (save-excursion (goto-char (org-element-end context))
-			 (skip-chars-backward " \r\t\n")
-			 (if (eq (org-element-class context) 'object) (point)
-			   (line-beginning-position 2)))))
+     ((>= (point) (org-element-pos-before-blank context)))
      ;; At the beginning of a footnote definition, right after the
      ;; label, is OK.
      ((eq type 'footnote-definition) (looking-at (rx space)))
@@ -1548,7 +1544,7 @@ CONTEXT is the element or object at point, as returned by `org-element-context'.
       ;; :contents-begin is not reliable on empty cells, so special
       ;; case it.
       (<= (save-excursion (skip-chars-backward " \t") (point))
-          (org-element-contents-end context)))
+         (org-element-contents-end context)))
      ((let ((cbeg (org-element-contents-begin context))
 	    (cend (org-element-contents-end context)))
 	(and cbeg (>= (point) cbeg) (<= (point) cend)))))))

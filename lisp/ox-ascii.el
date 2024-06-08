@@ -1872,7 +1872,7 @@ contextual information."
 	       (goto-char (point-min))
 	       (aa2u)
 	       (goto-char (point-max))
-	       (skip-chars-backward " \r\t\n")
+               (org-skip-whitespace 'back)
 	       (buffer-substring (point-min) (point))))
 	    (t (org-remove-indentation (org-element-property :value table))))
       ;; Possible add a caption string below.

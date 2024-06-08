@@ -427,8 +427,9 @@ line and position cursor in that line."
 		  (save-excursion
 		    (goto-char p)
 		    (org-trim (delete-and-extract-region
-			       (save-excursion (skip-chars-backward " \r\t\n")
-					       (line-beginning-position 2))
+			       (save-excursion
+                                 (org-skip-whitespace 'back)
+				 (line-beginning-position 2))
 			       (line-beginning-position 2)))))
 	        positions "\n")
 	       "\n:END:\n")

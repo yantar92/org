@@ -114,7 +114,7 @@ matches in paragraphs or comments, use it."
 					 (point)))
 		   (cend (save-excursion
 			   (goto-char (org-element-end element))
-			   (skip-chars-backward " \r\t\n")
+			   (org-skip-whitespace 'back)
 			   (line-beginning-position))))
 	      (when (and (>= p cbeg) (< p cend))
 		(if (save-excursion (forward-line 0) (looking-at "[ \t]+"))
@@ -234,7 +234,7 @@ a footnote definition, try to fill the first paragraph within."
 			  (end-of-line)
 			  (if (re-search-forward "^[ \t]*#[ \t]*$" end 'move)
 			      (1- (line-beginning-position))
-			    (skip-chars-backward " \r\t\n")
+			    (org-skip-whitespace 'back)
 			    (line-end-position)))))
 	       ;; Do not fill comments when at a blank line.
 	       (when (> end begin)
@@ -287,18 +287,18 @@ filling the current element."
 	(unwind-protect
 	    (progn
 	      (goto-char (region-end))
-	      (skip-chars-backward " \t\n")
+	      (org-skip-whitespace 'back)
 	      (let ((org--single-lines-list-is-paragraph nil))
                 (while (> (point) start)
 		  (org-fill-element justify)
 		  (org-backward-paragraph)
-                  (skip-chars-backward " \t\n"))))
+                  (org-skip-whitespace 'back))))
 	  (goto-char origin)
 	  (set-marker origin nil))))
      (t
       (save-excursion
 	(when (org-match-line "[ \t]*$")
-	  (skip-chars-forward " \t\n"))
+	  (org-skip-whitespace))
 	(org-fill-element justify))))
     ;; If we didn't change anything in the buffer (and the buffer was
     ;; previously unmodified), then flip the modification status back

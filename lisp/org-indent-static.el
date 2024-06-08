@@ -178,7 +178,7 @@ ELEMENT."
       (t
        (forward-line 0)
        (let ((pos (point)))
-	 (skip-chars-backward " \r\t\n")
+	 (org-skip-whitespace 'back)
 	 (cond
 	  ;; Two blank lines end a footnote definition or a plain
 	  ;; list.  When we indent an empty line after them, the
@@ -299,19 +299,14 @@ Also align node properties according to `org-property-format'."
 	     nil)
 	    ((and (eq type 'latex-environment)
 		  (>= (point) (org-element-post-affiliated element))
-		  (< (point)
-		     (org-with-point-at (org-element-end element)
-		       (skip-chars-backward " \t\n")
-		       (line-beginning-position 2))))
+		  (< (point) (org-element-pos-before-blank element)))
 	     nil)
 	    ((and (eq type 'src-block)
 		  org-src-tab-acts-natively
 		  (> (line-beginning-position)
 		     (org-element-post-affiliated element))
 		  (< (line-beginning-position)
-		     (org-with-point-at (org-element-end element)
-		       (skip-chars-backward " \t\n")
-		       (line-beginning-position))))
+                     (org-element-value-end element)))
              (require 'org-src)
              (defvar org-edit-src-content-indentation)
              (let ((block-content-ind
@@ -348,7 +343,7 @@ assumed to be significant there."
   (interactive "r")
   (save-excursion
     (goto-char start)
-    (skip-chars-forward " \r\t\n")
+    (org-skip-whitespace)
     (unless (eobp) (forward-line 0))
     (let ((indent-to
 	   (lambda (ind pos)
@@ -403,11 +398,7 @@ assumed to be significant there."
 		     (cbeg
 		      (copy-marker
 		       (cond
-			((not (org-element-contents-begin element))
-			 ;; Fake contents for source blocks.
-			 (org-with-wide-buffer
-			  (goto-char post)
-			  (line-beginning-position 2)))
+                        ((org-element-value-begin element))
 			((memq type '(footnote-definition item plain-list))
 			 ;; Contents in these elements could start on
 			 ;; the same line as the beginning of the
@@ -416,16 +407,12 @@ assumed to be significant there."
 			 (org-with-wide-buffer
 			  (goto-char post)
 			  (end-of-line)
-			  (skip-chars-forward " \r\t\n")
+			  (org-skip-whitespace)
 			  (if (eobp) (point) (line-beginning-position))))
 			(t (org-element-contents-begin element)))))
 		     (cend (copy-marker
 			    (or (org-element-contents-end element)
-				;; Fake contents for source blocks.
-				(org-with-wide-buffer
-				 (goto-char element-end)
-				 (skip-chars-backward " \r\t\n")
-				 (line-beginning-position)))
+                                (org-element-value-end element))
 			    t)))
 		;; Do not change items indentation individually as it
 		;; might break the list as a whole.  On the other

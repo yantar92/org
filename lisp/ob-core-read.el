@@ -238,7 +238,7 @@ Return nil if ELEMENT cannot be read."
       (if (and (looking-at org-link-bracket-re)
 	       (save-excursion
 		 (goto-char (match-end 0))
-		 (skip-chars-forward " \r\t\n")
+		 (org-skip-whitespace)
 		 (<= (org-element-end element)
 		    (point))))
 	  (org-babel-read-link)

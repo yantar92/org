@@ -202,9 +202,8 @@ a table.el-type table.  This function assumes point is on
 a table."
   (save-excursion
     (cond (table-type
-	   (goto-char (org-element-end (org-element-at-point)))
-	   (skip-chars-backward " \t\n")
-	   (line-beginning-position 2))
+	   (org-element-pos-before-blank
+            (org-element-at-point)))
 	  ((re-search-forward org-table-border-regexp nil t)
 	   (match-beginning 0))
 	  ;; When the line right after the table is the last line in

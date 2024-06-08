@@ -304,7 +304,7 @@ direct children of this heading."
 			  (org-back-to-heading t)
 			  (outline-next-heading))
 		      (org-end-of-subtree t))
-		    (skip-chars-backward " \t\r\n")
+                    (org-skip-whitespace 'back)
 		    (and (looking-at "[ \t\r\n]*")
 			 ;; datetree archives don't need so much spacing.
 			 (replace-match (if datetree-date "\n" "\n\n"))))

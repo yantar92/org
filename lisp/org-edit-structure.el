@@ -249,7 +249,7 @@ So this will delete or add empty lines."
     (forward-line 0)
     (unless (bobp)
       (let ((start (save-excursion
-		     (skip-chars-backward " \r\t\n")
+		     (org-skip-whitespace 'back)
 		     (line-end-position))))
 	(delete-region start (line-end-position 0))))
     (insert (make-string n ?\n))
@@ -607,10 +607,8 @@ Assume point is at a heading or an inlinetask beginning."
 		 (or (and (looking-at-p "[ \t]*#\\+BEGIN_\\(EXAMPLE\\|SRC\\)")
 			  (let ((e (org-element-at-point)))
 			    (and (org-src-preserve-indentation-p e)
-			         (goto-char (org-element-end e))
-			         (progn (skip-chars-backward " \r\t\n")
-				        (forward-line 0)
-				        t))))
+			         (goto-char (org-element-value-end e))
+                                 t)))
 		     (forward-line))))))))
        ;; Shift lines but footnote definitions, inlinetasks boundaries
        ;; by DIFF.  Also skip contents of source or example blocks
@@ -629,10 +627,8 @@ Assume point is at a heading or an inlinetask beginning."
 	   (or (and (looking-at-p "[ \t]*#\\+BEGIN_\\(EXAMPLE\\|SRC\\)")
 		    (let ((e (org-element-at-point)))
 		      (and (org-src-preserve-indentation-p e)
-			   (goto-char (org-element-end e))
-			   (progn (skip-chars-backward " \r\t\n")
-				  (forward-line 0)
-				  t))))
+			   (goto-char (org-element-value-end e))
+			   t)))
 	       (forward-line)))))))))
 
 (defun org-convert-to-odd-levels ()
@@ -960,7 +956,7 @@ useful if the caller implements cut-and-paste as copy-then-paste-then-cut."
      (when (org-element-type-p (org-element-at-point) 'inlinetask)
        (org-up-element))
      (setq beg (point))
-     (skip-chars-forward " \t\r\n")
+     (org-skip-whitespace)
      (save-match-data
        (if nosubtrees
 	   (outline-next-heading)
@@ -1087,7 +1083,7 @@ When REMOVE is non-nil, remove the subtree from the clipboard."
          (org-reinstall-markers-in-region beg)
          (setq end (point))
          (goto-char beg)
-         (skip-chars-forward " \t\n\r")
+         (org-skip-whitespace)
          (setq beg (point))
          (when (and (org-invisible-p) visp)
            (save-excursion (org-fold-heading nil)))

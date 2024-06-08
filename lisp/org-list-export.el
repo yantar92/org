@@ -282,7 +282,7 @@ ELEMENT is either an item or a plain list."
   "Return the number of trailing newlines in STRING."
   (with-temp-buffer
     (insert string)
-    (skip-chars-backward " \t\n")
+    (org-skip-whitespace 'back)
     (count-lines (line-beginning-position 2) (point-max))))
 
 (defun org-list--generic-eval (value &rest args)

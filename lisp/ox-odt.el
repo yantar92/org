@@ -3810,7 +3810,7 @@ contextual information."
 				      nil display-msg nil
 				      processing-type)
 		    (goto-char (point-min))
-		    (skip-chars-forward " \t\n")
+                    (org-skip-whitespace)
 		    (org-element-link-parser))))
 	    (if (not (org-element-type-p link 'link))
 		(message "LaTeX Conversion failed.")

@@ -3267,7 +3267,7 @@ is to happen."
     (forward-line 0)
     (delete-region (point-min) (point))
     (goto-char (point-max))
-    (skip-chars-backward " \r\t\n")
+    (org-skip-whitespace 'back)
     (forward-line)
     (delete-region (point) (point-max))
     ;; If IND is set, preserve indentation of include keyword until

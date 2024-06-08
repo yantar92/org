@@ -79,8 +79,8 @@ Return point."
   (when pos (goto-char pos))
   (while (org-at-comment-p)
     (forward-line)
-    (skip-chars-forward " \t\n\r"))
-  (skip-chars-forward " \t\n\r")
+    (org-skip-whitespace))
+  (org-skip-whitespace)
   (forward-line 0)
   (point))
 
@@ -264,7 +264,7 @@ depending on context."
 		     ;; Skip blank lines between elements.
 		     (< (org-element-end element)
 			(save-excursion (goto-char contents-end)
-					(skip-chars-forward " \r\t\n"))))
+					(org-skip-whitespace))))
 	    (narrow-to-region (org-element-contents-begin element)
 			      contents-end))
 	  ;; End of heading is considered as the end of a sentence.
@@ -448,7 +448,7 @@ When TO-HEADING is non-nil, go to the next heading or `point-max'."
       ;; Go to end of line before heading
       (forward-char -1)
       ;; Skip blank lines
-      (skip-chars-backward "\n\r\t ")))
+      (org-skip-whitespace 'back)))
   (point))
 
 (defun org-end-of-meta-data (&optional full)
@@ -558,7 +558,7 @@ With ARG, repeats or can move backward if negative."
     (while (and (> arg 0) (re-search-forward regexp nil :move))
       (when (org-invisible-p nil t)
 	(goto-char (org-fold-core-next-visibility-change))
-        (skip-chars-forward " \t\n")
+        (org-skip-whitespace)
 	(end-of-line))
       (cl-decf arg))
     (if (> arg 0) (goto-char (point-max)) (forward-line 0))))
@@ -665,7 +665,7 @@ Function may return a real element, or a pseudo-element with type
 			  (org-with-wide-buffer
 			   (forward-line)
 			   (while (looking-at regexp) (forward-line))
-			   (skip-chars-forward " \t\n")
+                           (org-skip-whitespace)
 			   (line-beginning-position))))
 		   (begin (org-with-point-at (org-element-begin e)
 			    (while (and (not (bobp)) (looking-at regexp))
@@ -704,7 +704,7 @@ See `org-forward-paragraph'."
   (interactive)
   (save-restriction
     (widen)
-    (skip-chars-forward " \t\n")
+    (org-skip-whitespace)
     (cond
      ((eobp) nil)
      ;; When inside a folded part, move out of it.
@@ -752,12 +752,12 @@ See `org-forward-paragraph'."
 		(goto-char contents-start)
 	      (let ((contents-end
 		     (org-with-point-at end
-		       (skip-chars-backward " \t\n")
+                       (org-skip-whitespace 'back)
 		       (line-beginning-position))))
 		(cond
 		 ((>= (point) contents-end)
 		  (goto-char end)
-		  (skip-chars-backward " \t\n")
+                  (org-skip-whitespace 'back)
 		  (forward-line))
 		 ((re-search-forward "^[ \t]*\n" contents-end :move)
 		  (forward-line -1))
@@ -765,7 +765,7 @@ See `org-forward-paragraph'."
 	 (t
 	  ;; Move to element's end.
 	  (goto-char end)
-	  (skip-chars-backward " \t\n")
+          (org-skip-whitespace 'back)
 	  (forward-line))))))))
 
 (defun org--backward-paragraph-once ()
@@ -778,7 +778,7 @@ See `org-backward-paragraph'."
      ((bobp) nil)
      ;; Blank lines at the beginning of the buffer.
      ((and (org-match-line "^[ \t]*$")
-	   (save-excursion (skip-chars-backward " \t\n") (bobp)))
+	   (save-excursion (org-skip-whitespace 'back) (bobp)))
       (goto-char (point-min)))
      ;; When inside a folded part, move out of it.
      ((when (org-invisible-p (1- (point)) t)
@@ -837,7 +837,7 @@ See `org-backward-paragraph'."
 	       (not (eq type 'paragraph)))
 	  (cond
 	   ((memq type '(footnote-definition plain-list))
-	    (skip-chars-backward " \t\n")
+	    (org-skip-whitespace 'back)
 	    (org--backward-paragraph-once))
 	   ((= contents-end (point))
 	    (forward-char -1)
@@ -911,7 +911,7 @@ Move to the previous element at the same level, when possible."
 	    ((null beg) (message "No element at point"))
 	    ((/= (point) beg) (goto-char beg))
 	    (t (goto-char beg)
-	       (skip-chars-backward " \r\t\n")
+	       (org-skip-whitespace 'back)
 	       (unless (bobp)
 		 (let ((prev (org-element-at-point)))
 		   (goto-char (org-element-begin prev))

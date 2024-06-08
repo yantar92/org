@@ -30,6 +30,15 @@ batch scripts.
 
 # We list the most important features, and the features that may
 # require user action to be used.
+*** Org parser now records boundaries of verbatim contents and post-blank lines
+
+All the parser objects can now contain new standard properties:
+
+- =:value-begin=, =:value-end= :: Boundaries of verbatim contents of
+  inside the AST node, as buffer positions.  For example, in source
+  blocks, the new properties store the boundaries of the code.
+- =:pos-before-blank= :: Position after syntax node, before all its
+  blank lines (for elements) or blank spaces after (for objects).
 
 *** Beamer export supports setting frame subtitles
 If a headline is exported as a frame, and has its =BEAMER_SUBTITLE=
@@ -88,6 +97,16 @@ bibliography format requires them to be written in title-case.
 ** New functions and changes in function arguments
 
 # This also includes changes in function behavior from Elisp perspective.
+*** ~org-skip-whitespace~ accepts two optional arguments =BACKWARD= and =LIMIT=
+
+The new =BACKWARD= argument makes the function skip whitespace backwards.
+The new =LIMIT= argument limits the point movement.
+
+*** New accessors and setters for Org syntax AST nodes
+
+The new standard properties can be read and set using new functions
+~org-element-value-begin~, ~org-element-value-end~, and
+~org-element-pos-before-blank~.  The new functions work with ~setf~.
 
 *** ob-sqlite: Added ability to open a database in readonly mode
 

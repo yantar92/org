@@ -171,20 +171,17 @@ otherwise."
   (pcase (org-element-lineage (org-element-at-point) 'footnote-definition t)
     (`nil nil)
     (definition
-      (let* ((label (org-element-property :label definition))
-	     (begin (org-element-property :post-affiliated definition))
-	     (end (save-excursion
-		    (goto-char (org-element-property :end definition))
-		    (skip-chars-backward " \r\t\n")
-		    (line-beginning-position 2)))
-	     (contents-begin (org-element-property :contents-begin definition))
-	     (contents-end (org-element-property :contents-end definition))
-	     (contents
-	      (if (not contents-begin) ""
-		(org-trim
-		 (buffer-substring-no-properties contents-begin
-						 contents-end)))))
-	(list label begin end contents)))))
+     (let* ((label (org-element-property :label definition))
+	    (begin (org-element-property :post-affiliated definition))
+	    (end (org-element-pos-before-blank definition))
+	    (contents-begin (org-element-property :contents-begin definition))
+	    (contents-end (org-element-property :contents-end definition))
+	    (contents
+	     (if (not contents-begin) ""
+	       (org-trim
+		(buffer-substring-no-properties contents-begin
+						contents-end)))))
+       (list label begin end contents)))))
 
 
 ;;;; Internal functions
@@ -225,11 +222,7 @@ otherwise."
 		     (< (point) (match-beginning 5))))))
        ;; White spaces after an object or blank lines after an element
        ;; are OK.
-       ((>= (point)
-	   (save-excursion (goto-char (org-element-property :end context))
-			   (skip-chars-backward " \r\t\n")
-			   (if (eq (org-element-class context) 'object) (point)
-			     (line-beginning-position 2)))))
+       ((>= (point) (org-element-pos-before-blank context)))
        ;; At the beginning of a footnote definition, right after the
        ;; label, is OK.
        ((eq type 'footnote-definition) (looking-at (rx space)))
@@ -262,7 +255,7 @@ within the new section."
 	 (org-end-of-subtree t t))))
     (goto-char (point-max))
     ;; Clean-up blank lines at the end of the buffer.
-    (skip-chars-backward " \r\t\n")
+    (org-skip-whitespace 'back)
     (unless (bobp)
       (forward-line)
       (when (eolp) (insert "\n")))
@@ -370,12 +363,9 @@ while collecting them."
 	     (push label seen)
 	     (let* ((beg (progn
 			   (goto-char (org-element-property :begin element))
-			   (skip-chars-backward " \r\t\n")
+			   (org-skip-whitespace 'back)
 			   (if (bobp) (point) (line-beginning-position 2))))
-		    (end (progn
-			   (goto-char (org-element-property :end element))
-			   (skip-chars-backward " \r\t\n")
-			   (line-beginning-position 2)))
+		    (end (org-element-pos-before-blank element))
 		    (def (org-trim (buffer-substring-no-properties beg end))))
 	       (push (cons label def) definitions)
 	       (when delete (delete-region beg end)))))))
@@ -385,7 +375,7 @@ while collecting them."
   "Find insertion point for footnote, just before next outline heading.
 Assume insertion point is within currently accessible part of the buffer."
   (org-with-limited-levels (outline-next-heading))
-  (skip-chars-backward " \t\n")
+  (org-skip-whitespace 'back)
   (unless (bobp) (forward-line))
   (unless (bolp) (insert "\n")))
 
@@ -705,11 +695,11 @@ Return the number of footnotes removed."
 	   ;; Remove the footnote, and all blank lines before it.
 	   (delete-region (progn
 			    (goto-char start)
-			    (skip-chars-backward " \r\t\n")
+			    (org-skip-whitespace 'back)
 			    (if (bobp) (point) (line-beginning-position 2)))
 			  (progn
 			    (goto-char end)
-			    (skip-chars-backward " \r\t\n")
+			    (org-skip-whitespace 'back)
 			    (if (bobp) (point) (line-beginning-position 2))))
 	   (cl-incf ndef))))
       ndef)))

@@ -512,7 +512,7 @@ Note: this function removes any hlines in TABLE."
       (error "Not in a source block"))
     (goto-char (org-src-block-head element))
     (let* ((ind (org-current-text-indentation))
-	   (body-start (line-beginning-position 2))
+	   (body-start (org-element-value-begin element))
 	   (body (org-element-normalize-string
 		  (if (org-src-preserve-indentation-p element) new-body
 		    (with-temp-buffer
@@ -522,11 +522,7 @@ Note: this function removes any hlines in TABLE."
 		       (point-max)
 		       (+ ind org-edit-src-content-indentation))
 		      (buffer-string))))))
-      (delete-region body-start
-		     (org-with-wide-buffer
-		      (goto-char (org-element-end element))
-		      (skip-chars-backward " \t\n")
-		      (line-beginning-position)))
+      (delete-region body-start (org-element-value-end element))
       (goto-char body-start)
       (insert body))))
 

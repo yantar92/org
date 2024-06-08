@@ -1502,12 +1502,33 @@ OBJECT is the object to consider."
 (gv-define-setter org-element-contents-end (value node)
   `(org-element-put-property ,node :contents-end ,value))
 
+(defsubst org-element-value-begin (node)
+  "Get `:value-begin' property of NODE."
+  (org-element-property :value-begin node))
+
+(gv-define-setter org-element-value-begin (value node)
+  `(org-element-put-property ,node :value-begin ,value))
+
+(defsubst org-element-value-end (node)
+  "Get `:value-end' property of NODE."
+  (org-element-property :value-end node))
+
+(gv-define-setter org-element-value-end (value node)
+  `(org-element-put-property ,node :value-end ,value))
+
 (defsubst org-element-post-affiliated (node)
   "Get `:post-affiliated' property of NODE."
   (org-element-property :post-affiliated node))
 
 (gv-define-setter org-element-post-affiliated (value node)
   `(org-element-put-property ,node :post-affiliated ,value))
+
+(defsubst org-element-pos-before-blank (node)
+  "Get `:pos-before-blank' property of NODE."
+  (org-element-property :pos-before-blank node))
+
+(gv-define-setter org-element-pos-before-blank (value node)
+  `(org-element-put-property ,node :pos-before-blank ,value))
 
 (defsubst org-element-post-blank (node)
   "Get `:post-blank' property of NODE."
@@ -1614,13 +1635,13 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `center-block' type containing `:begin',
-`:end', `:contents-begin', `:contents-end', `:post-blank' and
-`:post-affiliated' properties.
+`:end', `:contents-begin', `:contents-end', `:pos-before-blank',
+`:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the block."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_CENTER[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_CENTER[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (let ((block-end-line (match-beginning 0)))
@@ -1635,7 +1656,7 @@ Assume point is at the beginning of the block."
 					(forward-line)
 					(point)))
 	       (end (save-excursion
-		      (skip-chars-forward " \r\t\n" limit)
+		      (org-skip-whitespace nil limit)
 		      (if (eobp) (point) (line-beginning-position)))))
 	  (org-element-create
            'center-block
@@ -1645,7 +1666,8 @@ Assume point is at the beginning of the block."
 		  :contents-begin contents-begin
 		  :contents-end contents-end
 		  :post-blank (count-lines pos-before-blank end)
-		  :post-affiliated post-affiliated)
+		  :post-affiliated post-affiliated
+                  :pos-before-blank pos-before-blank)
 	    (cdr affiliated))))))))
 
 (defun org-element-center-block-interpreter (_ contents)
@@ -1665,14 +1687,14 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `drawer' type containing `:drawer-name',
-`:begin', `:end', `:contents-begin', `:contents-end', `:post-blank'
-and `:post-affiliated' properties.
+`:begin', `:end', `:contents-begin', `:contents-end',
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at beginning of drawer."
   (let ((case-fold-search t))
     (if (not (save-excursion
-               (goto-char (min limit (line-end-position)))
-               (re-search-forward "^[ \t]*:END:[ \t]*$" limit t)))
+             (goto-char (min limit (line-end-position)))
+             (re-search-forward "^[ \t]*:END:[ \t]*$" limit t)))
 	;; Incomplete drawer: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (save-excursion
@@ -1691,7 +1713,7 @@ Assume point is at beginning of drawer."
 	       (pos-before-blank (progn (goto-char drawer-end-line)
 					(forward-line)
 					(point)))
-	       (end (progn (skip-chars-forward " \r\t\n" limit)
+	       (end (progn (org-skip-whitespace nil limit)
 			   (if (eobp) (point) (line-beginning-position)))))
 	  (org-element-create
            'drawer
@@ -1702,7 +1724,8 @@ Assume point is at beginning of drawer."
 		  :contents-begin contents-begin
 		  :contents-end contents-end
 		  :post-blank (count-lines pos-before-blank end)
-		  :post-affiliated post-affiliated)
+		  :post-affiliated post-affiliated
+                  :pos-before-blank pos-before-blank)
 	    (cdr affiliated))))))))
 
 (defun org-element-drawer-interpreter (drawer contents)
@@ -1725,12 +1748,13 @@ their value.
 
 Return a new syntax node of `dynamic-block' type containing
 `:block-name', `:begin', `:end', `:contents-begin', `:contents-end',
-`:arguments', `:post-blank' and `:post-affiliated' properties.
+`:arguments', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties.
 
 Assume point is at beginning of dynamic block."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END:?[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END:?[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (let ((block-end-line (match-beginning 0)))
@@ -1749,7 +1773,7 @@ Assume point is at beginning of dynamic block."
 		 (pos-before-blank (progn (goto-char block-end-line)
 					  (forward-line)
 					  (point)))
-		 (end (progn (skip-chars-forward " \r\t\n" limit)
+		 (end (progn (org-skip-whitespace nil limit)
 			     (if (eobp) (point) (line-beginning-position)))))
 	    (org-element-create
              'dynamic-block
@@ -1761,7 +1785,8 @@ Assume point is at beginning of dynamic block."
 		    :contents-begin contents-begin
 		    :contents-end contents-end
 		    :post-blank (count-lines pos-before-blank end)
-		    :post-affiliated post-affiliated)
+		    :post-affiliated post-affiliated
+                    :pos-before-blank pos-before-blank)
 	      (cdr affiliated)))))))))
 
 (defun org-element-dynamic-block-interpreter (dynamic-block contents)
@@ -1803,7 +1828,8 @@ their value.
 
 Return a new syntax node of `footnote-definition' type containing
 `:label', `:begin' `:end', `:contents-begin', `:contents-end',
-`:pre-blank',`:post-blank' and `:post-affiliated' properties.
+`:pre-blank', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties.
 
 Assume point is at the beginning of the footnote definition."
   (save-excursion
@@ -1828,12 +1854,12 @@ Assume point is at the beginning of the footnote definition."
 		  (forward-line -1))
 		(line-beginning-position 2))
 	       ((eq ?* (char-after (match-beginning 0))) (match-beginning 0))
-	       (t (skip-chars-forward " \r\t\n" limit)
+	       (t (org-skip-whitespace nil limit)
 		  (if (= limit (point)) limit (line-beginning-position))))))
 	   (pre-blank 0)
 	   (contents-begin
 	    (progn (search-forward "]")
-		   (skip-chars-forward " \r\t\n" end)
+		   (org-skip-whitespace nil end)
 		   (cond ((= (point) end) nil)
 			 ((= (line-beginning-position) post-affiliated) (point))
 			 (t
@@ -1842,7 +1868,7 @@ Assume point is at the beginning of the footnote definition."
 			  (line-beginning-position)))))
 	   (contents-end
 	    (progn (goto-char end)
-		   (skip-chars-backward " \r\t\n")
+		   (org-skip-whitespace 'back)
 		   (line-beginning-position 2))))
       (org-element-create
        'footnote-definition
@@ -1854,7 +1880,8 @@ Assume point is at the beginning of the footnote definition."
 	      :contents-end (and contents-begin contents-end)
 	      :pre-blank pre-blank
 	      :post-blank (count-lines contents-end end)
-	      :post-affiliated post-affiliated)
+	      :post-affiliated post-affiliated
+              :pos-before-blank contents-end)
 	(cdr affiliated))))))
 
 (defun org-element-footnote-definition-interpreter (footnote-definition contents)
@@ -2151,7 +2178,7 @@ Assume point is at beginning of the headline."
                 (point-max))))
 	   (contents-begin (save-excursion
 			     (forward-line)
-			     (skip-chars-forward " \r\t\n" end)
+			     (org-skip-whitespace nil end)
 			     (and (/= (point) end) (line-beginning-position))))
 	   (contents-end (and contents-begin end))
            (robust-begin
@@ -2632,8 +2659,8 @@ Do not search past LIMIT.
 Return a new syntax node of `inlinetask' type containing `:title',
 `:begin', `:end', `:pre-blank', `:contents-begin' and `:contents-end',
 `:level', `:priority', `:raw-value', `:tags', `:todo-keyword',
-`:todo-type', `:scheduled', `:deadline', `:closed', `:post-blank' and
-`:post-affiliated' properties.
+`:todo-type', `:scheduled', `:deadline', `:closed', `:post-blank',
+`:pos-before-blank', and `:post-affiliated' properties.
 
 The plist also contains any property set in the property drawer,
 with its name in upper cases and colons added at the
@@ -2659,12 +2686,14 @@ Assume point is at beginning of the inline task."
 				(< (point) task-end)
 				(progn
 				  (forward-line)
-				  (skip-chars-forward " \t\n")
+				  (org-skip-whitespace)
 				  (line-beginning-position))))
 	   (contents-end (and contents-begin task-end))
+           pos-before-blank
 	   (end (progn (when task-end (goto-char task-end))
 		       (forward-line)
-		       (skip-chars-forward " \r\t\n" limit)
+                       (setq pos-before-blank (point))
+		       (org-skip-whitespace nil limit)
 		       (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'inlinetask
@@ -2687,6 +2716,7 @@ Assume point is at beginning of the inline task."
 	:archivedp deferred-title-prop
 	:commentedp deferred-title-prop
 	:post-blank (1- (count-lines (or task-end begin) end))
+        :pos-before-blank pos-before-blank
 	:post-affiliated begin
         :secondary (alist-get
                     'inlinetask
@@ -2801,7 +2831,7 @@ Internal function.  See `org-list-struct' for details."
 	  (cond
 	   ;; At limit: end all items.
 	   ((>= (point) limit)
-	    (let ((end (progn (skip-chars-backward " \r\t\n")
+	    (let ((end (progn (org-skip-whitespace 'back)
 			      (line-beginning-position 2))))
 	      (dolist (item items) (setcar (nthcdr 6 item) end)))
 	    (throw :exit (sort (nconc items struct) #'car-less-than-car)))
@@ -2848,7 +2878,7 @@ Internal function.  See `org-list-struct' for details."
 			 (skip-chars-forward " \t")
 			 (org-current-text-column)))
 		  (end (save-excursion
-			 (skip-chars-backward " \r\t\n")
+			 (org-skip-whitespace 'back)
 			 (line-beginning-position 2))))
 	      (while (<= ind (nth 1 (car items)))
 		(let ((item (pop items)))
@@ -2905,7 +2935,7 @@ Assume point is at the beginning of the item."
 			(string-match-p "[.)]" bullet))
 		   (match-beginning 4)
 		 (match-end 0)))
-	      (skip-chars-forward " \r\t\n" end)
+	      (org-skip-whitespace nil end)
 	      (cond ((= (point) end) nil)
 		    ;; If first line isn't empty, contents really
 		    ;; start at the text after item's meta-data.
@@ -2916,7 +2946,7 @@ Assume point is at the beginning of the item."
 		     (line-beginning-position)))))
 	   (contents-end (and contents-begin
 			      (progn (goto-char end)
-				     (skip-chars-backward " \r\t\n")
+				     (org-skip-whitespace 'back)
 				     (line-beginning-position 2))))
            (counter (let ((c (match-string 2)))
 		      (cond
@@ -2938,6 +2968,7 @@ Assume point is at the beginning of the item."
 		   :counter counter
 		   :structure struct
 		   :pre-blank pre-blank
+                   :pos-before-blank contents-end
 		   :post-blank (count-lines (or contents-end begin) end)
 		   :post-affiliated begin
                    :secondary (alist-get
@@ -3022,7 +3053,7 @@ parsed.
 
 Return a new syntax node of `plain-list' type containing `:type',
 `:begin', `:end', `:contents-begin' and `:contents-end', `:structure',
-`:post-blank' and `:post-affiliated' properties.
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the list."
   (save-excursion
@@ -3040,10 +3071,10 @@ Assume point is at the beginning of the list."
 			     (setq pos (nth 6 item)))
 			   pos))
            (contents-end (progn (goto-char contents-end)
-                                (skip-chars-backward " \r\t\n")
+                                (org-skip-whitespace 'back)
                                 (if (bolp) (point) (line-beginning-position 2))))
 	   (end (progn (goto-char contents-end)
-		       (skip-chars-forward " \r\t\n" limit)
+		       (org-skip-whitespace nil limit)
 		       (if (= (point) limit) limit (line-beginning-position)))))
       ;; Return value.
       (org-element-create
@@ -3055,6 +3086,7 @@ Assume point is at the beginning of the list."
 	      :contents-begin contents-begin
 	      :contents-end contents-end
 	      :structure struct
+              :pos-before-blank contents-end
 	      :post-blank (count-lines contents-end end)
 	      :post-affiliated contents-begin)
 	(cdr affiliated))))))
@@ -3088,8 +3120,8 @@ CONTENTS is the contents of the element."
 LIMIT bounds the search.
 
 Return a new syntax node of `property-drawer' type containing
-`:begin', `:end', `:contents-begin', `:contents-end', `:post-blank'
-and `:post-affiliated' properties.
+`:begin', `:end', `:contents-begin', `:contents-end',
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the property drawer."
   (save-excursion
@@ -3100,7 +3132,7 @@ Assume point is at the beginning of the property drawer."
       (let ((contents-end (and (> (match-beginning 0) contents-begin)
 			       (match-beginning 0)))
 	    (before-blank (progn (forward-line) (point)))
-	    (end (progn (skip-chars-forward " \r\t\n" limit)
+	    (end (progn (org-skip-whitespace nil limit)
 			(if (eobp) (point) (line-beginning-position)))))
 	(org-element-create
          'property-drawer
@@ -3108,6 +3140,7 @@ Assume point is at the beginning of the property drawer."
 	       :end end
 	       :contents-begin (and contents-end contents-begin)
 	       :contents-end contents-end
+               :pos-before-blank before-blank
 	       :post-blank (count-lines before-blank end)
 	       :post-affiliated begin))))))
 
@@ -3128,13 +3161,13 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `quote-block' type containing `:begin',
-`:end', `:contents-begin', `:contents-end', `:post-blank' and
-`:post-affiliated' properties.
+`:end', `:contents-begin', `:contents-end', `:pos-before-blank',
+`:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the block."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_QUOTE[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_QUOTE[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (let ((block-end-line (match-beginning 0)))
@@ -3149,7 +3182,7 @@ Assume point is at the beginning of the block."
 		 (pos-before-blank (progn (goto-char block-end-line)
 					  (forward-line)
 					  (point)))
-		 (end (progn (skip-chars-forward " \r\t\n" limit)
+		 (end (progn (org-skip-whitespace nil limit)
 			     (if (eobp) (point) (line-beginning-position)))))
 	    (org-element-create
              'quote-block
@@ -3158,6 +3191,7 @@ Assume point is at the beginning of the block."
 		    :end end
 		    :contents-begin contents-begin
 		    :contents-end contents-end
+                    :pos-before-blank pos-before-blank
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -3218,7 +3252,7 @@ their value.
 
 Return a new syntax node of `special-block' type containing `:type',
 `:parameters', `:begin', `:end', `:contents-begin', `:contents-end',
-`:post-blank' and `:post-affiliated' properties.
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the block."
   (let* ((case-fold-search t)
@@ -3244,7 +3278,7 @@ Assume point is at the beginning of the block."
 		 (pos-before-blank (progn (goto-char block-end-line)
 					  (forward-line)
 					  (point)))
-		 (end (progn (skip-chars-forward " \r\t\n" limit)
+		 (end (progn (org-skip-whitespace nil limit)
 			     (if (eobp) (point) (line-beginning-position)))))
 	    (org-element-create
              'special-block
@@ -3256,6 +3290,7 @@ Assume point is at the beginning of the block."
 		    :end end
 		    :contents-begin contents-begin
 		    :contents-end contents-end
+                    :pos-before-blank pos-before-blank
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -3294,13 +3329,21 @@ their value.
 
 Return a new syntax node of `babel-call' type containing `:call',
 `:inside-header', `:arguments', `:end-header', `:begin', `:end',
-`:value', `:post-blank' and `:post-affiliated' as properties."
+`:value', `:value-begin', `:value-end', `:pos-before-blank',
+`:post-blank', and `:post-affiliated' as properties."
   (save-excursion
     (let* ((begin (car affiliated))
 	   (post-affiliated (point))
 	   (before-blank (line-beginning-position 2))
+           value-begin value-end
 	   (value (progn (search-forward ":" before-blank t)
 			 (skip-chars-forward " \t")
+                         (setq value-begin (point))
+                         (setq value-end
+                               (save-excursion
+                                 (goto-char (line-end-position))
+                                 (skip-chars-backward " \t")
+                                 (point)))
 			 (org-trim
 			  (buffer-substring-no-properties
 			   (point) (line-end-position)))))
@@ -3317,7 +3360,7 @@ Return a new syntax node of `babel-call' type containing `:call',
 	     (org-trim
 	      (buffer-substring-no-properties (point) (line-end-position)))))
 	   (end (progn (forward-line)
-		       (skip-chars-forward " \r\t\n" limit)
+		       (org-skip-whitespace nil limit)
 		       (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'babel-call
@@ -3328,7 +3371,10 @@ Return a new syntax node of `babel-call' type containing `:call',
 	      :end-header end-header
 	      :begin begin
 	      :end end
+              :value-begin value-begin
+              :value-end value-end
 	      :value value
+              :pos-before-blank before-blank
 	      :post-blank (count-lines before-blank end)
 	      :post-affiliated post-affiliated)
 	(cdr affiliated))))))
@@ -3352,23 +3398,28 @@ Return a new syntax node of `babel-call' type containing `:call',
 LIMIT bounds the search.
 
 Return a new syntax node of `clock' type containing `:status',
-`:value', `:time', `:begin', `:end', `:post-blank' and
-`:post-affiliated' as properties."
+`:value', `:value-begin', `:value-end', `:time', `:begin', `:end',
+`:pos-before-blank', `:post-blank' and `:post-affiliated' as
+properties."
   (save-excursion
     (let* ((begin (point))
+           value-begin
 	   (value (progn (search-forward org-clock-string (line-end-position) t)
 			 (skip-chars-forward " \t")
+                         (setq value-begin (point))
 			 (org-element-timestamp-parser)))
+           (value-end (org-element-end value))
 	   (duration (and (search-forward "=> " (line-end-position) t)
 			  (progn (skip-chars-forward " \t")
 				 (looking-at "\\(\\S-+\\)[ \t]*$"))
 			  (match-string-no-properties 1)))
 	   (status (if duration 'closed 'running))
-	   (post-blank (let ((before-blank (progn (forward-line) (point))))
-			 (skip-chars-forward " \r\t\n" limit)
+           (pos-before-blank (progn (forward-line) (point)))
+	   (post-blank (progn
+			 (org-skip-whitespace nil limit)
 			 (skip-chars-backward " \t")
 			 (unless (bolp) (skip-chars-forward " \t"))
-			 (count-lines before-blank (point))))
+			 (count-lines pos-before-blank (point))))
 	   (end (point)))
       (org-element-create
        'clock
@@ -3377,6 +3428,9 @@ Return a new syntax node of `clock' type containing `:status',
 	     :duration duration
 	     :begin begin
 	     :end end
+             :value-begin value-begin
+             :value-end value-end
+             :pos-before-blank pos-before-blank
 	     :post-blank post-blank
 	     :post-affiliated begin)))))
 
@@ -3401,7 +3455,8 @@ Return a new syntax node of `clock' type containing `:status',
 LIMIT bounds the search.
 
 Return a new syntax node of `comment' type containing `:begin',
-`:end', `:value', `:post-blank', `:post-affiliated' properties.
+`:end', `:value', `:pos-before-blank', `:post-blank',
+`:post-affiliated' properties.
 
 Assume point is at comment beginning."
   (save-excursion
@@ -3424,7 +3479,7 @@ Assume point is at comment beginning."
 		(forward-line))
 	      (point)))
 	   (end (progn (goto-char com-end)
-		       (skip-chars-forward " \r\t\n" limit)
+		       (org-skip-whitespace nil limit)
 		       (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'comment
@@ -3432,6 +3487,7 @@ Assume point is at comment beginning."
 	     :end end
 	     :value value
 	     :post-blank (count-lines com-end end)
+             :pos-before-blank com-end
 	     :post-affiliated begin)))))
 
 (defun org-element-comment-interpreter (comment _)
@@ -3451,35 +3507,39 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `comment-block' type containing `:begin',
-`:end', `:value', `:post-blank' and `:post-affiliated' properties.
+`:end', `:value', `:value-begin', `:value-end', `:pos-before-blank',
+`:post-blank' and `:post-affiliated' properties.
 
 Assume point is at comment block beginning."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_COMMENT[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_COMMENT[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
-      (let ((contents-end (match-beginning 0)))
+      (let ((value-end (match-beginning 0)))
 	(save-excursion
 	  (let* ((begin (car affiliated))
 		 (post-affiliated (point))
-		 (contents-begin (progn (forward-line) (point)))
-		 (pos-before-blank (progn (goto-char contents-end)
+		 (value-begin (progn (forward-line) (point)))
+		 (pos-before-blank (progn (goto-char value-end)
 					  (forward-line)
 					  (point)))
-		 (end (progn (skip-chars-forward " \r\t\n" limit)
+		 (end (progn (org-skip-whitespace nil limit)
 			     (if (eobp) (point) (line-beginning-position))))
 		 (value
                   (org-element-deferred-create
                    t #'org-element--substring
-                   (- contents-begin begin)
-                   (- contents-end begin))))
+                   (- value-begin begin)
+                   (- value-end begin))))
 	    (org-element-create
              'comment-block
 	     (nconc
 	      (list :begin begin
 		    :end end
+                    :value-begin value-begin
+                    :value-end value-end
 		    :value value
+                    :pos-before-blank pos-before-blank
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -3503,14 +3563,15 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `diary-sexp' type containing `:begin',
-`:end', `:value', `:post-blank' and `:post-affiliated' properties."
+`:end', `:value', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties."
   (save-excursion
     (let ((begin (car affiliated))
 	  (post-affiliated (point))
 	  (value (progn (looking-at "\\(%%(.*\\)[ \t]*$")
 			(match-string-no-properties 1)))
 	  (pos-before-blank (progn (forward-line) (point)))
-	  (end (progn (skip-chars-forward " \r\t\n" limit)
+	  (end (progn (org-skip-whitespace nil limit)
 		      (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'diary-sexp
@@ -3518,6 +3579,7 @@ Return a new syntax node of `diary-sexp' type containing `:begin',
 	(list :value value
 	      :begin begin
 	      :end end
+              :pos-before-blank pos-before-blank
 	      :post-blank (count-lines pos-before-blank end)
 	      :post-affiliated post-affiliated)
 	(cdr affiliated))))))
@@ -3539,14 +3601,15 @@ their value.
 
 Return a new syntax node of `example-block' type containing `:begin',
 `:end', `:number-lines', `:preserve-indent', `:retain-labels',
-`:use-labels', `:label-fmt', `:switches', `:value', `:post-blank' and
+`:use-labels', `:label-fmt', `:switches', `:value', `:value-begin',
+`:value-end', `:pos-before-blank', `:post-blank' and
 `:post-affiliated' properties."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_EXAMPLE[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_EXAMPLE[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
-      (let ((contents-end (match-beginning 0)))
+      (let ((value-end (match-beginning 0)))
 	(save-excursion
 	  (let* ((switches
 		  (progn
@@ -3586,16 +3649,16 @@ Return a new syntax node of `example-block' type containing `:begin',
 		 ;; Standard block parsing.
 		 (begin (car affiliated))
 		 (post-affiliated (point))
-		 (contents-begin (line-beginning-position 2))
+		 (value-begin (line-beginning-position 2))
 		 (value
                   (org-element-deferred-create
                    t #'org-element--unescape-substring
-                   (- contents-begin begin)
-                   (- contents-end begin)))
-		 (pos-before-blank (progn (goto-char contents-end)
+                   (- value-begin begin)
+                   (- value-end begin)))
+		 (pos-before-blank (progn (goto-char value-end)
 					  (forward-line)
 					  (point)))
-		 (end (progn (skip-chars-forward " \r\t\n" limit)
+		 (end (progn (org-skip-whitespace nil limit)
 			     (if (eobp) (point) (line-beginning-position)))))
 	    (org-element-create
              'example-block
@@ -3603,12 +3666,15 @@ Return a new syntax node of `example-block' type containing `:begin',
 	      (list :begin begin
 		    :end end
 		    :value value
+                    :value-begin value-begin
+                    :value-end value-end
 		    :switches switches
 		    :number-lines number-lines
 		    :preserve-indent preserve-indent
 		    :retain-labels retain-labels
 		    :use-labels use-labels
 		    :label-fmt label-fmt
+                    :pos-before-blank pos-before-blank
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -3643,17 +3709,17 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `export-block' type containing `:begin',
-`:end', `:type', `:value', `:post-blank' and `:post-affiliated'
-properties.
+`:end', `:type', `:value', `:value-begin', `:value-end',
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at export-block beginning."
   (let* ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_EXPORT[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_EXPORT[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (save-excursion
-	(let* ((contents-end (match-beginning 0))
+	(let* ((value-end (match-beginning 0))
 	       (backend
 		(progn
 		  (looking-at
@@ -3661,24 +3727,27 @@ Assume point is at export-block beginning."
 		  (match-string-no-properties 1)))
 	       (begin (car affiliated))
 	       (post-affiliated (point))
-	       (contents-begin (progn (forward-line) (point)))
-	       (pos-before-blank (progn (goto-char contents-end)
+	       (value-begin (progn (forward-line) (point)))
+	       (pos-before-blank (progn (goto-char value-end)
 					(forward-line)
 					(point)))
-	       (end (progn (skip-chars-forward " \r\t\n" limit)
+	       (end (progn (org-skip-whitespace nil limit)
 			   (if (eobp) (point) (line-beginning-position))))
 	       (value
                 (org-element-deferred-create
                  t #'org-element--unescape-substring
-                 (- contents-begin begin)
-                 (- contents-end begin))))
+                 (- value-begin begin)
+                 (- value-end begin))))
 	  (org-element-create
            'export-block
 	   (nconc
 	    (list :type (and backend (upcase backend))
 		  :begin begin
 		  :end end
+		  :value-begin value-begin
+		  :value-end value-end
 		  :value value
+                  :pos-before-blank pos-before-blank
 		  :post-blank (count-lines pos-before-blank end)
 		  :post-affiliated post-affiliated)
 	    (cdr affiliated))))))))
@@ -3701,19 +3770,22 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `fixed-width' type containing `:begin',
-`:end', `:value', `:post-blank' and `:post-affiliated' properties.
+`:end', `:value', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties.
 
 Assume point is at the beginning of the fixed-width area."
   (save-excursion
     (let* ((begin (car affiliated))
 	   (post-affiliated (point))
+           pos-before-blank
 	   (end-area
 	    (progn
 	      (while (and (< (point) limit)
 			  (looking-at-p "[ \t]*:\\( \\|$\\)"))
 		(forward-line))
+              (setq pos-before-blank (point))
 	      (if (bolp) (line-end-position 0) (point))))
-	   (end (progn (skip-chars-forward " \r\t\n" limit)
+	   (end (progn (org-skip-whitespace nil limit)
 		       (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'fixed-width
@@ -3724,7 +3796,8 @@ Assume point is at the beginning of the fixed-width area."
 		      "^[ \t]*: ?" ""
 		      (buffer-substring-no-properties post-affiliated
 						      end-area))
-	      :post-blank (count-lines end-area end)
+	      :post-blank (count-lines pos-before-blank end)
+              :pos-before-blank pos-before-blank
 	      :post-affiliated post-affiliated)
 	(cdr affiliated))))))
 
@@ -3747,12 +3820,13 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `horizontal-rule' type containing
-`:begin', `:end', `:post-blank' and `:post-affiliated' properties."
+`:begin', `:end', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties."
   (save-excursion
     (let ((begin (car affiliated))
 	  (post-affiliated (point))
 	  (post-hr (progn (forward-line) (point)))
-	  (end (progn (skip-chars-forward " \r\t\n" limit)
+	  (end (progn (org-skip-whitespace nil limit)
 		      (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'horizontal-rule
@@ -3760,6 +3834,7 @@ Return a new syntax node of `horizontal-rule' type containing
 	(list :begin begin
 	      :end end
 	      :post-blank (count-lines post-hr end)
+              :pos-before-blank post-hr
 	      :post-affiliated post-affiliated)
 	(cdr affiliated))))))
 
@@ -3779,8 +3854,8 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `keyword' type containing `:key',
-`:value', `:begin', `:end', `:post-blank' and `:post-affiliated'
-properties."
+`:value', `:begin', `:end', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties."
   (save-excursion
     ;; An orphaned affiliated keyword is considered as a regular
     ;; keyword.  In this case AFFILIATED is nil, so we take care of
@@ -3793,7 +3868,7 @@ properties."
 	  (value (org-trim (buffer-substring-no-properties
                             (match-end 0) (line-end-position))))
 	  (pos-before-blank (progn (forward-line) (point)))
-	  (end (progn (skip-chars-forward " \r\t\n" limit)
+	  (end (progn (org-skip-whitespace nil limit)
 		      (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'keyword
@@ -3802,6 +3877,7 @@ properties."
 	      :value value
 	      :begin begin
 	      :end end
+              :pos-before-blank pos-before-blank
 	      :post-blank (count-lines pos-before-blank end)
 	      :post-affiliated post-affiliated)
 	(cdr affiliated))))))
@@ -3840,36 +3916,39 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `latex-environment' type containing
-`:begin', `:end', `:value', `:post-blank' and `:post-affiliated'
-properties.
+`:begin', `:end', `:value', `:value-begin', `:value-end',
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the latex environment."
   (save-excursion
     (let ((case-fold-search t)
-	  (code-begin (point)))
+	  (value-begin (point)))
       (looking-at org-element--latex-begin-environment)
       (if (not (re-search-forward (format org-element--latex-end-environment
-					(regexp-quote (match-string 1)))
-				limit t))
+					  (regexp-quote (match-string 1)))
+				  limit t))
 	  ;; Incomplete latex environment: parse it as a paragraph.
 	  (org-element-paragraph-parser limit affiliated)
-	(let* ((code-end (progn (forward-line) (point)))
+	(let* ((value-end (progn (forward-line) (point)))
 	       (begin (car affiliated))
 	       (value
                 (org-element-deferred-create
                  t #'org-element--substring
-                 (- code-begin begin)
-                 (- code-end begin)))
-	       (end (progn (skip-chars-forward " \r\t\n" limit)
+                 (- value-begin begin)
+                 (- value-end begin)))
+	       (end (progn (org-skip-whitespace nil limit)
 			   (if (eobp) (point) (line-beginning-position)))))
 	  (org-element-create
            'latex-environment
 	   (nconc
 	    (list :begin begin
 		  :end end
+                  :value-begin value-begin
+                  :value-end value-end
 		  :value value
-		  :post-blank (count-lines code-end end)
-		  :post-affiliated code-begin)
+                  :pos-before-blank value-end
+		  :post-blank (count-lines value-end end)
+		  :post-affiliated value-begin)
 	    (cdr affiliated))))))))
 
 (defun org-element-latex-environment-interpreter (latex-environment _)
@@ -3883,8 +3962,8 @@ Assume point is at the beginning of the latex environment."
   "Parse a node-property at point.
 
 Return a new syntax node of `node-property' type containing `:key',
-`:value', `:begin', `:end', `:post-blank' and `:post-affiliated'
-properties."
+`:value', `:begin', `:end', `:pos-before-blank', `:post-blank' and
+`:post-affiliated' properties."
   (looking-at org-property-re)
   (let ((begin (point))
 	(key   (org-element--get-cached-string
@@ -3897,7 +3976,8 @@ properties."
 	   :value value
 	   :begin begin
 	   :end end
-	   :post-blank 0
+           :pos-before-blank end
+           :post-blank 0
 	   :post-affiliated begin))))
 
 (defun org-element-node-property-interpreter (node-property _)
@@ -3963,9 +4043,9 @@ Assume point is at the beginning of the paragraph."
 	      (if (= (point) limit) limit
 		(goto-char (line-beginning-position)))))
 	   (contents-end (save-excursion
-			   (skip-chars-backward " \r\t\n" contents-begin)
+			   (org-skip-whitespace 'back contents-begin)
 			   (line-beginning-position 2)))
-	   (end (progn (skip-chars-forward " \r\t\n" limit)
+	   (end (progn (org-skip-whitespace nil limit)
 		       (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'paragraph
@@ -3974,6 +4054,7 @@ Assume point is at the beginning of the paragraph."
 	      :end end
 	      :contents-begin contents-begin
 	      :contents-end contents-end
+              :pos-before-blank before-blank
 	      :post-blank (count-lines before-blank end)
 	      :post-affiliated contents-begin)
 	(cdr affiliated))))))
@@ -3992,13 +4073,14 @@ CONTENTS is the contents of the element."
 LIMIT bounds the search.
 
 Return a new syntax node of `planning' type containing `:closed',
-`:deadline', `:scheduled', `:begin', `:end', `:post-blank' and
-`:post-affiliated' properties."
+`:deadline', `:scheduled', `:begin', `:end', `:pos-before-blank',
+`:post-blank' and `:post-affiliated' properties."
   (save-excursion
     (let* ((case-fold-search nil)
 	   (begin (point))
-	   (post-blank (let ((before-blank (progn (forward-line) (point))))
-			 (skip-chars-forward " \r\t\n" limit)
+           (before-blank (progn (forward-line) (point)))
+	   (post-blank (progn
+                         (org-skip-whitespace nil limit)
 			 (skip-chars-backward " \t")
 			 (unless (bolp) (skip-chars-forward " \t"))
 			 (count-lines before-blank (point))))
@@ -4020,6 +4102,7 @@ Return a new syntax node of `planning' type containing `:closed',
 	     :scheduled scheduled
 	     :begin begin
 	     :end end
+             :pos-before-blank before-blank
 	     :post-blank post-blank
 	     :post-affiliated begin)))))
 
@@ -4056,15 +4139,16 @@ their value.
 Return a new syntax node of `src-block' type containing `:language',
 `:switches', `:parameters', `:begin', `:end', `:number-lines',
 `:retain-labels', `:use-labels', `:label-fmt', `:preserve-indent',
-`:value', `:post-blank' and `:post-affiliated' properties.
+`:value', `:value-begin', `:value-end', `:pos-before-blank',
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the block."
   (let ((case-fold-search t))
     (if (not (save-excursion (re-search-forward "^[ \t]*#\\+END_SRC[ \t]*$"
-						limit t)))
+					        limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
-      (let ((contents-end (match-beginning 0)))
+      (let ((value-end (match-beginning 0)))
 	(save-excursion
 	  (let* ((begin (car affiliated))
 		 (post-affiliated (point))
@@ -4114,16 +4198,17 @@ Assume point is at the beginning of the block."
 		      (and retain-labels
 			   (not (string-match-p "-k\\>" switches)))))
 		 ;; Retrieve code.
+                 (value-begin (line-beginning-position 2))
 		 (value
                   (org-element-deferred-create
                    t #'org-element--unescape-substring
-                   (- (line-beginning-position 2) begin)
-                   (- contents-end begin)))
-		 (pos-before-blank (progn (goto-char contents-end)
+                   (- value-begin begin)
+                   (- value-end begin)))
+		 (pos-before-blank (progn (goto-char value-end)
 					  (forward-line)
 					  (point)))
 		 ;; Get position after ending blank lines.
-		 (end (progn (skip-chars-forward " \r\t\n" limit)
+		 (end (progn (org-skip-whitespace nil limit)
 			     (if (eobp) (point) (line-beginning-position)))))
 	    (org-element-create
              'src-block
@@ -4135,12 +4220,15 @@ Assume point is at the beginning of the block."
 				     (org-trim parameters))
 		    :begin begin
 		    :end end
+                    :value-begin value-begin
+                    :value-end value-end
 		    :number-lines number-lines
 		    :preserve-indent preserve-indent
 		    :retain-labels retain-labels
 		    :use-labels use-labels
 		    :label-fmt label-fmt
 		    :value value
+                    :pos-before-blank pos-before-blank
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -4180,7 +4268,7 @@ their value.
 
 Return a new syntax node of `table' type containing `:begin', `:end',
 `:tblfm', `:type', `:contents-begin', `:contents-end', `:value',
-`:post-blank' and `:post-affiliated' properties.
+`:pos-before-blank', `:post-blank' and `:post-affiliated' properties.
 
 Assume point is at the beginning of the table."
   (save-excursion
@@ -4203,7 +4291,7 @@ Assume point is at the beginning of the table."
 		      (forward-line))
 		    acc))
 	   (pos-before-blank (point))
-	   (end (progn (skip-chars-forward " \r\t\n" limit)
+	   (end (progn (org-skip-whitespace nil limit)
 		       (if (eobp) (point) (line-beginning-position)))))
       (org-element-create
        'table
@@ -4222,6 +4310,7 @@ Assume point is at the beginning of the table."
                            t #'org-element--substring
                            (- table-begin begin)
                            (- table-end begin)))
+              :pos-before-blank pos-before-blank
 	      :post-blank (count-lines pos-before-blank end)
 	      :post-affiliated table-begin)
 	(cdr affiliated))))))
@@ -4268,6 +4357,7 @@ Return a new syntax node of `table-row' type containing `:begin',
 	     :end end
 	     :contents-begin contents-begin
 	     :contents-end contents-end
+             :pos-before-blank contents-end
 	     :post-blank 0
 	     :post-affiliated begin)))))
 
@@ -4289,13 +4379,13 @@ keyword and CDR is a plist of affiliated keywords along with
 their value.
 
 Return a new syntax node of `verse-block' type containing `:begin',
-`:end', `:contents-begin', `:contents-end', `:post-blank' and
-`:post-affiliated' properties.
+`:end', `:contents-begin', `:contents-end', `:pos-before-blank',
+`:post-blank' and `:post-affiliated' properties.
 
 Assume point is at beginning of the block."
   (let ((case-fold-search t))
     (if (not (save-excursion
-	       (re-search-forward "^[ \t]*#\\+END_VERSE[ \t]*$" limit t)))
+	     (re-search-forward "^[ \t]*#\\+END_VERSE[ \t]*$" limit t)))
 	;; Incomplete block: parse it as a paragraph.
 	(org-element-paragraph-parser limit affiliated)
       (let ((contents-end (match-beginning 0)))
@@ -4315,6 +4405,7 @@ Assume point is at beginning of the block."
 		    :end end
 		    :contents-begin contents-begin
 		    :contents-end contents-end
+                    :pos-before-blank pos-before-blank
 		    :post-blank (count-lines pos-before-blank end)
 		    :post-affiliated post-affiliated)
 	      (cdr affiliated)))))))))
@@ -4379,6 +4470,7 @@ Assume point is at first MARK."
                    (append
                     (list :begin origin
                           :end (point)
+                          :pos-before-blank (- (point) post-blank)
                           :post-blank post-blank)
                     (if (memq type '(code verbatim))
                         (list :value
@@ -4386,7 +4478,9 @@ Assume point is at first MARK."
                                    (org-element-deferred-create
                                     t #'org-element--substring
                                     (- contents-begin origin)
-                                    (- contents-end origin))))
+                                    (- contents-end origin)))
+                              :value-begin contents-begin
+                              :value-end contents-end)
                       (list :contents-begin contents-begin
                             :contents-end contents-end)))))))))))))
 
@@ -4437,6 +4531,7 @@ Assume point is at the beginning of the citation."
                   'citation
 		  (list :style style
 			:begin begin
+                        :pos-before-blank closing
 			:post-blank (progn
 				      (goto-char closing)
 				      (skip-chars-forward " \t"))
@@ -4515,6 +4610,7 @@ Assume point is at the beginning of the reference."
 		 (list :key key
 		       :begin begin
 		       :end end
+                       :pos-before-blank end
 		       :post-blank 0
                        :secondary (alist-get
                                    'citation-reference
@@ -4545,7 +4641,8 @@ Assume point is at the beginning of the reference."
   "Parse code object at point, if any.
 
 When at a code object, return a new syntax node of `code' type
-containing `:value', `:begin', `:end' and `:post-blank' properties.
+containing `:value', `:value-begin', `:value-end', `:begin', `:end'
+and `:post-blank' properties.
 Otherwise, return nil.
 
 Assume point is at the first tilde marker."
@@ -4602,6 +4699,7 @@ Assume point is at the beginning of the entity."
 		 :begin begin
 		 :end end
 		 :use-brackets-p bracketsp
+                 :pos-before-blank (- end post-blank)
 		 :post-blank post-blank)))))))
 
 (defun org-element-entity-interpreter (entity _)
@@ -4618,34 +4716,38 @@ Assume point is at the beginning of the entity."
 
 When at an export snippet, return a new syntax node of
 `export-snippet' type containing `:begin', `:end', `:back-end',
-`:value' and `:post-blank' as properties.  Otherwise, return nil.
+`:value', `:value-begin', `:value-end', and `:post-blank' as
+properties.  Otherwise, return nil.
 
 Assume point is at the beginning of the snippet."
   (save-excursion
     (when (looking-at "@@\\([-A-Za-z0-9]+\\):")
       (goto-char (match-end 0))
       (let* ((begin (match-beginning 0))
-             (contents-begin (match-end 0))
+             (value-begin (match-end 0))
 	     (backend (org-element--get-cached-string
                        (match-string-no-properties 1)))
-             (contents-end
+             (value-end
               (when (re-search-forward "@@" nil t)
 		(match-beginning 0)))
 	     (value
-              (when contents-end
+              (when value-end
                 (org-element-deferred-create
                  t #'org-element--substring
-                 (- contents-begin begin)
-                 (- contents-end begin))))
+                 (- value-begin begin)
+                 (- value-end begin))))
 	     (post-blank (skip-chars-forward " \t"))
 	     (end (point)))
-        (when contents-end ; No match when no trailing "@@".
+        (when value-end ; No match when no trailing "@@".
 	  (org-element-create
            'export-snippet
 	   (list :back-end backend
 	         :value value
 	         :begin begin
 	         :end end
+                 :value-begin value-begin
+                 :value-end value-end
+                 :pos-before-blank (- end post-blank)
 	         :post-blank post-blank)))))))
 
 (defun org-element-export-snippet-interpreter (export-snippet _)
@@ -4686,6 +4788,7 @@ properties.  Otherwise, return nil."
 		   :end end
 		   :contents-begin (and (eq type 'inline) inner-begin)
 		   :contents-end (and (eq type 'inline) inner-end)
+                   :pos-before-blank closing
 		   :post-blank post-blank))))))))
 
 (defun org-element-footnote-reference-interpreter (footnote-reference contents)
@@ -4742,6 +4845,7 @@ Assume point is at the beginning of the babel call."
 		 :begin begin
 		 :end end
 		 :value value
+                 :pos-before-blank (- end post-blank)
 		 :post-blank post-blank)))))))
 
 (defun org-element-inline-babel-call-interpreter (inline-babel-call _)
@@ -4762,8 +4866,8 @@ Assume point is at the beginning of the babel call."
 
 When at an inline source block, return a new syntax node of
 `inline-src-block' type containing `:begin', `:end', `:language',
-`:value', `:parameters' and `:post-blank' as properties.  Otherwise,
-return nil.
+`:value', `:value-begin', `:value-end', `:parameters' and
+`:post-blank' as properties.  Otherwise, return nil.
 
 Assume point is at the beginning of the inline source block."
   (save-excursion
@@ -4778,16 +4882,21 @@ Assume point is at the beginning of the inline source block."
 	       (let ((p (org-element--parse-paired-brackets ?\[)))
 		 (and (org-string-nw-p p)
 		      (replace-regexp-in-string "\n[ \t]*" " " (org-trim p)))))
+              (value-begin (point))
 	      (value (or (org-element--parse-paired-brackets ?\{)
 			 (throw :no-object nil)))
+              (value-end (point))
 	      (post-blank (skip-chars-forward " \t")))
 	  (org-element-create
            'inline-src-block
 	   (list :language language
 		 :value value
+                 :value-begin value-begin
+                 :value-end value-end
 		 :parameters parameters
 		 :begin begin
 		 :end (point)
+                 :pos-before-blank value-end
 		 :post-blank post-blank)))))))
 
 (defun org-element-inline-src-block-interpreter (inline-src-block _)
@@ -4850,10 +4959,10 @@ Assume point is at the beginning of the LaTeX fragment."
 	       (t
 		(and (not (eq ?$ (char-before)))
 		     (not (memq (char-after (1+ (point)))
-			      '(?\s ?\t ?\n ?, ?. ?\;)))
+			        '(?\s ?\t ?\n ?, ?. ?\;)))
 		     (search-forward "$" nil t 2)
 		     (not (memq (char-before (match-beginning 0))
-			      '(?\s ?\t ?\n ?, ?.)))
+			        '(?\s ?\t ?\n ?, ?.)))
 		     (looking-at-p
 		      "\\(\\s.\\|\\s-\\|\\s(\\|\\s)\\|\\s\"\\|'\\|$\\)")
 		     (point)))))
@@ -4870,6 +4979,7 @@ Assume point is at the beginning of the LaTeX fragment."
                 0 (- after-fragment begin))
 	       :begin begin
 	       :end end
+               :pos-before-blank after-fragment
 	       :post-blank post-blank))))))
 
 (defun org-element-latex-fragment-interpreter (latex-fragment _)
@@ -4892,6 +5002,7 @@ Assume point is at the beginning of the line break."
      'line-break
      (list :begin (point)
 	   :end (line-beginning-position 2)
+           :pos-before-blank (line-beginning-position 2)
 	   :post-blank 0))))
 
 (defun org-element-line-break-interpreter (&rest _)
@@ -5114,6 +5225,7 @@ Assume point is at the beginning of the link."
 	     :end end
 	     :contents-begin contents-begin
 	     :contents-end contents-end
+             :pos-before-blank link-end
 	     :post-blank post-blank)))))
 
 (defun org-element-link-interpreter (link contents)
@@ -5206,8 +5318,8 @@ Return a list of arguments, as strings.  This is the opposite of
   "Parse macro at point, if any.
 
 When at a macro, return a new syntax node of `macro' type containing
-`:key', `:args', `:begin', `:end', `:value' and `:post-blank' as
-properties.  Otherwise, return nil.
+`:key', `:args', `:begin', `:end', `:value', `:value-begin',
+`:value-end', and `:post-blank' as properties.  Otherwise, return nil.
 
 Assume point is at the macro."
   (save-excursion
@@ -5216,6 +5328,8 @@ Assume point is at the macro."
 	    (key (org-element--get-cached-string
                   (downcase (match-string-no-properties 1))))
 	    (value (match-string-no-properties 0))
+            (value-begin (match-beginning 0))
+            (value-end (match-end 0))
 	    (post-blank (progn (goto-char (match-end 0))
 			       (skip-chars-forward " \t")))
 	    (end (point))
@@ -5228,9 +5342,12 @@ Assume point is at the macro."
          'macro
 	 (list :key key
 	       :value value
+               :value-begin value-begin
+               :value-end value-end
 	       :args args
 	       :begin begin
 	       :end end
+               :pos-before-blank (- end post-blank)
 	       :post-blank post-blank))))))
 
 (defun org-element-macro-interpreter (macro _)
@@ -5267,6 +5384,7 @@ Assume point is at the radio target."
 	       :end end
 	       :contents-begin contents-begin
 	       :contents-end contents-end
+               :pos-before-blank (- end post-blank)
 	       :post-blank post-blank
 	       :value value))))))
 
@@ -5299,6 +5417,7 @@ Assume point is at the beginning of the statistics-cookie."
 	 (list :begin begin
 	       :end end
 	       :value value
+               :pos-before-blank (- end post-blank)
 	       :post-blank post-blank))))))
 
 (defun org-element-statistics-cookie-interpreter (statistics-cookie _)
@@ -5365,6 +5484,7 @@ Assume point is at the underscore."
 	         :use-brackets-p bracketsp
 	         :contents-begin contents-begin
 	         :contents-end contents-end
+                 :pos-before-blank (- end post-blank)
 	         :post-blank post-blank)))))))
 
 (defun org-element-subscript-interpreter (subscript contents)
@@ -5404,6 +5524,7 @@ Assume point is at the caret."
 	       :use-brackets-p bracketsp
 	       :contents-begin contents-begin
 	       :contents-end contents-end
+               :pos-before-blank (- end post-blank)
 	       :post-blank post-blank))))))
 
 (defun org-element-superscript-interpreter (superscript contents)
@@ -5432,6 +5553,7 @@ properties."
 	   :end end
 	   :contents-begin contents-begin
 	   :contents-end contents-end
+           :pos-before-blank end
 	   :post-blank 0))))
 
 (defun org-element-table-cell-interpreter (_ contents)
@@ -5446,14 +5568,16 @@ CONTENTS is the contents of the cell, or nil."
   "Parse target at point, if any.
 
 When at a target, return a new syntax node of `target' type containing
-`:begin', `:end', `:value' and `:post-blank' as properties.
-Otherwise, return nil.
+`:begin', `:end', `:value', `:value-begin', `:value-end', and
+`:post-blank' as properties.  Otherwise, return nil.
 
 Assume point is at the target."
   (save-excursion
     (when (looking-at org-target-regexp)
       (let ((begin (point))
 	    (value (match-string-no-properties 1))
+            (value-begin (match-beginning 1))
+            (value-end (match-end 1))
 	    (post-blank (progn (goto-char (match-end 0))
 			       (skip-chars-forward " \t")))
 	    (end (point)))
@@ -5462,6 +5586,9 @@ Assume point is at the target."
 	 (list :begin begin
 	       :end end
 	       :value value
+               :value-begin value-begin
+               :value-end value-end
+               :pos-before-blank (- end post-blank)
 	       :post-blank post-blank))))))
 
 (defun org-element-target-interpreter (target _)
@@ -5625,6 +5752,7 @@ Assume point is at the beginning of the timestamp."
 		      :minute-end minute-end
 		      :begin begin
 		      :end end
+                      :pos-before-blank (- end post-blank)
 		      :post-blank post-blank)
                 (and diary-sexp (list :diary-sexp diary-sexp))
 		repeater-props
@@ -5784,8 +5912,8 @@ CONTENTS is the contents of the object."
   "Parse verbatim object at point, if any.
 
 When at a verbatim object, return a new syntax node of `verbatim' type
-containing `:value', `:begin', `:end' and `:post-blank' properties.
-Otherwise, return nil.
+containing `:value', `:value-begin', `:value-end', `:begin', `:end'
+and `:post-blank' properties.  Otherwise, return nil.
 
 Assume point is at the first equal sign marker."
   (org-element--parse-generic-emphasis "=" 'verbatim))
@@ -5905,7 +6033,7 @@ element it has to parse."
                    (skip-chars-forward "[:blank:]") ; faster than looking-at-p
                    (or (not (eolp)) ; very cheap
                        ;; Document-wide property drawer may be preceded by blank lines.
-                       (progn (skip-chars-backward " \t\n\r") (bobp)))))
+                       (progn (org-skip-whitespace 'back) (bobp)))))
 	        (_ nil))
 	      (looking-at-p org-property-drawer-re))
 	 (org-element-property-drawer-parser limit))
@@ -6972,7 +7100,7 @@ indentation removed from its contents."
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
-(defconst org-element-cache-version "2.7"
+(defconst org-element-cache-version "2.8"
   "Version number for Org AST structure.
 Used to avoid loading obsolete AST representation when using
 `org-element-cache-persistent'.")
@@ -7597,9 +7725,9 @@ TIME-LIMIT is a time value or nil."
   "Shift ELEMENT properties relative to buffer positions by OFFSET.
 
 Properties containing buffer positions are `:begin', `:end',
-`:contents-begin', `:contents-end' and `:structure'.  When
-optional argument PROPS is a list of keywords, only shift
-properties provided in that list.
+`:post-affiliated' `:contents-begin', `:contents-end', `:value-begin',
+`:value-end', and `:structure'.  When optional argument PROPS is a
+list of keywords, only shift properties provided in that list.
 
 Properties are modified by side-effect."
   ;; Shift `:structure' property for the first plain list only: it
@@ -7626,12 +7754,21 @@ Properties are modified by side-effect."
       (cl-incf (org-element-end element) offset))
     (when (or (not props) (memq :post-affiliated props))
       (cl-incf (org-element-post-affiliated element) offset))
+    (when (and (or (not props) (memq :pos-before-blank props))
+               (org-element-pos-before-blank element))
+      (cl-incf (org-element-pos-before-blank element) offset))
     (when (and (or (not props) (memq :contents-begin props))
                (org-element-contents-begin element))
       (cl-incf (org-element-contents-begin element) offset))
     (when (and (or (not props) (memq :contents-end props))
                (org-element-contents-end element))
       (cl-incf (org-element-contents-end element) offset))
+    (when (and (or (not props) (memq :value-begin props))
+               (org-element-value-begin element))
+      (cl-incf (org-element-value-begin element) offset))
+    (when (and (or (not props) (memq :value-end props))
+               (org-element-value-end element))
+      (cl-incf (org-element-value-end element) offset))
     (when (and (or (not props) (memq :robust-begin props))
                (org-element-property :robust-begin element))
       (cl-incf (org-element-property :robust-begin element) offset))
@@ -7952,8 +8089,8 @@ completing the request."
                             up (- offset)
                             (if (and (org-element-property :robust-begin up)
                                      (org-element-property :robust-end up))
-                                '(:contents-end :end :robust-end)
-                              '(:contents-end :end))))
+                                '(:pos-before-blank :contents-end :end :robust-end)
+                              '(:pos-before-blank :contents-end :end))))
                          ;; Cached elements cannot have deferred `:parent'.
                          (setq up (org-element-property-raw :parent up)))))
                    (org-element--cache-log-message
@@ -8166,7 +8303,7 @@ the expected result."
        (goto-char pos)
        (save-excursion
          (forward-line 1)
-         (skip-chars-backward " \r\t\n")
+         (org-skip-whitespace 'back)
          ;; Within blank lines at the beginning of buffer, return nil.
          (when (bobp) (throw 'exit nil)))
        (let* ((cached (and (org-element--cache-active-p)
@@ -8603,8 +8740,8 @@ known element in cache (it may start after END)."
                  up offset
                  (if (and (org-element-property :robust-begin up)
                           (org-element-property :robust-end up))
-                     '(:contents-end :end :robust-end)
-                   '(:contents-end :end)))
+                     '(:pos-before-blank :contents-end :end :robust-end)
+                   '(:pos-before-blank :contents-end :end)))
                 (org-element--cache-log-message
                  "Shifting end positions of robust parent (warning %S): %S"
                  org-element--cache-change-warning
@@ -9974,7 +10111,7 @@ end of ELEM-A."
     (when (and specialp
 	       (or (not (org-element-type-p elem-B 'paragraph))
 		   (/= (org-element-begin elem-B)
-		      (org-element-contents-begin elem-B))))
+		       (org-element-contents-begin elem-B))))
       (error "Cannot swap elements"))
     ;; Preserve folding state when `org-fold-core-style' is set to
     ;; `text-properties'.
@@ -9987,12 +10124,12 @@ end of ELEM-A."
 	     (beg-A (org-element-begin elem-A))
 	     (end-A (save-excursion
 		      (goto-char (org-element-end elem-A))
-		      (skip-chars-backward " \r\t\n")
+                      (org-skip-whitespace 'back)
 		      (line-end-position)))
 	     (beg-B (org-element-begin elem-B))
 	     (end-B (save-excursion
 		      (goto-char (org-element-end elem-B))
-		      (skip-chars-backward " \r\t\n")
+                      (org-skip-whitespace 'back)
 		      (line-end-position)))
 	     ;; Store inner folds responsible for visibility status.
 	     (folds

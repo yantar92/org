@@ -711,7 +711,7 @@ Return t at each successful move."
 		     (>= (match-end 0)
 			(save-excursion
 			  (goto-char (org-list-get-item-end item struct))
-			  (skip-chars-backward " \t\n")
+                          (org-skip-whitespace 'back)
 			  (point)))))
 	(setq this-command 'org-cycle-item-indentation)
 	(let ((prevs (org-list-prevs-alist struct))
@@ -848,7 +848,7 @@ function is being called interactively."
       (let* ((case-fold-search nil)
 	     (now (current-time))
 	     (next-record (lambda ()
-			    (skip-chars-forward " \r\t\n")
+			    (org-skip-whitespace)
 			    (or (eobp) (forward-line 0))))
 	     (end-record (lambda ()
 			   (goto-char (org-list-get-item-end-before-blank

@@ -229,7 +229,7 @@ this template."
 			    ;; but preserve following white spaces.
 			    ;; Then insert value.
                             ((not (string= replacement
-					 (buffer-substring begin end)))
+					   (buffer-substring begin end)))
 			     (delete-region begin end)
 			     (insert replacement))
                             ;; Replacement is the same as the source
@@ -259,7 +259,7 @@ this template."
 				       (progn (skip-chars-forward " \t")
 					      (point))
                                      (unless (eobp)
-				       (skip-chars-forward " \r\t\n")
+				       (org-skip-whitespace)
 				       (line-beginning-position))))))
                           ((not rep)
                            ;; Replacement code cannot be determined.
@@ -286,7 +286,7 @@ this template."
 				 ((equal replacement "")
 				  (goto-char end)
                                   (unless (eobp)
-				    (skip-chars-forward " \r\t\n")
+				    (org-skip-whitespace)
 				    (forward-line 0))
 				  (delete-region begin (point)))
 				 (t
@@ -302,7 +302,7 @@ this template."
 					  ;; compatibility.
 					  (setq-local indent-tabs-mode nil))
 				        (insert replacement)
-				        (skip-chars-backward " \r\t\n")
+                                        (org-skip-whitespace 'back)
 				        (indent-line-to ind)
 				        (goto-char 1)
 				        (indent-line-to ind)

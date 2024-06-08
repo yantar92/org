@@ -319,12 +319,7 @@ When ELEMENT is provided, it is considered to be element at point."
   (setq element (or element (save-match-data (org-element-at-point))))
   (when (org-element-type-p element 'src-block)
     (or (not inside)
-        (not (or (<= (line-beginning-position)
-                  (org-element-post-affiliated element))
-               (>= (line-end-position)
-                  (org-with-point-at (org-element-end element)
-                    (skip-chars-backward " \t\n\r")
-                    (point))))))))
+        (<= (org-element-value-begin element) (point) (org-element-value-end element)))))
 
 (defalias 'org-babel-where-is-src-block-head #'org-src-block-head)
 (defun org-src-block-head (&optional src-block)
@@ -344,7 +339,7 @@ src block, then return nil."
 	(org-with-wide-buffer
 	 ;; Ensure point is not on a blank line after the block.
 	 (forward-line 0)
-	 (skip-chars-forward " \r\t\n" end)
+         (org-skip-whitespace nil end)
 	 (when (< (point) end)
 	   (prog1 (goto-char (org-element-post-affiliated element))
 	     (looking-at org-babel-src-block-regexp))))))))

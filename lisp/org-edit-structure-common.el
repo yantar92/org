@@ -94,7 +94,7 @@ make an intelligent decision whether to insert a blank line or not."
 Returns the number of empty lines passed."
   (let ((pos (point)))
     (if (cdr (assq 'heading org-blank-before-new-entry))
-	(skip-chars-backward " \t\n\r")
+	(org-skip-whitespace 'back)
       (unless (eobp)
 	(forward-line -1)))
     (forward-line 1)
@@ -135,11 +135,9 @@ POS may also be a marker."
      (let ((drawer (org-element-at-point)))
        (when (and (org-element-type-p drawer '(drawer property-drawer))
 		  (not (org-element-contents-begin drawer)))
-	 (delete-region (org-element-begin drawer)
-			(progn (goto-char (org-element-end drawer))
-			       (skip-chars-backward " \r\t\n")
-			       (forward-line)
-			       (point))))))))
+	 (delete-region
+          (org-element-begin drawer)
+          (org-element-pos-before-blank drawer)))))))
 
 (provide 'org-edit-structure-common)
 

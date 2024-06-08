@@ -556,11 +556,7 @@ leave point where new results should be inserted."
       (let* ((e (org-element-at-point))
 	     (post (copy-marker (org-element-post-affiliated e))))
 	;; Delete contents.
-	(delete-region post
-		       (save-excursion
-			 (goto-char (org-element-end e))
-			 (skip-chars-backward " \t\n")
-			 (line-beginning-position 2)))
+	(delete-region post (org-element-pos-before-blank e))
 	;; Delete RESULT keyword.  However, if RESULTS keyword is
 	;; orphaned, ignore this part.  The deletion above already
 	;; took care of it.
@@ -649,7 +645,7 @@ the rest of the result."
 	  (delete-region
 	   (if keep-keyword (line-beginning-position 2)
 	     (save-excursion
-	       (skip-chars-backward " \r\t\n")
+	       (org-skip-whitespace 'back)
 	       (line-beginning-position 2)))
 	   (progn (forward-line) (org-babel-result-end))))))))
 
@@ -664,8 +660,8 @@ Leading white space is trimmed."
        (goto-char (org-element-end el))
        (skip-chars-backward " \t")
        (let ((result (save-excursion
-		       (skip-chars-forward
-			" \t\n"
+		       (org-skip-whitespace
+                        nil
 			(org-element-contents-end
 			 (org-element-parent el)))
 		       (org-element-context))))
@@ -692,11 +688,8 @@ Leading white space is trimmed."
                 '(drawer example-block export-block fixed-width
                          special-block src-block item plain-list table
                          latex-environment))
-	       (save-excursion
-		 (goto-char (min (point-max) ;for narrowed buffers
-				 (org-element-end element)))
-		 (skip-chars-backward " \r\t\n")
-		 (line-beginning-position 2))
+               (min (point-max) ;for narrowed buffers
+                    (org-element-pos-before-blank element))
 	     (point))))))
 
 (defun org-babel-where-is-src-block-result (&optional insert _info hash)
@@ -724,7 +717,7 @@ to HASH."
 	  (let ((limit (or (org-element-contents-end (org-element-parent context))
                            (org-element-end (org-element-parent context)))))
 	    (goto-char (org-element-end context))
-	    (skip-chars-forward " \t\n" limit)
+            (org-skip-whitespace nil limit)
 	    (throw :found
 		   (and
 		    (< (point) limit)
@@ -783,7 +776,7 @@ to HASH."
       (when insert
 	(save-excursion
 	  (goto-char (min (org-element-end context) (point-max)))
-	  (skip-chars-backward " \t\n")
+          (org-skip-whitespace 'back)
 	  (forward-line)
 	  (unless (bolp) (insert "\n"))
 	  (insert "\n")

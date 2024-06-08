@@ -396,7 +396,7 @@ Assume point is at an item."
 	   (end-before-blank
 	    ;; Ensure list ends at the first blank line.
 	    (lambda ()
-	      (skip-chars-backward " \r\t\n")
+              (org-skip-whitespace 'back)
               (min (1+ (line-end-position)) lim-down))))
       ;; 1. Read list from starting item to its beginning, and save
       ;;    top item position and indentation in BEG-CELL.  Also store
@@ -593,7 +593,7 @@ This function modifies STRUCT."
 Point returned is at end of line."
   (save-excursion
     (goto-char (org-list-get-item-end item struct))
-    (skip-chars-backward " \r\t\n")
+    (org-skip-whitespace 'back)
     (line-end-position)))
 
 (defun org-list-get-parent (item struct parents)
@@ -1028,7 +1028,7 @@ Initial position of cursor is restored after the changes."
           ;; to break the list structure)
 	  (lambda (end beg delta ind)
 	    (goto-char end)
-	    (skip-chars-backward " \r\t\n")
+            (org-skip-whitespace 'back)
 	    (forward-line 0)
 	    (while (or (> (point) beg)
 		       (and (= (point) beg)

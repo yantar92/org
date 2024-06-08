@@ -154,7 +154,7 @@ Point is left between drawer's boundaries."
 	      ;; after the last non-blank line in region.  Insert
 	      ;; drawer's closing, then indent it.
 	      (goto-char rend)
-	      (skip-chars-backward " \r\t\n")
+              (org-skip-whitespace 'back)
 	      (insert "\n:END:")
 	      (deactivate-mark t)
 	      (indent-for-tab-command)
@@ -207,7 +207,7 @@ region only contains such lines."
            ((and (looking-at-p "[ \t]*$")
                  (or (eq type 'inlinetask)
                      (save-excursion
-                       (skip-chars-forward " \r\t\n")
+                       (org-skip-whitespace)
                        (<= (org-element-end element) (point)))))
             (delete-region (point) (line-end-position))
             (require 'org-indent-static)
@@ -223,13 +223,13 @@ region only contains such lines."
                    (goto-char (region-end))
                    (unless (eolp) (forward-line 0))
                    (if (save-excursion (re-search-backward "\\S-" begin t))
-                       (progn (skip-chars-backward " \r\t\n") (point))
+                       (progn (org-skip-whitespace 'back) (point))
                      (point)))))
            (all-fixed-width-p
             (catch 'not-all-p
               (save-excursion
                 (goto-char begin)
-                (skip-chars-forward " \r\t\n")
+                (org-skip-whitespace)
                 (when (eobp) (throw 'not-all-p nil))
                 (while (< (point) end)
                   (let ((element (org-element-at-point)))
@@ -275,9 +275,7 @@ region only contains such lines."
                 (let* ((element (org-element-at-point))
                        (element-end (org-element-end element)))
                   (if (org-element-type-p element 'fixed-width)
-                      (progn (goto-char element-end)
-                             (skip-chars-backward " \r\t\n")
-                             (forward-line))
+                      (goto-char (org-element-pos-before-blank element))
                     (let ((limit (min end element-end)))
                       (while (< (point) limit)
                         (org-move-to-column min-ind t)
@@ -430,7 +428,7 @@ When foo is written as FOO, upcase the #+BEGIN/END as well."
 	 (extended? (string-match-p "\\`\\(src\\|export\\)\\'" type))
 	 (verbatim? (string-match-p
 		     (concat "\\`" (regexp-opt '("example" "export"
-                                                "src" "comment")))
+                                                 "src" "comment")))
 		     type))
          (upcase? (string= (car (split-string type))
                            (upcase (car (split-string type))))))
@@ -447,7 +445,7 @@ When foo is written as FOO, upcase the #+BEGIN/END as well."
 	  (when verbatim? (org-escape-code-in-region (point) region-end))
 	  (goto-char region-end)
 	  ;; Ignore empty lines at the end of the region.
-	  (skip-chars-backward " \r\t\n")
+          (org-skip-whitespace 'back)
 	  (end-of-line))
 	(unless (bolp) (insert "\n"))
 	(indent-to column)

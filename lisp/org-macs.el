@@ -1219,9 +1219,13 @@ Return nil when PROP is not set at POS."
        (<= (match-beginning n) pos)
        (>= (match-end n) pos)))
 
-(defsubst org-skip-whitespace ()
-  "Skip over space, tabs and newline characters."
-  (skip-chars-forward " \t\n\r"))
+(defsubst org-skip-whitespace (&optional backward limit)
+  "Skip over space, tabs and newline characters.
+With optional argument BACKWARD, skip backward.
+LIMIT is search limit"
+  (if backward
+      (skip-chars-backward " \t\n\r" limit)
+    (skip-chars-forward " \t\n\r" limit)))
 
 (defun org-match-line (regexp)
   "Match REGEXP at the beginning of the current line."

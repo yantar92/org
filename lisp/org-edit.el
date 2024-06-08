@@ -496,13 +496,13 @@ see)."
     (if (org-element-type-p elem 'headline)
 	;; Preserve point when moving a whole tree, even if point was
 	;; on blank lines below the headline.
-	(let ((offset (skip-chars-backward " \t\n")))
+	(let ((offset (org-skip-whitespace 'back)))
 	  (unwind-protect (org-move-subtree-up)
 	    (forward-char (- offset))))
       (let ((prev-elem
 	     (save-excursion
 	       (goto-char (org-element-begin elem))
-	       (skip-chars-backward " \r\t\n")
+               (org-skip-whitespace 'back)
 	       (unless (bobp)
 		 (let* ((beg (org-element-begin elem))
 			(prev (org-element-at-point))
@@ -540,19 +540,13 @@ see)."
       ;; body's length (without final blanks) and by the length of
       ;; blanks between ELEM and NEXT-ELEM.
       (let ((size-next (- (save-excursion
-			    (goto-char (org-element-end next-elem))
-			    (skip-chars-backward " \r\t\n")
-			    (forward-line)
+			    (goto-char (org-element-pos-before-blank next-elem))
 			    ;; Small correction if buffer doesn't end
 			    ;; with a newline character.
 			    (if (and (eolp) (not (bolp))) (1+ (point)) (point)))
 			  (org-element-begin next-elem)))
 	    (size-blank (- (org-element-end elem)
-			   (save-excursion
-			     (goto-char (org-element-end elem))
-			     (skip-chars-backward " \r\t\n")
-			     (forward-line)
-			     (point)))))
+                           (org-element-pos-before-blank elem))))
 	(org-element-swap-A-B elem next-elem)
 	(goto-char (+ pos size-next size-blank))))))
 
@@ -701,7 +695,7 @@ interactive command with similar behavior."
 	  (goto-char beg)
 	  (when (and (bolp) subtreep
 		     (not (setq swallowp
-			        (org-yank-folding-would-swallow-text beg end))))
+			      (org-yank-folding-would-swallow-text beg end))))
 	    (org-with-limited-levels
 	     (or (looking-at org-outline-regexp)
 		 (re-search-forward org-outline-regexp-bol end t))
@@ -716,7 +710,7 @@ interactive command with similar behavior."
 	     "Inserted text not folded because that would swallow text"))
 
 	  (goto-char end)
-	  (skip-chars-forward " \t\n\r")
+          (org-skip-whitespace)
 	  (forward-line 0)
 	  (push-mark beg 'nomsg)))
        ((and subtreep org-yank-adjusted-subtrees)

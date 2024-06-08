@@ -58,15 +58,8 @@ major mode."
   (declare-function org-edit-src-code "org-src")
   (if (let ((element (org-element-at-point)))
 	(and (org-element-type-p element 'src-block)
-	     (< (save-excursion
-		  (goto-char (org-element-post-affiliated element))
-		  (line-end-position))
-		(point))
-	     (> (save-excursion
-		  (goto-char (org-element-end element))
-		  (skip-chars-backward " \r\t\n")
-		  (line-beginning-position))
-		(point))))
+	     (<= (org-element-value-begin element) (point))
+	     (> (org-element-value-end element) (point))))
       (progn
         (require 'org-src)
         (org-babel-do-in-edit-buffer (call-interactively #'comment-dwim)))
@@ -85,15 +78,8 @@ contains commented lines.  Otherwise, comment them.  If region is
 strictly within a source block, use appropriate comment syntax."
   (if (let ((element (org-element-at-point)))
 	(and (org-element-type-p element 'src-block)
-	     (< (save-excursion
-		  (goto-char (org-element-post-affiliated element))
-		  (line-end-position))
-		beg)
-	     (>= (save-excursion
-		  (goto-char (org-element-end element))
-		  (skip-chars-backward " \r\t\n")
-		  (line-beginning-position))
-		end)))
+	     (<= (org-element-value-begin element) beg)
+	     (>= (org-element-value-end element) end)))
       ;; Translate region boundaries for the Org buffer to the source
       ;; buffer.
       (let ((offset (- end beg)))
@@ -103,12 +89,14 @@ strictly within a source block, use appropriate comment syntax."
 	   (comment-or-uncomment-region (point) (+ offset (point))))))
     (save-restriction
       ;; Restrict region
-      (narrow-to-region (save-excursion (goto-char beg)
-					(skip-chars-forward " \r\t\n" end)
-					(line-beginning-position))
-			(save-excursion (goto-char end)
-					(skip-chars-backward " \r\t\n" beg)
-					(line-end-position)))
+      (narrow-to-region (save-excursion
+                          (goto-char beg)
+                          (org-skip-whitespace nil end)
+			  (line-beginning-position))
+			(save-excursion
+                          (goto-char end)
+                          (org-skip-whitespace 'back beg)
+			  (line-end-position)))
       (let ((uncommentp
 	     ;; UNCOMMENTP is non-nil when every non blank line between
 	     ;; BEG and END is a comment.

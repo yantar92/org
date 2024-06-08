@@ -1428,7 +1428,7 @@ with the prefix ARG."
 	(let ((e (point-marker)))
 	  ;; Recalculate the table.
 	  (forward-line -1)		; move to the inserted line
-	  (skip-chars-backward " \r\n\t")
+          (org-skip-whitespace 'back)
 	  (unwind-protect
 	      (org-call-with-arg #'org-table-recalculate (or arg t))
 	    ;; Delete the formula inserted temporarily.

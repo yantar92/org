@@ -170,7 +170,7 @@ some heuristics to guess the result."
 	     ;; Count blank lines above beginning of line.
 	     (save-excursion
                (count-lines (goto-char (line-beginning-position))
-			    (progn (skip-chars-backward " \r\t\n")
+			    (progn (org-skip-whitespace 'back)
 				   (forward-line)
 				   (point)))))))
       (cond
@@ -275,7 +275,7 @@ This function modifies STRUCT."
 		 ;; after the list.
 		 (when (< item-end pos)
                    (delete-region (1- item-end) (line-end-position)))
-		 (skip-chars-backward " \r\t\n")
+                 (org-skip-whitespace 'back)
 		 ;; Cut position is after any blank on the line.
 		 (save-excursion
 		   (skip-chars-forward " \t")
@@ -350,7 +350,7 @@ STRUCT is the list structure."
 		  ;; before it.
 		  (save-excursion
 		    (goto-char item)
-		    (skip-chars-backward " \r\t\n")
+                    (org-skip-whitespace 'back)
                     (min (1+ (line-end-position)) (point-max)))
 		item)))
     ;; Remove item from buffer.

@@ -293,11 +293,11 @@ narrowing."
       (t
        (org-end-of-meta-data org-log-state-notes-insert-after-drawers)
        (let ((endpos (point)))
-         (skip-chars-forward " \t\n")
+         (org-skip-whitespace)
          (forward-line 0)
          (unless org-log-states-order-reversed
 	   (org-skip-over-state-notes)
-	   (skip-chars-backward " \t\n")
+           (org-skip-whitespace 'back)
 	   (forward-line 1))
          ;; When current headline is at the end of buffer and does not
          ;; end with trailing newline the above can move to the

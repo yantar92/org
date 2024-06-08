@@ -332,6 +332,7 @@ need to re-read the value again."
 
   (defconst org-element--standard-properties
     '( :begin :post-affiliated :contents-begin :contents-end :end :post-blank
+       :value-begin :value-end :pos-before-blank
        :secondary :mode :granularity
        :cached :org-element--cache-sync-key
        :robust-begin :robust-end

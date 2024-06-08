@@ -185,7 +185,7 @@ exist."
 		      (progn (org-babel-execute-src-block)
 			     (org-babel-where-is-src-block-result))))
        (end-of-line)
-       (skip-chars-forward " \r\t\n")
+       (org-skip-whitespace)
        ;; Open the results.
        (if (looking-at org-link-bracket-re)
            (progn (require 'org-open-at-point) (org-open-at-point))

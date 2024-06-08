@@ -395,7 +395,7 @@ With prefix arg, also recompute table."
      ((eq action 'recalc)
       (save-excursion
 	(forward-line 0)
-	(skip-chars-backward " \r\n\t")
+        (org-skip-whitespace 'back)
 	(if (org-at-table-p)
 	    (org-call-with-arg 'org-table-recalculate t))))
      (t (let (orgtbl-mode)

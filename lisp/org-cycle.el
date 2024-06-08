@@ -807,7 +807,7 @@ are at least `org-cycle-separator-lines' empty lines before the headline."
                            (match-beginning 1)
                          (save-excursion
                            (goto-char (match-beginning 0))
-                           (skip-chars-backward " \t\n")
+                           (org-skip-whitespace 'back)
                            (line-end-position)))))
                 (org-fold-region b e nil 'outline))))))))
   ;; Never hide empty lines at the end of the file.
