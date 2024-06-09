@@ -47,12 +47,6 @@
 
 (require 'cl-lib)
 
-(declare-function org-inlinetask-get-task-level "org-inlinetask" ())
-(declare-function org-inlinetask-in-task-p "org-inlinetask" ())
-(declare-function org-list-item-body-column "org-list" (item))
-(defvar org-inlinetask-show-first-star)
-(defvar org-property-re)
-
 (defgroup org-indent nil
   "Options concerning dynamic virtual outline indentation."
   :tag "Org Indent"
@@ -329,6 +323,7 @@ have `org-warning' face."
 			 `(line-prefix ,line wrap-prefix ,wrap)))
   (forward-line))
 
+(declare-function org-list-item-body-column "org-list" (item))
 (defun org-indent-add-properties (beg end &optional delay)
   "Add indentation properties between BEG and END.
 
@@ -373,6 +368,7 @@ stopped."
 	       (unless (eq type 'inlinetask) (setq level nstars))))
 	    ;; List item: `wrap-prefix' is set where body starts.
 	    ((org-at-item-p)
+             (require 'org-list-core)
 	     (org-indent-set-line-properties
 	      level (org-list-item-body-column (point))))
 	    ;; Regular line.
