@@ -301,6 +301,7 @@ in Lisp code use `org-set-tags' instead."
 	       (looking-at-p " "))
       (forward-char))))
 
+;;;###autoload
 (defun org-set-tags (tags)
   "Set the tags of the current entry to TAGS, replacing current tags.
 

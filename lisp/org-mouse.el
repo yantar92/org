@@ -139,28 +139,11 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'cl-lib)
-(require 'outline)
-(require 'org-edit)
-(declare-function org-at-date-range-p "org")
-(defvar org-todo-keywords-1)
-(require 'org-todo)
-(require 'org-sparse-tree)
-(declare-function org-context "org")
-(require 'org-open-at-point)
-(require 'org-footnote)
+(require 'org-priority-common)
+(require 'org-element-context)
+(require 'org-list-core)
 (require 'org-tags)
-(require 'org-edit-structure)
-
-(defvar org-agenda-allow-remote-undo)
-(defvar org-agenda-undo-list)
-(defvar org-agenda-custom-commands)
-(declare-function org-agenda-change-all-lines "org-agenda"
-		  (newhead hdmarker &optional fixface just-this))
-(declare-function org-verify-change-for-undo "org-agenda" (l1 l2))
-(declare-function org-apply-on-list "org-list" (function init-value &rest args))
-(declare-function org-agenda-earlier "org-agenda" (arg))
-(declare-function org-agenda-later "org-agenda" (arg))
+(require 'org-agenda)
 
 (defvar org-mouse-main-buffer nil
   "Active buffer for mouse operations.")
@@ -263,6 +246,7 @@ If there is none, ensure that the point is at the beginning of an empty line."
       (end-of-line)
       (newline))))
 
+(declare-function org-insert-heading "org-edit-structure" (&optional arg invisible-ok level))
 (defun org-mouse-insert-heading ()
   "Insert a new heading, as `org-insert-heading'.
 
@@ -276,6 +260,8 @@ after the current heading."
     (t (org-mouse-next-heading)
        (org-insert-heading))))
 
+(declare-function org-timestamp "org-timestamp" (arg &optional inactive))
+(declare-function org-timestamp-change "org-timestamp" (n &optional what updown suppress-tmp-delay))
 (defun org-mouse-timestamp-today (&optional shift units)
   "Change the timestamp into SHIFT UNITS in the future.
 
@@ -424,6 +410,7 @@ SCHEDULED: or DEADLINE: or ANYTHINGLIKETHIS:"
   (cl-loop for priority from ?A to org-priority-lowest
 	   collect (char-to-string priority)))
 
+(declare-function org-todo "org-todo" (&optional arg))
 (defun org-mouse-todo-menu (state)
   "Create the menu with TODO keywords."
   (append
@@ -435,6 +422,8 @@ SCHEDULED: or DEADLINE: or ANYTHINGLIKETHIS:"
 
 (defun org-mouse-tag-menu ()		;todo
   "Create the tags menu."
+  (require 'org-tags)
+  (defvar org-tags-sort-function)
   (append
    (let ((tags (org-get-tags nil t)))
      (org-mouse-keyword-menu
@@ -498,6 +487,7 @@ SCHEDULED: or DEADLINE: or ANYTHINGLIKETHIS:"
       (concat (substring text 0 (- maxlength 3)) "...")
     text))
 
+(declare-function org-match-sparse-tree "org-sparse-tree" (&optional todo-only match start-level))
 (defun org-mouse-popup-global-menu ()
   (popup-menu
    `("Main Menu"
@@ -517,7 +507,7 @@ SCHEDULED: or DEADLINE: or ANYTHINGLIKETHIS:"
       ,@(org-mouse-keyword-menu
 	 (sort (mapcar #'car (org-get-buffer-tags))
                (or org-tags-sort-function #'org-string<))
-         (lambda (tag) (org-tags-sparse-tree nil tag)))
+         (lambda (tag) (org-match-sparse-tree nil tag)))
       "--"
       ["Custom Tag ..." org-tags-sparse-tree t])
      ["Check Phrase ..." org-occur]
