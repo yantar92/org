@@ -34,6 +34,7 @@
 (require 'org-agenda-files)
 (require 'org-outline)
 (require 'org-tags-core)
+(require 'org-tags-align)
 
 (defvar crm-separator)
 
@@ -130,14 +131,6 @@ completions in capture buffers.
   :version "24.1"
   :type 'boolean)
 
-(defcustom org-auto-align-tags t
-  "Non-nil keeps tags aligned when modifying headlines.
-Some operations (i.e. demoting) change the length of a headline and
-therefore shift the tags around.  With this option turned on, after
-each such operation the tags are again aligned to `org-tags-column'."
-  :group 'org-tags
-  :type 'boolean)
-
 (defvar org-tags-history nil
   "History of minibuffer reads for tags.")
 (defvar org-after-tags-change-hook nil
@@ -173,74 +166,6 @@ next to tags."
 		 (_ (user-error "Invalid tag token: %S" token))))
 	     alist
 	     " "))
-
-;;;; Tag alignment
-
-(defun org--align-tags-here (to-col)
-  "Align tags on the current headline to TO-COL.
-Assume point is on a headline.  Preserve point when aligning
-tags."
-  (when (org-match-line org-tag-line-re)
-    (let* ((tags-start (match-beginning 1))
-	   (blank-start (save-excursion
-			  (goto-char tags-start)
-			  (skip-chars-backward " \t")
-			  (point)))
-	   (new (max (if (>= to-col 0) to-col
-		       (- (abs to-col) (string-width (match-string 1))))
-		     ;; Introduce at least one space after the heading
-		     ;; or the stars.
-		     (save-excursion
-		       (goto-char blank-start)
-		       (1+ (current-column)))))
-	   (current
-	    (save-excursion (goto-char tags-start) (current-column)))
-	   (origin (point-marker))
-	   (column (current-column))
-	   (in-blank? (and (> origin blank-start) (<= origin tags-start))))
-      (when (/= new current)
-	(delete-region blank-start tags-start)
-	(goto-char blank-start)
-	(let ((indent-tabs-mode nil)) (indent-to new))
-	;; Try to move back to original position.  If point was in the
-	;; blanks before the tags, ORIGIN marker is of no use because
-	;; it now points to BLANK-START.  Use COLUMN instead.
-	(if in-blank? (org-move-to-column column) (goto-char origin))))))
-
-(defun org-align-tags (&optional all)
-  "Align tags in current entry.
-When optional argument ALL is non-nil, align all tags in the
-visible part of the buffer."
-  (let ((get-indent-column
-	 (lambda ()
-	   (let ((offset (if (bound-and-true-p org-indent-mode)
-                             (save-excursion
-                               (org-back-to-heading-or-point-min)
-                               (length
-                                (get-text-property
-                                 (line-end-position)
-                                 'line-prefix)))
-			   0)))
-	     (+ org-tags-column
-		(if (> org-tags-column 0) (- offset) offset))))))
-    (if (and (not all) (org-at-heading-p))
-	(org--align-tags-here (funcall get-indent-column))
-      (save-excursion
-	(if all
-	    (progn
-	      (goto-char (point-min))
-	      (while (re-search-forward org-tag-line-re nil t)
-		(org--align-tags-here (funcall get-indent-column))))
-	  (org-back-to-heading t)
-	  (org--align-tags-here (funcall get-indent-column)))))))
-
-(defun org-fix-tags-on-the-fly ()
-  "Align tags in headline at point.
-Unlike `org-align-tags', this function does nothing if point is
-either not currently on a tagged headline or on a tag."
-  (when (and (org-match-line org-tag-line-re)
-	     (< (point) (match-beginning 1)))
-    (org-align-tags)))
 
 ;;;; Tag groups
 
@@ -414,6 +339,7 @@ This function assumes point is on a headline."
        (when (and tags org-auto-align-tags) (org-align-tags))
        (when tags-change? (run-hooks 'org-after-tags-change-hook))))))
 
+;;;###autoload
 (defun org-toggle-tag (tag &optional onoff)
   "Toggle the tag TAG for the current line.
 If ONOFF is `on' or `off', don't toggle but set to this state."

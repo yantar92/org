@@ -62,7 +62,7 @@
 (require 'org-agenda-line-format)
 (require 'org-agenda-diary)
 (require 'org-edit-structure-common)
-(require 'org-tags-common)
+(require 'org-tags)
 (require 'org-font-lock)
 (require 'org-todo)
 

@@ -34,11 +34,11 @@
 (require 'org-outline)
 (require 'org-time)
 (require 'org-planning)
-(require 'org-tags)
 (require 'org-agenda-search)
 (require 'org-map)
 (require 'org-property)
 (require 'org-clock-common)
+(require 'org-tags-align)
 
 (defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
 (defvar org-inhibit-logging nil)        ; Dynamically-scoped param.
@@ -849,6 +849,7 @@ string to select a different tag for this task."
 	  (string :tag "Use other tag")))
 
 (declare-function org-delete-property "org-property-set" (property))
+(declare-function org-toggle-tag "org-tags" (tag &optional onoff))
 ;;;###autoload
 (defun org-toggle-ordered-property ()
   "Toggle the ORDERED property of the current entry.

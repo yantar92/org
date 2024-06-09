@@ -149,6 +149,8 @@
 (declare-function org-context "org")
 (require 'org-open-at-point)
 (require 'org-footnote)
+(require 'org-tags)
+(require 'org-edit-structure)
 
 (defvar org-agenda-allow-remote-undo)
 (defvar org-agenda-undo-list)

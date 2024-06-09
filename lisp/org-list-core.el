@@ -1286,7 +1286,7 @@ Possible values are: `folded', `children' or `subtree'.  See
 	      (and (re-search-backward regexp begin t)
 		   (not (string-equal "nil" (match-string 1)))))))))))
 
-(declare-function org-fix-tags-on-the-fly "org-tags" ())
+(declare-function org-fix-tags-on-the-fly "org-tags-align" ())
 (declare-function org-entry-get "org-property"
                   (epom property &optional inherit literal-nil))
 (defun org-update-checkbox-count (&optional all)
@@ -1420,7 +1420,7 @@ portion of the buffer."
 					           (max 1 total)))
 	         (format "[%d/%d]" checked total)))
 	      (delete-region (point) (+ (point) (- end beg))))
-            (require 'org-tags)
+            (require 'org-tags-align)
             (defvar org-auto-align-tags)
 	    (when org-auto-align-tags (org-fix-tags-on-the-fly))))))))
 

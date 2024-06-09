@@ -43,6 +43,7 @@
 (require 'org-property-set)
 (require 'org-archive)
 (require 'org-priority)
+(require 'org-tags)
 
 ;;; Code:
 

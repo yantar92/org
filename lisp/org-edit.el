@@ -26,17 +26,13 @@
 (require 'org-macs)
 (org-assert-version)
 
-(defvar org-speed-command nil)
-
-(require 'org-keys)
-(require 'org-tags)
-(require 'org-edit-structure)
+(require 'org-keys) ; `org-use-speed-commands'
 (require 'org-mode-common)
 (require 'org-cycle)
 (require 'org-font-lock-common)
-(require 'org-table-fold)
-
-(declare-function org-open-at-point "org-open-at-point")
+(require 'org-table-fold) ; `org-table-with-shrunk-field'
+(require 'org-tags-align)
+(require 'org-edit-structure-common)
 
 (defcustom org-special-ctrl-k nil
   "Non-nil means that \\<org-mode-map>\\[org-kill-line] \
@@ -91,6 +87,7 @@ this function for details."
   (interactive "p")
   (self-insert-command N))
 
+(defvar org-speed-command nil)
 (defun org--speed-command-p ()
   "Return non-nil when current command is a speed command.
 Set `org-speed-command' to the appropriate command as a side effect."
@@ -109,7 +106,7 @@ If the cursor is in a table looking at whitespace, the whitespace is
 overwritten, and the table is not marked as requiring realignment."
   (interactive "p")
   (cond
-   ((org--speed-command-p)
+   ((org--speed-command-p) ; sets `org-speed-command'
     (cond
      ((commandp org-speed-command)
       (setq this-command org-speed-command)
@@ -357,6 +354,7 @@ INTERACTIVE, which can trigger indentation if
 
 (declare-function org-table-next-row "org-table-move" ())
 (declare-function org-table-justify-field-maybe "org-table-align" (&optional new))
+(declare-function org-open-at-point "org-open-at-point")
 ;;;###autoload
 (defun org-return (&optional indent arg interactive)
   "Goto next table row or insert a newline.
@@ -487,6 +485,7 @@ see)."
     (if (and (org-at-heading-p) org-auto-align-tags) (org-align-tags)))
    (t (kill-region (point) (line-end-position)))))
 
+(declare-function org-move-subtree-up "org-edit-structure" (&optional arg))
 ;;;###autoload
 (defun org-drag-element-backward ()
   "Move backward element at point."
@@ -662,6 +661,7 @@ plainly yank the text as it is.
   (interactive "P")
   (org-yank-generic 'yank arg))
 
+(declare-function org-paste-subtree "org-edit-structure" (&optional level tree for-yank remove))
 (defun org-yank-generic (command arg)
   "Perform some yank-like command.
 

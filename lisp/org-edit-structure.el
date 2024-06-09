@@ -38,7 +38,7 @@
 (require 'org-cycle)
 (require 'outline)
 (require 'org-move)
-(require 'org-tags)
+(require 'org-tags-align)
 (require 'org-map)
 (require 'org-clock-common)
 

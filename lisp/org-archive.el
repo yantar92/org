@@ -41,6 +41,7 @@
 (require 'org-element)
 (require 'org-time)
 (require 'org-archive-core)
+(require 'org-tags)
 
 (defcustom org-archive-default-command 'org-archive-subtree
   "The default archiving command."

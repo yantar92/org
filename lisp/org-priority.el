@@ -28,9 +28,9 @@
 
 (require 'org-regexps)
 (require 'org-move)
-(require 'org-tags)
 (require 'org-priority-common)
 (require 'org-mode-common)
+(require 'org-tags)
 
 (defgroup org-priorities nil
   "Priorities in Org mode."
