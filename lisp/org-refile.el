@@ -29,16 +29,11 @@
 (org-assert-version)
 
 (require 'org-agenda-files)
-(require 'org-log-note)
 (require 'org-edit-structure)
-(require 'org-edit-structure-common)
 (require 'org-clock-common)
 (require 'org-mode-common)
 (require 'org-bookmark)
 (require 'org-element)
-
-(declare-function org-inlinetask-remove-END-maybe "org-inlinetask" ())
-(declare-function org-toggle-heading "org-edit-special" (&optional nstars))
 
 (defgroup org-refile nil
   "Options concerning refiling entries in Org mode."
@@ -419,6 +414,7 @@ the *old* location.")
   (let ((org-refile-keep t))
     (org-refile nil nil nil "Copy")))
 
+(declare-function org-notes-order-reversed-p "org-log-note "())
 ;;;###autoload
 (defun org-refile-reverse (&optional arg default-buffer rfloc msg)
   "Refile while temporarily toggling `org-reverse-note-order'.
@@ -426,12 +422,12 @@ So if `org-refile' would append the entry as the last entry under
 the target heading, `org-refile-reverse' will prepend it as the
 first entry, and vice-versa."
   (interactive "P")
+  (require 'org-log-note)
+  (defvar org-reverse-note-order)
   (let ((org-reverse-note-order (not (org-notes-order-reversed-p))))
     (org-refile arg default-buffer rfloc msg)))
 
-(defvar org-capture-last-stored-marker)
-
-
+(declare-function org-add-log-setup "org-log-note" (&optional purpose state prev-state how extra))
 ;;;###autoload
 (defun org-refile (&optional arg default-buffer rfloc msg)
   "Move the entry or entries at point to another heading.
@@ -598,6 +594,7 @@ prefix argument (\\`C-u C-u C-u C-c C-w')."
 	         (cond
 		  ((not org-log-refile))
 		  (regionp
+                   (require 'org-log-note)
 		   (org-map-region
 		    (lambda () (org-add-log-setup 'refile nil nil 'time))
 		    (point)
@@ -624,7 +621,8 @@ prefix argument (\\`C-u C-u C-u C-c C-w')."
 	                   (bookmark-set bookmark-name)
                          (error
                           (message (format "Bookmark set error: %S" err))))))
-		   (move-marker org-capture-last-stored-marker (point)))
+                   (when (bound-and-true-p org-capture-last-stored-marker)
+		     (move-marker org-capture-last-stored-marker (point))))
                  (deactivate-mark)
 	         (run-hooks 'org-after-refile-insert-hook)))
               ;; Go back to ORIGIN.
@@ -636,7 +634,8 @@ prefix argument (\\`C-u C-u C-u C-c C-w')."
 		 (delete-region
 		  (and (org-back-to-heading t) (point))
 		  (min (1+ (buffer-size)) (org-end-of-subtree t t) (point))))))
-	    (when (featurep 'org-inlinetask)
+	    (when (and (featurep 'org-inlinetask)
+                       (fboundp 'org-inlinetask-remove-END-maybe))
 	      (org-inlinetask-remove-END-maybe))
 	    (setq org-markers-to-move nil)
 	    (message "%s to \"%s\" in file %s: done" actionmsg
