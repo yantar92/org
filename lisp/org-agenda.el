@@ -53,7 +53,6 @@
 (require 'org-fold-core)
 (require 'org-macs)
 (require 'org-indirect-buffer)
-(require 'org-refile)
 (require 'org-element)
 (require 'org-diary-lib)
 (require 'org-agenda-files)
@@ -61,7 +60,7 @@
 (require 'org-agenda-search)
 (require 'org-agenda-line-format)
 (require 'org-agenda-diary)
-(require 'org-edit-structure-common)
+(require 'org-edit-structure)
 (require 'org-tags)
 (require 'org-font-lock)
 (require 'org-todo)
@@ -6320,6 +6319,10 @@ If this information is not given, the function uses the tree at point."
                             (1+ (line-end-position)))))
 	 (forward-line -1))))))
 
+(declare-function org-refile-cache-clear "org-refile" ())
+(declare-function org-refile-goto-last-stored "org-refile" ())
+(declare-function org-refile-get-location "org-refile" (&optional prompt default-buffer new-nodes))
+(declare-function org-refile "org-refile" (&optional arg default-buffer rfloc msg))
 (defun org-agenda-refile (&optional goto rfloc no-update)
   "Refile the item at point.
 
@@ -6335,6 +6338,8 @@ RFLOC can be a refile location obtained in a different way.
 
 When NO-UPDATE is non-nil, don't redo the agenda buffer."
   (interactive "P")
+  (require 'org-refile)
+  (defvar org-refile-allow-creating-parent-nodes)
   (cond
    ((member goto '(0 (64)))
     (org-refile-cache-clear))
@@ -7747,6 +7752,7 @@ The prefix arg is passed through to the command if possible."
 				   org-agenda-bulk-custom-functions
 				   "")))))
   (catch 'exit
+    (defvar org-log-refile) ; defined in org-refile.el
     (let* ((org-log-refile (if org-log-refile 'time nil))
 	   (entries (reverse org-agenda-bulk-marked-entries))
 	   (org-overriding-default-time
@@ -7768,6 +7774,8 @@ The prefix arg is passed through to the command if possible."
 	 (setq cmd #'org-agenda-archive-to-archive-sibling))
 
 	((or ?r ?w)
+         (require 'org-refile)
+         (defvar org-refile-allow-creating-parent-nodes)
 	 (let ((refile-location
 		(org-refile-get-location
 		 "Refile to"
