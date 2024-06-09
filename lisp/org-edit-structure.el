@@ -938,6 +938,7 @@ This is a short-hand for marking the subtree and then cutting it."
   (interactive "p")
   (org-copy-subtree n 'cut))
 
+;;;###autoload
 (defun org-copy-subtree (&optional n cut force-store-markers nosubtrees)
   "Copy the current subtree into the clipboard.
 With prefix arg N, copy this many sequential subtrees.
@@ -981,6 +982,7 @@ useful if the caller implements cut-and-paste as copy-then-paste-then-cut."
 		(if cut "Cut" "Copied")
 		(length org-subtree-clip))))))
 
+;;;###autoload
 (defun org-paste-subtree (&optional level tree for-yank remove)
   "Paste the clipboard as a subtree, with modification of headline level.
 

@@ -753,49 +753,6 @@ interactive command with similar behavior."
     (kill-new result)
     (message "Visible strings have been copied to the kill ring.")))
 
-(declare-function org-table-copy-region "org-table-edit" (beg end &optional cut))
-;;;###autoload
-(defun org-copy-special ()
-  "Copy region in table or copy current subtree.
-Calls `org-table-copy-region' or `org-copy-subtree', depending on
-context.  See the individual commands for more information."
-  (interactive)
-  (call-interactively
-   (if (org-at-table-p)
-       (progn
-         (require 'org-table-edit)
-         #'org-table-copy-region)
-     #'org-copy-subtree)))
-
-(declare-function org-table-cut-region "org-table-edit" (beg end))
-;;;###autoload
-(defun org-cut-special ()
-  "Cut region in table or cut current subtree.
-Calls `org-table-cut-region' or `org-cut-subtree', depending on
-context.  See the individual commands for more information."
-  (interactive)
-  (call-interactively
-   (if (org-at-table-p)
-       (progn
-         (require 'org-table-edit)
-         #'org-table-cut-region)
-     #'org-cut-subtree)))
-
-(declare-function org-table-paste-rectangle "org-table-edit" ())
-;;;###autoload
-(defun org-paste-special (arg)
-  "Paste rectangular region into table, or past subtree relative to level.
-Calls `org-table-paste-rectangle' or `org-paste-subtree', depending on context.
-See the individual commands for more information."
-  (interactive "P")
-  (if (org-at-table-p)
-      (progn
-        (require 'org-table-edit)
-        (org-table-paste-rectangle))
-    (org-paste-subtree arg)))
-
-
-
 (provide 'org-edit)
 
 ;;; org-edit.el ends here
