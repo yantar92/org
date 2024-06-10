@@ -51,7 +51,7 @@ If INVISIBLE-NOT-OK is non-nil, an invisible heading line is not ok."
           (org-element-at-point)
           (if org-called-with-limited-levels
               '(headline) '(headline inlinetask)))
-         ;; Some Org code relies upon match data being modified here.
+         ;; FIXME: Some Org code relies upon match data being modified here.
 	 (looking-at org-element-headline-re))))
 
 (defun org-in-commented-heading-p (&optional no-inheritance element)
