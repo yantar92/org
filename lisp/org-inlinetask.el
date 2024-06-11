@@ -81,11 +81,11 @@
 (require 'org-macs)
 (org-assert-version)
 
-(defvar org-inlinetask-min-level)
 (require 'org-element)
 (require 'org-compat)
 (require 'org-mode)
-(require 'org-edit-structure)
+(require 'org-indent-static)
+(require 'org-fold-core)
 
 (defgroup org-inlinetask nil
   "Options concerning inline tasks in Org mode."
@@ -306,9 +306,9 @@ When STATE is `unfold', unfold unconditionally."
      ;; Inlinetask was folded: expand it.
      ((and (not (eq state 'fold))
            (or (eq state 'unfold)
-               (org-fold-get-folding-spec 'headline (1+ start))))
-      (org-fold-region start end nil 'headline))
-     (t (org-fold-region start end t 'headline)))))
+               (org-fold-core-get-folding-spec 'headline (1+ start))))
+      (org-fold-core-region start end nil 'headline))
+     (t (org-fold-core-region start end t 'headline)))))
 
 (defun org-inlinetask-hide-tasks (state)
   "Hide inline tasks in buffer when STATE is `contents' or `children'.
