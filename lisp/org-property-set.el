@@ -193,7 +193,6 @@ decreases scheduled or deadline date by one day."
 	 (cond ((not (org-string-nw-p value)) (setq value 'none))
 	       ((not (member value org-todo-keywords-1))
 	        (user-error "\"%s\" is not a valid TODO state" value)))
-         (require 'org-todo)
 	 (org-todo value))
         ((equal property "PRIORITY")
 	 (org-priority (if (org-string-nw-p value) (string-to-char value) ?\s)))

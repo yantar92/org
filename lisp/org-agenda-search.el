@@ -718,7 +718,7 @@ that can be put into `org-agenda-skip-function' for the duration of a command."
 	      (org-agenda-skip-if-todo m end)))
      end)))
 
-(declare-function org-entry-blocked-p "org-todo" ())
+(declare-function org-entry-blocked-p "org-property" ())
 (defun org-agenda-skip-if-todo (args end)
   "Helper function for `org-agenda-skip-if', do not use it directly.
 ARGS is a list with first element either `todo', `nottodo',
@@ -745,7 +745,7 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
       (`(nottodo . ,_)
        (not (let (case-fold-search) (re-search-forward todo-re end t))))
       (`(todo-unblocked . ,_)
-       (require 'org-todo)
+       (require 'org-property)
        (catch :unblocked
 	 (while (let (case-fold-search) (re-search-forward todo-re end t))
 	   (when (org-entry-blocked-p) (throw :unblocked t)))

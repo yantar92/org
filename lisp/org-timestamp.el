@@ -211,7 +211,7 @@ With prefix ARG, change that many days."
   (interactive "p")
   (if (and (not (org-at-timestamp-p 'lax))
 	   (org-at-heading-p))
-      (progn (require 'org-todo) (org-todo 'up))
+      (org-todo 'up)
     (org-timestamp-change (prefix-numeric-value arg) 'day 'updown)))
 
 (declare-function org-todo "org-todo" (&optional arg))
@@ -222,7 +222,7 @@ With prefix ARG, change that many days."
   (interactive "p")
   (if (and (not (org-at-timestamp-p 'lax))
 	   (org-at-heading-p))
-      (progn (require 'org-todo) (org-todo 'down))
+      (org-todo 'down)
     (org-timestamp-change (- (prefix-numeric-value arg)) 'day) 'updown))
 
 (defun org-toggle-timestamp-type ()

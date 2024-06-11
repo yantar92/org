@@ -672,12 +672,11 @@ the default behavior."
 		(let ((newstate (funcall org-clock-in-switch-to-state
 					 (match-string 2))))
 		  (when newstate
-                    (require 'org-todo)
                     (org-todo newstate))))
 	       ((and org-clock-in-switch-to-state
 		     (not (looking-at (concat org-outline-regexp "[ \t]*"
-					      org-clock-in-switch-to-state
-					      "\\(?:[ \t]\\|$\\)"))))
+					    org-clock-in-switch-to-state
+					    "\\(?:[ \t]\\|$\\)"))))
 		(org-todo org-clock-in-switch-to-state)))
 	 (org-clock-update-clock-status)
 	 (org-clock-find-position org-clock-in-resume)

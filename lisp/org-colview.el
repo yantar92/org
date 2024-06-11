@@ -662,7 +662,6 @@ Where possible, use the standard interface for changing this line."
                (org-with-point-at pom (org-edit-headline))))
 	    ("TODO"
 	     (lambda ()
-               (require 'org-todo)
 	       (org-with-point-at pom (call-interactively #'org-todo))))
 	    ("PRIORITY"
 	     (lambda ()

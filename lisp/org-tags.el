@@ -755,7 +755,6 @@ Returns the new tags string, or nil to not change the current settings."
 		    ((let (and todo-keyword (guard todo-keyword))
                        (car (rassoc input-char todo-table)))
 		     (with-current-buffer origin-buffer
-                       (require 'org-todo)
 		       (save-excursion (org-todo todo-keyword)))
 		     (when exit-after-next (setq exit-after-next 'now)))
                     ;; INPUT-CHAR is for a tag.

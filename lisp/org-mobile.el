@@ -43,6 +43,7 @@
 (require 'org-archive)
 (require 'org-tags)
 (require 'org-agenda-dispatch)
+(require 'org-todo)
 
 ;;; Code:
 
