@@ -29,6 +29,7 @@
 (require 'diary-lib)
 
 (declare-function calendar-check-holidays "holidays" (date))
+;;;###autoload
 (defun org-calendar-holiday ()
   "List of holidays, for Diary display in Org mode."
   (require 'holidays)
@@ -38,24 +39,28 @@
 
 ;; Calendar sanity: define some functions that are independent of
 ;; `calendar-date-style'.
+;;;###autoload
 (defun org-anniversary (year month day &optional mark)
   "Like `diary-anniversary', but with fixed (ISO) order of arguments."
   (with-no-warnings
     (let ((calendar-date-style 'iso))
       (diary-anniversary year month day mark))))
 
+;;;###autoload
 (defun org-cyclic (N year month day &optional mark)
   "Like `diary-cyclic', but with fixed (ISO) order of arguments."
   (with-no-warnings
     (let ((calendar-date-style 'iso))
       (diary-cyclic N year month day mark))))
 
+;;;###autoload
 (defun org-block (Y1 M1 D1 Y2 M2 D2 &optional mark)
   "Like `diary-block', but with fixed (ISO) order of arguments."
   (with-no-warnings
     (let ((calendar-date-style 'iso))
       (diary-block Y1 M1 D1 Y2 M2 D2 mark))))
 
+;;;###autoload
 (defun org-date (year month day &optional mark)
   "Like `diary-date', but with fixed (ISO) order of arguments."
   (with-no-warnings
@@ -63,6 +68,7 @@
       (diary-date year month day mark))))
 
 ;; Define the `org-class' function
+;;;###autoload
 (defun org-class (y1 m1 d1 y2 m2 d2 dayname &rest skip-weeks)
   "Entry applies if date is between dates on DAYNAME, but skips SKIP-WEEKS.
 DAYNAME is a number between 0 (Sunday) and 6 (Saturday).
