@@ -36,7 +36,6 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-agenda)
 (require 'ox-ascii)
 (declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
 (declare-function org-at-heading-p "org" (&optional _))

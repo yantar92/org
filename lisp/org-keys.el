@@ -38,7 +38,7 @@
 
 ;; All the below functions should be auto-loaded.
 (declare-function org-add-note "org-log-note" ())
-(declare-function org-agenda "org-agenda" (&optional arg org-keys restriction))
+(declare-function org-agenda "org-agenda-mode" (&optional arg org-keys restriction))
 (declare-function org-agenda-file-to-front "org-agenda-files" (&optional to-end))
 (declare-function org-agenda-remove-restriction-lock "org-agenda-files" (&optional noupdate))
 (declare-function org-agenda-set-restriction-lock "org-agenda-files" (&optional type))

@@ -622,7 +622,6 @@ When nil, you can still capture using the date at point with
   :version "24.3"
   :type 'boolean)
 
-(declare-function org-get-cursor-date "org-agenda" (&optional with-time))
 (declare-function org-clock-in "org-clock-core" (&optional select start-time))
 ;;;###autoload
 (defun org-capture (&optional goto keys)
@@ -659,7 +658,6 @@ of the day at point (if any) or the current HH:MM time."
   (interactive "P")
   (when (and org-capture-use-agenda-date
 	     (eq major-mode 'org-agenda-mode))
-    (require 'org-agenda)
     (setq org-overriding-default-time
 	  (org-get-cursor-date (equal goto 1))))
   (cond

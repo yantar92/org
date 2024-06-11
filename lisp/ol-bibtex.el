@@ -141,7 +141,6 @@
 (declare-function org-toggle-tag "org" (tag &optional onoff))
 (declare-function org-indent-region "org" (start end))
 
-(declare-function org-search-view "org-agenda" (&optional todo-only string edit-at))
 
 
 ;;; BibTeX data
@@ -796,6 +795,7 @@ headline of the entry at point."
   (let ((result (org-bibtex-headline)))
     (kill-new result) result))
 
+(declare-function org-search-view "org-agenda-search-view" (&optional todo-only string edit-at))
 (defun org-bibtex-search (string)
   "Search for bibliographical entries in agenda files.
 This function relies `org-search-view' to locate results."

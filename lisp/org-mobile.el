@@ -35,7 +35,6 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-agenda)
 (require 'ol-core)
 (require 'org-edit-structure-common)
 (require 'org-property-search)
@@ -44,6 +43,7 @@
 (require 'org-archive)
 (require 'org-priority)
 (require 'org-tags)
+(require 'org-agenda-dispatch)
 
 ;;; Code:
 

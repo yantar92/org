@@ -57,7 +57,7 @@ key."
   :group 'org-agenda
   :type 'sexp)
 
-(declare-function org-agenda-diary-entry "org-agenda" ())
+(declare-function org-agenda-diary-entry "org-agenda-diary" ())
 (defun org--setup-calendar-bindings ()
   "Bind Org functions in Calendar keymap."
   (pcase org-calendar-to-agenda-key

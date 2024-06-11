@@ -32,7 +32,9 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'org-agenda)
+(require 'org-agenda-mode)
+(require 'org-time)
+(require 'org-property)
 
 (defgroup org-habit nil
   "Options concerning habit tracking in Org mode."

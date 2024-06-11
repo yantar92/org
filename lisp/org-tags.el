@@ -169,8 +169,7 @@ next to tags."
 
 ;;;; Tag groups
 
-(defvar org-inhibit-startup)
-(declare-function org-agenda-redo "org-agenda")
+(declare-function org-agenda-redo "org-agenda-mode" (&optional all))
 ;;;###autoload
 (defun org-toggle-tags-groups ()
   "Toggle support for group tags.
@@ -180,6 +179,7 @@ Support for group tags is controlled by the option
   (setq org-group-tags (not org-group-tags))
   (cond ((and (derived-mode-p 'org-agenda-mode)
 	      org-group-tags)
+         (require 'org-agenda-mode)
 	 (org-agenda-redo))
 	((derived-mode-p 'org-mode)
 	 (let ((org-inhibit-startup t)) (org-mode))))
@@ -360,7 +360,7 @@ If ONOFF is `on' or `off', don't toggle but set to this state."
       (org-set-tags (nreverse current))
       res)))
 
-(declare-function org-agenda-change-all-lines "org-agenda")
+(declare-function org-agenda-change-all-lines "org-agenda-line-format")
 ;;;###autoload
 (defun org-change-tag-in-region (beg end tag off)
   "Add or remove TAG for each entry in the region.
@@ -400,7 +400,10 @@ This works in the agenda, and also in an Org buffer."
 		     (setq cnt (1+ cnt))
 		     (org-toggle-tag tag (if off 'off 'on))
 		     (setq newhead (org-get-heading)))))
-	       (and agendap (org-agenda-change-all-lines newhead m))))
+	       (and agendap
+                    (progn
+                      (require 'org-agenda-line-format)
+                      (org-agenda-change-all-lines newhead m)))))
     (message "Tag :%s: %s in %d headings" tag (if off "removed" "set") cnt)))
 
 (defun org-tags-completion-function (string _predicate &optional flag)

@@ -1035,7 +1035,7 @@ details."
   (interactive "p")
   (org-columns-widen (- arg)))
 
-(declare-function org-agenda-do-context-action "org-agenda" ())
+(declare-function org-agenda-do-context-action "org-agenda-mode" ())
 (defun org-columns-move-up ()
   "In column view, move cursor up one row.
 When in agenda column view, also call `org-agenda-do-context-action'."
@@ -1046,10 +1046,10 @@ When in agenda column view, also call `org-agenda-do-context-action'."
       (forward-line -1))
     (move-to-column col)
     (when (eq major-mode 'org-agenda-mode)
-      (require 'org-agenda)
+      (require 'org-agenda-mode)
       (org-agenda-do-context-action))))
 
-(declare-function org-agenda-do-context-action "org-agenda" ())
+(declare-function org-agenda-do-context-action "org-agenda-mode" ())
 (defun org-columns-move-down ()
   "In column view, move cursor down one row.
 When in agenda column view, also call `org-agenda-do-context-action'."
@@ -1060,7 +1060,7 @@ When in agenda column view, also call `org-agenda-do-context-action'."
       (forward-line 1))
     (move-to-column col)
     (when (derived-mode-p 'org-agenda-mode)
-      (require 'org-agenda)
+      (require 'org-agenda-mode)
       (org-agenda-do-context-action))))
 
 (defun org-columns-move-right ()
@@ -1178,7 +1178,7 @@ the current buffer."
 			      (org-columns--overlay-text
 			       displayed format width property value)))))))))))
 
-(declare-function org-agenda-redo "org-agenda" (&optional all))
+(declare-function org-agenda-redo "org-agenda-mode" (&optional all))
 (defun org-columns-redo ()
   "Construct the column display again."
   (interactive)
@@ -1190,7 +1190,7 @@ the current buffer."
 	  ;; Since we already know the columns format, provide it
 	  ;; instead of computing again.
 	  (funcall-interactively #'org-columns org-columns-global org-columns-current-fmt)
-        (require 'org-agenda)
+        (require 'org-agenda-mode)
 	(org-agenda-redo)
 	(call-interactively #'org-agenda-columns)))
     (message "Recomputing columns...done")))

@@ -52,7 +52,7 @@
 (defun org-agenda-save-markers-for-cut-and-paste (beg end)
   "Save relative positions of markers in region.
 This check for agenda markers in all agenda buffers currently active."
-  (require 'org-agenda)
+  (require 'org-agenda-common)
   (defvar org-agenda-markers)
   (require 'org-track-markers)
   (dolist (buf (buffer-list))

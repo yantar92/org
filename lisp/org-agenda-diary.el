@@ -163,8 +163,8 @@ Needed to avoid empty dates which mess up holiday display."
 
 (defvar org-agenda-entry-types) ; defined in org-agenda-search.el
 (declare-function org-agenda-get-day-entries "org-agenda-search" (file date &rest args))
-(declare-function org-set-sorting-strategy "org-agenda" (key))
-(declare-function org-agenda-finalize-entries "org-agenda" (list &optional type))
+(declare-function org-set-sorting-strategy "org-agenda-sort" (key))
+(declare-function org-agenda-finalize-entries "org-agenda-buffer-format" (list &optional type))
 ;;;###autoload
 (defun org-diary (&rest args)
   "Return diary information from org files.
@@ -193,7 +193,6 @@ The function expects the lisp variables `entry' and `date' to be provided
 by the caller, because this is how the calendar works.  Don't use this
 function from a program - use `org-agenda-get-day-entries' instead."
   (with-no-warnings (defvar date) (defvar entry))
-  (require 'org-agenda)
   (require 'org-agenda-search)
   (when (> (- (float-time)
 	      org-agenda-last-marker-time)
@@ -202,6 +201,7 @@ function from a program - use `org-agenda-get-day-entries' instead."
     ;; list is then no longer a global variable.
     (org-agenda-reset-markers))
   (org-compile-prefix-format 'agenda)
+  (require 'org-agenda-search)
   (org-set-sorting-strategy 'agenda)
   (setq args (or args org-agenda-entry-types))
   (let* ((files (if (and entry (stringp entry) (string-match "\\S-" entry))
@@ -227,6 +227,7 @@ function from a program - use `org-agenda-get-day-entries' instead."
 	    (mapcar (lambda (i) (replace-regexp-in-string
 			    org-link-bracket-re "\\2" i))
 		    results))
+      (require 'org-agenda-buffer-format)
       (concat (org-agenda-finalize-entries results) "\n"))))
 
 ;;; Editing diary from agenda

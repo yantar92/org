@@ -27,8 +27,8 @@
 (org-assert-version)
 
 (require 'org-fold)
-(require 'org-agenda)
 (require 'speedbar)
+(require 'org-agenda-files)
 
 (defvar org-speedbar-restriction-lock-overlay (make-overlay 1 1)
   "Overlay marking the agenda restriction line in speedbar.")
@@ -38,13 +38,14 @@
 	     'help-echo "Agendas are currently limited to this item.")
 (delete-overlay org-speedbar-restriction-lock-overlay)
 
+(declare-function org-agenda-maybe-redo "org-agenda-mode" ())
 (defun org-speedbar-set-agenda-restriction ()
   "Restrict future agenda commands to the location at point in speedbar.
 If there is already a restriction lock at the location, remove it.
 
 To get rid of the restriction, use `\\[org-agenda-remove-restriction-lock]'."
   (interactive)
-  (require 'org-agenda)
+  (require 'org-agenda-mode)
   (let (p m tp np dir txt)
     (cond
      ((setq p (text-property-any (line-beginning-position) (line-end-position)

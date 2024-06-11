@@ -143,7 +143,9 @@
 (require 'org-element-context)
 (require 'org-list-core)
 (require 'org-tags)
-(require 'org-agenda)
+(require 'org-agenda-dispatch)
+(require 'org-keys)
+(require 'org-agenda-undo)
 
 (defvar org-mouse-main-buffer nil
   "Active buffer for mouse operations.")
@@ -1109,8 +1111,9 @@ This means, between the beginning of line and the point."
     (if (< (car startxy) (car endxy)) :right :left)))
 
 
-					; (setq org-agenda-mode-hook nil)
 (defvar org-agenda-mode-map)
+(declare-function org-agenda-earlier "org-agenda-query" (arg))
+(declare-function org-agenda-later "org-agenda-query" (arg))
 (add-hook 'org-agenda-mode-hook
 	  (lambda ()
 	    (setq org-mouse-context-menu-function #'org-mouse-agenda-context-menu)

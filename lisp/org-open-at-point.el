@@ -30,6 +30,7 @@
 (require 'org-element)
 (require 'org-element-context)
 (require 'org-regexps)
+(require 'org-agenda-common)
 
 (declare-function org-at-date-range-p "org" (&optional inactive-ok))
 
@@ -55,7 +56,6 @@ See the docstring of `org-open-file' for details."
   (interactive "e")
   (mouse-set-point ev)
   (when (eq major-mode 'org-agenda-mode)
-    (require 'org-agenda)
     (org-agenda-copy-local-variable 'org-link-abbrev-alist-local))
   (org-open-at-point))
 
@@ -324,15 +324,13 @@ there is one, return it."
 	   (setq link (nth (1- nth) links)))))
        (cons link end)))))
 
-(defvar org-agenda-buffer-tmp-name)
-(defvar org-agenda-start-on-weekday)
-(defvar org-agenda-buffer-name)
 (declare-function org-time-string-to-time "org-time" (s))
 (defun org-follow-timestamp-link ()
   "Open an agenda view for the timestamp date/range at point."
-  (require 'org-agenda)
   ;; Avoid changing the global value.
   (let ((org-agenda-buffer-name org-agenda-buffer-name))
+    (require 'org-agenda-agenda-view)
+    (defvar org-agenda-start-on-weekday)
     (cond
      ((org-at-date-range-p t)
       (let ((org-agenda-start-on-weekday)

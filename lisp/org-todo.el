@@ -321,7 +321,7 @@ nil or a string to be used for the todo mark." )
 
 (defvar org-agenda-headline-snapshot-before-repeat)
 
-(declare-function org-agenda-todo-yesterday "org-agenda")
+(declare-function org-agenda-todo-yesterday "org-agenda-commands-proxy" (&optional arg))
 (defun org-todo-yesterday (&optional arg)
   "Like `org-todo' but the time of change will be 23:59 of yesterday."
   (interactive "P")
