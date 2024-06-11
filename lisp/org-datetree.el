@@ -36,15 +36,10 @@
 (require 'org-property-search)
 (require 'org-element)
 (require 'org-narrow)
-(declare-function org-get-valid-level "org")
 (require 'org-property)
-(defvar org-complex-heading-regexp-format)
 (require 'org-edit-structure)
-(require 'org-edit-structure-common)
 (require 'org-indent-static)
 (require 'org-timestamp)
-
-(defvar org-ts-regexp)
 
 (defvar org-datetree-base-level 1
   "The level at which years should be placed in the date tree.

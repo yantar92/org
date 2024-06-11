@@ -94,9 +94,6 @@
 (require 'sha1)
 (require 'org-fold)
 (require 'org-move)
-(defvar org-complex-heading-regexp)
-(declare-function org-get-valid-level "org")
-(require 'org-edit-structure)
 (require 'org-mark-ring)
 (require 'org-read-date)
 
@@ -504,6 +501,7 @@ This will find DRAWER and extract the alist."
 	(forward-line -1))
       (insert (pp-to-string status)))))
 
+(declare-function org-paste-subtree "org-edit-structure" (&optional level tree for-yank remove))
 (defun org-feed-add-items (pos entries)
   "Add the formatted items to the headline as POS."
   (let (entry level)

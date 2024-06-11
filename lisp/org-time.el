@@ -153,7 +153,7 @@ earliest time on the cursor date that Org treats as that date
                                     (nth 1 date) (nth 0 date) (nth 2 date))))))
     (or defd (current-time))))
 
-(declare-function org-clock-get-last-clock-out-time "org-clock" ())
+(declare-function org-clock-get-last-clock-out-time "org-clock-core" ())
 (defun org-current-effective-time ()
   "Return current time adjusted for `org-extend-today-until' variable."
   (let* ((ct (org-current-time))
@@ -161,7 +161,7 @@ earliest time on the cursor date that Org treats as that date
 	 (ct1
 	  (cond
 	   (org-use-last-clock-out-time-as-effective-time
-            (require 'org-clock)
+            (require 'org-clock-core)
 	    (or (org-clock-get-last-clock-out-time) ct))
 	   ((and org-use-effective-time (< (nth 2 dct) org-extend-today-until))
 	    (org-encode-time 0 59 23 (1- (nth 3 dct)) (nth 4 dct) (nth 5 dct)))
