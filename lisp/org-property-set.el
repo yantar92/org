@@ -103,6 +103,7 @@ variables is set."
       (org-clock-update-clock-status))
     (message "%s is now %s" org-effort-property value)))
 
+;;;###autoload
 (defun org-entry-delete (epom property)
   "Delete PROPERTY from entry at element, point, or marker EPOM.
 Accumulated properties, i.e. PROPERTY+, are also removed.  Return
@@ -280,6 +281,7 @@ This is computed according to `org-property-set-functions-alist'."
   (or (cdr (assoc property org-property-set-functions-alist))
       'org-completing-read))
 
+;;;###autoload
 (defun org-read-property-value (property &optional epom default)
   "Read value for PROPERTY, as a string.
 When optional argument EPOM is non-nil, completion uses additional
@@ -374,6 +376,7 @@ Throw an error when trying to set a property with an invalid name."
       (unless (equal (org-entry-get nil property) value)
 	(org-entry-put nil property value)))))
 
+;;;###autoload
 (defun org-delete-property (property)
   "In the current entry, delete PROPERTY."
   (interactive
@@ -391,6 +394,7 @@ Throw an error when trying to set a property with an invalid name."
     (org-entry-delete nil property)
     (message "Property \"%s\" deleted" property)))
 
+;;;###autoload
 (defun org-delete-property-globally (property)
   "Remove PROPERTY globally, from all entries.
 This function ignores narrowing, if any."
@@ -448,6 +452,7 @@ completion."
   (interactive)
   (org-property-next-allowed-value t))
 
+;;;###autoload
 (defun org-property-next-allowed-value (&optional previous)
   "Switch to the next allowed value for this property."
   (interactive)
