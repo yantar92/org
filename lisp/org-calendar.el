@@ -72,6 +72,23 @@ key."
     (local-set-key org-calendar-insert-diary-entry-key
 		   #'org-agenda-diary-entry)))
 
+(declare-function org-agenda-list "org-agenda-agenda-view" (&optional arg start-day span with-hour))
+;;;###autoload
+(defun org-calendar-goto-agenda ()
+  "Compute the Org agenda for the calendar date displayed at the cursor.
+This is a command that has to be installed in `calendar-mode-map'."
+  (interactive)
+  (require 'org-agenda-mode)
+  (defvar org-agenda-buffer-tmp-name)
+  (defvar org-agenda-sticky)
+  ;; Temporarily disable sticky agenda since user clearly wants to
+  ;; refresh view anyway.
+  (let ((org-agenda-buffer-tmp-name "*Org Agenda(a)*")
+	(org-agenda-sticky nil))
+    (org-agenda-list nil (calendar-absolute-from-gregorian
+			(calendar-cursor-to-date))
+		     nil)))
+
 (eval-after-load 'calendar
   '(add-hook 'calendar-mode-hook #'org--setup-calendar-bindings))
 

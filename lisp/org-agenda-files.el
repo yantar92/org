@@ -239,6 +239,23 @@ This is an internal flag set by `org-agenda-set-restriction-lock'.")
 	     'help-echo "Agendas are currently limited to this subtree.")
 (delete-overlay org-agenda-restriction-lock-overlay)
 
+(declare-function org-agenda-error "org-agenda" ())
+(defun org-agenda-set-restriction-lock-from-agenda (arg)
+  "Set the restriction lock to the agenda item at point from within the agenda.
+When called with a `\\[universal-argument]' prefix, restrict to
+the file which contains the item.
+Argument ARG is the prefix argument."
+  (interactive "P")
+  (unless  (derived-mode-p 'org-agenda-mode)
+    (user-error "Not in an Org agenda buffer"))
+  (let* ((marker (or (org-get-at-bol 'org-marker)
+                     (org-agenda-error)))
+         (buffer (marker-buffer marker))
+         (pos (marker-position marker)))
+    (with-current-buffer buffer
+      (goto-char pos)
+      (org-agenda-set-restriction-lock arg))))
+
 (declare-function org-agenda-maybe-redo "org-agenda" ())
 ;;;###autoload
 (defun org-agenda-set-restriction-lock (&optional type)

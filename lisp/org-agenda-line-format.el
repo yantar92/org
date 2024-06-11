@@ -25,9 +25,9 @@
 ;;; Code:
 
 (require 'org-priority-common)
-(require 'org-agenda-common)
 (require 'org-outline)
 (require 'org-duration)
+(require 'org-agenda-mode)
 
 ;;; Customizations
 
@@ -119,13 +119,6 @@ For example, 9:30am would become 09:30 rather than  9:30."
   :type 'string
   :safe #'stringp)
 
-(defcustom org-agenda-todo-keyword-format "%-1s"
-  "Format for the TODO keyword in agenda lines.
-Set this to something like \"%-12s\" if you want all TODO keywords
-to occupy a fixed space in the agenda display."
-  :group 'org-agenda-line-format
-  :type 'string)
-
 (defcustom org-agenda-timerange-leaders '("" "(%d/%d): ")
   "Text preceding timerange entries in the agenda view.
 This is a list with two strings.  The first applies when the range
@@ -214,57 +207,6 @@ When this is the symbol `prefix', only remove tags when
 	  (const :tag "Always" t)
 	  (const :tag "Never" nil)
 	  (const :tag "When prefix format contains %T" prefix)))
-
-(defvaralias 'org-agenda-align-tags-to-column 'org-agenda-tags-column)
-
-(defcustom org-agenda-tags-column 'auto
-  "Shift tags in agenda items to this column.
-If set to `auto', tags will be automatically aligned to the right
-edge of the window.
-
-If set to a positive number, tags will be left-aligned to that
-column.  If set to a negative number, tags will be right-aligned
-to that column.  For example, -80 works well for a normal 80
-character screen."
-  :group 'org-agenda-line-format
-  :type '(choice
-	  (const :tag "Automatically align to right edge of window" auto)
-	  (integer :tag "Specific column" -80))
-  :package-version '(Org . "9.1")
-  :version "26.1")
-
-(defcustom org-agenda-fontify-priorities 'cookies
-  "Non-nil means highlight low and high priorities in agenda.
-When t, the highest priority entries are bold, lowest priority italic.
-However, settings in `org-priority-faces' will overrule these faces.
-When this variable is the symbol `cookies', only fontify the
-cookies, not the entire task.
-This may also be an association list of priority faces, whose
-keys are the character values of `org-priority-highest',
-`org-priority-default', and `org-priority-lowest' (the default values
-are ?A, ?B, and ?C, respectively).  The face may be a named face, a
-color as a string, or a list like `(:background \"Red\")'.
-If it is a color, the variable `org-faces-easy-properties'
-determines if it is a foreground or a background color."
-  :group 'org-agenda-line-format
-  :type '(choice
-	  (const :tag "Never" nil)
-	  (const :tag "Defaults" t)
-	  (const :tag "Cookies only" cookies)
-	  (repeat :tag "Specify"
-		  (list (character :tag "Priority" :value ?A)
-			(choice    :tag "Face    "
-				   (string :tag "Color")
-				   (sexp :tag "Face"))))))
-
-(defcustom org-agenda-day-face-function nil
-  "Function called to determine what face should be used to display a day.
-The only argument passed to that function is the day.  It should
-returns a face, or nil if does not want to specify a face and let
-the normal rules apply."
-  :group 'org-agenda-line-format
-  :version "24.1"
-  :type '(choice (const nil) (function)))
 
 (defcustom org-agenda-category-icon-alist nil
   "Alist of category icon to be displayed in agenda views.
@@ -755,6 +697,90 @@ Any match of REMOVE-RE will be removed from TXT."
 	  'extra extra
 	  'format org-prefix-format-compiled
 	  'dotime dotime)))))
+
+(defun org-agenda-change-all-lines (newhead hdmarker
+				            &optional fixface just-this)
+  "Change all lines in the agenda buffer which match HDMARKER.
+The new content of the line will be NEWHEAD (as modified by
+`org-agenda-format-item').  HDMARKER is checked with
+`equal' against all `org-hd-marker' text properties in the file.
+If FIXFACE is non-nil, the face of each item is modified according to
+the new TODO state.
+If JUST-THIS is non-nil, change just the current line, not all.
+If FORCE-TAGS is non-nil, the car of it returns the new tags."
+  (let* ((inhibit-read-only t)
+	 (line (org-current-line))
+	 (org-agenda-buffer (current-buffer))
+	 (thetags (with-current-buffer (marker-buffer hdmarker)
+		    (org-get-tags hdmarker)))
+	 props m undone-face done-face finish new dotime level cat tags
+         effort effort-minutes) ;; pl
+    (save-excursion
+      (goto-char (point-max))
+      (forward-line 0)
+      (while (not finish)
+	(setq finish (bobp))
+	(when (and (setq m (org-get-at-bol 'org-hd-marker))
+		   (or (not just-this) (= (org-current-line) line))
+		   (equal m hdmarker))
+	  (setq props (text-properties-at (point))
+		dotime (org-get-at-bol 'dotime)
+		cat (org-agenda-get-category)
+		level (org-get-at-bol 'level)
+		tags thetags
+                effort (org-get-at-bol 'effort)
+                effort-minutes (org-get-at-bol 'effort-minutes)
+		new
+		(let ((org-prefix-format-compiled
+		       (or (get-text-property (min (1- (point-max)) (point)) 'format)
+			   org-prefix-format-compiled))
+		      (extra (org-get-at-bol 'extra)))
+		  (with-current-buffer (marker-buffer hdmarker)
+		    (org-with-wide-buffer
+		     (org-agenda-format-item extra
+                                             (org-add-props newhead nil
+                                               'effort effort
+                                               'effort-minutes effort-minutes)
+                                             level cat tags dotime))))
+                ;; pl (text-property-any (line-beginning-position)
+                ;;                       (line-end-position) 'org-heading t)
+		undone-face (org-get-at-bol 'undone-face)
+		done-face (org-get-at-bol 'done-face))
+	  (forward-line 0)
+	  (cond
+	   ((equal new "") (delete-region (point) (line-beginning-position 2)))
+	   ((looking-at ".*")
+	    ;; When replacing the whole line, preserve bulk mark
+	    ;; overlay, if any.
+	    (let ((mark (catch :overlay
+			  (dolist (o (overlays-in (point) (+ 2 (point))))
+			    (when (eq (overlay-get o 'type)
+				      'org-marked-entry-overlay)
+			      (throw :overlay o))))))
+	      (replace-match new t t)
+	      (forward-line 0)
+	      (when mark (move-overlay mark (point) (+ 2 (point)))))
+            (add-text-properties (line-beginning-position)
+                                 (line-end-position) props)
+	    (when fixface
+              (require 'org-todo)
+              (defvar org-last-todo-state-is-todo)
+	      (add-text-properties
+               (line-beginning-position) (line-end-position)
+	       (list 'face
+                     ;; FIXME: This assumes that we have just modifed
+                     ;; the item and immediately called
+                     ;; `org-agenda-change-all-lines' - may or may not
+                     ;; be true.
+		     (if org-last-todo-state-is-todo
+			 undone-face done-face))))
+	    (org-agenda-highlight-todo 'line)
+	    (forward-line 0))
+	   (t (error "Line update did not work")))
+	  (save-restriction
+            (narrow-to-region (line-beginning-position) (line-end-position))
+	    (org-agenda-finalize)))
+	(forward-line -1)))))
 
 (defun org-agenda-fix-displayed-tags (txt tags add-inherited hide-re)
   "Remove tags string from TXT, and add a modified list of tags.

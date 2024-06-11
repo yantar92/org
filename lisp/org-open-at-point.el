@@ -40,7 +40,14 @@
   (mouse-set-point ev)
   (org-open-at-point 'in-emacs))
 
-(declare-function org-agenda-copy-local-variable "org-agenda" (var))
+(defun org-agenda-copy-local-variable (var)
+  "Get a variable from a referenced buffer and install it here."
+  (let ((m (org-get-at-bol 'org-marker)))
+    (when (and m (buffer-live-p (marker-buffer m)))
+      (set (make-local-variable var)
+	   (with-current-buffer (marker-buffer m)
+	     (symbol-value var))))))
+
 ;;;###autoload
 (defun org-open-at-mouse (ev)
   "Open file link or URL at mouse.

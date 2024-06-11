@@ -413,6 +413,7 @@ headings in the region."
       (org-promote)))
   (org-fix-position-after-promote))
 
+;;;###autoload
 (defun org-do-demote ()
   "Demote the current heading lower down the tree.
 If the region is active in `transient-mark-mode', demote all

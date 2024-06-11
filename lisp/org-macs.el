@@ -182,32 +182,6 @@ EPOM is an element, point, or marker."
 	  (goto-char (or ,mepom (point)))
 	  ,@body)))))
 
-(defmacro org-with-remote-undo (buffer &rest body)
-  "Execute BODY while recording undo information in current buffer and BUFFER.
-This function is only useful when called from Agenda buffer."
-  (declare (debug (form body)) (indent 1))
-  (org-with-gensyms (cline cmd buf1 buf2 undo1 undo2 c1 c2)
-    `(let ((,cline (org-current-line))
-	   (,cmd this-command)
-	   (,buf1 (current-buffer))
-	   (,buf2 ,buffer)
-	   (,undo1 buffer-undo-list)
-	   (,undo2 (with-current-buffer ,buffer buffer-undo-list))
-	   ,c1 ,c2)
-       ,@body
-       (when org-agenda-allow-remote-undo
-	 (setq ,c1 (org-verify-change-for-undo
-		    ,undo1 (with-current-buffer ,buf1 buffer-undo-list))
-	       ,c2 (org-verify-change-for-undo
-		    ,undo2 (with-current-buffer ,buf2 buffer-undo-list)))
-	 (when (or ,c1 ,c2)
-	   ;; make sure there are undo boundaries
-	   (and ,c1 (with-current-buffer ,buf1 (undo-boundary)))
-	   (and ,c2 (with-current-buffer ,buf2 (undo-boundary)))
-	   ;; remember which buffer to undo
-	   (push (list ,cmd ,cline ,buf1 ,c1 ,buf2 ,c2)
-		 org-agenda-undo-list))))))
-
 (defmacro org-no-read-only (&rest body)
   "Inhibit read-only for BODY."
   (declare (debug (body)))

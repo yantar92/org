@@ -31,7 +31,17 @@
 (require 'org-property)
 (require 'org-tags-core)
 (require 'org-time)
+(require 'org-agenda-sort)
 (defvar org-agenda-show-log-scoped) ;; FIXME: in future org-agenda-mode.el
+
+(defgroup org-agenda-todo-list nil
+  "Options concerning the global todo list agenda view."
+  :tag "Org Agenda Todo List"
+  :group 'org-agenda)
+(defgroup org-agenda-match-view nil
+  "Options concerning the general tags/property/todo match agenda view."
+  :tag "Org Agenda Match View"
+  :group 'org-agenda)
 
 ;;; FIXME:
 ;;; Customization that really belongs to org-agenda-line-format, but
@@ -124,31 +134,6 @@ command.  A good way to set it is through options in
 `org-agenda-custom-commands'.  For a more flexible (though
 somewhat less efficient) way of determining what is included in
 the daily/weekly agenda, see `org-agenda-skip-function'.")
-
-(defcustom org-agenda-use-tag-inheritance '(todo search agenda)
-  "List of agenda view types where to use tag inheritance.
-
-In tags/tags-todo/tags-tree agenda views, tag inheritance is
-controlled by `org-use-tag-inheritance'.  In other agenda types,
-`org-use-tag-inheritance' is not used for the selection of the
-agenda entries.  Still, you may want the agenda to be aware of
-the inherited tags anyway, e.g. for later tag filtering.
-
-Allowed value are `todo', `search' and `agenda'.
-
-This variable has no effect if `org-agenda-show-inherited-tags'
-is set to `always'.  In that case, the agenda is aware of those
-tags.
-
-The default value sets tags in every agenda type.  Setting this
-option to nil will speed up non-tags agenda view a lot."
-  :group 'org-agenda
-  :version "26.1"
-  :package-version '(Org . "9.1")
-  :type '(choice
-	  (const :tag "Use tag inheritance in all agenda types" t)
-	  (repeat :tag "Use tag inheritance in selected agenda types"
-		  (symbol :tag "Agenda type"))))
 
 ;;; Skipping agenda items that match multiple dates
 

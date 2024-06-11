@@ -361,6 +361,7 @@ If ONOFF is `on' or `off', don't toggle but set to this state."
       res)))
 
 (declare-function org-agenda-change-all-lines "org-agenda")
+;;;###autoload
 (defun org-change-tag-in-region (beg end tag off)
   "Add or remove TAG for each entry in the region.
 This works in the agenda, and also in an Org buffer."

@@ -155,6 +155,7 @@ with the current time without prompting the user."
   (org-timestamp arg 'inactive))
 
 (defalias 'org-insert-time-stamp #'org-insert-timestamp)
+;;;###autoload
 (defun org-insert-timestamp (time &optional with-hm inactive pre post extra)
   "Insert a date stamp for the date given by the internal TIME.
 See `format-time-string' for the format of TIME.

@@ -253,6 +253,7 @@ cycling) will not occur.")
 
 ;;;; Implementation:
 
+;;;###autoload
 (defun org-cycle-hide-drawers (state)
   "Re-hide all drawers after a visibility state change.
 STATE should be one of the symbols listed in the docstring of

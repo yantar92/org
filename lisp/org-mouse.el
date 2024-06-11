@@ -357,6 +357,7 @@ nor a function, elements of KEYWORDS are used directly."
 (defun org-mouse-show-headlines ()
   "Change the visibility of the current org buffer to only show headlines."
   (interactive)
+  (defvar org-cycle-global-status) ; defined in org-cycle.el
   (let ((this-command 'org-cycle)
 	(last-command 'org-cycle)
 	(org-cycle-global-status nil))
@@ -366,6 +367,7 @@ nor a function, elements of KEYWORDS are used directly."
 (defun org-mouse-show-overview ()
   "Change visibility of current org buffer to first-level headlines only."
   (interactive)
+  (defvar org-cycle-global-status) ; defined in org-cycle.el
   (let ((org-cycle-global-status nil))
     (org-cycle '(4))))
 
@@ -922,6 +924,7 @@ This means, between the beginning of line and the point."
       (require 'org-list-commands)
       (org-toggle-checkbox))
      ((assq :item-bullet context)
+      (defvar org-cycle-include-plain-lists) ; defined in org-cycle.el
       (let ((org-cycle-include-plain-lists t)) (org-cycle)))
      ((org-footnote-at-reference-p) nil)
      (t (apply orig-fun args)))))
@@ -935,6 +938,10 @@ This means, between the beginning of line and the point."
   (with-current-buffer (window-buffer (posn-window position))
     (copy-marker (posn-point position))))
 
+(declare-function org-paste-subtree "org-edit-structure" (&optional level tree for-yank remove))
+(declare-function org-cut-subtree "org-edit-structure" (&optional n))
+(declare-function org-promote-subtree "org-edit-structure" ())
+(declare-function org-demote-subtree "org-edit-structure" ())
 (defun org-mouse-move-tree (event)
   ;; todo: handle movements between different buffers
   (interactive "e")

@@ -32,11 +32,16 @@
 (org-assert-version)
 
 (require 'org-colview)
-(require 'org-agenda)
+(require 'org-agenda-mode)
 (require 'org-clock-sum)
 
 
 ;;; Configuration
+
+(defgroup org-agenda-column-view nil
+  "Options concerning column view in the agenda."
+  :tag "Org Agenda Column View"
+  :group 'org-agenda)
 
 (defcustom org-columns-default-format-for-agenda nil
   "The default column format in an agenda buffer.
@@ -49,6 +54,32 @@ for the first item in the agenda list will be used, or as a fall-back,
   :type '(choice
 	  (const :tag "No default" nil)
 	  (string :tag "Format string")))
+
+(defcustom org-agenda-columns-show-summaries t
+  "Non-nil means show summaries for columns displayed in the agenda view."
+  :group 'org-agenda-column-view
+  :type 'boolean)
+
+(defcustom org-agenda-columns-compute-summary-properties t
+  "Non-nil means recompute all summary properties before column view.
+When column view in the agenda is listing properties that have a summary
+operator, it can go to all relevant buffers and recompute the summaries
+there.  This can mean overhead for the agenda column view, but is necessary
+to have thing up to date.
+As a special case, a CLOCKSUM property also makes sure that the clock
+computations are current."
+  :group 'org-agenda-column-view
+  :type 'boolean)
+
+(defcustom org-agenda-columns-add-appointments-to-effort-sum nil
+  "Non-nil means the duration of an appointment will add to day effort.
+The property to which appointment durations will be added is the one given
+in the option `org-effort-property'.  If an appointment does not have
+an end time, `org-agenda-default-appointment-duration' will be used.  If that
+is not set, an appointment without end time will not contribute to the time
+estimate."
+  :group 'org-agenda-column-view
+  :type 'boolean)
 
 
 ;;; Column View
