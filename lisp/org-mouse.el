@@ -376,7 +376,6 @@ nor a function, elements of KEYWORDS are used directly."
 (declare-function org-priority "org-priority" (&optional action show))
 (defun org-mouse-set-priority (priority)
   "Set the priority of the current headline to PRIORITY."
-  (require 'org-priority)
   (org-priority priority))
 
 (defvar org-mouse-priority-regexp "\\[#\\([A-Z]\\)\\]"

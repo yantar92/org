@@ -30,6 +30,7 @@
 (require 'org-element-context)
 (require 'org-outline)
 (require 'org-property-core)
+(require 'org-priority-common)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
 (defvar-local org-keyword-properties nil
@@ -168,8 +169,6 @@ strings."
 		  (push (cons "TODO" (match-string-no-properties 2)) props)))
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "PRIORITY"))
-              (require 'org-priority)
-              (defvar org-priority-default)
 	      (push (cons "PRIORITY"
 			  (if (looking-at org-priority-regexp)
 			      (match-string-no-properties 2)

@@ -667,7 +667,6 @@ Where possible, use the standard interface for changing this line."
 	    ("PRIORITY"
 	     (lambda ()
 	       (org-with-point-at pom
-                 (require 'org-priority)
 		 (call-interactively #'org-priority))))
 	    ("TAGS"
 	     (lambda ()

@@ -374,7 +374,6 @@ When called programmatically, FORCE-DIRECTION can be `set', `up',
 	(widen)
 	(goto-char pos)
 	(org-fold-show-context 'agenda)
-        (require 'org-priority)
 	(org-priority force-direction)
 	(end-of-line 1)
 	(setq newhead (org-get-heading)))

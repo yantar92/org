@@ -41,7 +41,6 @@
 (require 'org-id)
 (require 'org-property-set)
 (require 'org-archive)
-(require 'org-priority)
 (require 'org-tags)
 (require 'org-agenda-dispatch)
 
@@ -1000,6 +999,7 @@ is currently a noop.")
 			   (org-split-string path "/")))
 	(org-find-olp (cons file path))))))
 
+(declare-function org-priority "org-priority" (&optional action show))
 (defun org-mobile-edit (what old new)
   "Edit item WHAT in the current entry by replacing OLD with NEW.
 WHAT can be \"heading\", \"todo\", \"tags\", \"priority\", or \"body\".

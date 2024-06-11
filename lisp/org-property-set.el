@@ -29,6 +29,7 @@
 (require 'org-property)
 (require 'org-property-core)
 (require 'org-indent-static)
+(require 'org-priority-common)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
 
@@ -195,7 +196,6 @@ decreases scheduled or deadline date by one day."
          (require 'org-todo)
 	 (org-todo value))
         ((equal property "PRIORITY")
-         (require 'org-priority)
 	 (org-priority (if (org-string-nw-p value) (string-to-char value) ?\s)))
         ((equal property "SCHEDULED")
 	 (forward-line)
@@ -421,9 +421,6 @@ completion."
       (setq vals (org-with-point-at epom
 		   (append org-todo-keywords-1 '("")))))
      ((equal property "PRIORITY")
-      (require 'org-priority)
-      (defvar org-priority-lowest)
-      (defvar org-priority-highest)
       (let ((n org-priority-lowest))
 	(while (>= n org-priority-highest)
 	  (push (char-to-string n) vals)
