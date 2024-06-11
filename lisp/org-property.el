@@ -640,7 +640,6 @@ When ONLY-LOCAL-TAGS is non-nil, ignore the global tag completion
 table, only get buffer tags.
 
 See also `org-scan-tags'."
-  (require 'org-tags)
   (require 'org-mode)
   (unless match
     ;; Get a new match request, with completion against the global

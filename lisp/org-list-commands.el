@@ -908,7 +908,6 @@ function is being called interactively."
 Metadata are tags, planning information and properties drawers."
   (save-match-data
     (org-with-wide-buffer
-     (require 'org-tags)
      (org-set-tags nil)
      (delete-region (line-beginning-position 2)
 		    (save-excursion

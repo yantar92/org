@@ -425,8 +425,6 @@ SCHEDULED: or DEADLINE: or ANYTHINGLIKETHIS:"
 
 (defun org-mouse-tag-menu ()		;todo
   "Create the tags menu."
-  (require 'org-tags)
-  (defvar org-tags-sort-function)
   (append
    (let ((tags (org-get-tags nil t)))
      (org-mouse-keyword-menu

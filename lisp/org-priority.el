@@ -30,7 +30,7 @@
 (require 'org-move)
 (require 'org-priority-common)
 (require 'org-mode-common)
-(require 'org-tags)
+(require 'org-tags-align)
 
 (defgroup org-priorities nil
   "Priorities in Org mode."

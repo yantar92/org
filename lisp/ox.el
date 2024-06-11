@@ -91,7 +91,6 @@
 (require 'org-move)
 (require 'org-narrow)
 (require 'org-footnote)
-(require 'org-tags)
 (require 'org-src)
 (require 'org-element-context)
 (require 'org-table-align)
