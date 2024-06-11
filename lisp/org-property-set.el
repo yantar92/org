@@ -202,7 +202,6 @@ decreases scheduled or deadline date by one day."
 		  (re-search-forward
 		   org-scheduled-time-regexp (line-end-position) t))
              (progn
-               (require 'org-timestamp)
 	       (cond ((string= value "earlier") (org-timestamp-change -1 'day))
 		     ((string= value "later") (org-timestamp-change 1 'day))
 		     ((string= value "")

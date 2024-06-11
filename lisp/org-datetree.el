@@ -39,7 +39,6 @@
 (require 'org-property)
 (require 'org-edit-structure)
 (require 'org-indent-static)
-(require 'org-timestamp)
 
 (defvar org-datetree-base-level 1
   "The level at which years should be placed in the date tree.
@@ -209,6 +208,7 @@ inserted into the buffer."
       (forward-line 0)
       (org-datetree-insert-line year month day insert)))))
 
+(declare-function org-insert-timestamp "org-timestamp" (time &optional with-hm inactive pre post extra))
 (defun org-datetree-insert-line (year &optional month day text)
   (delete-region (save-excursion (org-skip-whitespace 'back) (point)) (point))
   (when (org--blank-before-heading-p) (insert "\n"))

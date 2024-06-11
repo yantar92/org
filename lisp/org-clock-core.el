@@ -37,7 +37,6 @@
 (require 'org-fold)
 (require 'org-log-note)
 (require 'org-element-timestamp)
-(require 'org-timestamp)
 (require 'org-edit-structure-common)
 (require 'org-indent-static)
 (require 'org-agenda-files)
@@ -583,6 +582,7 @@ If necessary, clock-out of the currently active clock."
 
 (declare-function org-in-item-p "org-list-core" ())
 (declare-function org-todo "org-todo" (&optional arg))
+(declare-function org-insert-timestamp "org-timestamp" (time &optional with-hm inactive pre post extra))
 ;;;###autoload
 (defun org-clock-in (&optional select start-time)
   "Start the clock on the current item.

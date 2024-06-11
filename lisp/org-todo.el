@@ -336,6 +336,7 @@ nil or a string to be used for the todo mark." )
   "First entry preventing the TODO state change.")
 
 (declare-function org-entry-put "org-property-set" (epom property value))
+(declare-function org-timestamp-change "org-timestamp "(n &optional what updown suppress-tmp-delay))
 (defun org-auto-repeat-maybe (done-word)
   "Check if the current headline contains a repeated timestamp.
 
@@ -412,7 +413,7 @@ This function is run automatically after each state change to a DONE state."
 		(when (equal what "w") (setq n (* n 7) what "d"))
 		(when (and (equal what "h")
 			   (not (string-match-p "[0-9]\\{1,2\\}:[0-9]\\{2\\}"
-						ts)))
+					      ts)))
 		  (user-error
 		   "Cannot repeat in %d hour(s) because no hour has been set"
 		   n))
@@ -437,7 +438,7 @@ This function is run automatically after each state change to a DONE state."
 				   (if (equal what "h")
 				       (not (time-less-p nil time))
 				     (>= (org-today)
-					 (time-to-days time))))
+					(time-to-days time))))
 			  (when (= nshiftmax (cl-incf nshift))
 			    (or (y-or-n-p
 				 (format "%d repeater intervals were not \
@@ -459,6 +460,8 @@ enough to shift date past today.  Continue? "
 				    ts)))))
 		(save-excursion
 		  (org-timestamp-change n (cdr (assoc what whata)) nil t))
+                (require 'org-timestamp)
+                (defvar org-last-changed-timestamp)
 		(setq msg
 		      (concat msg type " " org-last-changed-timestamp " ")))))))
       (run-hooks 'org-todo-repeat-hook)

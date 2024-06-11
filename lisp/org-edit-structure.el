@@ -1108,7 +1108,6 @@ with the original repeater."
 		      (org-remove-empty-drawer-at (point))))
 		  (goto-char (point-min))
 		  (when doshift
-                    (require 'org-timestamp)
 		    (while (re-search-forward org-ts-regexp-both nil t)
 		      (org-timestamp-change (* n shift-n) shift-what))
 		    (unless (= n n-no-remove)

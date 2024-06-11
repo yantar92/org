@@ -85,7 +85,6 @@
 (require 'org-attach) ; org-attach adds staff to `org-export-before-parsing-functions'
 (require 'tabulated-list)
 (require 'org-element-timestamp)
-(require 'org-timestamp)
 (require 'org-agenda-search)
 (require 'org-property)
 (require 'org-move)
@@ -2847,8 +2846,7 @@ locally for the subtree through node properties."
     (dolist (key (nreverse keywords))
       (let ((val (cond ((equal (car key) "DATE")
 			(or (cdr key)
-			    (with-temp-buffer
-			      (org-insert-timestamp nil))))
+                            (format-time-string (org-time-stamp-format))))
 		       ((equal (car key) "TITLE")
 			(or (let ((visited-file
 				   (buffer-file-name (buffer-base-buffer))))

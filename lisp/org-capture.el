@@ -1712,6 +1712,7 @@ Lisp programs can force the template by setting KEYS to a string."
 (declare-function org-read-property-value "org-property-set"
                   (property &optional epom default))
 (declare-function org-set-property "org-property-set" (property value))
+(declare-function org-insert-timestamp "org-timestamp" (time &optional with-hm inactive pre post extra))
 (defun org-capture-fill-template (&optional template initial annotation)
   "Fill a TEMPLATE and return the filled template as a string.
 The template may still contain \"%?\" for cursor positioning.

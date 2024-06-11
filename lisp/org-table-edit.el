@@ -648,7 +648,6 @@ The function assumes `org-table-copy-increment' is non-nil."
 	    ;; `default-step' days.
 	    (with-temp-buffer
 	      (insert t1)
-              (require 'org-timestamp)
               (delay-mode-hooks (org-mode))
 	      (org-timestamp-up-day (if (not t2) default-step
 				      (- (org-time-string-to-absolute t1)

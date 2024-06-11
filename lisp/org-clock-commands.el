@@ -161,6 +161,7 @@ clocked item, and the value displayed in the mode line."
 
 ;;; Update running clock when its clock line at point is modified by hand
 
+(declare-function org-timestamp-change "org-timestamp" (n &optional what updown suppress-tmp-delay))
 ;;;###autoload
 (defun org-clock-update-time-maybe ()
   "If this is a CLOCK line, update it and return t.
