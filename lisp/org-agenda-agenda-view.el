@@ -341,7 +341,6 @@ items if they have an hour specification like [h]h:mm."
            ;; debug agenda.  The debugger will not trigger without
            ;; redisplay.
 	   (inhibit-redisplay (not debug-on-error))
-	   (org-agenda-show-log-scoped org-agenda-show-log)
 	   s rtn rtnall file date d start-pos end-pos todayp ;; e
 	   clocktable-start clocktable-end) ;; filter
       (setq org-agenda-redo-command
@@ -408,10 +407,10 @@ items if they have an hour specification like [h]h:mm."
 		(setq org-agenda-entry-types
 		      (delq :deadline* (delq :deadline org-agenda-entry-types))))
 	      (cond
-	       ((memq org-agenda-show-log-scoped '(only clockcheck))
+	       ((memq org-agenda-show-log '(only clockcheck))
 		(setq rtn (org-agenda-get-day-entries
 			   file date :closed)))
-	       (org-agenda-show-log-scoped
+	       (org-agenda-show-log
 		(setq rtn (apply #'org-agenda-get-day-entries
 				 file date
 				 (append '(:closed) org-agenda-entry-types))))
@@ -479,7 +478,7 @@ items if they have an hour specification like [h]h:mm."
 					     org-last-args (,arg ,start-day ,span)
 					     org-redo-cmd ,org-agenda-redo-command
 					     org-series-cmd ,org-cmd))
-      (when (eq org-agenda-show-log-scoped 'clockcheck)
+      (when (eq org-agenda-show-log 'clockcheck)
 	(org-agenda-show-clocking-issues))
       (org-agenda-finalize)
       (setq buffer-read-only t)

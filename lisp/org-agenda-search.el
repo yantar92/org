@@ -32,7 +32,6 @@
 (require 'org-tags-core)
 (require 'org-time)
 (require 'org-agenda-sort)
-(defvar org-agenda-show-log-scoped) ;; FIXME: in future org-agenda-mode.el
 
 (defgroup org-agenda-todo-list nil
   "Options concerning the global todo list agenda view."
@@ -822,7 +821,10 @@ the documentation of `org-diary'."
 		    (:scheduled*
 		     (push (org-agenda-get-scheduled deadlines t) results))
 		    (:closed
-		     (push (org-agenda-get-progress) results))
+		     (push (org-agenda-get-progress
+                            (if (eq org-agenda-show-log 'clockcheck) '(clock)
+                              org-agenda-show-log))
+                           results))
 		    (:deadline
 		     (setf deadlines (org-agenda-get-deadlines))
 		     (push deadlines results))
@@ -1284,8 +1286,11 @@ displayed in agenda view."
     (nreverse ee)))
 
 (defalias 'org-get-closed #'org-agenda-get-progress)
-(defun org-agenda-get-progress ()
-  "Return the logged TODO entries for agenda display."
+(defun org-agenda-get-progress (&optional entry-types)
+  "Return the logged TODO entries for agenda display.
+ENTRY-TYPES, when non-nil, limits the types of entries to be selected.
+The allowed values are those of `org-agenda-log-mode-items', which
+see.  When ENTRY-TYPES is nil, use `org-agenda-log-mode-items'."
   (with-no-warnings (defvar date))
   (let* ((props (list 'mouse-face 'highlight
 		      'org-not-done-regexp org-not-done-regexp
@@ -1294,11 +1299,8 @@ displayed in agenda view."
 		      'help-echo
 		      (format "mouse-2 or RET jump to org file %s"
 			      (abbreviate-file-name buffer-file-name))))
-	 (items (if (consp org-agenda-show-log-scoped)
-		    org-agenda-show-log-scoped
-		  (if (eq org-agenda-show-log-scoped 'clockcheck)
-		      '(clock)
-		    org-agenda-log-mode-items)))
+	 (items (if (consp entry-types) entry-types
+		  org-agenda-log-mode-items))
 	 (parts
 	  (delq nil
 		(list
