@@ -31,7 +31,6 @@
 
 (require 'org-element-context)
 (require 'org-tags-common)
-(require 'thingatpt)
 (require 'org-table-core)
 (require 'org-mode-common)
 (require 'pcomplete)
