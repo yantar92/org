@@ -36,10 +36,6 @@
 (require 'table nil 'noerror)
 (require 'org-preview-latex)
 
-(declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-next-visible-heading "org" (arg))
-
 ;;; Define Backend
 
 (org-export-define-backend 'odt
@@ -135,7 +131,6 @@
 (declare-function hfy-face-to-style "htmlfontify" (fn))
 (declare-function hfy-face-or-def-to-name "htmlfontify" (fn))
 (declare-function archive-zip-extract "arc-mode" (archive name))
-(declare-function org-create-math-formula "org" (latex-frag &optional mathml-file))
 (declare-function browse-url-file-url "browse-url" (file))
 
 (defvar nxml-auto-insert-xml-declaration-flag) ; nxml-mode.el
@@ -4171,6 +4166,8 @@ MathML source to kill ring depending on the value of
 	    (save-buffer-coding-system 'utf-8))
        (set-buffer buffer)
        (set-buffer-file-coding-system coding-system-for-write)
+       (require 'org-preview-latex)
+       (declare-function org-create-math-formula "org-preview-latex" (latex-frag &optional mathml-file))
        (let ((mathml (org-create-math-formula latex-frag)))
 	 (unless mathml (error "No Math formula created"))
 	 (insert mathml)
