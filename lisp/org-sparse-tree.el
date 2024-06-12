@@ -355,6 +355,7 @@ removed (for example with \\`C-c C-c', or with the next edit (depending
 on `org-remove-highlights-with-change'), this variable is emptied
 as well.")
 
+;;;###autoload
 (defun org-occur (regexp &optional keep-previous callback)
   "Make a compact tree showing all matches of REGEXP.
 

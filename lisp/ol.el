@@ -37,32 +37,9 @@
 (require 'org-regexps)
 (require 'org-element-context)
 (require 'org-fold-core)
+(require 'org-src)
 
 (require 'ol-core)
-
-(defvar clean-buffer-list-kill-buffer-names)
-(defvar org-highlight-links)
-(defvar org-src-source-file-name)
-
-(declare-function calendar-cursor-to-date "calendar" (&optional error event))
-(declare-function dired-get-filename "dired" (&optional localp no-error-if-not-filep))
-(declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
-(declare-function org-find-property "org" (property &optional value))
-(declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
-(declare-function org-id-find-id-file "org-id" (id))
-(declare-function org-insert-heading "org" (&optional arg invisible-ok top))
-(declare-function org-mark-ring-push "org" (&optional pos buffer))
-(declare-function org-mode "org" ())
-(declare-function org-occur "org" (regexp &optional keep-previous callback))
-(declare-function org-open-file "org" (path &optional in-emacs line search))
-(declare-function org-cycle-overview "org-cycle" ())
-(declare-function org-run-like-in-org-mode "org" (cmd))
-(declare-function org-src-coderef-format "org-src" (&optional element))
-(declare-function org-src-coderef-regexp "org-src" (fmt &optional label))
-(declare-function org-src-edit-buffer-p "org-src" (&optional buffer))
-(declare-function org-src-source-buffer "org-src" ())
-(declare-function org-src-source-type "org-src" ())
-(declare-function org-time-stamp-format "org" (&optional long inactive))
 
 
 ;;; Customization
@@ -400,6 +377,7 @@ either a link description or nil."
     (concat (format "%-45s" (substring desc 0 (min (length desc) 40)))
 	    "<" (car link) ">")))
 
+(declare-function org-id-find-id-file "org-id" (id))
 (defun org-link--fontify-links-to-this-file ()
   "Fontify links to the current file in `org-stored-links'."
   (let ((f (buffer-file-name)) a b)
@@ -422,6 +400,7 @@ either a link description or nil."
 	      (put-text-property 0 (length l) 'face 'font-lock-comment-face l))
 	    (delq nil (append a b)))))
 
+(declare-function org-cycle-overview "org-cycle" ())
 (defun org-link--buffer-for-internals ()
   "Return buffer used for displaying the target of internal links."
   (cond
@@ -437,6 +416,7 @@ either a link description or nil."
 		(make-indirect-buffer (current-buffer)
 				      indirect-buffer-name
 				      'clone))))
+      (require 'org-cycle)
       (with-current-buffer indirect-buffer (org-cycle-overview))
       indirect-buffer))))
 
@@ -661,6 +641,8 @@ Return t when a link has been stored in `org-link-store-props'."
 	      (while (re-search-forward regexp nil t)
 	        (org-element-cache-refresh (match-beginning 1)))))))
       ;; Re fontify buffer.
+      (require 'org-font-lock)
+      (defvar org-highlight-links)
       (when (memq 'radio org-highlight-links)
 	(org-restart-font-lock)))))
 
@@ -740,6 +722,7 @@ and then used in capture templates."
 	   if store-func
 	   collect store-func))
 
+(declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
 (defun org-link-open (link &optional arg)
   "Open a link object LINK.
 
@@ -831,6 +814,10 @@ to read."
       (goto-char (point-min))
       (select-window cwin))))
 
+(declare-function org-insert-heading "org-edit-structure" (&optional arg invisible-ok level))
+(declare-function org-get-heading "org-outline" (&optional no-tags no-todo no-priority no-comment))
+(declare-function org-occur "org-sparse-tree" (regexp &optional keep-previous callback))
+(declare-function org-find-property "org-property-search" (property &optional value))
 (defun org-link-search (s &optional avoid-pos stealth new-heading-container)
   "Search for a search string S in the accessible part of the buffer.
 
@@ -874,6 +861,7 @@ respects buffer narrowing."
      ;; Check if there are any special search functions.
      ((run-hook-with-args-until-success 'org-execute-file-search-functions s))
      ((eq (string-to-char s) ?#)
+      (require 'org-property-search)
       ;; Look for a custom ID S if S starts with "#".
       (let* ((id (substring normalized 1))
 	     (match (org-find-property "CUSTOM_ID" id)))
@@ -1024,6 +1012,7 @@ priority cookie or tag."
 	  (org-link--normalize-string
 	   (or string (org-get-heading t t t t)))))
 
+(declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
 (defun org-link-precise-link-target ()
   "Determine search string and description for storing a link.
 
@@ -1058,6 +1047,7 @@ matches."
                   (region-beginning)))
 
            ((derived-mode-p 'org-mode)
+            (require 'org-property)
             (let* ((element (org-element-at-point))
                    (name (org-element-property :name element))
                    (heading (org-element-lineage element '(headline inlinetask) t))
@@ -1236,7 +1226,10 @@ PATH is the command to execute, as a string."
       (let ((buf (generate-new-buffer "*Org Shell Output*")))
 	(message "Executing %s" path)
 	(shell-command path buf)
+        ;; FIXME: Should we really do it? It would be better to
+        ;; contribute Org support to midnight.el package instead.
 	(when (featurep 'midnight)
+          (defvar clean-buffer-list-kill-buffer-names)
 	  (setq clean-buffer-list-kill-buffer-names
 		(cons (buffer-name buf)
 		      clean-buffer-list-kill-buffer-names))))
@@ -1299,6 +1292,7 @@ If the link is in hidden text, expose it."
   (interactive)
   (org-next-link t))
 
+(declare-function org-time-stamp-format "org-element-timestamp" (&optional with-time inactive custom))
 ;;;###autoload
 (defun org-store-link (arg &optional interactive?)
   "Store a link to the current location.
@@ -1407,7 +1401,9 @@ NAME."
 
        ;; Calendar mode
        ((eq major-mode 'calendar-mode)
+        (declare-function calendar-cursor-to-date "calendar" (&optional error event))
 	(let ((cd (calendar-cursor-to-date)))
+          (require 'org-element-timestamp)
 	  (setq link
 		(format-time-string
                  (org-time-stamp-format)
@@ -1422,6 +1418,7 @@ NAME."
 
        ;; In dired, store a link to the file of the current line
        ((derived-mode-p 'dired-mode)
+        (declare-function dired-get-filename "dired" (&optional localp no-error-if-not-filep))
 	(let ((file (dired-get-filename nil t)))
 	  (setq file (if file
 			 (abbreviate-file-name
