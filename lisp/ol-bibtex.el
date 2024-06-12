@@ -105,6 +105,11 @@
 ;; Org mode loads this module by default - if this is not what you want,
 ;; configure the variable `org-modules'.
 
+;; FIXME: This file implements export/import functionality for Bibtex
+;; in ad-hoc manner, without making use of ox.el framework.  Ideally,
+;; we should implement a proper bibtex export backend, to make things
+;; consistent.
+
 ;;; Code:
 
 (require 'org-macs)
@@ -115,32 +120,12 @@
 (require 'org-compat)
 (require 'org-macs)
 (require 'ol)
+(require 'org-move)
+(require 'org-outline)
+(require 'org-tags-core)
+(require 'org-regexps)
 
-(defvar org-agenda-overriding-header)
-(defvar org-agenda-search-view-always-boolean)
-(defvar org-bibtex-description nil)
-(defvar org-id-locations)
-(defvar org-property-end-re)
-(defvar org-special-properties)
-(defvar org-window-config-before-follow-link)
-
-(declare-function bibtex-beginning-of-entry "bibtex" ())
-(declare-function bibtex-generate-autokey "bibtex" ())
-(declare-function bibtex-parse-entry "bibtex" (&optional content))
-(declare-function bibtex-url "bibtex" (&optional pos no-browse))
-
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
-(declare-function org-entry-properties "org" (&optional pom which))
-(declare-function org-get-tags "org" (&optional pos local))
-(declare-function org-heading-components "org" ())
-(declare-function org-insert-heading "org" (&optional arg invisible-ok top))
-(declare-function org-map-entries "org" (func &optional match scope &rest skip))
-(declare-function org-narrow-to-subtree "org" (&optional element))
-(declare-function org-set-property "org" (property value))
-(declare-function org-toggle-tag "org" (tag &optional onoff))
-(declare-function org-indent-region "org" (start end))
-
+(defvar org-bibtex-description nil) ; dynamically scoped parameter
 
 
 ;;; BibTeX data
@@ -344,6 +329,9 @@ and `org-tags-exclude-from-inheritance'."
 
 ;;; Utility functions
 (defun org-bibtex-get (property)
+  (require 'org-property)
+  (declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
+  (defvar org-special-properties)
   (let ((it (let ((org-special-properties
                    (delete "FILE" (copy-sequence org-special-properties))))
               (or
@@ -365,6 +353,7 @@ at point."
 	               prop)))
     (if insert-raw
         (insert (format ":%s: %s\n" prop value))
+      (declare-function org-set-property "org-property-set" (property value))
       (org-set-property prop value))))
 
 (defun org-bibtex-headline ()
@@ -398,19 +387,22 @@ at point."
 		     (remove nil
 			     (if (and org-bibtex-export-arbitrary-fields
 				      org-bibtex-prefix)
-				 (mapcar
-				  (lambda (kv)
-				    (let ((key (car kv)) (val0 (cdr kv)))
-				      (when (and
-					     (string-match org-bibtex-prefix key)
-					     (not (string=
-						   (downcase (concat org-bibtex-prefix
+                                 (progn
+                                   (require 'org-properties)
+                                   (declare-function org-entry-properties "org-properties" (&optional epom which))
+			           (mapcar
+				    (lambda (kv)
+				      (let ((key (car kv)) (val0 (cdr kv)))
+				        (when (and
+					       (string-match org-bibtex-prefix key)
+					       (not (string=
+					           (downcase (concat org-bibtex-prefix
 								     org-bibtex-type-property-name))
-						   (downcase key))))
-					(cons (downcase (replace-regexp-in-string
-							 org-bibtex-prefix "" key))
-					      val0))))
-				  (org-entry-properties nil 'standard))
+					           (downcase key))))
+				          (cons (downcase (replace-regexp-in-string
+						           org-bibtex-prefix "" key))
+					        val0))))
+				    (org-entry-properties nil 'standard)))
 			       (mapcar
 				(lambda (field)
 				  (let ((value (or (org-bibtex-get (funcall from field))
@@ -459,6 +451,7 @@ at point."
 			(when (and
 			       (equal org-bibtex-key-property "ID")
 			       (featurep 'org-id)
+                               (defvar org-id-locations)
 			       (hash-table-p org-id-locations)
 			       (gethash key org-id-locations))
 			  (warn "Another entry has the same ID"))
@@ -579,6 +572,8 @@ ARG, when non-nil, is a universal prefix argument.  See
     (if (and (match-beginning 0) (equal current-prefix-arg '(16)))
 	;; Use double prefix to indicate that any web link should be browsed
 	(let ((b (current-buffer)) (p (point)))
+          (require 'org-open-at-point)
+          (defvar org-window-config-before-follow-link)
 	  ;; Restore the window configuration because we just use the web link
 	  (set-window-configuration org-window-config-before-follow-link)
 	  (with-current-buffer b
@@ -603,14 +598,16 @@ Headlines are exported using `org-bibtex-headline'."
 	    (and file
 		 (file-name-nondirectory
 		  (concat (file-name-sans-extension file) ".bib")))))))
+  (require 'org-agenda-search)
+  (declare-function org-map-entries "org-agenda-search" (func &optional match scope &rest skip))
   (let ((error-point
          (catch 'bib
            (let ((bibtex-entries
                   (remove nil (org-map-entries
-                               (lambda ()
-                                 (condition-case nil
-                                     (org-bibtex-headline)
-                                   (error (throw 'bib (point)))))))))
+                             (lambda ()
+                               (condition-case nil
+                                   (org-bibtex-headline)
+                                 (error (throw 'bib (point)))))))))
              (with-temp-file filename
                (insert (mapconcat #'identity bibtex-entries "\n")))
              (message "Successfully exported %d BibTeX entries to %s"
@@ -625,6 +622,7 @@ Headlines are exported using `org-bibtex-headline'."
 With prefix argument OPTIONAL also prompt for optional fields."
   (interactive "P")
   (save-restriction
+    (declare-function org-narrow-to-subtree "org-narrow" (&optional element))
     (org-narrow-to-subtree)
     (let ((type (let ((name (org-bibtex-get org-bibtex-type-property-name)))
                   (when name (intern (concat ":" name))))))
@@ -655,6 +653,7 @@ point."
 	 (org-bibtex-treat-headline-as-title (if update-heading nil t)))
     (unless (assoc type org-bibtex-types)
       (error "Type:%s is not known" type))
+    (declare-function org-insert-heading "org-edit-structure" (&optional arg invisible-ok level))
     (if update-heading
 	(org-back-to-heading)
       (org-insert-heading)
@@ -664,6 +663,7 @@ point."
     (org-bibtex-put org-bibtex-type-property-name
 		    (substring (symbol-name type) 1))
     (org-bibtex-fleshout type arg)
+    (declare-function org-toggle-tag "org-tags" (tag &optional onoff))
     (dolist (tag org-bibtex-tags) (org-toggle-tag tag 'on))))
 
 (defun org-bibtex-create-in-current-entry (&optional arg)
@@ -730,6 +730,7 @@ entry at point."
   (interactive)
   (unless org-bibtex-entries
     (error "No entries in `org-bibtex-entries'"))
+  (defvar org-special-properties) ; defined in org-property.el
   (let* ((entry (pop org-bibtex-entries))
 	 (org-special-properties nil) ; avoids errors with `org-entry-put'
 	 (val (lambda (field) (cdr (assoc field entry))))
@@ -761,6 +762,8 @@ entry at point."
       (insert ":END:\n"))
     (mapc togtag org-bibtex-tags)
     (unless noindent
+      (require 'org-indent-static)
+      (declare-function org-indent-region "org-indent-static" (start end))
       (org-indent-region
        (save-excursion (org-back-to-heading t) (point))
        (point)))))
@@ -795,11 +798,15 @@ headline of the entry at point."
   (let ((result (org-bibtex-headline)))
     (kill-new result) result))
 
-(declare-function org-search-view "org-agenda-search-view" (&optional todo-only string edit-at))
 (defun org-bibtex-search (string)
   "Search for bibliographical entries in agenda files.
 This function relies `org-search-view' to locate results."
   (interactive "sSearch string: ")
+  (require 'org-agenda-buffer-format)
+  (defvar org-agenda-overriding-header)
+  (require 'org-agenda-search-view)
+  (defvar org-agenda-search-view-always-boolean)
+  (declare-function org-search-view "org-agenda-search-view" (&optional todo-only string edit-at))
   (let ((org-agenda-overriding-header "Bib search results:")
         (org-agenda-search-view-always-boolean t))
     (org-search-view nil
