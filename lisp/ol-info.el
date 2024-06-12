@@ -37,11 +37,6 @@
 
 ;; Declare external functions and variables
 
-(declare-function Info-find-node "info"
-                  (filename nodename &optional no-going-back strict-case))
-(defvar Info-current-file)
-(defvar Info-current-node)
-
 ;; Install the link type
 (org-link-set-parameters "info"
 			 :follow #'org-info-open
@@ -53,11 +48,13 @@
 (defun org-info-store-link (&optional _interactive?)
   "Store a link to an Info file and node."
   (when (eq major-mode 'Info-mode)
+    (defvar Info-current-file)
+    (defvar Info-current-node)
     (let ((link (concat "info:"
-			(file-name-nondirectory Info-current-file)
-			"#" Info-current-node))
-	  (desc (concat (file-name-nondirectory Info-current-file)
-			"#" Info-current-node)))
+		        (file-name-nondirectory Info-current-file)
+		        "#" Info-current-node))
+          (desc (concat (file-name-nondirectory Info-current-file)
+		        "#" Info-current-node)))
       (org-link-store-props :type "info" :file Info-current-file
 			    :node Info-current-node
 			    :link link :description desc)
@@ -117,6 +114,7 @@ If LINK is not an info link then DESC is returned."
   (pcase-let ((`(,filename . ,nodename-or-index)
 	       (org-info--link-file-node name)))
     (require 'info)
+    (declare-function Info-find-node "info" (filename nodename &optional no-going-back strict-case))
     ;; If nodename-or-index is invalid node name, then look it up
     ;; in the index.
     (condition-case nil
