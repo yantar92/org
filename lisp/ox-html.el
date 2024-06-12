@@ -44,17 +44,7 @@
 
 ;;; Function Declarations
 
-(declare-function org-id-find-id-file "org-id" (id))
 (declare-function htmlize-region "ext:htmlize" (beg end))
-(declare-function mm-url-decode-entities "mm-url" ())
-(declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-next-visible-heading "org" (arg))
-
-(defvar htmlize-css-name-prefix)
-(defvar htmlize-output-type)
-(defvar htmlize-output-type)
-(defvar htmlize-css-name-prefix)
 
 ;;; Define Backend
 
@@ -1814,6 +1804,9 @@ a value to `org-html-standalone-image-predicate'."
   "Convert the region between BEG and END to HTML, using htmlize.el.
 This is much like `htmlize-region-for-paste', only that it uses
 the settings define in the org-... variables."
+  (require 'htmlize)
+  (defvar htmlize-output-type)
+  (defvar htmlize-css-name-prefix)
   (let* ((htmlize-output-type org-html-htmlize-output-type)
 	 (htmlize-css-name-prefix org-html-htmlize-font-prefix)
 	 (htmlbuf (htmlize-region beg end)))
@@ -1840,6 +1833,8 @@ to the function `org-html-htmlize-region-for-paste' will
 produce code that uses these same face definitions."
   (interactive)
   (org-require-package 'htmlize)
+  (defvar htmlize-css-name-prefix)
+  (defvar htmlize-output-type)
   (and (get-buffer "*html*") (kill-buffer "*html*"))
   (with-temp-buffer
     (let ((fl (face-list))
