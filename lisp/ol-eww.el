@@ -50,7 +50,6 @@
 
 (require 'ol-core)
 (require 'cl-lib)
-(require 'eww)
 
 
 ;; Store Org link in Eww mode buffer
@@ -65,6 +64,8 @@
 (defun org-eww-store-link (&optional _interactive?)
   "Store a link to the url of an EWW buffer."
   (when (eq major-mode 'eww-mode)
+    (declare-function eww-current-url "eww" ())
+    (defvar eww-data)
     (org-link-store-props
      :type "eww"
      :link (eww-current-url)
@@ -163,14 +164,13 @@ keep the structure of the Org file."
 
 (defun org-eww-extend-eww-keymap ()
   "Add ol-eww bindings to `eww-mode-map'."
+  (require 'eww)
+  (defvar eww-mode-map)
   (define-key eww-mode-map "\C-c\C-x\M-w" 'org-eww-copy-for-org-mode)
   (define-key eww-mode-map "\C-c\C-x\C-w" 'org-eww-copy-for-org-mode))
 
-(when (and (boundp 'eww-mode-map)
-           (keymapp eww-mode-map)) ; eww is already up.
-  (org-eww-extend-eww-keymap))
-
-(add-hook 'eww-mode-hook #'org-eww-extend-eww-keymap)
+(eval-after-load 'eww
+  '(org-eww-extend-eww-keymap))
 
 
 (provide 'ol-eww)
