@@ -33,45 +33,10 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'org-macs)
-(require 'org-compat)
 (require 'pcomplete)
-(require 'org-element)
-
-(declare-function org-at-heading-p "org" (&optional ignored))
-(declare-function org-babel-combine-header-arg-lists "ob-core" (original &rest others))
-(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
-(declare-function org-before-first-heading-p "org" ())
-(declare-function org-buffer-property-keys "org" (&optional specials defaults columns))
-(declare-function org-end-of-meta-data "org" (&optional full))
-(declare-function org-entry-properties "org" (&optional pom which))
-(declare-function org-export-backend-options "ox" (cl-x) t)
-(declare-function org-export-backend-name "ox" (cl-x) t)
-(declare-function org-get-buffer-tags "org" ())
-(declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
-(declare-function org-get-tags "org" (&optional pos local))
-(declare-function org-link-heading-search-string "ol" (&optional string))
-(declare-function org-tag-alist-to-string "org" (alist &optional skip-key))
-(declare-function org-time-stamp-format "org" (&optional with-time inactive custom))
-
-(defvar org-babel-common-header-args-w-values)
-(defvar org-current-tag-alist)
-(defvar org-priority-default)
-(defvar org-drawer-regexp)
-(defvar org-element-affiliated-keywords)
-(defvar org-entities)
-(defvar org-export-default-language)
-(defvar org-export-exclude-tags)
-(defvar org-export-select-tags)
-(defvar org-priority-highest)
-(defvar org-link-abbrev-alist)
-(defvar org-priority-lowest)
-(defvar org-outline-regexp)
-(defvar org-property-re)
-(defvar org-startup-options)
-(defvar org-tag-re)
-(defvar org-todo-keywords-1)
-(defvar org-todo-line-regexp)
+(require 'org-mode)
+(require 'ox-backend)
+(require 'org-move)
 
 (defconst org-options-keywords
   '("ARCHIVE:" "AUTHOR:" "BIBLIOGRAPHY:" "BIND:" "CATEGORY:" "CITE_EXPORT:"
@@ -259,8 +224,10 @@ keywords relative to each registered export backend."
   "Complete arguments for the #+AUTHOR file option."
   (pcomplete-here (list user-full-name)))
 
+(declare-function org-time-stamp-format "org-element-timestamp" (&optional with-time inactive custom))
 (defun pcomplete/org-mode/file-option/date ()
   "Complete arguments for the #+DATE file option."
+  (require 'org-element-timestamp)
   (pcomplete-here (list (format-time-string (org-time-stamp-format)))))
 
 (defun pcomplete/org-mode/file-option/email ()
@@ -270,6 +237,7 @@ keywords relative to each registered export backend."
 (defun pcomplete/org-mode/file-option/exclude_tags ()
   "Complete arguments for the #+EXCLUDE_TAGS file option."
   (require 'ox)
+  (defvar org-export-exclude-tags)
   (pcomplete-here
    (and org-export-exclude-tags
 	(list (mapconcat #'identity org-export-exclude-tags " ")))))
@@ -283,6 +251,7 @@ keywords relative to each registered export backend."
 (defun pcomplete/org-mode/file-option/language ()
   "Complete arguments for the #+LANGUAGE file option."
   (require 'ox)
+  (defvar org-export-default-language)
   (pcomplete-here
    (pcomplete-uniquify-list
     (list org-export-default-language "en"))))
@@ -297,6 +266,7 @@ keywords relative to each registered export backend."
 (defun pcomplete/org-mode/file-option/select_tags ()
   "Complete arguments for the #+SELECT_TAGS file option."
   (require 'ox)
+  (defvar org-export-select-tags)
   (pcomplete-here
    (and org-export-select-tags
 	(list (mapconcat #'identity org-export-select-tags " ")))))
@@ -314,8 +284,10 @@ keywords relative to each registered export backend."
 		(setq opts (delete "showstars" opts)))))
 	    opts))))
 
+(declare-function org-tag-alist-to-string "org-tags" (alist &optional skip-key))
 (defun pcomplete/org-mode/file-option/tags ()
   "Complete arguments for the #+TAGS file option."
+  (require 'org-tags)
   (pcomplete-here
    (list (org-tag-alist-to-string org-current-tag-alist))))
 
@@ -383,9 +355,11 @@ keywords relative to each registered export backend."
   "Complete against known TODO keywords."
   (pcomplete-here (pcomplete-uniquify-list (copy-sequence org-todo-keywords-1))))
 
+(declare-function org-link-heading-search-string "ol" (&optional string))
 (defun pcomplete/org-mode/searchhead ()
   "Complete against all headings.
 This needs more work, to handle headings with lots of spaces in them."
+  (require 'ol)
   (while (pcomplete-here
 	  (save-excursion
 	    (goto-char (point-min))
@@ -396,8 +370,11 @@ This needs more work, to handle headings with lots of spaces in them."
 		(push (substring (org-link-heading-search-string) 1) tbl))
 	      (pcomplete-uniquify-list tbl))))))
 
+(declare-function org-get-buffer-tags "org-tags-core" ())
+(declare-function org-get-tags "org-tags-core" (&optional epom local))
 (defun pcomplete/org-mode/tag ()
   "Complete a tag name.  Omit tags already set."
+  (require 'org-tags-core)
   (while (pcomplete-here
 	  (mapcar (lambda (x) (concat x ":"))
 		  (let ((lst (pcomplete-uniquify-list
@@ -429,8 +406,11 @@ This needs more work, to handle headings with lots of spaces in them."
 	      (pcomplete-uniquify-list names))))
    (substring pcomplete-stub 1)))	;remove initial colon
 
+(declare-function org-buffer-property-keys "org-property" (&optional specials defaults columns))
+(declare-function org-entry-properties "org-property" (&optional epom which))
 (defun pcomplete/org-mode/prop ()
   "Complete a property name.  Omit properties already set."
+  (require 'org-property)
   (pcomplete-here
    (org-pcomplete-case-double
     (mapcar (lambda (x)
@@ -442,6 +422,8 @@ This needs more work, to handle headings with lots of spaces in them."
 	      lst)))
    (substring pcomplete-stub 1)))
 
+(declare-function org-babel-get-src-block-info "ob-core" (&optional no-eval datum))
+(declare-function org-babel-combine-header-arg-lists "ob-core" (original &rest others))
 (defun pcomplete/org-mode/block-option/src ()
   "Complete the arguments of a source block.
 Complete a language in the first field, the header arguments and
@@ -453,6 +435,9 @@ switches."
 				    (symbol-plist
 				     'org-babel-load-languages)
 				    'custom-type)))))))
+  (require 'ob-core)
+  (defvar org-babel-combine-header-arg-lists)
+  (defvar org-babel-common-header-args-w-values)
   (let* ((info (org-babel-get-src-block-info 'no-eval))
 	 (lang (car info))
 	 (lang-headers (intern (concat "org-babel-header-args:" lang)))
