@@ -36,12 +36,7 @@
 (org-assert-version)
 
 (require 'cl-lib)
-(require 'ox-ascii)
-(declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
-(declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-next-visible-heading "org" (arg))
-
+(require 'ox)
 
 
 ;;; User-Configurable Variables
@@ -1273,6 +1268,7 @@ FILES is a list of files to build the calendar from."
 	       ;; BBDB anniversaries.
 	       (when (and org-icalendar-include-bbdb-anniversaries
 			  (require 'ol-bbdb nil t))
+                 (declare-function org-bbdb-anniv-export-ical "ol-bbdb" nil)
 		 (with-output-to-string (org-bbdb-anniv-export-ical)))))))
 	  (org-icalendar--post-process-file org-icalendar-combined-agenda-file))
       (org-release-buffers org-agenda-new-buffers))))
