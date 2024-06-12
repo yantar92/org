@@ -26,11 +26,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'eshell)
-(require 'esh-mode)
 (require 'ol-core)
-
-(declare-function eshell/pwd "em-dirs.el" (&rest args))
 
 (org-link-set-parameters "eshell"
 			 :follow #'org-eshell-open
@@ -41,6 +37,11 @@
 The LINK can be just a command line (executed in the default
 eshell buffer) or a command line prefixed by a buffer name
 followed by a colon."
+  (require 'eshell)
+  (defvar eshell-buffer-name)
+  (require 'esh-mode)
+  (declare-function eshell-kill-input "esh-mode" ())
+  (declare-function eshell-send-input "esh-mode" (&optional use-region queue-p no-newline))
   (let* ((buffer-and-command
           (if (string-match "\\([A-Za-z0-9+*-]+\\):\\(.*\\)" link)
 	      (list (match-string 1 link)
@@ -65,6 +66,8 @@ followed by a colon."
 When opened, the link switches back to the current eshell buffer and
 the current working directory."
   (when (eq major-mode 'eshell-mode)
+    (require 'em-dirs)
+    (declare-function eshell/pwd "em-dirs" ())
     (let* ((command (concat "cd " (eshell/pwd)))
            (link  (concat (buffer-name) ":" command)))
       (org-link-store-props
