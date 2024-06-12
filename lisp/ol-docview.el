@@ -45,12 +45,7 @@
 (require 'org-macs)
 (org-assert-version)
 
-(require 'doc-view)
 (require 'ol)
-
-(declare-function doc-view-goto-page "doc-view" (page))
-(declare-function image-mode-window-get "image-mode" (prop &optional winprops))
-(declare-function org-open-file "org" (path &optional in-emacs line search))
 
 (org-link-set-parameters "docview"
 			 :follow #'org-docview-open
@@ -78,15 +73,20 @@
 		   (string-to-number (match-string 2 link)))))
     ;; Let Org mode open the file (in-emacs = 1) to ensure
     ;; org-link-frame-setup is respected.
+    (declare-function org-open-file "org-open-file" (path &optional in-emacs line search))
     (if (file-exists-p path)
         (org-open-file path 1)
       (error "No such file: %s" path))
+    (require 'doc-view)
+    (declare-function doc-view-goto-page "doc-view" (page))
     (when page (doc-view-goto-page page))))
 
 (defun org-docview-store-link (&optional _interactive?)
   "Store a link to a docview buffer."
   (when (eq major-mode 'doc-view-mode)
     ;; This buffer is in doc-view-mode
+    ;; image-mode.el is loaded by doc-view.el
+    (declare-function image-mode-window-get "image-mode" (prop &optional winprops))
     (let* ((path buffer-file-name)
 	   (page (image-mode-window-get 'page))
 	   (link (concat "docview:" path "::" (number-to-string page))))
