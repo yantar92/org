@@ -213,13 +213,6 @@ EPOM is an element, point, or marker."
             (unless modified
               (restore-buffer-modified-p nil))))))))
 
-;;;###autoload
-(defmacro org-element-with-disabled-cache (&rest body)
-  "Run BODY without active org-element-cache."
-  (declare (debug (form body)) (indent 0))
-  `(cl-letf (((symbol-function #'org-element--cache-active-p) (lambda (&rest _) nil)))
-     ,@body))
-
 
 ;;; Buffer and windows
 

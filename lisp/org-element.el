@@ -7614,6 +7614,13 @@ consistency with buffer modifications."
                     (throw :inhibited nil)))
                 t))))))
 
+;;;###autoload
+(defmacro org-element-with-disabled-cache (&rest body)
+  "Run BODY without active org-element-cache."
+  (declare (debug (form body)) (indent 0))
+  `(cl-letf (((symbol-function #'org-element--cache-active-p) (lambda (&rest _) nil)))
+     ,@body))
+
 (defun org-element--cache-find (pos &optional side)
   "Find element in cache starting at POS or before.
 
