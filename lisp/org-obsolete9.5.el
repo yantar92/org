@@ -43,6 +43,10 @@
 
 ;;;; Obsolete functions and macros
 
+(defmacro org-eval-in-environment (environment form)
+  (declare (debug (form form)) (indent 1) (obsolete cl-progv "9.5"))
+  `(eval (list 'let ,environment ',form)))
+
 (provide 'org-obsolete9.5)
 
 ;; Local variables:

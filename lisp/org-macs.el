@@ -184,10 +184,6 @@ EPOM is an element, point, or marker."
        (widen)
        ,@body)))
 
-(defmacro org-eval-in-environment (environment form)
-  (declare (debug (form form)) (indent 1) (obsolete cl-progv "2021"))
-  `(eval (list 'let ,environment ',form)))
-
 ;;;###autoload
 (defmacro org-load-noerror-mustsuffix (file)
   "Load FILE with optional arguments NOERROR and MUSTSUFFIX."
