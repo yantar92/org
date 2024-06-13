@@ -1009,6 +1009,51 @@ WITH-MARKERS must be nil when RELATIVE is non-nil."
            (unless to (throw :exit nil))
            (goto-char (org-fold-core-next-folding-state-change spec nil to))))))))
 
+(defun org-invisible-p (&optional pos folding-only)
+  "Non-nil if the character after POS is invisible.
+If POS is nil, use `point' instead.  When optional argument
+FOLDING-ONLY is non-nil, only consider invisible parts due to
+folding of a headline, a block or a drawer, i.e., not because of
+fontification."
+  (let ((value (invisible-p (or pos (point)))))
+    (cond ((not value) nil)
+	  (folding-only (org-fold-core-folded-p (or pos (point))))
+	  (t value))))
+
+(defun org-truly-invisible-p ()
+  "Check if point is at a character currently not visible.
+This version does not only check the character property, but also
+`visible-mode'."
+  (unless (bound-and-true-p visible-mode)
+    (org-invisible-p)))
+
+(defun org-invisible-p2 ()
+  "Check if point is at a character currently not visible.
+If the point is at EOL (and not at the beginning of a buffer too),
+move it back by one char before doing this check."
+  (save-excursion
+    (when (and (eolp) (not (bobp)))
+      (backward-char 1))
+    (org-invisible-p)))
+
+(defun org-region-invisible-p (beg end)
+  "Check if region if completely hidden."
+  (org-with-wide-buffer
+   (and (org-invisible-p beg)
+        (org-invisible-p (org-fold-core-next-visibility-change beg end)))))
+
+(defun org-find-visible ()
+  "Return closest visible buffer position, or `point-max'."
+  (if (org-invisible-p)
+      (org-fold-core-next-visibility-change (point))
+    (point)))
+
+(defun org-find-invisible ()
+  "Return closest invisible buffer position, or `point-max'."
+  (if (org-invisible-p)
+      (point)
+    (org-fold-core-next-visibility-change (point))))
+
 ;;;; Changing visibility
 
 ;;;;; Region visibility

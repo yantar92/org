@@ -55,6 +55,7 @@
 (require 'org-compat)
 (require 'org-element)
 (require 'org-element-context)
+(require 'org-time)
 
 ;;; Variables
 

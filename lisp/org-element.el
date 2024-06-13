@@ -68,7 +68,7 @@
 (require 'org-compat)
 (require 'org-fold-core)
 (require 'org-mode-common)
-
+(require 'org-time)
 
 (require 'avl-tree) ; Used by org-element-cache
 (require 'ring) ; User for logging org-element-cache
@@ -512,12 +512,51 @@ with possibly modified values of type and path."
 ;; `org-element-update-syntax' builds proper syntax regexps according
 ;; to current setup.
 
+(defvar org--headline-re-cache-no-bol nil
+  "Plist holding association between headline level regexp.")
+(defvar org--headline-re-cache-bol nil
+  "Plist holding association between headline level regexp.")
+(defsubst org-headline-re (true-level &optional no-bol)
+  "Generate headline regexp for <= TRUE-LEVEL.
+When TRUE-LEVEL is nil, regexp will match any level.
+When NO-BOL is non-nil, regexp will not demand the regexp to start at
+beginning of line."
+  (or (plist-get
+       (if no-bol
+           org--headline-re-cache-no-bol
+         org--headline-re-cache-bol)
+       true-level)
+      (let ((re (rx-to-string
+                 (if (not true-level)
+                     (if no-bol `(seq (1+ "*") " ")
+                       `(seq line-start (1+ "*") " "))
+                   (if no-bol
+                       `(seq (** 1 ,true-level "*") " ")
+                     `(seq line-start (** 1 ,true-level "*") " ")))
+                 t)))
+        (if no-bol
+            (setq org--headline-re-cache-no-bol
+                  (plist-put
+                   org--headline-re-cache-no-bol
+                   true-level re))
+          (setq org--headline-re-cache-bol
+                (plist-put
+                 org--headline-re-cache-bol
+                 true-level re)))
+        re)))
+
 (defconst org-comment-regexp
   (rx (seq bol (zero-or-more (any "\t ")) "#" (or " " eol)))
   "Regular expression for comment lines.")
 
 (defconst org-element-headline-re (org-headline-re nil)
   "Regexp matching a headline.")
+
+;; `org-outline-regexp' ought to be a defconst but is let-bound in
+;; some places -- e.g. see the macro `org-with-limited-levels'.
+(defvar org-outline-regexp (org-headline-re nil t)
+  "Regexp to match Org headlines.
+This variable may be re-defined inside `org-with-limited-levels'.")
 
 (defun org-inlinetask-outline-regexp ()
   "Return string matching an inline task heading.
@@ -526,6 +565,39 @@ The number of levels is controlled by `org-inlinetask-min-level'."
 		    (1- (* org-inlinetask-min-level 2))
 		  org-inlinetask-min-level)))
     (rx-to-string `(seq bol (>= ,nstars ?*) (1+ (any " \t"))))))
+
+(defun org-get-limited-outline-regexp (&optional with-bol)
+  "Return outline-regexp with limited number of levels.
+The number of levels is controlled by `org-inlinetask-min-level'.
+Match at beginning of line when WITH-BOL is non-nil."
+  (cond ((not (derived-mode-p 'org-mode))
+         (if (string-prefix-p "^" outline-regexp)
+             (if with-bol outline-regexp (substring outline-regexp 1))
+           (if with-bol (concat "^" outline-regexp) outline-regexp)))
+	((not (featurep 'org-inlinetask))
+	 (if with-bol org-element-headline-re org-outline-regexp))
+	(t
+	 (let* ((limit-level (1- org-inlinetask-min-level))
+		(nstars (if org-odd-levels-only
+			    (1- (* limit-level 2))
+			  limit-level)))
+           (org-headline-re nstars (not with-bol))))))
+
+(defvar org-called-with-limited-levels nil
+  "Non-nil when `org-with-limited-levels' is currently active.")
+(defmacro org-with-limited-levels (&rest body)
+  "Execute BODY with limited number of outline levels."
+  (declare (debug (body)))
+  `(progn
+     (defvar org-called-with-limited-levels)
+     (defvar org-outline-regexp)
+     (defvar outline-regexp)
+     (defvar org-outline-regexp-bol)
+     (let* ((org-called-with-limited-levels t)
+            (org-outline-regexp (org-get-limited-outline-regexp))
+            (outline-regexp org-outline-regexp)
+            (org-outline-regexp-bol (org-get-limited-outline-regexp t)))
+       ,@body)))
 
 (defconst org-element-archive-tag "ARCHIVE"
   "Tag marking a subtree as archived.")

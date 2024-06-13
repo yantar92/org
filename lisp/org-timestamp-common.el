@@ -24,6 +24,12 @@
 
 ;;; Code:
 
+(defconst org-ts-regexp0
+  "\\(\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)\\( +[^]+0-9>\r\n -]+\\)?\\( +\\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\)"
+  "Regular expression matching time strings for analysis.
+This one does not require the space after the date, so it can be used
+on a string that terminates immediately after the date.")
+
 (defvaralias 'org-time-stamp-rounding-minutes 'org-timestamp-rounding-minutes)
 (defcustom org-timestamp-rounding-minutes '(0 5)
   "Number of minutes to round time stamps to.

@@ -201,6 +201,8 @@ Also, ensure that links are updated in current buffer.
 
 This function is intended to be used as a :set function."
   (set symbol value)
+  (require 'org-agenda-files)
+  (declare-function org-buffer-list "org-agenda-files" (&optional predicate exclude-tmp))
   (dolist (buf (org-buffer-list))
     (with-current-buffer buf
       (org-restart-font-lock))))

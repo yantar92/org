@@ -209,7 +209,7 @@ the current buffer."
   (interactive "P")
   (require 'ob-eval)
   (org-babel-eval-wipe-error-buffer)
-  (org-save-outline-visibility t
+  (org-fold-core-save-visibility t
     (org-babel-map-executables nil
       (if (org-element-type-p
            (org-element-context) '(babel-call inline-babel-call))

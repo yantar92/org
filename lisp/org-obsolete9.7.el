@@ -483,6 +483,8 @@ Unlike to `use-region-p', this function also checks
 (defun org-export-get-parent-headline (blob)
   "Return BLOB parent headline or nil.
 BLOB is the element or object being considered."
+  (require 'org-element-ast)
+  (declare-function org-element-lineage "org-element-ast" (datum &optional types with-self))
   (org-element-lineage blob 'headline))
 (make-obsolete 'org-export-get-parent-headline "no longer used" "9.7")
 

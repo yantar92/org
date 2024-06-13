@@ -693,6 +693,53 @@ This function ignores inlinetasks.  It is meant to be used as
 
 ;;; Define Org major mode
 
+(defun org-get-local-variables ()
+  "Return a list of all local variables in an Org mode buffer."
+  (require 'org-element)
+  (delq nil
+	(mapcar
+	 (lambda (x)
+	   (let* ((binding (if (symbolp x) (list x) (list (car x) (cdr x))))
+		  (name (car binding)))
+	     (and (not (get name 'org-state))
+		  (not (memq name org-element-ignored-local-variables))
+		  (string-match-p
+		   "\\`\\(org-\\|orgtbl-\\|outline-\\|comment-\\|paragraph-\\|\
+auto-fill\\|normal-auto-fill\\|fill-paragraph\\|indent-\\)"
+		   (symbol-name name))
+		  binding)))
+	 (with-temp-buffer
+	   (org-mode)
+	   (buffer-local-variables)))))
+
+(defun org-clone-local-variables (from-buffer &optional regexp)
+  "Clone local variables from FROM-BUFFER.
+Optional argument REGEXP selects variables to clone."
+  (require 'org-element)
+  (dolist (pair (buffer-local-variables from-buffer))
+    (pcase pair
+      (`(,name . ,value)		;ignore unbound variables
+       (when (and (not (memq name org-element-ignored-local-variables))
+		  (or (null regexp) (string-match-p regexp (symbol-name name))))
+	 (ignore-errors (set (make-local-variable name) value)))))))
+
+;;;###autoload
+(defun org-run-like-in-org-mode (cmd)
+  "Run a command, pretending that the current buffer is in Org mode.
+This will temporarily bind local variables that are typically bound in
+Org mode to the values they have in Org mode, and then interactively
+call CMD."
+  (org-load-modules-maybe)
+  (let (vars vals)
+    (dolist (var (org-get-local-variables))
+      (when (or (not (boundp (car var)))
+		(eq (symbol-value (car var))
+		    (default-value (car var))))
+	(push (car var) vars)
+	(push (cadr var) vals)))
+    (cl-progv vars vals
+      (call-interactively cmd))))
+
 ;;;###autoload
 (defun org-mode-restart ()
   "Restart `org-mode'."

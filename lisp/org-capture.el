@@ -1870,6 +1870,8 @@ Expansion occurs in a temporary Org mode buffer."
             ;; template is mostly expanded when prompting happens.  Turn on
             ;; Org mode and set local variables.  This is to support
             ;; completion in interactive prompts.
+            (require 'org-mode)
+            (declare-function org-clone-local-variables "org-mode" (from-buffer &optional regexp))
             (let ((org-inhibit-startup t)) (org-mode))
             (org-clone-local-variables buffer "\\`org-")
             (let (strings			; Stores interactive answers.

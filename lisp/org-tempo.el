@@ -46,6 +46,7 @@
 (require 'org-compat)
 (require 'org-obsolete-helpers)
 (require 'org-edit-markup)
+(require 'org-agenda-files)
 
 
 (defgroup org-tempo nil

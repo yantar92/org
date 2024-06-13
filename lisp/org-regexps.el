@@ -36,12 +36,6 @@
 
 ;;;; Heading
 
-;; `org-outline-regexp' ought to be a defconst but is let-bound in
-;; some places -- e.g. see the macro `org-with-limited-levels'.
-(defvar org-outline-regexp (org-headline-re nil t)
-  "Regexp to match Org headlines.
-This variable may be re-defined inside `org-with-limited-levels'.")
-
 (defvar org-outline-regexp-bol org-element-headline-re
   "Regexp to match Org headlines.
 This is similar to `org-outline-regexp' but additionally makes
@@ -115,12 +109,6 @@ This regular expression matches these groups:
 	  org-ts-regexp-both "\\)?")
   "Regular expression matching a time stamp or time stamp range.
 The time stamps may be either active or inactive.")
-
-(defconst org-ts-regexp0
-  "\\(\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)\\( +[^]+0-9>\r\n -]+\\)?\\( +\\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\)"
-  "Regular expression matching time strings for analysis.
-This one does not require the space after the date, so it can be used
-on a string that terminates immediately after the date.")
 
 (defconst org-ts-regexp1 "\\(\\([0-9]\\{4\\}\\)-\\([0-9]\\{2\\}\\)-\\([0-9]\\{2\\}\\)\\(?: *\\([^]+0-9>\r\n -]+\\)\\)?\\( \\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\)"
   "Regular expression matching time strings for analysis.")

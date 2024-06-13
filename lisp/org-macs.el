@@ -33,6 +33,8 @@
 
 (require 'cl-lib)
 (require 'format-spec)
+(require 'org-compat-emacs27) ; `org-time-convert-to-list'
+(require 'org-compat-emacs29) ; `org-buffer-text-pixel-width'
 
 ;;; Org version verification.
 
@@ -108,20 +110,6 @@ Version mismatch is commonly encountered in the following situations:
 ;; version here will interfere with Org build process.
 ;; (org-assert-version)
 
-(declare-function org-mode "org" ())
-(declare-function org-agenda-files "org" (&optional unrestricted archives))
-(declare-function org-time-string-to-seconds "org" (s))
-(declare-function org-fold-show-context "org-fold" (&optional key))
-(declare-function org-fold-save-outline-visibility "org-fold" (use-markers &rest body))
-(declare-function org-fold-next-visibility-change "org-fold" (&optional pos limit ignore-hidden-p previous-p))
-(declare-function org-fold-core-with-forced-fontification "org-fold" (&rest body))
-(declare-function org-fold-folded-p "org-fold" (&optional pos limit ignore-hidden-p previous-p))
-(declare-function org-time-convert-to-list "org-compat" (time))
-(declare-function org-buffer-text-pixel-width "org-compat" ())
-
-(defvar org-ts-regexp0)
-(defvar ffap-url-regexp)
-
 
 ;;; Macros
 
@@ -166,7 +154,6 @@ If BUFFER is nil, use base buffer for `current-buffer'."
   "Move to buffer and point of EPOM for the duration of BODY.
 EPOM is an element, point, or marker."
   (declare (debug (form body)) (indent 1))
-  (require 'org-element-ast)
   (org-with-gensyms (mepom)
     `(let ((,mepom ,epom))
        (save-excursion
@@ -175,6 +162,8 @@ EPOM is an element, point, or marker."
            (set-buffer (marker-buffer ,mepom)))
           ((numberp ,mepom))
           (t
+           (require 'org-element-ast)
+           (declare-function org-element-property "org-element-ast" (property node &optional dflt force-undefer))
            (when (org-element-property :buffer ,mepom)
              (set-buffer (org-element-property :buffer ,mepom)))
            (setq ,mepom (org-element-property :begin ,mepom))))
@@ -187,30 +176,12 @@ EPOM is an element, point, or marker."
   (declare (debug (body)))
   `(let ((inhibit-read-only t)) ,@body))
 
-(defalias 'org-save-outline-visibility #'org-fold-save-outline-visibility)
-
 (defmacro org-with-wide-buffer (&rest body)
   "Execute BODY while temporarily widening the buffer."
   (declare (debug (body)))
   `(save-excursion
      (save-restriction
        (widen)
-       ,@body)))
-
-(defvar org-called-with-limited-levels nil
-  "Non-nil when `org-with-limited-levels' is currently active.")
-(defmacro org-with-limited-levels (&rest body)
-  "Execute BODY with limited number of outline levels."
-  (declare (debug (body)))
-  `(progn
-     (defvar org-called-with-limited-levels)
-     (defvar org-outline-regexp)
-     (defvar outline-regexp)
-     (defvar org-outline-regexp-bol)
-     (let* ((org-called-with-limited-levels t)
-            (org-outline-regexp (org-get-limited-outline-regexp))
-            (outline-regexp org-outline-regexp)
-            (org-outline-regexp-bol (org-get-limited-outline-regexp t)))
        ,@body)))
 
 (defmacro org-eval-in-environment (environment form)
@@ -308,45 +279,6 @@ ignored in this case."
          (fit-window-to-buffer window max-height min-height))
         (t (shrink-window-if-larger-than-buffer window)))
   (or window (selected-window)))
-
-(defun org-buffer-list (&optional predicate exclude-tmp)
-  "Return a list of Org buffers.
-PREDICATE can be `export', `files' or `agenda'.
-
-export   restrict the list to Export buffers.
-files    restrict the list to buffers visiting Org files.
-agenda   restrict the list to buffers visiting agenda files.
-
-If EXCLUDE-TMP is non-nil, ignore temporary buffers."
-  (let* ((bfn nil)
-	 (agenda-files (and (eq predicate 'agenda)
-			    (mapcar 'file-truename (org-agenda-files t))))
-	 (filter
-	  (cond
-	   ((eq predicate 'files)
-	    (lambda (b) (with-current-buffer b (derived-mode-p 'org-mode))))
-	   ((eq predicate 'export)
-	    (lambda (b) (string-match "\\*Org .*Export" (buffer-name b))))
-	   ((eq predicate 'agenda)
-	    (lambda (b)
-	      (with-current-buffer b
-		(and (derived-mode-p 'org-mode)
-		     (setq bfn (buffer-file-name b))
-		     (member (file-truename bfn) agenda-files)))))
-	   (t (lambda (b) (with-current-buffer b
-			    (or (derived-mode-p 'org-mode)
-				(string-match "\\*Org .*Export"
-					      (buffer-name b)))))))))
-    (delq nil
-	  (mapcar
-	   (lambda(b)
-	     (if (and (funcall filter b)
-		      (or (not exclude-tmp)
-			  (not (string-match "tmp" (buffer-name b)))))
-		 b
-	       nil))
-	   (buffer-list)))))
-
 
 
 ;;; File
@@ -697,8 +629,6 @@ error when the user input is empty."
 	  (allow-empty? nil)
 	  (t (user-error "Empty input is not valid")))))
 
-(declare-function org-timestamp-inactive "org" (&optional arg))
-
 (defun org-completing-read (&rest args)
   "Completing-read with SPACE being a normal character."
   (let ((enable-recursive-minibuffers t)
@@ -706,6 +636,7 @@ error when the user input is empty."
 	 (copy-keymap minibuffer-local-completion-map)))
     (define-key minibuffer-local-completion-map " " #'self-insert-command)
     (define-key minibuffer-local-completion-map "?" #'self-insert-command)
+    (declare-function org-timestamp-inactive "org-timestamp" (&optional arg))
     (define-key minibuffer-local-completion-map (kbd "C-c !")
                 #'org-timestamp-inactive)
     (apply #'completing-read args)))
@@ -900,58 +831,6 @@ ones and overrule settings in the other lists."
 	(setq rtn (plist-put rtn p v))))
     rtn))
 
-
-
-;;; Local variables
-
-(defvar org-element-ignored-local-variables)
-(defun org-get-local-variables ()
-  "Return a list of all local variables in an Org mode buffer."
-  (require 'org-element)
-  (delq nil
-	(mapcar
-	 (lambda (x)
-	   (let* ((binding (if (symbolp x) (list x) (list (car x) (cdr x))))
-		  (name (car binding)))
-	     (and (not (get name 'org-state))
-		  (not (memq name org-element-ignored-local-variables))
-		  (string-match-p
-		   "\\`\\(org-\\|orgtbl-\\|outline-\\|comment-\\|paragraph-\\|\
-auto-fill\\|normal-auto-fill\\|fill-paragraph\\|indent-\\)"
-		   (symbol-name name))
-		  binding)))
-	 (with-temp-buffer
-	   (org-mode)
-	   (buffer-local-variables)))))
-
-(defun org-clone-local-variables (from-buffer &optional regexp)
-  "Clone local variables from FROM-BUFFER.
-Optional argument REGEXP selects variables to clone."
-  (require 'org-element)
-  (dolist (pair (buffer-local-variables from-buffer))
-    (pcase pair
-      (`(,name . ,value)		;ignore unbound variables
-       (when (and (not (memq name org-element-ignored-local-variables))
-		  (or (null regexp) (string-match-p regexp (symbol-name name))))
-	 (ignore-errors (set (make-local-variable name) value)))))))
-
-;;;###autoload
-(defun org-run-like-in-org-mode (cmd)
-  "Run a command, pretending that the current buffer is in Org mode.
-This will temporarily bind local variables that are typically bound in
-Org mode to the values they have in Org mode, and then interactively
-call CMD."
-  (org-load-modules-maybe)
-  (let (vars vals)
-    (dolist (var (org-get-local-variables))
-      (when (or (not (boundp (car var)))
-		(eq (symbol-value (car var))
-		    (default-value (car var))))
-	(push (car var) vars)
-	(push (cadr var) vals)))
-    (cl-progv vars vals
-      (call-interactively cmd))))
-
 
 ;;; Miscellaneous
 
@@ -1010,60 +889,6 @@ get an unnecessary O(N²) space complexity, so you're usually better off using
       (eval form t)
     (error (format "%%![Error: %s]" error))))
 
-(defvar org--headline-re-cache-no-bol nil
-  "Plist holding association between headline level regexp.")
-(defvar org--headline-re-cache-bol nil
-  "Plist holding association between headline level regexp.")
-(defsubst org-headline-re (true-level &optional no-bol)
-  "Generate headline regexp for <= TRUE-LEVEL.
-When TRUE-LEVEL is nil, regexp will match any level.
-When NO-BOL is non-nil, regexp will not demand the regexp to start at
-beginning of line."
-  (or (plist-get
-       (if no-bol
-           org--headline-re-cache-no-bol
-         org--headline-re-cache-bol)
-       true-level)
-      (let ((re (rx-to-string
-                 (if (not true-level)
-                     (if no-bol `(seq (1+ "*") " ")
-                       `(seq line-start (1+ "*") " "))
-                   (if no-bol
-                       `(seq (** 1 ,true-level "*") " ")
-                     `(seq line-start (** 1 ,true-level "*") " ")))
-                 t)))
-        (if no-bol
-            (setq org--headline-re-cache-no-bol
-                  (plist-put
-                   org--headline-re-cache-no-bol
-                   true-level re))
-          (setq org--headline-re-cache-bol
-                (plist-put
-                 org--headline-re-cache-bol
-                 true-level re)))
-        re)))
-
-(defvar org-outline-regexp) ; defined in org.el
-(defvar org-outline-regexp-bol) ; defined in org.el
-(defvar org-odd-levels-only) ; defined in org.el
-(defvar org-inlinetask-min-level) ; defined in org-inlinetask.el
-(defun org-get-limited-outline-regexp (&optional with-bol)
-  "Return outline-regexp with limited number of levels.
-The number of levels is controlled by `org-inlinetask-min-level'.
-Match at beginning of line when WITH-BOL is non-nil."
-  (cond ((not (derived-mode-p 'org-mode))
-         (if (string-prefix-p "^" outline-regexp)
-             (if with-bol outline-regexp (substring outline-regexp 1))
-           (if with-bol (concat "^" outline-regexp) outline-regexp)))
-	((not (featurep 'org-inlinetask))
-	 (if with-bol org-outline-regexp-bol org-outline-regexp))
-	(t
-	 (let* ((limit-level (1- org-inlinetask-min-level))
-		(nstars (if org-odd-levels-only
-			    (1- (* limit-level 2))
-			  limit-level)))
-           (org-headline-re nstars (not with-bol))))))
-
 (defun org--line-empty-p (n)
   "Is the Nth next line empty?"
   (and (not (bobp))
@@ -1120,20 +945,6 @@ When NEXT is non-nil, check the next line instead."
     (and pos (goto-char pos))
     ;; works also in narrowed buffer, because we start at 1, not point-min
     (+ (if (bolp) 1 0) (count-lines 1 (point)))))
-
-(defun org-goto-marker-or-bmk (marker &optional bookmark)
-  "Go to MARKER, widen if necessary.  When marker is not live, try BOOKMARK."
-  (if (and marker (marker-buffer marker)
-	   (buffer-live-p (marker-buffer marker)))
-      (progn
-	(pop-to-buffer-same-window (marker-buffer marker))
-	(when (or (> marker (point-max)) (< marker (point-min)))
-	  (widen))
-	(goto-char marker)
-	(org-fold-show-context 'org-goto))
-    (if bookmark
-	(bookmark-jump bookmark)
-      (error "Cannot find location"))))
 
 (defun org-move-to-column (column &optional force _buffer)
   "Move to column COLUMN.
@@ -1248,6 +1059,7 @@ return nil."
 (defun org-url-p (s)
   "Non-nil if string S is a URL."
   (require 'ffap)
+  (defvar ffap-url-regexp) ; defined in ffap.el
   (and ffap-url-regexp (string-match-p ffap-url-regexp s)))
 
 (defconst org-uuid-regexp
@@ -1766,182 +1578,6 @@ and the value in `cadr'."
   (or (get-text-property 0 prop s)
       (get-text-property (or (next-single-property-change 0 prop s) 0)
 			 prop s)))
-
-;; FIXME: move to org-fold?
-(defun org-invisible-p (&optional pos folding-only)
-  "Non-nil if the character after POS is invisible.
-If POS is nil, use `point' instead.  When optional argument
-FOLDING-ONLY is non-nil, only consider invisible parts due to
-folding of a headline, a block or a drawer, i.e., not because of
-fontification."
-  (let ((value (invisible-p (or pos (point)))))
-    (cond ((not value) nil)
-	  (folding-only (org-fold-folded-p (or pos (point))))
-	  (t value))))
-
-(defun org-truly-invisible-p ()
-  "Check if point is at a character currently not visible.
-This version does not only check the character property, but also
-`visible-mode'."
-  (unless (bound-and-true-p visible-mode)
-    (org-invisible-p)))
-
-(defun org-invisible-p2 ()
-  "Check if point is at a character currently not visible.
-If the point is at EOL (and not at the beginning of a buffer too),
-move it back by one char before doing this check."
-  (save-excursion
-    (when (and (eolp) (not (bobp)))
-      (backward-char 1))
-    (org-invisible-p)))
-
-(defun org-region-invisible-p (beg end)
-  "Check if region if completely hidden."
-  (org-with-wide-buffer
-   (and (org-invisible-p beg)
-        (org-invisible-p (org-fold-next-visibility-change beg end)))))
-
-(defun org-find-visible ()
-  "Return closest visible buffer position, or `point-max'."
-  (if (org-invisible-p)
-      (org-fold-next-visibility-change (point))
-    (point)))
-
-(defun org-find-invisible ()
-  "Return closest invisible buffer position, or `point-max'."
-  (if (org-invisible-p)
-      (point)
-    (org-fold-next-visibility-change (point))))
-
-
-;;; Time
-
-(defun org-2ft (s)
-  "Convert S to a floating point time.
-If S is already a number, just return it.  If it is a string,
-parse it as a time string and apply `float-time' to it.  If S is
-nil, just return 0."
-  (cond
-   ((numberp s) s)
-   ((stringp s)
-    (condition-case nil
-	(org-time-string-to-seconds s)
-      (error 0)))
-   (t 0)))
-
-(defun org-time= (a b)
-  (let ((a (org-2ft a))
-	(b (org-2ft b)))
-    (and (> a 0) (> b 0) (= a b))))
-
-(defun org-time< (a b)
-  (let ((a (org-2ft a))
-	(b (org-2ft b)))
-    (and (> a 0) (> b 0) (< a b))))
-
-(defun org-time<= (a b)
-  (let ((a (org-2ft a))
-	(b (org-2ft b)))
-    (and (> a 0) (> b 0) (<= a b))))
-
-(defun org-time> (a b)
-  (let ((a (org-2ft a))
-	(b (org-2ft b)))
-    (and (> a 0) (> b 0) (> a b))))
-
-(defun org-time>= (a b)
-  (let ((a (org-2ft a))
-	(b (org-2ft b)))
-    (and (> a 0) (> b 0) (>= a b))))
-
-(defun org-time<> (a b)
-  (let ((a (org-2ft a))
-	(b (org-2ft b)))
-    (and (> a 0) (> b 0) (\= a b))))
-
-(defmacro org-encode-time (&rest time)
-  "Compatibility and convenience helper for `encode-time'.
-TIME may be a 9 components list (SECONDS ... YEAR IGNORED DST ZONE)
-as the recommended way since Emacs-27 or 6 or 9 separate arguments
-similar to the only possible variant for Emacs-26 and earlier.
-6 elements list as the only argument causes wrong type argument till
-Emacs-29.
-
-Warning: use -1 for DST to guess the actual value, nil means no
-daylight saving time and may be wrong at particular time.
-
-DST value is ignored prior to Emacs-27.  Since Emacs-27 DST value matters
-even when multiple arguments is passed to this macro and such
-behavior is different from `encode-time'.  See
-Info node `(elisp)Time Conversion' for details and caveats,
-preferably the latest version."
-  (if (version< emacs-version "27.1")
-      (if (cdr time)
-          `(encode-time ,@time)
-        `(apply #'encode-time ,@time))
-    (if (ignore-errors (with-no-warnings (encode-time '(0 0 0 1 1 1971))))
-        (pcase (length time) ; Emacs-29 since d75e2c12eb
-          (1 `(encode-time ,@time))
-          ((or 6 9) `(encode-time (list ,@time)))
-          (_ (error "`org-encode-time' may be called with 1, 6, or 9 arguments but %d given"
-                    (length time))))
-      (pcase (length time)
-        (1 `(encode-time ,@time))
-        (6 `(encode-time (list ,@time nil -1 nil)))
-        (9 `(encode-time (list ,@time)))
-        (_ (error "`org-encode-time' may be called with 1, 6, or 9 arguments but %d given"
-                  (length time)))))))
-
-(defun org-parse-time-string (s &optional nodefault)
-  "Parse Org time string S.
-
-If time is not given, defaults to 0:00.  However, with optional
-NODEFAULT, hour and minute fields are nil if not given.
-
-Throw an error if S does not contain a valid Org time string.
-Note that the first match for YYYY-MM-DD will be used (e.g.,
-\"-52000-02-03\" will be taken as \"2000-02-03\").
-
-This should be a lot faster than the `parse-time-string'."
-  (unless (string-match org-ts-regexp0 s)
-    (error "Not an Org time string: %s" s))
-  (list 0
-	(cond ((match-beginning 8) (string-to-number (match-string 8 s)))
-	      (nodefault nil)
-	      (t 0))
-	(cond ((match-beginning 7) (string-to-number (match-string 7 s)))
-	      (nodefault nil)
-	      (t 0))
-	(string-to-number (match-string 4 s))
-	(string-to-number (match-string 3 s))
-	(string-to-number (match-string 2 s))
-	nil -1 nil))
-
-(defun org-matcher-time (s)
-  "Interpret a time comparison value S as a floating point time.
-
-S can be an Org time stamp, a modifier, e.g., \"<+2d>\", or the
-following special strings: \"<now>\", \"<today>\",
-\"<tomorrow>\", and \"<yesterday>\".
-
-Return 0. if S is not recognized as a valid value."
-  (let ((today (float-time (org-encode-time
-                            (append '(0 0 0) (nthcdr 3 (decode-time)))))))
-    (save-match-data
-      (cond
-       ((string= s "<now>") (float-time))
-       ((string= s "<today>") today)
-       ((string= s "<tomorrow>") (+ 86400.0 today))
-       ((string= s "<yesterday>") (- today 86400.0))
-       ((string-match "\\`<\\([-+][0-9]+\\)\\([hdwmy]\\)>\\'" s)
-	(+ (if (string= (match-string 2 s) "h") (float-time) today)
-	   (* (string-to-number (match-string 1 s))
-	      (cdr (assoc (match-string 2 s)
-			  '(("h" . 3600.0)
-			    ("d" . 86400.0)   ("w" . 604800.0)
-			    ("m" . 2678400.0) ("y" . 31557600.0)))))))
-       ((string-match org-ts-regexp0 s) (org-2ft s))
-       (t 0.)))))
 
 
 ;;; Misc

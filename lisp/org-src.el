@@ -881,6 +881,7 @@ A coderef format regexp can only match at the end of a line."
 (declare-function org-footnote-goto-definition "org-footnote"
 		  (label &optional location))
 (declare-function org-mode "org-mode" ())
+(declare-function org-clone-local-variables "org-mode" (from-buffer &optional regexp))
 ;;;###autoload
 (defun org-edit-footnote-reference ()
   "Edit definition of footnote reference at point."

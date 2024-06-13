@@ -687,6 +687,43 @@ If the current buffer does not, find the first agenda file."
     (find-file (car (or files fs)))
     (when (buffer-base-buffer) (pop-to-buffer-same-window (buffer-base-buffer)))))
 
+(defun org-buffer-list (&optional predicate exclude-tmp)
+  "Return a list of Org buffers.
+PREDICATE can be `export', `files' or `agenda'.
+
+export   restrict the list to Export buffers.
+files    restrict the list to buffers visiting Org files.
+agenda   restrict the list to buffers visiting agenda files.
+
+If EXCLUDE-TMP is non-nil, ignore temporary buffers."
+  (let* ((bfn nil)
+	 (agenda-files (and (eq predicate 'agenda)
+			    (mapcar 'file-truename (org-agenda-files t))))
+	 (filter
+	  (cond
+	   ((eq predicate 'files)
+	    (lambda (b) (with-current-buffer b (derived-mode-p 'org-mode))))
+	   ((eq predicate 'export)
+	    (lambda (b) (string-match "\\*Org .*Export" (buffer-name b))))
+	   ((eq predicate 'agenda)
+	    (lambda (b)
+	      (with-current-buffer b
+		(and (derived-mode-p 'org-mode)
+		     (setq bfn (buffer-file-name b))
+		     (member (file-truename bfn) agenda-files)))))
+	   (t (lambda (b) (with-current-buffer b
+		       (or (derived-mode-p 'org-mode)
+			   (string-match "\\*Org .*Export"
+					 (buffer-name b)))))))))
+    (delq nil
+	  (mapcar
+	   (lambda(b)
+	     (if (and (funcall filter b)
+		      (or (not exclude-tmp)
+			  (not (string-match "tmp" (buffer-name b)))))
+		 b
+	       nil))
+	   (buffer-list)))))
 
 (provide 'org-agenda-files)
 

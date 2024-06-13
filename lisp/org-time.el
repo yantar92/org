@@ -63,6 +63,39 @@ Note that this option has precedence over the combined use of
   :package-version '(Org . "8.0")
   :type 'boolean)
 
+(defmacro org-encode-time (&rest time)
+  "Compatibility and convenience helper for `encode-time'.
+TIME may be a 9 components list (SECONDS ... YEAR IGNORED DST ZONE)
+as the recommended way since Emacs-27 or 6 or 9 separate arguments
+similar to the only possible variant for Emacs-26 and earlier.
+6 elements list as the only argument causes wrong type argument till
+Emacs-29.
+
+Warning: use -1 for DST to guess the actual value, nil means no
+daylight saving time and may be wrong at particular time.
+
+DST value is ignored prior to Emacs-27.  Since Emacs-27 DST value matters
+even when multiple arguments is passed to this macro and such
+behavior is different from `encode-time'.  See
+Info node `(elisp)Time Conversion' for details and caveats,
+preferably the latest version."
+  (if (version< emacs-version "27.1")
+      (if (cdr time)
+          `(encode-time ,@time)
+        `(apply #'encode-time ,@time))
+    (if (ignore-errors (with-no-warnings (encode-time '(0 0 0 1 1 1971))))
+        (pcase (length time) ; Emacs-29 since d75e2c12eb
+          (1 `(encode-time ,@time))
+          ((or 6 9) `(encode-time (list ,@time)))
+          (_ (error "`org-encode-time' may be called with 1, 6, or 9 arguments but %d given"
+                    (length time))))
+      (pcase (length time)
+        (1 `(encode-time ,@time))
+        (6 `(encode-time (list ,@time nil -1 nil)))
+        (9 `(encode-time (list ,@time)))
+        (_ (error "`org-encode-time' may be called with 1, 6, or 9 arguments but %d given"
+                  (length time)))))))
+
 (defun org-make-tdiff-string (y d h m)
   (let ((fmt "")
 	(l nil))
@@ -87,6 +120,70 @@ Note that this option has precedence over the combined use of
 (defun org-time-string-to-seconds (s)
   "Convert a timestamp string S into a number of seconds."
   (float-time (org-time-string-to-time s)))
+
+(defun org-2ft (s)
+  "Convert S to a floating point time.
+If S is already a number, just return it.  If it is a string,
+parse it as a time string and apply `float-time' to it.  If S is
+nil, just return 0."
+  (cond
+   ((numberp s) s)
+   ((stringp s)
+    (condition-case nil
+	(org-time-string-to-seconds s)
+      (error 0)))
+   (t 0)))
+
+(defun org-parse-time-string (s &optional nodefault)
+  "Parse Org time string S.
+
+If time is not given, defaults to 0:00.  However, with optional
+NODEFAULT, hour and minute fields are nil if not given.
+
+Throw an error if S does not contain a valid Org time string.
+Note that the first match for YYYY-MM-DD will be used (e.g.,
+\"-52000-02-03\" will be taken as \"2000-02-03\").
+
+This should be a lot faster than the `parse-time-string'."
+  (unless (string-match org-ts-regexp0 s)
+    (error "Not an Org time string: %s" s))
+  (list 0
+	(cond ((match-beginning 8) (string-to-number (match-string 8 s)))
+	      (nodefault nil)
+	      (t 0))
+	(cond ((match-beginning 7) (string-to-number (match-string 7 s)))
+	      (nodefault nil)
+	      (t 0))
+	(string-to-number (match-string 4 s))
+	(string-to-number (match-string 3 s))
+	(string-to-number (match-string 2 s))
+	nil -1 nil))
+
+(defun org-matcher-time (s)
+  "Interpret a time comparison value S as a floating point time.
+
+S can be an Org time stamp, a modifier, e.g., \"<+2d>\", or the
+following special strings: \"<now>\", \"<today>\",
+\"<tomorrow>\", and \"<yesterday>\".
+
+Return 0. if S is not recognized as a valid value."
+  (let ((today (float-time (org-encode-time
+                            (append '(0 0 0) (nthcdr 3 (decode-time)))))))
+    (save-match-data
+      (cond
+       ((string= s "<now>") (float-time))
+       ((string= s "<today>") today)
+       ((string= s "<tomorrow>") (+ 86400.0 today))
+       ((string= s "<yesterday>") (- today 86400.0))
+       ((string-match "\\`<\\([-+][0-9]+\\)\\([hdwmy]\\)>\\'" s)
+	(+ (if (string= (match-string 2 s) "h") (float-time) today)
+	   (* (string-to-number (match-string 1 s))
+	      (cdr (assoc (match-string 2 s)
+			  '(("h" . 3600.0)
+			    ("d" . 86400.0)   ("w" . 604800.0)
+			    ("m" . 2678400.0) ("y" . 31557600.0)))))))
+       ((string-match org-ts-regexp0 s) (org-2ft s))
+       (t 0.)))))
 
 (defalias 'org-time-stamp-to-now #'org-timestamp-to-now)
 (defun org-timestamp-to-now (timestamp-string &optional seconds)
@@ -374,6 +471,36 @@ day number."
 Don't touch the rest."
   (let ((n 0))
     (mapcar (lambda (x) (if (< (setq n (1+ n)) 7) (or x 0) x)) time)))
+
+(defun org-time= (a b)
+  (let ((a (org-2ft a))
+	(b (org-2ft b)))
+    (and (> a 0) (> b 0) (= a b))))
+
+(defun org-time< (a b)
+  (let ((a (org-2ft a))
+	(b (org-2ft b)))
+    (and (> a 0) (> b 0) (< a b))))
+
+(defun org-time<= (a b)
+  (let ((a (org-2ft a))
+	(b (org-2ft b)))
+    (and (> a 0) (> b 0) (<= a b))))
+
+(defun org-time> (a b)
+  (let ((a (org-2ft a))
+	(b (org-2ft b)))
+    (and (> a 0) (> b 0) (> a b))))
+
+(defun org-time>= (a b)
+  (let ((a (org-2ft a))
+	(b (org-2ft b)))
+    (and (> a 0) (> b 0) (>= a b))))
+
+(defun org-time<> (a b)
+  (let ((a (org-2ft a))
+	(b (org-2ft b)))
+    (and (> a 0) (> b 0) (\= a b))))
 
 (provide 'org-time)
 

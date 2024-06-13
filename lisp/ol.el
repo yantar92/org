@@ -38,6 +38,7 @@
 (require 'org-element-context)
 (require 'org-fold-core)
 (require 'org-src)
+(require 'org-time)
 
 (require 'ol-core)
 

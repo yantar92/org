@@ -296,6 +296,7 @@ effective.  It cannot be set as a local variable."
 ;;;;; Macros
 
 (defalias 'org-fold-save-outline-visibility #'org-fold-core-save-visibility)
+(defalias 'org-save-outline-visibility #'org-fold-core-save-visibility)
 
 ;;;; Changing visibility (regions, blocks, drawers, headlines)
 

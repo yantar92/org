@@ -49,5 +49,20 @@ is not set."
 			   (org-invisible-p)))
        (org-fold-show-context 'bookmark-jump)))
 
+;;;###autoload
+(defun org-goto-marker-or-bmk (marker &optional bookmark)
+  "Go to MARKER, widen if necessary.  When marker is not live, try BOOKMARK."
+  (if (and marker (marker-buffer marker)
+	   (buffer-live-p (marker-buffer marker)))
+      (progn
+	(pop-to-buffer-same-window (marker-buffer marker))
+	(when (or (> marker (point-max)) (< marker (point-min)))
+	  (widen))
+	(goto-char marker)
+	(org-fold-show-context 'org-goto))
+    (if bookmark
+	(bookmark-jump bookmark)
+      (error "Cannot find location"))))
+
 (provide 'org-bookmark)
 ;;; org-bookmark.el ends here

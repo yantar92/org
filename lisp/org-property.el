@@ -31,6 +31,7 @@
 (require 'org-outline)
 (require 'org-property-core)
 (require 'org-priority-common)
+(require 'org-time)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
 (defvar-local org-keyword-properties nil

@@ -29,6 +29,7 @@
 
 (require 'org-element)
 (require 'org-regexps)
+(require 'org-time)
 
 (defcustom org-display-custom-times nil
   "Non-nil means overlay custom formats over all time stamps.

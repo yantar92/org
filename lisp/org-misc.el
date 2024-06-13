@@ -29,6 +29,7 @@
 (require 'org-element)
 (require 'org-element-context)
 (require 'org-load)
+(require 'org-time)
 
 ;;; Bug reporting
 
@@ -87,7 +88,7 @@ such private information before sending the email.")
 		       (and
 			(get v 'custom-type) (get v 'standard-value)
 			(not (equal (symbol-value v)
-			            (eval (car (get v 'standard-value)) t)))))
+			          (eval (car (get v 'standard-value)) t)))))
 		   (push v list)))))
 	 (kill-buffer (get-buffer "*Warn about privacy*"))
 	 list))

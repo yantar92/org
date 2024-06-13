@@ -416,6 +416,7 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 	      (if (not clfixpos)
 		  (message "No clock to adjust")
 		(save-excursion
+                  (declare-function org-goto-marker-or-bmk "org-bookmark" (marker &optional bookmark))
 		  (org-goto-marker-or-bmk clfixpos)
                   (require 'org-fold)
 		  (org-fold-show-subtree)
