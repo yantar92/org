@@ -29,6 +29,8 @@
 
 ;;; Code:
 
+(require 'org-macs)
+
 ;;;; Groups
 
 ;; It was used only for two non-obsolete variables.
@@ -91,6 +93,60 @@ markers in `org-clock-history'."
 				     (overlay-end o))))
 	 (delete-overlay o))))
 (make-obsolete 'org-remove-empty-overlays-at "no longer user" "9.8")
+
+;; Use `with-silent-modifications' to ignore cosmetic changes and
+;; `org-unmodified' to ignore real text modifications.
+(defmacro org-unmodified (&rest body)
+  "Run BODY while preserving the buffer's `buffer-modified-p' state."
+  (declare (debug (body)) (obsolete with-silent-modifications "9.8"))
+  (org-with-gensyms (was-modified)
+    `(let ((,was-modified (buffer-modified-p)))
+       (unwind-protect
+           (let ((buffer-undo-list t)
+		 (inhibit-modification-hooks t))
+	     ,@body)
+	 (set-buffer-modified-p ,was-modified)))))
+
+(defmacro org-no-read-only (&rest body)
+  "Inhibit read-only for BODY."
+  (declare (debug (body)) (obsolete "no longer used" "9.8"))
+  `(let ((inhibit-read-only t)) ,@body))
+
+(defun org-uniquify-alist (alist)
+  "Merge elements of ALIST with the same key.
+
+For example, in this alist:
+
+\(org-uniquify-alist \\='((a 1) (b 2) (a 3)))
+  => ((a 1 3) (b 2))
+
+merge (a 1) and (a 3) into (a 1 3).
+
+The function returns the new ALIST."
+  (let (rtn)
+    (dolist (e alist rtn)
+      (let (n)
+	(if (not (assoc (car e) rtn))
+	    (push e rtn)
+	  (setq n (cons (car e) (append (cdr (assoc (car e) rtn)) (cdr e))))
+	  (setq rtn (assq-delete-all (car e) rtn))
+	  (push n rtn))))))
+(make-obsolete 'org-uniquify-alist "no longer user" "9.8")
+
+(defun org-make-parameter-alist (plist)
+  "Return alist based on PLIST.
+PLIST is a property list with alternating symbol names and values.
+The returned alist is a list of lists with the symbol name in `car'
+and the value in `cadr'."
+  (when plist
+    (cons (list (car plist) (cadr plist))
+	  (org-make-parameter-alist (cddr plist)))))
+(make-obsolete 'org-make-parameter-alist "no longer user" "9.8")
+
+(defun org-get-at-eol (property n)
+  "Get text property PROPERTY at the end of line less N characters."
+  (get-text-property (- (line-end-position) n) property))
+(make-obsolete 'org-get-at-eol "no longer user" "9.8")
 
 (provide 'org-obsolete9.8)
 

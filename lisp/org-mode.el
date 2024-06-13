@@ -923,20 +923,20 @@ The following commands are available:
     ;; However, do it only when text properties/overlays, but not
     ;; buffer text are actually modified.  We still need to track text
     ;; modifications to make cache updates work reliably.
-    (org-unmodified
-     (when org-startup-with-beamer-mode (org-beamer-mode))
-     (when org-startup-with-inline-images
-       (require 'org-preview-image)
-       (org-display-inline-images))
-     (when org-startup-with-latex-preview
-       (require 'org-preview-latex)
-       (org-latex-preview '(16)))
-     (unless org-inhibit-startup-visibility-stuff
-       (require 'org-cycle)
-       (org-cycle-set-startup-visibility))
-     (when org-startup-truncated (setq truncate-lines t))
-     (when org-startup-numerated (require 'org-num) (org-num-mode 1))
-     (when org-startup-indented (require 'org-indent) (org-indent-mode 1))))
+    (with-silent-modifications
+      (when org-startup-with-beamer-mode (org-beamer-mode))
+      (when org-startup-with-inline-images
+        (require 'org-preview-image)
+        (org-display-inline-images))
+      (when org-startup-with-latex-preview
+        (require 'org-preview-latex)
+        (org-latex-preview '(16)))
+      (unless org-inhibit-startup-visibility-stuff
+        (require 'org-cycle)
+        (org-cycle-set-startup-visibility))
+      (when org-startup-truncated (setq truncate-lines t))
+      (when org-startup-numerated (require 'org-num) (org-num-mode 1))
+      (when org-startup-indented (require 'org-indent) (org-indent-mode 1))))
 
   ;; Add a custom keymap for `visual-line-mode' so that activating
   ;; this minor mode does not override Org's keybindings.

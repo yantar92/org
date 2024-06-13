@@ -129,19 +129,6 @@ SYMBOL.  Show warning instead of error when NOERROR is non-nil."
                  symbols)
      ,@body))
 
-;; Use `with-silent-modifications' to ignore cosmetic changes and
-;; `org-unmodified' to ignore real text modifications.
-(defmacro org-unmodified (&rest body)
-  "Run BODY while preserving the buffer's `buffer-modified-p' state."
-  (declare (debug (body)))
-  (org-with-gensyms (was-modified)
-    `(let ((,was-modified (buffer-modified-p)))
-       (unwind-protect
-           (let ((buffer-undo-list t)
-		 (inhibit-modification-hooks t))
-	     ,@body)
-	 (set-buffer-modified-p ,was-modified)))))
-
 (defmacro org-with-base-buffer (buffer &rest body)
   "Run BODY in base buffer for BUFFER.
 If BUFFER is nil, use base buffer for `current-buffer'."
@@ -171,11 +158,6 @@ EPOM is an element, point, or marker."
 	  (goto-char (or ,mepom (point)))
 	  ,@body)))))
 
-(defmacro org-no-read-only (&rest body)
-  "Inhibit read-only for BODY."
-  (declare (debug (body)))
-  `(let ((inhibit-read-only t)) ,@body))
-
 (defmacro org-with-wide-buffer (&rest body)
   "Execute BODY while temporarily widening the buffer."
   (declare (debug (body)))
@@ -199,8 +181,8 @@ EPOM is an element, point, or marker."
 	     (and (re-search-backward "^[ \t]*# +Local Variables:"
 				      (max (- (point) 3000) 1)
 				      t)
-               (let ((buffer-undo-list t))
-	         (delete-and-extract-region (point) (point-max)))))))
+                  (let ((buffer-undo-list t))
+	            (delete-and-extract-region (point) (point-max)))))))
          (tick-counter-before (buffer-modified-tick)))
      (unwind-protect (progn ,@body)
        (when local-variables
@@ -762,26 +744,6 @@ is selected, only the bare key is returned."
 (defsubst org-uniquify (list)
   "Non-destructively remove duplicate elements from LIST."
   (let ((res (copy-sequence list))) (delete-dups res)))
-
-(defun org-uniquify-alist (alist)
-  "Merge elements of ALIST with the same key.
-
-For example, in this alist:
-
-\(org-uniquify-alist \\='((a 1) (b 2) (a 3)))
-  => ((a 1 3) (b 2))
-
-merge (a 1) and (a 3) into (a 1 3).
-
-The function returns the new ALIST."
-  (let (rtn)
-    (dolist (e alist rtn)
-      (let (n)
-	(if (not (assoc (car e) rtn))
-	    (push e rtn)
-	  (setq n (cons (car e) (append (cdr (assoc (car e) rtn)) (cdr e))))
-	  (setq rtn (assq-delete-all (car e) rtn))
-	  (push n rtn))))))
 
 (defun org-delete-all (elts list)
   "Remove all elements in ELTS from LIST.
@@ -1545,22 +1507,9 @@ that will be added to PLIST.  Returns the string that was modified."
 (defun org-add-prop-inherited (s)
   (propertize s 'inherited t))
 
-(defun org-make-parameter-alist (plist)
-  "Return alist based on PLIST.
-PLIST is a property list with alternating symbol names and values.
-The returned alist is a list of lists with the symbol name in `car'
-and the value in `cadr'."
-  (when plist
-    (cons (list (car plist) (cadr plist))
-	  (org-make-parameter-alist (cddr plist)))))
-
 (defsubst org-get-at-bol (property)
   "Get text property PROPERTY at the beginning of line."
   (get-text-property (line-beginning-position) property))
-
-(defun org-get-at-eol (property n)
-  "Get text property PROPERTY at the end of line less N characters."
-  (get-text-property (- (line-end-position) n) property))
 
 (defun org-find-text-property-in-string (prop s)
   "Return the first non-nil value of property PROP in string S."
