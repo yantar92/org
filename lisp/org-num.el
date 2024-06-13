@@ -67,18 +67,9 @@
 (require 'cl-lib)
 (require 'org-macs)
 (require 'org-element) ;Otherwise `org-num--comment-re' burps on `org-comment-string'
-
-(defvar org-comment-string)
-(defvar org-complex-heading-regexp)
-(defvar org-cycle-level-faces)
-(defvar org-footnote-section)
-(defvar org-level-faces)
-(defvar org-n-level-faces)
-(defvar org-odd-levels-only)
-
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
-(declare-function org-reduced-level "org" (l))
+(require 'org-faces)
+(require 'org-mode-common)
+(require 'org-move)
 
 
 ;;; Customization
@@ -251,6 +242,7 @@ nil if nothing should be displayed.  Assume OVERLAY is valid."
       (org-add-props display `(face ,(overlay-get overlay 'numbering-face))))
     (overlay-put overlay 'after-string display)))
 
+(declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
 (defun org-num--skip-value ()
   "Return skip value for headline at point.
 Value is t when headline should not be numbered, and nil

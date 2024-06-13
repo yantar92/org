@@ -2012,7 +2012,6 @@ scheduled items with an hour specification like [h]h:mm."
 In this table, we have single quotes not as word constituents, to
 that when \"+Ameli\" is searched as a work, it will also match \"Ameli's\"")
 
-(defvar org-mode-syntax-table) ; From org.el
 (defun org-search-syntax-table ()
   (unless org-search-syntax-table
     (setq org-search-syntax-table (copy-syntax-table org-mode-syntax-table))

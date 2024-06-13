@@ -56,6 +56,7 @@
 (require 'org-element-context)
 (require 'org-map)
 (require 'org-outline)
+(require 'org-font-lock-common)
 
 ;;; Customization
 
@@ -654,8 +655,6 @@ be shown."
 	 (t (cdr (assq 'default org-fold-show-context-detail))))))
 
 
-(defvar org-hide-emphasis-markers); Defined in org.el
-(defvar org-pretty-entities); Defined in org.el
 (defun org-fold-show-set-visibility (detail)
   "Set visibility around point according to DETAIL.
 DETAIL is either nil, `minimal', `local', `ancestors',
@@ -672,7 +671,8 @@ DETAIL is either nil, `minimal', `local', `ancestors',
       (redisplay)
       ;; Reveal emphasis markers.
       (when (eq detail 'local)
-        (defvar org-link-descriptive)
+        (defvar org-link-descriptive) ; declared in org-font-lock.el
+        (defvar org-pretty-entities)  ; declared in org-font-lock.el
         (let (org-hide-emphasis-markers
               org-link-descriptive
               org-pretty-entities

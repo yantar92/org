@@ -67,7 +67,7 @@ time in Emacs."
 	  (const :tag "Do not adapt indentation at all" nil))
   :safe (lambda (x) (memq x '(t nil headline-data))))
 
-(declare-function org-log-into-drawer "org" ())
+(declare-function org-log-into-drawer "org-log-note" ())
 (defun org--at-headline-data-p (&optional beg element)
   "Return non-nil when `point' or BEG is inside headline metadata.
 

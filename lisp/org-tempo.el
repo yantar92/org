@@ -45,8 +45,7 @@
 (require 'cl-lib)
 (require 'org-compat)
 (require 'org-obsolete-helpers)
-
-(defvar org-structure-template-alist) ; defined in org.el
+(require 'org-edit-markup)
 
 
 (defgroup org-tempo nil

@@ -67,15 +67,14 @@
 (require 'cl-lib)
 (require 'org-compat)
 (require 'org-fold-core)
+(require 'org-mode-common)
+
 
 (require 'avl-tree) ; Used by org-element-cache
 (require 'ring) ; User for logging org-element-cache
 (require 'org-persist) ; Used to store cache between Emacs sessions
 
 (require 'org-entities) ; Defines what constitutes an entity object
-
-(defvar org-inhibit-startup) ; defined in org.el
-(defvar org--warnings) ; defined in org.el
 
 
 ;;; Customization
@@ -820,6 +819,15 @@ Used by `org-element-link-parser'.")
 
 (defvar org-link-bracket-re nil
   "Matches a link in double brackets.")
+
+(defun org-link-display-format (s)
+  "Replace links in string S with their description.
+If there is no description, use the link target."
+  (save-match-data
+    (replace-regexp-in-string
+     org-link-bracket-re
+     (lambda (m) (or (match-string 2 m) (match-string 1 m)))
+     s nil t)))
 
 (defvar org-link-any-re nil
   "Regular expression matching any link.")
@@ -7321,6 +7329,8 @@ FORMAT-STRING and ARGS are the same arguments as in `format'."
                  (make-ring org-element--cache-diagnostics-ring-size)))
          (ring-insert org-element--cache-diagnostics-ring format-string)))))
 
+(defvar org--warnings nil
+  "List of warnings to be added to the bug reports.")
 (defmacro org-element--cache-warn (format-string &rest args)
   "Raise warning for org-element-cache.
 FORMAT-STRING and ARGS are the same arguments as in `format'."

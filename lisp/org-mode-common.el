@@ -28,7 +28,6 @@
 (org-assert-version)
 
 (require 'outline)
-(require 'org-regexps)
 
 (defvar org-inhibit-startup nil)        ; Dynamically-scoped param.
 (defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
@@ -256,52 +255,6 @@ a string, summarizing TAGS, as a list of strings."
 	 (if (eq group-status 'append) (push tag current-group)
 	   (setq current-group (list tag))))
 	(_ nil)))))
-
-(defun org-tag-string-to-alist (s)
-  "Return tag alist associated to string S.
-S is a value for TAGS keyword or produced with
-`org-tag-alist-to-string'.  Return value is an alist suitable for
-`org-tag-alist' or `org-tag-persistent-alist'."
-  (let ((lines (mapcar #'split-string (split-string s "\n" t)))
-	(tag-re (concat "\\`\\(" org-tag-re "\\|{.+?}\\)" ; regular expression
-			"\\(?:(\\(.\\))\\)?\\'"))
-	alist group-flag)
-    (dolist (tokens lines (cdr (nreverse alist)))
-      (push '(:newline) alist)
-      (while tokens
-	(let ((token (pop tokens)))
-	  (pcase token
-	    ("{"
-	     (push '(:startgroup) alist)
-	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
-	    ("}"
-	     (push '(:endgroup) alist)
-	     (setq group-flag nil))
-	    ("["
-	     (push '(:startgrouptag) alist)
-	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
-	    ("]"
-	     (push '(:endgrouptag) alist)
-	     (setq group-flag nil))
-	    (":"
-	     (push '(:grouptags) alist))
-	    ((guard (string-match tag-re token))
-	     (let ((tag (match-string 1 token))
-		   (key (and (match-beginning 2)
-			     (string-to-char (match-string 2 token)))))
-	       ;; Push all tags in groups, no matter if they already
-	       ;; appear somewhere else in the list.
-	       (when (or group-flag (not (assoc tag alist)))
-		 (push (cons tag key) alist))))))))))
-
-(defun org-link-display-format (s)
-  "Replace links in string S with their description.
-If there is no description, use the link target."
-  (save-match-data
-    (replace-regexp-in-string
-     org-link-bracket-re
-     (lambda (m) (or (match-string 2 m) (match-string 1 m)))
-     s nil t)))
 
 (defun org-restart-font-lock ()
   "Restart `font-lock-mode', to force refontification."

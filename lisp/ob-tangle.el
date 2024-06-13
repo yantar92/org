@@ -36,23 +36,6 @@
 (require 'ob-core)
 (require 'org-src)
 
-(declare-function make-directory "files" (dir &optional parents))
-(declare-function org-at-heading-p "org" (&optional ignored))
-(declare-function org-babel-update-block-body "ob-core" (new-body))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-before-first-heading-p "org" ())
-(declare-function org-element-lineage "org-element-ast" (datum &optional types with-self))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-begin "org-element" (node))
-(declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-src-preserve-indentation-p "org-element" (&optional node))
-(declare-function org-element-type-p "org-element-ast" (node types))
-(declare-function org-heading-components "org" ())
-(declare-function org-in-commented-heading-p "org" (&optional no-inheritance))
-(declare-function org-in-archived-heading-p "org" (&optional no-inheritance))
-(declare-function outline-previous-heading "outline" ())
-(defvar org-id-link-to-org-use-id) ; Dynamically scoped
-
 (defgroup org-babel-tangle nil
   "Options for extracting source code from code blocks."
   :tag "Org Babel Tangle"
@@ -550,7 +533,6 @@ The PARAMS are the 3rd element of the info for the same src block."
                                            (cdr (assq :tangle params)))))
             bare))))))
 
-(defvar org-outline-regexp) ; defined in lisp/org.el
 (defun org-babel-tangle-single-block (block-counter &optional only-this-block)
   "Collect the tangled source for current block.
 Return the list of block attributes needed by
@@ -581,7 +563,7 @@ non-nil, return the full association list to be used by
 	  ;; Run the tangle-body-hook.
           (let ((body (if (org-babel-noweb-p params :tangle)
                           (if (string= "strip-tangle" (cdr (assq :noweb (nth 2 info))))
-                            (replace-regexp-in-string (org-babel-noweb-wrap) "" (nth 1 info))
+                              (replace-regexp-in-string (org-babel-noweb-wrap) "" (nth 1 info))
 			    (org-babel-expand-noweb-references info))
 			(nth 1 info))))
 	    (with-temp-buffer

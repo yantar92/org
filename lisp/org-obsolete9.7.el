@@ -338,7 +338,6 @@ the value of the drawer property."
                   value))))))))))
 (make-obsolete 'org-refresh-category-properties "no longer used" "9.7")
 
-(declare-function org-refresh-properties "org")
 (defvar org-effort-property) ; org-regexps
 (defun org-refresh-effort-properties ()
   "Refresh effort properties."
@@ -352,8 +351,8 @@ the value of the drawer property."
 
 (defvar org-cached-props nil)
 (defvar org-use-property-inheritance)
-(declare-function org-entry-get "org" (epom property &optional inherit literal-nil))
-(declare-function org-entry-properties "org" (&optional epom which))
+(declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
+(declare-function org-entry-properties "org-property" (&optional epom which))
 (defun org-cached-entry-get (pom property)
   (if (or (eq t org-use-property-inheritance)
 	  (and (stringp org-use-property-inheritance)

@@ -464,7 +464,6 @@ Assume point is in the corresponding edit buffer."
    ;; WRITE-BACK
    org-src--allow-write-back))
 
-(declare-function org--get-expected-indentation "org" (element contentsp))
 (defun org-src--edit-element
     (datum name &optional initialize write-back contents remote)
   "Edit DATUM contents in a dedicated buffer NAME.
@@ -511,6 +510,7 @@ Leave point in edit buffer."
 			    (org-current-text-indentation))
                            ((org-element-parent datum)
                             (require 'org-indent-static)
+                            (declare-function org--get-expected-indentation "org-indent-static" (element contentsp))
                             (org--get-expected-indentation
                              (org-element-parent datum) nil))
                            (t (org-current-text-indentation)))))

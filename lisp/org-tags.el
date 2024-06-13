@@ -215,7 +215,7 @@ instead of the agenda files."
 (defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
 (defvar org-tags-overlay (make-overlay 1 1))
 (delete-overlay org-tags-overlay)
-(declare-function org-map-entries "org")
+(declare-function org-map-entries "org-agenda-search" (func &optional match scope &rest skip))
 ;;;###autoload
 (defun org-set-tags-command (&optional arg)
   "Set the tags for the current visible entry.
@@ -242,7 +242,7 @@ in Lisp code use `org-set-tags' instead."
       (let ((cl (if (eq org-loop-over-headlines-in-active-region 'start-level)
 		    'region-start-level 'region))
             org-loop-over-headlines-in-active-region) ;  hint: infinite recursion.
-        (require 'org-map)
+        (require 'org-agenda-search)
 	(org-map-entries
 	 #'org-set-tags-command
 	 nil cl
@@ -483,7 +483,7 @@ CURRENT-TAGS may be modified by side effect."
     (cons tag current-tags)))
 
 (defvar org-last-tag-selection-key nil)
-(declare-function org-todo "org")
+(declare-function org-todo "org-todo" (&optional arg))
 (declare-function org-get-todo-face "org-font-lock" (kwd))
 (declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
 (defun org-fast-tag-selection (current-tags inherited-tags tag-table &optional todo-table)

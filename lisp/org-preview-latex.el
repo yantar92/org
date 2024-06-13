@@ -30,10 +30,8 @@
 (require 'org-element-context)
 (require 'org-move)
 (require 'org-font-lock-common)
-(declare-function org-entry-end-position "org")
-(declare-function org-latex-make-preamble "ox-latex")
-(declare-function org-export-get-environment "ox")
-(declare-function org-export-get-backend "ox")
+(require 'ox-backend)
+(require 'org-outline)
 
 (defgroup org-latex nil
   "Options for embedding LaTeX code into Org mode."

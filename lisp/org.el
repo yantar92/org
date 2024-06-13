@@ -94,9 +94,6 @@
 		   ("9.6" . "29.1")
                    ("9.7" . "30.1")))
 
-(defvar org--warnings nil
-  "List of warnings to be added to the bug reports.")
-
 ;;;; Require other packages
 
 (require 'cl-lib)

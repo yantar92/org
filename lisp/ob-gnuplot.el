@@ -47,13 +47,9 @@
 (require 'org-macs)
 (require 'ox-ascii)
 
-(declare-function org-time-string-to-time "org" (s))
-(declare-function orgtbl-to-generic "org-table" (table params))
 (declare-function gnuplot-mode "ext:gnuplot-mode" ())
 (declare-function gnuplot-send-string-to-gnuplot "ext:gnuplot-mode" (str txt))
 (declare-function gnuplot-send-buffer-to-gnuplot "ext:gnuplot-mode" ())
-
-(defvar org-babel-temporary-directory)
 
 (defvar org-babel-default-header-args:gnuplot
   '((:results . "file") (:exports . "results") (:session . nil))

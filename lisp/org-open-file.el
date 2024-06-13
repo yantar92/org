@@ -38,8 +38,6 @@
 		  "mailcap" (string &optional request no-decode))
 
 
-(declare-function org-mark-ring-push "org")
-
 (defconst org-file-apps-gnu
   '((remote . emacs)
     (system . mailcap)
@@ -318,6 +316,7 @@ application."
           (t (error "Invalid format `%s'" fmt)))))
      mailcap-command nil 'literal)))
 
+(declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
 ;;;###autoload
 (defun org-open-file (path &optional in-emacs line search)
   "Open the file at PATH.

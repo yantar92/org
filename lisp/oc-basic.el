@@ -74,27 +74,7 @@
 (require 'map)
 (require 'oc)
 (require 'seq)
-
-(declare-function org-open-at-point "org" (&optional arg))
-(declare-function org-open-file "org" (path &optional in-emacs line search))
-
-(declare-function org-element-create "org-element-ast" (type &optional props &rest children))
-(declare-function org-element-set "org-element-ast" (old new &optional keep-props))
-
-(declare-function org-element-interpret-data "org-element" (data))
-(declare-function org-element-parse-secondary-string "org-element" (string restriction &optional parent))
-(declare-function org-element-map "org-element"
-                  ( data types fun
-                    &optional
-                    info first-match no-recursion
-                    with-affiliated no-undefer))
-(declare-function org-element-property "org-element-ast" (property node))
-(declare-function org-element-type-p "org-element-ast" (node types))
-(declare-function org-element-contents "org-element-ast" (node))
-
-(declare-function org-export-data "org-export" (data info))
-(declare-function org-export-derived-backend-p "org-export" (backend &rest backends))
-(declare-function org-export-raw-string "org-export" (contents))
+(require 'ox)
 
 
 ;;; Customization

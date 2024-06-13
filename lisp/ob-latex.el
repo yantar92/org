@@ -36,23 +36,11 @@
 
 (require 'ob)
 (require 'org-macs)
-
-(declare-function org-create-formula-image "org" (string tofile options buffer &optional type))
-(declare-function org-latex-compile "ox-latex" (texfile &optional snippet))
-(declare-function org-latex-guess-inputenc "ox-latex" (header))
-(declare-function org-splice-latex-header "org" (tpl def-pkg pkg snippets-p &optional extra))
-(declare-function org-at-heading-p "org" (&optional _))
-(declare-function org-back-to-heading "org" (&optional invisible-ok))
-(declare-function org-next-visible-heading "org" (arg))
+(require 'org-preview-latex)
+(require 'ox-latex)
 
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("latex" . "tex"))
-
-(defvar org-format-latex-header)	  ; From org.el
-(defvar org-format-latex-options)	  ; From org.el
-(defvar org-latex-default-packages-alist) ; From org.el
-(defvar org-latex-packages-alist)	  ; From org.el
-(defvar org-preview-latex-process-alist)  ; From org.el
 
 (defvar org-babel-default-header-args:latex
   '((:results . "latex") (:exports . "results"))

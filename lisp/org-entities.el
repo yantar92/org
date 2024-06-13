@@ -571,9 +571,6 @@ This first checks the user list, then the built-in list."
 (defun org-entities-help ()
   "Create a Help buffer with all available entities."
   (interactive)
-  (declare-function org-mode "org" ())
-  (declare-function org-toggle-pretty-entities "org"       ())
-  (defvar org-pretty-entities) ;; declare defcustom from org
   (with-output-to-temp-buffer "*Org Entity Help*"
     (princ "Org mode entities\n=================\n\n")
     (let ((ll (append '("* User-defined additions (variable org-entities-user)")
@@ -598,7 +595,10 @@ This first checks the user list, then the built-in list."
 	   (setq lastwasstring t))))))
   (with-current-buffer "*Org Entity Help*"
     (require 'org-mode)
+    (declare-function org-mode "org-mode" ())
     (require 'org-font-lock)
+    (declare-function org-toggle-pretty-entities "org-font-lock"       ())
+    (defvar org-pretty-entities) ;; declared in org-font-lock.el
     (org-mode)
     (when org-pretty-entities
       (org-toggle-pretty-entities)))

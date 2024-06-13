@@ -296,6 +296,43 @@ means to push this value onto the list in the variable.")
   "Every change indicates that a table might need an update."
   (setq org-table-may-need-update t))
 
+(defun org-tag-string-to-alist (s)
+  "Return tag alist associated to string S.
+S is a value for TAGS keyword or produced with
+`org-tag-alist-to-string'.  Return value is an alist suitable for
+`org-tag-alist' or `org-tag-persistent-alist'."
+  (let ((lines (mapcar #'split-string (split-string s "\n" t)))
+	(tag-re (concat "\\`\\(" org-tag-re "\\|{.+?}\\)" ; regular expression
+			"\\(?:(\\(.\\))\\)?\\'"))
+	alist group-flag)
+    (dolist (tokens lines (cdr (nreverse alist)))
+      (push '(:newline) alist)
+      (while tokens
+	(let ((token (pop tokens)))
+	  (pcase token
+	    ("{"
+	     (push '(:startgroup) alist)
+	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
+	    ("}"
+	     (push '(:endgroup) alist)
+	     (setq group-flag nil))
+	    ("["
+	     (push '(:startgrouptag) alist)
+	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
+	    ("]"
+	     (push '(:endgrouptag) alist)
+	     (setq group-flag nil))
+	    (":"
+	     (push '(:grouptags) alist))
+	    ((guard (string-match tag-re token))
+	     (let ((tag (match-string 1 token))
+		   (key (and (match-beginning 2)
+			     (string-to-char (match-string 2 token)))))
+	       ;; Push all tags in groups, no matter if they already
+	       ;; appear somewhere else in the list.
+	       (when (or group-flag (not (assoc tag alist)))
+		 (push (cons tag key) alist))))))))))
+
 (defun org-set-regexps-and-options (&optional tags-only)
   "Precompute regular expressions used in the current buffer.
 When optional argument TAGS-ONLY is non-nil, only compute tags

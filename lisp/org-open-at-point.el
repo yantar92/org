@@ -32,8 +32,6 @@
 (require 'org-regexps)
 (require 'org-agenda-common)
 
-(declare-function org-at-date-range-p "org" (&optional inactive-ok))
-
 ;;;###autoload
 (defun org-find-file-at-mouse (ev)
   "Open file link or URL at mouse."
