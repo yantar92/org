@@ -349,7 +349,7 @@ the argument, and must return a string to be used."
     (grid :plot-cmd "splot"
 	  :plot-pre (lambda (_table _data-file _num-cols params _plot-str)
 		      (if (plist-get params :map) "set pm3d map" "set map"))
-	  :data-dump (lambda (table data-file params _num-cols)
+	  :data-dump (lambda (table data-file _num-cols params)
 		       (let ((y-labels (org-plot/gnuplot-to-grid-data
 					table data-file params)))
 			 (when y-labels (plist-put params :ylabels y-labels))))
@@ -391,8 +391,8 @@ be set.
 - :data-dump - Function to dump the table to a datafile for ease of
   use.
 
-  Accepts lambda function.  Default lambda body:
-  (org-plot/gnuplot-to-data table data-file params)
+  Accepts lambda function with arguments:
+  (table data-file num-cols params)
 
 - :plot-pre - Gnuplot code to be inserted early into the script, just
   after term and output have been set.
@@ -679,8 +679,8 @@ line directly before or after the table."
 		    tbl))
 	   (num-cols (length (if (eq (nth 0 table) 'hline) (nth 1 table)
 			       (nth 0 table))))
-	   (type (assoc (plist-get params :plot-type)
-			org-plot/preset-plot-types))
+	   (type (cdr (assoc (plist-get params :plot-type)
+			     org-plot/preset-plot-types)))
            gnuplot-script)
 
       (unless type
@@ -695,6 +695,7 @@ line directly before or after the table."
       (save-excursion (while (and (equal 0 (forward-line -1))
 				  (looking-at "[[:space:]]*#\\+"))
 			(setf params (org-plot/collect-options params))))
+      (setq params (org-combine-plists type params))
       ;; Dump table to datafile
       (let ((dump-func (plist-get type :data-dump)))
         (if dump-func
