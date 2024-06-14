@@ -187,8 +187,11 @@
 
 ;;; Internal Variables
 
-(defvar org-html-format-table-no-css)
-(defvar htmlize-buffer-places)  ; from htmlize.el
+;; FIXME: This dynamically scoped variable is undocumented and not
+;; bound by any part of Org mode.  However, at least one public config
+;; is let-binding this variable.  We should convert this to normal
+;; variable, add a docstring, and possibly document in the manual.
+(defvar org-html-format-table-no-css) ;FIXME
 
 (defvar org-html--pre/postamble-class "status"
   "CSS class used for pre/postamble.")
@@ -1805,13 +1808,14 @@ a value to `org-html-standalone-image-predicate'."
 This is much like `htmlize-region-for-paste', only that it uses
 the settings define in the org-... variables."
   (require 'htmlize)
-  (defvar htmlize-output-type)
-  (defvar htmlize-css-name-prefix)
+  (defvar htmlize-output-type) ; htmlize.el
+  (defvar htmlize-css-name-prefix) ; htmlize.el
   (let* ((htmlize-output-type org-html-htmlize-output-type)
 	 (htmlize-css-name-prefix org-html-htmlize-font-prefix)
 	 (htmlbuf (htmlize-region beg end)))
     (unwind-protect
 	(with-current-buffer htmlbuf
+          (defvar htmlize-buffer-places)  ; dynamically scoped in htmlize.el
 	  (buffer-substring (plist-get htmlize-buffer-places 'content-start)
 			    (plist-get htmlize-buffer-places 'content-end)))
       (kill-buffer htmlbuf))))
@@ -1833,8 +1837,8 @@ to the function `org-html-htmlize-region-for-paste' will
 produce code that uses these same face definitions."
   (interactive)
   (org-require-package 'htmlize)
-  (defvar htmlize-css-name-prefix)
-  (defvar htmlize-output-type)
+  (defvar htmlize-css-name-prefix) ; htmlize.el
+  (defvar htmlize-output-type) ; htmlize.el
   (and (get-buffer "*html*") (kill-buffer "*html*"))
   (with-temp-buffer
     (let ((fl (face-list))
