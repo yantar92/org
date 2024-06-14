@@ -33,12 +33,8 @@
 (require 'cl-lib)
 (require 'ox)
 (require 'ox-publish)
-(require 'org-preview-latex)
 
 ;;; Function Declarations
-
-(defvar org-latex-default-packages-alist)
-(defvar org-latex-packages-alist)
 
 (declare-function engrave-faces-latex-gen-preamble "ext:engrave-faces-latex")
 (declare-function engrave-faces-latex-buffer "ext:engrave-faces-latex")
@@ -552,6 +548,142 @@ a format string in which the section title will be added."
 			       (string :tag "Opening (unnumbered)")
 			       (string :tag "Closing (unnumbered)"))
 			 (function :tag "Hook computing sectioning"))))))
+
+(defun org-set-packages-alist (var val)
+  "Set the packages alist and make sure it has 3 elements per entry."
+  (set-default-toplevel-value var (mapcar (lambda (x)
+		                            (if (and (consp x) (= (length x) 2))
+			                        (list (car x) (nth 1 x) t)
+		                              x))
+		                          val)))
+
+(defun org-get-packages-alist (var)
+  "Get the packages alist and make sure it has 3 elements per entry."
+  (mapcar (lambda (x)
+	    (if (and (consp x) (= (length x) 2))
+		(list (car x) (nth 1 x) t)
+	      x))
+	  (default-value var)))
+
+(defcustom org-latex-default-packages-alist
+  '(;; amsmath before fontspec for lualatex and xetex
+    (""     "amsmath"   t ("lualatex" "xetex"))
+    ;; fontspec ASAP for lualatex and xetex
+    (""     "fontspec"  t ("lualatex" "xetex"))
+    ;; inputenc and fontenc are for pdflatex only
+    ("AUTO" "inputenc"  t ("pdflatex"))
+    ("T1"   "fontenc"   t ("pdflatex"))
+    (""     "graphicx"  t)
+    (""     "longtable" nil)
+    (""     "wrapfig"   nil)
+    (""     "rotating"  nil)
+    ("normalem" "ulem"  t)
+    ;; amsmath and amssymb after inputenc/fontenc for pdflatex
+    (""     "amsmath"   t ("pdflatex"))
+    (""     "amssymb"   t ("pdflatex"))
+    (""     "capt-of"   nil)
+    (""     "hyperref"  nil))
+  "Alist of default packages to be inserted in the header.
+
+Change this only if one of the packages here causes an
+incompatibility with another package you are using.
+
+The packages in this list are needed by one part or another of
+Org mode to function properly:
+
+- fontspec: for font and character selection in lualatex and xetex
+- inputenc, fontenc:  for basic font and character selection
+  in pdflatex
+- graphicx: for including images
+- longtable: For multipage tables
+- wrapfig: for figure placement
+- rotating: for sideways figures and tables
+- ulem: for underline and strike-through
+- amsmath: for subscript and superscript and math environments
+- amssymb: for various symbols used for interpreting the entities
+  in `org-entities'.  You can skip some of this package if you don't
+  use any of the symbols.
+- capt-of: for captions outside of floats
+- hyperref: for cross references
+
+Therefore you should not modify this variable unless you know
+what you are doing.  The one reason to change it anyway is that
+you might be loading some other package that conflicts with one
+of the default packages.  Each element is either a cell or
+a string.
+
+A cell is of the format
+
+  (\"options\" \"package\" SNIPPET-FLAG COMPILERS)
+
+If SNIPPET-FLAG is non-nil, the package also needs to be included
+when compiling LaTeX snippets into images for inclusion into
+non-LaTeX output.
+
+COMPILERS is a list of compilers that should include the package,
+see `org-latex-compiler'.  If the document compiler is not in the
+list, and the list is non-nil, the package will not be inserted
+in the final document.
+
+A string will be inserted as-is in the header of the document."
+  :group 'org-latex
+  :group 'org-export-latex
+  :set 'org-set-packages-alist
+  :get 'org-get-packages-alist
+  :package-version '(Org . "9.7")
+  :type '(repeat
+	  (choice
+	   (list :tag "options/package pair"
+		 (string :tag "options")
+		 (string :tag "package")
+		 (boolean :tag "Snippet")
+		 (choice
+		  (const :tag "For all compilers" nil)
+		  (repeat :tag "Allowed compiler" string)))
+	   (string :tag "A line of LaTeX"))))
+
+(defcustom org-latex-packages-alist nil
+  "Alist of packages to be inserted in every LaTeX header.
+
+These will be inserted after `org-latex-default-packages-alist'.
+Each element is either a cell or a string.
+
+A cell is of the format:
+
+    (\"options\" \"package\" SNIPPET-FLAG COMPILERS)
+
+SNIPPET-FLAG, when non-nil, indicates that this package is also
+needed when turning LaTeX snippets into images for inclusion into
+non-LaTeX output.
+
+COMPILERS is a list of compilers that should include the package,
+see `org-latex-compiler'.  If the document compiler is not in the
+list, and the list is non-nil, the package will not be inserted
+in the final document.
+
+A string will be inserted as-is in the header of the document.
+
+Make sure that you only list packages here which:
+
+  - you want in every file;
+  - do not conflict with the setup in `org-format-latex-header';
+  - do not conflict with the default packages in
+    `org-latex-default-packages-alist'."
+  :group 'org-latex
+  :group 'org-export-latex
+  :set 'org-set-packages-alist
+  :get 'org-get-packages-alist
+  :type
+  '(repeat
+    (choice
+     (list :tag "options/package pair"
+           (string :tag "options")
+           (string :tag "package")
+           (boolean :tag "snippet")
+           (choice
+            (const :tag "All compilers include this package" nil)
+            (repeat :tag "Only include from these compilers" string)))
+     (string :tag "A line of LaTeX"))))
 
 (defcustom org-latex-inputenc-alist nil
   "Alist of inputenc coding system names, and what should really be used.
