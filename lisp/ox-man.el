@@ -43,12 +43,6 @@
 (require 'cl-lib)
 (require 'ox)
 
-;;; Function Declarations
-
-(defvar org-export-man-default-packages-alist)
-(defvar org-export-man-packages-alist)
-
-
 
 ;;; Define Backend
 
