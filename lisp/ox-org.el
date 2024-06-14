@@ -28,8 +28,6 @@
 (org-assert-version)
 
 (require 'ox)
-(declare-function htmlize-buffer "ext:htmlize" (&optional buffer))
-(defvar htmlize-output-type)
 
 (defgroup org-export-org nil
   "Options for exporting Org mode files to Org."
@@ -340,27 +338,29 @@ Return output file name."
   (org-publish-org-to 'org filename ".org" plist pub-dir)
   (when (plist-get plist :htmlized-source)
     (org-require-package 'htmlize)
-    (require 'ox-html)
+    (require 'ox-html) ; for `org-html-extension'
+    (declare-function htmlize-buffer "ext:htmlize" (&optional buffer))
+    (defvar htmlize-output-type) ; defined in htmlize.el
     (let* ((org-inhibit-startup t)
-	   (htmlize-output-type 'css)
-	   (html-ext (concat "." (or (plist-get plist :html-extension)
+           (htmlize-output-type 'css)
+           (html-ext (concat "." (or (plist-get plist :html-extension)
 				     org-html-extension "html")))
-	   newbuf)
+           newbuf)
       (org-with-file-buffer filename
         (font-lock-ensure)
         (org-fold-show-all)
         (setq newbuf (htmlize-buffer)))
       (with-current-buffer newbuf
-	(when org-org-htmlized-css-url
-	  (goto-char (point-min))
-	  (and (re-search-forward
-		"<style type=\"text/css\">\\(?:.\\|\n\\)*?\n[ \t]*</style>.*" nil t)
+        (when org-org-htmlized-css-url
+          (goto-char (point-min))
+          (and (re-search-forward
+	        "<style type=\"text/css\">\\(?:.\\|\n\\)*?\n[ \t]*</style>.*" nil t)
 	       (replace-match
-		(format
-		 "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
-		 org-org-htmlized-css-url)
+	        (format
+	         "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
+	         org-org-htmlized-css-url)
                 t t)))
-	(write-file (concat pub-dir (file-name-nondirectory filename) html-ext)))
+        (write-file (concat pub-dir (file-name-nondirectory filename) html-ext)))
       (kill-buffer newbuf))))
 
 
