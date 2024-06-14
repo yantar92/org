@@ -34,8 +34,6 @@
 
 (eval-when-compile (require 'subr-x))
 
-(defvar org-texinfo-supports-math--cache)
-
 
 ;;; Define Backend
 
@@ -2029,12 +2027,17 @@ Return INFO file name or an error if it couldn't be produced."
     (message "Process completed.")
     output))
 
+(defvar org-texinfo--supports-math-cache 'unknown
+  "When t, installed Texinfo supports \"@math\".
+When nil, it does not support it.  When other value, we do not know it
+yet.")
+
 (defun org-texinfo-supports-math-p ()
   "Return t if the installed version of Texinfo supports \"@math\".
 
 Once computed, the results remain cached."
-  (unless (boundp 'org-texinfo-supports-math--cache)
-    (setq org-texinfo-supports-math--cache
+  (unless (memq org-texinfo--supports-math-cache '(nil t))
+    (setq org-texinfo--supports-math-cache
           (let ((math-example "1 + 1 = 2"))
             (let* ((input-file (make-temp-file "test" nil ".info"))
                    (input-content (string-join
@@ -2058,7 +2061,7 @@ Once computed, the results remain cached."
                   (delete-file input-file)
                   (delete-file output-file)
                   (if result t nil)))))))
-  org-texinfo-supports-math--cache)
+  org-texinfo--supports-math-cache)
 
 (provide 'ox-texinfo)
 
