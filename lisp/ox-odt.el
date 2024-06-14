@@ -140,6 +140,8 @@
 (defvar hfy-face-to-css)		       ; htmlfontify.el
 (defvar hfy-html-quote-map)		       ; htmlfontify.el
 (defvar hfy-html-quote-regex)		       ; htmlfontify.el
+(defvar hfy-optimizations)                     ; htmlfontify.el
+(defvar hfy-user-sheet-assoc) ; Dynamically scoped.  See `hfy-compile-stylesheet'.
 
 
 ;;; Internal Variables
@@ -273,9 +275,10 @@ This style is much the same as that of \"OrgFixedWidthBlock\"
 except that the foreground and background colors are set
 according to the default face identified by the `htmlfontify'.")
 
-(defvar hfy-optimizations)
-(defvar org-odt-embedded-formulas-count 0)
-(defvar org-odt-embedded-images-count 0)
+;; FIXME: Using global counters does work, but it would be cleaner to
+;; make use of `org-export-get-ordinal' instead.
+(defvar org-odt-embedded-formulas-count 0) ;FIXME
+(defvar org-odt-embedded-images-count 0) ;FIXME
 (defvar org-odt-image-size-probe-method
   (append (and (executable-find "identify") '(imagemagick)) ; See Bug#10675
 	  '(emacs fixed))
@@ -345,8 +348,10 @@ CATEGORY-NAME is used for qualifying captions on export.
 ENUMERATOR-PREDICATE is used for assigning a sequence number to
 the entity.  See `org-odt--enumerate'.")
 
-(defvar org-odt-manifest-file-entries nil)
-(defvar hfy-user-sheet-assoc)
+;; FIXME: This global accumulator works, but it would be cleaner to
+;; transfer the data about contributing files via INFO channel
+;; instead, to conform to ox.el APIs.
+(defvar org-odt-manifest-file-entries nil) ;FIXME
 
 (defvar org-odt-zip-dir nil
   "Temporary work directory for OpenDocument exporter.")
