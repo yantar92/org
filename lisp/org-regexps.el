@@ -356,6 +356,12 @@ defined in org-duration.el.")
    "\\(" (org-create-multibrace-regexp "{" "}" org-match-sexp-depth) "\\)")
   "The regular expression matching a sub- or superscript, forcing braces.")
 
+;;;; Misc
+
+;;;###autoload
+(defvar orgtbl-exp-regexp "^\\([-+]?[0-9][0-9.]*\\)[eE]\\([-+]?[0-9]+\\)$"
+  "Regular expression matching exponentials as produced by calc.")
+
 (provide 'org-regexps)
 
 ;; Local variables:

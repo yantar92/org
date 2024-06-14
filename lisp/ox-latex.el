@@ -39,7 +39,6 @@
 
 (defvar org-latex-default-packages-alist)
 (defvar org-latex-packages-alist)
-(defvar orgtbl-exp-regexp)
 
 (declare-function engrave-faces-latex-gen-preamble "ext:engrave-faces-latex")
 (declare-function engrave-faces-latex-buffer "ext:engrave-faces-latex")

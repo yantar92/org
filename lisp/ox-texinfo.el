@@ -34,7 +34,6 @@
 
 (eval-when-compile (require 'subr-x))
 
-(defvar orgtbl-exp-regexp)
 (defvar org-texinfo-supports-math--cache)
 
 

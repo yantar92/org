@@ -471,10 +471,6 @@ overwritten, and the table is not marked as requiring realignment."
 	      (setq org-self-insert-command-undo-counter
 		    (1+ org-self-insert-command-undo-counter))))))))
 
-;;;###autoload
-(defvar orgtbl-exp-regexp "^\\([-+]?[0-9][0-9.]*\\)[eE]\\([-+]?[0-9]+\\)$"
-  "Regular expression matching exponentials as produced by calc.")
-
 (defun orgtbl-gather-send-defs ()
   "Gather a plist of :name, :transform, :params for each destination before
 a radio table."
