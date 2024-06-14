@@ -3206,11 +3206,23 @@ if its description is a single link targeting an image file."
 	     (`link (if (= link-count 1) t
 		      (cl-incf link-count)
 		      (not (org-export-inline-image-p
-			    obj (plist-get info :html-inline-image-rules)))))
+			  obj (plist-get info :html-inline-image-rules)))))
 	     (_ t)))
          info t)))))
 
-(defvar org-html-standalone-image-predicate)
+
+(defvar org-html-standalone-image-predicate nil
+  "Additional predicate to test if image is standalone.
+
+The non-nil value should be a function of a single argument - paragraph
+containing the image.  The return value determines whether the image
+should be considered standlone or not.
+
+The predicate value is tested *in addition* to other default tests in
+`org-html-standalone-image-p', which see.
+
+When set to nil, only the default tests are executed.")
+
 (defun org-html-standalone-image-p (element info)
   "Non-nil if ELEMENT is a standalone image.
 
@@ -3233,8 +3245,7 @@ images, set it to:
 		     (`paragraph element)
 		     (`link (org-element-parent element)))))
     (and (org-element-type-p paragraph 'paragraph)
-	 (or (not (and (boundp 'org-html-standalone-image-predicate)
-                     (fboundp org-html-standalone-image-predicate)))
+	 (or (not org-html-standalone-image-predicate)
 	     (funcall org-html-standalone-image-predicate paragraph))
 	 (catch 'exit
 	   (let ((link-count 0))
