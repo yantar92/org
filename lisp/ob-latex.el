@@ -39,8 +39,9 @@
 (require 'org-preview-latex)
 (require 'ox-latex)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("latex" . "tex"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("latex" . "tex")))
 
 (defvar org-babel-default-header-args:latex
   '((:results . "latex") (:exports . "results"))

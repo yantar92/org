@@ -42,8 +42,9 @@
     (graphics-pkg        . ((plot draw))))
   "Maxima-specific header arguments.")
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("maxima" . "max"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("maxima" . "max")))
 
 (defvar org-babel-default-header-args:maxima '())
 

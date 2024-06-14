@@ -34,8 +34,9 @@
 
 (require 'ob)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("perl" . "pl"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("perl" . "pl")))
 
 (defvar org-babel-default-header-args:perl '())
 

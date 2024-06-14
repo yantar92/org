@@ -36,8 +36,9 @@
 (require 'org-macs)
 (require 'python)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("python" . "py"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("python" . "py")))
 
 (defvar org-babel-default-header-args:python '())
 

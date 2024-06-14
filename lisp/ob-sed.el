@@ -49,8 +49,9 @@
 (defvar org-babel-sed-command "sed"
   "Name of the sed executable command.")
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("sed" . "sed"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("sed" . "sed")))
 
 (defconst org-babel-header-args:sed
   '((:cmd-line . :any)

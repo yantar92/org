@@ -49,8 +49,9 @@
 (defvar inf-ruby-default-implementation)
 (defvar inf-ruby-implementations)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("ruby" . "rb"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("ruby" . "rb")))
 
 (defvar org-babel-default-header-args:ruby '())
 

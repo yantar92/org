@@ -65,9 +65,11 @@
 
 (defvar cider-buffer-ns)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("clojure" . "clj"))
-(add-to-list 'org-babel-tangle-lang-exts '("clojurescript" . "cljs"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(progn
+     (add-to-list 'org-babel-tangle-lang-exts '("clojure" . "clj"))
+     (add-to-list 'org-babel-tangle-lang-exts '("clojurescript" . "cljs"))))
 
 (defvar org-babel-default-header-args:clojure '())
 (defvar org-babel-header-args:clojure

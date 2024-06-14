@@ -62,8 +62,9 @@
 
 (defvar org-babel-temporary-directory)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("processing" . "pde"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("processing" . "pde")))
 
 ;; Default header tags depend on whether exporting html or not; if not
 ;; exporting html, then no results are produced; otherwise results are

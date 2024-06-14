@@ -41,9 +41,11 @@
 (require 'org-macs)
 
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("C++" . "cpp"))
-(add-to-list 'org-babel-tangle-lang-exts '("D" . "d"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(progn
+     (add-to-list 'org-babel-tangle-lang-exts '("C++" . "cpp"))
+     (add-to-list 'org-babel-tangle-lang-exts '("D" . "d"))))
 
 (defvar org-babel-default-header-args:C '())
 

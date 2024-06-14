@@ -37,9 +37,12 @@
 
 (require 'ob)
 
-(defvar org-babel-tangle-lang-exts) ;; Autoloaded
-(add-to-list 'org-babel-tangle-lang-exts '("groovy" . "groovy"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("groovy" . "groovy")))
+
 (defvar org-babel-default-header-args:groovy '())
+
 (defcustom org-babel-groovy-command "groovy"
   "Name of the command to use for executing Groovy code.
 May be either a command in the path, like groovy

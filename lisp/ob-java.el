@@ -34,8 +34,9 @@
 
 (require 'ob)
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("java" . "java"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("java" . "java")))
 
 (defvar org-babel-temporary-directory) ; from ob-core
 

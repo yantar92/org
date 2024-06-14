@@ -38,8 +38,9 @@
 (declare-function lua-toggle-shells "ext:lua-mode" (arg))
 (declare-function run-lua "ext:lua" (cmd &optional dedicated show))
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("lua" . "lua"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("lua" . "lua")))
 
 (defvar org-babel-default-header-args:lua '())
 

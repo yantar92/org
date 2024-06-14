@@ -37,8 +37,9 @@
 (require 'cl-lib)
 
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("fortran" . "F90"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("fortran" . "F90")))
 
 (defvar org-babel-default-header-args:fortran '())
 
