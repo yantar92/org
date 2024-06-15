@@ -60,8 +60,6 @@
 
 (declare-function processing-sketch-run "ext:processing-mode" ())
 
-(defvar org-babel-temporary-directory)
-
 (defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("processing" . "pde")))

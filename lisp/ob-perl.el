@@ -76,7 +76,7 @@ This function is called by `org-babel-execute-src-block'."
 (defvar org-babel-perl-var-wrap "q(%s)"
   "Wrapper for variables inserted into Perl code.")
 
-(defvar org-babel-perl--lvl)
+(defvar org-babel-perl--lvl) ; dynamically scoped
 (defun org-babel-perl--var-to-perl (var &optional varn)
   "Convert an elisp value to a perl variable.
 The elisp value, VAR, is converted to a string of perl source code
@@ -127,7 +127,7 @@ specifying a var of the same value."
     }
 }")
 
-(defvar org-babel-perl-preface nil)
+(defvar org-babel-perl-preface nil) ; FIXME: not set anywhere
 
 (defvar org-babel-perl-pp-wrapper-method
   nil)

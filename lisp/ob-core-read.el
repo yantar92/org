@@ -280,7 +280,6 @@ Only consider top level items.  See Info node
   (mapcar (lambda (el) (org-babel-read (car el) 'inhibit-lisp-eval))
 	  (cdr (org-list-to-lisp))))
 
-(defvar org-link-types-re)
 (defun org-babel-read-link ()
   "Read the link at point into emacs-lisp.
 If the path of the link is a file path it is expanded using

@@ -379,6 +379,7 @@ the session.  Copy the body of the code block to the kill ring."
       (funcall prep-cmd session params))
     (funcall init-cmd session params)))
 
+(defalias 'org-babel-pop-to-session #'org-babel-switch-to-session)
 ;;;###autoload
 (defun org-babel-switch-to-session (&optional arg info)
   "Switch to the session of the current code block or block defined by INFO.
@@ -388,10 +389,6 @@ with a prefix argument ARG, then this is passed on to
   (interactive "P")
   (pop-to-buffer (org-babel-initiate-session arg info))
   (end-of-line 1))
-
-(defalias 'org-babel-pop-to-session 'org-babel-switch-to-session)
-
-(defvar org-src-window-setup)
 
 ;;;###autoload
 (defun org-babel-switch-to-session-with-code (&optional arg _info)
@@ -582,10 +579,8 @@ block of the same language as the previous."
       (let ((start (point))
 	    (lang (or (car info) ; Reuse language from previous block.
                       (progn
-                        (require 'org-src)
-                        (defvar org-src-lang-modes)
                         (require 'org-load)
-                        (defvar org-babel-load-languages)
+                        (defvar org-babel-load-languages) ; org-load.el
                         (completing-read
 		         "Lang: "
 		         (mapcar #'symbol-name
@@ -744,8 +739,6 @@ a window into the `org-babel-get-src-block-info' function."
 	  (error "Supplied header \"%S\" is suspiciously close to \"%S\""
 		 header name))))
     (message "No suspicious header arguments found.")))
-
-(defvar org-babel-load-languages)
 
 ;;;###autoload
 (defun org-babel-mark-block ()

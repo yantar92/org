@@ -43,9 +43,8 @@
 (require 'comint)
 (require 'org-macs)
 
-(declare-function tuareg-run-caml "ext:tuareg" ())
-(declare-function tuareg-run-ocaml "ext:tuareg" ())
 (declare-function tuareg-interactive-send-input "ext:tuareg" ())
+(declare-function tuareg-run-process-if-needed "ext:tuareg" (&optional cmd))
 
 (defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
 (eval-after-load 'ob-tangle
@@ -108,18 +107,17 @@
        (org-babel-pick-name
 	(cdr (assq :rowname-names params)) (cdr (assq :rownames params)))))))
 
-(defvar tuareg-interactive-buffer-name)
 (defun org-babel-prep-session:ocaml (session _params)
   "Prepare SESSION according to the header arguments in PARAMS."
   (org-require-package 'tuareg)
-  (let ((tuareg-interactive-buffer-name (if (and (not (string= session "none"))
-                                                 (not (string= session "default"))
-                                                 (stringp session))
-                                            session
-                                          tuareg-interactive-buffer-name)))
-    (save-window-excursion (if (fboundp 'tuareg-run-process-if-needed)
-	                       (tuareg-run-process-if-needed org-babel-ocaml-command)
-                             (tuareg-run-caml)))
+  (defvar tuareg-interactive-buffer-name) ; tuareg.el
+  (let ((tuareg-interactive-buffer-name
+         (if (and (not (string= session "none"))
+                  (not (string= session "default"))
+                  (stringp session))
+             session
+           tuareg-interactive-buffer-name)))
+    (save-window-excursion (tuareg-run-process-if-needed org-babel-ocaml-command))
     (get-buffer tuareg-interactive-buffer-name)))
 
 (defun org-babel-variable-assignments:ocaml (params)

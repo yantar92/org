@@ -694,7 +694,6 @@ CONTEXT may be one of :tangle, :export or :eval."
 	     (split-string (or (cdr (assq :noweb params)) "")))))
 
 (defvar org-babel-library-of-babel) ; defined later
-(declare-function org-babel-tangle-comment-links "ob-tangle" (&optional info))
 (defvar org-babel-tangle-uncomment-comments) ; defined in ob-tangle.el
 (defvar org-babel-expand-noweb-references--cache nil
   "Noweb reference cache used during expansion.")
@@ -776,6 +775,7 @@ block but are passed literally to the \"example-block\"."
 		                (nth 1 ,i))))
 	               (if (not comment) b
                          (require 'ob-tangle)
+                         (declare-function org-babel-tangle-comment-links "ob-tangle" (&optional info))
 		         (let ((cs (org-babel-tangle-comment-links ,i)))
 		           (concat (c-wrap (car cs)) "\n"
 			           b "\n"
@@ -1091,7 +1091,6 @@ Emacs Lisp representation of the value of the variable."
 		     (point))
      (point-max))))
 
-(defvar org-babel-library-of-babel)
 (defun org-babel-ref-resolve (ref)
   "Resolve the reference REF and return its value."
   (save-window-excursion
@@ -1793,7 +1792,7 @@ multiple blocks are being executed (e.g., in chained execution
 through use of the :var header argument) this marker points to
 the outer-most code block.")
 
-(defvar *this*)
+(defvar *this*) ; special dynamic variable holding results of evaluation
 ;; Dynamically bound in `org-babel-execute-src-block'
 ;; and `org-babel-read'
 

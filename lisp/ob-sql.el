@@ -76,13 +76,8 @@
 
 (require 'ob)
 
-(declare-function org-table-import "org-table" (file arg))
-(declare-function orgtbl-to-csv "org-table" (table params))
-(declare-function org-table-to-lisp "org-table" (&optional txt))
 (declare-function cygwin-convert-file-name-to-windows "cygw32.c" (file &optional absolute-p))
-(declare-function sql-set-product "sql" (product))
 
-(defvar sql-connection-alist)
 (defvar org-babel-default-header-args:sql '()
   "Default header arguments for SQL code blocks.")
 
@@ -113,6 +108,8 @@
   "Set `sql-product' in Org edit buffer.
 Set `sql-product' in Org edit buffer according to the
 corresponding :engine source block header argument."
+  (require 'sql)
+  (declare-function sql-set-product "sql" (product))
   (let ((product (cdr (assq :engine (nth 2 info)))))
     (sql-set-product product)))
 
@@ -242,6 +239,8 @@ database connections."
                                   (:dbinstance . sql-dbinstance)
                                   (:database . sql-database)))
                   (mapped-name (cdr (assq name name-mapping))))
+             (require 'sql)
+             (defvar sql-connection-alist) ; sql.el
              (cadr (assq mapped-name
                          (cdr (assoc-string dbconnection sql-connection-alist t))))))))
 
@@ -400,6 +399,7 @@ SET COLSEP '|'
 	 (org-babel-pick-name (cdr (assq :rowname-names params))
 			      (cdr (assq :rownames params))))))))
 
+(declare-function orgtbl-to-csv "org-table-export" (table params))
 (defun org-babel-sql-expand-vars (body vars &optional sqlite)
   "Expand the variables held in VARS in BODY.
 

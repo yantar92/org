@@ -250,13 +250,13 @@ PARAMS is src block parameters alist defining variable assignments."
    (lambda (pair) (format "%s = \"%s\"" (car pair) (cdr pair)))
    (org-babel-gnuplot-process-vars params)))
 
-(defvar gnuplot-buffer)
 (defun org-babel-gnuplot-initiate-session (&optional session _params)
   "Initiate a gnuplot session.
 If there is not a current inferior-process-buffer in SESSION
 then create one.  Return the initialized session.  The current
 `gnuplot-mode' doesn't provide support for multiple sessions."
   (org-require-package 'gnuplot)
+  (defvar gnuplot-buffer) ; gnuplot.el
   (unless (string= session "none")
     (save-window-excursion
       (gnuplot-send-string-to-gnuplot "" "line")
@@ -270,12 +270,12 @@ Passed as FORMAT-STING argument to `format-time-string', which see.")
   (format-time-string org-babel-gnuplot-timestamp-fmt
 		      (org-time-string-to-time s)))
 
-(defvar org-table-number-regexp)
-(defvar org-ts-regexp3)
 (defun org-babel-gnuplot-quote-tsv-field (s)
   "Quote S for export to gnuplot."
   (unless (stringp s)
     (setq s (format "%s" s)))
+  (require 'org-table-align)
+  (defvar org-table-number-regexp) ; org-table-align.el
   (if (string-match org-table-number-regexp s) s
     (if (string-match org-ts-regexp3 s)
 	(org-babel-gnuplot-quote-timestamp-field s)

@@ -38,8 +38,6 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("java" . "java")))
 
-(defvar org-babel-temporary-directory) ; from ob-core
-
 (defvar org-babel-default-header-args:java '((:results . "output")
 					     (:dir . "."))
   "Default header args for java source blocks.

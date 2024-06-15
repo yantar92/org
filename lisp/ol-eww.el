@@ -65,7 +65,7 @@
   "Store a link to the url of an EWW buffer."
   (when (eq major-mode 'eww-mode)
     (declare-function eww-current-url "eww" ())
-    (defvar eww-data)
+    (defvar eww-data) ; eww.el
     (org-link-store-props
      :type "eww"
      :link (eww-current-url)
@@ -165,7 +165,7 @@ keep the structure of the Org file."
 (defun org-eww-extend-eww-keymap ()
   "Add ol-eww bindings to `eww-mode-map'."
   (require 'eww)
-  (defvar eww-mode-map)
+  (defvar eww-mode-map) ; eww.el
   (define-key eww-mode-map "\C-c\C-x\M-w" 'org-eww-copy-for-org-mode)
   (define-key eww-mode-map "\C-c\C-x\C-w" 'org-eww-copy-for-org-mode))
 

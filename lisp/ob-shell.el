@@ -51,7 +51,6 @@
   '((async               . ((yes no))))
   "Shell-specific header arguments.")
 
-(defvar org-babel-shell-names)
 
 (defconst org-babel-shell-set-prompt-commands
   '(;; Fish has no PS2 equivalent.
@@ -71,6 +70,7 @@ that will be called with a single additional argument: prompt string.
 The fallback association template is defined in (t . \"template\")
 alist element.")
 
+(defvar org-babel-shell-names) ; defined later
 (defun org-babel-shell-initialize ()
   "Define execution functions associated to shell names.
 This function has to be called whenever `org-babel-shell-names'

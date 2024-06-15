@@ -49,6 +49,7 @@
 
 (declare-function haskell-mode "ext:haskell-mode" ())
 (declare-function run-haskell "ext:inf-haskell" (&optional arg))
+;; FIXME: `inferior-haskell-load-file' is no longer provided by haskell-mode package
 (declare-function inferior-haskell-load-file
 		  "ext:inf-haskell" (&optional reload))
 
@@ -151,13 +152,15 @@ This function should only be called by `org-babel-execute:haskell'."
 
 (defun org-babel-interpret-haskell (body params)
   (org-require-package 'inf-haskell "haskell-mode")
+  (defvar haskell-prompt-regexp) ; inf-haskell.el
   (add-hook 'inferior-haskell-hook
             (lambda ()
               (setq-local
                org-babel-comint-prompt-regexp-fallback comint-prompt-regexp
                comint-prompt-regexp
                (concat haskell-prompt-regexp "\\|^λ?> "))))
-  (org-babel-haskell-with-session session params
+  (org-babel-haskell-with-session
+      session params
     (cl-labels
         ((send-txt-to-ghci (txt)
            (insert txt) (comint-send-input nil t))
@@ -179,15 +182,15 @@ This function should only be called by `org-babel-execute:haskell'."
                      (comint-with-output
                       (lambda () (send-txt-to-ghci (org-trim full-body)) (send-eoe))))
                     (`value
-                      ;; We first compute the value and store it,
-                      ;; ignoring any output.
+                     ;; We first compute the value and store it,
+                     ;; ignoring any output.
                      (comint-with-output
                       (lambda ()
                         (send-txt-to-ghci "__LAST_VALUE_IMPROBABLE_NAME__=()::()\n")
                         (send-txt-to-ghci (org-trim full-body))
                         (send-txt-to-ghci "__LAST_VALUE_IMPROBABLE_NAME__=it\n")
                         (send-eoe)))
-                      ;; We now display and capture the value.
+                     ;; We now display and capture the value.
                      (comint-with-output
                       (lambda()
                         (send-txt-to-ghci "__LAST_VALUE_IMPROBABLE_NAME__\n")
@@ -219,9 +222,8 @@ This function should only be called by `org-babel-execute:haskell'."
 
 
 ;; Variable defined in inf-haskell (haskell-mode package).
-(defvar inferior-haskell-buffer)
-(defvar inferior-haskell-root-dir)
-
+(defvar inferior-haskell-buffer) ; inf-haskell.el
+(defvar inferior-haskell-root-dir) ; haskell-customie.el
 (defun org-babel-haskell-initiate-session (&optional session-name _params)
   "Initiate a haskell session.
 Return the initialized session, i.e. the buffer for this session.
@@ -312,7 +314,6 @@ specifying a variable of the same value."
       (concat "[" (mapconcat #'org-babel-haskell-var-to-haskell var ", ") "]")
     (format "%S" var)))
 
-(defvar org-export-copy-to-kill-ring)
 (declare-function org-export-to-file "ox"
 		  (backend file
 			   &optional async subtreep visible-only body-only
@@ -365,6 +366,7 @@ constructs (header arguments, no-web syntax etc...) are ignored."
             (require 'ox-latex)
             (insert-file-contents tmp-org-file)
             ;; Ensure we do not clutter kill ring with incomplete results.
+            (defvar org-export-copy-to-kill-ring) ; ox.el
             (let (org-export-copy-to-kill-ring)
 	      (org-export-to-file 'latex tmp-tex-file)))
         (delete-file tmp-org-file))

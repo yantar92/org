@@ -64,7 +64,9 @@
 			    (output value graphics))))
   "Julia-specific header arguments.")
 
-(add-to-list 'org-babel-tangle-lang-exts '("julia" . "jl"))
+(defvar org-babel-tangle-lang-exts) ; ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("julia" . "jl")))
 
 (defvar org-babel-default-header-args:julia '()
   "Default header arguments for Julia code blocks.")
@@ -185,8 +187,7 @@ end"
                     name file))))
     (format "%s = %s" name (org-babel-julia-quote-csv-field value))))
 
-(defvar ess-ask-for-ess-directory) ; dynamically scoped
-(defun org-babel-julia-initiate-session (session _params)
+(defun org-babel-julia-initiate-session (session params)
   "If there is not a current julia process then create one."
   (unless (string= session "none")
     (let* ((session (or session "*Julia*"))

@@ -37,9 +37,9 @@
 (declare-function eshell-send-input "esh-mode"
                   (&optional use-region queue-p no-newline))
 
-(defvar eshell-last-output-start)
-(defvar eshell-last-output-end)
-(defvar eshell-last-input-end)
+(defvar eshell-last-output-start) ; esh-mode.el
+(defvar eshell-last-output-end) ; esh-mode.el
+(defvar eshell-last-input-end) ; esh-mode.el
 
 (defvar org-babel-default-header-args:eshell '()
   "Default header arguments for Eshell code blocks.")

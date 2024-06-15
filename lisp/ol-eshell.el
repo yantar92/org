@@ -38,7 +38,7 @@ The LINK can be just a command line (executed in the default
 eshell buffer) or a command line prefixed by a buffer name
 followed by a colon."
   (require 'eshell)
-  (defvar eshell-buffer-name)
+  (defvar eshell-buffer-name) ; defined in eshell.el
   (require 'esh-mode)
   (declare-function eshell-kill-input "esh-mode" ())
   (declare-function eshell-send-input "esh-mode" (&optional use-region queue-p no-newline))

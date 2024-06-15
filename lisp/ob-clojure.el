@@ -51,6 +51,7 @@
 (org-assert-version)
 
 (require 'ob)
+(require 'comint)
 
 (declare-function cider-current-connection "ext:cider-client" (&optional type))
 (declare-function cider-current-ns "ext:cider-client" ())
@@ -231,7 +232,6 @@ or set the `:backend' header argument"))))
     (mapcar #'list l)))
 
 (defvar inf-clojure-buffer)
-(defvar comint-prompt-regexp)
 (defvar inf-clojure-comint-prompt-regexp)
 (defun ob-clojure-eval-with-inf-clojure (expanded params)
   "Evaluate EXPANDED code block with PARAMS using inf-clojure."
