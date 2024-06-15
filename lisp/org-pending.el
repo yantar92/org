@@ -626,7 +626,9 @@ visual hints."
 ;;;; Locking a region
 ;;
 
-(cl-defun org-pending (region &key anchor name on-outcome)
+(cl-defun org-pending (region
+                       &key anchor name
+                       (on-outcome #'org-pending-on-outcome-replace))
   "Lock the REGION and return its REGLOCK.
 
 Return the REGLOCK that you'll need to call `org-pending-send-update'.
@@ -642,9 +644,7 @@ is not given, use the first line of REGION.
 
 Assume the region REGION contains the region ANCHOR.
 
-Use the function ON-OUTCOME to update the region with the outcome; if it
-is nil, set it to the function `org-pending-on-outcome-replace'.  On
-receiving the outcome (a :success or :failure message, sent with
+On receiving the outcome (a :success or :failure message, sent with
 `org-pending-send-update'), remove the region protection.  Call
 ON-OUTCOME with the reglock and the outcome, from the position from
 where the REGLOCK was created.  If ON-OUTCOME returns a region (a
@@ -689,8 +689,6 @@ You may add/update your own properties to your reglock using the field
                   (cons abeg aend))
               (cons (funcall to-marker (car anchor))
                     (funcall to-marker (cdr anchor))))))
-    (unless on-outcome
-      (setq on-outcome #'org-pending-on-outcome-replace))
 
     (setq reglock (org-pending--make
                    :scheduled-at (float-time)
