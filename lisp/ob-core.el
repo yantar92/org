@@ -599,8 +599,11 @@ evaluation is blocked.  Returns non-nil if evaluation is not blocked."
 		 (if name (format " (%s) " name) " "))))
     confirmed))
 
-;; Dynamically scoped for asynchronous export.
-(defvar org-babel-confirm-evaluate-answer-no)
+(defvar org-babel-confirm-evaluate-answer-no nil
+  "When non-nil, suppress interactive evaluation prompt.
+Assume that the answer is \"no\" in that prompt.
+This variable is used by `org-export-async-start' to suppress prompts
+during async export.")
 
 (defun org-babel-confirm-evaluate (info)
   "Confirm evaluation of the code block INFO.
