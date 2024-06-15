@@ -928,6 +928,7 @@ even if the lock/buffer doesn't exist.")
                                  "x" 'display
                                  `(left-fringe ,bitmap ,face)))
     (overlay-put outcome-ovl 'org-pending-reglock lock)
+    (push `(apply delete-overlay ,outcome-ovl) buffer-undo-list)
     ;; Return how to remove our decoration.
     (lambda ()
       (when-let ((buf (overlay-buffer outcome-ovl)))
@@ -993,6 +994,9 @@ even if the lock/buffer doesn't exist.")
         (setf (org-pending-reglock-outcome-at reglock) (float-time))
 
         (when on-outcome
+          ;; NOTE: We force an undo boundary, so that the user may
+          ;; undo that change.
+          (undo-boundary)
           (setq outcome-region (funcall on-outcome reglock (list status data)))
           (when outcome-region
             ;; We got a region. Check it's really one.
