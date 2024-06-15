@@ -53,15 +53,13 @@
      body
      (and epilogue (concat "\n" epilogue "\n")))))
 
-(defvar org--var-syms) ; Dynamically scoped from org-babel-execute:calc
-
 (defun org-babel-execute:calc (body params)
   "Execute BODY of calc code with Babel using PARAMS."
   (unless (get-buffer "*Calculator*")
     (save-window-excursion (calc) (calc-quit)))
   (let* ((vars (org-babel--get-vars params))
-	 (org--var-syms (mapcar #'car vars))
-	 (var-names (mapcar #'symbol-name org--var-syms)))
+	 (var-syms (mapcar #'car vars))
+	 (var-names (mapcar #'symbol-name var-syms)))
     (mapc
      (lambda (pair)
        (let ((val (cdr pair)))
@@ -108,10 +106,9 @@
                            ;; resolve user variables, calc built in
                            ;; variables are handled automatically
                            ;; upstream by calc
-                           (mapcar #'org-babel-calc-maybe-resolve-var
+                           (mapcar (lambda (el) (org-babel-calc-maybe-resolve-var el var-syms))
                                    ;; parse line into calc objects
-                                   (car (math-read-exprs line)))))))))
-                  ))))))
+                                   (car (math-read-exprs line)))))))))))))))
      (mapcar #'org-trim
 	     (split-string (org-babel-expand-body:calc body params) "[\n\r]"))))
   (save-excursion
@@ -120,16 +117,17 @@
           (calc-eval (calc-top 1))
         (calc-pop 1)))))
 
-(defun org-babel-calc-maybe-resolve-var (el)
-"Resolve user variables in EL.
-EL is taken from the output of `math-read-exprs'."
+(defun org-babel-calc-maybe-resolve-var (el &optional var-syms)
+  "Resolve user variables in EL.
+EL is taken from the output of `math-read-exprs'.
+VAR-SYMS is the list of variables defined in the code block header."
   (if (consp el)
-      (if (and (eq 'var (car el)) (member (cadr el) org--var-syms))
+      (if (and (eq 'var (car el)) (member (cadr el) var-syms))
 	  (progn
 	    (calc-recall (cadr el))
 	    (prog1 (calc-top 1)
 	      (calc-pop 1)))
-	(mapcar #'org-babel-calc-maybe-resolve-var el))
+	(mapcar (lambda (el1) (org-babel-calc-maybe-resolve-var el1 var-syms)) el))
     el))
 
 (provide 'ob-calc)
