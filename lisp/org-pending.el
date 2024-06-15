@@ -881,6 +881,57 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 
 ;;;; Updates
 ;;
+(defvar org-pending-outcome-pre-display-function
+  #'org-pending-outcome-pre-display-default
+  "Function called before displaying the outcome and
+releasing the lock.
+
+This function is called with two arguments: the lock and the update
+message (see `org-pending-send-update' for the definition of what an
+update message is).")
+
+(defvar org-pending-outcome-post-display-function
+  #'org-pending-outcome-post-display-default
+  "Function called after the outcome is displayed and
+released the lock.
+
+This function is called with three arguments: the lock, the update
+message (see `org-pending-send-update' for the definition of what an
+update message is), and the outcome region (a pair BEGIN END).  This
+function is called only when there is a region for the outcome (see the
+option ON-OUTCOME of `org-pending').
+
+This function must return how to remove the decoration: a function that
+will be called with no arguments; the returned function may be called
+even if the lock/buffer doesn't exist.")
+
+(defun org-pending-outcome-pre-display-default (_lock _message)
+  "Default value for `org-pending-outcome-pre-display-function'.")
+
+(defun org-pending-outcome-post-display-default (lock message outcome-region)
+  "Default value for `org-pending-outcome-post-display-function'."
+  ;; We add some outcome decorations to let the user know what
+  ;; happened and allow him to explore the details.
+  (let* ((status (car message))
+         (outcome-ovl (org-pending--make-overlay status outcome-region))
+         (bitmap (pcase status
+                  (:success 'large-circle)
+                  (:failure 'exclamation-mark)))
+         (face (pcase status
+                 (:success 'org-done)
+                 (:failure 'org-todo))))
+    (overlay-put outcome-ovl
+                 'before-string (propertize
+                                 "x" 'display
+                                 `(left-fringe ,bitmap ,face)))
+    (overlay-put outcome-ovl 'org-pending-reglock lock)
+    ;; Return how to remove our decoration.
+    (lambda ()
+      (when-let ((buf (overlay-buffer outcome-ovl)))
+        (when (buffer-live-p buf)
+          (delete-overlay outcome-ovl))))))
+
+
 (cl-defun org-pending--update (reglock status data)
   (cl-labels
       ((add-style (status txt)
@@ -924,9 +975,8 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
                      (propertize (format " |%s|" (short-version-of data))
                                  'face (org-pending-status-face status))))
       (when (memq status '(:success :failure))
-        ;; NOTE: `sit-for' doesn't garantuee we'll be
-        ;;       at the same pos when exiting.
-        (save-excursion (sit-for 0.2))
+        (funcall org-pending-outcome-pre-display-function
+                 reglock (list status data))
 
         ;; We remove all overlays and let org insert the result
         ;; as it would in the synchronous case.
@@ -948,39 +998,21 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
                              (markerp (car outcome-region)))
                          (or (integerp (cdr outcome-region))
                              (markerp (cdr outcome-region))))
-              (error "Not a region")))))
+              (error "Not a region"))))
 
-      (when (memq status '(:failure :success))
         (if (not outcome-region)
             (setf (org-pending-reglock--useless-p reglock)
                   (lambda () t))
-          ;; We add some outcome decorations to let the user know what
-          ;; happened and allow him to explore the details.
-          (let ((outcome-ovl (org-pending--make-overlay status outcome-region))
-                (bitmap (pcase status
-                          (:success 'large-circle)
-                          (:failure 'exclamation-mark)))
-                (face (pcase status
-                        (:success 'org-done)
-                        (:failure 'org-todo))))
-            (overlay-put outcome-ovl
-                         'before-string (propertize
-                                         "x" 'display
-                                         `(left-fringe ,bitmap ,face)))
-            (overlay-put outcome-ovl 'org-pending-reglock reglock)
+          ;; Decorate the outcome and store how to remove the decoration.
+          (setf (org-pending-reglock--delete-outcome-marks reglock)
+                (funcall org-pending-outcome-post-display-function
+                         reglock (list status data) outcome-region))
 
-            ;; How to remove our visual hints.
-            (setf (org-pending-reglock--delete-outcome-marks reglock)
-                  (lambda ()
-                    (when-let ((buf (overlay-buffer outcome-ovl)))
-                      (when (buffer-live-p buf)
-                        (delete-overlay outcome-ovl)))))
-
-            (setf (org-pending-reglock--useless-p reglock)
-                  (lambda ()
-                    (if-let ((buf (overlay-buffer outcome-ovl)))
-                        (not (buffer-live-p buf))
-                      t)))))))))
+          (setf (org-pending-reglock--useless-p reglock)
+                (lambda ()
+                  (if-let ((buf (org-pending-reglock-owner reglock)))
+                      (not (buffer-live-p buf))
+                    t))))))))
 
 (defun org-pending-send-update (reglock upd-message)
   "Send the update UPD-MESSAGE to REGLOCK.
