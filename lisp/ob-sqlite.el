@@ -56,6 +56,9 @@
     (readonly-p . ((yes no))))
   "Sqlite specific header args.")
 
+(defvar org-babel-sqlite3-command "sqlite3"
+  "Sqlite3 command name.")
+
 (defun org-babel-expand-body:sqlite (body params)
   "Expand BODY according to the values of PARAMS."
   (let ((prologue (cdr (assq :prologue params)))
@@ -67,8 +70,6 @@
                  body (org-babel--get-vars params) t)
                 epilogue)
                "\n")))
-
-(defvar org-babel-sqlite3-command "sqlite3")
 
 (defun org-babel-execute:sqlite (body params)
   "Execute Sqlite BODY according to PARAMS.
