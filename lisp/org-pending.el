@@ -321,14 +321,15 @@ insert-behind-hooks."
     (let ((inhibit-read-only t)
           (start (overlay-start ovl))
           (end (overlay-end ovl)))
-      (add-text-properties start end
-                            `(org-pending--projection-of ,ovl))
-      (add-text-properties start end
-                           org-pending--overlay-projection-props)
-      (add-text-properties start end
-                           `( modification-hooks ,read-only
-                              insert-in-front-hooks ,read-only
-                              insert-behind-hooks ,read-only)))))
+      (with-silent-modifications
+        (add-text-properties start end
+                             `(org-pending--projection-of ,ovl))
+        (add-text-properties start end
+                             org-pending--overlay-projection-props)
+        (add-text-properties start end
+                             `( modification-hooks ,read-only
+                                insert-in-front-hooks ,read-only
+                                insert-behind-hooks ,read-only))))))
 
 
 (defun org-pending--remove-overlay-projection (ovl)
@@ -339,13 +340,14 @@ See `org-pending--add-overlay-projection'."
           (inhibit-read-only t)
           (start (overlay-start ovl))
           (end (overlay-end ovl)))
-      (remove-text-properties start end
-                              `( modification-hooks :not-used
-                                 insert-in-front-hooks :not-used
-                                 insert-behind-hooks :not-used
-                                 org-pending--projection-of :not-used))
-      (remove-text-properties start end
-                              org-pending--overlay-projection-props))))
+      (with-silent-modifications
+        (remove-text-properties start end
+                                `( modification-hooks :not-used
+                                   insert-in-front-hooks :not-used
+                                   insert-behind-hooks :not-used
+                                   org-pending--projection-of :not-used))
+        (remove-text-properties start end
+                                org-pending--overlay-projection-props)))))
 
 
 ;;;; Overlays
@@ -382,8 +384,9 @@ See `org-pending--delete-overlay' to delete it."
       (when (memq type '(:success :failure))
         ;; Add a link to the outcome overlay so that we may remove it
         ;; from any buffer.
-        (add-text-properties (car beg-end) (cdr beg-end)
-                             (list 'org-pending--outcome-overlay overlay))
+        (with-silent-modifications
+          (add-text-properties (car beg-end) (cdr beg-end)
+                               (list 'org-pending--outcome-overlay overlay)))
         (overlay-put overlay 'keymap org-pending--outcome-keymap)
         (overlay-put overlay 'evaporate t))
 
