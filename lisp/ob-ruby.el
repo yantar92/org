@@ -53,7 +53,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("ruby" . "rb")))
 
-(defvar org-babel-default-header-args:ruby '())
+(defvar org-babel-default-header-args:ruby '()
+  "Default header arguments for Ruby code blocks.")
 
 (defvar org-babel-ruby-command "ruby"
   "Name of command to use for executing ruby code.

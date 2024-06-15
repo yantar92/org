@@ -47,7 +47,8 @@
      (add-to-list 'org-babel-tangle-lang-exts '("C++" . "cpp"))
      (add-to-list 'org-babel-tangle-lang-exts '("D" . "d"))))
 
-(defvar org-babel-default-header-args:C '())
+(defvar org-babel-default-header-args:C '()
+  "Default header arguments for C/C++ code blocks.")
 
 (defconst org-babel-header-args:C '((includes . :any)
 				    (defines . :any)

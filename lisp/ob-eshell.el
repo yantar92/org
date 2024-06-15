@@ -41,7 +41,8 @@
 (defvar eshell-last-output-end)
 (defvar eshell-last-input-end)
 
-(defvar org-babel-default-header-args:eshell '())
+(defvar org-babel-default-header-args:eshell '()
+  "Default header arguments for Eshell code blocks.")
 
 (defun org-babel-execute:eshell (body params)
   "Execute a block of Eshell code BODY with PARAMS.

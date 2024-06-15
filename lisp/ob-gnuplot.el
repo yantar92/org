@@ -69,7 +69,8 @@
 
 (defvar org-babel-gnuplot-timestamp-fmt nil) ; Dynamically scoped.
 
-(defvar *org-babel-gnuplot-missing* nil)
+(defvar *org-babel-gnuplot-missing* ""
+  "Value used in place of missing table field.")
 
 (defcustom *org-babel-gnuplot-terms*
   '((eps . "postscript eps"))

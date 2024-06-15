@@ -41,7 +41,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("fortran" . "F90")))
 
-(defvar org-babel-default-header-args:fortran '())
+(defvar org-babel-default-header-args:fortran '()
+  "Default header arguments for Fortran code blocks.")
 
 (defcustom org-babel-fortran-compiler "gfortran"
   "Fortran command used to compile Fortran source code file."

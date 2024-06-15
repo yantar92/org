@@ -83,7 +83,8 @@
 (declare-function sql-set-product "sql" (product))
 
 (defvar sql-connection-alist)
-(defvar org-babel-default-header-args:sql '())
+(defvar org-babel-default-header-args:sql '()
+  "Default header arguments for SQL code blocks.")
 
 (defconst org-babel-header-args:sql
   '((engine	       . :any)

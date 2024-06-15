@@ -44,7 +44,8 @@
 		  t)
 (declare-function orgtbl-to-generic "org-table" (table params))
 
-(defvar org-babel-default-header-args:shell '())
+(defvar org-babel-default-header-args:shell '()
+  "Default header arguments for Shell code blocks.")
 
 (defconst org-babel-header-args:shell
   '((async               . ((yes no))))

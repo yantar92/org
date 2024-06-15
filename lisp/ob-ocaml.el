@@ -51,7 +51,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("ocaml" . "ml")))
 
-(defvar org-babel-default-header-args:ocaml '())
+(defvar org-babel-default-header-args:ocaml '()
+  "Default header arguments for forth ocaml blocks.")
 
 (defvar org-babel-ocaml-eoe-indicator "\"org-babel-ocaml-eoe\";;")
 (defvar org-babel-ocaml-eoe-output "org-babel-ocaml-eoe")

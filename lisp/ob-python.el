@@ -40,7 +40,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("python" . "py")))
 
-(defvar org-babel-default-header-args:python '())
+(defvar org-babel-default-header-args:python '()
+  "Default header arguments for Python code blocks.")
 
 (defconst org-babel-header-args:python
   '((return . :any)
@@ -239,7 +240,8 @@ results as a string."
                 res)
       res)))
 
-(defvar org-babel-python-buffers '((:default . "*Python*")))
+(defvar org-babel-python-buffers '((:default . "*Python*"))
+  "Alist of (session . buffer-name) for ob-python sessions.")
 
 (defun org-babel-python-session-buffer (session)
   "Return the buffer associated with SESSION."

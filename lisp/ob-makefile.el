@@ -33,7 +33,8 @@
 
 (require 'ob)
 
-(defvar org-babel-default-header-args:makefile '())
+(defvar org-babel-default-header-args:makefile '()
+  "Default header arguments for Makefile code blocks.")
 
 (defun org-babel-execute:makefile (body _params)
   "Execute makefile BODY.

@@ -66,7 +66,8 @@
 
 (add-to-list 'org-babel-tangle-lang-exts '("julia" . "jl"))
 
-(defvar org-babel-default-header-args:julia '())
+(defvar org-babel-default-header-args:julia '()
+  "Default header arguments for Julia code blocks.")
 
 (defcustom org-babel-julia-command "julia"
   "Name of command to use for executing julia code."

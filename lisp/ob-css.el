@@ -33,7 +33,8 @@
 
 (require 'ob)
 
-(defvar org-babel-default-header-args:css '())
+(defvar org-babel-default-header-args:css '()
+  "Default header arguments for CSS code blocks.")
 
 (defun org-babel-execute:css (body _params)
   "Execute BODY of CSS code.

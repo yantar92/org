@@ -41,7 +41,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("groovy" . "groovy")))
 
-(defvar org-babel-default-header-args:groovy '())
+(defvar org-babel-default-header-args:groovy '()
+  "Default header arguments for groovy code blocks.")
 
 (defcustom org-babel-groovy-command "groovy"
   "Name of the command to use for executing Groovy code.

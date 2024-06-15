@@ -44,7 +44,8 @@
 
 (require 'ob)
 
-(defvar org-babel-default-header-args:sass '())
+(defvar org-babel-default-header-args:sass '()
+  "Default header arguments for sass code blocks.")
 
 (defun org-babel-execute:sass (body params)
   "Execute a block of Sass code with Babel.

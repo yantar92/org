@@ -89,7 +89,8 @@
 See `org-babel-safe-header-args' for documentation of the format of
 this variable.")
 
-(defvar org-babel-default-header-args:R '())
+(defvar org-babel-default-header-args:R '()
+  "Default header arguments for R code blocks.")
 (put 'org-babel-default-header-args:R 'safe-local-variable
      (org-babel-header-args-safe-fn ob-R-safe-header-args))
 

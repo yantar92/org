@@ -38,7 +38,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("perl" . "pl")))
 
-(defvar org-babel-default-header-args:perl '())
+(defvar org-babel-default-header-args:perl '()
+  "Default header arguments for Perl code blocks.")
 
 (defvar org-babel-perl-command "perl"
   "Name of command to use for executing perl code.")
@@ -95,7 +96,8 @@ specifying a var of the same value."
 		(format "q(%s)" var))
 	      (unless (zerop org-babel-perl--lvl) ",\n")))))
 
-(defvar org-babel-perl-buffers '(:default . nil))
+(defvar org-babel-perl-buffers '(:default . nil)
+  "Alist of (session . buffer-name) listing all the ob-perl sessions.")
 
 (defun org-babel-perl-initiate-session (&optional _session _params)
   "Return nil because sessions are not supported by perl."

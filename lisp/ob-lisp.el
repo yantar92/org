@@ -50,8 +50,10 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("lisp" . "lisp")))
 
-(defvar org-babel-default-header-args:lisp '())
-(defvar org-babel-header-args:lisp '((package . :any)))
+(defvar org-babel-default-header-args:lisp '()
+  "Default header arguments for Lisp code blocks.")
+(defvar org-babel-header-args:lisp '((package . :any))
+  "Lisp-specific header argument value definitions.")
 
 (defcustom org-babel-lisp-eval-fn #'slime-eval
   "The function to be called to evaluate code on the Lisp side.

@@ -39,8 +39,10 @@
 (declare-function matlab-shell "ext:matlab-mode")
 (declare-function matlab-shell-run-region "ext:matlab-mode")
 
-(defvar org-babel-default-header-args:matlab '())
-(defvar org-babel-default-header-args:octave '())
+(defvar org-babel-default-header-args:matlab '()
+  "Default header arguments for Matlab code blocks.")
+(defvar org-babel-default-header-args:octave '()
+  "Default header arguments for Octave code blocks.")
 
 (defvar org-babel-matlab-shell-command "matlab -nosplash"
   "Shell command to run matlab as an external process.")

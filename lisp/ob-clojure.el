@@ -71,13 +71,20 @@
      (add-to-list 'org-babel-tangle-lang-exts '("clojure" . "clj"))
      (add-to-list 'org-babel-tangle-lang-exts '("clojurescript" . "cljs"))))
 
-(defvar org-babel-default-header-args:clojure '())
+(defvar org-babel-default-header-args:clojure '()
+  "Default header arguments for Clojure code blocks.")
+
 (defvar org-babel-header-args:clojure
   '((ns . :any)
     (package . :any)
-    (backend . ((inf-clojure cider slime babashka nbb)))))
-(defvar org-babel-default-header-args:clojurescript '())
-(defvar org-babel-header-args:clojurescript '((package . :any)))
+    (backend . ((inf-clojure cider slime babashka nbb))))
+  "Clojure-specific header argument value definitions.")
+
+(defvar org-babel-default-header-args:clojurescript '()
+  "Default header arguments for forth Clojurescript blocks.")
+
+(defvar org-babel-header-args:clojurescript '((package . :any))
+  "Clojurescript-specific header argument value definitions.")
 
 (defcustom org-babel-clojure-backend (cond
                                       ((executable-find "bb") 'babashka)

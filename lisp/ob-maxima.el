@@ -46,7 +46,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("maxima" . "max")))
 
-(defvar org-babel-default-header-args:maxima '())
+(defvar org-babel-default-header-args:maxima '()
+  "Default header arguments for Maxima code blocks.")
 
 (defcustom org-babel-maxima-command
   (if (boundp 'maxima-command) maxima-command "maxima")

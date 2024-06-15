@@ -47,8 +47,7 @@
   "Default header arguments for lilypond code blocks.
 NOTE: The arguments are determined at lilypond compile time.
 See `org-babel-lilypond-set-header-args'
-To configure, see `ob-lilypond-header-args'
-.")
+To configure, see `ob-lilypond-header-args'.")
 
 (defvar ob-lilypond-header-args
   '((:results . "file") (:exports . "results"))

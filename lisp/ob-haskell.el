@@ -57,13 +57,14 @@
   '(add-to-list 'org-babel-tangle-lang-exts '("haskell" . "hs")))
 
 (defvar org-babel-default-header-args:haskell
-  '((:padlines . "no")))
+  '((:padlines . "no"))
+  "Haskell-specific header argument values.")
 
-(defvar org-babel-haskell-lhs2tex-command "lhs2tex")
+(defvar org-babel-haskell-lhs2tex-command "lhs2tex"
+  "Command name to run lhs2tex command.")
 
-(defvar org-babel-haskell-eoe "org-babel-haskell-eoe")
-
-(defvar haskell-prompt-regexp)
+(defvar org-babel-haskell-eoe "org-babel-haskell-eoe"
+  "String indicating end of output in Haskell sessions.")
 
 (defcustom org-babel-haskell-compiler "ghc"
   "Command used to compile a Haskell source code file into an executable.

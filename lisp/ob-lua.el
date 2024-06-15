@@ -42,7 +42,8 @@
 (eval-after-load 'ob-tangle
   '(add-to-list 'org-babel-tangle-lang-exts '("lua" . "lua")))
 
-(defvar org-babel-default-header-args:lua '())
+(defvar org-babel-default-header-args:lua '()
+  "Default header arguments for Lua code blocks.")
 
 (defcustom org-babel-lua-command "lua"
   "Name of the command for executing Lua code."
@@ -147,7 +148,8 @@ Emacs Lisp table, otherwise return the results as a string."
                 res)
       res)))
 
-(defvar org-babel-lua-buffers '((:default . "*Lua*")))
+(defvar org-babel-lua-buffers '((:default . "*Lua*"))
+  "List of Lua session buffer.")
 
 (defvar org-babel-lua-eoe-indicator "--eoe"
   "A string to indicate that evaluation has completed.")
