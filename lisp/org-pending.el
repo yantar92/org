@@ -546,7 +546,8 @@ A REGLOCK belongs to one buffer, the buffer that is current when it is
 created.  For example, if you lock a region as /pending/ in an indirect
 buffer, that region lock belongs to that indirect buffer, and, control
 of that lock must happen in that buffer."
-  (marker-buffer (car (org-pending-reglock-region reglock))))
+  (when-let ((region (org-pending-reglock-region reglock)))
+    (marker-buffer (car region))))
 
 (defun org-pending-reglock-status (reglock)
   "Return the status of REGLOCK.
