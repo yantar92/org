@@ -41,8 +41,9 @@
 
 (declare-function orgtbl-to-generic "org-table" (table params))
 
-(defvar org-babel-tangle-lang-exts)
-(add-to-list 'org-babel-tangle-lang-exts '("awk" . "awk"))
+(defvar org-babel-tangle-lang-exts) ; defined in ob-tangle.el
+(eval-after-load 'ob-tangle
+  '(add-to-list 'org-babel-tangle-lang-exts '("awk" . "awk")))
 
 (defvar org-babel-awk-command "awk"
   "Name of the awk executable command.")
