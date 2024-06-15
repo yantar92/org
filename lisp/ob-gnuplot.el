@@ -67,8 +67,6 @@
     (term       . :any))
   "Gnuplot specific header args.")
 
-(defvar org-babel-gnuplot-timestamp-fmt nil) ; Dynamically scoped.
-
 (defvar *org-babel-gnuplot-missing* ""
   "Value used in place of missing table field.")
 
@@ -264,6 +262,9 @@ then create one.  Return the initialized session.  The current
       (gnuplot-send-string-to-gnuplot "" "line")
       gnuplot-buffer)))
 
+(defvar org-babel-gnuplot-timestamp-fmt "%Y-%m-%d-%H:%M:%S"
+  "Format string used to convert Unix time to Gnuplot time string.
+Passed as FORMAT-STING argument to `format-time-string', which see.")
 (defun org-babel-gnuplot-quote-timestamp-field (s)
   "Convert S from timestamp to Unix time and export to gnuplot."
   (format-time-string org-babel-gnuplot-timestamp-fmt
@@ -291,7 +292,7 @@ Pass PARAMS through to `orgtbl-to-generic' when exporting TABLE."
   (require 'ox-org)
   (with-temp-file data-file
     (insert (let ((org-babel-gnuplot-timestamp-fmt
-		   (or (plist-get params :timefmt) "%Y-%m-%d-%H:%M:%S"))
+		   (or (plist-get params :timefmt) org-babel-gnuplot-timestamp-fmt))
                   ;; Create custom limited backend that will disable
                   ;; advanced ASCII export features that may alter the
                   ;; original data.
