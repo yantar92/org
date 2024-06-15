@@ -81,75 +81,65 @@
 ;; result on :success, and display a message on :failure.  The example
 ;; is written so that you can just uncomment it and run it.
 ;;
-
-;; ;; First, let's declare some buffer local variables that we will need.
-;; (defvar-local my-state nil) ; will be init = 0 => 1 => 2 => 3 = done.
-;; (defvar-local my-lock nil)  ; our region lock
-;; (defvar-local my-timer nil) ; our timer to compute the next state.
-;;
-;; ;; We will call the function 'my-next-state' every few seconds to
-;; ;; compute the next state until we reach the final state.
-;; (defun my-next-state (buf timer-ref)
-;;   "Compute the next state in the buffer BUF.
-;; TIMER-REF is a symbol that holds our timer."
-;;   (if (not (buffer-live-p buf))
-;;       ;; If the buffer is not there anymore,
-;;       ;; we cancel the timer.
-;;       (cancel-timer (symbol-value timer-ref))
-;;     (with-current-buffer buf
-;;       (if (< my-state 3)
-;;           (progn
-;;             ;; Not done yet, we send a progress messsage and increment
-;;             ;; our state value.
-;;             (org-pending-send-update my-lock
-;;                                      (list :progress
-;;                                            (pcase my-state
-;;                                              (0 "Taking off ...")
-;;                                              (1 "Flying ...")
-;;                                              (2 "Landing ..."))))
-;;             (setq my-state (1+ my-state)))
-;;         ;; We have reached our final state.  We compute the outcome
-;;         ;; and send it to the lock to unlock the region.
-;;         (let ((outcome (if (= (random 2) 0)
-;;                            (list :success (random 100))
-;;                          (list :failure "Failed."))))
-;;           (org-pending-send-update my-lock outcome))
-;;         (cancel-timer my-timer)))))
-;;
+;; (cl-defstruct my-counter (state 0) timer)
+;; (defun my-counter-update (counter reglock &optional force-landing)
+;;   "Increase COUNTER and send update to REGLOCK.
+;; At the end of sequence, cancel COUNTER timer.
+;; When FORCE-LANDING is symbol `land', report :success \"Landed early\" and cancel
+;; the timer."
+;;   (org-pending-send-update
+;;    reglock
+;;    (if force-landing
+;;        (progn
+;;          (when (timerp (my-counter-timer counter))
+;; 	   (cancel-timer (my-counter-timer counter)))
+;;          (pcase force-landing
+;;            ('land
+;;             '(:success "Landed early"))
+;;            ('crashed
+;;             (when (timerp (my-counter-timer counter))
+;; 	      (cancel-timer (my-counter-timer counter))))
+;;            '(:failure "Crashed")))
+;;      (pcase (my-counter-state counter)
+;;        (0 '(:progress "Taking off..."))
+;;        (1 '(:progress "Flying..."))
+;;        (2 '(:progress "Landing..."))
+;;        (_
+;;         (when (timerp (my-counter-timer counter))
+;; 	  (cancel-timer (my-counter-timer counter)))
+;;         (if (= 0 (random 2))
+;; 	    '(:success "Landed successfully")
+;;           '(:failure "Landing malfunction"))))))
+;;   (cl-incf (my-counter-state counter)))
 ;;
 ;; (let ((lock-buffer (generate-new-buffer "*Pending region example*"))
-;;       (region (cons nil nil)) ; We'll lock this region
-;;       (time-between-transition 1.1) ; seconds
-;;       )
+;;       (step-duration 2)
+;;       reglock state)
 ;;   (with-current-buffer lock-buffer
-;;     ;; We set our state to its initial value.
-;;     (setq my-state 0)
+;;     (insert "
+;; Buffer displaying pending content.
+;; OUTPUT>>>
 ;;
-;;     ;; We add some content to the buffer.  Updating 'region' so that
-;;     ;; it contains our region.
-;;     (insert "Buffer displaying pending content.\n")
-;;     (insert "OUTPUT>>>\n")
-;;     (setcar region (point))
-;;     (insert "TO REPLACE")
-;;     (setcdr region (point))
-;;     (insert "\n<<<OUTPUT\n")
-;;     (insert "Some other useless text\n")
-
+;; TO REPLACE
+;;
+;; <<<OUTPUT
+;; More text.
+;; ")
+;;
+;;     (goto-char (point-min))
+;;     (re-search-forward "TO REPLACE")
+;;
 ;;     ;; We lock the 'region', defining how to update it when the
 ;;     ;; outcome is available.
-;;     (setq my-lock (org-pending region))
-
-;;     ;; We create a timer to update our state every few seconds.
-;;     ;; NOTE: We need to keep a direct reference to the timer
-;;     ;;       ('time-ref') to be able to cancel if the buffer
-;;     ;;       disappears for some reason.
-;;     (let ((timer-ref (make-symbol "timer-ref")))
-;;       (setq my-timer (run-with-timer time-between-transition
-;;                                      time-between-transition
-;;                                      #'my-next-state lock-buffer timer-ref))
-;;       (set timer-ref my-timer))
+;;     (setq reglock (org-pending (cons (match-beginning 0) (match-end 0))))
 ;;
-;;     (pop-to-buffer lock-buffer)))
+;;     (pop-to-buffer lock-buffer)
+;;
+;;     (setq state (make-my-counter))
+;;     ;; We create a timer to update our state every few seconds.
+;;     (setf (my-counter-timer state)
+;; 	  (run-with-timer step-duration step-duration
+;;                           #'my-counter-update state reglock))))
 ;;
 ;;
 ;;;; Interface provided to the Emacs user
@@ -170,24 +160,14 @@
 ;; In our example above, we could customize the `user-cancel-function'
 ;; like this:
 ;;
-;;     (setf (org-pending-reglock-user-cancel-function my-lock)
-;;           (let ((this-timer my-timer))
-;;             (lambda (rl)
-;;               (cancel-timer this-timer)
-;;               (let ((buf (org-pending-reglock-owner rl)))
-;;                 (when (buffer-live-p buf)
-;;                   (with-current-buffer buf
-;;                     (let ((best-outcome
-;;                            ;; Let say that if my-state > 2 we can
-;;                            ;; compute the outcome immediately.
-;;                            (if (> my-state 2)
-;;                                (if (= (random 2) 0)
-;;                                    (list :success (random 100))
-;;                                  (list :failure "Failed."))
-;;                              ;; Else, the outcome is a failure.
-;;                              (list :failure (list 'org-pending-user-cancel
-;;                                                   "Canceled")))))
-;;                       (org-pending-send-update rl best-outcome))))))))
+;;
+;;     (setf (org-pending-reglock-user-cancel-function reglock)
+;;           `(lambda (rlock)
+;;              (warn "Initiating emergency landing...")
+;;              (sleep-for 1)
+;;              (my-counter-update ,state rlock 'land)
+;;              (warn "Initiating emergency landing... done")))
+;;
 ;;
 ;;
 ;; When receiving the outcome (:success or :failure), after unlocking
@@ -213,11 +193,12 @@
 ;; In our example above, we could customize the
 ;; `insert-details-function' like this:
 ;;
-;;     (setf (org-pending-reglock-insert-details-function my-lock)
-;;           (lambda (rl _start _end)
-;;             (let ((buf (org-pending-reglock-owner rl)))
-;;               (insert (format "State: %s\n"
-;;                               (buffer-local-value 'my-state buf))))))
+;;     (setf (org-pending-reglock-insert-details-function reglock)
+;;           `(lambda (rlock &rest _)
+;;              ;; We add the current state at the end of the description
+;;              ;; buffer.
+;;              (insert (format "State: %s\n"
+;;                              (my-counter-state ,state)))))
 ;;
 ;;
 ;; If the user kills a buffer, or, kills Emacs, some locks may have to
@@ -229,12 +210,11 @@
 ;; In our example above, we could customize the function
 ;; `before-kill-function' like this:
 ;;
-;;     (setf (org-pending-reglock-before-kill-function my-lock)
-;;           (let ((this-timer my-timer))
-;;             (lambda (_rl)
-;;               (message "Killing %s" this-timer)
-;;               (cancel-timer this-timer))))
-;;
+;;     (setf (org-pending-reglock-before-kill-function reglock)
+;;           `(lambda (_rlock)
+;;              (cancel-timer (my-counter-timer ,state))
+;;              (warn "Transponder signal lost")))
+
 
 
 ;;;; Examples of functions using this library
