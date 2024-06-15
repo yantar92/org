@@ -35,7 +35,6 @@
 (require 'cl-lib)
 (require 'ob)
 
-(declare-function orgtbl-to-tsv "org-table" (table params))
 (declare-function run-ess-r "ext:ess-r-mode" (&optional start-args))
 (declare-function inferior-ess-send-input "ext:ess-inf" ())
 (declare-function ess-make-buffer-current "ext:ess-inf" ())
@@ -239,6 +238,7 @@ Retrieve variables from PARAMS."
       (concat "\"" (mapconcat 'identity (split-string s "\"") "\"\"") "\"")
     (format "%S" s)))
 
+(declare-function orgtbl-to-tsv "org-table-export" (table params))
 (defun org-babel-R-assign-elisp (name value colnames-p rownames-p)
   "Construct R code assigning the elisp VALUE to a variable named NAME."
   (if (listp value)
@@ -415,8 +415,6 @@ last statement in BODY, as elisp."
 	column-names-p)))
     (output (org-babel-eval org-babel-R-command body))))
 
-(defvar ess-eval-visibly-p)
-
 (defun org-babel-R-evaluate-session
     (session body result-type result-params column-names-p row-names-p)
   "Evaluate BODY in SESSION.
@@ -429,7 +427,7 @@ last statement in BODY, as elisp."
        (insert (org-babel-chomp body))
        (let ((ess-local-process-name
 	      (process-name (get-buffer-process session)))
-	     (ess-eval-visibly-p nil))
+	     (ess-eval-visibly nil))
 	 (ess-eval-buffer nil)))
      (let ((tmp-file (org-babel-temp-file "R-")))
        (org-babel-comint-eval-invisibly-and-wait-for-file
@@ -524,7 +522,7 @@ by `org-babel-comint-async-filter'."
      (let ((uuid (org-id-uuid))
            (ess-local-process-name
             (process-name (get-buffer-process session)))
-           (ess-eval-visibly-p nil))
+           (ess-eval-visibly nil))
        (with-temp-buffer
          (insert (format ob-session-async-R-indicator
 			 "start" uuid))
