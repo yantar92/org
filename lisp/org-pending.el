@@ -1128,7 +1128,7 @@ This is the default :on-outcome handler for the function `org-pending'."
                    (insert new-text)
                    (delete-region (point) end)
                    (delete-region start ipoint)
-                   (cons start (point)))
+                   (cons start (point-marker)))
                ;; Can't insert in the middle.
                (let ((old-end (point-marker))
                      new-end)
