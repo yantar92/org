@@ -496,6 +496,7 @@ It also looks at the text of the entry itself."
                                        (line-beginning-position)))
 	  (let ((end org-last-changed-timestamp))
 	    (org-timestamp-change arg (or what 'day))
+            ;; FIXME: Why do we have to do it?
 	    (setq org-last-changed-timestamp
 		  (concat org-last-changed-timestamp "--" end)))))
       (org-agenda-show-new-time marker org-last-changed-timestamp))

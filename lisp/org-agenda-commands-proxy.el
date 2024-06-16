@@ -237,7 +237,7 @@ When NO-UPDATE is non-nil, don't redo the agenda buffer."
   "Marker pointing to the headline that last changed its TODO state
 by a remote command from the agenda.")
 
-(defvar org-agenda-headline-snapshot-before-repeat)
+(defvar org-agenda-headline-snapshot-before-repeat) ; Set for us by `org-todo'
 (declare-function org-add-log-note "org-log-note" (&optional _purpose))
 (declare-function org-todo "org-todo" (&optional arg))
 ;;;###autoload
@@ -465,7 +465,7 @@ be used to request time specification in the time stamp."
 	  (buffer (marker-buffer marker))
 	  (pos (marker-position marker)))
      (require 'org-timestamp)
-     (defvar org-last-changed-timestamp)
+     (defvar org-last-changed-timestamp) ; set by `org-timestamp'
      (org-with-remote-undo buffer
        (with-current-buffer buffer
 	 (widen)

@@ -44,7 +44,11 @@ moved to the new date."
   :group 'org-time
   :type 'boolean)
 
-(defvar org-last-changed-timestamp nil)
+(defvar org-last-changed-timestamp nil
+  "The last timestamp inserted/edited by timestamp functions.
+`org-agenda-date-later', `org-timestamp-change' and `org-timestamp'
+set this variable to the new value of timestamp string after
+insertion/edit.")
 (defvar org-last-inserted-timestamp nil
   "The last time stamp inserted with `org-insert-timestamp'.")
 

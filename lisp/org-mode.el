@@ -701,7 +701,7 @@ This function ignores inlinetasks.  It is meant to be used as
 	 (lambda (x)
 	   (let* ((binding (if (symbolp x) (list x) (list (car x) (cdr x))))
 		  (name (car binding)))
-	     (and (not (get name 'org-state))
+	     (and (not (get name 'org-state)) ; FIXME: This is used inconsistently in other variables cloners across Org
 		  (not (memq name org-element-ignored-local-variables))
 		  (string-match-p
 		   "\\`\\(org-\\|orgtbl-\\|outline-\\|comment-\\|paragraph-\\|\

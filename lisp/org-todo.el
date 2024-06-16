@@ -40,9 +40,13 @@
 (require 'org-clock-common)
 (require 'org-tags-align)
 
-(defvar org-inhibit-blocking nil)       ; Dynamically-scoped param.
-(defvar org-inhibit-logging nil)        ; Dynamically-scoped param.
-(defvar org-last-state)
+(defvar org-inhibit-blocking nil
+  "When non-nil, `org-todo' ignores `org-blocker-hook'.")
+(defvar org-inhibit-logging nil
+  "When non-nil, suppress logging todo state changes in `org-todo'.
+The value may be t or `note'.  When t, supress all types of logging.
+When `note', only suppress interactive log note, instead recording the
+todo state change time in the logs.")
 
 (defgroup org-todo nil
   "Options concerning TODO items in Org mode."
@@ -119,6 +123,7 @@ property and include the word \"recursive\" into the value."
   :package-version '(Org . "8.0")
   :type 'boolean)
 
+(defvar org-state) ; dynamically scoped by `org-todo'.
 (defcustom org-after-todo-state-change-hook nil
   "Hook which is run after the state of a TODO item was changed.
 The new state (a string with a TODO keyword, or nil) is available in the
@@ -314,12 +319,11 @@ this is nil.")
 Each function takes a todo spec and returns either nil or the spec
 transformed into canonical form." )
 
+;; FIXME: Mark?? The actual arguments passed are `org-state' and `org-last-state'
 (defvar org-todo-get-default-hook nil
   "Hook for functions that get a default item for todo.
 Each function takes arguments (NEW-MARK OLD-MARK) and returns either
 nil or a string to be used for the todo mark." )
-
-(defvar org-agenda-headline-snapshot-before-repeat)
 
 (declare-function org-agenda-todo-yesterday "org-agenda-commands-proxy" (&optional arg))
 (defun org-todo-yesterday (&optional arg)
@@ -335,6 +339,7 @@ nil or a string to be used for the todo mark." )
 (defvar org-block-entry-blocking ""
   "First entry preventing the TODO state change.")
 
+(defvar org-last-state) ; dynamically scoped by `org-todo'.
 (declare-function org-entry-put "org-property-set" (epom property value))
 (declare-function org-timestamp-change "org-timestamp "(n &optional what updown suppress-tmp-delay))
 (defun org-auto-repeat-maybe (done-word)
@@ -460,17 +465,16 @@ enough to shift date past today.  Continue? "
 				    ts)))))
 		(save-excursion
 		  (org-timestamp-change n (cdr (assoc what whata)) nil t))
-                (require 'org-timestamp)
-                (defvar org-last-changed-timestamp)
+                (defvar org-last-changed-timestamp) ; set by `org-timestamp-change'
 		(setq msg
 		      (concat msg type " " org-last-changed-timestamp " ")))))))
       (run-hooks 'org-todo-repeat-hook)
       (setq org-log-post-message msg)
       (message msg))))
 
-(defvar org-state)
-;; FIXME: We should refactor this and similar dynamically scoped blocker flags.
-(defvar org-blocked-by-checkboxes nil) ; dynamically scoped
+;; FIXME: May we get rid of this awkwardness?
+(defvar org-agenda-headline-snapshot-before-repeat) ; Specifically needed for `org-agenda-todo'
+(defvar org-blocked-by-checkboxes) ; Set by `org-block-todo-from-checkboxes' when let-bound.
 (declare-function org-toggle-comment "org-comment" ())
 ;;;###autoload
 (defun org-todo (&optional arg)
@@ -756,8 +760,8 @@ and is only done if the variable `org-clock-out-when-done' is not nil."
 	     (> (org-with-wide-buffer (org-entry-end-position))
 		org-clock-marker))
     (require 'org-clock-core)
-    (defvar org-log-note-clock-out)
-    (defvar org-clock-out-switch-to-state)
+    (defvar org-log-note-clock-out) ; org-clock-core.el
+    (defvar org-clock-out-switch-to-state) ; org-clock-core.el
     ;; Clock out, but don't accept a logging message for this.
     (let ((org-log-note-clock-out nil)
 	  (org-clock-out-switch-to-state nil))
@@ -775,7 +779,10 @@ changes.  Such blocking occurs when:
      status.
 
   3. The parent of the task is blocked because it has siblings that should
-     be done first, or is child of a block grandparent TODO entry."
+     be done first, or is child of a block grandparent TODO entry.
+
+Set `org-block-entry-blocking' to the first blocking heading line, as
+returned by `org-get-heading'."
 
   (if (not org-enforce-todo-dependencies)
       t ; if locally turned off don't block
@@ -876,7 +883,10 @@ See variable `org-track-ordered-property-with-tag'."
 (defun org-block-todo-from-checkboxes (change-plist)
   "Block turning an entry into a TODO, using checkboxes.
 This checks whether the current task should be blocked from state
-changes because there are unchecked boxes in this entry."
+changes because there are unchecked boxes in this entry.
+
+When `org-blocked-by-checkboxes' is bound, set it to t when the
+current task should be blocked."
   (if (not org-enforce-todo-checkbox-dependencies)
       t ; if locally turned off don't block
     (catch 'dont-block
@@ -951,7 +961,6 @@ all statistics cookies in the buffer."
 	(goto-char pos)
 	(move-marker pos nil)))))
 
-(defvar org-entry-property-inherited-from) ;; defined below
 (defun org-update-parent-todo-statistics ()
   "Update any statistics cookie in the parent of the current headline.
 When `org-hierarchical-todo-statistics' is nil, statistics will cover

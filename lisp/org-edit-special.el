@@ -716,7 +716,7 @@ variable for more information."
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
     (defvar org-inhibit-logging)
-    (defvar org-inhibit-blocking)
+    (defvar org-inhibit-blocking) ; org-todo.el
     (let ((org-inhibit-logging
 	   (not org-treat-S-cursor-todo-selection-as-state-change))
 	  (org-inhibit-blocking
@@ -768,7 +768,7 @@ variable for more information."
    ((and (not (eq org-support-shift-select 'always))
 	 (org-at-heading-p))
     (defvar org-inhibit-logging)
-    (defvar org-inhibit-blocking)
+    (defvar org-inhibit-blocking) ; org-todo.el
     (let ((org-inhibit-logging
 	   (not org-treat-S-cursor-todo-selection-as-state-change))
 	  (org-inhibit-blocking

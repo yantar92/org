@@ -303,7 +303,7 @@ The prefix arg is passed through to the command if possible."
 		       (with-current-buffer (marker-buffer (car entries))
 			 (mapcar #'list org-todo-keywords-1)))))
            (require 'org-todo)
-           (defvar org-inhibit-blocking)
+           (defvar org-inhibit-blocking) ; org-todo.el
            (defvar org-inhibit-logging)
 	   (setq cmd (lambda ()
 		       (let ((org-inhibit-blocking t)
