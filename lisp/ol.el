@@ -1152,17 +1152,31 @@ Abbreviations are defined in `org-link-abbrev-alist'."
       (if (not as)
 	  link
 	(setq rpl (cdr as))
-	(cond
-	 ((symbolp rpl) (funcall rpl tag))
-	 ((string-match "%(\\([^)]+\\))" rpl)
-	  (replace-match
-	   (save-match-data
-	     (funcall (intern-soft (match-string 1 rpl)) tag))
-	   t t rpl))
-	 ((string-match "%s" rpl) (replace-match (or tag "") t t rpl))
-	 ((string-match "%h" rpl)
-	  (replace-match (url-hexify-string (or tag "")) t t rpl))
-	 (t (concat rpl tag)))))))
+        ;; Drop any potentially dangerous text properties like
+        ;; `modification-hooks' that may be used as an attack vector.
+        (substring-no-properties
+	 (cond
+	  ((symbolp rpl) (funcall rpl tag))
+	  ((string-match "%(\\([^)]+\\))" rpl)
+           (require 'unsafep)
+           (declare-function unsafep-function "unsafep" (fun))
+           (if (unsafep-function (intern-soft (match-string 1 rpl)))
+               (progn
+                 (org-display-warning
+                  (format "Disabling unsafe link abbrev: %s
+You may mark function safe via (put '%s 'safe-function t)"
+                          rpl (match-string 1 rpl)))
+                 (setq org-link-abbrev-alist-local (delete as org-link-abbrev-alist-local)
+                       org-link-abbrev-alist (delete as org-link-abbrev-alist))
+                 link)
+	     (replace-match
+	      (save-match-data
+	        (funcall (intern-soft (match-string 1 rpl)) tag))
+	      t t rpl)))
+	  ((string-match "%s" rpl) (replace-match (or tag "") t t rpl))
+	  ((string-match "%h" rpl)
+	   (replace-match (url-hexify-string (or tag "")) t t rpl))
+	  (t (concat rpl tag))))))))
 
 (defun org-link-open (link &optional arg)
   "Open a link object LINK.
