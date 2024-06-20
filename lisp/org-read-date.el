@@ -291,8 +291,11 @@ user."
 	  (if (equal org-with-time '(16))
 	      '(0 0)
 	    org-timestamp-rounding-minutes))
-	 (ct (org-current-time))
-	 (org-def (or org-overriding-default-time default-time ct))
+         (org-def (or org-overriding-default-time
+                      default-time
+                      (let ((org-use-last-clock-out-time-as-effective-time nil)
+                            (org-use-effective-time t))
+                        (org-current-effective-time))))
 	 (org-defdecode (decode-time org-def))
          (cur-frame (selected-frame))
 	 (mouse-autoselect-window nil)	; Don't let the mouse jump
@@ -302,16 +305,6 @@ user."
 	 (calendar-view-diary-initially-flag nil)
 	 (calendar-view-holidays-initially-flag nil)
 	 ans (prompt-input "") final cal-frame)
-    ;; Rationalize `org-def' and `org-defdecode', if required.
-    ;; Only consider `org-extend-today-until' when explicit reference
-    ;; time is not given.
-    (when (and (not default-time)
-               (not org-overriding-default-time)
-               (< (nth 2 org-defdecode) org-extend-today-until))
-      (setf (nth 2 org-defdecode) -1)
-      (setf (nth 1 org-defdecode) 59)
-      (setq org-def (org-encode-time org-defdecode))
-      (setq org-defdecode (decode-time org-def)))
     (let* ((timestr (format-time-string
 		     (if org-with-time "%Y-%m-%d %H:%M" "%Y-%m-%d")
 		     org-def))
