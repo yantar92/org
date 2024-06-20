@@ -2001,15 +2001,33 @@ INFO is a plist used as a communication channel."
 		  org-html-meta-tags))
       ""))))
 
+(defun org-html-normalize-str (s)
+  "Return S, or evaluate to a string ending with a single newline character.
+If S isn't a string or a function, return it unchanged.  If S is the empty
+string, return it.  Otherwise, return a new string with a single
+newline character at its end."
+  (cond
+   ((not (stringp s)) s)
+   ((string= "" s) "")
+   (t (and (string-match "\\(\n[ \t]*\\)*\\'" s)
+	   (replace-match "\n" nil nil s)))))
+
+(defun org-html-normalize-str-or-fn (input &rest trailing)
+  "If INPUT is a string, it is passed to `org-element-normalize-string'.
+If INPUT is a function, it is applied to arguments TRAILING, and the result is
+passed to `org-element-normalize-string'."
+  (let ((s (if (functionp input) (format "%s" (apply input trailing)) input)))
+    (org-html-normalize-str s)))
+
 (defun org-html--build-head (info)
   "Return information for the <head>..</head> of the HTML output.
 INFO is a plist used as a communication channel."
   (org-element-normalize-string
    (concat
     (when (plist-get info :html-head-include-default-style)
-      (org-element-normalize-string org-html-style-default))
-    (org-element-normalize-string (plist-get info :html-head))
-    (org-element-normalize-string (plist-get info :html-head-extra))
+      (org-html-normalize-str org-html-style-default))
+    (org-html-normalize-str-or-fn (plist-get info :html-head) info)
+    (org-html-normalize-str-or-fn (plist-get info :html-head-extra) info)
     (when (and (plist-get info :html-htmlized-css-url)
 	       (eq org-html-htmlize-output-type 'css))
       (org-html-close-tag "link"
