@@ -259,7 +259,7 @@ The prefix arg is passed through to the command if possible."
     (defvar org-log-refile) ; defined in org-refile.el
     (let* ((org-log-refile (if org-log-refile 'time nil))
 	   (entries (reverse org-agenda-bulk-marked-entries))
-	   (org-overriding-default-time
+	   (default-time
 	    (and (get-text-property (point) 'org-agenda-date-header)
 		 (org-get-cursor-date)))
 	   redo-at-end
@@ -331,7 +331,7 @@ The prefix arg is passed through to the command if possible."
                         (require 'org-read-date)
                         (defvar org-read-date-final-answer)
 		        (let ((new (org-read-date
-				    nil nil nil prompt org-overriding-default-time)))
+				    nil nil nil prompt default-time)))
 			  ;; A "double plus" answer applies to every
 			  ;; scheduled time.  Do not turn it into
 			  ;; a fixed date yet.
