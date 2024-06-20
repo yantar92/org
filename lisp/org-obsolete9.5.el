@@ -41,6 +41,15 @@
 (make-obsolete-variable 'org-speed-commands-user
                         "configure `org-speed-commands' instead." "9.5")
 
+(defcustom org-load-hook nil
+  "Hook that is run after org.el has been loaded."
+  :group 'org
+  :type 'hook)
+
+(make-obsolete-variable
+ 'org-load-hook
+ "use `with-eval-after-load' instead." "9.5")
+
 ;;;; Obsolete functions and macros
 
 (defmacro org-eval-in-environment (environment form)

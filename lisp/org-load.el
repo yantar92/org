@@ -24,14 +24,10 @@
 
 ;;; Code:
 
-(defcustom org-load-hook nil
-  "Hook that is run after org.el has been loaded."
-  :group 'org
-  :type 'hook)
-
-(make-obsolete-variable
- 'org-load-hook
- "use `with-eval-after-load' instead." "9.5")
+;; Load obsolete definitions to keep them accessible.
+;; We should regularly clean the obsolete functions and variables to
+;; avoid loading too much here.
+(require 'org-obsolete)
 
 (condition-case nil
     (load (concat (file-name-directory load-file-name)
@@ -470,6 +466,7 @@ With prefix arg UNCOMPILED, load the uncompiled versions."
 
 (provide 'org-load)
 
+;; FIXME: `org-load-hook' is obsolete.  Remove in Org 11.
 (run-hooks 'org-load-hook)
 
 ;;; org-load.el ends here
