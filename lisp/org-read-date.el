@@ -185,11 +185,15 @@ This variable is set by `org-eval-in-calendar' and its users while
 
 (defvar org-overriding-default-time nil) ; dynamically scoped
 
+(defvar org-read-date--default-time nil
+  "Default time used by current call to `org-read-date'.")
+(defvar org-read-date--default-decoded-time nil
+  "Decoded `org-read-date--default-time'.
+As returned by (decode-time org-read-date--default-time).")
+
 (defvar org-time-was-given)
 (defvar org-end-time-was-given)
 (defvar org-read-date-inactive)
-(defvar org-def)
-(defvar org-defdecode)
 (defvar org-with-time)
 
 (defvar org-read-date-analyze-forced-year nil
@@ -291,12 +295,14 @@ user."
 	  (if (equal org-with-time '(16))
 	      '(0 0)
 	    org-timestamp-rounding-minutes))
-         (org-def (or org-overriding-default-time
-                      default-time
-                      (let ((org-use-last-clock-out-time-as-effective-time nil)
-                            (org-use-effective-time t))
-                        (org-current-effective-time))))
-	 (org-defdecode (decode-time org-def))
+         (org-read-date--default-time
+          (or org-overriding-default-time
+              default-time
+              (let ((org-use-last-clock-out-time-as-effective-time nil)
+                    (org-use-effective-time t))
+                (org-current-effective-time))))
+	 (org-read-date--default-decoded-time
+          (decode-time org-read-date--default-time))
          (cur-frame (selected-frame))
 	 (mouse-autoselect-window nil)	; Don't let the mouse jump
 	 (calendar-setup
@@ -307,7 +313,7 @@ user."
 	 ans (prompt-input "") final cal-frame)
     (let* ((timestr (format-time-string
 		     (if org-with-time "%Y-%m-%d %H:%M" "%Y-%m-%d")
-		     org-def))
+		     org-read-date--default-time))
 	   (prompt (concat (if prompt (concat prompt " ") "")
 			   (format "Date+time [%s]: " timestr))))
       (cond
@@ -325,7 +331,7 @@ user."
             ;; the call to `calendar'.
 	    (with-current-buffer calendar-buffer (setq cursor-type nil))
 	    (unwind-protect
-		(let ((days (- (time-to-days org-def)
+		(let ((days (- (time-to-days org-read-date--default-time)
 			       (calendar-absolute-from-gregorian
 				(calendar-current-date)))))
 		  (org-funcall-in-calendar #'calendar-forward-day t days)
@@ -379,7 +385,10 @@ user."
 	    (delete-overlay org-read-date-overlay)
 	    (setq org-read-date-overlay nil))))))
 
-    (setq final (org-read-date-analyze ans org-def org-defdecode))
+    (setq final (org-read-date-analyze
+                 ans
+                 org-read-date--default-time
+                 org-read-date--default-decoded-time))
 
     (when org-read-date-analyze-forced-year
       (message "Year was forced into %s"
@@ -402,7 +411,7 @@ user."
 		  (nth 2 final) (nth 1 final))
 	(format "%04d-%02d-%02d" (nth 5 final) (nth 4 final) (nth 3 final))))))
 
-(defun org-read-date-analyze (ans def defdecode)
+(defun org-read-date-analyze (ans default-time default-decoded-time)
   "Analyze the combined answer of the date prompt.
 Return entered time (as in return value of `decode-time').
 
@@ -413,9 +422,7 @@ When `org-read-date-force-compatible-dates' is non-nil, force entered
 time to be within system time bounds and set
 `org-read-date-analyze-forced-year' to non-nil."
   ;; FIXME: cleanup and comment
-  (let ((org-def def)
-	(org-defdecode defdecode)
-	(nowdecode (decode-time))
+  (let ((nowdecode (decode-time))
 	delta deltan deltaw deltadef year month day
 	hour minute second wday pm h2 m2 tl wday1
 	iso-year iso-weekday iso-week iso-date futurep kill-year)
@@ -424,7 +431,7 @@ time to be within system time bounds and set
     (when (string-match "\\`[ \t]*\\.[ \t]*\\'" ans)
       (setq ans "+0"))
 
-    (when (setq delta (org-read-date-get-relative ans nil org-def))
+    (when (setq delta (org-read-date-get-relative ans nil default-time))
       (setq ans (replace-match "" t t ans)
 	    deltan (car delta)
 	    deltaw (nth 1 delta)
@@ -530,20 +537,20 @@ time to be within system time bounds and set
 			  (substring ans (match-end 7))))))
 
     (setq tl (parse-time-string ans)
-	  day (or (nth 3 tl) (nth 3 org-defdecode))
+	  day (or (nth 3 tl) (nth 3 default-decoded-time))
 	  month
 	  (cond ((nth 4 tl))
-		((not org-read-date-prefer-future) (nth 4 org-defdecode))
+		((not org-read-date-prefer-future) (nth 4 default-decoded-time))
 		;; Day was specified.  Make sure DAY+MONTH
 		;; combination happens in the future.
 		((nth 3 tl)
 		 (setq futurep t)
 		 (if (< day (nth 3 nowdecode)) (1+ (nth 4 nowdecode))
 		   (nth 4 nowdecode)))
-		(t (nth 4 org-defdecode)))
+		(t (nth 4 default-decoded-time)))
 	  year
 	  (cond ((and (not kill-year) (nth 5 tl)))
-		((not org-read-date-prefer-future) (nth 5 org-defdecode))
+		((not org-read-date-prefer-future) (nth 5 default-decoded-time))
 		;; Month was guessed in the future and is at least
 		;; equal to NOWDECODE's.  Fix year accordingly.
 		(futurep
@@ -559,9 +566,9 @@ time to be within system time bounds and set
 		       ((< month (nth 4 nowdecode)) (1+ (nth 5 nowdecode)))
 		       ((< day (nth 3 nowdecode)) (1+ (nth 5 nowdecode)))
 		       (t (nth 5 nowdecode))))
-		(t (nth 5 org-defdecode)))
-	  hour (or (nth 2 tl) (nth 2 org-defdecode))
-	  minute (or (nth 1 tl) (nth 1 org-defdecode))
+		(t (nth 5 default-decoded-time)))
+	  hour (or (nth 2 tl) (nth 2 default-decoded-time))
+	  minute (or (nth 1 tl) (nth 1 default-decoded-time))
 	  second (or (nth 0 tl) 0)
 	  wday (nth 6 tl))
 
@@ -637,7 +644,7 @@ time to be within system time bounds and set
       (condition-case nil
 	  (ignore (org-encode-time second minute hour day month year))
 	(error
-	 (setq year (nth 5 org-defdecode))
+	 (setq year (nth 5 default-decoded-time))
 	 (setq org-read-date-analyze-forced-year t))))
     (setq org-read-date-analyze-futurep futurep)
     (list second minute hour day month year nil -1 nil)))
@@ -665,7 +672,10 @@ time to be within system time bounds and set
                     org-read-date--calendar-selected-date
                     org-read-date--calendar-keyboard-date)))
 	     (org-end-time-was-given nil)
-	     (f (org-read-date-analyze ans org-def org-defdecode))
+	     (f (org-read-date-analyze
+                 ans
+                 org-read-date--default-time
+                 org-read-date--default-decoded-time))
 	     (fmt (org-time-stamp-format
                    (or org-with-time
                        (and (boundp 'org-time-was-given) org-time-was-given))
