@@ -47,6 +47,9 @@
   "Information for the mode line about the running clock.")
 (make-obsolete 'org-clock-mode-line-entry "unused" "9.8")
 
+(define-obsolete-variable-alias 'org-ans1 'org-read-date--calendar-selected-date "9.8")
+(define-obsolete-variable-alias 'org-ans2 'org-read-date--calendar-keyboard-date "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

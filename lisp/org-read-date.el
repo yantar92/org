@@ -32,31 +32,10 @@
 (require 'org-keys)
 (require 'org-regexps)
 (require 'org-timestamp-common)
+(require 'parse-time)
+(require 'calendar)
 
-(defvar org-read-date-minibuffer-local-map
-  (let* ((map (make-sparse-keymap)))
-    (set-keymap-parent map minibuffer-local-map)
-    (org-defkey map (kbd ".") #'org-calendar-goto-today-or-insert-dot)
-    (org-defkey map (kbd "C-.") #'org-calendar-goto-today)
-    (org-defkey map (kbd "M-S-<left>") #'org-calendar-backward-month)
-    (org-defkey map (kbd "ESC S-<left>") #'org-calendar-backward-month)
-    (org-defkey map (kbd "M-S-<right>") #'org-calendar-forward-month)
-    (org-defkey map (kbd "ESC S-<right>") #'org-calendar-forward-month)
-    (org-defkey map (kbd "M-S-<up>") #'org-calendar-backward-year)
-    (org-defkey map (kbd "ESC S-<up>") #'org-calendar-backward-year)
-    (org-defkey map (kbd "M-S-<down>") #'org-calendar-forward-year)
-    (org-defkey map (kbd "ESC S-<down>") #'org-calendar-forward-year)
-    (org-defkey map (kbd "S-<up>") #'org-calendar-backward-week)
-    (org-defkey map (kbd "S-<down>") #'org-calendar-forward-week)
-    (org-defkey map (kbd "S-<left>") #'org-calendar-backward-day)
-    (org-defkey map (kbd "S-<right>") #'org-calendar-forward-day)
-    (org-defkey map (kbd "!") #'org-calendar-view-entries)
-    (org-defkey map (kbd ">") #'org-calendar-scroll-month-left)
-    (org-defkey map (kbd "<") #'org-calendar-scroll-month-right)
-    (org-defkey map (kbd "C-v") #'org-calendar-scroll-three-months-left)
-    (org-defkey map (kbd "M-v") #'org-calendar-scroll-three-months-right)
-    map)
-  "Keymap for minibuffer commands when using `org-read-date'.")
+;;; Custom options
 
 (defcustom org-read-date-prefer-future t
   "Non-nil means assume future for incomplete date input from user.
@@ -137,25 +116,94 @@ When nil, only the minibuffer will be available."
   :group 'org-time
   :type 'boolean)
 
-(defvar org-date-ovl (make-overlay 1 1))
+;;; Internal variables
+
+(defvar org-date-ovl (make-overlay 1 1)
+  "An overlay highlighting date at point in calendar buffer.
+The overlay is used to make selected date visible in the calendar when
+the calendar window is not selected, while user is in the
+`org-read-date' prompt.")
 (overlay-put org-date-ovl 'face 'org-date-selected)
 (delete-overlay org-date-ovl)
 
-(defvar org-ans1) ; dynamically scoped parameter
-(defvar org-ans2) ; dynamically scoped parameter
+(defvar org-read-date-overlay nil
+  "Overlay displaying the selected date in the `org-read-date'
+minibuffer prompt.")
+
+(defvar org-read-date-history nil
+  "Prompt history for `org-read-date'.")
+
+(defvar org-read-date-minibuffer-local-map
+  (let* ((map (make-sparse-keymap)))
+    (set-keymap-parent map minibuffer-local-map)
+    (org-defkey map (kbd ".") #'org-calendar-goto-today-or-insert-dot)
+    (org-defkey map (kbd "C-.") #'org-calendar-goto-today)
+    (org-defkey map (kbd "M-S-<left>") #'org-calendar-backward-month)
+    (org-defkey map (kbd "ESC S-<left>") #'org-calendar-backward-month)
+    (org-defkey map (kbd "M-S-<right>") #'org-calendar-forward-month)
+    (org-defkey map (kbd "ESC S-<right>") #'org-calendar-forward-month)
+    (org-defkey map (kbd "M-S-<up>") #'org-calendar-backward-year)
+    (org-defkey map (kbd "ESC S-<up>") #'org-calendar-backward-year)
+    (org-defkey map (kbd "M-S-<down>") #'org-calendar-forward-year)
+    (org-defkey map (kbd "ESC S-<down>") #'org-calendar-forward-year)
+    (org-defkey map (kbd "S-<up>") #'org-calendar-backward-week)
+    (org-defkey map (kbd "S-<down>") #'org-calendar-forward-week)
+    (org-defkey map (kbd "S-<left>") #'org-calendar-backward-day)
+    (org-defkey map (kbd "S-<right>") #'org-calendar-forward-day)
+    (org-defkey map (kbd "!") #'org-calendar-view-entries)
+    (org-defkey map (kbd ">") #'org-calendar-scroll-month-left)
+    (org-defkey map (kbd "<") #'org-calendar-scroll-month-right)
+    (org-defkey map (kbd "C-v") #'org-calendar-scroll-three-months-left)
+    (org-defkey map (kbd "M-v") #'org-calendar-scroll-three-months-right)
+    map)
+  "Keymap for minibuffer commands when using `org-read-date'.")
+
+;;; Internal `org-read-date' state for the duration of prompt.
+
+;; This state is global because user input is gathered from multiple
+;; sources:
+;;
+;; 1. Minibuffer prompt
+;; 2. Popup calendar selection
+;; 3. Click evens in the popup calendar
+;;
+;; The functions coordinating the various forms of user input
+;; gather `org-read-date' arguments, last selected date, and user
+;; input via these global state variables.
+
+(defvar org-read-date--calendar-selected-date nil
+  "The last calendar date selected by clicking in calendar.
+This variable is set by `org-calendar-select-mouse', which is bound to
+mouse click event in the popup calendar buffer while `org-read-date'
+prompt is active.  It is also set by `org-calendar-select', bound to
+<RET>.")
+
+(defvar org-read-date--calendar-keyboard-date nil
+  "The last calendar date selected by moving from `org-read-date' prompt.
+This variable is set by `org-eval-in-calendar' and its users while
+`org-read-date' prompt is active.")
+
+(defvar org-overriding-default-time nil) ; dynamically scoped
 
 (defvar org-time-was-given)
 (defvar org-end-time-was-given)
-(defvar org-overriding-default-time nil) ; dynamically scoped
-(defvar org-read-date-overlay nil)
-(defvar org-read-date-history nil)
-(defvar org-read-date-final-answer nil)
-(defvar org-read-date-analyze-futurep nil)
-(defvar org-read-date-analyze-forced-year nil)
 (defvar org-read-date-inactive)
 (defvar org-def)
 (defvar org-defdecode)
 (defvar org-with-time)
+
+(defvar org-read-date-analyze-forced-year nil
+  "Set by `org-read-date-analyze' when return adjusted to fit limits.
+See `org-read-date-force-compatible-dates' for more details.")
+
+(defvar org-read-date-final-answer nil
+  "Variable holding the actual prompt input in `org-read-date'.
+`org-read-date' sets this variable upon completion.")
+
+(defvar org-read-date-analyze-futurep nil
+  "Set by `org-read-date-analyze' when entered date is in future.")
+
+;;; Functions
 
 (defun org-get-compact-tod (s)
   "Transform time range S into compact form suitable for `org-read-date'.
@@ -176,11 +224,15 @@ Return nil when S is not a time range."
 	(concat t1 "+" (number-to-string dh)
 		(and (/= 0 dm) (format ":%02d" dm)))))))
 
-(defvar calendar-setup)			; Dynamically scoped.
 ;;;###autoload
 (defun org-read-date (&optional with-time to-time from-string prompt
 				default-time default-input inactive)
   "Read a date, possibly a time, and make things smooth for the user.
+Return selected date as a string.
+
+Also, set `org-read-date-final-answer' to the actual prompt text
+entered by the user.
+
 The prompt will suggest to enter an ISO date, but you can also enter anything
 which will at least partially be understood by `parse-time-string'.
 Unrecognized parts of the date will default to the current day, month, year,
@@ -234,7 +286,6 @@ With optional argument FROM-STRING, read from this string instead from
 the user.  PROMPT can overwrite the default prompt.  DEFAULT-TIME is
 the time/date that is used for everything that is not specified by the
 user."
-  (require 'parse-time)
   (let* ((org-with-time with-time)
 	 (org-timestamp-rounding-minutes
 	  (if (equal org-with-time '(16))
@@ -250,7 +301,7 @@ user."
 	 (calendar-move-hook nil)
 	 (calendar-view-diary-initially-flag nil)
 	 (calendar-view-holidays-initially-flag nil)
-	 ans (org-ans0 "") org-ans1 org-ans2 final cal-frame)
+	 ans (prompt-input "") final cal-frame)
     ;; Rationalize `org-def' and `org-defdecode', if required.
     ;; Only consider `org-extend-today-until' when explicit reference
     ;; time is not given.
@@ -297,18 +348,26 @@ user."
 			  (use-local-map map)
 			  (setq org-read-date-inactive inactive)
 			  (add-hook 'post-command-hook 'org-read-date-display)
-			  (setq org-ans0
+                          ;; May be set by clicking in popup calendar
+                          ;; or by calendar motion.
+                          (setq org-read-date--calendar-selected-date nil
+                                org-read-date--calendar-keyboard-date nil)
+			  (setq prompt-input
 				(read-string prompt
                                              (and default-input
                                                   (or (org-get-compact-tod default-input)
 					              default-input))
 					     'org-read-date-history
 					     nil))
-			  ;; org-ans0: from prompt
-			  ;; org-ans1: from mouse click
-			  ;; org-ans2: from calendar motion
+			  ;; prompt-input: from prompt
+			  ;; org-read-date--calendar-selected-date: from mouse click/RET
+			  ;; org-read-date--calendar-keyboard-date: from calendar motion
 			  (setq ans
-				(concat org-ans0 " " (or org-ans1 org-ans2))))
+				(concat
+                                 prompt-input
+                                 " "
+                                 (or org-read-date--calendar-selected-date
+                                     org-read-date--calendar-keyboard-date))))
 		      (remove-hook 'post-command-hook 'org-read-date-display)
 		      (use-local-map old-map)
 		      (when org-read-date-overlay
@@ -350,47 +409,16 @@ user."
 		  (nth 2 final) (nth 1 final))
 	(format "%04d-%02d-%02d" (nth 5 final) (nth 4 final) (nth 3 final))))))
 
-(defun org-read-date-display ()
-  "Display the current date prompt interpretation in the minibuffer."
-  (when org-read-date-display-live
-    (when org-read-date-overlay
-      (delete-overlay org-read-date-overlay))
-    (when (minibufferp (current-buffer))
-      (save-excursion
-	(end-of-line 1)
-	(while (not (equal (buffer-substring
-			    (max (point-min) (- (point) 4)) (point))
-			   "    "))
-	  (insert " ")))
-      (let* ((ans (concat (buffer-substring (line-beginning-position)
-                                            (point-max))
-			  " " (or org-ans1 org-ans2)))
-	     (org-end-time-was-given nil)
-	     (f (org-read-date-analyze ans org-def org-defdecode))
-	     (fmt (org-time-stamp-format
-                   (or org-with-time
-                       (and (boundp 'org-time-was-given) org-time-was-given))
-                   org-read-date-inactive
-                   org-display-custom-times))
-	     (txt (format-time-string fmt (org-encode-time f)))
-	     (txt (concat "=> " txt)))
-	(when (and org-end-time-was-given
-		   (string-match org-plain-time-of-day-regexp txt))
-	  (setq txt (concat (substring txt 0 (match-end 0)) "-"
-			    org-end-time-was-given
-			    (substring txt (match-end 0)))))
-	(when org-read-date-analyze-futurep
-	  (setq txt (concat txt " (=>F)")))
-	(setq org-read-date-overlay
-              (make-overlay (1- (line-end-position)) (line-end-position)))
-        ;; Avoid priority race with overlay used by calendar.el.
-        ;; See bug#69271.
-        (overlay-put org-read-date-overlay 'priority 1)
-	(org-overlay-display org-read-date-overlay txt 'secondary-selection)))))
-
-(declare-function calendar-iso-to-absolute "cal-iso" (date))
 (defun org-read-date-analyze (ans def defdecode)
-  "Analyze the combined answer of the date prompt."
+  "Analyze the combined answer of the date prompt.
+Return entered time (as in return value of `decode-time').
+
+Set `org-read-date-analyze-futurep' to non-nil when the entered time is
+in future relative to the reference time passed to `org-read-date'.
+
+When `org-read-date-force-compatible-dates' is non-nil, force entered
+time to be within system time bounds and set
+`org-read-date-analyze-forced-year' to non-nil."
   ;; FIXME: cleanup and comment
   (let ((org-def def)
 	(org-defdecode defdecode)
@@ -562,6 +590,7 @@ user."
      (iso-week
       ;; There was an iso week
       (require 'cal-iso)
+      (declare-function calendar-iso-to-absolute "cal-iso" (date))
       (setq futurep nil)
       (setq year (or iso-year year)
 	    day (or iso-weekday wday 1)
@@ -620,7 +649,51 @@ user."
     (setq org-read-date-analyze-futurep futurep)
     (list second minute hour day month year nil -1 nil)))
 
-(defvar parse-time-weekdays)
+(defun org-read-date-display ()
+  "Display the current date prompt interpretation in the minibuffer."
+  (when org-read-date-display-live
+    (when org-read-date-overlay
+      (delete-overlay org-read-date-overlay)
+      (setq org-read-date-overlay nil))
+    (when (minibufferp (current-buffer))
+      (save-excursion
+	(end-of-line 1)
+	(while (not (equal (buffer-substring
+			  (max (point-min) (- (point) 4)) (point))
+			 "    "))
+	  (insert " ")))
+      (let* ((ans (concat
+                   ;; Prompt input
+                   (buffer-substring
+                    (line-beginning-position)
+                    (point-max))
+		   " "
+                   (or
+                    org-read-date--calendar-selected-date
+                    org-read-date--calendar-keyboard-date)))
+	     (org-end-time-was-given nil)
+	     (f (org-read-date-analyze ans org-def org-defdecode))
+	     (fmt (org-time-stamp-format
+                   (or org-with-time
+                       (and (boundp 'org-time-was-given) org-time-was-given))
+                   org-read-date-inactive
+                   org-display-custom-times))
+	     (txt (format-time-string fmt (org-encode-time f)))
+	     (txt (concat "=> " txt)))
+	(when (and org-end-time-was-given
+		   (string-match org-plain-time-of-day-regexp txt))
+	  (setq txt (concat (substring txt 0 (match-end 0)) "-"
+			    org-end-time-was-given
+			    (substring txt (match-end 0)))))
+	(when org-read-date-analyze-futurep
+	  (setq txt (concat txt " (=>F)")))
+	(setq org-read-date-overlay
+              (make-overlay (1- (line-end-position)) (line-end-position)))
+        ;; Avoid priority race with overlay used by calendar.el.
+        ;; See bug#69271.
+        (overlay-put org-read-date-overlay 'priority 1)
+	(org-overlay-display org-read-date-overlay txt 'secondary-selection)))))
+
 (defun org-read-date-get-relative (s today default)
   "Check string S for special relative date string.
 TODAY and DEFAULT are internal times, for today and for a default.
@@ -629,7 +702,6 @@ WHAT       is \"d\", \"w\", \"m\", or \"y\" for day, week, month, year.
 N          is the number of WHATs to shift.
 DEF-FLAG   is t when a double ++ or -- indicates shift relative to
            the DEFAULT date rather than TODAY."
-  (require 'parse-time)
   (when (and
          ;; Force case-insensitive.
          (let ((case-fold-search t))
@@ -661,6 +733,7 @@ DEF-FLAG   is t when a double ++ or -- indicates shift relative to
 	    (list delta "d" rel))
 	(list (* n (if (= dir ?-) -1 1)) what rel)))))
 
+;; FIXME: Unused
 (defun org-order-calendar-date-args (arg1 arg2 arg3)
   "Turn a user-specified date into the internal representation.
 The internal representation needed by the calendar is (month day year).
@@ -673,13 +746,14 @@ user function argument order change dependent on argument order."
 
 (defun org-funcall-in-calendar (func &optional keepdate &rest args)
   "Call FUNC in the calendar window and return to current window.
-Unless KEEPDATE is non-nil, update `org-ans2' to the cursor date."
+Unless KEEPDATE is non-nil, set `org-read-date--calendar-keyboard-date'
+to the cursor date, as a string."
   (with-selected-window (get-buffer-window calendar-buffer t)
     (apply func args)
     (when (and (not keepdate) (calendar-cursor-to-date))
       (let* ((date (calendar-cursor-to-date))
 	     (time (org-encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
-	(setq org-ans2 (format-time-string "%Y-%m-%d" time))))
+	(setq org-read-date--calendar-keyboard-date (format-time-string "%Y-%m-%d" time))))
     (move-overlay org-date-ovl (1- (point)) (1+ (point)) (current-buffer))))
 
 (defun org-eval-in-calendar (form &optional keepdate)
@@ -779,7 +853,7 @@ This is used by `org-read-date' in a temporary keymap for the calendar buffer."
   (when (calendar-cursor-to-date)
     (let* ((date (calendar-cursor-to-date))
 	   (time (org-encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
-      (setq org-ans1 (format-time-string "%Y-%m-%d" time)))
+      (setq org-read-date--calendar-selected-date (format-time-string "%Y-%m-%d" time)))
     (when (active-minibuffer-window) (exit-minibuffer))))
 
 (defun org-calendar-select-mouse (ev)
@@ -790,7 +864,7 @@ This is used by `org-read-date' in a temporary keymap for the calendar buffer."
   (when (calendar-cursor-to-date)
     (let* ((date (calendar-cursor-to-date))
 	   (time (org-encode-time 0 0 0 (nth 1 date) (nth 0 date) (nth 2 date))))
-      (setq org-ans1 (format-time-string "%Y-%m-%d" time)))
+      (setq org-read-date--calendar-selected-date (format-time-string "%Y-%m-%d" time)))
     (when (active-minibuffer-window) (exit-minibuffer))))
 
 (provide 'org-read-date)
