@@ -52,8 +52,8 @@ insertion/edit.")
 (defvar org-last-inserted-timestamp nil
   "The last time stamp inserted with `org-insert-timestamp'.")
 
-(defvar org-time-was-given) ; dynamically scoped parameter
-(defvar org-end-time-was-given) ; dynamically scoped parameter
+(defvar org-read-date-time-was-given) ; dynamically scoped parameter
+(defvar org-read-date-end-time-was-given) ; dynamically scoped parameter
 
 (defvar org-clock-adjust-closest nil
   "When non-nil, `org-timestamp-change' adjusts the recent clock.
@@ -97,13 +97,15 @@ non-nil."
          (repeater (and ts
 			(string-match "\\([.+-]+[0-9]+[hdwmy] ?\\)+" ts)
 			(match-string 0 ts)))
-	 org-time-was-given
-	 org-end-time-was-given
+	 org-read-date-time-was-given
+	 org-read-date-end-time-was-given
 	 (time
 	  (if (equal arg '(16)) (current-time)
 	    ;; Preserve `this-command' and `last-command'.
 	    (let ((this-command this-command)
 		  (last-command last-command))
+              ;; Sets `org-read-date-time-was-given' and
+              ;; `org-read-date-end-time-was-given'.
 	      (org-read-date
 	       arg 'totime nil nil default-time default-input
 	       inactive)))))
@@ -114,7 +116,7 @@ non-nil."
            (memq this-command '( org-time-stamp org-time-stamp-inactive
                                  org-timestamp org-timestamp-inactive)))
       (insert "--")
-      (org-insert-timestamp time (or org-time-was-given arg) inactive))
+      (org-insert-timestamp time (or org-read-date-time-was-given arg) inactive))
      (ts
       ;; Make sure we're on a timestamp.  When in the middle of a date
       ;; range, move arbitrarily to range end.
@@ -124,8 +126,11 @@ non-nil."
       (replace-match "")
       (setq org-last-changed-timestamp
 	    (org-insert-timestamp
-	     time (or org-time-was-given arg)
-	     inactive nil nil (list org-end-time-was-given)))
+             ;; `org-read-date-time-was-given' and
+             ;; `org-read-date-end-time-was-give' were set by
+             ;; `org-read-date'
+	     time (or org-read-date-time-was-given arg)
+	     inactive nil nil (list org-read-date-end-time-was-given)))
       (when repeater
 	(backward-char)
 	(insert " " repeater)
@@ -135,8 +140,11 @@ non-nil."
       (message "Timestamp updated"))
      ((equal arg '(16)) (org-insert-timestamp time t inactive))
      (t (org-insert-timestamp
-	 time (or org-time-was-given arg) inactive nil nil
-	 (list org-end-time-was-given))))))
+         ;; `org-read-date-time-was-given' and
+         ;; `org-read-date-end-time-was-give' were set by
+         ;; `org-read-date'
+	 time (or org-read-date-time-was-given arg) inactive nil nil
+	 (list org-read-date-end-time-was-given))))))
 
 ;; FIXME: can we use this for something else, like computing time differences?
 (defalias 'org-time-stamp-inactive #'org-timestamp-inactive)

@@ -183,18 +183,37 @@ prompt is active.  It is also set by `org-calendar-select', bound to
 This variable is set by `org-eval-in-calendar' and its users while
 `org-read-date' prompt is active.")
 
-(defvar org-overriding-default-time nil) ; dynamically scoped
+(defvar org-overriding-default-time nil
+  "When non-nil, default time to be used by `org-read-date'.
+This time is used regardless of the other time arguments and other
+contexts.  The value must be a time object, as in `current-time'.")
 
 (defvar org-read-date--default-time nil
-  "Default time used by current call to `org-read-date'.")
+  "Default time used by current call to `org-read-date'.
+Set only for the duration of `org-read-date'.")
+
 (defvar org-read-date--default-decoded-time nil
   "Decoded `org-read-date--default-time'.
-As returned by (decode-time org-read-date--default-time).")
+As returned by (decode-time org-read-date--default-time).
+Set only for the duration of `org-read-date'.")
 
-(defvar org-time-was-given)
-(defvar org-end-time-was-given)
-(defvar org-read-date-inactive)
-(defvar org-with-time)
+(defvar org-read-date--with-time nil
+  "WITH-TIME argument passed to `org-read-date'.
+Set only for the duration of `org-read-date'.")
+
+(defvar org-read-date--inactive nil
+  "INACTIVE argument passed to `org-read-date'.
+Set only for the duration of `org-read-date'.")
+
+(defvaralias 'org-time-was-given 'org-read-date-time-was-given)
+(defvar org-read-date-time-was-given nil
+  "Non-nil, when user input contains time.
+This variable is set by `org-read-date-analyze'.")
+
+(defvaralias 'org-end-time-was-given 'org-read-date-end-time-was-given)
+(defvar org-read-date-end-time-was-given nil
+  "Set to end time, as string, when user input contains time range.
+This variable is set by `org-read-date-analyze'.")
 
 (defvar org-read-date-analyze-forced-year nil
   "Set by `org-read-date-analyze' when return adjusted to fit limits.
@@ -232,10 +251,15 @@ Return nil when S is not a time range."
 (defun org-read-date (&optional with-time to-time from-string prompt
 				default-time default-input inactive)
   "Read a date, possibly a time, and make things smooth for the user.
-Return selected date as a string.
+Return selected date as a string.  The returned string may or may not
+contain time depending on the (1) value of
+`org-read-date-time-was-given'; (2) user input containing or not
+containing time.  Interactive user input takes precedence.
 
-Also, set `org-read-date-final-answer' to the actual prompt text
-entered by the user.
+When user performed interactive input, set
+`org-read-date-time-was-given' and `org-read-date-end-time-was-given'
+\\(see `org-read-date-analyze').  Also, set `org-read-date-final-answer'
+to the actual prompt text entered by the user.
 
 The prompt will suggest to enter an ISO date, but you can also enter anything
 which will at least partially be understood by `parse-time-string'.
@@ -290,9 +314,11 @@ With optional argument FROM-STRING, read from this string instead from
 the user.  PROMPT can overwrite the default prompt.  DEFAULT-TIME is
 the time/date that is used for everything that is not specified by the
 user."
-  (let* ((org-with-time with-time)
+  (setq org-read-date-time-was-given nil
+        org-read-date-end-time-was-given nil)
+  (let* ((org-read-date--with-time with-time)
 	 (org-timestamp-rounding-minutes
-	  (if (equal org-with-time '(16))
+	  (if (equal with-time '(16))
 	      '(0 0)
 	    org-timestamp-rounding-minutes))
          (org-read-date--default-time
@@ -312,7 +338,7 @@ user."
 	 (calendar-view-holidays-initially-flag nil)
 	 ans (prompt-input "") final cal-frame)
     (let* ((timestr (format-time-string
-		     (if org-with-time "%Y-%m-%d %H:%M" "%Y-%m-%d")
+		     (if with-time "%Y-%m-%d %H:%M" "%Y-%m-%d")
 		     org-read-date--default-time))
 	   (prompt (concat (if prompt (concat prompt " ") "")
 			   (format "Date+time [%s]: " timestr))))
@@ -345,7 +371,7 @@ user."
 		    (unwind-protect
 			(progn
 			  (use-local-map map)
-			  (setq org-read-date-inactive inactive)
+			  (setq org-read-date--inactive inactive)
 			  (add-hook 'post-command-hook 'org-read-date-display)
                           ;; May be set by clicking in popup calendar
                           ;; or by calendar motion.
@@ -405,7 +431,7 @@ user."
 	final
       ;; This round-trip gets rid of 34th of August and stuff like that....
       (setq final (decode-time final))
-      (if (and (boundp 'org-time-was-given) org-time-was-given)
+      (if org-read-date-time-was-given
 	  (format "%04d-%02d-%02d %02d:%02d"
 		  (nth 5 final) (nth 4 final) (nth 3 final)
 		  (nth 2 final) (nth 1 final))
@@ -417,6 +443,10 @@ Return entered time (as in return value of `decode-time').
 
 Set `org-read-date-analyze-futurep' to non-nil when the entered time is
 in future relative to the reference time passed to `org-read-date'.
+
+Set `org-read-date-time-was-given' and
+`org-read-date-end-time-was-given' if ANS contain hours and time range
+end, respectively.
 
 When `org-read-date-force-compatible-dates' is non-nil, force entered
 time to be within system time bounds and set
@@ -528,13 +558,12 @@ time to be within system time bounds and set
 			       t t ans)))
 
     ;; Check if there is a time range
-    (when (boundp 'org-end-time-was-given)
-      (setq org-time-was-given nil)
-      (when (and (string-match org-plain-time-of-day-regexp ans)
-		 (match-end 8))
-	(setq org-end-time-was-given (match-string 8 ans))
-	(setq ans (concat (substring ans 0 (match-beginning 7))
-			  (substring ans (match-end 7))))))
+    (setq org-read-date-time-was-given nil)
+    (when (and (string-match org-plain-time-of-day-regexp ans)
+	       (match-end 8))
+      (setq org-read-date-end-time-was-given (match-string 8 ans))
+      (setq ans (concat (substring ans 0 (match-beginning 7))
+			(substring ans (match-end 7)))))
 
     (setq tl (parse-time-string ans)
 	  day (or (nth 3 tl) (nth 3 default-decoded-time))
@@ -617,8 +646,7 @@ time to be within system time bounds and set
 	  (setq day (nth 3 now) month (nth 4 now) year (nth 5 now))))
       ;; FIXME: Duplicated value in ‘cond’: ""
       (cond ((member deltaw '("h" ""))
-             (when (boundp 'org-time-was-given)
-               (setq org-time-was-given t))
+             (setq org-read-date-time-was-given t)
              (setq hour (+ hour deltan)))
             ((member deltaw '("d" "")) (setq day (+ day deltan)))
             ((equal deltaw "w") (setq day (+ day (* 7 deltan))))
@@ -630,9 +658,8 @@ time to be within system time bounds and set
       (setq wday1 (nth 6 (decode-time (org-encode-time 0 0 0 day month year))))
       (unless (equal wday wday1)
 	(setq day (+ day (% (- wday wday1 -7) 7))))))
-    (when (and (boundp 'org-time-was-given)
-	       (nth 2 tl))
-      (setq org-time-was-given t))
+    (when (or (nth 2 tl) (nth 1 tl))
+      (setq org-read-date-time-was-given t))
     (when (< year 100) (setq year (+ 2000 year)))
     ;; Check of the date is representable
     (if org-read-date-force-compatible-dates
@@ -671,22 +698,23 @@ time to be within system time bounds and set
                    (or
                     org-read-date--calendar-selected-date
                     org-read-date--calendar-keyboard-date)))
-	     (org-end-time-was-given nil)
+	     (org-read-date-end-time-was-given nil)
+             ;; Sets `org-read-date-end-time-was-given'
 	     (f (org-read-date-analyze
                  ans
                  org-read-date--default-time
                  org-read-date--default-decoded-time))
 	     (fmt (org-time-stamp-format
-                   (or org-with-time
-                       (and (boundp 'org-time-was-given) org-time-was-given))
-                   org-read-date-inactive
+                   (or org-read-date--with-time
+                       org-read-date-time-was-given)
+                   org-read-date--inactive
                    org-display-custom-times))
 	     (txt (format-time-string fmt (org-encode-time f)))
 	     (txt (concat "=> " txt)))
-	(when (and org-end-time-was-given
+	(when (and org-read-date-end-time-was-given
 		   (string-match org-plain-time-of-day-regexp txt))
 	  (setq txt (concat (substring txt 0 (match-end 0)) "-"
-			    org-end-time-was-given
+			    org-read-date-end-time-was-given
 			    (substring txt (match-end 0)))))
 	(when org-read-date-analyze-futurep
 	  (setq txt (concat txt " (=>F)")))

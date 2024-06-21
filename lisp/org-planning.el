@@ -272,8 +272,8 @@ either be an Org date like \"2011-07-24\" or a delta like \"+2d\"."
             (delete-region (line-beginning-position)
                            (min (point-max) (1+ (line-end-position))))))))))
 
-(defvar org-time-was-given) ; dynamically scoped parameter
-(defvar org-end-time-was-given) ; dynamically scoped parameter
+(defvar org-read-date-time-was-given) ; dynamically scoped parameter
+(defvar org-read-date-end-time-was-given) ; dynamically scoped parameter
 
 (defun org-add-planning-info (what &optional time &rest remove)
   "Insert new timestamp with keyword in the planning line.
@@ -283,7 +283,7 @@ the time to use.  If none is given, the user is prompted for
 a date.  REMOVE indicates what kind of entries to remove.  An old
 WHAT entry will also be removed."
   (org-fold-core-ignore-modifications
-    (let (org-time-was-given org-end-time-was-given default-time default-input)
+    (let (org-read-date-time-was-given org-read-date-end-time-was-given default-time default-input)
       (when (and (memq what '(scheduled deadline))
 	         (or (not time)
 		     (and (stringp time)
@@ -305,9 +305,13 @@ WHAT entry will also be removed."
 		  ;; This is a string (relative or absolute), set
 		  ;; proper date.
 		  (org-encode-time
+                   ;; Sets `org-read-date-time-was-given' and
+                   ;; `org-read-date-end-time-was-given'.
 		   (org-read-date-analyze
 		    time default-time (decode-time default-time)))
-	        ;; If necessary, get the time from the user
+	        ;; If necessary, get the time from the user.
+                ;; Sets `org-read-date-time-was-given' and
+                ;; `org-read-date-end-time-was-given'.
 	        (or time (org-read-date nil 'to-time nil
 				        (cl-case what
 				          (deadline "DEADLINE")
@@ -372,10 +376,13 @@ WHAT entry will also be removed."
          ;; Insert associated timestamp.
          (let ((ts (org-insert-timestamp
 		    time
-		    (or org-time-was-given
+                    ;; `org-read-date-time-was-given' and
+                    ;; `org-read-date-end-time-was-give' were set by
+                    ;; `org-read-date' or `org-read-date-analyze'
+		    (or org-read-date-time-was-given
 		        (and (eq what 'closed) org-log-done-with-time))
 		    (eq what 'closed)
-		    nil nil (list org-end-time-was-given))))
+		    nil nil (list org-read-date-end-time-was-given))))
 	   (unless (eolp) (insert " "))
 	   ts))))))
 

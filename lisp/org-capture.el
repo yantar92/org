@@ -1003,7 +1003,7 @@ for `entry'-type templates"))
   ;; store the current point
   (org-capture-put :initial-target-position (point)))
 
-(defvar org-time-was-given) ; dynamically scoped parameter
+(defvar org-read-date-time-was-given) ; dynamically scoped parameter
 (declare-function org-find-olp "org-property-search" (path &optional this-buffer))
 (declare-function org-datetree-find-iso-week-create "org-datetree"
                   (d &optional keep-restriction))
@@ -1111,17 +1111,18 @@ Store them in the capture property list."
 	       (time-to-days org-overriding-default-time))
 	      ((or (org-capture-get :time-prompt)
 		   (equal current-prefix-arg 1))
-               ;; Prompt for date.  Bind `org-end-time-was-given' so
-               ;; that `org-read-date-analyze' handles the time range
-               ;; case and returns `prompt-time' with the start value.
-               (defvar org-end-time-was-given)
-               (let* ((org-time-was-given nil)
-                      (org-end-time-was-given nil)
+               ;; Prompt for date.  Bind
+               ;; `org-read-date-end-time-was-given' so that
+               ;; `org-read-date-analyze' handles the time range case
+               ;; and returns `prompt-time' with the start value.
+               (defvar org-read-date-end-time-was-given)
+               (let* ((org-read-date-time-was-given nil)
+                      (org-read-date-end-time-was-given nil)
                       (prompt-time (org-read-date
 				    nil t nil "Date for tree entry:")))
 		 (org-capture-put
 		  :default-time
-                  (if (or org-time-was-given
+                  (if (or org-read-date-time-was-given
                           (= (time-to-days prompt-time) (org-today)))
                       prompt-time
                     ;; Use 00:00 when no time is given for another
@@ -1972,13 +1973,18 @@ Expansion occurs in a temporary Org mode buffer."
 		          ((or "t" "T" "u" "U")
 		           ;; These are the date/time related ones.
 		           (let* ((upcase? (equal (upcase key) key))
-			          (org-end-time-was-given nil)
+			          (org-read-date-end-time-was-given nil)
+                                  ;; Sets `org-read-date-time-was-given' and
+                                  ;; `org-read-date-end-time-was-given'.
 			          (time (org-read-date upcase? t nil prompt)))
                              (push
 			      (org-insert-timestamp
-			       time (or org-time-was-given upcase?)
+                               ;; `org-read-date-time-was-given' and
+                               ;; `org-read-date-end-time-was-given'
+                               ;; were set by `org-read-date'.
+			       time (or org-read-date-time-was-given upcase?)
 			       (member key '("u" "U"))
-			       nil nil (list org-end-time-was-given))
+			       nil nil (list org-read-date-end-time-was-given))
 			      strings-all)))
 		          (`nil
 		           ;; Load history list for current prompt.

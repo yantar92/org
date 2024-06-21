@@ -49,9 +49,10 @@
 
 (define-obsolete-variable-alias 'org-ans1 'org-read-date--calendar-selected-date "9.8")
 (define-obsolete-variable-alias 'org-ans2 'org-read-date--calendar-keyboard-date "9.8")
-
 (define-obsolete-variable-alias 'org-def 'org-read-date--default-time "9.8")
 (define-obsolete-variable-alias 'org-defdecode 'org-read-date--default-decoded-time "9.8")
+(define-obsolete-variable-alias 'org-with-time 'org-read-date--with-time "9.8")
+(define-obsolete-variable-alias 'org-read-date-inactive 'org-read-date--inactive "9.8")
 
 
 ;;;; Obsolete functions and macros

@@ -329,19 +329,15 @@ Otherwise, evaluate RESULT as an sexp and return its result."
 
 (ert-deftest test-org/org-read-date ()
   "Test `org-read-date' specifications."
-  (defvar org-time-was-given) ; dynamically scoped parameter
   ;; Parse ISO date with abbreviated year and month.
   (should (equal "2012-03-29 16:40"
-		 (let ((org-time-was-given t))
-		   (org-read-date t nil "12-3-29 16:40"))))
+		 (org-read-date t nil "12-3-29 16:40")))
   ;; Parse Europeans dates.
   (should (equal "2012-03-29 16:40"
-		 (let ((org-time-was-given t))
-		   (org-read-date t nil "29.03.2012 16:40"))))
+		 (org-read-date t nil "29.03.2012 16:40")))
   ;; Parse Europeans dates without year.
   (should (string-match "2[0-9]\\{3\\}-03-29 16:40"
-			(let ((org-time-was-given t))
-			  (org-read-date t nil "29.03. 16:40"))))
+			(org-read-date t nil "29.03. 16:40")))
   ;; Relative date applied to current time if there is single
   ;; plus/minus, or to default date when there are two of them.
   (should
@@ -385,13 +381,13 @@ Otherwise, evaluate RESULT as an sexp and return its result."
   ;; specified.
   (should
    (equal
-    "2012-03-30"
+    "2012-03-30 00:40"
     (org-test-at-time "2012-03-29 16:40"
       (let ((org-read-date-prefer-future 'time))
 	(org-read-date t nil "00:40" nil)))))
   (should-not
    (equal
-    "2012-03-30"
+    "2012-03-30 00:40"
     (org-test-at-time "2012-03-29 16:40"
       (let ((org-read-date-prefer-future 'time))
 	(org-read-date t nil "29 00:40" nil)))))
