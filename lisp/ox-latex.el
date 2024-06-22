@@ -46,6 +46,7 @@
 (declare-function engrave-faces-get-theme "ext:engrave-faces")
 
 (defvar engrave-faces-latex-output-style)
+(defvar engrave-faces-dynamic-style)
 (defvar engrave-faces-current-preset-style)
 (defvar engrave-faces-latex-mathescape)
 (defvar engrave-faces-latex-colorbox-strut)
@@ -1407,14 +1408,17 @@ default values of which are given by `org-latex-engraved-preamble' and
               info))))
          (gen-theme-spec
           (lambda (theme)
-            (if (eq engrave-faces-latex-output-style 'preset)
-                (engrave-faces-latex-gen-preamble theme)
-              (engrave-faces-latex-gen-preamble-line
-               'default
-               (alist-get 'default
-                          (if theme
-                              (engrave-faces-get-theme (intern theme))
-                            engrave-faces-current-preset-style))))))
+            (cond
+             ((eq engrave-faces-latex-output-style 'dynamic)
+              (engrave-faces-latex-gen-preamble engrave-faces-dynamic-style))
+             ((eq engrave-faces-latex-output-style 'preset)
+              (engrave-faces-latex-gen-preamble theme))
+             (t (engrave-faces-latex-gen-preamble-line
+                 'default
+                 (alist-get 'default
+                            (if theme
+                                (engrave-faces-get-theme (intern theme))
+                              engrave-faces-current-preset-style)))))))
          (gen-theme-command
           (lambda (theme)
             (format "\n\\newcommand{\\engravedtheme%s}{%%\n%s\n}"
@@ -3841,10 +3845,6 @@ pairs accepted by `org-latex--make-option-string', it is passed
 to the Verbatim environment or Verb command."
   (if (require 'engrave-faces-latex nil t)
       (let* ((lang-mode (and lang (org-src-get-lang-mode lang)))
-             (engrave-faces-current-preset-style
-              (if theme
-                  (engrave-faces-get-theme theme)
-                engrave-faces-current-preset-style))
              (engraved-buffer
               (with-temp-buffer
                 (insert (replace-regexp-in-string "\n\\'" "" content))
@@ -3853,7 +3853,7 @@ to the Verbatim environment or Verb command."
                       (funcall lang-mode)
                     (warn "Cannot engrave code as %s. %s is undefined."
                           lang lang-mode)))
-                (engrave-faces-latex-buffer)))
+                (engrave-faces-latex-buffer theme)))
              (engraved-code
               (with-current-buffer engraved-buffer
                 (buffer-string)))
