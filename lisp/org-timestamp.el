@@ -52,9 +52,6 @@ insertion/edit.")
 (defvar org-last-inserted-timestamp nil
   "The last time stamp inserted with `org-insert-timestamp'.")
 
-(defvar org-read-date-time-was-given) ; dynamically scoped parameter
-(defvar org-read-date-end-time-was-given) ; dynamically scoped parameter
-
 (defvar org-clock-adjust-closest nil
   "When non-nil, `org-timestamp-change' adjusts the recent clock.
 The clock is taken from `org-clock-history'.
@@ -86,6 +83,8 @@ When called from Lisp, the timestamp is inactive if INACTIVE is
 non-nil."
   (interactive "P")
   (require 'org-read-date)
+  (defvar org-read-date-time-was-given) ; defined in org-read-date.el
+  (defvar org-read-date-end-time-was-given) ; defined in org-read-date.el
   (let* ((ts (cond
 	      ((org-at-date-range-p t)
 	       (match-string (if (< (point) (- (match-beginning 2) 2)) 1 2)))
@@ -407,7 +406,7 @@ When SUPPRESS-TMP-DELAY is non-nil, suppress delays like
 	    (message "No clock to adjust")
           ;; we only ever enter this branch of if when
           ;; `org-clock-history' is bound.
-          (defvar org-clock-history)
+          (defvar org-clock-history) ; org-clock-common.el
 	  (cond ((save-excursion	; fix previous clock?
 		   (re-search-backward org-ts-regexp0 nil t)
 		   (looking-back (concat org-clock-string " \\[")
