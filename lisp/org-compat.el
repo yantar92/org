@@ -734,10 +734,15 @@ This constant, for example, makes the below code not err:
   'org-clear-latex-preview 'org-latex-preview-clear-overlays "9.7")
 (make-obsolete
  'org-place-formula-image "no longer used" "9.7")
+;;;###autoload (autoload 'org-latex-preview--format-color "org-latex-preview")
 (define-obsolete-function-alias
   'org-latex-color-format 'org-latex-preview--format-color "9.7")
+;;;###autoload (autoload 'org-latex-preview--attr-color "org-latex-preview")
 (define-obsolete-function-alias
   'org-latex-color 'org-latex-preview--attr-color "9.7")
+;;;###autoload (autoload 'org-latex-preview--get-display-dpi "org-latex-preview")
+(define-obsolete-function-alias
+  'org--get-display-dpi 'org-latex-preview--get-display-dpi "9.7")
 ;; MathML related functions from org-latex-preview.el
 (define-obsolete-variable-alias
   'org-latex-to-mathml-jar-file 'org-mathml-converter-jar-file "9.7")
@@ -785,7 +790,7 @@ This constant, for example, makes the below code not err:
 (defun org-dvipng-color-format (color-name)
   "Convert COLOR-NAME to a RGB color value for dvipng."
   (apply #'format "rgb %s %s %s"
-         (mapcar 'org-latex-preview--normalize-color
+         (mapcar 'org-normalize-color
                  (color-values color-name))))
 (make-obsolete
  'org-dvipng-color "to be removed" "9.7")
@@ -966,6 +971,11 @@ The overlay will be above BEG if OVERLAYS is non-nil."
                (if block-type 'paragraph 'character))))))
 
 
+
+;;;###autoload (autoload 'org-latex-preview-compiler-command-map "org-latex-preview")
+
+(defvar org-latex-preview-compiler-command-map)
+
 ;; FIXME: Unused; obsoleted; to be removed.
 (defun org-create-formula-image
     (string tofile options buffer &optional processing-type)
@@ -1001,7 +1011,9 @@ a HTML file."
 	       (org-export-get-environment (org-export-get-backend 'latex))
 	       org-format-latex-header
 	       'snippet)))
-	 (latex-compiler (plist-get processing-info :latex-compiler))
+	 (latex-compiler
+          (cdr (assoc (plist-get extended-info :latex-processor)
+                      org-latex-preview-compiler-command-map)))
 	 (tmpdir temporary-file-directory)
 	 (texfilebase (make-temp-name
 		       (expand-file-name "orgtex" tmpdir)))
@@ -1056,7 +1068,9 @@ a HTML file."
 	    (org-compile-file
 	     image-input-file image-converter image-output-type err-msg log-buf
 	     `((?D . ,(shell-quote-argument (format "%s" dpi)))
-	       (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))))))
+	       (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
+               (?l . ,latex-compiler)
+               (?L . ,(car (split-string latex-compiler)))))))
       (copy-file image-output-file tofile 'replace)
       (dolist (e post-clean)
 	(when (file-exists-p (concat texfilebase e))
