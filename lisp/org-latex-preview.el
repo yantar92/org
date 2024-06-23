@@ -2878,6 +2878,10 @@ If this is an export run, images will only be cached, not placed."
 This is only used for non-persist image caching, used when
 `org-latex-preview-cache' is not set to persist.")
 
+(defconst org-latex-preview--temp-cache-dir
+  (expand-file-name "org-latex-preview" temporary-file-directory)
+  "Folder used to cache temp-stored previews.")
+
 (defun org-latex-preview--cache-image (key path info)
   "Save the image at PATH with associated INFO in the cache indexed by KEY.
 Return (path . info).
@@ -2910,7 +2914,10 @@ The caching location is set by CACHE, which defaults to
        (when-let ((path)
                   (new-path (expand-file-name
                              (concat "org-tex-" key "." (file-name-extension path))
-                             (if (eq dir 'temp) temporary-file-directory dir))))
+                             (if (eq dir 'temp)
+                                 (file-name-concat temporary-file-directory
+                                                   org-latex-preview--temp-cache-dir)
+                               dir))))
          (copy-file path new-path 'replace)
          (puthash key (cons new-path info)
                   org-latex-preview--table)))
