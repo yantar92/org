@@ -647,16 +647,20 @@ See also `org-scan-tags'."
     ;; tags table and the local tags in current buffer.
     (require 'org-tags)
     (defvar org-last-tags-completion-table)
+    (defvar crm-separator) ; crm.el
     (let ((org-last-tags-completion-table
 	   (org--tag-add-to-alist
             (when (derived-mode-p 'org-mode)
 	      (org-get-buffer-tags))
 	    (unless only-local-tags
-	      (org-global-tags-completion-table)))))
+	      (org-global-tags-completion-table))))
+          ;; Used by `completing-read-multiple'
+          (crm-separator "[-+:&,|]"))
       (setq match
-	    (completing-read
+	    (completing-read-multiple
 	     "Match: "
-	     'org-tags-completion-function nil nil nil 'org-tags-history))))
+             org-last-tags-completion-table
+             nil nil nil 'org-tags-history))))
 
   (let* ((match0 match)
          (opre "[<=>]=?\\|[!/]=\\|<>")

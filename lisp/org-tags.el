@@ -36,8 +36,6 @@
 (require 'org-tags-core)
 (require 'org-tags-align)
 
-(defvar crm-separator)
-
 ;;;; Customizations
 
 (defgroup org-tags nil
@@ -212,7 +210,6 @@ instead of the agenda files."
 (defvar org-last-tags-completion-table nil
   "The last used completion table for tags.")
 
-(defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
 (defvar org-tags-overlay (make-overlay 1 1))
 (delete-overlay org-tags-overlay)
 (declare-function org-map-entries "org-agenda-search" (func &optional match scope &rest skip))
@@ -285,7 +282,8 @@ in Lisp code use `org-set-tags' instead."
 		      inherited-tags
 		      table
 		      (and org-fast-tag-selection-include-todo org-todo-key-alist))
-		   (let ((org-add-colon-after-tag-completion (< 1 (length table)))
+                   (defvar crm-separator) ; defined in crm.el
+		   (let (;; for `completing-read'
                          (crm-separator "[ \t]*:[ \t]*"))
 		     (mapconcat #'identity
                                 (completing-read-multiple
@@ -405,39 +403,6 @@ This works in the agenda, and also in an Org buffer."
                       (require 'org-agenda-line-format)
                       (org-agenda-change-all-lines newhead m)))))
     (message "Tag :%s: %s in %d headings" tag (if off "removed" "set") cnt)))
-
-(defun org-tags-completion-function (string _predicate &optional flag)
-  "Complete tag STRING.
-FLAG specifies the type of completion operation to perform.  This
-function is passed as a collection function to `completing-read',
-which see."
-  (let ((completion-ignore-case nil)	;tags are case-sensitive
-	(confirm (lambda (x) (stringp (car x))))
-	(prefix "")
-        begin)
-    (when (string-match "^\\(.*[-+:&,|]\\)\\([^-+:&,|]*\\)$" string)
-      (setq prefix (match-string 1 string))
-      (setq begin (match-beginning 2))
-      (setq string (match-string 2 string)))
-    (pcase flag
-      (`t (all-completions string org-last-tags-completion-table confirm))
-      (`lambda (assoc string org-last-tags-completion-table)) ;exact match?
-      (`(boundaries . ,suffix)
-       (let ((end (if (string-match "[-+:&,|]" suffix)
-                      (match-string 0 suffix)
-                    (length suffix))))
-         `(boundaries ,(or begin 0) . ,end)))
-      (`nil
-       (pcase (try-completion string org-last-tags-completion-table confirm)
-	 ((and completion (pred stringp))
-	  (concat prefix
-		  completion
-		  (if (and org-add-colon-after-tag-completion
-			   (assoc completion org-last-tags-completion-table))
-		      ":"
-		    "")))
-	 (completion completion)))
-      (_ nil))))
 
 (defun org-fast-tag-insert (kwd tags face &optional end)
   "Insert KWD, and the TAGS, the latter with face FACE.

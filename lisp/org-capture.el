@@ -1904,7 +1904,6 @@ Expansion occurs in a temporary Org mode buffer."
 			            (cond ((equal key "G") (org-agenda-files))
 				          (file (list file))
 				          (t nil))))
-			          (org-add-colon-after-tag-completion t)
 			          (ins (mapconcat
 				        #'identity
 				        (let ((crm-separator "[ \t]*:[ \t]*"))

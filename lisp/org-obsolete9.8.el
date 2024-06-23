@@ -54,6 +54,8 @@
 (define-obsolete-variable-alias 'org-with-time 'org-read-date--with-time "9.8")
 (define-obsolete-variable-alias 'org-read-date-inactive 'org-read-date--inactive "9.8")
 
+(defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
+(make-obsolete 'org-add-colon-after-tag-completion "unused" "9.8")
 
 ;;;; Obsolete functions and macros
 
@@ -139,7 +141,7 @@ The function returns the new ALIST."
 	  (setq n (cons (car e) (append (cdr (assoc (car e) rtn)) (cdr e))))
 	  (setq rtn (assq-delete-all (car e) rtn))
 	  (push n rtn))))))
-(make-obsolete 'org-uniquify-alist "no longer user" "9.8")
+(make-obsolete 'org-uniquify-alist "no longer used" "9.8")
 
 (defun org-make-parameter-alist (plist)
   "Return alist based on PLIST.
@@ -149,12 +151,47 @@ and the value in `cadr'."
   (when plist
     (cons (list (car plist) (cadr plist))
 	  (org-make-parameter-alist (cddr plist)))))
-(make-obsolete 'org-make-parameter-alist "no longer user" "9.8")
+(make-obsolete 'org-make-parameter-alist "no longer used" "9.8")
 
 (defun org-get-at-eol (property n)
   "Get text property PROPERTY at the end of line less N characters."
   (get-text-property (- (line-end-position) n) property))
-(make-obsolete 'org-get-at-eol "no longer user" "9.8")
+(make-obsolete 'org-get-at-eol "no longer used" "9.8")
+
+(defun org-tags-completion-function (string _predicate &optional flag)
+  "Complete tag STRING.
+FLAG specifies the type of completion operation to perform.  This
+function is passed as a collection function to `completing-read',
+which see."
+  (let ((completion-ignore-case nil)	;tags are case-sensitive
+	(confirm (lambda (x) (stringp (car x))))
+	(prefix "")
+        begin)
+    (when (string-match "^\\(.*[-+:&,|]\\)\\([^-+:&,|]*\\)$" string)
+      (setq prefix (match-string 1 string))
+      (setq begin (match-beginning 2))
+      (setq string (match-string 2 string)))
+    (defvar org-last-tags-completion-table) ; org-tags.el
+    (pcase flag
+      (`t (all-completions string org-last-tags-completion-table confirm))
+      (`lambda (assoc string org-last-tags-completion-table)) ;exact match?
+      (`(boundaries . ,suffix)
+       (let ((end (if (string-match "[-+:&,|]" suffix)
+                      (match-string 0 suffix)
+                    (length suffix))))
+         `(boundaries ,(or begin 0) . ,end)))
+      (`nil
+       (pcase (try-completion string org-last-tags-completion-table confirm)
+	 ((and completion (pred stringp))
+	  (concat prefix
+		  completion
+		  (if (and org-add-colon-after-tag-completion
+			   (assoc completion org-last-tags-completion-table))
+		      ":"
+		    "")))
+	 (completion completion)))
+      (_ nil))))
+(make-obsolete 'org-tags-completion-function "no longer used" "9.8")
 
 (provide 'org-obsolete9.8)
 
