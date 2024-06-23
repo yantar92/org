@@ -1031,6 +1031,12 @@ preview time.")
   "Vector containing the last three preview run times in this buffer")
 (defvar-local org-latex-preview-live--preview-times-index 0)
 
+(defvar org-latex-preview-live--cache-count 0
+  "Running count of the number of live previews cached.")
+
+(defconst org-latex-preview-live--max-cache-count 1024
+  "The maximum number of live previews to cache.")
+
 (defun org-latex-preview-live--update-times (latest-duration)
   "Update preview times given the last preview took LATEST-DURATION seconds."
   (aset org-latex-preview-live--preview-times
@@ -2935,6 +2941,8 @@ The caching location is set by CACHE-LOCATION, which defaults to
       ((and dir (or 'temp 'live (pred stringp)))
        (unless org-latex-preview--table
          (setq org-latex-preview--table (make-hash-table :test 'equal :size 240)))
+       (when (eq dir 'live)
+         (org-latex-preview--increment-live-cache))
        (let ((new-path
               (expand-file-name
                (concat "org-tex-" key "." (file-name-extension path))
@@ -2948,6 +2956,20 @@ The caching location is set by CACHE-LOCATION, which defaults to
          (puthash key (cons new-path info)
                   org-latex-preview--table)))
       (bad (error "Invalid cache location: %S (must be persist, temp, or a string)" bad)))))
+
+(defun org-latex-preview--increment-live-cache ()
+  "Increment the live cache count, and perhaps roll it over."
+  (when (> (cl-incf org-latex-preview-live--cache-count)
+           org-latex-preview-live--max-cache-count)
+    (delete-directory org-latex-preview-live--cache-dir t)
+    (maphash
+     (lambda (key cache)
+       (when (string-prefix-p
+              org-latex-preview-live--cache-dir (car cache))
+         (remhash key org-latex-preview--table)))
+     org-latex-preview--table)
+    (make-directory org-latex-preview-live--cache-dir)
+    (setq org-latex-preview-live--cache-count 1)))
 
 (defun org-latex-preview--get-cached (key &optional cache-location)
   "Retrieve the image path and info associated with KEY.
