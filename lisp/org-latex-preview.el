@@ -2965,25 +2965,30 @@ Example result:
    :width 7.6
    :depth 0.2
    :errors nil)"
-  (cond
-   ((eq org-latex-preview-cache 'persist)
-    (when-let ((label-path-info
-                (org-persist-read org-latex-preview--cache-name
-                                  (list :key key)
-                                  nil nil :read-related t)))
-      ;; While /in theory/ this check isn't needed, sometimes the
-      ;; org-persist cache can be modified outside the current Emacs
-      ;; process.  When this occurs the metadata of the fragment can
-      ;; still exist in `org-persist--index', but the image file is
-      ;; gone.  This condition can be detected by checking if the
-      ;; `cadr' is nil (indicating the image has gone AWOL).
-      (if (cadr label-path-info)
-          (cons (cadr label-path-info)
-                (caddr label-path-info))
-        (org-latex-preview--remove-cached key)
-        nil)))
-   (org-latex-preview--table
-    (gethash key org-latex-preview--table))))
+  (let ((result
+         (cond
+          ((eq (or cache-location org-latex-preview-cache) 'persist)
+           (when-let ((label-path-info
+                       (org-persist-read org-latex-preview--cache-name
+                                         (list :key key)
+                                         nil nil :read-related t)))
+             ;; While /in theory/ this check isn't needed, sometimes the
+             ;; org-persist cache can be modified outside the current Emacs
+             ;; process.  When this occurs the metadata of the fragment can
+             ;; still exist in `org-persist--index', but the image file is
+             ;; gone.  This condition can be detected by checking if the
+             ;; `cadr' is nil (indicating the image has gone AWOL).
+             (if (cadr label-path-info)
+                 (cons (cadr label-path-info)
+                       (caddr label-path-info))
+               (org-latex-preview--remove-cached key)
+               nil)))
+          (org-latex-preview--table
+           (gethash key org-latex-preview--table)))))
+    (if (and result (file-exists-p (car result)))
+        result
+      (org-latex-preview--remove-cached key cache-location)
+      nil)))
 
 (defun org-latex-preview--remove-cached (key &optional cache-location)
   "Remove the fragment cache associated with KEY.
