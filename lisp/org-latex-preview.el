@@ -1989,7 +1989,7 @@ image are cached as per `org-latex-preview-cache', which see."
              for (source-file . image-info) = (org-latex-preview--get-cached hash)
              if (not (and source-file (file-exists-p source-file)))
              do (display-warning
-                 '(org-latex-preview get-cache)
+                 '(org latex-preview get-cache)
                  (format "No image generated for fragment:\n%s"
                          (org-element-property :value element)))
              else do
