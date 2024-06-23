@@ -1031,6 +1031,9 @@ preview time.")
   "Vector containing the last three preview run times in this buffer")
 (defvar-local org-latex-preview-live--preview-times-index 0)
 
+(defvar-local org-latex-preview-live--last-hash nil
+  "Last hashed fragment when live-previewing")
+
 (defvar org-latex-preview-live--cache-count 0
   "Running count of the number of live previews cached.")
 
@@ -1050,6 +1053,14 @@ preview time.")
   "A hook for `org-latex-preview-process-finish-functions' to track preview time.
 Called with EXIT-CODE and EXTENDED-INFO from the async process."
   (when (= exit-code 0)
+    ;; Save the first previewed element's hash.  When live-previewing
+    ;; this should always be the element being live-previewed, even
+    ;; when there are numbering changes.
+    (setq org-latex-preview-live--last-hash
+          (plist-get
+           (car (plist-get extended-info :fragments))
+           :key))
+    ;; Update run times to dynamically set throttle
     (org-latex-preview-live--update-times
      (- (float-time) (plist-get extended-info :start-time)))))
 
@@ -1096,7 +1107,19 @@ Ensures that FUNC runs at the end of the throttle duration."
 (defun org-latex-preview-live--clearout (ov)
   "Clear out the live LaTeX preview for the preview overlay OV."
   (setq org-latex-preview-live--element-type nil)
-  (overlay-put ov 'after-string nil))
+  (overlay-put ov 'after-string nil)
+  ;; When exiting live-preview, move the final image to the main cache
+  (when-let ((org-latex-preview-live--last-hash)
+             ((overlay-get ov 'preview-image))
+             (path-info (org-latex-preview--get-cached
+                      org-latex-preview-live--last-hash 'live)))
+    ;; Reset the last live-previewed hash
+    (setq org-latex-preview-live--last-hash nil)
+    ;; Copy final image data to main cache location
+    (org-latex-preview--cache-image
+     org-latex-preview-live--last-hash (car path-info) (cdr path-info))
+    ;; Replace live-preview image with the image from the main cache
+    (run-at-time 0.01 nil #'org-latex-preview-auto--regenerate-overlay ov)))
 
 (defun org-latex-preview-live--regenerate (&rest _)
   "Regenerate the LaTeX preview overlay that overlaps BEG and END.
