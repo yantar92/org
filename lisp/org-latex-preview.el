@@ -362,6 +362,14 @@ See `org-latex-preview-process-active-indicator'."
 (defconst org-latex-preview--precompile-log "*Org Preview Preamble Precompilation*"
   "Buffer name for Preview LaTeX output.")
 
+(defconst org-latex-preview--temp-cache-dir
+  (expand-file-name "org-latex-preview" temporary-file-directory)
+  "Folder used to cache temp-stored previews.")
+
+(defconst org-latex-preview-live--cache-dir
+  (expand-file-name "org-latex-preview-live" temporary-file-directory)
+  "Folder used to cache live previews.")
+
 (defcustom org-latex-preview-preamble "\\documentclass{article}
 \[DEFAULT-PACKAGES]
 \[PACKAGES]
@@ -1090,7 +1098,8 @@ Ensures that FUNC runs at the end of the throttle duration."
 This is meant to be run via the `after-change-functions' hook in
 Org buffers when using live-updating LaTeX previews."
   (pcase-let ((`(,type . ,ov)
-               (get-char-property-and-overlay (point) 'org-overlay-type)))
+               (get-char-property-and-overlay (point) 'org-overlay-type))
+              (org-latex-preview-cache 'live))
     (when (and ov (eq type 'org-latex-overlay)
                ;; The following checks are redundant and can make
                ;; throttling inconsistent:
@@ -2111,7 +2120,8 @@ Returns a list of async tasks started."
     ;;   ├─ cache pngs with org-persist or in /tmp
     ;;   └─ update overlays in buffer with png images and metadata
     ;;
-    (let* ((extended-info
+    (let* ((cache-location org-latex-preview-cache) ; Save the current value
+           (extended-info
             (append processing-info
                     (list :processor processing-type
                           :fragments fragments-info
@@ -2120,11 +2130,20 @@ Returns a list of async tasks started."
                                     processing-info fragments-info appearance-options)
                           :appearance-options appearance-options
                           :place-preview-p place-preview-p
+                          :cache-location cache-location
                           :start-time (float-time))))
            (tex-compile-async
             (org-latex-preview--tex-compile-async extended-info))
            (img-extract-async
             (org-latex-preview--image-extract-async extended-info)))
+      (when-let ((cache-base-dir
+                  (cond
+                   ((eq cache-location 'temp)
+                    org-latex-preview--temp-cache-dir)
+                   ((eq cache-location 'live)
+                    org-latex-preview-live--cache-dir))))
+        (unless (file-directory-p cache-base-dir)
+          (make-directory cache-base-dir t)))
       (plist-put (cddr img-extract-async) :success
                  (list ; The order is important here.
                   #'org-latex-preview--check-all-fragments-produced
@@ -2505,7 +2524,8 @@ The path of the created LaTeX file is returned."
          (images
           (file-expand-wildcards
            (concat outputs-no-ext "*." (plist-get extended-info :image-output-type))
-           'full)))
+           'full))
+         (cache-location (plist-get extended-info :cache-location)))
     (save-excursion
       (cl-loop
        for fragment-info in (plist-get extended-info :fragments)
@@ -2516,7 +2536,8 @@ The path of the created LaTeX file is returned."
         (plist-get fragment-info :key)
         image-file
         (org-latex-preview--display-info
-         extended-info fragment-info))
+         extended-info fragment-info)
+        cache-location)
        do
        (plist-put fragment-info :path image-file)
        (when (plist-get extended-info :place-preview-p)
@@ -2527,7 +2548,8 @@ The path of the created LaTeX file is returned."
 Should this not be the case, the fragment immediately before the first
 fragment without a path is marked as erronious, and the remaining
 fragments are regenerated."
-  (let ((fragments (cons nil (copy-sequence (plist-get extended-info :fragments)))))
+  (let ((fragments (cons nil (copy-sequence (plist-get extended-info :fragments))))
+        (cache-location (plist-get extended-info :cache-location)))
     (while (cdr fragments)
       (if (or (plist-get (cadr fragments) :path)
               (plist-get (cadr fragments) :error))
@@ -2541,7 +2563,8 @@ fragments are regenerated."
                                (concat current-error "\n\n"))
                              "Preview generation catastrophically failed after this fragment."))
           (org-latex-preview--remove-cached
-           (plist-get bad-fragment :key))
+           (plist-get bad-fragment :key)
+           cache-location)
           (if (plist-get extended-info :place-preview-p)
               (org-latex-preview--update-overlay
                (plist-get bad-fragment :overlay)
@@ -2549,12 +2572,14 @@ fragments are regenerated."
                 (plist-get bad-fragment :key)
                 (plist-get bad-fragment :path)
                 (org-latex-preview--display-info
-                 extended-info bad-fragment)))
+                 extended-info bad-fragment)
+                cache-location))
             (org-latex-preview--cache-image
              (plist-get bad-fragment :key)
              (plist-get bad-fragment :path)
              (org-latex-preview--display-info
-              extended-info bad-fragment))))
+              extended-info bad-fragment)
+             cache-location)))
         ;; Re-generate the remaining fragments.
         (org-latex-preview--create-image-async
          (plist-get extended-info :processor)
@@ -2845,7 +2870,8 @@ Should FRAGMENTS not be explicitly provided, all of the fragments
 listed in EXTENDED-INFO will be used.
 
 If this is an export run, images will only be cached, not placed."
-  (let ((fragments (or fragments (plist-get extended-info :fragments))))
+  (let ((fragments (or fragments (plist-get extended-info :fragments)))
+        (cache-location (plist-get extended-info :cache-location)))
     (if (plist-get extended-info :place-preview-p)
         (when (buffer-live-p (plist-get extended-info :org-buffer))
           (with-current-buffer (plist-get extended-info :org-buffer)
@@ -2861,13 +2887,15 @@ If this is an export run, images will only be cached, not placed."
                     (plist-get fragment-info :key)
                     image-file
                     (org-latex-preview--display-info
-                     extended-info fragment-info)))))))
+                     extended-info fragment-info)
+                    cache-location))))))
       (dolist (fragment-info fragments)
         (org-latex-preview--cache-image
          (plist-get fragment-info :key)
          (plist-get fragment-info :path)
          (org-latex-preview--display-info
-          extended-info fragment-info))))))
+          extended-info fragment-info)
+         cache-location)))))
 
 (defconst org-latex-preview--cache-name "LaTeX preview cached image data"
   "The name used for Org LaTeX Preview objects in the org-persist cache.")
@@ -2878,24 +2906,20 @@ If this is an export run, images will only be cached, not placed."
 This is only used for non-persist image caching, used when
 `org-latex-preview-cache' is not set to persist.")
 
-(defconst org-latex-preview--temp-cache-dir
-  (expand-file-name "org-latex-preview" temporary-file-directory)
-  "Folder used to cache temp-stored previews.")
-
-(defun org-latex-preview--cache-image (key path info)
+(defun org-latex-preview--cache-image (key path info &optional cache-location)
   "Save the image at PATH with associated INFO in the cache indexed by KEY.
 Return (path . info).
 
-The caching location is set by CACHE, which defaults to
+The caching location is set by CACHE-LOCATION, which defaults to
 `org-latex-preview-cache'.  It should be the symbol \"persist\",
-\"temp\", or an existing directory path as a string."
+\"temp\", \"live\", or an existing directory path as a string."
   (if (not path)
       (ignore
        (display-warning
         '(org latex-preview put-cache)
         (format "Tried to cache %S without a path, skipping. This should not happen, please report it as a bug to the Org mailing list (M-x org-submit-bug-report)." key)
         :warning))
-    (pcase org-latex-preview-cache
+    (pcase (or cache-location org-latex-preview-cache)
       ('persist
        (let ((label-path-info
               (or (org-persist-read org-latex-preview--cache-name
@@ -2908,24 +2932,31 @@ The caching location is set by CACHE, which defaults to
                                         :expiry org-latex-preview-persist-expiry
                                         :write-immediately t))))
          (cons (cadr label-path-info) info)))
-      ((and dir (or 'temp (pred stringp)))
+      ((and dir (or 'temp 'live (pred stringp)))
        (unless org-latex-preview--table
          (setq org-latex-preview--table (make-hash-table :test 'equal :size 240)))
-       (when-let ((path)
-                  (new-path (expand-file-name
-                             (concat "org-tex-" key "." (file-name-extension path))
-                             (if (eq dir 'temp)
-                                 (file-name-concat temporary-file-directory
-                                                   org-latex-preview--temp-cache-dir)
-                               dir))))
+       (let ((new-path
+              (expand-file-name
+               (concat "org-tex-" key "." (file-name-extension path))
+               (cond
+                ((eq dir 'temp)
+                 org-latex-preview--temp-cache-dir)
+                ((eq dir 'live)
+                 org-latex-preview-live--cache-dir)
+                (t dir)))))
          (copy-file path new-path 'replace)
          (puthash key (cons new-path info)
                   org-latex-preview--table)))
       (bad (error "Invalid cache location: %S (must be persist, temp, or a string)" bad)))))
 
-(defun org-latex-preview--get-cached (key)
+(defun org-latex-preview--get-cached (key &optional cache-location)
   "Retrieve the image path and info associated with KEY.
-The result will be of the form (path . info).
+The result, should it exist, will be of the form (path . info).
+
+The caching location checked is set by CACHE-LOCATION, which
+defaults to `org-latex-preview-cache'.  org-persist is checked
+when the cache location is set to the symbol \"persist\",
+otherwise an entry is looked for in `org-latex-preview--table'.
 
 Example result:
   (\"/path/.../to/.../image.svg\"
@@ -2954,22 +2985,23 @@ Example result:
    (org-latex-preview--table
     (gethash key org-latex-preview--table))))
 
-(defun org-latex-preview--remove-cached (key)
-  "Remove the fragment cache associated with KEY."
+(defun org-latex-preview--remove-cached (key &optional cache-location)
+  "Remove the fragment cache associated with KEY.
+
+The caching location used is set by CACHE-LOCATION, which
+defaults to `org-latex-preview-cache'.  org-persist is used when
+the cache location is set to the symbol \"persist\", otherwise an
+entry is looked for in `org-latex-preview--table'."
   (cond
-   ((eq org-latex-preview-cache 'persist)
+   ((eq (or org-latex-preview-cache cache-location) 'persist)
     (org-persist-unregister org-latex-preview--cache-name
                             (list :key key)
                             :remove-related t))
    (org-latex-preview--table
-    (remhash key org-latex-preview--table)
-    (dolist (ext '("svg" "png"))
-      (when-let  ((image-file
-                   (expand-file-name
-                    (concat "org-tex-" key "." ext)
-                    temporary-file-directory))
-                  ((file-exists-p image-file)))
-        (delete-file image-file))))))
+    (when-let ((cache (gethash key org-latex-preview--table)))
+      (remhash key org-latex-preview--table)
+      (when (file-exists-p (car cache))
+        (delete-file (car cache)))))))
 
 (defun org-latex-preview-clear-cache (&optional beg end clear-entire-cache)
   "Clear LaTeX preview cache for fragments between BEG and END.
@@ -3013,8 +3045,17 @@ the *entire* preview cache will be cleared, and `org-persist-gc' run."
           (when (equal (cadar (plist-get collection :container))
                        org-latex-preview--cache-name)
             (org-latex-preview--remove-cached
-             (plist-get (plist-get collection :associated) :key))
+             (plist-get (plist-get collection :associated) :key)
+             'persist)
             (cl-incf n)))
+        (when org-latex-preview--table
+          (maphash
+           (lambda (_ cache)
+             (when (file-exists-p (car cache))
+               (delete-file (car cache))
+               (cl-incf n)))
+           org-latex-preview--table)
+          (setq org-latex-preview--table nil))
         (if (= n 0)
             (message "The Org LaTeX preview cache was already empty.")
           (org-persist-gc)
