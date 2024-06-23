@@ -210,8 +210,11 @@ instead of the agenda files."
 (defvar org-last-tags-completion-table nil
   "The last used completion table for tags.")
 
-(defvar org-tags-overlay (make-overlay 1 1))
+(defvar org-tags-overlay (make-overlay 1 1)
+  "Overlay used to display currently selected tags.
+This overlays is made visible by `org-fast-tag-selection'.")
 (delete-overlay org-tags-overlay)
+
 (declare-function org-map-entries "org-agenda-search" (func &optional match scope &rest skip))
 ;;;###autoload
 (defun org-set-tags-command (&optional arg)
