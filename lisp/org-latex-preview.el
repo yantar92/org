@@ -2025,6 +2025,11 @@ LATEX-PROCESSOR is a member of `org-latex-compilers' which is guessed if unset.
 
 When provided, LATEX-PREAMBLE overrides the default LaTeX preamble.
 
+APPEARANCE-OPTIONS is a plist specifying global geometry and
+appearance info for the preview run.  It defaults to
+`org-latex-preview-appearance-options', which see for recognized
+keys.
+
 Returns a list of async tasks started."
   (let* ((processing-type
           (or processing-type org-latex-preview-process-default))
