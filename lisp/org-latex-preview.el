@@ -2318,7 +2318,12 @@ The path of the created LaTeX file is returned."
                                                               (not relative-file-p))))
              (setq header (concat "%& " (file-name-sans-extension format-file)))
            (setq precompile-failed-msg
-                 "Precompile failed.")))
+                 (concat 
+                  (format "Precompile failed for buffer %s."
+                          (plist-get processing-info :org-buffer))
+                  (when-let ((filename (buffer-file-name
+                                        (plist-get processing-info :org-buffer))))
+                    (format " (File %s)" filename))))))
         ((or "xelatex" "lualatex")
          (setq precompile-failed-msg
                (concat
