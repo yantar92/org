@@ -57,6 +57,9 @@
 (defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
 (make-obsolete 'org-add-colon-after-tag-completion "unused" "9.8")
 
+(defvar org-last-tag-selection-key nil)
+(make-obsolete 'org-last-tag-selection-key "unused" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

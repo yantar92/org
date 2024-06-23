@@ -450,7 +450,6 @@ CURRENT-TAGS may be modified by side effect."
 	(dolist (x g) (setq current-tags (delete x current-tags)))))
     (cons tag current-tags)))
 
-(defvar org-last-tag-selection-key nil)
 (declare-function org-todo "org-todo" (&optional arg))
 (declare-function org-get-todo-face "org-font-lock" (kwd))
 (declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
@@ -668,8 +667,8 @@ Returns the new tags string, or nil to not change the current settings."
 		  (setq input-char
                         (let ((inhibit-quit t)) ; intercept C-g.
                           (read-char-exclusive)))
-                  ;; FIXME: Global variable used by `org-beamer-select-environment'.
-                  ;; Should factor it out.
+                  ;; FIXME: Obsolete variable support.
+                  (defvar org-last-tag-selection-key) ; org-obsolete9.8.el
 		  (setq org-last-tag-selection-key input-char)
 		  (pcase input-char
                     ;; <RET>

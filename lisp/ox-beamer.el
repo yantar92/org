@@ -1161,19 +1161,23 @@ aid, but the tag does not have any semantic meaning."
 		  '(("BMCOL" . ?|))))
 	 (org-tag-persistent-alist nil)
 	 (org-use-fast-tag-selection t)
-	 (org-fast-tag-selection-single-key t))
+	 (org-fast-tag-selection-single-key t)
+         (existing-tags (org-get-tags nil t))
+         (new-tags nil))
     (org-set-tags-command)
     (let ((tags (org-get-tags nil t)))
+      (setq new-tags (cl-set-difference tags existing-tags))
+      (cl-assert (<= (length new-tags) 2)) ; either no new tags or 1.
       (cond
        ;; For a column, automatically ask for its width.
-       ((eq org-last-tag-selection-key ?|)
+       ((member "BMCOL" new-tags)
         (require 'org-property-set)
 	(if (member "BMCOL" tags)
 	    (org-set-property "BEAMER_col" (read-string "Column width: "))
 	  (org-delete-property "BEAMER_col")))
        ;; For an "againframe" section, automatically ask for reference
        ;; to resumed frame and overlay specifications.
-       ((eq org-last-tag-selection-key ?A)
+       ((member "againframe" new-tags)
 	(if (equal (org-entry-get nil "BEAMER_env") "againframe")
 	    (progn
               (require 'org-property-set)
@@ -1190,7 +1194,7 @@ aid, but the tag does not have any semantic meaning."
 	       (env (cl-some (lambda (tag)
 			       (and (string-match tags-re tag)
 				    (match-string 1 tag)))
-			     tags)))
+			     new-tags)))
 	  (and env (progn (org-entry-put nil "BEAMER_env" env) t))))
        (t (org-entry-delete nil "BEAMER_env"))))))
 
