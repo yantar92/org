@@ -54,6 +54,8 @@
 (define-obsolete-variable-alias 'org-with-time 'org-read-date--with-time "9.8")
 (define-obsolete-variable-alias 'org-read-date-inactive 'org-read-date--inactive "9.8")
 
+(define-obsolete-variable-alias 'org-ts-type 'org-sparse-tree--current-date-type "9.8")
+
 (defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
 (make-obsolete 'org-add-colon-after-tag-completion "unused" "9.8")
 

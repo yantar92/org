@@ -35,8 +35,6 @@
 (require 'org-agenda-files)
 (require 'org-cycle)
 
-(defvar org-ts-type nil)
-
 (defgroup org-sparse-trees nil
   "Options concerning sparse trees in Org mode."
   :tag "Org Sparse Trees"
@@ -103,6 +101,10 @@ Otherwise, these types are allowed:
   :version "26.1"
   :package-version '(Org . "8.3")
   :group 'org-sparse-trees)
+
+(defvar org-sparse-tree--current-date-type nil
+  "Date type in current sparse tree.
+See `org-sparse-tree-default-date-type' for the allowed values.")
 
 ;; FIXME: Move to org-regexps?
 (defsubst org-re-timestamp (type)
@@ -214,8 +216,8 @@ the scope to headlines matching this string."
   "Check if there are deadlines or scheduled entries before date D."
   (interactive (list (org-read-date)))
   (let* ((case-fold-search nil)
-	 (regexp (org-re-timestamp org-ts-type))
-	 (ts-type org-ts-type)
+	 (regexp (org-re-timestamp org-sparse-tree--current-date-type))
+	 (ts-type org-sparse-tree--current-date-type)
 	 (callback
 	  (lambda ()
 	    (let ((match (match-string 1)))
@@ -237,8 +239,8 @@ the scope to headlines matching this string."
   "Check if there are deadlines or scheduled entries after date D."
   (interactive (list (org-read-date)))
   (let* ((case-fold-search nil)
-	 (regexp (org-re-timestamp org-ts-type))
-	 (ts-type org-ts-type)
+	 (regexp (org-re-timestamp org-sparse-tree--current-date-type))
+	 (ts-type org-sparse-tree--current-date-type)
 	 (callback
 	  (lambda ()
 	    (let ((match (match-string 1)))
@@ -261,9 +263,9 @@ the scope to headlines matching this string."
   (interactive (list (org-read-date nil nil nil "Range starts")
 		     (org-read-date nil nil nil "Range end")))
   (let ((case-fold-search nil)
-	(regexp (org-re-timestamp org-ts-type))
+	(regexp (org-re-timestamp org-sparse-tree--current-date-type))
 	(callback
-	 (let ((type org-ts-type))
+	 (let ((type org-sparse-tree--current-date-type))
 	   (lambda ()
 	     (let ((match (match-string 1)))
 	       (and
@@ -301,7 +303,7 @@ d      Show deadlines due within `org-deadline-warning-days'.
 D      Show deadlines and scheduled items between a date range."
   (interactive "P")
   (setq type (or type org-sparse-tree-default-date-type))
-  (setq org-ts-type type)
+  (setq org-sparse-tree--current-date-type type)
   (message "Sparse tree: [r]egexp [t]odo [T]odo-kwd [m]atch [p]roperty
              [d]eadlines [b]efore-date [a]fter-date [D]ates range
              [c]ycle through date types: %s"
