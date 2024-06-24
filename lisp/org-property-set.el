@@ -32,6 +32,11 @@
 (require 'org-priority-common)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
+(defvar org-read-property-name-history nil
+  "Prompt history for `org-read-property-name'.")
+
+(defvar org-read-property-value-history nil
+  "Prompt history for `org-read-property-value'.")
 
 (declare-function org-clock-update-clock-status "org-clock")
 
@@ -308,28 +313,32 @@ Optional argument DEFAULT provides a default value for PROPERTY."
 	 (funcall set-function
 		  prompt allowed nil
 		  (not (get-text-property 0 'org-unrestricted (caar allowed)))
-		  default nil default)
+		  default 'org-read-property-value-history default)
        (let ((all (mapcar #'list
 			  (append (org-property-values property)
 				  (and epom
 				       (org-with-point-at epom
 					 (org-property-values property)))))))
-	 (funcall set-function prompt all nil nil default nil current))))))
+	 (funcall set-function prompt all nil nil default 'org-read-property-value-history current))))))
 
-(defvar org-last-set-property nil)
-(defvar org-last-set-property-value nil)
+(defvar org-last-set-property nil) ; FIXME: Obsoleted. To be removed.
+(defvar org-last-set-property-value nil) ; FIXME: Obsoleted. To be removed.
+
 (defun org-read-property-name ()
   "Read a property name."
   (let ((completion-ignore-case t)
 	(default-prop (or (and (org-at-property-p)
 			       (match-string-no-properties 2))
-			  org-last-set-property)))
-    (org-completing-read
-     (concat "Property"
-	     (if default-prop (concat " [" default-prop "]") "")
-	     ": ")
-     (mapcar #'list (org-buffer-property-keys nil t t))
-     nil nil nil nil default-prop)))
+			  org-last-set-property
+                          (car org-read-property-name-history))))
+    (let ((property
+           (org-completing-read
+            (org-format-prompt "Property" default-prop)
+            (mapcar #'list (org-buffer-property-keys nil t t))
+            nil nil nil 'org-read-property-name-history default-prop)))
+      (unless (org--valid-property-p property)
+        (user-error "Invalid property name: \"%s\"" property))
+      property)))
 
 ;;;###autoload
 (defun org-set-property-and-value (use-last)
@@ -338,9 +347,19 @@ When use-default, don't even ask, just use the last
 \"[PROPERTY]: [value]\" string from the history."
   (interactive "P")
   (let* ((completion-ignore-case t)
+         (org-last-set-property-value
+          (or org-last-set-property-value
+              (and
+               (car org-read-property-name-history)
+               (car org-read-property-value-history)
+               (format "%s: %s"
+                       (car org-read-property-name-history)
+                       (car org-read-property-value-history)))))
 	 (pv (or (and use-last org-last-set-property-value)
 		 (org-completing-read
-		  "Enter a \"[Property]: [value]\" pair: "
+		  (org-format-prompt
+                   "Enter a \"[Property]: [value]\" pair: "
+                   org-last-set-property-value)
 		  nil nil nil nil nil
 		  org-last-set-property-value)))
 	 prop val)
@@ -362,11 +381,6 @@ in the current file.
 Throw an error when trying to set a property with an invalid name."
   (interactive (list nil nil))
   (let ((property (or property (org-read-property-name))))
-    ;; `org-entry-put' also makes the following check, but this one
-    ;; avoids polluting `org-last-set-property' and
-    ;; `org-last-set-property-value' needlessly.
-    (unless (org--valid-property-p property)
-      (user-error "Invalid property name: \"%s\"" property))
     (let ((value (or value (org-read-property-value property)))
 	  (fn (cdr (assoc-string property org-properties-postprocess-alist t))))
       (setq org-last-set-property property)
@@ -386,7 +400,7 @@ Throw an error when trying to set a property with an invalid name."
 	  (props (if cat props0
 		   (delete `("CATEGORY" . ,(org-get-category)) props0)))
 	  (prop (if (< 1 (length props))
-		    (completing-read "Property: " props nil t)
+		    (completing-read "Property: " props nil t nil 'org-read-property-name-history)
 		  (caar props))))
      (list prop)))
   (if (not property)
@@ -402,7 +416,8 @@ This function ignores narrowing, if any."
    (let* ((completion-ignore-case t)
 	  (prop (completing-read
 		 "Globally remove property: "
-		 (mapcar #'list (org-buffer-property-keys)))))
+		 (mapcar #'list (org-buffer-property-keys))
+                 nil nil nil 'org-read-property-name-history)))
      (list prop)))
   (org-with-wide-buffer
    (goto-char (point-min))
