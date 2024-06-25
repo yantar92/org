@@ -29,8 +29,14 @@
 
 (require 'outline)
 
-(defvar org-inhibit-startup nil)        ; Dynamically-scoped param.
-(defvar org-inhibit-startup-visibility-stuff nil) ; Dynamically-scoped param.
+(defvar org-inhibit-startup nil
+  "When non-nil, `org-mode' will skip \"startup\" settings.
+These settings include initial visibility/folding, auto-alignment,
+auto-previews, and minor modes triggered by \"startup\" options: line
+truncation, `org-num-mode', `org-indent-mode', and `org-beamer-mode'.")
+
+(defvar org-inhibit-startup-visibility-stuff nil
+  "When non-nil, `org-mode' will not setup initial visibility.")
 
 (defvar org-mode-loading nil
   "Non-nil during Org mode initialization.")
@@ -58,7 +64,10 @@ The highlights created by `org-latex-preview' always need
   :group 'org-time
   :type 'boolean)
 
-(defvar org-inhibit-highlight-removal nil) ; dynamically scoped param
+(defvar org-inhibit-highlight-removal nil
+  "When non-nil, do not remove overlay highlights from Org buffers.
+This affects table overlays when editing formulas, sparse tree
+highlights, and clock overlays.")
 
 (defvar-local org-keyword-properties nil
   "List of property/value pairs inherited by any entry.
