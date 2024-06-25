@@ -80,7 +80,7 @@ This check for agenda markers in all agenda buffers currently active."
       (when (eq major-mode 'org-agenda-mode)
 	(mapc (lambda (m) (org-check-and-save-marker m beg end))
 	      org-agenda-markers)))))
-(make-obsolete 'org-agenda-save-markers-for-cut-and-paste "no longer user" "9.8")
+(make-obsolete 'org-agenda-save-markers-for-cut-and-paste "no longer used" "9.8")
 
 (defun org-clock-save-markers-for-cut-and-paste (beg end)
   "Save relative positions of markers in region BEG..END.
@@ -100,7 +100,7 @@ markers in `org-clock-history'."
   (org-check-and-save-marker org-clock-interrupted-task beg end)
   (dolist (m org-clock-history)
     (org-check-and-save-marker m beg end)))
-(make-obsolete 'org-clock-save-markers-for-cut-and-paste "no longer user" "9.8")
+(make-obsolete 'org-clock-save-markers-for-cut-and-paste "no longer used" "9.8")
 
 (defun org-remove-empty-overlays-at (pos)
   "Remove outline overlays that do not contain non-white stuff."
@@ -110,7 +110,7 @@ markers in `org-clock-history'."
              "\\S-" (buffer-substring (overlay-start o)
 				     (overlay-end o))))
 	 (delete-overlay o))))
-(make-obsolete 'org-remove-empty-overlays-at "no longer user" "9.8")
+(make-obsolete 'org-remove-empty-overlays-at "no longer used" "9.8")
 
 ;; Use `with-silent-modifications' to ignore cosmetic changes and
 ;; `org-unmodified' to ignore real text modifications.
