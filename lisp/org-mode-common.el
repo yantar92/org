@@ -46,15 +46,6 @@
 This variable is set by `org-before-change-function'.
 `org-table-align' sets it back to nil.")
 
-(defcustom org-self-insert-cluster-for-undo nil
-  "Non-nil means cluster self-insert commands for undo when possible.
-If this is set, then, like in the Emacs command loop, 20 consecutive
-characters will be undone together.
-This is configurable, because there is some impact on typing performance."
-  :group 'org-table
-  :type 'boolean)
-(defvar org-self-insert-command-undo-counter 0)
-
 (defcustom org-remove-highlights-with-change t
   "Non-nil means any change to the buffer will remove temporary highlights.
 \\<org-mode-map>\

@@ -65,6 +65,17 @@
 (make-obsolete 'org-last-set-property-value "unused" "9.8")
 (make-obsolete 'org-last-set-property "unused" "9.8")
 
+(defcustom org-self-insert-cluster-for-undo nil
+  "Non-nil means cluster self-insert commands for undo when possible.
+If this is set, then, like in the Emacs command loop, 20 consecutive
+characters will be undone together.
+This is configurable, because there is some impact on typing performance."
+  :group 'org-table
+  :type 'boolean)
+(defvar org-self-insert-command-undo-counter 0)
+(make-obsolete 'org-self-insert-cluster-for-undo "no longer needed" "9.8")
+(make-obsolete 'org-self-insert-command-undo-counter "no longer needed" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

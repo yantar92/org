@@ -156,17 +156,18 @@ overwritten, and the table is not marked as requiring realignment."
     (org-fold-core-suppress-folding-fix
       (self-insert-command N)
       (when org-auto-align-tags (org-fix-tags-on-the-fly)))
-    (when org-self-insert-cluster-for-undo
-      (if (not (eq last-command 'org-self-insert-command))
-	  (setq org-self-insert-command-undo-counter 1)
-	(if (>= org-self-insert-command-undo-counter 20)
+    (with-no-warnings ; FIXME: Compatibility layer for obsolete variable.
+      (when org-self-insert-cluster-for-undo
+        (if (not (eq last-command 'org-self-insert-command))
 	    (setq org-self-insert-command-undo-counter 1)
-	  (and (> org-self-insert-command-undo-counter 0)
-	       buffer-undo-list (listp buffer-undo-list)
-	       (not (cadr buffer-undo-list)) ; remove nil entry
-	       (setcdr buffer-undo-list (cddr buffer-undo-list)))
-	  (setq org-self-insert-command-undo-counter
-		(1+ org-self-insert-command-undo-counter))))))))
+	  (if (>= org-self-insert-command-undo-counter 20)
+	      (setq org-self-insert-command-undo-counter 1)
+	    (and (> org-self-insert-command-undo-counter 0)
+	         buffer-undo-list (listp buffer-undo-list)
+	         (not (cadr buffer-undo-list)) ; remove nil entry
+	         (setcdr buffer-undo-list (cddr buffer-undo-list)))
+	    (setq org-self-insert-command-undo-counter
+		  (1+ org-self-insert-command-undo-counter)))))))))
 
 ;;;###autoload
 (defun org-delete-backward-char (N)

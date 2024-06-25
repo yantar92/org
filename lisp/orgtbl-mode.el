@@ -458,18 +458,19 @@ overwritten, and the table is not marked as requiring realignment."
 			 (vector last-command-event)))
 		    'self-insert-command)))
       (call-interactively cmd)
-      (if (and org-self-insert-cluster-for-undo
-	       (eq cmd 'self-insert-command))
-	  (if (not (eq last-command 'orgtbl-self-insert-command))
-	      (setq org-self-insert-command-undo-counter 1)
-	    (if (>= org-self-insert-command-undo-counter 20)
-		(setq org-self-insert-command-undo-counter 1)
-	      (and (> org-self-insert-command-undo-counter 0)
-		   buffer-undo-list
-		   (not (cadr buffer-undo-list)) ; remove nil entry
-		   (setcdr buffer-undo-list (cddr buffer-undo-list)))
-	      (setq org-self-insert-command-undo-counter
-		    (1+ org-self-insert-command-undo-counter))))))))
+      (with-no-warnings ; FIXME: Compatibility layer for obsolete variable.
+        (if (and org-self-insert-cluster-for-undo
+	         (eq cmd 'self-insert-command))
+	    (if (not (eq last-command 'orgtbl-self-insert-command))
+	        (setq org-self-insert-command-undo-counter 1)
+	      (if (>= org-self-insert-command-undo-counter 20)
+		  (setq org-self-insert-command-undo-counter 1)
+	        (and (> org-self-insert-command-undo-counter 0)
+		     buffer-undo-list
+		     (not (cadr buffer-undo-list)) ; remove nil entry
+		     (setcdr buffer-undo-list (cddr buffer-undo-list)))
+	        (setq org-self-insert-command-undo-counter
+		      (1+ org-self-insert-command-undo-counter)))))))))
 
 (defun orgtbl-gather-send-defs ()
   "Gather a plist of :name, :transform, :params for each destination before
