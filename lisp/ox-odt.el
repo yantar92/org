@@ -1084,7 +1084,7 @@ specifying the depth of the table."
 </text:table-of-content>"))
 
 (cl-defun org-odt-format-toc-headline
-    (todo _todo-type priority text tags
+    (todo todo-type priority text tags
 	  &key _level section-number headline-label &allow-other-keys)
   (format "<text:a xlink:type=\"simple\" xlink:href=\"#%s\">%s</text:a>"
 	  headline-label
@@ -1093,7 +1093,7 @@ specifying the depth of the table."
 	   (and section-number (concat section-number ". "))
 	   ;; Todo.
 	   (when todo
-	     (let ((style (if (member todo org-done-keywords)
+	     (let ((style (if (eq todo-type 'done)
 			      "OrgDone" "OrgTodo")))
 	       (format "<text:span text:style-name=\"%s\">%s</text:span> "
 		       style todo)))
