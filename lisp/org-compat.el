@@ -1035,11 +1035,11 @@ a HTML file."
 	 (resize-mini-windows nil)) ;Fix Emacs flicker when creating image.
     (dolist (program programs)
       (org-check-external-command program error-message))
-    (if (eq fg 'default)
+    (if (memq fg '(default auto))
 	(setq fg (org-latex-color :foreground))
       (setq fg (org-latex-color-format fg)))
     (setq bg (cond
-	      ((eq bg 'default) (org-latex-color :background))
+	      ((memq bg '(default auto)) (org-latex-color :background))
 	      ((string= bg "Transparent") nil)
 	      (t (org-latex-color-format bg))))
     ;; Remove TeX \par at end of snippet to avoid trailing space.
