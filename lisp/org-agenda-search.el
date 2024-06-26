@@ -984,7 +984,7 @@ keywords.")
 			  (t org-not-done-regexp))))
 	 marker priority urgency category level tags todo-state
 	 ts-date ts-date-type ts-date-pair
-	 ee txt beg end inherited-tags todo-state-end-pos
+	 ee txt beg end inherited-tags
          effort effort-minutes)
     (goto-char (point-min))
     (while (re-search-forward regexp nil t)
@@ -993,8 +993,7 @@ keywords.")
 	  (forward-line 0)
 	  (org-agenda-skip)
 	  (setq beg (point) end (save-excursion (outline-next-heading) (point)))
-	  (unless (and (setq todo-state (org-get-todo-state))
-		       (setq todo-state-end-pos (match-end 2)))
+	  (unless (setq todo-state (org-get-todo-state))
 	    (goto-char end)
 	    (throw :skip nil))
 	  (when (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item end)
@@ -1038,7 +1037,7 @@ keywords.")
 	  'type (concat "todo" ts-date-type) 'todo-state todo-state)
 	(push txt ee)
 	(if org-agenda-todo-list-sublevels
-	    (goto-char todo-state-end-pos)
+	    (goto-char end)
 	  (org-end-of-subtree 'invisible))))
     (nreverse ee)))
 
