@@ -72,16 +72,6 @@ The highlights created by `org-latex-preview' always need
 This affects table overlays when editing formulas, sparse tree
 highlights, and clock overlays.")
 
-(defvar-local org-keyword-properties nil
-  "List of property/value pairs inherited by any entry.
-
-Valid for the current buffer.  This variable is populated from
-PROPERTY keywords.
-
-Note that properties are defined also in property drawers.
-Properties defined there take precedence over properties defined
-as keywords.")
-
 (defvar-local org-done-keywords nil)
 (defvar-local org-todo-heads nil)
 (defvar-local org-todo-sets nil)

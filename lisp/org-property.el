@@ -34,16 +34,6 @@
 (require 'org-time)
 (declare-function org-inlinetask-in-task-p "org-inlinetask")
 
-(defvar-local org-keyword-properties nil
-  "List of property/value pairs inherited by any entry.
-
-Valid for the current buffer.  This variable is populated from
-PROPERTY keywords.
-
-Note that properties are defined also in property drawers.
-Properties defined there take precedence over properties defined
-as keywords.")
-
 (defconst org-special-properties
   '("ALLTAGS" "BLOCKED" "CLOCKSUM" "CLOCKSUM_T" "CLOSED" "DEADLINE" "FILE"
     "ITEM" "PRIORITY" "SCHEDULED" "TAGS" "TIMESTAMP" "TIMESTAMP_IA" "TODO")

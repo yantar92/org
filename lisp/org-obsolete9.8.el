@@ -76,6 +76,17 @@ This is configurable, because there is some impact on typing performance."
 (make-obsolete 'org-self-insert-cluster-for-undo "no longer needed" "9.8")
 (make-obsolete 'org-self-insert-command-undo-counter "no longer needed" "9.8")
 
+(defvar-local org-keyword-properties nil
+  "List of property/value pairs inherited by any entry.
+
+Valid for the current buffer.  This variable is populated from
+PROPERTY keywords.
+
+Note that properties are defined also in property drawers.
+Properties defined there take precedence over properties defined
+as keywords.")
+(make-obsolete 'org-keyword-properties "Use (org-entry-get (org-element-org-data) \"PROPERTY\") instead" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

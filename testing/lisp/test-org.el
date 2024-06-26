@@ -3278,19 +3278,19 @@ Let’s stop here
    (equal "foo=1"
 	  (org-test-with-temp-text "#+PROPERTY: var foo=1"
 	    (org-mode-restart)
-	    (cdr (assoc "var" org-keyword-properties)))))
+            (org-entry-get (org-element-org-data) "VAR"))))
   (should
    (equal
     "foo=1 bar=2"
     (org-test-with-temp-text "#+PROPERTY: var foo=1\n#+PROPERTY: var+ bar=2"
       (org-mode-restart)
-      (cdr (assoc "var" org-keyword-properties)))))
+      (org-entry-get (org-element-org-data) "VAR"))))
   (should
    (equal
     "foo=1 bar=2"
     (org-test-with-temp-text "#+PROPERTY: var foo=1\n#+PROPERTY: VAR+ bar=2"
       (org-mode-restart)
-      (cdr (assoc "var" org-keyword-properties)))))
+      (org-entry-get (org-element-org-data) "VAR"))))
   ;; ARCHIVE keyword.
   (should
    (equal "%s_done::"
@@ -3307,7 +3307,7 @@ Let’s stop here
    (equal "test"
 	  (org-test-with-temp-text "#+CATEGORY: test"
 	    (org-mode-restart)
-	    (cdr (assoc "CATEGORY" org-keyword-properties)))))
+	    (org-entry-get (org-element-org-data) "CATEGORY"))))
   ;; COLUMNS keyword.
   (should
    (equal "%25ITEM %TAGS %PRIORITY %TODO"
@@ -3393,7 +3393,7 @@ Let’s stop here
 	  (org-test-with-temp-text
 	      (format "#+SETUPFILE: \"%s/examples/setupfile.org\"" org-test-dir)
 	    (org-mode-restart)
-	    (cdr (assoc "a" org-keyword-properties))))))
+	    (org-entry-get (org-element-org-data) "A")))))
 
 (ert-deftest test-org/collect-keywords ()
   "Test `org-collect-keywords'."
