@@ -537,10 +537,12 @@ This function may modify the match data."
    (t "???")))
 
 (defun org-entry-is-todo-p ()
-  (member (org-get-todo-state) org-not-done-keywords))
+  "Return non-nil when current entry is marked with not-done todo keyword."
+  (eq 'todo (org-element-property :todo-type (org-headline-at-point))))
 
 (defun org-entry-is-done-p ()
-  (member (org-get-todo-state) org-done-keywords))
+  "Return non-nil when current entry is marked with done keyword."
+  (eq 'done (org-element-property :todo-type (org-headline-at-point))))
 
 (defun org-get-todo-state ()
   "Return the TODO keyword of the current subtree."
