@@ -2314,13 +2314,14 @@ DESC is the anchor text.  INFO is the info plist."
 
 ;;;; Todo
 
-(defun org-html--todo (todo info)
+(defun org-html--todo (todo todo-type info)
   "Format TODO keywords into HTML.
 TODO is the keyword, as a string.
+TODO-TYPE is either symbol `todo' or symbol `done'.
 INFO is the info plist."
   (when todo
     (format "<span class=\"%s %s%s\">%s</span>"
-	    (if (member todo org-done-keywords) "done" "todo")
+	    (if (eq todo-type 'done) "done" "todo")
 	    (or (plist-get info :html-todo-kwd-class-prefix) "")
 	    (org-html-fix-class-name todo)
 	    todo)))
@@ -2863,11 +2864,11 @@ holding contextual information."
                   (org-html--container headline info)))))))
 
 (defun org-html-format-headline-default-function
-    (todo _todo-type priority text tags info)
+    (todo todo-type priority text tags info)
   "Default format function for a headline.
 See `org-html-format-headline-function' for details and the
 description of TODO, PRIORITY, TEXT, TAGS, and INFO arguments."
-  (let ((todo (org-html--todo todo info))
+  (let ((todo (org-html--todo todo todo-type info))
 	(priority (org-html--priority priority info))
 	(tags (org-html--tags tags info)))
     (concat todo (and todo " ")
