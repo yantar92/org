@@ -620,6 +620,9 @@ It also provides the following special moves for convenience:
     ;; Return moves left.
     arg))
 
+(defvar org--single-lines-list-is-paragraph t
+  "Treat plain lists with single line items as a whole paragraph.")
+
 (defun org--paragraph-at-point ()
   "Return paragraph, or equivalent, element at point.
 
@@ -629,7 +632,8 @@ following special cases:
 - treat table rows (resp. node properties) as the table
   \(resp. property drawer) containing them.
 
-- treat plain lists with an item every line as a whole.
+- treat plain lists with an item every line as a whole, when
+  `org--single-lines-list-is-paragraph' is t (default).
 
 - treat consecutive keywords, clocks, and diary-sexps as a single
   block.

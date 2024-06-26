@@ -44,9 +44,6 @@ truncation, `org-num-mode', `org-indent-mode', and `org-beamer-mode'.")
 (defvar org-window-configuration nil
   "Used in various places to store a window configuration.")
 
-(defvar org--single-lines-list-is-paragraph t
-  "Treat plain lists with single line items as a whole paragraph.")
-
 (defvar org-table-may-need-update t
   "Indicates that a table might need an update.
 This variable is set by `org-before-change-function'.

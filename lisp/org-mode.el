@@ -631,6 +631,7 @@ Respect keys that are already there."
   (setq-local fill-paragraph-function 'org-fill-paragraph)
   (setq-local fill-forward-paragraph-function
               (lambda (&optional arg)
+                (defvar org--single-lines-list-is-paragraph) ; org-move.el
                 (let ((org--single-lines-list-is-paragraph nil))
                   (org-forward-paragraph arg))))
   (setq-local auto-fill-inhibit-regexp nil)
