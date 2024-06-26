@@ -44,6 +44,12 @@ truncation, `org-num-mode', `org-indent-mode', and `org-beamer-mode'.")
 (defvar org-window-configuration nil
   "Used in various places to store a window configuration.")
 
+;; FIXME: We should separate alignment of table text and visual
+;; alignment dependent on the buffer display.  The text alignment is
+;; useful when reading Org files as plain text, while visual alignment
+;; only makes sense in Emacs and should ideally be handled by
+;; font-lock.  Once separated, we can limit usage of this variable to
+;; org-table-* internals.
 (defvar org-table-may-need-update t
   "Indicates that a table might need an update.
 This variable is set by `org-before-change-function'.
