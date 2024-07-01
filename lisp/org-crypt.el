@@ -113,7 +113,7 @@ This setting can be overridden in the CRYPTKEY property."
 	  (const :tag "Symmetric encryption" nil)))
 
 (defcustom org-crypt-disable-auto-save 'ask
-  "What org-decrypt should do if `auto-save-mode' is enabled.
+  "What org-crypt should do if `auto-save-mode' is enabled.
 
 t        : Disable `auto-save-mode' for the current buffer
            prior to decrypting an entry.
@@ -132,7 +132,7 @@ nil      : Leave `auto-save-mode' enabled.
   :group 'org-crypt
   :version "24.1"
   :type '(choice (const :tag "Always"  t)
-                 (const :tag "Never"   nil)
+                 (const :tag "Never (not recommended)"   nil)
                  (const :tag "Ask"     ask)
                  (const :tag "Encrypt" encrypt)))
 
