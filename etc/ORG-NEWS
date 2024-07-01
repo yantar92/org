@@ -114,6 +114,17 @@ to dynamically generate the content of the resulting ~<head>~ tag in
 the resulting HTML document.
 
 ** Miscellaneous
+*** =org-crypt= now caches both encrypted and decrypted text during session
+
+Previously, =org-crypt= automatically cached encrypted version of the
+text in ~org-decrypt-entry~.  This way, re-encryption did not require
+repetitive query of the encryption key/passort.
+
+Now, it also happens when text is being encrypted -
+~org-encrypt-entry~ caches the decrypted version of the text in
+memory, while current Org buffer is open.  This way, re-decryption
+does not require repetitive query as well.
+
 *** ~org-refile~ now saves current position to Org mark ring when jumping to heading
 
 When ~org-refile~ is called with =C-u= or =C-u C-u= prefix argument

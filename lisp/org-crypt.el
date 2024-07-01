@@ -235,13 +235,22 @@ Assume `epg-context' is set."
 		(key (get-text-property 0 'org-crypt-key contents))
 		(checksum (get-text-property 0 'org-crypt-checksum contents)))
 	   (condition-case err
-	       (insert
-		;; Text and key have to be identical, otherwise we
-		;; re-crypt.
-		(if (and (equal crypt-key key)
-			 (string= checksum (sha1 contents)))
-		    (get-text-property 0 'org-crypt-text contents)
-		  (epg-encrypt-string epg-context contents crypt-key)))
+               (let ((encrypted-text
+                      ;; Text and key have to be identical, otherwise we
+	              ;; re-crypt.
+	              (if (and (equal crypt-key key)
+		               (string= checksum (sha1 contents)))
+		          (get-text-property 0 'org-crypt-text contents)
+		        (epg-encrypt-string epg-context contents crypt-key))))
+	         (insert encrypted-text)
+                 (backward-char) ; make sure that we are not at the next heading
+                 (pcase (org-at-encrypted-entry-p)
+                   (`(,beg . ,end)
+                    (let ((encrypted-text (org-crypt--encrypted-text beg end)))
+                      (add-text-properties
+                       beg end
+                       `( org-crypt-checksum ,(sha1 encrypted-text)
+                          org-crypt-text ,contents))))))
 	     ;; If encryption failed, make sure to insert back entry
 	     ;; contents in the buffer.
 	     (error
@@ -272,7 +281,10 @@ Assume `epg-context' is set."
 	      (encrypted-text (org-crypt--encrypted-text beg end))
 	      (decrypted-text
 	       (decode-coding-string
-		(epg-decrypt-string epg-context encrypted-text)
+                (if (equal (sha1 encrypted-text)
+                           (get-text-property beg 'org-crypt-checksum))
+                    (get-text-property beg 'org-crypt-text)
+		  (epg-decrypt-string epg-context encrypted-text))
 		'utf-8))
               origin-marker)
 	 ;; Delete region starting just before point, because the
