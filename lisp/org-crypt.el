@@ -191,27 +191,29 @@ check whether it's enabled, and decide what to do about it.
 
 See `org-crypt-disable-auto-save'."
   (when buffer-auto-save-file-name
-    (cond
-     ((or
-       (eq org-crypt-disable-auto-save t)
-       (and
-	(eq org-crypt-disable-auto-save 'ask)
-	(y-or-n-p "`org-decrypt': auto-save-mode may cause leakage.  Disable it for current buffer? ")))
-      (message "org-decrypt: Disabling auto-save-mode for %s"
-               (or (buffer-file-name) (current-buffer)))
-      ;; The argument to auto-save-mode has to be "-1", since
-      ;; giving a "nil" argument toggles instead of disabling.
-      (auto-save-mode -1))
-     ((eq org-crypt-disable-auto-save nil)
-      (message "org-decrypt: Decrypting entry with auto-save-mode enabled.  This may cause leakage."))
-     ((eq org-crypt-disable-auto-save 'encrypt)
-      (message "org-decrypt: Enabling re-encryption on auto-save.")
-      (add-hook 'auto-save-hook
-		(lambda ()
-		  (message "org-crypt: Re-encrypting all decrypted entries due to auto-save.")
-		  (org-encrypt-entries))
-		nil t))
-     (t nil))))
+    (let ((org-crypt-disable-auto-save
+           (if (and (eq org-crypt-disable-auto-save 'ask)
+                    (y-or-n-p "`org-decrypt': auto-save-mode may cause leakage.  Disable it for current buffer? "))
+               t org-crypt-disable-auto-save)))
+      (pcase org-crypt-disable-auto-save
+        (`t
+         (message "org-decrypt: Disabling auto-save-mode for %s%s"
+                  (or (buffer-file-name) (current-buffer))
+                  (if (eq org-crypt-disable-auto-save 'ask)
+                      "\nCustomize `org-crypt-disable-auto-save' to set the default answer"
+                    ""))
+         ;; The argument to auto-save-mode has to be "-1", since
+         ;; giving a "nil" argument toggles instead of disabling.
+         (auto-save-mode -1))
+        (`nil
+         (message "org-decrypt: Decrypting entry with auto-save-mode enabled.  This may cause leakage."))
+        (`encrypt
+         (unless (memq #'org-crypt--encrypt-entries-all-buffers auto-save-hook)
+           (message "org-decrypt: Enabling re-encryption on auto-save."))
+         (add-hook 'auto-save-hook
+                   #'org-crypt--encrypt-entries-all-buffers
+		   nil t))
+        (other-value (error "Incorrect value of `org-crypt-disable-auto-save': %S" other-value))))))
 
 (defun org-crypt-key-for-heading ()
   "Return the encryption key(s) for the current heading.
@@ -373,6 +375,15 @@ encrypted entry."
      'org-decrypt-entry
      (cdr (org-make-tags-matcher org-crypt-tag-matcher))
      org--matcher-tags-todo-only)))
+
+(defun org-crypt--encrypt-entries-all-buffers ()
+  "Call `org-crypt--encrypt-and-mark-entries' in all Org buffers.
+Do not throw errors.  Do not mark headings for future auto-decryption."
+  (message "org-crypt: Re-encrypting all decrypted entries due to auto-save.")
+  (dolist (buf (org-buffer-list))
+    (with-current-buffer buf
+      (with-demoted-errors "%S"
+        (org-crypt--encrypt-and-mark-entries 'no-mark)))))
 
 (defun org-crypt--encrypt-and-mark-entries (&optional no-mark)
   "Encrypt entries and mark them with `org-crypt-auto-encrypted' property.
