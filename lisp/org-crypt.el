@@ -327,12 +327,23 @@ Assume `epg-context' is set."
 (defvar org--matcher-tags-todo-only)
 
 ;;;###autoload
-(defun org-encrypt-entries ()
-  "Encrypt all top-level entries in the current buffer."
+(defun org-encrypt-entries (&optional hook-function)
+  "Encrypt all the entries matching `org-crypt-tag-matcher' in buffer.
+When optional argument HOOK-FUNCTION is non-nil, it should be a function
+accepting 0 arguments.  The function will be called with point at
+encrypted entry."
   (interactive)
-  (let ((org--matcher-tags-todo-only nil))
+  (let* ((org--matcher-tags-todo-only nil))
     (org-scan-tags
-     'org-encrypt-entry
+     (lambda ()
+       (org-encrypt-entry)
+       (when hook-function (funcall hook-function))
+       ;; FIXME: Ad-hoc optimization to speed-up encryption when
+       ;; using defaults.  It is difficult to generalize it to
+       ;; completely arbitrary `org-crypt-tag-matcher'.
+       (when (equal org-crypt-tag-matcher "crypt")
+         (re-search-forward ":crypt:" nil 'move)
+         (org-back-to-heading)))
      (cdr (org-make-tags-matcher org-crypt-tag-matcher))
      org--matcher-tags-todo-only)))
 

@@ -88,6 +88,10 @@ bibliography format requires them to be written in title-case.
 ** New functions and changes in function arguments
 
 # This also includes changes in function behavior from Elisp perspective.
+*** ~org-encrypt-entries~ accepts a new optional argument ~HOOK-FUNCTION~
+
+The new optional argument is a function to be evaluated with point at
+encrypted entry.
 
 *** ob-sqlite: Added ability to open a database in readonly mode
 
