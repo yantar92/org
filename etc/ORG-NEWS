@@ -88,6 +88,11 @@ bibliography format requires them to be written in title-case.
 ** New functions and changes in function arguments
 
 # This also includes changes in function behavior from Elisp perspective.
+*** ~org-crypt-use-before-save-magic~ accepts a new optional argument ~REMOVE-HOOK~
+
+The new optional argument allows to disable the "before save" hooks
+that encrypt entries when writing to disk.
+
 *** ~org-encrypt-entries~ accepts a new optional argument ~HOOK-FUNCTION~
 
 The new optional argument is a function to be evaluated with point at
@@ -118,6 +123,14 @@ to dynamically generate the content of the resulting ~<head>~ tag in
 the resulting HTML document.
 
 ** Miscellaneous
+*** ~org-crypt-use-before-save-magic~ no longer encrypts everything in current buffer
+
+Previously, ~org-crypt-use-before-save-magic~ encrypted all the
+matching headings in Emacs buffer before saving buffer to disk.
+Now, fully encrypted Org file is only written to disk, while the
+headings that were decrypted before save will remain decrypted within
+Emacs buffer.
+
 *** =org-crypt= now caches both encrypted and decrypted text during session
 
 Previously, =org-crypt= automatically cached encrypted version of the

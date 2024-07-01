@@ -357,12 +357,57 @@ encrypted entry."
      (cdr (org-make-tags-matcher org-crypt-tag-matcher))
      org--matcher-tags-todo-only)))
 
+(defun org-crypt--encrypt-and-mark-entries (&optional no-mark)
+  "Encrypt entries and mark them with `org-crypt-auto-encrypted' property.
+When optional argument NO-MARK is non-nil, do not mark.
+Return nil."
+  (let ((modified-flag (buffer-modified-p)))
+    (condition-case err
+        (unwind-protect
+            (org-encrypt-entries
+             (lambda ()
+               (unless no-mark
+                 (pcase (org-at-encrypted-entry-p)
+                   (`(,beg . ,end)
+                    (put-text-property beg end 'org-crypt-auto-encrypted t))))))
+          (set-buffer-modified-p modified-flag))
+      (error
+       ;; Disable auto-save.
+       (auto-save-mode -1)
+       (error "org-crypt: Encryption failed.  Not saving the buffer.\nError: %s"
+              (error-message-string err)))))
+  ;; Return nil to continue saving as usual.
+  nil)
+(defun org-crypt--decrypt-marked-entries ()
+  "Decrypt all the entries marked with `org-crypt-auto-encrypted' property."
+  (let ((modified-flag (buffer-modified-p)))
+    (org-with-wide-buffer
+     (goto-char (point-min))
+     (while (not (eobp))
+       (when (get-text-property (point) 'org-crypt-auto-encrypted)
+         (org-decrypt-entry))
+       (goto-char (next-single-char-property-change (point) 'org-crypt-auto-encrypted))))
+    (set-buffer-modified-p modified-flag)))
+
+(defun org-crypt--setup-save-hooks ()
+  "Setup encryption before saving buffer to disk."
+  (add-hook 'write-contents-functions #'org-crypt--encrypt-and-mark-entries nil t)
+  (add-hook 'after-save-hook #'org-crypt--decrypt-marked-entries nil t))
+
 ;;;###autoload
-(defun org-crypt-use-before-save-magic ()
-  "Add a hook to automatically encrypt entries before a file is saved to disk."
-  (add-hook
-   'org-mode-hook
-   (lambda () (add-hook 'before-save-hook 'org-encrypt-entries nil t))))
+(defun org-crypt-use-before-save-magic (&optional remove-hook)
+  "Add hooks to automatically encrypt entries before a file is saved to disk.
+When REMOVE-HOOK is non-nil, remove the hook instead."
+  (let ((setup
+         (if remove-hook
+             (lambda ()
+               (remove-hook 'write-contents-functions #'org-crypt--encrypt-and-mark-entries t)
+               (remove-hook 'after-save-hook #'org-crypt--decrypt-marked-entries t))
+           #'org-crypt--setup-save-hooks)))
+    (dolist (buf (org-buffer-list))
+      (with-current-buffer buf
+        (funcall setup)))
+    (add-hook 'org-mode-hook setup)))
 
 (add-hook 'org-fold-reveal-start-hook 'org-decrypt-entry)
 
