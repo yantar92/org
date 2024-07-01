@@ -112,6 +112,23 @@ This setting can be overridden in the CRYPTKEY property."
 	  (string :tag "Public key(s) matching")
 	  (const :tag "Symmetric encryption" nil)))
 
+(defun org-crypt--set-encrypt-on-save (var encrypt?)
+  "Set function for `org-crypt-encrypt-on-save'."
+  (set-default-toplevel-value var encrypt?)
+  (eval-after-load "org-crypt"
+    '(org-crypt-use-before-save-magic (not encrypt?))))
+
+(defcustom org-crypt-encrypt-on-save t
+  "When non-nil, write encrypted entries to disk.
+More specifically, non-nil will arrange encrypting all the entries that
+match `org-crypt-tag-matcher' before writing buffer to disk.  Then,
+these entries will be decrypted back, so that they state the same
+inside Org buffer."
+  :group 'org-crypt
+  :set #'org-crypt--set-encrypt-on-save
+  :type 'boolean
+  :package-version '(Org . "9.8"))
+
 (defcustom org-crypt-disable-auto-save 'ask
   "What org-crypt should do if `auto-save-mode' is enabled.
 

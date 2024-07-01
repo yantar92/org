@@ -17,6 +17,12 @@ Please send Org bug reports to mailto:emacs-orgmode@gnu.org.
 # Here, we list the *most important* changes and changes that _likely_
 # require user action for most Org mode users.
 # Sorted from most important to least important.
+*** ~org-crypt~ now encrypts entries on save by default
+
+Previously, users had to call ~org-crypt-use-before-save-magic~
+manually to archive this.  Now, auto-encryption is enabled by default.
+
+New ~org-crypt-encrypt-on-save~ option controls auto-encryption.
 
 *** Org mode may throw an error when attempting to include remote unsafe resource noninteractively
 
@@ -46,6 +52,11 @@ or newer.
 # Chanes deadling with changing default values of customizations,
 # adding new customizations, or changing the interpretation of the
 # existing customizations.
+*** New option ~org-crypt-encrypt-on-save~ (defaults to t)
+
+Previously, ~org-crypt-use-before-save-magic~ had to be called manually.
+Now, users can customize ~org-crypt-encrypt-on-save~ option to
+enable/disable auto-encryption when writing to disk.
 
 *** Allow disabling macro replacement during export
 
