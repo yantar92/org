@@ -632,21 +632,16 @@ See also `org-scan-tags'."
     ;; Get a new match request, with completion against the global
     ;; tags table and the local tags in current buffer.
     (require 'org-tags)
-    (defvar org-last-tags-completion-table)
     (defvar crm-separator) ; crm.el
-    (let ((org-last-tags-completion-table
-	   (org--settings-add-to-alist
+    (setq match
+	  (completing-read-multiple
+	   "Match: "
+           (org--settings-add-to-alist
             (when (derived-mode-p 'org-mode)
 	      (org-get-buffer-tags))
 	    (unless only-local-tags
-	      (org-global-tags-completion-table))))
-          ;; Used by `completing-read-multiple'
-          (crm-separator "[-+:&,|]"))
-      (setq match
-	    (completing-read-multiple
-	     "Match: "
-             org-last-tags-completion-table
-             nil nil nil 'org-tags-history))))
+	      (org-global-tags-completion-table)))
+           nil nil nil 'org-tags-history)))
 
   (let* ((match0 match)
          (opre "[<=>]=?\\|[!/]=\\|<>")

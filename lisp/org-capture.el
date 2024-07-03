@@ -1899,19 +1899,18 @@ Expansion occurs in a temporary Org mode buffer."
 		          ((or "G" "g")
                            (require 'crm)
                            (defvar crm-separator)
-		           (let* ((org-last-tags-completion-table
-			           (org-global-tags-completion-table
-			            (cond ((equal key "G") (org-agenda-files))
-				          (file (list file))
-				          (t nil))))
-			          (ins (mapconcat
-				        #'identity
-				        (let ((crm-separator "[ \t]*:[ \t]*"))
-                                          (completing-read-multiple
-				           (if prompt (concat prompt ": ") "Tags: ")
-				           org-last-tags-completion-table nil nil nil
-				           'org-tags-history))
-				        ":")))
+		           (let ((ins (mapconcat
+				       #'identity
+				       (let ((crm-separator "[ \t]*:[ \t]*"))
+                                         (completing-read-multiple
+				          (if prompt (concat prompt ": ") "Tags: ")
+				          (org-global-tags-completion-table
+			                   (cond ((equal key "G") (org-agenda-files))
+				                 (file (list file))
+				                 (t nil)))
+                                          nil nil nil
+				          'org-tags-history))
+				       ":")))
 		             (when (org-string-nw-p ins)
                                (push (concat ":" ins ":") strings-all)
 			       (unless (eq (char-before) ?:) (insert ":"))

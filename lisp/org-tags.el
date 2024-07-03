@@ -211,9 +211,6 @@ instead of the agenda files."
   "Tag alist to be used for tag completion by `org-set-tags-command'.
 When this variable is nil, fall back to user settings.")
 
-(defvar org-last-tags-completion-table nil
-  "The last used completion table for tags.")
-
 (defun org-local-tags-completion-table ()
   "Return the list of all tags for completion in current Org buffer.
 
@@ -229,17 +226,19 @@ all the tags in Org agenda files, in addition to the above."
          (or org-overriding-tag-alist
              (org-local-tags-alist)
              (org-get-buffer-tags))))
-    (setq org-last-tags-completion-table
-          (append
-           ;; Put local tags in front.
-           local-table
-           (cl-set-difference
-	    (org--settings-add-to-alist
-	     (and org-complete-tags-always-offer-all-agenda-tags
-		  (org-global-tags-completion-table
-		   (org-agenda-files)))
-	     local-table)
-            local-table)))))
+    ;; FIXME: `org-last-tags-completion-table' is obsolete.
+    (with-no-warnings
+      (setq org-last-tags-completion-table
+            (append
+             ;; Put local tags in front.
+             local-table
+             (cl-set-difference
+	      (org--settings-add-to-alist
+	       (and org-complete-tags-always-offer-all-agenda-tags
+		    (org-global-tags-completion-table
+		     (org-agenda-files)))
+	       local-table)
+              local-table))))))
 
 (defvar org-tags-overlay (make-overlay 1 1)
   "Overlay used to display currently selected tags.
@@ -323,7 +322,7 @@ This function is for interactive use only; in Lisp code use
 		     (mapconcat #'identity
                                 (completing-read-multiple
 			         "Tags: "
-			         org-last-tags-completion-table
+			         table
 			         nil nil (org-make-tag-string current-tags)
 			         'org-tags-history)
                                 ":"))))))
@@ -400,15 +399,15 @@ If ONOFF is `on' or `off', don't toggle but set to this state."
 This works in the agenda, and also in an Org buffer."
   (interactive
    (list (region-beginning) (region-end)
-	 (let ((org-last-tags-completion-table
-		(if (derived-mode-p 'org-mode)
-		    (org--settings-add-to-alist
-		     (org-get-buffer-tags)
-		     (org-global-tags-completion-table))
-		  (org-global-tags-completion-table))))
-	   (completing-read
-	    "Tag: " org-last-tags-completion-table nil nil nil
-	    'org-tags-history))
+	 (completing-read
+	  "Tag: "
+          (if (derived-mode-p 'org-mode)
+	      (org--settings-add-to-alist
+	       (org-get-buffer-tags)
+	       (org-global-tags-completion-table))
+	    (org-global-tags-completion-table))
+          nil nil nil
+	  'org-tags-history)
 	 (progn
 	   (message "[s]et or [r]emove? ")
 	   (equal (read-char-exclusive) ?r))))

@@ -240,6 +240,9 @@ and the value in `cadr'."
   (get-text-property (- (line-end-position) n) property))
 (make-obsolete 'org-get-at-eol "no longer used" "9.8")
 
+(defvar org-last-tags-completion-table nil
+  "The last used completion table for tags.")
+(make-obsolete 'org-last-tags-completion-table "unused" "9.8")
 (defun org-tags-completion-function (string _predicate &optional flag)
   "Complete tag STRING.
 FLAG specifies the type of completion operation to perform.  This
