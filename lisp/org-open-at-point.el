@@ -53,8 +53,6 @@
 See the docstring of `org-open-file' for details."
   (interactive "e")
   (mouse-set-point ev)
-  (when (eq major-mode 'org-agenda-mode)
-    (org-agenda-copy-local-variable 'org-link-abbrev-alist-local))
   (org-open-at-point))
 
 (defvar org-window-config-before-follow-link nil

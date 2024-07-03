@@ -369,10 +369,10 @@ related expressions."
 		  (push (cons name value) store)))))
 	  (setq org-table-formula-constants-local store))
 	;; Link abbreviations.
-        ;; FIXME: This variable should probably be obsoleted.  It is
-        ;; no longer used in Org code.
-        (setq org-link-abbrev-alist-local
-              (org-element-property :link-abbrevs org-data))
+        ;; FIXME: `org-link-abbrev-alist-local' is obsolete
+        (with-no-warnings
+          (setq org-link-abbrev-alist-local
+                (org-element-property :link-abbrevs org-data)))
 	;; Priorities.
 	(let ((value (org-element-property :PRIORITIES org-data)))
 	  (pcase (and value (split-string value))

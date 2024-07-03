@@ -88,10 +88,6 @@ provided in `org-todo-keywords', #+TODO, #+SEQ_TODO, or #+TYP_TODO
 in-buffer keywords (see `org-set-regexps-and-options').
 This variable is ignored when a given heading has LOGGING property.")
 
-(defvar-local org-link-abbrev-alist-local nil
-  "Buffer-local version of `org-link-abbrev-alist', which see.
-The value of this is taken from the LINK keywords.")
-
 ;; FIXME: Org parser depends on the syntax table implicitly.  We may
 ;; consider moving this table to Org parser and even defining it
 ;; without inheritance to make Org syntax more deterministic.

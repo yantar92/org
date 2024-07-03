@@ -5118,8 +5118,7 @@ Abbreviations are defined in `org-link-abbrev-alist'."
                    (org-display-warning
                     (format "Disabling link abbrev %s <- %s after expansion failure: %S"
                             rpl link (error-message-string err)))
-                   (setq org-link-abbrev-alist-local (delete as org-link-abbrev-alist-local)
-	                 org-link-abbrev-alist (delete as org-link-abbrev-alist))
+                   (setq org-link-abbrev-alist (delete as org-link-abbrev-alist))
                    link))))
           ;; Drop any potentially dangerous text properties like
           ;; `modification-hooks' that may be used as an attack vector.
@@ -5148,8 +5147,7 @@ Abbreviations are defined in `org-link-abbrev-alist'."
                   (format "Disabling unsafe link abbrev: %s
 You may mark function safe via (put '%s 'org-link-abbrev-safe t)"
                           rpl (match-string 1 rpl)))
-                 (setq org-link-abbrev-alist-local (delete as org-link-abbrev-alist-local)
-                       org-link-abbrev-alist (delete as org-link-abbrev-alist))
+                 (setq org-link-abbrev-alist (delete as org-link-abbrev-alist))
                  link
                  )))
             ((string-match "%s" rpl) (replace-match (or tag "") t t rpl))

@@ -139,6 +139,11 @@ This variable takes into consideration `org-tag-alist',
 (defvar-local org-tag-groups-alist nil)
 (make-obsolete 'org-tag-groups-alist "Use (org-tag-alist-to-groups (org-local-tags-alist)) instead" "9.8")
 
+(defvar-local org-link-abbrev-alist-local nil
+  "Buffer-local version of `org-link-abbrev-alist', which see.
+The value of this is taken from the LINK keywords.")
+(make-obsolete 'org-link-abbrev-alist-local "Use (org-element-property :link-abbrevs (org-element-org-data)) instead" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"
