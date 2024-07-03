@@ -370,7 +370,15 @@ A Lisp caller can specify CHAR.  EXCLUDE means that the new tag
 should be used to exclude the search - the interactive user can
 also press `-' or `+' to switch between filtering and excluding."
   (interactive "P")
-  (let* ((alist org-tag-alist-for-agenda)
+  (let* ((alist (org-local-tags-alist)) ; global tag defaults
+         (alist (dolist (file org-agenda-contributing-files alist)
+                  (with-current-buffer (org-get-agenda-file-buffer file)
+                    (setq alist
+		          (org--settings-add-to-alist
+                           (when-let ((tags (org-element-property :TAGS (org-element-org-data))))
+                             (org-tag-string-to-alist
+	                      (mapconcat #'identity tags "\n")))
+                           alist))))) ; per-file tags
 	 (seen-chars nil)
 	 (tag-chars (mapconcat
 		     (lambda (x) (if (and (not (symbolp (car x)))
@@ -380,7 +388,7 @@ also press `-' or `+' to switch between filtering and excluding."
 				  (push (cdr x) seen-chars)
 				  (char-to-string (cdr x)))
 			      ""))
-		     org-tag-alist-for-agenda ""))
+		     alist ""))
 	 (valid-char-list (append '(?\t ?\r ?\\ ?. ?\s ?q)
 				  (string-to-list tag-chars)))
 	 (exclude (or exclude (equal strip-or-accumulate '(4))))
@@ -456,13 +464,12 @@ also press `-' or `+' to switch between filtering and excluding."
 		(mapcar (lambda (s) (if (string-match-p "-" s) (format "\"%s\"" s) s))
 			(nreverse (org-uniquify (delq nil categories)))))))))
 
-(defvar org-tag-groups-alist-for-agenda)
 (defun org-agenda-get-represented-tags ()
   "Return a list of all tags used in this agenda buffer.
 These will be lower-case, for filtering."
   (or org-agenda-represented-tags
       (when (derived-mode-p 'org-agenda-mode)
-	(let ((pos (point-min)) tags-lists tt)
+	(let ((pos (point-min)) tags-lists tag-groups tt)
 	  (while (and (< pos (point-max))
 		      (setq pos (next-single-property-change
 				 pos 'tags nil (point-max))))
@@ -471,12 +478,21 @@ These will be lower-case, for filtering."
 	  (setq tags-lists
 		(nreverse (org-uniquify
 			   (delq nil (apply #'append tags-lists)))))
+          ;; Collect groups tags for the represented tags.
+          (when org-group-tags
+            (dolist (file org-agenda-contributing-files)
+              (with-current-buffer (org-get-agenda-file-buffer file)
+                (dolist (alist (org-tag-alist-to-groups (org-local-tags-alist)))
+	          (let ((old (assoc (car alist) tag-groups)))
+	            (if old
+		        (setcdr old (org-uniquify (append (cdr old) (cdr alist))))
+		      (push alist tag-groups)))))))
 	  (dolist (tag tags-lists)
 	    (mapc
 	     (lambda (group)
 	       (when (member tag group)
 		 (push (car group) tags-lists)))
-	     org-tag-groups-alist-for-agenda))
+	     tag-groups))
 	  (setq org-agenda-represented-tags tags-lists)))))
 
 (defun org-agenda-compare-effort (op value)

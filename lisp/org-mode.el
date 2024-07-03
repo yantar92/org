@@ -296,43 +296,6 @@ means to push this value onto the list in the variable.")
   "Every change indicates that a table might need an update."
   (setq org-table-may-need-update t))
 
-(defun org-tag-string-to-alist (s)
-  "Return tag alist associated to string S.
-S is a value for TAGS keyword or produced with
-`org-tag-alist-to-string'.  Return value is an alist suitable for
-`org-tag-alist' or `org-tag-persistent-alist'."
-  (let ((lines (mapcar #'split-string (split-string s "\n" t)))
-	(tag-re (concat "\\`\\(" org-tag-re "\\|{.+?}\\)" ; regular expression
-			"\\(?:(\\(.\\))\\)?\\'"))
-	alist group-flag)
-    (dolist (tokens lines (cdr (nreverse alist)))
-      (push '(:newline) alist)
-      (while tokens
-	(let ((token (pop tokens)))
-	  (pcase token
-	    ("{"
-	     (push '(:startgroup) alist)
-	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
-	    ("}"
-	     (push '(:endgroup) alist)
-	     (setq group-flag nil))
-	    ("["
-	     (push '(:startgrouptag) alist)
-	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
-	    ("]"
-	     (push '(:endgrouptag) alist)
-	     (setq group-flag nil))
-	    (":"
-	     (push '(:grouptags) alist))
-	    ((guard (string-match tag-re token))
-	     (let ((tag (match-string 1 token))
-		   (key (and (match-beginning 2)
-			     (string-to-char (match-string 2 token)))))
-	       ;; Push all tags in groups, no matter if they already
-	       ;; appear somewhere else in the list.
-	       (when (or group-flag (not (assoc tag alist)))
-		 (push (cons tag key) alist))))))))))
-
 (defun org-set-regexps-and-options (&optional tags-only)
   "Precompute regular expressions used in the current buffer.
 When optional argument TAGS-ONLY is non-nil, only compute tags
@@ -362,14 +325,7 @@ related expressions."
 		  (mapcar #'org-add-prop-inherited
                           (org-element-property :tags org-data)))
       ;; Used for tag completion.
-      (setq org-current-tag-alist
-	    (org--tag-add-to-alist
-	     org-tag-persistent-alist
-	     (let ((tags (org-element-property :TAGS org-data)))
-	       (if tags
-		   (org-tag-string-to-alist
-		    (mapconcat #'identity tags "\n"))
-		 org-tag-alist))))
+      (setq org-current-tag-alist (org-local-tags-alist org-data))
       ;; Used for tag completion.
       (setq org-tag-groups-alist
 	    (org-tag-alist-to-groups org-current-tag-alist))
@@ -431,31 +387,34 @@ related expressions."
 	      (setq-local org-use-sub-superscripts
 			  (read (match-string 1 option))))))
 	;; TODO keywords.
-	(setq-local org-todo-kwd-alist nil)
-	(setq-local org-todo-key-alist nil)
-	(setq-local org-todo-key-trigger nil)
-	(setq-local org-todo-keywords-1 nil)
-	(setq-local org-done-keywords nil)
-	(setq-local org-todo-heads nil)
-	(setq-local org-todo-sets nil)
+        (with-no-warnings
+	  (setq-local org-todo-heads nil)
+	  (setq-local org-todo-sets nil)
+          (setq-local org-todo-kwd-alist nil)
+          (setq-local org-todo-key-alist nil)
+          (setq-local org-todo-key-trigger nil))
+        
 	(setq-local org-todo-log-states nil)
-	(let ((sequences (org-element-property :todo-keyword-settings org-data)))
-          ;; org-todo-keywords-1
-          (setq org-todo-keywords-1 (org-element-property :todo-keywords org-data))
-          ;; org-done-keywords
-          (setq org-done-keywords (org-element-property :done-keywords org-data))
+	(let ((sequences (org-element-property :todo-keyword-sequences org-data)))
+          (with-no-warnings
+            ;; org-todo-keywords-1
+            (setq org-todo-keywords-1 (org-element-property :todo-keywords org-data))
+            ;; org-done-keywords
+            (setq org-done-keywords (org-element-property :done-keywords org-data))
+            ;; org-not-done-keywords
+            (setq org-not-done-keywords (org-element-property :not-done-keywords org-data)))
           ;; org-todo-heads
           ;; org-todo-sets
           ;; org-todo-log-states
           ;; org-todo-key-alist
           ;; org-todo-kwd-alist
           (dolist (sequence sequences)
-            ;; SEQUENCE = (TYPE ((KWD1 . OPT1) (KWD2 . OPT2) ...) ((DONE-KWD1 . OPT1) ...))
-            (push (caar (nth 1 sequence)) org-todo-heads)
-            (push (mapcar #'car (nth 1 sequence)) org-todo-sets)
-            (let (keys
-                  (kwd-tail (list (car sequence) ;; TYPE
-                                  (car org-todo-heads) ;; First keyword
+            (with-no-warnings
+              ;; SEQUENCE = (TYPE ((KWD1 . OPT1) (KWD2 . OPT2) ...) ((DONE-KWD1 . OPT1) ...))
+              (push (caar (nth 1 sequence)) org-todo-heads)
+              (push (mapcar #'car (nth 1 sequence)) org-todo-sets))
+            (let ((kwd-tail (list (car sequence) ;; TYPE
+                                  (with-no-warnings (car org-todo-heads)) ;; First keyword
                                   (car (car (nth 2 sequence))) ;; First done keyword
                                   (car (org-last (nth 2 sequence))) ;; Last done keyword
                                   )))
@@ -465,38 +424,22 @@ related expressions."
                      ,setting)
                    (when (stringp setting)
                      (when-let ((state-setting (org-extract-log-state-settings (concat name "(" setting ")"))))
-                       (push state-setting org-todo-log-states))
-                     (push (cons name
-                                 (if (string-match "^[^!@/]" setting)
-                                     (string-to-char (match-string 0 setting))
-                                   nil))
-                           keys))
-                   (push (cons name kwd-tail) org-todo-kwd-alist))))
-              (when keys
-                (setq keys (nconc (list (list :startgroup))
-                                  (nreverse keys)
-                                  (list (list :endgroup))))
-                (setq org-todo-key-alist (nconc org-todo-key-alist keys)))))
-          (setq org-todo-heads (nreverse org-todo-heads)
-                org-todo-sets (nreverse org-todo-sets)
-                org-todo-kwd-alist (nreverse org-todo-kwd-alist)
-                ;; org-todo-key-trigger
-                org-todo-key-trigger (delq nil (mapcar #'cdr org-todo-key-alist))
-                org-todo-key-alist (org-assign-fast-keys org-todo-key-alist)))
+                       (push state-setting org-todo-log-states)))
+                   (push (cons name kwd-tail) org-todo-kwd-alist))))))
+          (with-no-warnings
+            (setq org-todo-heads (nreverse org-todo-heads)
+                  org-todo-sets (nreverse org-todo-sets)
+                  org-todo-kwd-alist (nreverse org-todo-kwd-alist)
+                  ;; org-todo-key-trigger
+	          org-todo-key-trigger (delq nil (mapcar #'cdr (org-todo-keyword-binding-alist org-data 'no-auto-keys)))
+                  org-todo-key-alist (org-todo-keyword-binding-alist org-data))))
         
 	;; Compute the regular expressions and other local variables.
 	;; Using `org-outline-regexp-bol' would complicate them much,
 	;; because of the fixed white space at the end of that string.
 
-        ;; FIXME: When is `org-done-keywords' nil?
-	(unless org-done-keywords
-	  (setq org-done-keywords
-		(and org-todo-keywords-1 (last org-todo-keywords-1))))
-	(setq org-not-done-keywords
-	      (org-delete-all org-done-keywords
-			      (copy-sequence org-todo-keywords-1))
-	      org-todo-regexp (org-element-property :todo-regexp org-data)
-	      org-not-done-regexp (regexp-opt org-not-done-keywords t)
+	(setq org-todo-regexp (org-element-property :todo-regexp org-data)
+	      org-not-done-regexp (regexp-opt (org-element-not-done-keywords) t)
 	      org-not-done-heading-regexp
 	      (format org-heading-keyword-regexp-format org-not-done-regexp)
 	      org-todo-line-regexp
@@ -529,40 +472,6 @@ related expressions."
 		      "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
 		      "[ \t]*$"))))))
 
-(defun org--tag-add-to-alist (alist1 alist2)
-  "Merge tags from ALIST1 into ALIST2.
-
-Duplicates tags outside a group are removed.  Keywords and order
-are preserved.
-
-The function assumes ALIST1 and ALIST2 are proper tag alists.
-See `org-tag-alist' for their structure."
-  (cond
-   ((null alist2) alist1)
-   ((null alist1) alist2)
-   (t
-    (let ((to-add nil)
-	  (group-flag nil))
-      (dolist (tag-pair alist1)
-	(pcase tag-pair
-	  (`(,(or :startgrouptag :startgroup))
-	   (setq group-flag t)
-	   (push tag-pair to-add))
-	  (`(,(or :endgrouptag :endgroup))
-	   (setq group-flag nil)
-	   (push tag-pair to-add))
-	  (`(,(or :grouptags :newline))
-	   (push tag-pair to-add))
-	  (`(,tag . ,_)
-	   ;; Remove duplicates from ALIST1, unless they are in
-	   ;; a group.  Indeed, it makes sense to have a tag appear in
-	   ;; multiple groups.
-	   (when (or group-flag (not (assoc tag alist2)))
-	     (push tag-pair to-add)))
-	  (_ (error "Invalid association in tag alist: %S" tag-pair))))
-      ;; Preserve order of ALIST1.
-      (append (nreverse to-add) alist2)))))
-
 ;; FIXME: This is very specialized.  Should it be made internal? Or
 ;; removed?
 (defun org-extract-log-state-settings (x)
@@ -576,26 +485,6 @@ This will extract info from a string like \"WAIT(w@/!)\"."
 	   (list kw
 		 (and log1 (if (equal log1 "!") 'time 'note))
 		 (and log2 (if (equal log2 "!") 'time 'note)))))))
-
-(defun org-assign-fast-keys (alist)
-  "Assign fast keys to a keyword-key alist.
-Respect keys that are already there."
-  (let (new e (alt ?0))
-    (while (setq e (pop alist))
-      (if (or (memq (car e) '(:newline :grouptags :endgroup :startgroup))
-	      (cdr e)) ;; Key already assigned.
-	  (push e new)
-	(let ((clist (string-to-list (downcase (car e))))
-	      (used (append new alist)))
-	  (when (= (car clist) ?@)
-	    (pop clist))
-	  (while (and clist (rassoc (car clist) used))
-	    (pop clist))
-	  (unless clist
-	    (while (rassoc alt used)
-	      (cl-incf alt)))
-	  (push (cons (car e) (or (car clist) alt)) new))))
-    (nreverse new)))
 
 (defun org--link-at-point ()
   "`thing-at-point' provider function."
@@ -1082,8 +971,8 @@ The following commands are available:
       ["Next keyword" org-shiftright (org-at-heading-p)]
       ["Previous keyword" org-shiftleft (org-at-heading-p)]
       ["Complete Keyword" pcomplete (assq :todo-keyword (org-context))]
-      ["Next keyword set" org-shiftcontrolright (and (> (length org-todo-sets) 1) (org-at-heading-p))]
-      ["Previous keyword set" org-shiftcontrolright (and (> (length org-todo-sets) 1) (org-at-heading-p))])
+      ["Next keyword set" org-shiftcontrolright (and (> (length (org-todo-keyword-sets)) 1) (org-at-heading-p))]
+      ["Previous keyword set" org-shiftcontrolright (and (> (length (org-todo-keyword-sets)) 1) (org-at-heading-p))])
      ["Show TODO Tree" org-show-todo-tree :active t :keys "C-c / t"]
      ["Global TODO list" org-todo-list :active t :keys "\\[org-agenda] t"]
      "--"
@@ -1150,7 +1039,7 @@ The following commands are available:
      ["Record DONE time"
       (progn (setq org-log-done (not org-log-done))
 	     (message "Switching to %s will %s record a timestamp"
-		      (car org-done-keywords)
+		      (car (org-element-done-keywords))
 		      (if org-log-done "automatically" "not")))
       :style toggle :selected org-log-done])
     "--"

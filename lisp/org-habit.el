@@ -224,7 +224,7 @@ This list represents a \"habit\" for the rest of this module."
 	     (count 0)
 	     (re (format
 		  "^[ \t]*-[ \t]+\\(?:State \"%s\".*%s%s\\)"
-		  (regexp-opt org-done-keywords)
+		  (regexp-opt (org-element-done-keywords))
 		  org-ts-regexp-inactive
 		  (let ((value (cdr (assq 'done org-log-note-headings))))
 		    (if (not value) ""

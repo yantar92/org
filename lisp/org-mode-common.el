@@ -72,15 +72,21 @@ The highlights created by `org-latex-preview' always need
 This affects table overlays when editing formulas, sparse tree
 highlights, and clock overlays.")
 
-(defvar-local org-done-keywords nil)
-(defvar-local org-todo-heads nil)
-(defvar-local org-todo-sets nil)
-(defvar-local org-todo-kwd-alist nil)
-(defvar-local org-todo-key-alist nil)
-(defvar-local org-todo-key-trigger nil)
-(defvar-local org-todo-log-states nil)
-(defvar-local org-todo-keywords-1 nil
-  "All TODO and DONE keywords active in a buffer.")
+(defvar-local org-todo-log-states nil
+  "Logging settings for todo keywords.
+The value is a list with each element representing logging settings
+for a given todo keyword:
+
+ (KWD LOG-WHEN-SETTING-TO-KWD LOG-WHEN-SETTING-FROM-KWD)
+ 
+LOG-WHEN-SETTING-FROM/TO-KWD is either nil, symbol `note', or symbol
+`time' - do not log, log with interactive note, or log time
+respectively.
+
+This variable is set according to the todo keyword sequence settings
+provided in `org-todo-keywords', #+TODO, #+SEQ_TODO, or #+TYP_TODO
+in-buffer keywords (see `org-set-regexps-and-options').
+This variable is ignored when a given heading has LOGGING property.")
 
 (defvar-local org-link-abbrev-alist-local nil
   "Buffer-local version of `org-link-abbrev-alist', which see.
@@ -135,15 +141,6 @@ or for the file to contain a special line:
 If the file does not specify a category, then file's base name
 is used instead.")
 (put 'org-category 'safe-local-variable (lambda (x) (or (symbolp x) (stringp x))))
-
-
-(defvar-local org-current-tag-alist nil
-  "Alist of all tag groups in current buffer.
-This variable takes into consideration `org-tag-alist',
-`org-tag-persistent-alist' and TAGS keywords in the buffer.")
-
-(defvar-local org-not-done-keywords nil)
-(defvar-local org-tag-groups-alist nil)
 
 (defvar-local org-todo-regexp nil
   "Matches any of the TODO state keywords.
@@ -248,6 +245,66 @@ a string, summarizing TAGS, as a list of strings."
 	 (if (eq group-status 'append) (push tag current-group)
 	   (setq current-group (list tag))))
 	(_ nil)))))
+
+(defvar org--fast-selection-keys
+  (string-to-list "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ{|}~")
+  "List of chars to be used as bindings by `org-fast-tag-selection'.")
+
+(defun org-assign-fast-keys (alist)
+  "Assign fast keys to a keyword-key alist.
+Respect keys that are already there."
+  (let (new e (candidate-key-list org--fast-selection-keys))
+    (while (setq e (pop alist))
+      (if (or (memq (car e) '(:newline :grouptags :endgroup :startgroup))
+	      (cdr e)) ;; Key already assigned.
+	  (push e new)
+	(let ((clist (string-to-list (downcase (car e))))
+	      (used (append new alist)))
+	  (when (= (car clist) ?@)
+	    (pop clist))
+	  (while (and clist (rassoc (car clist) used))
+	    (pop clist))
+	  (unless clist
+	    (while (and candidate-key-list
+                        (rassoc (car candidate-key-list) used))
+	      (setq candidate-key-list (cdr candidate-key-list))))
+	  (push (cons (car e) (or (car clist) (car candidate-key-list)))
+                new))))
+    (nreverse new)))
+
+(defun org--settings-add-to-alist (alist1 alist2)
+  "Merge tags/todo keyword settings from ALIST1 into ALIST2.
+
+Duplicates tags/keywords outside a group are removed.  Keywords and
+order are preserved.
+
+The function assumes ALIST1 and ALIST2 are proper tag/todo keyword
+alists.  See `org-tag-alist' for their structure."
+  (cond
+   ((null alist2) alist1)
+   ((null alist1) alist2)
+   (t
+    (let ((to-add nil)
+	  (group-flag nil))
+      (dolist (tag-pair alist1)
+	(pcase tag-pair
+	  (`(,(or :startgrouptag :startgroup))
+	   (setq group-flag t)
+	   (push tag-pair to-add))
+	  (`(,(or :endgrouptag :endgroup))
+	   (setq group-flag nil)
+	   (push tag-pair to-add))
+	  (`(,(or :grouptags :newline))
+	   (push tag-pair to-add))
+	  (`(,tag . ,_)
+	   ;; Remove duplicates from ALIST1, unless they are in
+	   ;; a group.  Indeed, it makes sense to have a tag appear in
+	   ;; multiple groups.
+	   (when (or group-flag (not (assoc tag alist2)))
+	     (push tag-pair to-add)))
+	  (_ (error "Invalid association in tag alist: %S" tag-pair))))
+      ;; Preserve order of ALIST1.
+      (append (nreverse to-add) alist2)))))
 
 (defun org-restart-font-lock ()
   "Restart `font-lock-mode', to force refontification."

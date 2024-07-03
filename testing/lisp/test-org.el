@@ -3197,76 +3197,65 @@ Let’s stop here
 	  (let ((org-tag-alist '(("A")))
 		(org-tag-persistent-alist nil))
 	    (org-test-with-temp-text ""
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '(("B"))
 	  (let ((org-tag-alist '(("A")))
 		(org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: B"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '(("C") ("B"))
 	  (let ((org-tag-alist '(("A")))
 		(org-tag-persistent-alist '(("C"))))
 	    (org-test-with-temp-text "#+TAGS: B"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '(("B"))
 	  (let ((org-tag-alist '(("A")))
 		(org-tag-persistent-alist '(("C"))))
 	    (org-test-with-temp-text "#+STARTUP: noptag\n#+TAGS: B"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+              (org-mode-restart) ; FIXME: STARTUP keyword should be updated automatically
+	      (org-local-tags-alist)))))
   (should
    (equal '(("A" . ?a) ("B") ("C"))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: A(a) B C"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '(("A") (:newline) ("B"))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: A\n#+TAGS: B"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '((:startgroup) ("A") ("B") (:endgroup) ("C"))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: { A B } C"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '((:startgroup) ("A") (:grouptags) ("B") ("C") (:endgroup))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: { A : B C }"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '(("A" "B" "C"))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: { A : B C }"
-	      (org-mode-restart)
-	      org-tag-groups-alist))))
+	      (org-tag-alist-to-groups (org-local-tags-alist))))))
   (should
    (equal '((:startgrouptag) ("A") (:grouptags) ("B") ("C") (:endgrouptag))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: [ A : B C ]"
-	      (org-mode-restart)
-	      org-current-tag-alist))))
+	      (org-local-tags-alist)))))
   (should
    (equal '(("A" "B" "C"))
 	  (let ((org-tag-persistent-alist nil))
 	    (org-test-with-temp-text "#+TAGS: [ A : B C ]"
-	      (org-mode-restart)
-	      org-tag-groups-alist))))
+              (org-tag-alist-to-groups (org-local-tags-alist))))))
   (should-not
    (let ((org-tag-alist '(("A"))))
      (org-test-with-temp-text "#+TAGS:"
-       (org-mode-restart)
-       org-current-tag-alist)))
+       (org-local-tags-alist))))
   ;; FILETAGS keyword.
   (should
    (equal '("A" "B" "C")
@@ -3338,9 +3327,9 @@ Let’s stop here
     '("url1" "url2")
     (org-test-with-temp-text "#+LINK: a url1\n#+LINK: b url2"
       (mapcar (lambda (abbrev) (cdr (assoc abbrev
-                                      (org-element-property
-                                       :link-abbrevs
-                                       (org-element-org-data)))))
+                                           (org-element-property
+                                            :link-abbrevs
+                                            (org-element-org-data)))))
 	      '("a" "b")))))
   ;; PRIORITIES keyword.  Incomplete priorities sets are ignored.
   (should
@@ -3366,22 +3355,22 @@ Let’s stop here
    (equal '(("A" "B") ("C"))
 	  (org-test-with-temp-text "#+TODO: A B | C"
 	    (org-mode-restart)
-	    (list org-not-done-keywords org-done-keywords))))
+	    (list (org-element-not-done-keywords) (org-element-done-keywords)))))
   (should
    (equal '(("A" "C") ("B" "D"))
 	  (org-test-with-temp-text "#+TODO: A | B\n#+TODO: C | D"
 	    (org-mode-restart)
-	    (list org-not-done-keywords org-done-keywords))))
+	    (list (org-element-not-done-keywords) (org-element-done-keywords)))))
   (should
    (equal '(("A" "B") ("C"))
 	  (org-test-with-temp-text "#+TYP_TODO: A B | C"
 	    (org-mode-restart)
-	    (list org-not-done-keywords org-done-keywords))))
+	    (list (org-element-not-done-keywords) (org-element-done-keywords)))))
   (should
    (equal '((:startgroup) ("A" . ?a) (:endgroup))
 	  (org-test-with-temp-text "#+TODO: A(a)"
 	    (org-mode-restart)
-	    org-todo-key-alist)))
+	    (org-todo-keyword-binding-alist))))
   (should
    (equal '(("D" note nil) ("C" time nil) ("B" note time))
 	  (org-test-with-temp-text "#+TODO: A(a) B(b@/!) | C(c!) D(d@)"
@@ -8476,47 +8465,47 @@ Paragraph<point>"
    (equal "{\\<[ABC]\\>}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "A")))))
+	    (org-tags-expand "A"))))
   (should
    (equal "{\\<\\(?:Aa\\|Bb\\|Cc\\)\\>}"
 	  (org-test-with-temp-text "#+TAGS: [ Aa : Bb Cc ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "Aa")))))
+	    (org-tags-expand "Aa"))))
   ;; Preserve operator before the regexp.
   (should
    (equal "+{\\<[ABC]\\>}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "+A")))))
+	    (org-tags-expand "+A"))))
   (should
    (equal "-{\\<[ABC]\\>}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "-A")))))
+	    (org-tags-expand "-A"))))
   ;; Handle "|" syntax.
   (should
    (equal "{\\<[ABC]\\>}|D"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "A|D")))))
+	    (org-tags-expand "A|D"))))
   ;; Handle nested groups.
   (should
    (equal "{\\<[A-D]\\>}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]\n#+TAGS: [ B : D ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "A")))))
+	    (org-tags-expand "A"))))
   ;; Expand multiple occurrences of the same group.
   (should
    (equal "{\\<[ABC]\\>}|{\\<[ABC]\\>}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "A|A")))))
+	    (org-tags-expand "A|A"))))
   ;; Preserve regexp matches.
   (should
    (equal "{A+}"
 	  (org-test-with-temp-text "#+TAGS: [ A : B C ]"
 	    (org-mode-restart)
-	    (let ((org-tag-alist-for-agenda nil)) (org-tags-expand "{A+}"))))))
+	    (org-tags-expand "{A+}")))))
 
 
 ;;; TODO keywords

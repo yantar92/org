@@ -59,9 +59,8 @@ for a todo state to switch to, overriding the existing value
 	       (if (and (not org-clock-current-task) (equal arg '(64)))
 		   (completing-read "Switch to state: "
 				    (and org-clock-history
-					 (with-current-buffer
-					     (marker-buffer (car org-clock-history))
-					   org-todo-keywords-1)))
+                                         (org-element-all-todo-keywords
+                                          (car org-clock-history))))
 		 org-clock-in-switch-to-state))
 	      (already-clocking org-clock-current-task))
 	  (org-clock-clock-in (list (car org-clock-history)) nil start-time)

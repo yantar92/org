@@ -361,12 +361,14 @@ Return nil if no collect function is associated to OPERATOR."
     (`(,_ ,_ ,collect) collect)
     (_ (error "Invalid definition for operator %S" operator))))
 
-(defun org-columns--overlay-text (value fmt width property original)
+(defun org-columns--overlay-text (value fmt width property original &optional done-keywords)
   "Return decorated VALUE string for columns overlay display.
 FMT is a format string.  WIDTH is the width of the column, as an
 integer.  PROPERTY is the property being displayed, as a string.
 ORIGINAL is the real string, i.e., before it is modified by
-`org-columns--displayed-value'."
+`org-columns--displayed-value'.
+DONE-KEYWORDS, when non-nil, is the list of todo keywords considered
+done.  It is passed as an argument to `org-get-todo-face', which see."
   (format fmt
           (let ((v (org-columns-add-ellipses value width)))
             (pcase property
@@ -379,7 +381,10 @@ ORIGINAL is the real string, i.e., before it is modified by
                   org-tags-special-faces-re
                   (lambda (m) (propertize m 'face (org-get-tag-face m)))
                   v nil nil 1)))
-              ("TODO" (propertize v 'face (org-get-todo-face original)))
+              ("TODO"
+               (propertize
+                v 'face
+                (org-get-todo-face original done-keywords)))
               (_ v)))))
 
 (defvar org-columns-header-line-remap nil
@@ -387,11 +392,13 @@ ORIGINAL is the real string, i.e., before it is modified by
 This is needed to later remove this relative remapping.")
 
 (defvar org-columns--read-only-string nil)
-(defun org-columns--display-here (columns &optional dateline)
+(defun org-columns--display-here (columns &optional dateline done-keywords)
   "Overlay the current line with column display.
 COLUMNS is an alist (SPEC VALUE DISPLAYED).  Optional argument
 DATELINE is non-nil when the face used should be
-`org-agenda-column-dateline'."
+`org-agenda-column-dateline'.  Optional argument DONE-KEYWORDS is the
+list of todo keywords to be considered done; passed to
+`org-columns--overlay-text', which see."
   (when (and (not org-columns-header-line-remap)
              (or (fboundp 'face-remap-add-relative)
                  (ignore-errors (require 'face-remap))))
@@ -434,7 +441,7 @@ DATELINE is non-nil when the face used should be
 		    (ov (org-columns--new-overlay
 			 (point) (1+ (point))
 			 (org-columns--overlay-text
-			  value fmt width property original)
+			  value fmt width property original done-keywords)
 			 (if dateline face1 face))))
 	       (overlay-put ov 'keymap org-columns-map)
 	       (overlay-put ov 'org-columns-key property)

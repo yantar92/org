@@ -417,11 +417,10 @@ SCHEDULED: or DEADLINE: or ANYTHINGLIKETHIS:"
 (defun org-mouse-todo-menu (state)
   "Create the menu with TODO keywords."
   (append
-   (let ((kwds org-todo-keywords-1))
-     (org-mouse-keyword-menu
-      kwds
-      #'org-todo
-      (lambda (kwd) (equal state kwd))))))
+   (org-mouse-keyword-menu
+    (org-element-all-todo-keywords)
+    #'org-todo
+    (lambda (kwd) (equal state kwd)))))
 
 (defun org-mouse-tag-menu ()		;todo
   "Create the tags menu."
@@ -671,7 +670,7 @@ This means, between the beginning of line and the point."
 			    (org-mouse-remove-match-and-spaces))))]
 	 )))
      ((and (org-mouse-looking-at "\\b\\w+" "a-zA-Z0-9_")
-	   (member (match-string 0) org-todo-keywords-1))
+	   (org-element-todo-keyword-p (match-string 0)))
       (popup-menu
        `(nil
 	 ,@(org-mouse-todo-menu (match-string 0))
@@ -691,7 +690,7 @@ This means, between the beginning of line and the point."
 	 )))
      ((org-mouse-looking-at org-mouse-priority-regexp "[]A-Z#") ; priority
       (popup-menu `(nil ,@(org-mouse-keyword-replace-menu
-			   (org-mouse-priority-list) 1 "Priority %s" t))))
+			 (org-mouse-priority-list) 1 "Priority %s" t))))
      ((funcall get-context :link)
       (popup-menu
        '(nil

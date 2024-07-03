@@ -1030,8 +1030,8 @@ Leave point at LIMIT."
 	    (org-list-set-checkbox
 	     (line-beginning-position)
 	     struct
-	     (if (member todo-state org-done-keywords)
-		 "[X]"
+	     (if (org-element-keyword-done-p todo-state)
+	         "[X]"
 	       "[ ]"))
 	    (org-list-write-struct struct
 				   (org-list-parents-alist struct)
@@ -1077,11 +1077,11 @@ Return non-nil when at least one list is converted."
                      ;; Keywords to replace checkboxes.
                      (list
                       ;; [X]
-                      :cbon (concat (or (car org-done-keywords) "DONE") " ")
+                      :cbon (concat (or (car (org-element-done-keywords)) "DONE") " ")
                       ;; [ ]
-                      :cboff (concat (or (car org-not-done-keywords) "TODO") " ")
+                      :cboff (concat (or (car (org-element-not-done-keywords)) "TODO") " ")
                       ;; [-]
-                      :cbtrans (concat (or (car org-not-done-keywords) "TODO") " ")))
+                      :cbtrans (concat (or (car (org-element-not-done-keywords)) "TODO") " ")))
 		    "\n")))
         (setq toggled t))
       (forward-line))

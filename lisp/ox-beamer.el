@@ -1152,7 +1152,7 @@ aid, but the tag does not have any semantic meaning."
   (let* ((envs (append org-beamer-environments-special
 		       org-beamer-environments-extra
 		       org-beamer-environments-default))
-	 (org-current-tag-alist
+	 (org-overriding-tag-alist
 	  (append '((:startgroup))
 		  (mapcar (lambda (e) (cons (concat "B_" (car e))
 				       (string-to-char (nth 1 e))))

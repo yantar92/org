@@ -448,10 +448,10 @@ agenda view showing the flagged items."
     (when (stringp (car def-todo))
       (setq def-todo (list (cons 'sequence def-todo))))
     (org-agenda-prepare-buffers (mapcar 'car files-alist))
-    (setq done-kwds (org-uniquify org-done-keywords-for-agenda))
+    (setq done-kwds (copy-sequence org-done-keywords-for-agenda))
     (setq todo-kwds (org-delete-all
 		     done-kwds
-		     (org-uniquify org-todo-keywords-for-agenda)))
+		     (copy-sequence org-todo-keywords-for-agenda)))
     (setq tags (mapcar 'car (org-global-tags-completion-table
 			     (mapcar 'car files-alist))))
     (with-temp-file (if org-mobile-use-encryption org-mobile-encryption-tempfile

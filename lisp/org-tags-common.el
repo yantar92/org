@@ -28,6 +28,7 @@
 (org-assert-version)
 
 (require 'org-mode-common)
+(require 'org-regexps)
 
 (defcustom org-group-tags t
   "When non-nil (the default), use group tags.
@@ -121,6 +122,19 @@ an accumulator used in recursive calls."
 		(org--tags-expand-group (cdr group) tag-groups expanded))))))
   expanded)
 
+(defun org-local-tags-alist (&optional epom)
+  "Return an alist of default tags to be used for completion at EPOM.
+EPOM is a point, marker, or node.
+The returned alist takes into consideration `org-tag-alist',
+`org-tag-persistent-alist' and TAGS keywords in the buffer at EPOM."
+  (org--settings-add-to-alist
+   org-tag-persistent-alist
+   (let ((tags (org-element-property :TAGS (org-element-org-data epom))))
+     (if tags
+	 (org-tag-string-to-alist
+	  (mapconcat #'identity tags "\n"))
+       org-tag-alist))))
+
 (defun org-tags-expand (match &optional single-as-list)
   "Expand group tags in MATCH.
 
@@ -150,9 +164,7 @@ When the optional argument SINGLE-AS-LIST is non-nil, MATCH is
 assumed to be a single group tag, and the function will return
 the list of tags in this group."
   (unless (org-string-nw-p match) (error "Invalid match tag: %S" match))
-  (let ((tag-groups
-         (or (bound-and-true-p org-tag-groups-alist-for-agenda)
-             (bound-and-true-p org-tag-groups-alist))))
+  (let ((tag-groups (org-tag-alist-to-groups (org-local-tags-alist))))
     (cond
      (single-as-list (org--tags-expand-group (list match) tag-groups nil))
      (org-group-tags
@@ -198,6 +210,43 @@ the list of tags in this group."
 	   return-match
 	   t t))))
      (t match))))
+
+(defun org-tag-string-to-alist (s)
+  "Return tag alist associated to string S.
+S is a value for TAGS keyword or produced with
+`org-tag-alist-to-string'.  Return value is an alist suitable for
+`org-tag-alist' or `org-tag-persistent-alist'."
+  (let ((lines (mapcar #'split-string (split-string s "\n" t)))
+	(tag-re (concat "\\`\\(" org-tag-re "\\|{.+?}\\)" ; regular expression
+			"\\(?:(\\(.\\))\\)?\\'"))
+	alist group-flag)
+    (dolist (tokens lines (cdr (nreverse alist)))
+      (push '(:newline) alist)
+      (while tokens
+	(let ((token (pop tokens)))
+	  (pcase token
+	    ("{"
+	     (push '(:startgroup) alist)
+	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
+	    ("}"
+	     (push '(:endgroup) alist)
+	     (setq group-flag nil))
+	    ("["
+	     (push '(:startgrouptag) alist)
+	     (when (equal (nth 1 tokens) ":") (setq group-flag t)))
+	    ("]"
+	     (push '(:endgrouptag) alist)
+	     (setq group-flag nil))
+	    (":"
+	     (push '(:grouptags) alist))
+	    ((guard (string-match tag-re token))
+	     (let ((tag (match-string 1 token))
+		   (key (and (match-beginning 2)
+			     (string-to-char (match-string 2 token)))))
+	       ;; Push all tags in groups, no matter if they already
+	       ;; appear somewhere else in the list.
+	       (when (or group-flag (not (assoc tag alist)))
+		 (push (cons tag key) alist))))))))))
 
 (provide 'org-tags-common)
 

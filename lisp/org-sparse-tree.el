@@ -138,7 +138,7 @@ The tree will show the lines where the regexp matches, and all higher
 headlines above the match.
 With a `\\[universal-argument]' prefix, prompt for a regexp to match.
 With a numeric prefix N, construct a sparse tree for the Nth element
-of `org-todo-keywords-1'."
+of all the todo keywords in buffer (`org-element-all-todo-keywords')."
   (interactive "P")
   (let ((case-fold-search nil)
 	(kwd-re
@@ -146,13 +146,13 @@ of `org-todo-keywords-1'."
 	       ((equal arg '(4))
 		(let ((kwd
 		       (completing-read "Keyword (or KWD1|KWD2|...): "
-					(mapcar #'list org-todo-keywords-1))))
+					(mapcar #'list (org-element-all-todo-keywords)))))
 		  (concat "\\("
 			  (mapconcat #'regexp-quote (org-split-string kwd "|") "\\|")
 			  "\\)\\(?:[ \t]\\|$\\)")))
-	       ((<= (prefix-numeric-value arg) (length org-todo-keywords-1))
+	       ((<= (prefix-numeric-value arg) (length (org-element-all-todo-keywords)))
 		(regexp-quote (nth (1- (prefix-numeric-value arg))
-				   org-todo-keywords-1)))
+				   (org-element-all-todo-keywords))))
 	       (t (user-error "Invalid prefix argument: %s" arg)))))
     (message "%d TODO entries found"
 	     (org-occur (concat "^" org-outline-regexp " *" kwd-re )))))

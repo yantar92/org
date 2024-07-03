@@ -93,11 +93,7 @@ displaying the tags menu is not even shown, until you press `C-c' again."
 	  (const :tag "Yes" t)
 	  (const :tag "Expert" expert)))
 
-(defvar org--fast-tag-selection-keys
-  (string-to-list "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ{|}~")
-  "List of chars to be used as bindings by `org-fast-tag-selection'.")
-
-(defcustom org-fast-tag-selection-maximum-tags (length org--fast-tag-selection-keys)
+(defcustom org-fast-tag-selection-maximum-tags (length org--fast-selection-keys)
   "Set the maximum tags number for fast tag selection.
 This variable only affects tags without explicit key bindings outside
 tag groups.  All the tags with user bindings and all the tags
@@ -188,6 +184,9 @@ Support for group tags is controlled by the option
 
 (defun org-global-tags-completion-table (&optional files)
   "Return the list of all tags in all agenda buffer/files.
+The list includes all the tags present in headings and the default
+tags specified in `org-tag-persistent-alist', `org-tag-alist', and
+#+TAGS in-buffer keyword.
 Optional FILES argument is a list of files which can be used
 instead of the agenda files."
   (require 'org-mode)
@@ -198,17 +197,49 @@ instead of the agenda files."
 		  (mapcar
 		   (lambda (file)
 		     (set-buffer (find-file-noselect file))
-		     (org--tag-add-to-alist
+		     (org--settings-add-to-alist
 		      (org-get-buffer-tags)
 		      (mapcar (lambda (x)
 				(and (stringp (car-safe x))
 				     (list (car-safe x))))
-			      org-current-tag-alist)))
+			      (org-local-tags-alist))))
 		   (if (car-safe files) files
 		     (org-agenda-files))))))))
 
+
+(defvar org-overriding-tag-alist nil
+  "Tag alist to be used for tag completion by `org-set-tags-command'.
+When this variable is nil, fall back to user settings.")
+
 (defvar org-last-tags-completion-table nil
   "The last used completion table for tags.")
+
+(defun org-local-tags-completion-table ()
+  "Return the list of all tags for completion in current Org buffer.
+
+Offer tag completion for either (1) `org-overriding-tag-alist' (if
+non-nil), (2) default tags, including `org-tag-persistent-alist',
+`org-tag-alist'/tag specified by in-buffer #+TAGS: keyword, (3) all
+the buffer tags, if the previous two options do not list any tags to
+complete.
+
+When `org-complete-tags-always-offer-all-agenda-tags' is non-nil, offer
+all the tags in Org agenda files, in addition to the above."
+  (let ((local-table
+         (or org-overriding-tag-alist
+             (org-local-tags-alist)
+             (org-get-buffer-tags))))
+    (setq org-last-tags-completion-table
+          (append
+           ;; Put local tags in front.
+           local-table
+           (cl-set-difference
+	    (org--settings-add-to-alist
+	     (and org-complete-tags-always-offer-all-agenda-tags
+		  (org-global-tags-completion-table
+		   (org-agenda-files)))
+	     local-table)
+            local-table)))))
 
 (defvar org-tags-overlay (make-overlay 1 1)
   "Overlay used to display currently selected tags.
@@ -220,19 +251,27 @@ This overlays is made visible by `org-fast-tag-selection'.")
 (defun org-set-tags-command (&optional arg)
   "Set the tags for the current visible entry.
 
-When called with `\\[universal-argument]' prefix argument ARG, \
-realign all tags
-in the current buffer.
+Offer tag completion for either (1) `org-overriding-tag-alist' (if
+non-nil), (2) default tags, including `org-tag-persistent-alist',
+`org-tag-alist'/tag specified by in-buffer #+TAGS: keyword, (3) all
+the buffer tags, if the previous two options do not list any tags to
+complete.
 
-When called with `\\[universal-argument] \\[universal-argument]' prefix argument, \
-unconditionally do not
-offer the fast tag selection interface.
+When `org-complete-tags-always-offer-all-agenda-tags' is non-nil, offer
+all the tags in Org agenda files, in addition to the above.
 
-If a region is active, set tags in the region according to the
-setting of `org-loop-over-headlines-in-active-region'.
+When called with `\\[universal-argument]' prefix argument ARG, realign
+all tags in the current buffer.
 
-This function is for interactive use only;
-in Lisp code use `org-set-tags' instead."
+When called with `\\[universal-argument] \\[universal-argument]' prefix
+argument, \ unconditionally do not offer the fast tag selection
+interface.
+
+If a region is active, set tags in the region according to the setting
+of `org-loop-over-headlines-in-active-region'.
+
+This function is for interactive use only; in Lisp code use
+`org-set-tags' instead."
   (interactive "P")
   (let ((org-use-fast-tag-selection
 	 (unless (equal '(16) arg) org-use-fast-tag-selection)))
@@ -255,18 +294,7 @@ in Lisp code use `org-set-tags' instead."
 	(org-back-to-heading)
         (require 'org-mode)
 	(let* ((all-tags (org-get-tags))
-               (local-table (or org-current-tag-alist (org-get-buffer-tags)))
-	       (table (setq org-last-tags-completion-table
-                            (append
-                             ;; Put local tags in front.
-                             local-table
-                             (cl-set-difference
-			      (org--tag-add-to-alist
-			       (and org-complete-tags-always-offer-all-agenda-tags
-				    (org-global-tags-completion-table
-				     (org-agenda-files)))
-			       local-table)
-                              local-table))))
+	       (table (org-local-tags-completion-table))
 	       (current-tags
 		(cl-remove-if (lambda (tag) (get-text-property 0 'inherited tag))
 			      all-tags))
@@ -284,7 +312,11 @@ in Lisp code use `org-set-tags' instead."
 		      current-tags
 		      inherited-tags
 		      table
-		      (and org-fast-tag-selection-include-todo org-todo-key-alist))
+		      (and org-fast-tag-selection-include-todo
+                           (progn
+                             (require 'org-todo)
+                             (declare-function org-todo-keyword-binding-alist "org-todo" (&optional epom))
+                             (org-todo-keyword-binding-alist))))
                    (defvar crm-separator) ; defined in crm.el
 		   (let (;; for `completing-read'
                          (crm-separator "[ \t]*:[ \t]*"))
@@ -370,7 +402,7 @@ This works in the agenda, and also in an Org buffer."
    (list (region-beginning) (region-end)
 	 (let ((org-last-tags-completion-table
 		(if (derived-mode-p 'org-mode)
-		    (org--tag-add-to-alist
+		    (org--settings-add-to-alist
 		     (org-get-buffer-tags)
 		     (org-global-tags-completion-table))
 		  (org-global-tags-completion-table))))
@@ -451,8 +483,7 @@ CURRENT-TAGS may be modified by side effect."
     (cons tag current-tags)))
 
 (declare-function org-todo "org-todo" (&optional arg))
-(declare-function org-get-todo-face "org-font-lock" (kwd))
-(declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
+(declare-function org-get-todo-face "org-font-lock" (kwd &optional done-keywords))
 (defun org-fast-tag-selection (current-tags inherited-tags tag-table &optional todo-table)
   "Fast tag selection with single keys.
 CURRENT-TAGS is the current list of tags in the headline,
@@ -483,7 +514,7 @@ Returns the new tags string, or nil to not change the current settings."
 	 (inherited-face 'org-done)
 	 (current-face 'org-todo)
          ;; Characters available for auto-assignment.
-         (tag-binding-char-list org--fast-tag-selection-keys)
+         (tag-binding-char-list org--fast-selection-keys)
          (tag-binding-chars-left org-fast-tag-selection-maximum-tags)
          field-number ; current tag column in the completion buffer.
          tag-binding-spec ; Alist element.
@@ -492,7 +523,7 @@ Returns the new tags string, or nil to not change the current settings."
          input-char rtn
 	 ov-start ov-end ov-prefix
 	 (exit-after-next org-fast-tag-selection-single-key)
-	 (done-keywords org-done-keywords)
+	 (done-keywords (org-element-done-keywords))
 	 groups ingroup intaggroup)
     ;; Calculate the number of tags with explicit user bindings + tags in groups.
     ;; These tags will be displayed unconditionally.  Other tags will
@@ -543,7 +574,6 @@ Returns the new tags string, or nil to not change the current settings."
            '(org-display-buffer-split (direction . down))))
         ;; Fill text in *Org tags* buffer.
 	(erase-buffer)
-	(setq-local org-done-keywords done-keywords)
         ;; Insert current tags.
 	(org-fast-tag-insert "Inherited" inherited-tags inherited-face "\n")
 	(org-fast-tag-insert "Current" current-tags current-face "\n\n")
@@ -631,7 +661,7 @@ Returns the new tags string, or nil to not change the current settings."
 				   ((not (assoc current-tag tag-table))
                                     ;; The tag is from TODO-TABLE.
                                     (require 'org-font-lock)
-				    (org-get-todo-face current-tag))
+                                    (org-get-todo-face current-tag done-keywords))
 				   ((member current-tag current-tags) current-face)
 				   ((member current-tag inherited-tags) inherited-face))))
 	     (when (equal (caar tag-alist) :grouptags)
@@ -709,7 +739,7 @@ Returns the new tags string, or nil to not change the current settings."
                                                (and (stringp item)
                                                     (list item))))
                                            ;; Complete using all tags; tags from current buffer first.
-                                           (org--tag-add-to-alist
+                                           (org--settings-add-to-alist
                                             (with-current-buffer origin-buffer
                                               (org-get-buffer-tags))
                                             tag-table)))))

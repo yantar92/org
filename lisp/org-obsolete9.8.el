@@ -87,6 +87,58 @@ Properties defined there take precedence over properties defined
 as keywords.")
 (make-obsolete 'org-keyword-properties "Use (org-entry-get (org-element-org-data) \"PROPERTY\") instead" "9.8")
 
+(defvar-local org-done-keywords nil)
+(make-obsolete 'org-done-keywords "Use (org-element-done-keywords) instead" "9.8")
+
+(defvar-local org-not-done-keywords nil)
+(make-obsolete 'org-not-done-keywords "Use (org-element-not-done-keywords) instead" "9.8")
+
+(defvar-local org-todo-keywords-1 nil
+  "All TODO and DONE keywords active in a buffer.")
+(make-obsolete 'org-todo-keywords-1 "Use (org-element-all-todo-keywords) instead" "9.8")
+
+(defvar-local org-todo-heads nil)
+(make-obsolete 'org-todo-heads "Use (org-element-todo-sequences) instead" "9.8")
+
+(defvar-local org-todo-sets nil)
+(make-obsolete 'org-todo-sets "Use (org-element-todo-sequences) instead" "9.8")
+
+(defvar-local org-todo-kwd-alist nil)
+(make-obsolete 'org-todo-kwd-alist "Use (org-element-todo-sequences) instead" "9.8")
+
+(defvar-local org-todo-key-alist nil)
+(make-obsolete 'org-todo-key-alist "Use (org-todo-keyword-binding-alist) instead" "9.8")
+
+(defvar-local org-todo-key-trigger nil)
+(make-obsolete 'org-todo-key-trigger "Use (org-todo-keyword-binding-alist nil 'no-auto) instead" "9.8")
+
+(defvar org-todo-keyword-alist-for-agenda nil
+  "Combined `org-todo-keyword-alist' from all agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(make-obsolete 'org-todo-keyword-alist-for-agenda "No longer used" "9.8")
+
+(defvar org-tag-alist-for-agenda nil
+  "Alist of all tags from all agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(make-obsolete 'org-tag-alist-for-agenda "No longer used" "9.8")
+
+(defvar org-tag-groups-alist-for-agenda nil
+  "Alist of all groups tags from all current agenda files.
+The agenda files are the files processed by
+`org-agenda-prepare-buffers'.")
+(make-obsolete 'org-tag-groups-alist-for-agenda "No longer used" "9.8")
+
+(defvar-local org-current-tag-alist nil
+  "Alist of all tag groups in current buffer.
+This variable takes into consideration `org-tag-alist',
+`org-tag-persistent-alist' and TAGS keywords in the buffer.")
+(make-obsolete 'org-current-tag-alist "Use `org-local-tags-alist' or `org-overriding-tag-alist' instead" "9.8")
+
+(defvar-local org-tag-groups-alist nil)
+(make-obsolete 'org-tag-groups-alist "Use (org-tag-alist-to-groups (org-local-tags-alist)) instead" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

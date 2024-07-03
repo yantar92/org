@@ -414,18 +414,6 @@ The agenda files are the files processed by
   "Combined `org-done-keywords' from all agenda files.
 The agenda files are the files processed by
 `org-agenda-prepare-buffers'.")
-(defvar org-todo-keyword-alist-for-agenda nil
-  "Combined `org-todo-keyword-alist' from all agenda files.
-The agenda files are the files processed by
-`org-agenda-prepare-buffers'.")
-(defvar org-tag-alist-for-agenda nil
-  "Alist of all tags from all agenda files.
-The agenda files are the files processed by
-`org-agenda-prepare-buffers'.")
-(defvar org-tag-groups-alist-for-agenda nil
-  "Alist of all groups tags from all current agenda files.
-The agenda files are the files processed by
-`org-agenda-prepare-buffers'.")
 
 (defun org-file-menu-entry (file)
   (vector file (list 'find-file file) t))
@@ -453,7 +441,6 @@ The agenda files are the files processed by
 		  (ignore-errors (org-agenda-files t)))))))))
 
 (declare-function org-set-regexps-and-options "org-mode" (&optional tags-only))
-(declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
 (defun org-agenda-prepare-buffers (files)
   "Create buffers for all agenda files, protect archived trees and comments.
 
@@ -463,9 +450,7 @@ The agenda files are the files processed by
    `org-agenda-inhibit-startup;
 4. Run `org-refresh-stats-properties' in each file;
 5. Combine todo keyword and tag settings in FILES into
-   `org-todo-keywords-for-agenda', `org-done-keywords-for-agenda',
-   `org-todo-keyword-alist-for-agenda', `org-tag-alist-for-agenda',
-   and `org-tag-groups-alist-for-agenda';
+   `org-todo-keywords-for-agenda' and `org-done-keywords-for-agenda';
 6. Refresh agenda list in the menu.
 7. Collect all the agenda files that were opened as a result into
    `org-agenda-new-buffers'"
@@ -475,8 +460,14 @@ The agenda files are the files processed by
         ;; Do not refresh list of agenda files in the menu when
         ;; opening every new file.
         (org-agenda-file-menu-enabled nil))
-    (setq org-tag-alist-for-agenda nil
-	  org-tag-groups-alist-for-agenda nil)
+    (with-no-warnings
+      ;; FIXME: `org-tag-alist-for-agenda' is obsolete
+      (setq org-tag-alist-for-agenda (org-local-tags-alist)))
+    (with-no-warnings
+      ;; FIXME: `org-tag-groups-alist-for-agenda' is obsolete
+      (setq org-tag-groups-alist-for-agenda nil))
+    (setq org-todo-keywords-for-agenda nil
+	  org-done-keywords-for-agenda nil)
     (dolist (file files)
       (catch 'nextfile
         (with-current-buffer
@@ -489,28 +480,36 @@ The agenda files are the files processed by
 	   (org-set-regexps-and-options 'tags-only)
 	   (or (memq 'stats org-agenda-ignore-properties)
 	       (org-refresh-stats-properties))
-           (dolist (el org-todo-keywords-1)
-             (unless (member el org-todo-keywords-for-agenda)
-               (push el org-todo-keywords-for-agenda)))
-           (dolist (el org-done-keywords)
-             (unless (member el org-done-keywords-for-agenda)
-               (push el org-done-keywords-for-agenda)))
-	   (setq org-todo-keyword-alist-for-agenda
-                 (org--tag-add-to-alist
-		  org-todo-key-alist
-                  org-todo-keyword-alist-for-agenda))
-	   (setq org-tag-alist-for-agenda
-		 (org--tag-add-to-alist
-		  org-current-tag-alist
-                  org-tag-alist-for-agenda))
-	   ;; Merge current file's tag groups into global
-	   ;; `org-tag-groups-alist-for-agenda'.
-	   (when org-group-tags
-	     (dolist (alist org-tag-groups-alist)
-	       (let ((old (assoc (car alist) org-tag-groups-alist-for-agenda)))
-		 (if old
-		     (setcdr old (org-uniquify (append (cdr old) (cdr alist))))
-		   (push alist org-tag-groups-alist-for-agenda)))))))))
+           (dolist (el (org-element-all-todo-keywords))
+             (cl-pushnew el org-todo-keywords-for-agenda))
+           (dolist (el (org-element-done-keywords))
+             (cl-pushnew el org-done-keywords-for-agenda))
+           ;; FIXME: `org-todo-keyword-alist-for-agenda' is obsolete
+           (with-no-warnings
+             (require 'org-todo)
+             (declare-function org-todo-keyword-binding-alist "org-todo" (&optional epom))
+	     (setq org-todo-keyword-alist-for-agenda
+                   (org--settings-add-to-alist
+		    (org-todo-keyword-binding-alist)
+                    org-todo-keyword-alist-for-agenda)))
+           ;; FIXME: `org-tag-alist-for-agenda' is obsolete
+           (with-no-warnings
+	     (setq org-tag-alist-for-agenda
+		   (org--settings-add-to-alist
+                    (when-let ((tags (org-element-property :TAGS (org-element-org-data))))
+                      (org-tag-string-to-alist
+	               (mapconcat #'identity tags "\n")))
+                    org-tag-alist-for-agenda)))
+           ;; FIXME: `org-tag-groups-alist-for-agenda' is obsolete
+           (with-no-warnings
+	     ;; Merge current file's tag groups into global
+	     ;; `org-tag-groups-alist-for-agenda'.
+	     (when org-group-tags
+	       (dolist (alist (org-tag-alist-to-groups (org-local-tags-alist)))
+	         (let ((old (assoc (car alist) org-tag-groups-alist-for-agenda)))
+		   (if old
+		       (setcdr old (org-uniquify (append (cdr old) (cdr alist))))
+		     (push alist org-tag-groups-alist-for-agenda))))))))))
     ;; Refresh the menu once after loading all the agenda buffers.
     (when org-agenda-file-menu-enabled
       (org-install-agenda-files-menu))))

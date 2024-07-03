@@ -2510,7 +2510,7 @@ and `:todo-regexp' properties to DATA.
 
 `:todo-regexp' is regular expression matching any valid todo keyword.
 
-`:todo-keyword-settings', is a list of todo sequences.  Each sequence
+`:todo-keyword-sequences', is a list of todo sequences.  Each sequence
 is (TYPE TODO-ALIST DONE-ALIST).
 TYPE is a symbol representing sequence type.
 
@@ -2523,7 +2523,7 @@ alist element.
 DONE-ALIST is like TODO-ALIST, but only for done keywords."
   (with-current-buffer (org-element-property :buffer data)
     (org-element-put-property data :todo-keywords nil)
-    (org-element-put-property data :todo-keyword-settings nil)
+    (org-element-put-property data :todo-keyword-sequences nil)
     (org-element-put-property data :done-keywords nil)
     (org-element-put-property data :todo-regexp nil)
     (let ((todo-sequences
@@ -2581,8 +2581,8 @@ DONE-ALIST is like TODO-ALIST, but only for done keywords."
            (append (org-element-property :todo-keywords data)
                    (nreverse todo-keywords)))
           (org-element-put-property
-           data :todo-keyword-settings
-           (append (org-element-property :todo-keyword-settings data)
+           data :todo-keyword-sequences
+           (append (org-element-property :todo-keyword-sequences data)
                    (list
                     (list (car sequence) ; sequence type
                           setting-alist
@@ -2591,6 +2591,10 @@ DONE-ALIST is like TODO-ALIST, but only for done keywords."
            data :done-keywords
            (append (org-element-property :done-keywords data)
                    (nreverse done-keywords)))))
+      (org-element-put-property
+       data :not-done-keywords
+       (seq-difference (org-element-property :todo-keywords data)
+                       (org-element-property :done-keywords data)))
       (org-element-put-property
        data :todo-regexp
        (regexp-opt (org-element-property :todo-keywords data) t))))
@@ -2675,8 +2679,8 @@ Alter DATA by side effect."
 Return a new syntax node of `org-data' type containing `:begin',
 `:contents-begin', `:contents-end', `:end', `:post-blank',
 `:post-affiliated', `:todo-keywords', `:done-keywords',
-`:todo-keyword-settings', `:todo-regexp', `:link-abbrevs',
-`:parser-settings', and `:path' properties."
+`:not-done-keywords', `:todo-keyword-sequences', `:todo-regexp',
+`:link-abbrevs', `:parser-settings', and `:path' properties."
   (org-with-wide-buffer
    (let* ((begin 1)
           (contents-begin (progn
@@ -2712,8 +2716,9 @@ Return a new syntax node of `org-data' type containing `:begin',
             :post-blank 0
             :post-affiliated begin
             :todo-keywords org-element--compute-todo-keywords
+            :not-done-keywords org-element--compute-todo-keywords
             :done-keywords org-element--compute-todo-keywords
-            :todo-keyword-settings org-element--compute-todo-keywords
+            :todo-keyword-sequences org-element--compute-todo-keywords
             :todo-regexp org-element--compute-todo-keywords
             :link-abbrevs org-element--compute-link-abbrevs
             :tags org-element--compute-tags
@@ -7180,7 +7185,7 @@ indentation removed from its contents."
 (defvar org-element-cache-persistent t
   "Non-nil when cache should persist between Emacs sessions.")
 
-(defconst org-element-cache-version "2.8"
+(defconst org-element-cache-version "2.9"
   "Version number for Org AST structure.
 Used to avoid loading obsolete AST representation when using
 `org-element-cache-persistent'.")
@@ -9905,16 +9910,17 @@ the cache."
 ;; internally by navigation and manipulation tools.
 
 ;;;###autoload
-(defun org-element-org-data ()
-  "Return the root node of the current Org buffer."
-  (if-let ((node (or (and (org-element--cache-active-p)
-                          org-element--cache
-                          (org-element--cache-root)
-                          (avl-tree--node-data (org-element--cache-root)))
-                     (and (derived-mode-p 'org-mode)
-                          (org-element-at-point (point-max))))))
-      (org-element-lineage node '(org-data) t)
-    (org-with-point-at 1 (org-element-org-data-parser))))
+(defun org-element-org-data (&optional epom)
+  "Return the root `org-data'-type node for EPOM.
+EPOM is a point, marker, node, or nil."
+  (org-with-point-at epom
+    (if-let ((node (or (and (org-element-type epom t) epom)
+                       (and (org-element--cache-active-p)
+                            org-element--cache
+                            (org-element--cache-root)
+                            (avl-tree--node-data (org-element--cache-root))))))
+        (org-element-lineage node '(org-data) t)
+      (org-with-point-at 1 (org-element-org-data-parser)))))
 
 ;;;###autoload
 (defun org-element-at-point (&optional epom cached-only)
@@ -10185,6 +10191,56 @@ This function may modify match data."
 		    ;; Otherwise, return NEXT.
 		    (t (throw 'exit next)))))))))))))
 
+;;;###autoload
+(defsubst org-element-done-keywords (&optional epom)
+  "Retrieve the list of done keywords for EPOM.
+EPOM is a marker, point, node, or nil."
+  (org-element-property :done-keywords (org-element-org-data epom)))
+
+;;;###autoload
+(defsubst org-element-not-done-keywords (&optional epom)
+  "Retrieve the list of not-done keywords for EPOM.
+EPOM is a marker, point, node, or nil."
+  (org-element-property :not-done-keywords (org-element-org-data epom)))
+
+;;;###autoload
+(defsubst org-element-all-todo-keywords (&optional epom)
+  "Retrieve the list of all the todo keywords for EPOM.
+EPOM is a marker, point, node, or nil."
+  (org-element-property :todo-keywords (org-element-org-data epom)))
+
+;;;###autoload
+(defsubst org-element-todo-sequences (&optional epom)
+  "Retrieve the list of all todo keyword sequences for EPOM.
+EPOM is a marker, point, node, or nil.
+The list has the following form: (SEQ1 SEQ2 ...).  Each todo sequence
+is (TYPE ALL-TODO-KEYWORDS DONE-KEYWORDS), and each *-KEYWORDS is
+((KWD1 . KWDSETTING1) ...).
+
+Example:
+((sequence ((\"TODO\" . \"t\") (\"DOING\" . \"o\") (\"DONE\" . \"d!\"))
+           ((\"DONE\" . \"d!\")))
+ ...)"
+  (org-element-property :todo-keyword-sequences (org-element-org-data epom)))
+
+;;;###autoload
+(defsubst org-element-todo-keyword-p (keyword &optional epom)
+  "Return non-nil when KEYWORD (string) is a todo keyword at EPOM.
+EPOM is a marker, point, node, or nil."
+  (member keyword (org-element-all-todo-keywords epom)))
+
+;;;###autoload
+(defsubst org-element-keyword-done-p (keyword &optional epom)
+  "Return non-nil when KEYWORD (string) should be considered done at EPOM.
+EPOM is a marker, point, node, or nil."
+  (member keyword (org-element-done-keywords epom)))
+
+;;;###autoload
+(defsubst org-element-keyword-not-done-p (keyword &optional epom)
+  "Return non-nil when KEYWORD (string) should be considered not-done.
+EPOM is a marker, point, node, or nil."
+  (member keyword (org-element-not-done-keywords epom)))
+
 (defun org-element-swap-A-B (elem-A elem-B)
   "Swap elements ELEM-A and ELEM-B.
 Assume ELEM-B is after ELEM-A in the buffer.  Leave point at the
@@ -10200,7 +10256,7 @@ end of ELEM-A."
     (when (and specialp
 	       (or (not (org-element-type-p elem-B 'paragraph))
 		   (/= (org-element-begin elem-B)
-		       (org-element-contents-begin elem-B))))
+		      (org-element-contents-begin elem-B))))
       (error "Cannot swap elements"))
     ;; Preserve folding state when `org-fold-core-style' is set to
     ;; `text-properties'.

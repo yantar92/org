@@ -759,9 +759,7 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
     (let ((org-clock-out-switch-to-state
 	   (if switch-to-state
 	       (completing-read "Switch to state: "
-				(with-current-buffer
-				    (marker-buffer org-clock-marker)
-				  org-todo-keywords-1)
+                                (org-element-all-todo-keywords org-clock-marker)
 				nil t "DONE")
 	     org-clock-out-switch-to-state))
 	  (now (org-current-time org-clock-rounding-minutes))
@@ -813,10 +811,10 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 		    (when newstate (org-todo newstate))))
 		 ((and org-clock-out-switch-to-state
 		       (not (looking-at
-                           (concat
-                            org-outline-regexp "[ \t]*"
-			    org-clock-out-switch-to-state
-			    "\\(?:[ \t]\\|$\\)"))))
+                             (concat
+                              org-outline-regexp "[ \t]*"
+			      org-clock-out-switch-to-state
+			      "\\(?:[ \t]\\|$\\)"))))
 		  (org-todo org-clock-out-switch-to-state))))))
 	  (force-mode-line-update)
 	  (message (if remove

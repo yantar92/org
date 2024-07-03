@@ -1106,7 +1106,7 @@ Otherwise it will be `org-todo'."
 	    (list (format org-heading-keyword-regexp-format
 			  (concat
 			   "\\(?:"
-			   (mapconcat 'regexp-quote org-not-done-keywords "\\|")
+			   (mapconcat 'regexp-quote (org-element-not-done-keywords) "\\|")
 			   "\\)"))
 		  '(2 'org-headline-todo prepend)))
 	  ;; DONE
@@ -1114,7 +1114,7 @@ Otherwise it will be `org-todo'."
 	    (list (format org-heading-keyword-regexp-format
 			  (concat
 			   "\\(?:"
-			   (mapconcat 'regexp-quote org-done-keywords "\\|")
+			   (mapconcat #'regexp-quote (org-element-done-keywords) "\\|")
 			   "\\)"))
 		  '(2 'org-headline-done prepend)))
 	  ;; Priorities
@@ -1124,9 +1124,11 @@ Otherwise it will be `org-todo'."
           ;; `org-font-lock-add-tag-faces' prepends faces
 	  '(org-font-lock-add-tag-faces)
 	  ;; Tags groups
-	  (when (and org-group-tags org-tag-groups-alist)
+	  (when-let ((tag-groups-alist
+                      (and org-group-tags
+                           (org-tag-alist-to-groups (org-local-tags-alist)))))
 	    (list (concat org-outline-regexp-bol ".+\\(:"
-			  (regexp-opt (mapcar 'car org-tag-groups-alist))
+			  (regexp-opt (mapcar 'car tag-groups-alist))
 			  ":\\).*$")
 		  '(1 'org-tag-group prepend)))
 	  ;; Special keywords (as a part of planning)
@@ -1299,13 +1301,20 @@ When FACE-OR-COLOR is not a string, just return it."
 	    face-or-color)
     face-or-color))
 
-(defun org-get-todo-face (kwd)
+(defun org-get-todo-face (kwd &optional done-keywords)
   "Get the right face for a TODO keyword KWD.
-If KWD is a number, get the corresponding match group."
+If KWD is a number, get the corresponding match group.
+If DONE-KEYWORDS is non-nil, it must be a list of keywords that should
+be considered done.  Otherwise, done keywords in currnet Org buffer
+are considered."
   (when (numberp kwd) (setq kwd (match-string kwd)))
   (or (org-face-from-face-or-color
        'todo 'org-todo (cdr (assoc kwd org-todo-keyword-faces)))
-      (and (member kwd org-done-keywords) 'org-done)
+      (and
+       (if done-keywords
+           (member kwd done-keywords)
+         (org-element-keyword-done-p kwd))
+       'org-done)
       'org-todo))
 
 (defun org-get-priority-face (priority)

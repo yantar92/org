@@ -339,6 +339,16 @@ nil or a string to be used for the todo mark." )
 (defvar org-block-entry-blocking ""
   "First entry preventing the TODO state change.")
 
+(defun org--get-todo-sequence (kwd)
+  "Return todo keyword sequence KWD belongs to.
+The sequence is (TYPE ALL-KWDS ALL-DONE-KWDS) with
+ALL-KWDS/ALL-DONE-KWDS = ((KWD1 . SETTING1) ...)."
+  (seq-find
+   (lambda (sequence) ; (TYPE ((KWD1 . SETTING1) ...) ...)
+     (when (assoc kwd (nth 1 sequence))
+       sequence))
+   (org-element-todo-sequences)))
+
 (defvar org-last-state) ; dynamically scoped by `org-todo'.
 (declare-function org-entry-put "org-property-set" (epom property value))
 (declare-function org-timestamp-change "org-timestamp "(n &optional what updown suppress-tmp-delay))
@@ -350,9 +360,10 @@ of repeating deadline/scheduled time stamps to new date.
 
 This function is run automatically after each state change to a DONE state."
   (let* ((repeat (org-get-repeat))
-	 (aa (assoc org-last-state org-todo-kwd-alist))
-	 (interpret (nth 1 aa))
-	 (head (nth 2 aa))
+	 (last-todo-sequence ; (TYPE ((KWD1 . SETTING1) ...) ...)
+          (org--get-todo-sequence org-last-state))
+	 (interpret (car last-todo-sequence)) ; TYPE
+	 (head (caar (nth 1 last-todo-sequence))) ; KWD1
 	 (whata '(("h" . hour) ("d" . day) ("m" . month) ("y" . year)))
 	 (msg "Entry repeats: ")
 	 (org-log-done nil)
@@ -365,7 +376,7 @@ This function is run automatically after each state change to a DONE state."
 		 (and (stringp org-todo-repeat-to-state)
 		      org-todo-repeat-to-state)
 		 (and org-todo-repeat-to-state org-last-state))))
-	(org-todo (cond ((and to-state (member to-state org-todo-keywords-1))
+	(org-todo (cond ((and to-state (org-element-todo-keyword-p to-state))
 			 to-state)
 			((eq interpret 'type) org-last-state)
 			(head)
@@ -381,8 +392,8 @@ This function is run automatically after each state change to a DONE state."
 		      (when (org-at-clock-log-p) (throw :clock t))))))
         (require 'org-property-set)
 	(org-entry-put nil "LAST_REPEAT" (format-time-string
-					(org-time-stamp-format t t)
-                                        (org-current-effective-time))))
+					  (org-time-stamp-format t t)
+                                          (org-current-effective-time))))
       (when org-log-repeat
 	(if org-log-setup
 	    ;; We are already setup for some record.
@@ -391,7 +402,7 @@ This function is run automatically after each state change to a DONE state."
 	      (setq org-log-note-how 'note))
 	  ;; Set up for taking a record.
 	  (org-add-log-setup 'state
-			     (or done-word (car org-done-keywords))
+			     (or done-word (car (org-element-done-keywords)))
 			     org-last-state
 			     org-log-repeat)))
       ;; Timestamps without a repeater are usually skipped.  However,
@@ -418,7 +429,7 @@ This function is run automatically after each state change to a DONE state."
 		(when (equal what "w") (setq n (* n 7) what "d"))
 		(when (and (equal what "h")
 			   (not (string-match-p "[0-9]\\{1,2\\}:[0-9]\\{2\\}"
-					      ts)))
+					        ts)))
 		  (user-error
 		   "Cannot repeat in %d hour(s) because no hour has been set"
 		   n))
@@ -443,7 +454,7 @@ This function is run automatically after each state change to a DONE state."
 				   (if (equal what "h")
 				       (not (time-less-p nil time))
 				     (>= (org-today)
-					(time-to-days time))))
+					 (time-to-days time))))
 			  (when (= nshiftmax (cl-incf nshift))
 			    (or (y-or-n-p
 				 (format "%d repeater intervals were not \
@@ -471,6 +482,48 @@ enough to shift date past today.  Continue? "
       (run-hooks 'org-todo-repeat-hook)
       (setq org-log-post-message msg)
       (message msg))))
+
+(defun org-todo-keyword-binding-alist (&optional epom no-auto-assign)
+  "Return the list of todo sequences and their key bindings at EPOM.
+EPOM is point, marker, or node.
+The return value is an alist with the following format:
+
+  ((:startgroup) (\"KWD1\" . key) ... (:endgroup) ...)
+ 
+Each todo sequence is delimited by :startgroup..:endgroup.
+KEY is a char assigned according to the user customizations via
+`org-todo-keywords' and in-buffer #+TODO, #+TYP_TODO, and #+SEQ_TODO
+keywords.  Unless NO-AUTO-ASSIGN is non-nil, and no user customization
+is present, the key is assigned automatically, from
+`org--fast-selection-keys' or is left nil, if no key can be assigned
+without creating duplicates."
+  (or (org-element-cache-get-key
+       (org-element-org-data epom)
+       (if no-auto-assign :org-todo-keyword-binding-alist-origin
+         :org-todo-keyword-binding-alist))
+      (org-element-cache-store-key
+       (org-element-org-data epom)
+       (if no-auto-assign :org-todo-keyword-binding-alist-origin
+         :org-todo-keyword-binding-alist)
+       (funcall
+        (if no-auto-assign #'identity #'org-assign-fast-keys)
+        (mapcan
+         (lambda (todo-sequence)
+           ;; TODO-SEQUENCE = (TYPE ((KWD1 . SETTING) ...) ...)
+           (nconc
+            (list '(:startgroup))
+            (mapcar
+             (lambda (kwd-setting)
+               (cons
+                (car kwd-setting)
+                (if (and (stringp (cdr kwd-setting))
+                         (string-match "^[^!@/]" (cdr kwd-setting)))
+                    (string-to-char (match-string 0 (cdr kwd-setting)))
+                  nil)))
+             (nth 1 todo-sequence))
+            (list '(:endgroup))))
+         (org-element-todo-sequences epom)))
+       'robust)))
 
 ;; FIXME: May we get rid of this awkwardness?
 (defvar org-agenda-headline-snapshot-before-repeat) ; Specifically needed for `org-agenda-todo'
@@ -558,61 +611,74 @@ When called through ELisp, arg is also interpreted in the following way:
 		      (progn (setq arg nil) 'note) org-inhibit-logging))
 		 (this (match-string 1))
 		 (hl-pos (match-beginning 0))
-		 (head (org-get-todo-sequence-head this))
-		 (ass (assoc head org-todo-kwd-alist))
-		 (interpret (nth 1 ass))
-		 (done-word (nth 3 ass))
-		 (final-done-word (nth 4 ass))
+                 ;; (TYPE ((KWD1 . SETTING1) ...) ((DONE-KWD1 . ...) ...))
+                 (this-kwd-sequence (org--get-todo-sequence this))
+		 (head (caar (nth 1 this-kwd-sequence)))
+		 (interpret (car this-kwd-sequence)) ; TYPE
+		 (done-word (caar (nth 2 this-kwd-sequence)))
+		 (final-done-word (car (org-last (nth 2 this-kwd-sequence))))
 		 (org-last-state (or this ""))
 		 (completion-ignore-case t)
-		 (member (member this org-todo-keywords-1))
+		 (member (member this (org-element-all-todo-keywords)))
 		 (tail (cdr member))
-		 (org-state (cond
-			     ((eq arg 'right)
-			      ;; Next state
-			      (if this
-			          (if tail (car tail) nil)
-			        (car org-todo-keywords-1)))
-			     ((eq arg 'left)
-			      ;; Previous state
-			      (unless (equal member org-todo-keywords-1)
-			        (if this
-				    (nth (- (length org-todo-keywords-1)
-					    (length tail) 2)
-				         org-todo-keywords-1)
-			          (org-last org-todo-keywords-1))))
-			     (arg
-			      ;; User or caller requests a specific state.
-			      (cond
-			       ((equal arg "") nil)
-			       ((eq arg 'none) nil)
-			       ((eq arg 'done) (or done-word (car org-done-keywords)))
-			       ((eq arg 'nextset)
-			        (or (car (cdr (member head org-todo-heads)))
-				    (car org-todo-heads)))
-			       ((eq arg 'previousset)
-			        (let ((org-todo-heads (reverse org-todo-heads)))
-			          (or (car (cdr (member head org-todo-heads)))
-				      (car org-todo-heads))))
-			       ((car (member arg org-todo-keywords-1)))
-			       ((stringp arg)
-			        (user-error "State `%s' not valid in this file" arg))
-			       ((nth (1- (prefix-numeric-value arg))
-				     org-todo-keywords-1))))
-			     ((and org-todo-key-trigger org-use-fast-todo-selection)
-			      ;; Use fast selection.
-			      (org-fast-todo-selection this))
-			     ((null member) (or head (car org-todo-keywords-1)))
-			     ((equal this final-done-word) nil) ;-> make empty
-			     ((null tail) nil) ;-> first entry
-			     ((memq interpret '(type priority))
-			      (if (eq this-command last-command)
-			          (car tail)
-			        (if (> (length tail) 0)
-				    (or done-word (car org-done-keywords))
-			          nil)))
-			     (t
-			      (car tail))))
+		 (org-state
+                  (cond
+		   ((eq arg 'right)
+		    ;; Next state
+		    (if this
+			(if tail (car tail) nil)
+		      (car (org-element-all-todo-keywords))))
+		   ((eq arg 'left)
+		    ;; Previous state
+		    (unless (equal member (org-element-all-todo-keywords))
+		      (if this
+			  (nth (- (length (org-element-all-todo-keywords))
+				  (length tail) 2)
+			       (org-element-all-todo-keywords))
+			(org-last (org-element-all-todo-keywords)))))
+		   (arg
+		    ;; User or caller requests a specific state.
+                    (let ((get-todo-heads
+                           (lambda ()
+                             (mapcar
+                              (lambda (sequence)
+                                ;; SEQUENCE = (TYPE ((KWD1 . OPT1) ...) ...)
+                                (caar (nth 1 sequence)) ; KWD1
+                                )
+                              (org-element-todo-sequences)))))
+		      (cond
+		       ((equal arg "") nil)
+		       ((eq arg 'none) nil)
+		       ((eq arg 'done) (or done-word (car (org-element-done-keywords))))
+		       ((eq arg 'nextset)
+                        (let ((todo-heads (funcall get-todo-heads)))
+                          (or (car (cdr (member head todo-heads)))
+			      (car todo-heads))))
+		       ((eq arg 'previousset)
+                        (let* ((todo-heads (funcall get-todo-heads))
+                               (todo-heads (reverse todo-heads)))
+                          (or (car (cdr (member head todo-heads)))
+			      (car todo-heads))))
+		       ((car (member arg (org-element-all-todo-keywords))))
+		       ((stringp arg)
+		        (user-error "State `%s' not valid in this file" arg))
+		       ((nth (1- (prefix-numeric-value arg))
+			     (org-element-all-todo-keywords))))))
+		   ((and org-use-fast-todo-selection
+                         (delq nil (mapcar #'cdr (org-todo-keyword-binding-alist nil 'no-auto))))
+		    ;; Use fast selection.
+		    (org-fast-todo-selection this))
+		   ((null member) (or head (car (org-element-all-todo-keywords))))
+		   ((equal this final-done-word) nil) ;-> make empty
+		   ((null tail) nil) ;-> first entry
+		   ((memq interpret '(type priority))
+		    (if (eq this-command last-command)
+			(car tail)
+		      (if (> (length tail) 0)
+			  (or done-word (car (org-element-done-keywords)))
+			nil)))
+		   (t
+		    (car tail))))
 		 (org-state (or
 			     (run-hook-with-args-until-success
 			      'org-todo-get-default-hook org-state org-last-state)
@@ -624,7 +690,7 @@ When called through ELisp, arg is also interpreted in the following way:
 	    (when org-blocker-hook
 	      (let (org-blocked-by-checkboxes block-reason)
 		(setq org-last-todo-state-is-todo
-		      (not (member this org-done-keywords)))
+		      (not (org-element-keyword-done-p this)))
 		(unless (save-excursion
 			  (save-match-data
 			    (org-with-wide-buffer
@@ -661,21 +727,30 @@ When called through ELisp, arg is also interpreted in the following way:
 		  ((not (pos-visible-in-window-p hl-pos))
 		   (message "TODO state changed to %s" (org-trim next))))
 	    (unless head
-	      (setq head (org-get-todo-sequence-head org-state)
-		    ass (assoc head org-todo-kwd-alist)
-		    interpret (nth 1 ass)
-		    done-word (nth 3 ass)
-		    final-done-word (nth 4 ass)))
+	      (setq
+               ;; (TYPE ((KWD1 . SETTING1) ...) ((DONE-KWD1 . ...) ...))
+               this-kwd-sequence (org--get-todo-sequence org-state)
+               head (caar (nth 1 this-kwd-sequence))
+	       interpret (car this-kwd-sequence)
+	       done-word (caar (nth 2 this-kwd-sequence))
+	       final-done-word (car (org-last (nth 2 this-kwd-sequence)))))
 	    (when (memq arg '(nextset previousset))
-	      (message "Keyword-Set %d/%d: %s"
-		       (- (length org-todo-sets) -1
-			  (length (memq (assoc org-state org-todo-sets) org-todo-sets)))
-		       (length org-todo-sets)
-		       (mapconcat 'identity (assoc org-state org-todo-sets) " ")))
+              (let ((todo-keyword-sets ; ((KWD1 KWD2 ...) (KWD...) (KWD...))
+                     (mapcar
+                      (lambda (sequence)
+                        ;; SEQUENCE = (TYPE ((KWD1 . OPT1) ...) ...)
+                        (mapcar #'car (nth 1 sequence)) ; (KWD1 ...)
+                        )
+                      (org-element-todo-sequences))))
+	        (message "Keyword-Set %d/%d: %s"
+		         (- (length todo-keyword-sets) -1
+			    (length (memq (assoc org-state todo-keyword-sets) todo-keyword-sets)))
+		         (length todo-keyword-sets)
+		         (mapconcat 'identity (assoc org-state todo-keyword-sets) " "))))
 	    (setq org-last-todo-state-is-todo
-		  (not (member org-state org-done-keywords)))
-	    (setq now-done-p (and (member org-state org-done-keywords)
-				  (not (member this org-done-keywords))))
+		  (not (org-element-keyword-done-p org-state)))
+	    (setq now-done-p (and (org-element-keyword-done-p org-state)
+				  (not (org-element-keyword-done-p this))))
 	    (and logging (org-local-logging logging))
 	    (when (or (and (or org-todo-log-states org-log-done)
 			   (not (eq org-inhibit-logging t))
@@ -689,8 +764,8 @@ When called through ELisp, arg is also interpreted in the following way:
 		(setq dolog 'time))
 	      (when (or (and (not org-state) (not org-closed-keep-when-no-todo))
 			(and org-state
-			     (member org-state org-not-done-keywords)
-			     (not (member this org-not-done-keywords))))
+                             (org-element-keyword-not-done-p org-state)
+                             (not (org-element-keyword-not-done-p this))))
 		;; This is now a todo state and was not one before
 		;; If there was a CLOSED time stamp, get rid of it.
 		(org-add-planning-info nil nil 'closed))
@@ -710,7 +785,7 @@ When called through ELisp, arg is also interpreted in the following way:
 	    (when (bound-and-true-p org-clock-out-when-done)
 	      (org-clock-out-if-current))
 	    (run-hooks 'org-after-todo-state-change-hook)
-	    (when (and arg (not (member org-state org-done-keywords)))
+	    (when (and arg (not (org-element-keyword-done-p org-state)))
 	      (setq head (org-get-todo-sequence-head org-state)))
             (put-text-property (line-beginning-position)
                                (line-end-position) 'org-todo-head head)
@@ -749,7 +824,7 @@ and is only done if the variable `org-clock-out-when-done' is not nil."
 	     org-clock-out-when-done
 	     (marker-buffer org-clock-marker)
 	     (or (and (eq t org-clock-out-when-done)
-		      (member org-state org-done-keywords))
+		      (org-element-keyword-done-p org-state))
 		 (and (listp org-clock-out-when-done)
 		      (member org-state org-clock-out-when-done)))
 	     (equal (or (buffer-base-buffer (org-clocking-buffer))
@@ -790,10 +865,10 @@ returned by `org-get-heading'."
       ;; If this is not a todo state change, or if this entry is already DONE,
       ;; do not block
       (when (or (not (eq (plist-get change-plist :type) 'todo-state-change))
-		(member (plist-get change-plist :from)
-			(cons 'done org-done-keywords))
-		(member (plist-get change-plist :to)
-			(cons 'todo org-not-done-keywords))
+                (eq (plist-get change-plist :from) 'done)
+                (org-element-keyword-done-p (plist-get change-plist :from))
+		(eq (plist-get change-plist :to) 'todo)
+                (org-element-keyword-not-done-p (plist-get change-plist :to))
 		(not (plist-get change-plist :to)))
 	(throw 'dont-block t))
       ;; If this task has children, and any are undone, it's blocked
@@ -893,11 +968,11 @@ current task should be blocked."
       ;; If this is not a todo state change, or if this entry is already DONE,
       ;; do not block
       (when (or (not (eq (plist-get change-plist :type) 'todo-state-change))
-		(member (plist-get change-plist :from)
-			(cons 'done org-done-keywords))
-		(member (plist-get change-plist :to)
-			(cons 'todo org-not-done-keywords))
-		(not (plist-get change-plist :to)))
+                (eq (plist-get change-plist :from) 'done)
+                (org-element-keyword-done-p (plist-get change-plist :from))
+		(not (plist-get change-plist :to))
+                (eq (plist-get change-plist :to) 'todo)
+                (org-element-keyword-not-done-p (plist-get change-plist :to)))
 	(throw 'dont-block t))
       ;; If this task has checkboxes that are not checked, it's blocked
       (save-excursion
@@ -1020,29 +1095,29 @@ statistics everywhere."
 	    		         (match-string 2)))
 	    	  (if (or (eq org-provide-todo-statistics 'all-headlines)
 			  (and (eq org-provide-todo-statistics t)
-			       (or (member kwd org-done-keywords)))
+			       (or (org-element-keyword-done-p kwd)))
 	    		  (and (listp org-provide-todo-statistics)
 			       (stringp (car org-provide-todo-statistics))
 	    		       (or (member kwd org-provide-todo-statistics)
-				   (member kwd org-done-keywords)))
+				   (org-element-keyword-done-p kwd)))
 			  (and (listp org-provide-todo-statistics)
 			       (listp (car org-provide-todo-statistics))
 			       (or (member kwd (car org-provide-todo-statistics))
-				   (and (member kwd org-done-keywords)
+				   (and (org-element-keyword-done-p kwd)
 				        (member kwd (cadr org-provide-todo-statistics))))))
 	    	      (setq cnt-all (1+ cnt-all))
 		    (and (eq org-provide-todo-statistics t)
 		         kwd
 		         (setq cnt-all (1+ cnt-all))))
 		  (when (or (and (member org-provide-todo-statistics '(t all-headlines))
-			         (member kwd org-done-keywords))
+			         (org-element-keyword-done-p kwd))
 			    (and (listp org-provide-todo-statistics)
 			         (listp (car org-provide-todo-statistics))
-			         (member kwd org-done-keywords)
+			         (org-element-keyword-done-p kwd)
 			         (member kwd (cadr org-provide-todo-statistics)))
 			    (and (listp org-provide-todo-statistics)
 			         (stringp (car org-provide-todo-statistics))
-			         (member kwd org-done-keywords)))
+			         (org-element-keyword-done-p kwd)))
 		    (setq cnt-done (1+ cnt-done)))
 	    	  (outline-next-heading)))
 	      (setq new
@@ -1090,16 +1165,22 @@ This hook runs even if there is no statistics cookie present, in which case
       (setq changes (append changes (cdr (assoc "" l)))))
     (when (and (stringp state) (> (length state) 0))
       (setq changes (append changes (cdr (assoc state l)))))
-    (when (member state org-not-done-keywords)
+    (when (org-element-keyword-not-done-p state)
       (setq changes (append changes (cdr (assq 'todo l)))))
-    (when (member state org-done-keywords)
+    (when (org-element-keyword-done-p state)
       (setq changes (append changes (cdr (assq 'done l)))))
     (dolist (c changes)
       (org-toggle-tag (car c) (if (cdr c) 'on 'off)))))
 
 (declare-function org-extract-log-state-settings "org-mode" (x))
 (defun org-local-logging (value)
-  "Get logging settings from a property VALUE."
+  "Get logging settings from a property VALUE.
+Set `org-log-done', `org-log-repeat', and `org-todo-log-states' by
+side effect.
+First, set them to nil unconditionally; and then apply VALUE settings.
+VALUE may contain \"lognotedone\", \"logrepeat\", and todo keyword
+settings in the form of KWD(setting), as described in
+`org-todo-keywords'."
   ;; Directly set the variables, they are already local.
   (setq org-log-done nil
         org-log-repeat nil
@@ -1113,7 +1194,7 @@ This hook runs even if there is no statistics cookie present, in which case
         (and (member (nth 1 a) '(org-log-done org-log-repeat))
              (set (nth 1 a) (nth 2 a))))
        ((setq a (org-extract-log-state-settings w))
-        (and (member (car a) org-todo-keywords-1)
+        (and (org-element-todo-keyword-p (car a))
              (push a org-todo-log-states)))))))
 
 (defun org-get-todo-sequence-head (kwd)
@@ -1129,11 +1210,16 @@ right sequence."
                                                  'org-todo-head
                                                  nil (line-end-position)))
 	    (get-text-property p 'org-todo-head))))
-     ((not (member kwd org-todo-keywords-1))
-      (car org-todo-keywords-1))
-     (t (nth 2 (assoc kwd org-todo-kwd-alist))))))
+     ((not (org-element-todo-keyword-p kwd))
+      (car (org-element-all-todo-keywords)))
+     (t
+      (seq-find
+       (lambda (sequence) ; (TYPE ((KWD1 . SETTING1) ...) ...)
+         (when (assoc kwd (nth 1 sequence))
+           (caar (nth 1 sequence))))
+       (org-element-todo-sequences))))))
 
-(declare-function org-get-todo-face "org-font-lock" (kwd))
+(declare-function org-get-todo-face "org-font-lock" (kwd &optional done-keywords))
 (defun org-fast-todo-selection (&optional current-todo-keyword)
   "Fast TODO keyword selection with single keys.
 Returns the new TODO keyword, or nil if no state change should occur.
@@ -1141,12 +1227,12 @@ Returns the new TODO keyword, or nil if no state change should occur.
 When CURRENT-TODO-KEYWORD is given and selection letters are not
 unique globally, prefer a state in the current todo keyword sequence
 where CURRENT-TODO-KEYWORD belongs over on in another sequence."
-  (let* ((todo-alist org-todo-key-alist) ; copy from the original Org buffer.
+  (let* ((todo-alist (org-todo-keyword-binding-alist)) ; copy from the original Org buffer.
          (todo-alist-tail todo-alist)
          ;; TODO keyword sequence that takes priority in case if there is binding collision.
 	 (preferred-sequence-head (org-get-todo-sequence-head current-todo-keyword))
          in-preferred-sequence preferred-todo-alist
-	 (done-keywords org-done-keywords) ;; needed for the faces when calling `org-get-todo-face'.
+	 (done-keywords (org-element-done-keywords))
 	 (expert-interface (equal org-use-fast-todo-selection 'expert))
 	 (prompt "") ; Additional expert prompt, listing todo keyword bindings.
          ;; Max width occupied by a single todo record in the completion buffer.
@@ -1158,7 +1244,7 @@ where CURRENT-TODO-KEYWORD belongs over on in another sequence."
              (apply 'max (mapcar
 			  (lambda (x)
 			    (if (stringp (car x)) (string-width (car x)) 0))
-			  org-todo-key-alist))))
+			  todo-alist))))
          field-number ; current todo keyword column in the completion buffer.
          todo-binding-spec todo-keyword todo-char input-char)
     ;; Display todo selection dialog, read the user input, and return.
@@ -1172,9 +1258,6 @@ where CURRENT-TODO-KEYWORD belongs over on in another sequence."
            '(org-display-buffer-split (direction . down))))
         ;; Fill text in *Org todo* buffer.
 	(erase-buffer)
-        ;; Copy `org-done-keywords' from the original Org buffer to be
-        ;; used by `org-get-todo-face'.
-	(setq-local org-done-keywords done-keywords)
         ;; Show todo keyword sequences and bindings in a grid.
         ;; Each todo keyword in the grid occupies FIELD-WIDTH characters.
         ;; The keywords are filled up to `window-width'.
@@ -1215,7 +1298,7 @@ where CURRENT-TODO-KEYWORD belongs over on in another sequence."
 	     (setq todo-keyword
                    (org-add-props
                        todo-keyword nil
-                     'face (org-get-todo-face todo-keyword)))
+                     'face (org-get-todo-face todo-keyword done-keywords)))
 	     (when (= field-number 0) (insert "  "))
 	     (setq prompt (concat prompt "[" (char-to-string todo-char) "] " todo-keyword " "))
 	     (insert "[" todo-char "] " todo-keyword

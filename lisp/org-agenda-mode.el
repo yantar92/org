@@ -109,8 +109,6 @@ FILTER-ALIST is an alist of filters we need to apply when
 	  (progn
             (org-agenda--insert-block-separator)
 	    (narrow-to-region (point) (point-max)))
-	(setq org-todo-keywords-for-agenda nil)
-	(setq org-done-keywords-for-agenda nil)
 	;; Setting any org variables that are in org-agenda-local-vars
 	;; list need to be done after the prepare call
 	(org-agenda-prepare-window
@@ -128,10 +126,6 @@ FILTER-ALIST is an alist of filters we need to apply when
                 (regexp . ,org-agenda-regexp-filter-preset)
                 (effort . ,org-agenda-effort-filter-preset)))
         (org-agenda-prepare-buffers (org-agenda-files nil 'ifmode))
-	(setq org-todo-keywords-for-agenda
-	      (org-uniquify org-todo-keywords-for-agenda))
-	(setq org-done-keywords-for-agenda
-	      (org-uniquify org-done-keywords-for-agenda))
 	(setq org-agenda-last-prefix-arg current-prefix-arg)
 	(setq org-agenda-this-buffer-name org-agenda-buffer-name)
 	(and name (not org-agenda-name)

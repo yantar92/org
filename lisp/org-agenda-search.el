@@ -729,14 +729,12 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 	 (concat "^\\*+[ \t]+"
 		 (regexp-opt
 		  (pcase args
-		    (`(,_ todo)
-		     (org-delete-all org-done-keywords
-				     (copy-sequence org-todo-keywords-1)))
-		    (`(,_ done) org-done-keywords)
-		    (`(,_ any) org-todo-keywords-1)
+		    (`(,_ todo) (org-element-not-done-keywords))
+		    (`(,_ done) (org-element-done-keywords))
+		    (`(,_ any) (org-element-all-todo-keywords))
 		    (`(,_ ,(pred atom))
 		     (error "Invalid TODO class or type: %S" args))
-		    (`(,_ ,(pred (member "*"))) org-todo-keywords-1)
+		    (`(,_ ,(pred (member "*"))) (org-element-all-todo-keywords))
 		    (`(,_ ,todo-list) todo-list))
 		  'words))))
     (pcase args
@@ -1113,7 +1111,7 @@ displayed in agenda view."
 			      (match-string 0))))
 	       (todo-state (org-get-todo-state))
 	       (warntime (org-entry-get (point) "APPT_WARNTIME" 'selective))
-	       (done? (member todo-state org-done-keywords)))
+	       (done? (org-element-keyword-done-p todo-state)))
 	  ;; Possibly skip done tasks.
 	  (when (and done? org-agenda-skip-timestamp-if-done)
 	    (throw :skip t))
@@ -1933,7 +1931,7 @@ scheduled items with an hour specification like [h]h:mm."
 	    ;; date stamps will catch the limits.
 	    (save-excursion
 	      (setq todo-state (org-get-todo-state))
-	      (setq donep (member todo-state org-done-keywords))
+	      (setq donep (org-element-keyword-done-p todo-state))
 	      (when (and donep org-agenda-skip-timestamp-if-done)
 		(throw :skip t))
               (setq face (if (= start-day end-day)
@@ -2235,7 +2233,7 @@ When NO-AGENDA-SKIP is non-nil, do not skip entries skipped by
              (when (and
 
 		    ;; eval matcher only when the todo condition is OK
-		    (and (or (not todo-only) (member todo org-todo-keywords-1))
+		    (and (or (not todo-only) (org-element-todo-keyword-p todo))
 		         (if (functionp matcher)
 			     (let ((case-fold-search t) (org-trust-scanner-tags t))
 			       (funcall matcher todo tags-list level))
@@ -2249,7 +2247,7 @@ When NO-AGENDA-SKIP is non-nil, do not skip entries skipped by
 
 		    ;; Check if timestamps are deselecting this entry
 		    (or (not todo-only)
-		        (and (member todo org-todo-keywords-1)
+		        (and (org-element-todo-keyword-p todo)
 			     (or (not org-agenda-tags-todo-honor-ignore-options)
 			         (not (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item))))))
 

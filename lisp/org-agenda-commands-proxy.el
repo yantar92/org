@@ -287,12 +287,8 @@ the same tree node, and the headline of the tree node in the Org file."
        (forward-line 0)
        (save-window-excursion
 	 (org-agenda-change-all-lines newhead hdmarker 'fixface just-one))
-       (when (bound-and-true-p org-clock-out-when-done)
-	 (string-match (concat "^" (regexp-opt org-done-keywords-for-agenda))
-		       newhead)
-	 (org-agenda-unmark-clocking-task))
-       (org-move-to-column col)
-       (org-agenda-mark-clocking-task)))))
+       (org-agenda-mark-clocking-task)
+       (org-move-to-column col)))))
 
 ;;; Edit tags
 

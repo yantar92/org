@@ -244,7 +244,7 @@ decreases scheduled or deadline date by one day."
         (cond
          ((equal property "TODO")
 	  (cond ((not (org-string-nw-p value)) (setq value 'none))
-	        ((not (member value org-todo-keywords-1))
+	        ((not (org-element-todo-keyword-p value))
 	         (user-error "\"%s\" is not a valid TODO state" value)))
 	  (org-todo value))
          ((equal property "PRIORITY")
@@ -483,7 +483,7 @@ completion."
     (cond
      ((equal property "TODO")
       (setq vals (org-with-point-at epom
-		   (append org-todo-keywords-1 '("")))))
+		   (append (org-element-all-todo-keywords) '("")))))
      ((equal property "PRIORITY")
       (let ((n org-priority-lowest))
 	(while (>= n org-priority-highest)

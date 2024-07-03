@@ -42,7 +42,7 @@
 The prefix arg can be used to select a specific TODO keyword and limit
 the list to these.  When using `\\[universal-argument]', you will be prompted
 for a keyword.  A numeric prefix directly selects the Nth keyword in
-`org-todo-keywords-1'."
+all the todo keywords in buffer (`org-element-all-todo-keywords')."
   (interactive "P")
   (when org-agenda-overriding-arguments
     (setq arg org-agenda-overriding-arguments))
@@ -133,7 +133,11 @@ to search again: (0)[ALL]"))
        (propertize "ALL" 'face 'org-agenda-structure-filter)
      (mapconcat
       (lambda (kw)
-        (propertize kw 'face (list (org-get-todo-face kw) 'org-agenda-structure)))
+        (propertize
+         kw
+         'face (list
+                (org-get-todo-face kw org-done-keywords-for-agenda)
+                'org-agenda-structure)))
       (org-split-string keywords "|")
       "|"))
    "\n"))

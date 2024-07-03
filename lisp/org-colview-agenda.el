@@ -93,7 +93,6 @@ estimate."
       (move-marker org-columns-begin-marker (point))
     (setq org-columns-begin-marker (point-marker)))
   (let* ((org-columns--time (float-time))
-	 (org-done-keywords org-done-keywords-for-agenda)
 	 (fmt
 	  (cond
 	   ((bound-and-true-p org-overriding-columns-format))
@@ -142,7 +141,7 @@ estimate."
 	    (flyspell-mode 0))
 	  (dolist (entry cache)
 	    (goto-char (car entry))
-	    (org-columns--display-here (cdr entry)))
+	    (org-columns--display-here (cdr entry) nil (org-element-done-keywords (org-get-at-bol 'org-hd-marker))))
 	  (setq-local org-agenda-columns-active t)
 	  (when org-agenda-columns-show-summaries
 	    (org-agenda-colview-summarize cache)))))))
@@ -198,7 +197,7 @@ This will add overlays to the date lines, to show the summary for each day."
 			       (delq nil
 				     (mapcar
 				      (lambda (e) (org-string-nw-p
-					           (nth 1 (assoc spec e))))
+					      (nth 1 (assoc spec e))))
 				      entries)))
 			      (final (if values
 					 (funcall summarize values printf)
@@ -208,7 +207,8 @@ This will add overlays to the date lines, to show the summary for each day."
 					      'face 'bold final))
 			 (list spec final final)))))
 		  fmt)
-		 'dateline))))
+		 'dateline
+                 (org-element-done-keywords (org-get-at-bol 'org-hd-marker))))))
 	  (if (bobp) (throw :complete t) (forward-line -1)))))))
 
 (defun org-agenda-colview-compute (fmt)

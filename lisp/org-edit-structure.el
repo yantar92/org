@@ -324,8 +324,8 @@ unchecked check box."
     (let* ((new-mark-x
 	    (if (or (equal arg '(4))
 		    (not (match-beginning 2))
-		    (member (match-string 2) org-done-keywords))
-		(car org-todo-keywords-1)
+		    (org-element-keyword-done-p (match-string 2)))
+		(car (org-element-all-todo-keywords))
 	      (match-string 2)))
 	   (new-mark
 	    (or
@@ -584,8 +584,8 @@ the current entry.  However, when NSTARS is non-nil is given, its value
 determines the number of stars to add.
 
 The checkboxes are converted to appropriate TODO or DONE keywords
-(using `car' or `org-done-keywords' and `org-not-done-keywords' when
-available).
+(using `car' of `org-element-done-keywords' and
+`org-element-not-done-keywords' when available).
 
 Return non-nil if at least one line line was converted."
   (setq limit (or limit (point-max)))
@@ -629,8 +629,8 @@ In a region:
 
 - If it is a plain list item, turn all plain list items into headings.
   The checkboxes are converted to appropriate TODO or DONE keywords
-  (using `car' or `org-done-keywords' and `org-not-done-keywords' when
-  available).
+  (using `car' of `org-elemnt-done-keywords' and
+  `org-element-not-done-keywords' when available).
 
 When converting a line into a heading, the number of stars is chosen
 such that the lines become children of the current entry.  However,
@@ -1372,8 +1372,8 @@ function is being called interactively."
 	     ((= dcst ?o)
 	      (when (looking-at org-complex-heading-regexp)
 		(let* ((m (match-string 2))
-		       (s (if (member m org-done-keywords) '- '+)))
-		  (- 99 (funcall s (length (member m org-todo-keywords-1)))))))
+		       (s (if (org-element-keyword-done-p m) '- '+)))
+		  (- 99 (funcall s (length (member m (org-element-all-todo-keywords))))))))
 	     ((= dcst ?f)
 	      (if getkey-func
 		  (progn

@@ -300,8 +300,8 @@ The prefix arg is passed through to the command if possible."
 	(?t
 	 (let ((state (completing-read
 		       "Todo state: "
-		       (with-current-buffer (marker-buffer (car entries))
-			 (mapcar #'list org-todo-keywords-1)))))
+                       (mapcar #'list (org-element-all-todo-keywords
+                                       (car entries))))))
            (require 'org-todo)
            (defvar org-inhibit-blocking) ; org-todo.el
            (defvar org-inhibit-logging)
@@ -311,12 +311,14 @@ The prefix arg is passed through to the command if possible."
 			 (org-agenda-todo state))))))
 
 	((and (or ?- ?+) action)
+         (require 'org-tags)
+         (declare-function org-local-tags-completion-table "org-tags" ())
 	 (let ((tag (completing-read
 		     (format "Tag to %s: " (if (eq action ?+) "add" "remove"))
 		     (with-current-buffer (marker-buffer (car entries))
 		       (delq nil
 			     (mapcar (lambda (x) (and (stringp (car x)) x))
-				     org-current-tag-alist))))))
+				     (org-local-tags-completion-table)))))))
 	   (setq cmd
 		 (lambda ()
 		   (org-agenda-set-tags tag

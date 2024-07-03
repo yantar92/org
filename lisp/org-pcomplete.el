@@ -288,8 +288,9 @@ keywords relative to each registered export backend."
 (defun pcomplete/org-mode/file-option/tags ()
   "Complete arguments for the #+TAGS file option."
   (require 'org-tags)
+  (declare-function org-local-tags-completion-table "org-tags" ())
   (pcomplete-here
-   (list (org-tag-alist-to-string org-current-tag-alist))))
+   (list (org-tag-alist-to-string (org-local-tags-completion-table)))))
 
 (defun pcomplete/org-mode/file-option/title ()
   "Complete arguments for the #+TITLE file option."
@@ -353,7 +354,7 @@ keywords relative to each registered export backend."
 
 (defun pcomplete/org-mode/todo ()
   "Complete against known TODO keywords."
-  (pcomplete-here (pcomplete-uniquify-list (copy-sequence org-todo-keywords-1))))
+  (pcomplete-here (pcomplete-uniquify-list (copy-sequence (org-element-all-todo-keywords)))))
 
 (declare-function org-link-heading-search-string "ol" (&optional string))
 (defun pcomplete/org-mode/searchhead ()
@@ -381,7 +382,7 @@ This needs more work, to handle headings with lots of spaces in them."
 			      (or (remq
 				   nil
 				   (mapcar (lambda (x) (org-string-nw-p (car x)))
-					   org-current-tag-alist))
+					   (org-local-tags-completion-table)))
 				  (mapcar #'car (org-get-buffer-tags))))))
 		    (dolist (tag (org-get-tags nil t))
 		      (setq lst (delete tag lst)))

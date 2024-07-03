@@ -88,7 +88,7 @@ FORCE is non-nil, or return nil."
 (defun org-entry-blocked-p ()
   "Non-nil if entry at point is blocked."
   (and (not (org-entry-get nil "NOBLOCKING"))
-       (member (org-entry-get nil "TODO") org-not-done-keywords)
+       (org-entry-is-todo-p)
        (not (run-hook-with-args-until-failure
 	   'org-blocker-hook
 	   (list :type 'todo-state-change
@@ -602,7 +602,6 @@ nil."
   (nth (if (eq stringp 'time) 2 (if stringp 1 0)) op))
 
 (defvar org--matcher-tags-todo-only nil)
-(declare-function org--tag-add-to-alist "org-mode" (alist1 alist2))
 (declare-function org-global-tags-completion-table "org-tags" (&optional files))
 (declare-function org-tags-expand "org-tags-common" (match &optional single-as-list))
 (declare-function org-get-buffer-tags "org-tags-core" ())
@@ -636,7 +635,7 @@ See also `org-scan-tags'."
     (defvar org-last-tags-completion-table)
     (defvar crm-separator) ; crm.el
     (let ((org-last-tags-completion-table
-	   (org--tag-add-to-alist
+	   (org--settings-add-to-alist
             (when (derived-mode-p 'org-mode)
 	      (org-get-buffer-tags))
 	    (unless only-local-tags
@@ -833,7 +832,7 @@ See also `org-scan-tags'."
 		       `(and ,tagsmatcher ,todomatcher)
 		     (or tagsmatcher todomatcher t))))
       (when org--matcher-tags-todo-only
-	(setq matcher `(and (member todo org-not-done-keywords) ,matcher)))
+	(setq matcher `(and (org-element-keyword-not-done-p todo) ,matcher)))
       (cons match0
             (byte-compile
              `(lambda (todo tags-list level)

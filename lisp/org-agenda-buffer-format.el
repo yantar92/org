@@ -190,8 +190,7 @@ string that it returns."
 		   org-agenda-overriding-header))))
 
 (defun org-agenda-highlight-todo (x)
-  (let ((org-done-keywords org-done-keywords-for-agenda)
-	(case-fold-search nil)
+  (let ((case-fold-search nil)
 	re)
     (if (eq x 'line)
 	(save-excursion
@@ -202,8 +201,13 @@ string that it returns."
                                             'org-heading t)
                          (point)))
 	  (when (looking-at (concat "[ \t]*\\.*\\(" re "\\) +"))
-	    (add-text-properties (match-beginning 0) (match-end 1)
-				 (list 'face (org-get-todo-face 1)))
+	    (add-text-properties
+             (match-beginning 0) (match-end 1)
+	     (list 'face
+                   (org-get-todo-face
+                    1
+                    (org-element-done-keywords
+                     (org-get-at-bol 'org-hd-marker)))))
 	    (let ((s (buffer-substring (match-beginning 1) (match-end 1))))
 	      (delete-region (match-beginning 1) (1- (match-end 0)))
 	      (goto-char (match-beginning 1))
@@ -226,7 +230,10 @@ string that it returns."
 			  pl))
 	  (add-text-properties
 	   (or (match-end 1) (match-end 0)) (match-end 0)
-	   (list 'face (org-get-todo-face (match-string 2 x)))
+	   (list 'face (org-get-todo-face
+                        (match-string 2 x)
+                        (org-element-done-keywords
+                         (get-text-property 0 'org-hd-marker x))))
 	   x)
 	  (when (match-end 1)
 	    (setq x
