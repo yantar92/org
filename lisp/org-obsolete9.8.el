@@ -144,6 +144,13 @@ This variable takes into consideration `org-tag-alist',
 The value of this is taken from the LINK keywords.")
 (make-obsolete 'org-link-abbrev-alist-local "Use (org-element-property :link-abbrevs (org-element-org-data)) instead" "9.8")
 
+(defvar org-file-tags nil
+  "List of tags that can be inherited by all entries in the file.
+The tags will be inherited if the variable `org-use-tag-inheritance'
+says they should be.
+This variable is populated from #+FILETAGS lines.")
+(make-obsolete 'org-file-tags "Use (org-element-property :tags (org-element-org-data)) instead" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

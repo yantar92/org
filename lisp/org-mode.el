@@ -318,12 +318,11 @@ related expressions."
 	    (`(,_ ,variable ,value . ,_)
 	     (set (make-local-variable variable) value))
 	    (_ nil))))
-      ;; FIXME: This variable is assigned for backwards-compatibility
-      ;; and should probably be removed in future.  It is no longer
-      ;; used in Org mode code.
-      (setq-local org-file-tags
-		  (mapcar #'org-add-prop-inherited
-                          (org-element-property :tags org-data)))
+      ;; FIXME: `org-file-tags' is obsolete.
+      (with-no-warnings
+        (setq-local org-file-tags
+		    (mapcar #'org-add-prop-inherited
+                            (org-element-property :tags org-data))))
       ;; Used for tag completion.
       (setq org-current-tag-alist (org-local-tags-alist org-data))
       ;; Used for tag completion.

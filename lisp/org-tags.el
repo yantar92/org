@@ -43,14 +43,6 @@
   :tag "Org Tags"
   :group 'org)
 
-;; FIXME: This should probably be deprecated in favor of
-;; (org-element-property :tags (org-element-org-data))
-(defvar org-file-tags nil
-  "List of tags that can be inherited by all entries in the file.
-The tags will be inherited if the variable `org-use-tag-inheritance'
-says they should be.
-This variable is populated from #+FILETAGS lines.")
-
 ;; Defined to provide a value for defcustom, since there is no
 ;; string-collate-greaterp in Emacs.
 (defun org-string-collate-greaterp (s1 s2)
