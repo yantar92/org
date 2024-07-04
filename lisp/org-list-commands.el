@@ -1018,7 +1018,11 @@ Leave point at LIMIT."
 	(let (org-loop-over-headlines-in-active-region)
 	  (org-list--delete-metadata))
 	;; Remove stars and TODO keyword.
-	(let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
+	(let ((case-fold-search nil))
+          ;; Group 3: headline after whitespace past todo keyword
+          (looking-at
+           (format org-heading-keyword-maybe-regexp-format
+                   (org-todo-regexp))))
 	(delete-region (point) (or (match-beginning 3)
 				   (line-end-position)))
 	(insert bul)

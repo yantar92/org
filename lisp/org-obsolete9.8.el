@@ -151,6 +151,48 @@ says they should be.
 This variable is populated from #+FILETAGS lines.")
 (make-obsolete 'org-file-tags "Use (org-element-property :tags (org-element-org-data)) instead" "9.8")
 
+(defvar-local org-todo-regexp nil
+  "Matches any of the TODO state keywords.
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against this regexp.")
+(make-obsolete 'org-todo-regexp "Use (org-todo-regexp) instead" "9.8")
+
+(defvar-local org-not-done-regexp nil
+  "Matches any of the TODO state keywords except the last one.
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against this regexp.")
+(make-obsolete 'org-not-done-regexp "Use (org-not-done-regexp) instead" "9.8")
+
+(defvar-local org-not-done-heading-regexp nil
+  "Matches a TODO headline that is not done.
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against this regexp.")
+(make-obsolete 'org-not-done-heading-regexp "Use (format org-heading-keyword-regexp-format (org-not-done-regexp)) instead" "9.8")
+
+(defvar-local org-todo-line-regexp nil
+  "Matches a headline and puts TODO state into group 2 if present.
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against this regexp.")
+(make-obsolete 'org-todo-line-regexp "Use (format org-heading-keyword-maybe-regexp-format (org-todo-regexp)) instead" "9.8")
+
+(defvar-local org-todo-line-tags-regexp nil
+  "Matches a headline and puts TODO state into group 2 if present.
+Also put tags into group 4 if tags are present.")
+(make-obsolete 'org-todo-line-tags-regexp "No longer used" "9.8")
+
+(defvar-local org-complex-heading-regexp nil
+  "Matches a headline and puts everything into groups:
+
+group 1: Stars
+group 2: The TODO keyword, maybe
+group 3: Priority cookie
+group 4: True headline
+group 5: Tags
+
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against this regexp.")
+(make-obsolete 'org-complex-heading-regexp "Use (org-complex-heading-regexp) instead" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

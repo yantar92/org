@@ -958,9 +958,9 @@ keywords.")
   "Return the TODO information for agenda display."
   (let* ((props (list 'face nil
 		      'done-face 'org-agenda-done
-		      'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
+		      'org-not-done-regexp (org-not-done-regexp)
+		      'org-todo-regexp (org-todo-regexp)
+		      'org-complex-heading-regexp (org-complex-heading-regexp)
 		      'mouse-face 'highlight
 		      'help-echo
 		      (format "mouse-2 or RET jump to org file %s"
@@ -970,7 +970,7 @@ keywords.")
 			 (cond
 			  ((and org-select-this-todo-keyword
 				(equal org-select-this-todo-keyword "*"))
-			   org-todo-regexp)
+			   (org-todo-regexp))
 			  (org-select-this-todo-keyword
 			   (concat "\\("
 				   (mapconcat #'regexp-quote
@@ -979,7 +979,7 @@ keywords.")
 				               "|")
 				              "\\|")
 				   "\\)"))
-			  (t org-not-done-regexp))))
+			  (t (org-not-done-regexp)))))
 	 marker priority urgency category level tags todo-state
 	 ts-date ts-date-type ts-date-pair
 	 ee txt beg end inherited-tags
@@ -1058,9 +1058,9 @@ Optional argument DEADLINES is a list of deadline items to be
 displayed in agenda view."
   (with-no-warnings (defvar date))
   (let* ((props (list 'face 'org-agenda-calendar-event
-		      'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
+		      'org-not-done-regexp (org-not-done-regexp)
+		      'org-todo-regexp (org-todo-regexp)
+		      'org-complex-heading-regexp (org-complex-heading-regexp)
 		      'mouse-face 'highlight
 		      'help-echo
 		      (format "mouse-2 or RET jump to Org file %s"
@@ -1290,9 +1290,9 @@ The allowed values are those of `org-agenda-log-mode-items', which
 see.  When ENTRY-TYPES is nil, use `org-agenda-log-mode-items'."
   (with-no-warnings (defvar date))
   (let* ((props (list 'mouse-face 'highlight
-		      'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
+		      'org-not-done-regexp (org-not-done-regexp)
+		      'org-todo-regexp (org-todo-regexp)
+		      'org-complex-heading-regexp (org-complex-heading-regexp)
 		      'help-echo
 		      (format "mouse-2 or RET jump to org file %s"
 			      (abbreviate-file-name buffer-file-name))))
@@ -1304,7 +1304,7 @@ see.  When ENTRY-TYPES is nil, use `org-agenda-log-mode-items'."
 		 (when (memq 'closed items) (concat "\\<" org-closed-string))
 		 (when (memq 'clock items) (concat "\\<" org-clock-string))
 		 (when (memq 'state items)
-		   (format "- +State \"%s\".*?" org-todo-regexp)))))
+		   (format "- +State \"%s\".*?" (org-todo-regexp))))))
 	 (parts-re (if parts (mapconcat #'identity parts "\\|")
 		     (error "`org-agenda-log-mode-items' is empty")))
 	 (regexp (concat
@@ -1433,9 +1433,9 @@ When WITH-HOUR is non-nil, only return deadlines with an hour
 specification like [h]h:mm."
   (with-no-warnings (defvar date))
   (let* ((props (list 'mouse-face 'highlight
-		      'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
+		      'org-not-done-regexp (org-not-done-regexp)
+		      'org-todo-regexp (org-todo-regexp)
+		      'org-complex-heading-regexp (org-complex-heading-regexp)
 		      'help-echo
 		      (format "mouse-2 or RET jump to org file %s"
 			      (abbreviate-file-name buffer-file-name))))
@@ -1630,9 +1630,9 @@ Optional argument DEADLINES is a list of deadline items to be
 displayed in agenda view.  When WITH-HOUR is non-nil, only return
 scheduled items with an hour specification like [h]h:mm."
   (with-no-warnings (defvar date))
-  (let* ((props (list 'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
+  (let* ((props (list 'org-not-done-regexp (org-not-done-regexp)
+		      'org-todo-regexp (org-todo-regexp)
+		      'org-complex-heading-regexp (org-complex-heading-regexp)
 		      'done-face 'org-agenda-done
 		      'mouse-face 'highlight
 		      'help-echo
@@ -1881,9 +1881,9 @@ scheduled items with an hour specification like [h]h:mm."
 (defun org-agenda-get-blocks ()
   "Return the date-range information for agenda display."
   (with-no-warnings (defvar date))
-  (let* ((props (list 'org-not-done-regexp org-not-done-regexp
-		      'org-todo-regexp org-todo-regexp
-		      'org-complex-heading-regexp org-complex-heading-regexp
+  (let* ((props (list 'org-not-done-regexp (org-not-done-regexp)
+		      'org-todo-regexp (org-todo-regexp)
+		      'org-complex-heading-regexp (org-complex-heading-regexp)
 		      'mouse-face 'highlight
 		      'help-echo
 		      (format "mouse-2 or RET jump to org file %s"
@@ -2067,15 +2067,15 @@ headlines of up to that level."
                          (line-beginning-position)
                          (if headline-only (line-end-position) end)))
 	      (mapc (lambda (wr) (when (string-match wr str)
-			      (goto-char (1- end))
-			      (throw :skip t)))
+			           (goto-char (1- end))
+			           (throw :skip t)))
 		    regexps-)
 	      (mapc (lambda (wr) (unless (string-match wr str)
-			      (goto-char (1- end))
-			      (throw :skip t)))
+			           (goto-char (1- end))
+			           (throw :skip t)))
 		    (if todo-only
 		        (cons (concat "^\\*+[ \t]+"
-                                      org-not-done-regexp)
+                                      (org-not-done-regexp))
 			      regexps+)
 		      regexps+))
 	      (goto-char beg)
@@ -2098,15 +2098,14 @@ headlines of up to that level."
 	      (org-add-props txt nil
                 'face nil
 		'done-face 'org-agenda-done
-		'org-not-done-regexp org-not-done-regexp
-		'org-todo-regexp org-todo-regexp
-		'org-complex-heading-regexp org-complex-heading-regexp
+		'org-not-done-regexp (org-not-done-regexp)
+		'org-todo-regexp (org-todo-regexp)
+		'org-complex-heading-regexp (org-complex-heading-regexp)
 		'mouse-face 'highlight
 		'help-echo "mouse-2 or RET jump to location"
 	        'org-marker marker 'org-hd-marker marker
-	        'org-todo-regexp org-todo-regexp
+	        'org-todo-regexp (org-todo-regexp)
 	        'level level
-	        'org-complex-heading-regexp org-complex-heading-regexp
                 'urgency 1000
 	        'priority 1000
 	        'type "search")
@@ -2122,9 +2121,9 @@ MATCHER and TODO-ONLY are passed to `org-scan-tags'."
 	       'done-face 'org-agenda-done
 	       'undone-face 'default
 	       'mouse-face 'highlight
-	       'org-not-done-regexp org-not-done-regexp
-	       'org-todo-regexp org-todo-regexp
-	       'org-complex-heading-regexp org-complex-heading-regexp
+	       'org-not-done-regexp (org-not-done-regexp)
+	       'org-todo-regexp (org-todo-regexp)
+	       'org-complex-heading-regexp (org-complex-heading-regexp)
 	       'help-echo
 	       (format "mouse-2 or RET jump to Org file %S"
 		       (abbreviate-file-name

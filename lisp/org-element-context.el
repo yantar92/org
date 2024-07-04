@@ -483,7 +483,12 @@ and :keyword."
             clist)
       (when (progn
 	      (forward-line 0)
-	      (looking-at org-todo-line-tags-regexp))
+	      (looking-at
+               (concat "^\\(\\*+\\)"
+		       "\\(?: +" (org-todo-regexp) "\\)?"
+		       "\\(?: +\\(.*?\\)\\)??"
+		       "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
+		       "[ \t]*$")))
 	(push (org-point-in-group p 1 :headline-stars) clist)
 	(push (org-point-in-group p 2 :todo-keyword) clist)
 	(push (org-point-in-group p 4 :tags) clist))

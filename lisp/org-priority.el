@@ -156,7 +156,11 @@ or a character."
 	      (replace-match news t t nil 2))
 	  (if remove
 	      (user-error "No priority cookie found in line")
-	    (let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
+	    (let ((case-fold-search nil))
+              ;; Group 2: todo keyword
+              (looking-at
+               (format org-heading-keyword-maybe-regexp-format
+                       (org-todo-regexp))))
 	    (if (match-end 2)
 		(progn
 		  (goto-char (match-end 2))

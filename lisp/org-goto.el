@@ -154,7 +154,7 @@ When nil, you can use these keybindings to navigate the buffer:
       (when (save-match-data
 	      (and (save-excursion
 		     (forward-line 0)
-		     (looking-at org-complex-heading-regexp))
+		     (looking-at (org-complex-heading-regexp)))
 		   (or (not (match-beginning 5))
 		       (< (point) (match-beginning 5)))))
 	(throw 'return (point))))))

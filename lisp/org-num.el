@@ -247,7 +247,7 @@ nil if nothing should be displayed.  Assume OVERLAY is valid."
   "Return skip value for headline at point.
 Value is t when headline should not be numbered, and nil
 otherwise."
-  (org-match-line org-complex-heading-regexp)
+  (org-match-line (org-complex-heading-regexp))
   (let ((title (match-string 4))
         (tags (and org-num-skip-tags
                    (match-end 5)

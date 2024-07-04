@@ -60,7 +60,7 @@ ELEMENT is the element at point."
 			   (and (let ((case-fold-search t))
 				  (not (looking-at-p "\\*+ END[ \t]*$")))
 				(let ((case-fold-search nil))
-				  (looking-at org-complex-heading-regexp))))
+				  (looking-at (org-complex-heading-regexp)))))
 	   (match-beginning 4)
 	   (>= (point) (match-beginning 4))
 	   (or (not (match-beginning 5))

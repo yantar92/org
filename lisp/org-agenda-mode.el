@@ -1047,7 +1047,7 @@ if it was hidden in the outline."
       (recenter (/ (window-height) 2))
       (org-back-to-heading t)
       (let ((case-fold-search nil))
-	(when (re-search-forward org-complex-heading-regexp nil t)
+	(when (re-search-forward (org-complex-heading-regexp) nil t)
 	  (goto-char (match-beginning 4)))))
     (run-hooks 'org-agenda-after-show-hook)
     (and highlight (org-highlight (line-beginning-position)

@@ -46,7 +46,7 @@ Return nil before first heading."
     (save-excursion
       (org-back-to-heading t)
       (let ((case-fold-search nil))
-	(looking-at org-complex-heading-regexp)
+	(looking-at (org-complex-heading-regexp))
         ;; When using `org-fold-core--optimise-for-huge-buffers',
         ;; returned text will be invisible.  Clear it up.
         (save-match-data
@@ -79,7 +79,7 @@ This is a list with the following elements:
 - the tags string, or nil."
   (save-excursion
     (org-back-to-heading t)
-    (when (let (case-fold-search) (looking-at org-complex-heading-regexp))
+    (when (let (case-fold-search) (looking-at (org-complex-heading-regexp)))
       (org-fold-core-remove-optimisation (match-beginning 0) (match-end 0))
       (prog1
           (list (length (match-string 1))
@@ -131,7 +131,7 @@ Assume buffer is widened and point is on a headline."
   (or (and use-cache (cdr (assq (point) org-outline-path-cache)))
       (let ((p (point))
 	    (heading (let ((case-fold-search nil))
-		       (looking-at org-complex-heading-regexp)
+		       (looking-at (org-complex-heading-regexp))
 		       (if (not (match-end 4)) ""
 			 ;; Remove statistics cookies.
 			 (org-trim
@@ -229,7 +229,7 @@ If JUST-RETURN-STRING is non-nil, return a string, don't display a message."
     (when current (setq path (append path
 				     (save-excursion
 				       (org-back-to-heading t)
-				       (when (looking-at org-complex-heading-regexp)
+				       (when (looking-at (org-complex-heading-regexp))
 					 (list (match-string 4)))))))
     (setq res
 	  (org-format-outline-path

@@ -597,7 +597,7 @@ When called through ELisp, arg is also interpreted in the following way:
 	    (org-toggle-comment)
 	    (setq commentp t))
 	  (when (looking-at org-outline-regexp) (goto-char (1- (match-end 0))))
-	  (or (looking-at (concat " +" org-todo-regexp "\\( +\\|[ \t]*$\\)"))
+	  (or (looking-at (concat " +" (org-todo-regexp) "\\( +\\|[ \t]*$\\)"))
 	      (looking-at "\\(?: *\\|[ \t]*$\\)"))
 	  (let* ((match-data (match-data))
 		 (startpos (copy-marker (line-beginning-position)))
@@ -802,7 +802,12 @@ When called through ELisp, arg is also interpreted in the following way:
 		       (not (bolp))
 		       (save-excursion
                          (forward-line 0)
-			 (looking-at org-todo-line-regexp))
+                         ;; Match group 1: stars
+                         ;; Match group 2: todo keyword
+                         (let ((case-fold-search nil))
+			   (looking-at
+                            (format org-heading-keyword-maybe-regexp-format
+                                    (org-todo-regexp)))))
 		       (< (point) (+ 2 (or (match-end 2) (match-end 1)))))
 	      (goto-char (or (match-end 2) (match-end 1)))
 	      (and (looking-at " ")
@@ -893,24 +898,28 @@ returned by `org-get-heading'."
 	(org-back-to-heading t)
 	(let* ((pos (point))
 	       (parent-pos (and (org-up-heading-safe) (point)))
-	       (case-fold-search nil))
+	       (case-fold-search nil)
+               (not-done-heading-regexp
+                (format
+                 org-heading-keyword-regexp-format
+                 (org-not-done-regexp))))
 	  (unless parent-pos (throw 'dont-block t)) ; no parent
 	  (when (and (org-not-nil (org-entry-get (point) "ORDERED"))
 		     (forward-line 1)
-		     (re-search-forward org-not-done-heading-regexp pos t))
+		     (re-search-forward not-done-heading-regexp pos t))
 	    (setq org-block-entry-blocking (match-string 0))
 	    (throw 'dont-block nil))  ; block, there is an older sibling not done.
 	  ;; Search further up the hierarchy, to see if an ancestor is blocked
 	  (while t
 	    (goto-char parent-pos)
-	    (unless (looking-at org-not-done-heading-regexp)
+	    (unless (looking-at not-done-heading-regexp)
 	      (throw 'dont-block t))	; do not block, parent is not a TODO
 	    (setq pos (point))
 	    (setq parent-pos (and (org-up-heading-safe) (point)))
 	    (unless parent-pos (throw 'dont-block t)) ; no parent
 	    (when (and (org-not-nil (org-entry-get (point) "ORDERED"))
 		       (forward-line 1)
-		       (re-search-forward org-not-done-heading-regexp pos t)
+		       (re-search-forward not-done-heading-regexp pos t)
 		       (setq org-block-entry-blocking (org-get-heading)))
 	      (throw 'dont-block nil)))))))) ; block, older sibling not done.
 
@@ -1073,9 +1082,9 @@ statistics everywhere."
 	  (setq first nil cookie-present nil)
 	  (unless (and level
 		       (not (string-match
-			     "\\<checkbox\\>"
-			     (downcase (or (org-entry-get nil "COOKIE_DATA")
-					   "")))))
+			   "\\<checkbox\\>"
+			   (downcase (or (org-entry-get nil "COOKIE_DATA")
+					 "")))))
 	    (throw 'exit nil))
           (while (re-search-forward box-re (line-end-position) t)
 	    (setq cnt-all 0 cnt-done 0 cookie-present t)
@@ -1089,7 +1098,7 @@ statistics everywhere."
                      keyword))
 	      (save-match-data
 	        (unless (outline-next-heading) (throw 'exit nil))
-	        (while (and (looking-at org-complex-heading-regexp)
+	        (while (and (looking-at (org-complex-heading-regexp))
 	    		    (> (setq l1 (length (match-string 1))) level))
 	    	  (setq kwd (and (or recursive (= l1 ltoggle))
 	    		         (match-string 2)))

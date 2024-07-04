@@ -306,15 +306,15 @@ When `org-refile-use-cache' is nil, just return POS."
 	      (setq descre (cdr desc)))
 	     ((eq (car desc) :level)
 	      (setq descre (concat "^\\*\\{" (number-to-string
-					    (if org-odd-levels-only
-					        (1- (* 2 (cdr desc)))
-					      (cdr desc)))
-			           "\\}[ \t]")))
-	     ((eq (car desc) :maxlevel)
-	      (setq descre (concat "^\\*\\{1," (number-to-string
 					      (if org-odd-levels-only
 					          (1- (* 2 (cdr desc)))
 					        (cdr desc)))
+			           "\\}[ \t]")))
+	     ((eq (car desc) :maxlevel)
+	      (setq descre (concat "^\\*\\{1," (number-to-string
+					        (if org-odd-levels-only
+					            (1- (* 2 (cdr desc)))
+					          (cdr desc)))
 			           "\\}[ \t]")))
 	     (t (error "Bad refiling target description %s" desc)))
           (error
@@ -349,7 +349,7 @@ When `org-refile-use-cache' is nil, just return POS."
 		(while (re-search-forward descre nil t)
 		  (forward-line 0)
 		  (let ((case-fold-search nil))
-		    (looking-at org-complex-heading-regexp))
+		    (looking-at (org-complex-heading-regexp)))
 		  (let ((begin (point))
 			(heading (match-string-no-properties 4)))
 		    (unless (or (and

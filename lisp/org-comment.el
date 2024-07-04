@@ -46,7 +46,6 @@
 (require 'org-element)
 (require 'org-element-context)
 (eval-when-compile (require 'org-src)) ; `org-babel-do-in-edit-buffer'
-(defvar org-complex-heading-regexp)
 
 (defun org-insert-comment ()
   "Insert an empty comment above current line.
@@ -147,7 +146,7 @@ strictly within a source block, use appropriate comment syntax."
     (require 'org-move)
     (org-back-to-heading)
     (let ((case-fold-search nil))
-      (looking-at org-complex-heading-regexp))
+      (looking-at (org-complex-heading-regexp)))
     (goto-char (or (match-end 3) (match-end 2) (match-end 1)))
     (skip-chars-forward " \t")
     (unless (memq (char-before) '(?\s ?\t)) (insert " "))

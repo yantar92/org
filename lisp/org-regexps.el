@@ -56,6 +56,83 @@ This regular expression matches these groups:
 1 : the priority cookie, e.g. \"[#A]\"
 2 : the value of the priority cookie, e.g. \"A\".")
 
+(defconst org-heading-keyword-regexp-format
+  "^\\(\\*+\\)\\(?: +%s\\)\\(?: +\\(.*?\\)\\)?[ \t]*$"
+  "Printf format for a regexp matching a headline with some keyword.
+This regexp will match the headline of any node which has the
+exact keyword that is put into the format.  The keyword isn't in
+any group by default, but the stars and the body are.")
+
+(defconst org-heading-keyword-maybe-regexp-format
+  "^\\(\\*+\\)\\(?: +%s\\)?\\(?: +\\(.*?\\)\\)?[ \t]*$"
+  "Printf format for a regexp matching a headline, possibly with some keyword.
+This regexp can match any headline with the specified keyword, or
+without a keyword.  The keyword isn't in any group by default,
+but the stars and the body are.")
+
+(defconst org-archive-tag "ARCHIVE"
+  "The tag that marks a subtree as archived.
+An archived subtree does not open during visibility cycling, and does
+not contribute to the agenda listings.")
+
+(defconst org-tag-re "[[:alnum:]_@#%]+"
+  "Regexp matching a single tag.")
+
+(defconst org-tag-group-re "[ \t]+\\(:\\([[:alnum:]_@#%:]+\\):\\)[ \t]*$"
+  "Regexp matching the tag group at the end of a line, with leading spaces.
+Tags are stored in match group 1.  Match group 2 stores the tags
+without the enclosing colons.")
+
+(defconst org-tag-line-re
+  "^\\*+ \\(?:.*[ \t]\\)?\\(:\\([[:alnum:]_@#%:]+\\):\\)[ \t]*$"
+  "Regexp matching tags in a headline.
+Tags are stored in match group 1.  Match group 2 stores the tags
+without the enclosing colons.")
+
+(defsubst org-todo-regexp (&optional epom)
+  "Get regexp that matches any of the TODO state keywords at EPOM.
+EPOM is a point, marker, or element/node that provides context.
+
+The regexp puts the keyword into group 1.
+
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against the returned regexp."
+  (org-element-property :todo-regexp (org-element-org-data epom)))
+
+(defsubst org-not-done-regexp (&optional epom)
+  "Get regexp matching any of not-done TODO state keyword at EPOM.
+EPOM is a point, marker, or element/node that provides context.
+
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against the returned regexp."
+  (or (org-element-cache-get-key (org-element-org-data epom) :not-done-regexp)
+      (org-element-cache-store-key
+       (org-element-org-data epom) :not-done-regexp
+       (regexp-opt (org-element-not-done-keywords epom) t)
+       'robust)))
+
+(defsubst org-complex-heading-regexp (&optional epom)
+  "Get regexp at EPOM matching a headline and putting everything into groups:
+
+group 1: Stars
+group 2: The TODO keyword, maybe
+group 3: Priority cookie
+group 4: True headline
+group 5: Tags
+
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against this regexp."
+  (or (org-element-cache-get-key (org-element-org-data epom) :complex-heading-regexp)
+      (org-element-cache-store-key
+       (org-element-org-data epom) :complex-heading-regexp
+       (concat "^\\(\\*+\\)"
+	       "\\(?: +" (org-todo-regexp epom) "\\)?"
+	       "\\(?: +\\(\\[#.\\]\\)\\)?"
+	       "\\(?: +\\(.*?\\)\\)??"
+	       "\\(?:[ \t]+\\(:[[:alnum:]_@#%:]+:\\)\\)?"
+	       "[ \t]*$")
+       'robust)))
+
 ;;;; Block
 
 (defconst org-block-regexp
@@ -293,41 +370,6 @@ Group 1 contains the starting time without brackets.")
   (concat "\\(" org-clock-drawer-start-re "\\)\\(?:.\\|\n\\)*?\\("
 	  org-clock-drawer-end-re "\\)\n?")
   "Matches an entire clock drawer.")
-
-;;;; Headline
-
-(defconst org-heading-keyword-regexp-format
-  "^\\(\\*+\\)\\(?: +%s\\)\\(?: +\\(.*?\\)\\)?[ \t]*$"
-  "Printf format for a regexp matching a headline with some keyword.
-This regexp will match the headline of any node which has the
-exact keyword that is put into the format.  The keyword isn't in
-any group by default, but the stars and the body are.")
-
-(defconst org-heading-keyword-maybe-regexp-format
-  "^\\(\\*+\\)\\(?: +%s\\)?\\(?: +\\(.*?\\)\\)?[ \t]*$"
-  "Printf format for a regexp matching a headline, possibly with some keyword.
-This regexp can match any headline with the specified keyword, or
-without a keyword.  The keyword isn't in any group by default,
-but the stars and the body are.")
-
-(defconst org-archive-tag "ARCHIVE"
-  "The tag that marks a subtree as archived.
-An archived subtree does not open during visibility cycling, and does
-not contribute to the agenda listings.")
-
-(defconst org-tag-re "[[:alnum:]_@#%]+"
-  "Regexp matching a single tag.")
-
-(defconst org-tag-group-re "[ \t]+\\(:\\([[:alnum:]_@#%:]+\\):\\)[ \t]*$"
-  "Regexp matching the tag group at the end of a line, with leading spaces.
-Tags are stored in match group 1.  Match group 2 stores the tags
-without the enclosing colons.")
-
-(defconst org-tag-line-re
-  "^\\*+ \\(?:.*[ \t]\\)?\\(:\\([[:alnum:]_@#%:]+\\):\\)[ \t]*$"
-  "Regexp matching tags in a headline.
-Tags are stored in match group 1.  Match group 2 stores the tags
-without the enclosing colons.")
 
 ;;;; LaTeX Environments and Fragments
 

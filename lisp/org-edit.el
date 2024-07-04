@@ -285,7 +285,7 @@ ignoring region."
         (forward-line 0)
         (and (< (line-end-position) end)
              (let ((case-fold-search nil))
-	       (looking-at org-complex-heading-regexp))))
+	       (looking-at (org-complex-heading-regexp)))))
       ;; At headline.
       (let ((tags-column (when (match-beginning 5)
 			   (save-excursion (goto-char (match-beginning 5))
@@ -409,7 +409,7 @@ object (e.g., within a comment).  In these case, you need to use
      ;; Insert newline in heading, but preserve tags.
      ((and (not (bolp))
 	   (let ((case-fold-search nil))
-	     (org-match-line org-complex-heading-regexp)))
+	     (org-match-line (org-complex-heading-regexp))))
       ;; At headline.  Split line.  However, if point is on keyword,
       ;; priority cookie or tags, do not break any of them: add
       ;; a newline after the headline instead.

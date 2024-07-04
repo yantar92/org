@@ -138,48 +138,12 @@ If the file does not specify a category, then file's base name
 is used instead.")
 (put 'org-category 'safe-local-variable (lambda (x) (or (symbolp x) (stringp x))))
 
-(defvar-local org-todo-regexp nil
-  "Matches any of the TODO state keywords.
-Since TODO keywords are case-sensitive, `case-fold-search' is
-expected to be bound to nil when matching against this regexp.")
-
-(defvar-local org-not-done-regexp nil
-  "Matches any of the TODO state keywords except the last one.
-Since TODO keywords are case-sensitive, `case-fold-search' is
-expected to be bound to nil when matching against this regexp.")
-
-(defvar-local org-not-done-heading-regexp nil
-  "Matches a TODO headline that is not done.
-Since TODO keywords are case-sensitive, `case-fold-search' is
-expected to be bound to nil when matching against this regexp.")
-
-(defvar-local org-todo-line-regexp nil
-  "Matches a headline and puts TODO state into group 2 if present.
-Since TODO keywords are case-sensitive, `case-fold-search' is
-expected to be bound to nil when matching against this regexp.")
-
-(defvar-local org-complex-heading-regexp nil
-  "Matches a headline and puts everything into groups:
-
-group 1: Stars
-group 2: The TODO keyword, maybe
-group 3: Priority cookie
-group 4: True headline
-group 5: Tags
-
-Since TODO keywords are case-sensitive, `case-fold-search' is
-expected to be bound to nil when matching against this regexp.")
-
 (defvar-local org-complex-heading-regexp-format nil
   "Printf format to make regexp to match an exact headline.
 This regexp will match the headline of any node which has the
 exact headline text that is put into the format, but may have any
 TODO state, priority, tags, statistics cookies (at the beginning
 or end of the headline title), or COMMENT keyword.")
-
-(defvar-local org-todo-line-tags-regexp nil
-  "Matches a headline and puts TODO state into group 2 if present.
-Also put tags into group 4 if tags are present.")
 
 (defcustom org-loop-over-headlines-in-active-region t
   "Shall some commands act upon headlines in the active region?

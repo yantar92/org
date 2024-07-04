@@ -507,7 +507,7 @@ This will find DRAWER and extract the alist."
   (let (entry level)
     (save-excursion
       (goto-char pos)
-      (unless (looking-at org-complex-heading-regexp)
+      (unless (looking-at (org-complex-heading-regexp))
 	(error "Wrong position"))
       (setq level (org-get-valid-level (length (match-string 1)) 1))
       (org-end-of-subtree t t)

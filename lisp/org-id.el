@@ -496,7 +496,7 @@ used to still link to the current location."
                           (or (org-element-property :TITLE (org-element-org-data))
                               (file-name-nondirectory
 			       (buffer-file-name (buffer-base-buffer)))))
-		         ((looking-at org-complex-heading-regexp)
+		         ((looking-at (org-complex-heading-regexp))
 			  (if (match-end 4)
 			      (match-string 4)
 			    (match-string 0)))
@@ -505,8 +505,8 @@ used to still link to the current location."
       ;; duplicating the current headline as a search string
       (when (and precise-target
                  (> (nth 2 precise-target) id-location))
-         (setq link (concat link "::" (nth 0 precise-target)))
-         (setq desc (nth 1 precise-target)))
+        (setq link (concat link "::" (nth 0 precise-target)))
+        (setq desc (nth 1 precise-target)))
       (org-link-store-props :link link :description desc :type "id")
       link)))
 

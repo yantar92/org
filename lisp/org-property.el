@@ -146,7 +146,7 @@ strings."
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "ITEM"))
 	      (let ((case-fold-search nil))
-		(when (looking-at org-complex-heading-regexp)
+		(when (looking-at (org-complex-heading-regexp))
 		  (push (cons "ITEM"
 			      (let ((title (match-string-no-properties 4)))
 				(if (org-string-nw-p title)
@@ -156,7 +156,11 @@ strings."
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "TODO"))
 	      (let ((case-fold-search nil))
-		(when (and (looking-at org-todo-line-regexp) (match-end 2))
+		(when (and (looking-at
+                            (format org-heading-keyword-maybe-regexp-format
+                                    (org-todo-regexp)))
+                           ;; Group 2: todo keyword
+                           (match-end 2))
 		  (push (cons "TODO" (match-string-no-properties 2)) props)))
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "PRIORITY"))

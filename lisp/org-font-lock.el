@@ -1099,7 +1099,7 @@ Otherwise it will be `org-todo'."
 	  '(org-fontify-macros) ; `org-fontify-macro' prepends faces
 	  ;; TODO keyword
 	  (list (format org-heading-keyword-regexp-format
-			org-todo-regexp)
+			(org-todo-regexp))
 		'(2 (org-get-todo-face 2) prepend))
 	  ;; TODO
 	  (when org-fontify-todo-headline
@@ -1180,7 +1180,7 @@ Otherwise it will be `org-todo'."
           ;; that even "bright" markup will become dim.
 	  (list (format
 		 "^\\*+\\(?: +%s\\)?\\(?: +\\[#[A-Z0-9]\\]\\)? +\\(?9:%s\\)\\(?: \\|$\\)"
-		 org-todo-regexp
+		 (org-todo-regexp)
 		 org-comment-string)
 		'(9 'org-special-keyword prepend))
           '(org-activate-folds))))

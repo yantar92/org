@@ -1042,7 +1042,7 @@ be returned that indicates what went wrong."
 
      ((eq what 'priority)
       (let ((case-fold-search nil))
-	(when (looking-at org-complex-heading-regexp)
+	(when (looking-at (org-complex-heading-regexp))
 	  (let ((current (and (match-end 3) (substring (match-string 3) 2 3))))
 	    (cond
 	     ((equal current new) t)	;no action required
@@ -1055,7 +1055,7 @@ be returned that indicates what went wrong."
 
      ((eq what 'heading)
       (let ((case-fold-search nil))
-	(when (looking-at org-complex-heading-regexp)
+	(when (looking-at (org-complex-heading-regexp))
 	  (let ((current (match-string 4)))
 	    (cond
 	     ((equal current new) t)	;no action required

@@ -101,7 +101,6 @@ When nil, the first star is not shown."
 
 (defvar org-odd-levels-only)
 (defvar org-keyword-time-regexp)
-(defvar org-complex-heading-regexp)
 (defvar org-property-end-re)
 
 (defcustom org-inlinetask-default-state nil

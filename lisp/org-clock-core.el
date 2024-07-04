@@ -668,7 +668,7 @@ the default behavior."
 	 (setq org-clock-current-task (org-get-heading t t t t))
 	 (cond ((functionp org-clock-in-switch-to-state)
 		(let ((case-fold-search nil))
-		  (looking-at org-complex-heading-regexp))
+		  (looking-at (org-complex-heading-regexp)))
 		(let ((newstate (funcall org-clock-in-switch-to-state
 					 (match-string 2))))
 		  (when newstate
@@ -805,16 +805,16 @@ to, overriding the existing value of `org-clock-out-switch-to-state'."
 		(cond
 		 ((functionp org-clock-out-switch-to-state)
 		  (let ((case-fold-search nil))
-		    (looking-at org-complex-heading-regexp))
+		    (looking-at (org-complex-heading-regexp)))
 		  (let ((newstate (funcall org-clock-out-switch-to-state
 					   (match-string 2))))
 		    (when newstate (org-todo newstate))))
 		 ((and org-clock-out-switch-to-state
 		       (not (looking-at
-                             (concat
-                              org-outline-regexp "[ \t]*"
-			      org-clock-out-switch-to-state
-			      "\\(?:[ \t]\\|$\\)"))))
+                           (concat
+                            org-outline-regexp "[ \t]*"
+			    org-clock-out-switch-to-state
+			    "\\(?:[ \t]\\|$\\)"))))
 		  (org-todo org-clock-out-switch-to-state))))))
 	  (force-mode-line-update)
 	  (message (if remove

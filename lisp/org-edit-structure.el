@@ -205,7 +205,7 @@ Assume that point is on the inserted heading."
 	       (org-N-empty-lines-before-current (if blank? 1 0)))
 	     (end-of-line))
 	    ((and (org-get-alist-option org-M-RET-may-split-line 'headline)
-		  (org-match-line org-complex-heading-regexp)
+		  (org-match-line (org-complex-heading-regexp))
 		  (org-pos-in-match-range (point) 4))
 	     ;; Grab the text that should moved to the new headline.
 	     ;; Preserve tags.
@@ -262,7 +262,7 @@ Set it to HEADING when provided."
   (org-with-wide-buffer
    (org-back-to-heading t)
    (let ((case-fold-search nil))
-     (when (looking-at org-complex-heading-regexp)
+     (when (looking-at (org-complex-heading-regexp))
        (let* ((old (match-string-no-properties 4))
 	      (new (save-match-data
 		     (org-trim (or heading (read-string "Edit: " old))))))
@@ -320,7 +320,11 @@ unchecked check box."
 			    force-heading))
     (save-excursion
       (org-forward-heading-same-level -1)
-      (let ((case-fold-search nil)) (looking-at org-todo-line-regexp)))
+      (let ((case-fold-search nil))
+        ;; Group 2: todo keyword
+        (looking-at
+         (format org-heading-keyword-maybe-regexp-format
+                 (org-todo-regexp)))))
     (let* ((new-mark-x
 	    (if (or (equal arg '(4))
 		    (not (match-beginning 2))
@@ -431,7 +435,12 @@ headings in the region."
   (let ((pos (point)))
     (when (save-excursion
 	    (forward-line 0)
-	    (let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
+	    (let ((case-fold-search nil))
+              ;; Group 1: stars
+              ;; Group 2: todo keyword
+              (looking-at
+               (format org-heading-keyword-maybe-regexp-format
+                       (org-todo-regexp))))
 	    (or (eq pos (match-end 1)) (eq pos (match-end 2))))
       (cond ((eobp) (insert " "))
 	    ((eolp) (insert " "))
@@ -1370,7 +1379,7 @@ function is being called interactively."
 	     ((= dcst ?r)
 	      (or (org-entry-get nil property) ""))
 	     ((= dcst ?o)
-	      (when (looking-at org-complex-heading-regexp)
+	      (when (looking-at (org-complex-heading-regexp))
 		(let* ((m (match-string 2))
 		       (s (if (org-element-keyword-done-p m) '- '+)))
 		  (- 99 (funcall s (length (member m (org-element-all-todo-keywords))))))))

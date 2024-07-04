@@ -1509,7 +1509,7 @@ CONTEXT is the element or object at point, as returned by `org-element-context'.
 		 (and (let ((case-fold-search t))
 			(not (looking-at-p "\\*+ END[ \t]*$")))
 		      (let ((case-fold-search nil))
-			(looking-at org-complex-heading-regexp))))
+			(looking-at (org-complex-heading-regexp)))))
 	       (>= (point) (or
                            ;; Real heading.
                            (match-beginning 4)

@@ -142,7 +142,7 @@ of all the todo keywords in buffer (`org-element-all-todo-keywords')."
   (interactive "P")
   (let ((case-fold-search nil)
 	(kwd-re
-	 (cond ((null arg) (concat org-not-done-regexp "\\s-"))
+	 (cond ((null arg) (concat (org-not-done-regexp) "\\s-"))
 	       ((equal arg '(4))
 		(let ((kwd
 		       (completing-read "Keyword (or KWD1|KWD2|...): "

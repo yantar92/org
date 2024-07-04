@@ -467,7 +467,11 @@ When TAG is non-nil, don't move trees, but mark them with the ARCHIVE tag."
   (org-archive-all-matches
    (lambda (_beg end)
      (let ((case-fold-search nil))
-       (unless (re-search-forward org-not-done-heading-regexp end t)
+       (unless (re-search-forward
+                (format
+                 org-heading-keyword-regexp-format
+                 (org-not-done-regexp))
+                end t)
 	 "no open TODO items")))
    tag))
 

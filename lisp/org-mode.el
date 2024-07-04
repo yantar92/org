@@ -436,40 +436,40 @@ related expressions."
 	;; Compute the regular expressions and other local variables.
 	;; Using `org-outline-regexp-bol' would complicate them much,
 	;; because of the fixed white space at the end of that string.
-
-	(setq org-todo-regexp (org-element-property :todo-regexp org-data)
-	      org-not-done-regexp (regexp-opt (org-element-not-done-keywords) t)
-	      org-not-done-heading-regexp
-	      (format org-heading-keyword-regexp-format org-not-done-regexp)
-	      org-todo-line-regexp
-	      (format org-heading-keyword-maybe-regexp-format org-todo-regexp)
-	      org-complex-heading-regexp
-	      (concat "^\\(\\*+\\)"
-		      "\\(?: +" org-todo-regexp "\\)?"
-		      "\\(?: +\\(\\[#.\\]\\)\\)?"
-		      "\\(?: +\\(.*?\\)\\)??"
-		      "\\(?:[ \t]+\\(:[[:alnum:]_@#%:]+:\\)\\)?"
-		      "[ \t]*$")
-	      org-complex-heading-regexp-format
-	      (concat "^\\(\\*+\\)"
-		      "\\(?: +" org-todo-regexp "\\)?"
-		      "\\(?: +\\(\\[#.\\]\\)\\)?"
-		      "\\(?: +"
-                      ;; Headline might be commented
-                      "\\(?:" org-comment-string " +\\)?"
-		      ;; Stats cookies can be stuck to body.
-		      "\\(?:\\[[0-9%%/]+\\] *\\)*"
-		      "\\(%s\\)"
-		      "\\(?: *\\[[0-9%%/]+\\]\\)*"
-		      "\\)"
-		      "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?"
-		      "[ \t]*$")
-	      org-todo-line-tags-regexp
-	      (concat "^\\(\\*+\\)"
-		      "\\(?: +" org-todo-regexp "\\)?"
-		      "\\(?: +\\(.*?\\)\\)??"
-		      "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
-		      "[ \t]*$"))))))
+        (with-no-warnings
+	  (setq org-todo-regexp (org-element-property :todo-regexp org-data)
+	        org-not-done-regexp (org-not-done-regexp org-data)
+	        org-not-done-heading-regexp
+	        (format org-heading-keyword-regexp-format org-not-done-regexp)
+	        org-todo-line-regexp
+	        (format org-heading-keyword-maybe-regexp-format org-todo-regexp)
+	        org-complex-heading-regexp
+	        (concat "^\\(\\*+\\)"
+		        "\\(?: +" org-todo-regexp "\\)?"
+		        "\\(?: +\\(\\[#.\\]\\)\\)?"
+		        "\\(?: +\\(.*?\\)\\)??"
+		        "\\(?:[ \t]+\\(:[[:alnum:]_@#%:]+:\\)\\)?"
+		        "[ \t]*$")
+	        org-complex-heading-regexp-format
+	        (concat "^\\(\\*+\\)"
+		        "\\(?: +" org-todo-regexp "\\)?"
+		        "\\(?: +\\(\\[#.\\]\\)\\)?"
+		        "\\(?: +"
+                        ;; Headline might be commented
+                        "\\(?:" org-comment-string " +\\)?"
+		        ;; Stats cookies can be stuck to body.
+		        "\\(?:\\[[0-9%%/]+\\] *\\)*"
+		        "\\(%s\\)"
+		        "\\(?: *\\[[0-9%%/]+\\]\\)*"
+		        "\\)"
+		        "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?"
+		        "[ \t]*$")
+	        org-todo-line-tags-regexp
+	        (concat "^\\(\\*+\\)"
+		        "\\(?: +" org-todo-regexp "\\)?"
+		        "\\(?: +\\(.*?\\)\\)??"
+		        "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
+		        "[ \t]*$")))))))
 
 ;; FIXME: This is very specialized.  Should it be made internal? Or
 ;; removed?

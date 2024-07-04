@@ -119,7 +119,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
      ;; of line: point is at the beginning of a visual line.  Bail
      ;; out.
      ((and (bound-and-true-p visual-line-mode) (not (bolp))))
-     ((let ((case-fold-search nil)) (looking-at org-complex-heading-regexp))
+     ((let ((case-fold-search nil)) (looking-at (org-complex-heading-regexp)))
       ;; At a headline, special position is before the title, but
       ;; after any TODO keyword or priority cookie.
       (let ((refpos (min (1+ (or (match-end 3) (match-end 2) (match-end 1)))
@@ -177,7 +177,7 @@ With argument N not nil or 1, move forward N - 1 lines first."
 	   (save-excursion
 	     (forward-line 0)
 	     (let ((case-fold-search nil))
-	       (looking-at org-complex-heading-regexp)))
+	       (looking-at (org-complex-heading-regexp))))
 	   (match-end 5))
       (let ((tags (save-excursion
 		    (goto-char (match-beginning 5))

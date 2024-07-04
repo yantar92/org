@@ -306,7 +306,7 @@ Use `\\[org-clock-remove-overlays]' to remove the subtree times."
 Create a new overlay and store it in `org-clock-overlays', so
 that it will be easy to remove.  This function assumes point is
 on a headline."
-  (org-match-line org-complex-heading-regexp)
+  (org-match-line (org-complex-heading-regexp))
   (goto-char (match-beginning 4))
   (let* ((headline (match-string 4))
 	 (text (concat headline
