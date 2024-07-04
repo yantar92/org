@@ -115,8 +115,6 @@ This variable is ignored when a given heading has LOGGING property.")
   "Function to be called when \\`C-c C-c' is used.
 This is for getting out of special buffers like capture.")
 
-;;; Variables for pre-computed regular expressions, all buffer local
-
 (defvar-local org-category nil
   "Variable used by Org files to set a category for agenda display.
 There are multiple ways to set the category.  One way is to set
@@ -137,13 +135,6 @@ or for the file to contain a special line:
 If the file does not specify a category, then file's base name
 is used instead.")
 (put 'org-category 'safe-local-variable (lambda (x) (or (symbolp x) (stringp x))))
-
-(defvar-local org-complex-heading-regexp-format nil
-  "Printf format to make regexp to match an exact headline.
-This regexp will match the headline of any node which has the
-exact headline text that is put into the format, but may have any
-TODO state, priority, tags, statistics cookies (at the beginning
-or end of the headline title), or COMMENT keyword.")
 
 (defcustom org-loop-over-headlines-in-active-region t
   "Shall some commands act upon headlines in the active region?

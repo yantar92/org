@@ -74,7 +74,7 @@ only headings."
       (org-with-wide-buffer
        (goto-char (point-min))
        (dolist (heading path)
-	 (let ((re (format org-complex-heading-regexp-format
+	 (let ((re (format (org-complex-heading-regexp-format)
 			   (regexp-quote heading)))
 	       (cnt 0))
 	   (while (re-search-forward re end t)
@@ -103,7 +103,7 @@ a priority cookie and tags in the standard locations."
      (goto-char (point-min))
      (let (case-fold-search)
        (when (re-search-forward
-	      (format org-complex-heading-regexp-format
+	      (format (org-complex-heading-regexp-format)
 		      (regexp-quote heading)) nil t)
 	 (if pos-only
 	     (match-beginning 0)

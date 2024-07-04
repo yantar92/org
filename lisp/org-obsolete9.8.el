@@ -193,6 +193,16 @@ Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
 (make-obsolete 'org-complex-heading-regexp "Use (org-complex-heading-regexp) instead" "9.8")
 
+(defvar-local org-complex-heading-regexp-format nil
+  "Printf format to make regexp to match an exact headline.
+This regexp will match the headline of any node which has the
+exact headline text that is put into the format, but may have any
+TODO state, priority, tags, statistics cookies (at the beginning
+or end of the headline title), or COMMENT keyword.")
+(make-obsolete 'org-complex-heading-regexp-format
+               "Use (org-complex-heading-regexp-format) instead"
+               "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

@@ -133,6 +133,35 @@ expected to be bound to nil when matching against this regexp."
 	       "[ \t]*$")
        'robust)))
 
+;; FIXME: We should have a better way to search exact heading.
+(defsubst org-complex-heading-regexp-format (&optional epom)
+  "Get printf format to make regexp to match an exact headline at EPOM.
+
+This regexp will match the headline of any node which has the
+exact headline text that is put into the format, but may have any
+TODO state, priority, tags, statistics cookies (at the beginning
+or end of the headline title), or COMMENT keyword.
+
+Since TODO keywords are case-sensitive, `case-fold-search' is
+expected to be bound to nil when matching against the formatted regexp."
+  (or (org-element-cache-get-key (org-element-org-data epom) :complex-heading-regexp-format)
+      (org-element-cache-store-key
+       (org-element-org-data epom) :complex-heading-regexp-format
+       (concat "^\\(\\*+\\)"
+	       "\\(?: +" (org-todo-regexp epom) "\\)?"
+	       "\\(?: +\\(\\[#.\\]\\)\\)?"
+	       "\\(?: +"
+               ;; Headline might be commented
+               "\\(?:" org-element-comment-string " +\\)?"
+	       ;; Stats cookies can be stuck to body.
+	       "\\(?:\\[[0-9%%/]+\\] *\\)*"
+	       "\\(%s\\)"
+	       "\\(?: *\\[[0-9%%/]+\\]\\)*"
+	       "\\)"
+	       "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?"
+	       "[ \t]*$")
+       'robust)))
+
 ;;;; Block
 
 (defconst org-block-regexp
