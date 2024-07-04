@@ -116,7 +116,11 @@ This variable is ignored when a given heading has LOGGING property.")
 This is for getting out of special buffers like capture.")
 
 (defvar-local org-category nil
-  "Variable used by Org files to set a category for agenda display.
+  "Default category to be used in current buffer.
+
+This variable is only taken into account when the buffer does not have
+category defined by other means.
+
 There are multiple ways to set the category.  One way is to set
 it in the document property drawer.  For example:
 
