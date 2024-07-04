@@ -319,9 +319,6 @@ related expressions."
       (org--set-obsolete-regexps-and-options org-data tags-only)
       (unless tags-only
         ;; Archive location.
-        ;; FIXME: The users should prefer `org-get-archive-location'
-        ;; instead of relying on `org-set-regexps-and-options' to
-        ;; parse top-level keyword.
 	(let ((archive (org-element-property :ARCHIVE org-data)))
 	  (when archive (setq-local org-archive-location archive)))
 	;; Columns.
