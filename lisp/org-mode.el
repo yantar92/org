@@ -300,9 +300,6 @@ means to push this value onto the list in the variable.")
   "Precompute regular expressions used in the current buffer.
 When optional argument TAGS-ONLY is non-nil, only compute tags
 related expressions."
-  ;; FIXME: The buffer-local values here should eventually become
-  ;; unused in the rest of the code, making use of org-data object
-  ;; instead.
   (when (derived-mode-p 'org-mode)
     (let ((org-data (org-element-org-data)))
       ;; Startup options.  Get this early since it does change
@@ -318,41 +315,15 @@ related expressions."
 	    (`(,_ ,variable ,value . ,_)
 	     (set (make-local-variable variable) value))
 	    (_ nil))))
-      ;; FIXME: `org-file-tags' is obsolete.
-      (with-no-warnings
-        (setq-local org-file-tags
-		    (mapcar #'org-add-prop-inherited
-                            (org-element-property :tags org-data))))
-      ;; Used for tag completion.
-      (setq org-current-tag-alist (org-local-tags-alist org-data))
-      ;; Used for tag completion.
-      (setq org-tag-groups-alist
-	    (org-tag-alist-to-groups org-current-tag-alist))
+      ;; FIXME: Remove once we completely remove the obsolete vars.
+      (org--set-obsolete-regexps-and-options org-data tags-only)
       (unless tags-only
-        ;; FIXME: `org-keyword-properties' is set for backwards
-        ;; compatibility.  org-data element properties should be used
-        ;; instead.
-	(let ((properties nil))
-	  (dolist (value (org-element-property :PROPERTY org-data))
-	    (when (string-match "\\(\\S-+\\)[ \t]+\\(.*\\)" value)
-	      (setq properties (org--update-property-plist
-				(match-string-no-properties 1 value)
-				(match-string-no-properties 2 value)
-				properties))))
-	  (setq-local org-keyword-properties properties))
-	;; Archive location.
+        ;; Archive location.
         ;; FIXME: The users should prefer `org-get-archive-location'
         ;; instead of relying on `org-set-regexps-and-options' to
         ;; parse top-level keyword.
 	(let ((archive (org-element-property :ARCHIVE org-data)))
 	  (when archive (setq-local org-archive-location archive)))
-	;; Category.
-	(let ((category (org-element-property :CATEGORY org-data)))
-	  (when category
-	    (setq-local org-category (intern category))
-	    (setq-local org-keyword-properties
-			(org--update-property-plist
-			 "CATEGORY" category org-keyword-properties))))
 	;; Columns.
 	(let ((column (org-element-property :COLUMNS org-data)))
 	  (when column (setq-local org-columns-default-format column)))
@@ -367,11 +338,6 @@ related expressions."
 		(if old (setcdr old value)
 		  (push (cons name value) store)))))
 	  (setq org-table-formula-constants-local store))
-	;; Link abbreviations.
-        ;; FIXME: `org-link-abbrev-alist-local' is obsolete
-        (with-no-warnings
-          (setq org-link-abbrev-alist-local
-                (org-element-property :link-abbrevs org-data)))
 	;; Priorities.
 	(let ((value (org-element-property :PRIORITIES org-data)))
 	  (pcase (and value (split-string value))
@@ -384,92 +350,7 @@ related expressions."
 	  (dolist (option value)
 	    (when (string-match "\\^:\\(t\\|nil\\|{}\\)" option)
 	      (setq-local org-use-sub-superscripts
-			  (read (match-string 1 option))))))
-	;; TODO keywords.
-        (with-no-warnings
-	  (setq-local org-todo-heads nil)
-	  (setq-local org-todo-sets nil)
-          (setq-local org-todo-kwd-alist nil)
-          (setq-local org-todo-key-alist nil)
-          (setq-local org-todo-key-trigger nil))
-        
-	(setq-local org-todo-log-states nil)
-	(let ((sequences (org-element-property :todo-keyword-sequences org-data)))
-          (with-no-warnings
-            ;; org-todo-keywords-1
-            (setq org-todo-keywords-1 (org-element-property :todo-keywords org-data))
-            ;; org-done-keywords
-            (setq org-done-keywords (org-element-property :done-keywords org-data))
-            ;; org-not-done-keywords
-            (setq org-not-done-keywords (org-element-property :not-done-keywords org-data)))
-          ;; org-todo-heads
-          ;; org-todo-sets
-          ;; org-todo-log-states
-          ;; org-todo-key-alist
-          ;; org-todo-kwd-alist
-          (dolist (sequence sequences)
-            (with-no-warnings
-              ;; SEQUENCE = (TYPE ((KWD1 . OPT1) (KWD2 . OPT2) ...) ((DONE-KWD1 . OPT1) ...))
-              (push (caar (nth 1 sequence)) org-todo-heads)
-              (push (mapcar #'car (nth 1 sequence)) org-todo-sets))
-            (let ((kwd-tail (list (car sequence) ;; TYPE
-                                  (with-no-warnings (car org-todo-heads)) ;; First keyword
-                                  (car (car (nth 2 sequence))) ;; First done keyword
-                                  (car (org-last (nth 2 sequence))) ;; Last done keyword
-                                  )))
-              (dolist (pair (nth 1 sequence))
-                (pcase pair
-                  (`(,(and (pred stringp) name) .
-                     ,setting)
-                   (when (stringp setting)
-                     (when-let ((state-setting (org-extract-log-state-settings (concat name "(" setting ")"))))
-                       (push state-setting org-todo-log-states)))
-                   (push (cons name kwd-tail) org-todo-kwd-alist))))))
-          (with-no-warnings
-            (setq org-todo-heads (nreverse org-todo-heads)
-                  org-todo-sets (nreverse org-todo-sets)
-                  org-todo-kwd-alist (nreverse org-todo-kwd-alist)
-                  ;; org-todo-key-trigger
-	          org-todo-key-trigger (delq nil (mapcar #'cdr (org-todo-keyword-binding-alist org-data 'no-auto-keys)))
-                  org-todo-key-alist (org-todo-keyword-binding-alist org-data))))
-        
-	;; Compute the regular expressions and other local variables.
-	;; Using `org-outline-regexp-bol' would complicate them much,
-	;; because of the fixed white space at the end of that string.
-        (with-no-warnings
-	  (setq org-todo-regexp (org-element-property :todo-regexp org-data)
-	        org-not-done-regexp (org-not-done-regexp org-data)
-	        org-not-done-heading-regexp
-	        (format org-heading-keyword-regexp-format org-not-done-regexp)
-	        org-todo-line-regexp
-	        (format org-heading-keyword-maybe-regexp-format org-todo-regexp)
-	        org-complex-heading-regexp
-	        (concat "^\\(\\*+\\)"
-		        "\\(?: +" org-todo-regexp "\\)?"
-		        "\\(?: +\\(\\[#.\\]\\)\\)?"
-		        "\\(?: +\\(.*?\\)\\)??"
-		        "\\(?:[ \t]+\\(:[[:alnum:]_@#%:]+:\\)\\)?"
-		        "[ \t]*$")
-	        org-complex-heading-regexp-format
-	        (concat "^\\(\\*+\\)"
-		        "\\(?: +" org-todo-regexp "\\)?"
-		        "\\(?: +\\(\\[#.\\]\\)\\)?"
-		        "\\(?: +"
-                        ;; Headline might be commented
-                        "\\(?:" org-comment-string " +\\)?"
-		        ;; Stats cookies can be stuck to body.
-		        "\\(?:\\[[0-9%%/]+\\] *\\)*"
-		        "\\(%s\\)"
-		        "\\(?: *\\[[0-9%%/]+\\]\\)*"
-		        "\\)"
-		        "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?"
-		        "[ \t]*$")
-	        org-todo-line-tags-regexp
-	        (concat "^\\(\\*+\\)"
-		        "\\(?: +" org-todo-regexp "\\)?"
-		        "\\(?: +\\(.*?\\)\\)??"
-		        "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
-		        "[ \t]*$")))))))
+			  (read (match-string 1 option))))))))))
 
 ;; FIXME: This is very specialized.  Should it be made internal? Or
 ;; removed?

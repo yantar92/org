@@ -342,6 +342,127 @@ which see."
       (_ nil))))
 (make-obsolete 'org-tags-completion-function "no longer used" "9.8")
 
+(defun org--set-obsolete-regexps-and-options (org-data &optional tags-only)
+  "Set obsolete regexp variables in current buffer according to ORG-DATA.
+When TAGS-ONLY is non-nil, only set tag-related variables."
+  (with-no-warnings
+    (setq-local org-file-tags
+		(mapcar #'org-add-prop-inherited
+                        (org-element-property :tags org-data)))
+    ;; Used for tag completion.
+    (setq org-current-tag-alist (org-local-tags-alist org-data))
+    ;; Used for tag completion.
+    (setq org-tag-groups-alist
+	  (org-tag-alist-to-groups org-current-tag-alist))
+    (unless tags-only
+      ;; FIXME: `org-keyword-properties' is set for backwards
+      ;; compatibility.  org-data element properties should be used
+      ;; instead.
+      (let ((properties nil))
+	(dolist (value (org-element-property :PROPERTY org-data))
+	  (when (string-match "\\(\\S-+\\)[ \t]+\\(.*\\)" value)
+	    (setq properties (org--update-property-plist
+			      (match-string-no-properties 1 value)
+			      (match-string-no-properties 2 value)
+			      properties))))
+	(setq-local org-keyword-properties properties))
+      ;; Category.
+      (let ((category (org-element-property :CATEGORY org-data)))
+	(when category
+	  (setq-local org-category (intern category))
+	  (setq-local org-keyword-properties
+		      (org--update-property-plist
+		       "CATEGORY" category org-keyword-properties))))
+      ;; Link abbreviations.
+      (with-no-warnings
+        (setq org-link-abbrev-alist-local
+              (org-element-property :link-abbrevs org-data)))
+      ;; TODO keywords.
+      (with-no-warnings
+	(setq-local org-todo-heads nil)
+	(setq-local org-todo-sets nil)
+        (setq-local org-todo-kwd-alist nil)
+        (setq-local org-todo-key-alist nil)
+        (setq-local org-todo-key-trigger nil))
+      
+      (setq-local org-todo-log-states nil)
+      (let ((sequences (org-element-property :todo-keyword-sequences org-data)))
+        (with-no-warnings
+          ;; org-todo-keywords-1
+          (setq org-todo-keywords-1 (org-element-property :todo-keywords org-data))
+          ;; org-done-keywords
+          (setq org-done-keywords (org-element-property :done-keywords org-data))
+          ;; org-not-done-keywords
+          (setq org-not-done-keywords (org-element-property :not-done-keywords org-data)))
+        ;; org-todo-heads
+        ;; org-todo-sets
+        ;; org-todo-log-states
+        ;; org-todo-key-alist
+        ;; org-todo-kwd-alist
+        (dolist (sequence sequences)
+          (with-no-warnings
+            ;; SEQUENCE = (TYPE ((KWD1 . OPT1) (KWD2 . OPT2) ...) ((DONE-KWD1 . OPT1) ...))
+            (push (caar (nth 1 sequence)) org-todo-heads)
+            (push (mapcar #'car (nth 1 sequence)) org-todo-sets))
+          (let ((kwd-tail (list (car sequence) ;; TYPE
+                                (with-no-warnings (car org-todo-heads)) ;; First keyword
+                                (car (car (nth 2 sequence))) ;; First done keyword
+                                (car (org-last (nth 2 sequence))) ;; Last done keyword
+                                )))
+            (dolist (pair (nth 1 sequence))
+              (pcase pair
+                (`(,(and (pred stringp) name) .
+                   ,setting)
+                 (when (stringp setting)
+                   (when-let ((state-setting (org-extract-log-state-settings (concat name "(" setting ")"))))
+                     (push state-setting org-todo-log-states)))
+                 (push (cons name kwd-tail) org-todo-kwd-alist))))))
+        (with-no-warnings
+          (setq org-todo-heads (nreverse org-todo-heads)
+                org-todo-sets (nreverse org-todo-sets)
+                org-todo-kwd-alist (nreverse org-todo-kwd-alist)
+                ;; org-todo-key-trigger
+	        org-todo-key-trigger (delq nil (mapcar #'cdr (org-todo-keyword-binding-alist org-data 'no-auto-keys)))
+                org-todo-key-alist (org-todo-keyword-binding-alist org-data))))
+      
+      ;; Compute the regular expressions and other local variables.
+      ;; Using `org-outline-regexp-bol' would complicate them much,
+      ;; because of the fixed white space at the end of that string.
+      (with-no-warnings
+	(setq org-todo-regexp (org-element-property :todo-regexp org-data)
+	      org-not-done-regexp (org-not-done-regexp org-data)
+	      org-not-done-heading-regexp
+	      (format org-heading-keyword-regexp-format org-not-done-regexp)
+	      org-todo-line-regexp
+	      (format org-heading-keyword-maybe-regexp-format org-todo-regexp)
+	      org-complex-heading-regexp
+	      (concat "^\\(\\*+\\)"
+		      "\\(?: +" org-todo-regexp "\\)?"
+		      "\\(?: +\\(\\[#.\\]\\)\\)?"
+		      "\\(?: +\\(.*?\\)\\)??"
+		      "\\(?:[ \t]+\\(:[[:alnum:]_@#%:]+:\\)\\)?"
+		      "[ \t]*$")
+	      org-complex-heading-regexp-format
+	      (concat "^\\(\\*+\\)"
+		      "\\(?: +" org-todo-regexp "\\)?"
+		      "\\(?: +\\(\\[#.\\]\\)\\)?"
+		      "\\(?: +"
+                      ;; Headline might be commented
+                      "\\(?:" org-comment-string " +\\)?"
+		      ;; Stats cookies can be stuck to body.
+		      "\\(?:\\[[0-9%%/]+\\] *\\)*"
+		      "\\(%s\\)"
+		      "\\(?: *\\[[0-9%%/]+\\]\\)*"
+		      "\\)"
+		      "\\(?:[ \t]+\\(:[[:alnum:]_@#%%:]+:\\)\\)?"
+		      "[ \t]*$")
+	      org-todo-line-tags-regexp
+	      (concat "^\\(\\*+\\)"
+		      "\\(?: +" org-todo-regexp "\\)?"
+		      "\\(?: +\\(.*?\\)\\)??"
+		      "\\(?:[ \t]+\\(:[[:alnum:]:_@#%]+:\\)\\)?"
+		      "[ \t]*$"))))))
+
 (provide 'org-obsolete9.8)
 
 ;; Local variables:
