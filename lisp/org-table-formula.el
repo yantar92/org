@@ -1535,12 +1535,34 @@ borders of the table using the @< @> $< $> makers."
 		       (concat (and pp "(") value (and pp ")")) t t new))))))
     (if org-table-formula-debug (propertize new :orig-formula f) new)))
 
+(defun org-table-formula-constants-local (&optional epom)
+  "Get local formula constants at EPOM.
+EPOM is an element, point, or marker.
+The value is an alist ((NAME . VALUE) ...)."
+  (let ((org-data (org-element-org-data epom)))
+    (or (org-element-cache-get-key org-data :formula-constants-local)
+        (org-element-cache-store-key
+         org-data :formula-constants-local
+         (let ((store nil))
+           (dolist (pair
+                    (cl-mapcan
+                     #'split-string
+	             (org-element-property :CONSTANTS (org-element-org-data epom)))
+                    store)
+             (when (string-match "^\\([a-zA-Z0][_a-zA-Z0-9]*\\)=\\(.*\\)" pair)
+	       (let* ((name (match-string 1 pair))
+	              (value (match-string 2 pair))
+	              (old (assoc name store)))
+	         (if old (setcdr old value)
+	           (push (cons name value) store))))))
+         'robust))))
+
 (declare-function org-entry-get "org-property" (epom property &optional inherit literal-nil))
 (defun org-table-get-constant (const)
   "Find the value for a parameter or constant in a formula.
 Parameters get priority."
   (or (cdr (assoc const org-table-local-parameters))
-      (cdr (assoc const org-table-formula-constants-local))
+      (cdr (assoc const (org-table-formula-constants-local)))
       (cdr (assoc const org-table-formula-constants))
       (and (fboundp 'constants-get) (constants-get const))
       (and (string= (substring const 0 (min 5 (length const))) "PROP_")

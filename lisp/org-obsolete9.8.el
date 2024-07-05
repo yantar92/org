@@ -203,6 +203,12 @@ or end of the headline title), or COMMENT keyword.")
                "Use (org-complex-heading-regexp-format) instead"
                "9.8")
 
+(defvar-local org-table-formula-constants-local nil
+  "Local version of `org-table-formula-constants'.")
+(make-obsolete 'org-table-formula-constants-local
+               "Use (org-table-formula-constants-local) instead"
+               "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"
@@ -355,6 +361,17 @@ When TAGS-ONLY is non-nil, only set tag-related variables."
     (setq org-tag-groups-alist
 	  (org-tag-alist-to-groups org-current-tag-alist))
     (unless tags-only
+      ;; Constants.
+      (let ((store nil))
+	(dolist (pair (cl-mapcan #'split-string
+				 (org-element-property :CONSTANTS org-data)))
+	  (when (string-match "^\\([a-zA-Z0][_a-zA-Z0-9]*\\)=\\(.*\\)" pair)
+	    (let* ((name (match-string 1 pair))
+		   (value (match-string 2 pair))
+		   (old (assoc name store)))
+	      (if old (setcdr old value)
+		(push (cons name value) store)))))
+	(setq org-table-formula-constants-local store))
       ;; FIXME: `org-keyword-properties' is set for backwards
       ;; compatibility.  org-data element properties should be used
       ;; instead.

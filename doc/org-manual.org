@@ -20536,9 +20536,7 @@ changes.
   #+vindex: org-table-formula-constants
   #+vindex: org-table-formula
   Set file-local values for constants that table formulas can use.
-  This line sets the local variable
-  ~org-table-formula-constants-local~.  The global version of this
-  variable is ~org-table-formula-constants~.
+  The global constants are stored in ~org-table-formula-constants~.
 
 - =#+FILETAGS: :tag1:tag2:tag3:= ::
 

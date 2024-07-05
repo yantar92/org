@@ -94,9 +94,6 @@ This works for both table types.")
 
 (defvar org-pos nil)
 
-(defvar-local org-table-formula-constants-local nil
-  "Local version of `org-table-formula-constants'.")
-
 (defvar org-table-column-names nil
   "Alist with column names, derived from the `!' line.
 This variable is initialized with `org-table-analyze'.")

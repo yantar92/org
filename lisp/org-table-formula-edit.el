@@ -604,7 +604,7 @@ When LOCAL is non-nil, show references for the table at point."
 		(message "Local parameter."))
 	    (user-error "Parameter not found")))
 	 ((not var) (user-error "No reference at point"))
-	 ((setq e (assoc var org-table-formula-constants-local))
+	 ((setq e (assoc var (org-table-formula-constants-local)))
 	  (message "Local Constant: $%s=%s in #+CONSTANTS line."
 		   var (cdr e)))
 	 ((setq e (assoc var org-table-formula-constants))

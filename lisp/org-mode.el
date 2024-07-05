@@ -324,17 +324,6 @@ related expressions."
 	;; Columns.
 	(let ((column (org-element-property :COLUMNS org-data)))
 	  (when column (setq-local org-columns-default-format column)))
-	;; Constants.
-	(let ((store nil))
-	  (dolist (pair (cl-mapcan #'split-string
-				   (org-element-property :CONSTANTS org-data)))
-	    (when (string-match "^\\([a-zA-Z0][_a-zA-Z0-9]*\\)=\\(.*\\)" pair)
-	      (let* ((name (match-string 1 pair))
-		     (value (match-string 2 pair))
-		     (old (assoc name store)))
-		(if old (setcdr old value)
-		  (push (cons name value) store)))))
-	  (setq org-table-formula-constants-local store))
 	;; Priorities.
 	(let ((value (org-element-property :PRIORITIES org-data)))
 	  (pcase (and value (split-string value))

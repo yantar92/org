@@ -3309,27 +3309,27 @@ Let’s stop here
 	  (org-test-with-temp-text "#+CONSTANTS: c=299792458. pi=3.14"
 	    (org-mode-restart)
 	    (mapcar
-	     (lambda (n) (cdr (assoc n org-table-formula-constants-local)))
+	     (lambda (n) (cdr (assoc n (org-table-formula-constants-local))))
 	     '("c" "pi")))))
   (should
    (equal "3.14"
 	  (org-test-with-temp-text "#+CONSTANTS: pi=22/7 pi=3.14"
 	    (org-mode-restart)
-	    (cdr (assoc "pi" org-table-formula-constants-local)))))
+	    (cdr (assoc "pi" (org-table-formula-constants-local))))))
   (should
    (equal "22/7"
 	  (org-test-with-temp-text "#+CONSTANTS: PI=22/7 pi=3.14"
 	    (org-mode-restart)
-	    (cdr (assoc "PI" org-table-formula-constants-local)))))
+	    (cdr (assoc "PI" (org-table-formula-constants-local))))))
   ;; LINK keyword.
   (should
    (equal
     '("url1" "url2")
     (org-test-with-temp-text "#+LINK: a url1\n#+LINK: b url2"
       (mapcar (lambda (abbrev) (cdr (assoc abbrev
-                                           (org-element-property
-                                            :link-abbrevs
-                                            (org-element-org-data)))))
+                                      (org-element-property
+                                       :link-abbrevs
+                                       (org-element-org-data)))))
 	      '("a" "b")))))
   ;; PRIORITIES keyword.  Incomplete priorities sets are ignored.
   (should
