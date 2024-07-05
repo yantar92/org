@@ -347,7 +347,21 @@ related expressions."
 	  (dolist (option value)
 	    (when (string-match "\\^:\\(t\\|nil\\|{}\\)" option)
 	      (setq-local org-use-sub-superscripts
-			  (read (match-string 1 option))))))))))
+			  (read (match-string 1 option))))))
+        ;; FIXME: Ideally, we should compute this dynamically, but it
+        ;; is very hard to get rid of this variable without breaking
+        ;; let-binding overrides. And we do recommend let-binding
+        ;; overrides in the manual for this specific variable.
+        ;; `org-log-states'
+        (setq-local org-todo-log-states nil)
+        (dolist (sequence (org-element-todo-sequences org-data))
+          ;; SEQUENCE = (TYPE ((KWD1 . SETTING) ...) ....)
+          (pcase-dolist (`(,kwd . ,setting) (nth 1 sequence))
+            (when (and (stringp kwd) (stringp setting))
+              (when-let ((state-setting
+                          (org-extract-log-state-settings
+                           (concat kwd "(" setting ")"))))
+                (push state-setting org-todo-log-states)))))))))
 
 ;; FIXME: This is very specialized.  Should it be made internal? Or
 ;; removed?

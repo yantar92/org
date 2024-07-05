@@ -385,7 +385,6 @@ When TAGS-ONLY is non-nil, only set tag-related variables."
         (setq-local org-todo-key-alist nil)
         (setq-local org-todo-key-trigger nil))
       
-      (setq-local org-todo-log-states nil)
       (let ((sequences (org-element-property :todo-keyword-sequences org-data)))
         (with-no-warnings
           ;; org-todo-keywords-1
@@ -396,7 +395,6 @@ When TAGS-ONLY is non-nil, only set tag-related variables."
           (setq org-not-done-keywords (org-element-property :not-done-keywords org-data)))
         ;; org-todo-heads
         ;; org-todo-sets
-        ;; org-todo-log-states
         ;; org-todo-key-alist
         ;; org-todo-kwd-alist
         (dolist (sequence sequences)
@@ -413,9 +411,6 @@ When TAGS-ONLY is non-nil, only set tag-related variables."
               (pcase pair
                 (`(,(and (pred stringp) name) .
                    ,setting)
-                 (when (stringp setting)
-                   (when-let ((state-setting (org-extract-log-state-settings (concat name "(" setting ")"))))
-                     (push state-setting org-todo-log-states)))
                  (push (cons name kwd-tail) org-todo-kwd-alist))))))
         (with-no-warnings
           (setq org-todo-heads (nreverse org-todo-heads)
