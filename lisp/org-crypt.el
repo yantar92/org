@@ -383,13 +383,14 @@ encrypted entry."
   (org-encrypt--map-items #'org-decrypt-entry))
 
 (defun org-crypt--encrypt-entries-all-buffers ()
-  "Call `org-crypt--encrypt-and-mark-entries' in all Org buffers.
+  "Call `org-crypt--encrypt-and-mark-entries' in all Org buffers with auto-save.
 Do not throw errors.  Do not mark headings for future auto-decryption."
   (message "org-crypt: Re-encrypting all decrypted entries due to auto-save.")
   (dolist (buf (org-buffer-list))
     (with-current-buffer buf
-      (with-demoted-errors "%S"
-        (org-crypt--encrypt-and-mark-entries 'no-mark)))))
+      (when buffer-auto-save-file-name
+        (with-demoted-errors "%S"
+          (org-crypt--encrypt-and-mark-entries 'no-mark))))))
 
 (defun org-crypt--encrypt-and-mark-entries (&optional no-mark)
   "Encrypt entries and mark them with `org-crypt-auto-encrypted' property.
