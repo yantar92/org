@@ -345,6 +345,25 @@ Assume `epg-context' is set."
 
 (defvar org--matcher-tags-todo-only)
 
+(defun org-encrypt--map-items (func)
+  "Run FUNC at every entry matching `org-crypt-tag-matcher'."
+  (let* ((org--matcher-tags-todo-only nil))
+    (when (or (not (equal org-crypt-tag-matcher "crypt"))
+              (org-with-wide-buffer
+               (goto-char (point-min))
+               (re-search-forward ":crypt:" nil t)))
+      (org-scan-tags
+       (lambda ()
+         (funcall func)
+         ;; FIXME: Ad-hoc optimization to speed-up encryption when
+         ;; using defaults.  It is difficult to generalize it to
+         ;; completely arbitrary `org-crypt-tag-matcher'.
+         (when (equal org-crypt-tag-matcher "crypt")
+           (re-search-forward ":crypt:" nil 'move)
+           (org-back-to-heading t)))
+       (cdr (org-make-tags-matcher org-crypt-tag-matcher))
+       org--matcher-tags-todo-only))))
+
 ;;;###autoload
 (defun org-encrypt-entries (&optional hook-function)
   "Encrypt all the entries matching `org-crypt-tag-matcher' in buffer.
@@ -352,29 +371,16 @@ When optional argument HOOK-FUNCTION is non-nil, it should be a function
 accepting 0 arguments.  The function will be called with point at
 encrypted entry."
   (interactive)
-  (let* ((org--matcher-tags-todo-only nil))
-    (org-scan-tags
-     (lambda ()
-       (org-encrypt-entry)
-       (when hook-function (funcall hook-function))
-       ;; FIXME: Ad-hoc optimization to speed-up encryption when
-       ;; using defaults.  It is difficult to generalize it to
-       ;; completely arbitrary `org-crypt-tag-matcher'.
-       (when (equal org-crypt-tag-matcher "crypt")
-         (re-search-forward ":crypt:" nil 'move)
-         (org-back-to-heading)))
-     (cdr (org-make-tags-matcher org-crypt-tag-matcher))
-     org--matcher-tags-todo-only)))
+  (org-encrypt--map-items
+   (if hook-function
+       (lambda () (org-encrypt-entry) (funcall hook-function))
+     #'org-encrypt-entry)))
 
 ;;;###autoload
 (defun org-decrypt-entries ()
   "Decrypt all entries in the current buffer."
   (interactive)
-  (let ((org--matcher-tags-todo-only nil))
-    (org-scan-tags
-     'org-decrypt-entry
-     (cdr (org-make-tags-matcher org-crypt-tag-matcher))
-     org--matcher-tags-todo-only)))
+  (org-encrypt--map-items #'org-decrypt-entry))
 
 (defun org-crypt--encrypt-entries-all-buffers ()
   "Call `org-crypt--encrypt-and-mark-entries' in all Org buffers.
