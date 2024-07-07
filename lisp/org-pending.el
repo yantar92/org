@@ -79,7 +79,10 @@
 ;;
 ;; Let's write an example that will lock a region, then, insert a
 ;; result on :success, and display a message on :failure.  The example
-;; is written so that you can just uncomment it and run it.
+;; is written so that you can just uncomment it and run it.  The
+;; example will use some fields of the REGLOCK object to
+;; alter its behavior; feel free to look at the docstrings of the
+;; cl-defstruct `org-pending-reglock' for the full documentation.
 ;;
 ;; (cl-defstruct my-counter (state 0) timer)
 ;; (defun my-counter-update (counter reglock &optional force-landing)
