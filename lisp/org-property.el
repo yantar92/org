@@ -499,8 +499,8 @@ Return \"???\" when no category is set.
 This function may modify the match data."
   (org-with-point-at epom
     (cond
-     ((org-entry-get-with-inheritance
-       "CATEGORY" nil epom))
+     ((org-element-property-inherited
+       :CATEGORY (org-element-at-point epom) t))
      ((null org-category)
       (when (org-with-base-buffer nil
               buffer-file-name)
