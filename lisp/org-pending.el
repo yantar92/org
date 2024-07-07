@@ -164,10 +164,15 @@
 ;;
 ;;     (setf (org-pending-reglock-user-cancel-function reglock)
 ;;           `(lambda (rlock)
-;;              (message "Initiating emergency landing...")
-;;              (sleep-for 1)
-;;              (my-counter-update ,state rlock 'land)
-;;              (message "Initiating emergency landing... done")))
+;;              (message "Request for emergency landing sent.")
+;;              (run-with-timer 2 nil
+;;                              '(lambda (rl)
+;;                                 (message "Initiating emergency landing...")
+;;                                 (my-counter-update
+;;                                  ,state rl
+;;                                  (if (= 0 (random 2)) 'land 'crashed))
+;;                                 (message "Initiating emergency landing... done"))
+;;                              rlock)))
 ;;
 ;;
 ;;
