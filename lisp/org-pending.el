@@ -126,7 +126,7 @@
 ;; <<<OUTPUT
 ;; More text.
 ;; ")
-;;
+;;     (undo-boundary)
 ;;     (goto-char (point-min))
 ;;     (re-search-forward "TO REPLACE")
 ;;
