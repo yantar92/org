@@ -202,15 +202,15 @@
 ;;
 ;;
 ;; If the user kills a buffer, or, kills Emacs, some locks may have to
-;; be killed too.  The library will ask the user to confirm if an
-;; operation requires to kill some locks.  See the field
-;; `before-kill-function' of REGLOCK object, if you need to do
-;; something before a lock is really killed.
+;; be destroyed.  The library will ask the user to confirm if an
+;; operation requires to destroy some locks.  See the field
+;; `before-destroy-function' of REGLOCK object, if you need to do
+;; something before a lock is destroyed.
 ;;
 ;; In our example above, we could customize the function
-;; `before-kill-function' like this:
+;; `before-destroy-function' like this:
 ;;
-;;     (setf (org-pending-reglock-before-kill-function reglock)
+;;     (setf (org-pending-reglock-before-destroy-function reglock)
 ;;           `(lambda (_rlock)
 ;;              (cancel-timer (my-counter-timer ,state))
 ;;              (warn "Transponder signal lost")))
@@ -475,7 +475,7 @@ Assume OVL has been created with `org-pending--make-overlay'."
 (begin marker . end marker). This is the target of the update. Its
 content may be updated on success.
 
-Becomes nil when the lock has been killed.")
+Becomes nil when the lock has been destroyed.")
 
   ( scheduled-at nil
     :documentation
@@ -490,7 +490,7 @@ Becomes nil when the lock has been killed.")
     "The outcome. nil when not known yet. Else a list: (:success RESULT)
 or (:failure ERROR)")
 
-  ( before-kill-function nil
+  ( before-destroy-function nil
     :documentation
     "When non-nil, function called before Emacs kills this REGLOCK, with the
 REGLOCK as argument.")
@@ -658,9 +658,9 @@ outcome to unlock the region (see `org-pending-send-update').
 
 You may set/update the following fields of your reglock to customize its
 behavior:
-   - Emacs may have to kill your locks; see the field
-     `before-kill-function' if you wish to do something before your
-     lock is killed.
+   - Emacs may have to destroy your locks; see the field
+     `before-destroy-function' if you wish to do something before your
+     lock is destroyed.
    - The user may ask Emacs to cancel your lock; see the field
      `user-cancel-function' to override the default cancel function.
    - The user may request a description of the lock; see the the field
@@ -777,10 +777,10 @@ the end of the description buffer, and call that function with REGLOCK,
         (erase-buffer)
         (setq revert-buffer-function
               (lambda (&rest _)
-                ;; Revert if not killed.
+                ;; Revert if not destroyed.
                 (if (org-pending-reglock-region reglock)
                     (org-pending-describe-reglock reglock)
-                  (user-error "This region lock has been killed."))))
+                  (user-error "This region lock has been destroyed."))))
         (cl-labels
             ((time-to-string (x) (if x (format-time-string "%T" x) "-"))
              (bool-to-string (x) (if x "yes" "no"))
@@ -1335,26 +1335,26 @@ Remove them in any buffer (base or indirect, owned or not)."
 
 ;;; Plugging into Emacs
 ;;
-(defun org-pending--forced-kill (reglock)
-  "Kill this REGLOCK.
-Do not ask for confirmation or interact in any way, just kill it.
+(defun org-pending--forced-destroy (reglock)
+  "Destroy this REGLOCK.
+Do not ask for confirmation or interact in any way, just destroy it.
 
-If this REGLOCK is alive and the REGLOCK field `before-kill-function' is
+If this REGLOCK is alive and the REGLOCK field `before-destroy-function' is
 non-nil, call it with REGLOCK.  If the REGLOCK is still live, make it
 fail with org-pending-user-cancel error.
 
-Set the REGLOCK region to nil to indicate that it has been killed.
+Set the REGLOCK region to nil to indicate that it has been destroyed.
 
 Return nothing."
   (when (org-pending-reglock-live-p reglock)
-    (when-let ((before-kill (org-pending-reglock-before-kill-function reglock)))
-      (funcall before-kill reglock))
+    (when-let ((before-destroy (org-pending-reglock-before-destroy-function reglock)))
+      (funcall before-destroy reglock))
     ;; Unlock the region, marking the REGLOCK as failed due to
     ;; cancellation.
     (when (org-pending-reglock-live-p reglock)
       (org-pending-send-update
        reglock (list :failure (list 'org-pending-user-cancel
-                                    "Killed")))))
+                                    "Gone")))))
   (setf (org-pending-reglock-region reglock) nil)
   nil)
 
@@ -1378,12 +1378,12 @@ If the current buffer contains locks, offer to abort killing the buffer."
       (when (y-or-n-p (format (concat "There are pending locks in buffer '%s'"
                                       " (or its indirect buffers), kill anyway?")
 			      (buffer-name)))
-        ;; Force killed: destroy all the locks of this buffer.
+        ;; Force destroyed: destroy all the locks of this buffer.
         (without-restriction
           (dolist (pi (org-pending-locks-in (point-min) (point-max)
                                             :owned-only))
-            (org-pending--forced-kill pi)))
-        :forced-kill))))
+            (org-pending--forced-destroy pi)))
+        :forced-destroyed))))
 
 (defun org-pending--kill-emacs-query ()
   "For `kill-emacs-query-functions'.
@@ -1394,7 +1394,7 @@ If there are any lock, offer to abort killing Emacs."
     (when (yes-or-no-p (format "There are pending locks, kill anyway?"))
       ;; Forced kill: cancel all pending regions
       (dolist (pi (org-pending-list))
-        (org-pending--forced-kill pi))
+        (org-pending--forced-destroy pi))
       :forced-kill)))
 
 (defun org-pending--after-indirect-clone ()
@@ -1527,7 +1527,7 @@ unique if needed."
               :ok-to-kill)
             kill-buffer-query-functions))
 
-    (setf (org-pending-reglock-before-kill-function reglock)
+    (setf (org-pending-reglock-before-destroy-function reglock)
           (lambda (_rl)
             (setq closing t)
             (when (buffer-live-p edit-buffer)
