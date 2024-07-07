@@ -433,61 +433,43 @@ DESCRIPTION, LOCATION, and LOGGING and others.
 
 When COLUMNS in non-nil, also include property names given in
 COLUMN formats in the current buffer."
-  (let ((case-fold-search t)
-	(props (append
-		(and specials org-special-properties)
-		(and defaults (cons org-effort-property org-default-properties))
-		;; Get property names from #+PROPERTY keywords as well
-		(mapcar (lambda (s)
-			  (nth 0 (split-string s)))
-                        (org-element-property :PROPERTY (org-element-org-data))))))
-    (org-with-wide-buffer
-     (goto-char (point-min))
-     (while (re-search-forward org-property-start-re nil t)
-       (catch :skip
-	 (let ((range (org-get-property-block)))
-	   (unless range (throw :skip nil))
-	   (goto-char (car range))
-	   (let ((begin (car range))
-		 (end (cdr range)))
-	     ;; Make sure that found property block is not located
-	     ;; before current point, as it would generate an infloop.
-	     ;; It can happen, for example, in the following
-	     ;; situation:
-	     ;;
-	     ;; * Headline
-	     ;;   :PROPERTIES:
-	     ;;   ...
-	     ;;   :END:
-	     ;; *************** Inlinetask
-	     ;; #+BEGIN_EXAMPLE
-	     ;; :PROPERTIES:
-	     ;; #+END_EXAMPLE
-	     ;;
-	     (if (< begin (point)) (throw :skip nil) (goto-char begin))
-	     (while (< (point) end)
-	       (let ((p (progn (looking-at org-property-re)
-			       (match-string-no-properties 2))))
-		 ;; Only add true property name, not extension symbol.
-		 (push (if (not (string-match-p "\\+\\'" p)) p
-			 (substring p 0 -1))
-		       props))
-	       (forward-line))))
-	 (outline-next-heading)))
-     (when columns
-       (goto-char (point-min))
-       (while (re-search-forward "^[ \t]*\\(?:#\\+\\|:\\)COLUMNS:" nil t)
-	 (let ((element (org-element-at-point)))
-	   (when (org-element-type-p element '(keyword node-property))
-	     (let ((value (org-element-property :value element))
-		   (start 0))
-	       (while (string-match "%[0-9]*\\([[:alnum:]_-]+\\)\\(([^)]+)\\)?\
-\\(?:{[^}]+}\\)?"
-				    value start)
-		 (setq start (match-end 0))
-		 (let ((p (match-string-no-properties 1 value)))
-		   (unless (member-ignore-case p org-special-properties)
-		     (push p props))))))))))
+  (let* ((case-fold-search t)
+	 (props (append
+		 (and specials org-special-properties)
+		 (and defaults (cons org-effort-property org-default-properties))
+		 ;; Get property names from #+PROPERTY keywords as well
+		 (mapcar (lambda (s)
+			   (nth 0 (split-string s)))
+                         (org-element-property :PROPERTY (org-element-org-data)))))
+         (props-hash (make-hash-table :test #'equal))
+         (add-column-props
+          (lambda (value)
+            (when value
+              (let ((start 0))
+	        (while (string-match "%[0-9]*\\([[:alnum:]_-]+\\)\\(([^)]+)\\)?\\(?:{[^}]+}\\)?"
+				     value start)
+	          (setq start (match-end 0))
+	          (let ((p (match-string-no-properties 1 value)))
+		    (unless (member-ignore-case p org-special-properties)
+		      (push p props)))))))))
+    (when columns
+      (funcall add-column-props
+               (org-element-property :COLUMNS (org-element-org-data))))
+    ;; Add headline properties.
+    (org-element-cache-map
+     (lambda (heading)
+       (dolist (pair (org-entry-properties heading 'standard))
+         (when (and columns (equal (car pair) "COLUMNS"))
+           ;; Special case: add properties listed in COLUMNS.
+           (funcall add-column-props (cdr pair)))
+         ;; Special case: `org-entry-properties' always includes
+         ;; "CATEGORY", while we only want it when it is actually
+         ;; present in the heading.
+         (unless (or (gethash (car pair) props-hash)
+                     (and (equal (car pair) "CATEGORY")
+                          (not (org-element-property :CATEGORY heading))))
+           (puthash (car pair) t props-hash)
+           (push (car pair) props)))))
     (sort (delete-dups
 	   (append props
 		   ;; for each xxx_ALL property, make sure the bare
