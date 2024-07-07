@@ -95,23 +95,21 @@
 ;;    (if force-landing
 ;;        (progn
 ;;          (when (timerp (my-counter-timer counter))
-;; 	   (cancel-timer (my-counter-timer counter)))
+;;            (cancel-timer (my-counter-timer counter)))
 ;;          (pcase force-landing
 ;;            ('land
 ;;             '(:success "Landed early"))
 ;;            ('crashed
-;;             (when (timerp (my-counter-timer counter))
-;; 	      (cancel-timer (my-counter-timer counter))))
-;;            '(:failure "Crashed")))
+;;             '(:failure "Crashed"))))
 ;;      (pcase (my-counter-state counter)
 ;;        (0 '(:progress "Taking off..."))
 ;;        (1 '(:progress "Flying..."))
 ;;        (2 '(:progress "Landing..."))
 ;;        (_
 ;;         (when (timerp (my-counter-timer counter))
-;; 	  (cancel-timer (my-counter-timer counter)))
+;;           (cancel-timer (my-counter-timer counter)))
 ;;         (if (= 0 (random 2))
-;; 	    '(:success "Landed successfully")
+;;             '(:success "Landed successfully")
 ;;           '(:failure "Landing malfunction"))))))
 ;;   (cl-incf (my-counter-state counter)))
 ;;
@@ -141,7 +139,7 @@
 ;;     (setq state (make-my-counter))
 ;;     ;; We create a timer to update our state every few seconds.
 ;;     (setf (my-counter-timer state)
-;; 	  (run-with-timer step-duration step-duration
+;;           (run-with-timer step-duration step-duration
 ;;                           #'my-counter-update state reglock))))
 ;;
 ;;
