@@ -960,6 +960,9 @@ even if the lock/buffer doesn't exist.")
                  'before-string (propertize
                                  "x" 'display
                                  `(left-fringe ,bitmap ,face)))
+    (overlay-put outcome-ovl
+                 'help-echo
+                 "Last lock outcome, click to popup its full description.")
     (overlay-put outcome-ovl 'face outcome-face)
     (overlay-put outcome-ovl 'org-pending-reglock lock)
     (push `(apply delete-overlay ,outcome-ovl) buffer-undo-list)
