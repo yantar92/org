@@ -911,8 +911,8 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 
 ;;;; Updates
 ;;
-(defvar org-pending-outcome-pre-display-function
-  #'org-pending-outcome-pre-display-default
+(defvar org-pending-pre-insert-outcome-function
+  #'org-pending-pre-insert-outcome-default
   "Function called before displaying the outcome and
 releasing the lock.
 
@@ -920,8 +920,8 @@ This function is called with two arguments: the lock and the update
 message (see `org-pending-send-update' for the definition of what an
 update message is).")
 
-(defvar org-pending-outcome-post-display-function
-  #'org-pending-outcome-post-display-default
+(defvar org-pending-post-insert-outcome-function
+  #'org-pending-post-insert-outcome-default
   "Function called after the outcome is displayed and
 released the lock.
 
@@ -935,11 +935,11 @@ This function must return how to remove the decoration: a function that
 will be called with no arguments; the returned function may be called
 even if the lock/buffer doesn't exist.")
 
-(defun org-pending-outcome-pre-display-default (_lock _message)
-  "Default value for `org-pending-outcome-pre-display-function'.")
+(defun org-pending-pre-insert-outcome-default (_lock _message)
+  "Default value for `org-pending-pre-insert-outcome-function'.")
 
-(defun org-pending-outcome-post-display-default (lock message outcome-region)
-  "Default value for `org-pending-outcome-post-display-function'."
+(defun org-pending-post-insert-outcome-default (lock message outcome-region)
+  "Default value for `org-pending-post-insert-outcome-function'."
   ;; We add some outcome decorations to let the user know what
   ;; happened and allow him to explore the details.
   (let* ((status (car message))
@@ -1010,7 +1010,7 @@ even if the lock/buffer doesn't exist.")
                      (propertize (format " |%s|" (short-version-of data))
                                  'face (org-pending-status-face status))))
       (when (memq status '(:success :failure))
-        (funcall org-pending-outcome-pre-display-function
+        (funcall org-pending-pre-insert-outcome-function
                  reglock (list status data))
 
         ;; We remove all overlays and let org insert the result
@@ -1040,7 +1040,7 @@ even if the lock/buffer doesn't exist.")
                   (lambda () t))
           ;; Decorate the outcome and store how to remove the decoration.
           (setf (org-pending-reglock--delete-outcome-marks reglock)
-                (funcall org-pending-outcome-post-display-function
+                (funcall org-pending-post-insert-outcome-function
                          reglock (list status data) outcome-region))
 
           (setf (org-pending-reglock--useless-p reglock)
