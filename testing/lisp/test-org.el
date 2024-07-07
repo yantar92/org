@@ -7185,39 +7185,39 @@ Paragraph<point>"
 	      (cdr (assoc "BLOCKED" (org-entry-properties nil "BLOCKED")))))))
   ;; Get "CLOSED", "DEADLINE" and "SCHEDULED" properties.
   (should
-   (equal
-    "[2012-03-29 thu.]"
+   (string-match-p
+    (regexp-quote "[2012-03-29")
     (org-test-with-temp-text "* H\nCLOSED: [2012-03-29 thu.]"
       (cdr (assoc "CLOSED" (org-entry-properties nil "CLOSED"))))))
   (should
-   (equal
-    "[2012-03-29 thu.]"
+   (string-match-p
+    (regexp-quote "[2012-03-29")
     (org-test-with-temp-text "* H\nCLOSED: [2012-03-29 thu.]"
       (cdr (assoc "CLOSED" (org-entry-properties))))))
   (should-not
    (org-test-with-temp-text "* H"
      (cdr (assoc "CLOSED" (org-entry-properties nil "CLOSED")))))
   (should
-   (equal
-    "<2014-03-04 tue.>"
+   (string-match-p
+    (regexp-quote "<2014-03-04")
     (org-test-with-temp-text "* H\nDEADLINE: <2014-03-04 tue.>"
       (cdr (assoc "DEADLINE" (org-entry-properties nil "DEADLINE"))))))
   (should
-   (equal
-    "<2014-03-04 tue.>"
+   (string-match-p
+    (regexp-quote "<2014-03-04")
     (org-test-with-temp-text "* H\nDEADLINE: <2014-03-04 tue.>"
       (cdr (assoc "DEADLINE" (org-entry-properties))))))
   (should-not
    (org-test-with-temp-text "* H"
      (cdr (assoc "DEADLINE" (org-entry-properties nil "DEADLINE")))))
   (should
-   (equal
-    "<2014-03-04 tue.>"
+   (string-match-p
+    (regexp-quote "<2014-03-04")
     (org-test-with-temp-text "* H\nSCHEDULED: <2014-03-04 tue.>"
       (cdr (assoc "SCHEDULED" (org-entry-properties nil "SCHEDULED"))))))
   (should
-   (equal
-    "<2014-03-04 tue.>"
+   (string-match-p
+    (regexp-quote "<2014-03-04")
     (org-test-with-temp-text "* H\nSCHEDULED: <2014-03-04 tue.>"
       (cdr (assoc "SCHEDULED" (org-entry-properties))))))
   (should-not

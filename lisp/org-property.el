@@ -85,16 +85,139 @@ FORCE is non-nil, or return nil."
 				       (line-beginning-position))))
 	      (cons pos pos)))))))
 
-(defun org-entry-blocked-p ()
-  "Non-nil if entry at point is blocked."
-  (and (not (org-entry-get nil "NOBLOCKING"))
-       (org-entry-is-todo-p)
-       (not (run-hook-with-args-until-failure
-	   'org-blocker-hook
-	   (list :type 'todo-state-change
-		 :position (point)
-		 :from 'todo
-		 :to 'done)))))
+(defun org-entry-blocked-p (&optional epom)
+  "Non-nil if entry at EPOM is blocked.
+EPOM is an element, point, or marker."
+  (and (not (org-entry-get epom "NOBLOCKING"))
+       (org-entry-is-todo-p epom)
+       (org-with-point-at epom
+         (not (run-hook-with-args-until-failure
+	     'org-blocker-hook
+	     (list :type 'todo-state-change
+		   :position (point)
+		   :from 'todo
+		   :to 'done))))))
+
+(defun org--entry-clocksum (&optional _)
+  "Return cached CLOCKSUM at point as duration.
+The duration is computed via `org-duration-from-minutes'.
+The return value is a (\"CLOCKSUM\" . value)."
+  (let ((clocksum (get-text-property (point) :org-clock-minutes)))
+    (when clocksum
+      (require 'org-duration)
+      (cons "CLOCKSUM" (org-duration-from-minutes clocksum)))))
+
+(defun org--entry-clocksum-today (&optional _)
+  "Return cached CLOCKSUM for current entry.
+The return value is a (\"CLOCKSUM_T\" . value)."
+  (let ((clocksum (get-text-property (point) :org-clock-minutes-today)))
+    (when clocksum
+      (require 'org-duration)
+      (cons "CLOCKSUM_T" (org-duration-from-minutes clocksum)))))
+
+(defun org--entry-item (heading)
+  "Return ITEM name for HEADING.
+The return value is a (\"ITEM\" . value)."
+  (cons "ITEM" (or (org-element-property :title heading) "")))
+
+(defun org--entry-todo (heading)
+  "Return TODO keyword for HEADING.
+The return value is (\"TODO\" . keyword)."
+  (when-let ((kwd (org-element-property :todo-keyword heading)))
+    (cons "TODO" kwd)))
+
+(defun org--entry-file (&optional _)
+  "Return current FILE.
+The return value is (\"FILE\" . filename)."
+  (cons "FILE" (buffer-file-name (buffer-base-buffer))))
+
+(defun org--entry-alltags (heading &optional local)
+  "Return all the tags, including inherited, for HEADING.
+The return value is (\"ALLTAGS\" . TAG-STRING).
+When LOCAL is non-nil, only return local tags as
+ (\"TAGS\" . LOCAL-TAG-STRING)."
+  (require 'org-tags-core)
+  (when-let ((tags (org-get-tags heading local)))
+    (cons (if local "TAGS" "ALLTAGS") (org-make-tag-string tags))))
+
+(defun org--entry-tags (heading)
+  "Return local tags for HEADING.
+The return value is (\"TAGS\" . TAG-STRING)."
+  (org--entry-alltags heading 'local))
+
+(defun org--entry-blocked (heading)
+  "Return BLOCKED property of HEADING.
+The return value is (\"BLOCKED\" . FLAG), where FLAG is either \"t\"
+(blocked) or empty string \"\" (not blocked)."
+  (cons "BLOCKED" (if (org-entry-blocked-p heading) "t" "")))
+
+(defun org--entry-closed (heading)
+  "Return CLOSED timestamp for HEADING.
+The return value is (\"CLOSED\" . timestamp-string)."
+  (when-let ((ts (org-element-property :closed heading)))
+    (cons "CLOSED" (org-element-interpret-data ts))))
+
+(defun org--entry-deadline (heading)
+  "Return DEADLINE timestamp for HEADING.
+The return value is (\"DEADLINE\" . timestamp-string)."
+  (when-let ((ts (org-element-property :deadline heading)))
+    (cons "DEADLINE" (org-element-interpret-data ts))))
+
+(defun org--entry-scheduled (heading)
+  "Return SCHEDULED timestamp for HEADING.
+The return value is (\"SCHEDULED\" . timestamp-string)."
+  (when-let ((ts (org-element-property :scheduled heading)))
+    (cons "SCHEDULED" (org-element-interpret-data ts))))
+
+(defun org--entry-priority (heading)
+  "Return priority for HEADING.
+The return value is a (\"PRIORITY\" . value)."
+  (cons "PRIORITY"
+        (char-to-string
+         (or (org-element-property :priority heading)
+             org-priority-default))))
+
+(defun org--entry-timestamp (heading &optional inactive)
+  "Find next active timestamp in current HEADING.
+Search both timestamp objects and timestamp-matching node property
+values.
+
+Return (\"TIMESTAMP\" . timestamp-string).
+
+When INACTIVE is non-nil, search inactive timestamps and return
+ (\"TIMESTAMP_IA\" . timestamp-string)."
+  (let ((cached (org-element-cache-get-key
+                 heading
+                 (if inactive :entry-timestamp-inactive :entry-timestamp)
+                 'none)))
+    (if (not (eq cached 'none)) cached
+      (org-element-cache-store-key
+       heading
+       (if inactive :entry-timestamp-inactive :entry-timestamp)
+       (org-with-point-at heading
+         (let ((regexp (if inactive org-ts-regexp-inactive org-ts-regexp))
+               (limit (save-excursion (outline-next-heading))))
+           (catch 'found
+             (while (re-search-forward regexp limit t)
+	       (backward-char)
+	       (let* ((raw-value (match-string 0))
+                      (object (org-element-context))
+                      (type (org-element-type object)))
+	         ;; Accept to match timestamps in node
+	         ;; properties, too.
+	         (when (or (eq 'node-property type)
+                           (and (eq 'timestamp type)
+                                (memq (org-element-property :type object)
+                                      (if inactive
+                                          '(inactive inactive-range)
+                                        '(active active-range)))))
+                   (throw 'found (cons (if inactive "TIMESTAMP_IA" "TIMESTAMP")
+                                       raw-value))))))))))))
+
+(defun org--entry-timestamp-inactive (heading)
+  "Find first inactive timestamp in HEADING.
+See `org--entry-timestamp' for more details about the return value."
+  (org--entry-timestamp heading 'inactive))
 
 (declare-function org-get-tags "org-tags-core" (&optional epom local))
 (declare-function org-make-tag-string "org-tags-core" (tags))
@@ -120,192 +243,58 @@ strings."
     (when (and (derived-mode-p 'org-mode)
 	       (org-back-to-heading-or-point-min t))
       (catch 'exit
-	(let* ((beg (point))
+	(let* ((heading (or (org-headline-at-point) (org-element-org-data)))
 	       (specific (and (stringp which) (upcase which)))
 	       (which (cond ((not specific) which)
 			    ((member specific org-special-properties) 'special)
 			    (t 'standard)))
+               (special-prop-rules
+                '(("CLOCKSUM" . org--entry-clocksum)
+                  ("CLOCKSUM_T" . org--entry-clocksum-today)
+                  ("ITEM" . org--entry-item)
+                  ("TODO" . org--entry-todo)
+                  ("PRIORITY" . org--entry-priority)
+                  ("FILE" . org--entry-file)
+                  ("TAGS" . org--entry-tags)
+                  ("ALLTAGS" . org--entry-alltags)
+                  ("BLOCKED" . org--entry-blocked)
+                  ("CLOSED" . org--entry-closed)
+                  ("DEADLINE" . org--entry-deadline)
+                  ("SCHEDULED" . org--entry-scheduled)
+                  ("TIMESTAMP" . org--entry-timestamp)
+                  ("TIMESTAMP_IA" . org--entry-timestamp-inactive)))
 	       props)
 	  ;; Get the special properties, like TODO and TAGS.
 	  (when (memq which '(nil all special))
-	    (when (or (not specific) (string= specific "CLOCKSUM"))
-	      (let ((clocksum (get-text-property (point) :org-clock-minutes)))
-		(when clocksum
-                  (require 'org-duration)
-		  (push (cons "CLOCKSUM" (org-duration-from-minutes clocksum))
-			props)))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "CLOCKSUM_T"))
-	      (let ((clocksumt (get-text-property (point)
-						  :org-clock-minutes-today)))
-		(when clocksumt
-                  (require 'org-duration)
-		  (push (cons "CLOCKSUM_T"
-			      (org-duration-from-minutes clocksumt))
-			props)))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "ITEM"))
-	      (let ((case-fold-search nil))
-		(when (looking-at (org-complex-heading-regexp))
-		  (push (cons "ITEM"
-			      (let ((title (match-string-no-properties 4)))
-				(if (org-string-nw-p title)
-				    (org-remove-tabs title)
-				  "")))
-			props)))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "TODO"))
-	      (let ((case-fold-search nil))
-		(when (and (looking-at
-                            (format org-heading-keyword-maybe-regexp-format
-                                    (org-todo-regexp)))
-                           ;; Group 2: todo keyword
-                           (match-end 2))
-		  (push (cons "TODO" (match-string-no-properties 2)) props)))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "PRIORITY"))
-	      (push (cons "PRIORITY"
-			  (if (looking-at org-priority-regexp)
-			      (match-string-no-properties 2)
-			    (char-to-string org-priority-default)))
-		    props)
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "FILE"))
-	      (push (cons "FILE" (buffer-file-name (buffer-base-buffer)))
-		    props)
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "TAGS"))
-              (require 'org-tags-core)
-	      (let ((tags (org-get-tags nil t)))
-		(when tags
-		  (push (cons "TAGS" (org-make-tag-string tags))
-			props)))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "ALLTAGS"))
-	      (let ((tags (org-get-tags)))
-		(when tags
-		  (push (cons "ALLTAGS" (org-make-tag-string tags))
-			props)))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific) (string= specific "BLOCKED"))
-	      (push (cons "BLOCKED" (if (org-entry-blocked-p) "t" "")) props)
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific)
-		      (member specific '("CLOSED" "DEADLINE" "SCHEDULED")))
-	      (forward-line)
-	      (when (looking-at-p org-planning-line-re)
-		(end-of-line)
-		(let ((bol (line-beginning-position))
-		      ;; Backward compatibility: time keywords used to
-		      ;; be configurable (before 8.3).  Make sure we
-		      ;; get the correct keyword.
-		      (key-assoc `(("CLOSED" . ,org-closed-string)
-				   ("DEADLINE" . ,org-deadline-string)
-				   ("SCHEDULED" . ,org-scheduled-string))))
-		  (dolist (pair (if specific (list (assoc specific key-assoc))
-				  key-assoc))
-		    (save-excursion
-		      (when (search-backward (cdr pair) bol t)
-			(goto-char (match-end 0))
-			(skip-chars-forward " \t")
-			(and (looking-at org-ts-regexp-both)
-			     (push (cons (car pair)
-					 (match-string-no-properties 0))
-				   props)))))))
-	      (when specific (throw 'exit props)))
-	    (when (or (not specific)
-		      (member specific '("TIMESTAMP" "TIMESTAMP_IA")))
-	      (let ((find-ts
-		     (lambda (end ts)
-		       ;; Fix next timestamp before END.  TS is the
-		       ;; list of timestamps found so far.
-		       (let ((ts ts)
-			     (regexp (cond
-				      ((string= specific "TIMESTAMP")
-				       org-ts-regexp)
-				      ((string= specific "TIMESTAMP_IA")
-				       org-ts-regexp-inactive)
-				      ((assoc "TIMESTAMP_IA" ts)
-				       org-ts-regexp)
-				      ((assoc "TIMESTAMP" ts)
-				       org-ts-regexp-inactive)
-				      (t org-ts-regexp-both))))
-			 (catch 'next
-			   (while (re-search-forward regexp end t)
-			     (backward-char)
-			     (let ((object (org-element-context)))
-			       ;; Accept to match timestamps in node
-			       ;; properties, too.
-			       (when (org-element-type-p
-                                      object '(node-property timestamp))
-				 (let ((type
-					(org-element-property :type object)))
-				   (cond
-				    ((and (memq type '(active active-range))
-					  (not (equal specific "TIMESTAMP_IA")))
-				     (unless (assoc "TIMESTAMP" ts)
-				       (push (cons "TIMESTAMP"
-						   (org-element-property
-						    :raw-value object))
-					     ts)
-				       (when specific (throw 'exit ts))))
-				    ((and (memq type '(inactive inactive-range))
-					  (not (string= specific "TIMESTAMP")))
-				     (unless (assoc "TIMESTAMP_IA" ts)
-				       (push (cons "TIMESTAMP_IA"
-						   (org-element-property
-						    :raw-value object))
-					     ts)
-				       (when specific (throw 'exit ts))))))
-				 ;; Both timestamp types are found,
-				 ;; move to next part.
-				 (when (= (length ts) 2) (throw 'next ts)))))
-			   ts)))))
-		(goto-char beg)
-		;; First look for timestamps within headline.
-		(let ((ts (funcall find-ts (line-end-position) nil)))
-		  (if (= (length ts) 2) (setq props (nconc ts props))
-		    ;; Then find timestamps in the section, skipping
-		    ;; planning line.
-		    (let ((end (save-excursion (outline-next-heading))))
-		      (forward-line)
-		      (when (looking-at-p org-planning-line-re) (forward-line))
-		      (setq props (nconc (funcall find-ts end ts) props))))))))
+            (when-let ((fun (and specific
+                                 (cdr (assoc-string
+                                       specific special-prop-rules)))))
+              (throw 'exit (list (funcall fun heading))))
+            (unless specific
+              (dolist (pair special-prop-rules)
+                (push (funcall (cdr pair) heading) props)))
+            (setq props (delq nil props)))
 	  ;; Get the standard properties, like :PROP:.
 	  (when (memq which '(nil all standard))
-	    ;; If we are looking after a specific property, delegate
-	    ;; to `org-entry-get', which is faster.  However, make an
-	    ;; exception for "CATEGORY", since it can be also set
-	    ;; through keywords (i.e. #+CATEGORY).
-	    (if (and specific (not (equal specific "CATEGORY")))
-		(let ((value (org-entry-get beg specific nil t)))
-		  (throw 'exit (and value (list (cons specific value)))))
-	      (let ((range (org-get-property-block beg)))
-		(when range
-		  (let ((end (cdr range)) seen-base)
-		    (goto-char (car range))
-		    ;; Unlike to `org--update-property-plist', we
-		    ;; handle the case where base values is found
-		    ;; after its extension.  We also forbid standard
-		    ;; properties to be named as special properties.
-		    (while (re-search-forward org-property-re end t)
-		      (let* ((key (upcase (match-string-no-properties 2)))
-			     (extendp (string-match-p "\\+\\'" key))
-			     (key-base (if extendp (substring key 0 -1) key))
-			     (value (match-string-no-properties 3)))
-			(cond
-			 ((member-ignore-case key-base org-special-properties))
-			 (extendp
-			  (setq props
-				(org--update-property-plist key value props)))
-			 ((member key seen-base))
-			 (t (push key seen-base)
-			    (let ((p (assoc-string key props t)))
-			      (if p (setcdr p (concat value " " (cdr p)))
-				(push (cons key value) props))))))))))))
-	  (unless (assoc "CATEGORY" props)
-	    (push (cons "CATEGORY" (org-get-category beg)) props)
-	    (when (string= specific "CATEGORY") (throw 'exit props)))
+	    (push (cons "CATEGORY" (org-get-category heading)) props)
+	    (when (string= specific "CATEGORY") (throw 'exit props))
+            (if specific
+                (throw 'exit
+                       (list (cons specific
+                                   (org-entry-get
+                                    heading specific nil t))))
+              (org-element-properties-mapc
+               (lambda (property _ heading)
+                 (let ((name (substring (symbol-name property) 1)))
+	           ;; If we are looking after a specific property, delegate
+	           ;; to `org-entry-get', which is faster.  However, make an
+	           ;; exception for "CATEGORY", since it can be also set
+	           ;; through keywords (i.e. #+CATEGORY).
+                   (when (and (equal name (upcase name)) ; Only local properties.
+                              (not (equal name "CATEGORY")))
+                     (when-let ((value (org-entry-get heading name nil t)))
+                       (push (cons name value) props)))))
+               heading)))
 	  ;; Return value.
 	  props)))))
 
@@ -520,37 +509,41 @@ COLUMN formats in the current buffer."
        (push (org-entry-get (point) key) values))
      (delete-dups values))))
 
-(defun org-get-category (&optional pos _)
-  "Get the category applying to position POS.
+(defun org-get-category (&optional epom _)
+  "Get the category at EPOM.
+EPOM is an element, point, or marker.
 Return \"???\" when no category is set.
 
 This function may modify the match data."
-  ;; Sync cache.
-  (cond
-   ((org-entry-get-with-inheritance
-     "CATEGORY" nil (or pos (point))))
-   ((null org-category)
-    (when (org-with-base-buffer nil
-            buffer-file-name)
-      (file-name-sans-extension
-       (file-name-nondirectory
-        (org-with-base-buffer nil
-          buffer-file-name)))))
-   ((symbolp org-category) (symbol-name org-category))
-   ((stringp org-category) org-category)
-   (t "???")))
+  (org-with-point-at epom
+    (cond
+     ((org-entry-get-with-inheritance
+       "CATEGORY" nil epom))
+     ((null org-category)
+      (when (org-with-base-buffer nil
+              buffer-file-name)
+        (file-name-sans-extension
+         (file-name-nondirectory
+          (org-with-base-buffer nil
+            buffer-file-name)))))
+     ((symbolp org-category) (symbol-name org-category))
+     ((stringp org-category) org-category)
+     (t "???"))))
 
-(defun org-entry-is-todo-p ()
-  "Return non-nil when current entry is marked with not-done todo keyword."
-  (eq 'todo (org-element-property :todo-type (org-headline-at-point))))
+(defun org-entry-is-todo-p (&optional epom)
+  "Return non-nil when entry at EPOM is marked with not-done todo keyword.
+EPOM is an element, point, or marker."
+  (eq 'todo (org-element-property :todo-type (org-headline-at-point epom))))
 
-(defun org-entry-is-done-p ()
-  "Return non-nil when current entry is marked with done keyword."
-  (eq 'done (org-element-property :todo-type (org-headline-at-point))))
+(defun org-entry-is-done-p (&optional epom)
+  "Return non-nil when entry at EPOM is marked with done keyword.
+EPOM is an element, point, or marker."
+  (eq 'done (org-element-property :todo-type (org-headline-at-point epom))))
 
-(defun org-get-todo-state ()
-  "Return the TODO keyword of the current subtree."
-  (org-element-property :todo-keyword (org-headline-at-point)))
+(defun org-get-todo-state (&optional epom)
+  "Return the TODO keyword of subtree at EPOM.
+EPOM is an element, point, or marker."
+  (org-element-property :todo-keyword (org-headline-at-point epom)))
 
 (defun org-get-repeat (&optional timestamp)
   "Check if there is a timestamp with repeater in this entry.
