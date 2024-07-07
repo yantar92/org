@@ -836,7 +836,7 @@ the end of the description buffer, and call that function with REGLOCK,
                    (one-line label tv)))))
 
           (setq-local header-line-format
-                      (format "Reglock info probed at %s, hit 'g' to refresh."
+                      (format "Lock info (at %s), hit 'g' to update."
                               (format-time-string "%T")))
           ;; ... ok, back to real work.
           (one-line "Id"
@@ -851,9 +851,15 @@ the end of the description buffer, and call that function with REGLOCK,
                (insert " ")
                (if alive
                    (insert-button "Cancel"
-                                  'action (lambda (&rest _args)
+                                  'action (lambda (b)
                                             (interactive)
-                                            (org-pending-cancel reglock)))
+                                            (org-pending-cancel reglock)
+                                            (message "Cancel request sent. Hit 'g' to update")
+                                            (let ((inhibit-read-only t))
+                                              (goto-char (button-start b))
+                                              (delete-region (button-start b) (button-end b))
+                                              (insert (propertize "Cancel sent. Hit 'g' to update."
+                                                                  'face 'italic)))))
                  (insert-button
                   "Forget"
                   'action (lambda (&rest _args)
