@@ -260,6 +260,23 @@
 (define-error 'org-pending-user-cancel
               "The user canceled this update")
 
+;;; Faces
+;;
+(defface org-pending-outcome-failure
+  '((((supports :underline (:style line)))
+     :underline (:style line :color "Red1"))
+    (t
+     :underline t :inherit error))
+  "Face used for the outcome when it's a failure."
+  :version "30.1")
+
+(defface org-pending-outcome-success
+  '((((supports :underline (:style line)))
+     :underline (:style line :color "ForestGreen"))
+    (t
+     :underline t :inherit error))
+  "Face used for the outcome when it's a success."
+  :version "30.1")
 
 ;;; Status
 (defun org-pending-status-face (status)
@@ -923,11 +940,15 @@ even if the lock/buffer doesn't exist.")
                   (:failure 'exclamation-mark)))
          (face (pcase status
                  (:success 'org-done)
-                 (:failure 'org-todo))))
+                 (:failure 'org-todo)))
+         (outcome-face (pcase status
+                         (:success 'org-pending-outcome-success)
+                         (:failure 'org-pending-outcome-failure))))
     (overlay-put outcome-ovl
                  'before-string (propertize
                                  "x" 'display
                                  `(left-fringe ,bitmap ,face)))
+    (overlay-put outcome-ovl 'face outcome-face)
     (overlay-put outcome-ovl 'org-pending-reglock lock)
     (push `(apply delete-overlay ,outcome-ovl) buffer-undo-list)
     ;; Return how to remove our decoration.
