@@ -163,10 +163,10 @@
 ;;
 ;;     (setf (org-pending-reglock-user-cancel-function reglock)
 ;;           `(lambda (rlock)
-;;              (warn "Initiating emergency landing...")
+;;              (message "Initiating emergency landing...")
 ;;              (sleep-for 1)
 ;;              (my-counter-update ,state rlock 'land)
-;;              (warn "Initiating emergency landing... done")))
+;;              (message "Initiating emergency landing... done")))
 ;;
 ;;
 ;;
@@ -213,7 +213,7 @@
 ;;     (setf (org-pending-reglock-before-destroy-function reglock)
 ;;           `(lambda (_rlock)
 ;;              (cancel-timer (my-counter-timer ,state))
-;;              (warn "Transponder signal lost")))
+;;              (message "Transponder signal lost")))
 
 
 
