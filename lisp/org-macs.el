@@ -35,6 +35,7 @@
 (require 'format-spec)
 (require 'org-compat-emacs27) ; `org-time-convert-to-list'
 (require 'org-compat-emacs29) ; `org-buffer-text-pixel-width'
+(require 'org-element-ast) ; `org-element-property'
 
 ;;; Org version verification.
 
@@ -149,8 +150,6 @@ EPOM is an element, point, or marker."
            (set-buffer (marker-buffer ,mepom)))
           ((numberp ,mepom))
           (t
-           (require 'org-element-ast)
-           (declare-function org-element-property "org-element-ast" (property node &optional dflt force-undefer))
            (when (org-element-property :buffer ,mepom)
              (set-buffer (org-element-property :buffer ,mepom)))
            (setq ,mepom (org-element-property :begin ,mepom))))

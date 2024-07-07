@@ -203,10 +203,10 @@
 
 ;;; Code:
 
-(require 'org-macs)
 ;; FIXME: Should no longer be necessary after bug#68818 is resolved.
 (require 'inline) ; load indentation rules
 (require 'subr-x) ;; FIXME: Required for Emacs 27
+(require 'cl-lib)
 
 ;;;; Syntax node type
 
@@ -448,7 +448,9 @@ Return modified NODE."
           (inline-quote
            (if (org-element-type-p ,node 'plain-text)
                ;; Special case: Do not use parray for plain-text.
-               (org-add-props ,node nil ,property ,value)
+               (progn
+                 (put-text-property 0 (length ,node) ,property ,value ,node)
+                 ,node)
              (let ((parray
                     (or (org-element--parray ,node)
                         (org-element--put-parray ,node))))
@@ -466,7 +468,7 @@ Return modified NODE."
              (pcase (org-element-type ,node)
                (`nil nil)
                (`plain-text
-                (org-add-props ,node nil ,property ,value))
+                (put-text-property 0 (length ,node) ,property ,value ,node))
                (_
                 ;; Note that `plist-put' adds new elements at the end,
                 ;; thus keeping `:standard-properties' as the first element.
@@ -613,7 +615,7 @@ Otherwise, return nil."
                        (not (eq rtn 'org-element-ast--nil)))
                   (unless (eq rtn (cadr props))
                     (if (eq type 'plain-text)
-                        (org-add-props node nil (car props) rtn)
+                        (put-text-property 0 (length node) (car props) rtn node)
                       (setf (cadr props) rtn)))
                 (push rtn acc))))
           (setq props (cddr props)))))
@@ -746,7 +748,7 @@ string.  Alternatively, TYPE can be a string.  When TYPE is nil or
       (let ((ptail props))
         (while ptail
           (if (not (and (keywordp (car ptail))
-                        (org-element--property-idx (car ptail))))
+                      (org-element--property-idx (car ptail))))
               (setq ptail (cddr ptail))
             (if (null (cddr ptail)) ; last property
                 (setq props (nbutlast props 2)
@@ -759,9 +761,12 @@ string.  Alternatively, TYPE can be a string.  When TYPE is nil or
      (apply #'org-element-adopt nil children))
     (`plain-text
      (cl-assert (= (length children) 1))
-     (org-add-props (car children) props))
+     (add-text-properties 0 (length (car children)) props (car children))
+     (car children))
     ((pred stringp)
-     (if props (org-add-props type props) type))
+     (if props
+         (progn (add-text-properties 0 (length type) props type) type)
+       type))
     (_
      (if (and (= 1 (length children))
               (org-element-type-p (car children) 'anonymous))
@@ -1025,7 +1030,7 @@ skipped."
         (dolist (prop property)
           (setq val (org-element-property prop node 'org-element-ast--nil))
           (unless (eq val 'org-element-ast--nil) ; not present
-            (when literal-nil (setq val (org-not-nil val)))
+            (when literal-nil (setq val (and val (not (equal val "nil")) val)))
             (when (and (not accumulate) (or val include-nil))
               (throw :found val))
             ;; Append to the end.
