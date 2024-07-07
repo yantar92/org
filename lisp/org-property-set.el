@@ -376,7 +376,7 @@ Optional argument DEFAULT provides a default value for PROPERTY."
   (let ((completion-ignore-case t)
 	(default-prop (or (and (org-at-property-p)
 			       (match-string-no-properties 2))
-			  org-last-set-property
+			  (with-no-warnings org-last-set-property)
                           (car org-read-property-name-history))))
     (let ((property
            (org-completing-read
@@ -394,21 +394,21 @@ When use-default, don't even ask, just use the last
 \"[PROPERTY]: [value]\" string from the history."
   (interactive "P")
   (let* ((completion-ignore-case t)
-         (org-last-set-property-value
-          (or org-last-set-property-value
+         (last-set-property-value
+          (or (with-no-warnings org-last-set-property-value)
               (and
                (car org-read-property-name-history)
                (car org-read-property-value-history)
                (format "%s: %s"
                        (car org-read-property-name-history)
                        (car org-read-property-value-history)))))
-	 (pv (or (and use-last org-last-set-property-value)
+	 (pv (or (and use-last last-set-property-value)
 		 (org-completing-read
 		  (org-format-prompt
                    "Enter a \"[Property]: [value]\" pair: "
-                   org-last-set-property-value)
+                   last-set-property-value)
 		  nil nil nil nil nil
-		  org-last-set-property-value)))
+		  last-set-property-value)))
 	 prop val)
     (when (string-match "^[ \t]*\\([^:]+\\):[ \t]*\\(.*\\)[ \t]*$" pv)
       (setq prop (match-string 1 pv)
@@ -430,8 +430,9 @@ Throw an error when trying to set a property with an invalid name."
   (let ((property (or property (org-read-property-name))))
     (let ((value (or value (org-read-property-value property)))
 	  (fn (cdr (assoc-string property org-properties-postprocess-alist t))))
-      (setq org-last-set-property property)
-      (setq org-last-set-property-value (concat property ": " value))
+      (with-no-warnings
+        (setq org-last-set-property property)
+        (setq org-last-set-property-value (concat property ": " value)))
       ;; Possibly postprocess the inserted value:
       (when fn (setq value (funcall fn value)))
       (unless (equal (org-entry-get nil property) value)

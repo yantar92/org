@@ -689,8 +689,9 @@ Returns the new tags string, or nil to not change the current settings."
                         (let ((inhibit-quit t)) ; intercept C-g.
                           (read-char-exclusive)))
                   ;; FIXME: Obsolete variable support.
-                  (defvar org-last-tag-selection-key) ; org-obsolete9.8.el
-		  (setq org-last-tag-selection-key input-char)
+                  (with-no-warnings
+                    (defvar org-last-tag-selection-key) ; org-obsolete9.8.el
+		    (setq org-last-tag-selection-key input-char))
 		  (pcase input-char
                     ;; <RET>
                     (?\r (throw 'exit t))

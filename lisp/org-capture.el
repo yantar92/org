@@ -1050,7 +1050,7 @@ Store them in the capture property list."
 	 (widen)
 	 (goto-char (point-min))
          (setq headline (org-capture-expand-headline headline))
-	 (if (re-search-forward (format org-complex-heading-regexp-format
+	 (if (re-search-forward (format (org-complex-heading-regexp-format)
 					(regexp-quote headline))
 				nil t)
 	     (forward-line 0)

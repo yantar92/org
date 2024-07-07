@@ -2337,83 +2337,85 @@ Note that if your function moves around to retrieve tags and properties at
 a *different* entry, you cannot use these techniques."
   (unless (and (or (eq scope 'region) (eq scope 'region-start-level))
 	       (not (use-region-p)))
-    (let* ((org-agenda-archives-mode nil) ; just to make sure
-	   (org-agenda-skip-archived-trees (memq 'archive skip))
-	   (org-agenda-skip-comment-trees (memq 'comment skip))
-	   (org-agenda-skip-function
-	    (car (org-delete-all '(comment archive) skip)))
-	   (org-tags-match-list-sublevels t)
-	   (start-level (eq scope 'region-start-level))
-	   matcher res
-	   org-todo-keywords-for-agenda
-	   org-done-keywords-for-agenda
-	   org-todo-keyword-alist-for-agenda
-	   org-tag-alist-for-agenda
-	   org--matcher-tags-todo-only)
+    ;; FIXME: `org-todo-keyword-alist-for-agenda' and
+    ;; `org-tag-alist-for-agenda' are obsolete.
+    (with-no-warnings
+      (let* ((org-agenda-archives-mode nil) ; just to make sure
+	     (org-agenda-skip-archived-trees (memq 'archive skip))
+	     (org-agenda-skip-comment-trees (memq 'comment skip))
+	     (org-agenda-skip-function
+	      (car (org-delete-all '(comment archive) skip)))
+	     (org-tags-match-list-sublevels t)
+	     (start-level (eq scope 'region-start-level))
+	     matcher res
+	     org-todo-keywords-for-agenda
+	     org-done-keywords-for-agenda
+	     org-todo-keyword-alist-for-agenda
+	     org-tag-alist-for-agenda
+	     org--matcher-tags-todo-only)
+        (cond
+         ((eq match t)   (setq matcher t))
+         ((eq match nil) (setq matcher t))
+         (t (setq matcher (if match (cdr (org-make-tags-matcher match)) t))))
 
-      (cond
-       ((eq match t)   (setq matcher t))
-       ((eq match nil) (setq matcher t))
-       (t (setq matcher (if match (cdr (org-make-tags-matcher match)) t))))
+        (save-excursion
+	  (save-restriction
+	    (cond ((eq scope 'tree)
+		   (org-back-to-heading t)
+                   (require 'org-narrow)
+		   (org-narrow-to-subtree)
+		   (setq scope nil))
+		  ((and (or (eq scope 'region) (eq scope 'region-start-level))
+		        (use-region-p))
+		   ;; If needed, set start-level to a string like "2"
+		   (when start-level
+		     (save-excursion
+		       (goto-char (region-beginning))
+		       (unless (org-at-heading-p) (outline-next-heading))
+		       (setq start-level (org-current-level))))
+		   (narrow-to-region (region-beginning)
+				     (save-excursion
+				       (goto-char (region-end))
+				       (unless (and (bolp) (org-at-heading-p))
+				         (outline-next-heading))
+				       (point)))
+		   (setq scope nil)))
 
-      (save-excursion
-	(save-restriction
-	  (cond ((eq scope 'tree)
-		 (org-back-to-heading t)
-                 (require 'org-narrow)
-		 (org-narrow-to-subtree)
-		 (setq scope nil))
-		((and (or (eq scope 'region) (eq scope 'region-start-level))
-		      (use-region-p))
-		 ;; If needed, set start-level to a string like "2"
-		 (when start-level
-		   (save-excursion
-		     (goto-char (region-beginning))
-		     (unless (org-at-heading-p) (outline-next-heading))
-		     (setq start-level (org-current-level))))
-		 (narrow-to-region (region-beginning)
-				   (save-excursion
-				     (goto-char (region-end))
-				     (unless (and (bolp) (org-at-heading-p))
-				       (outline-next-heading))
-				     (point)))
-		 (setq scope nil)))
-
-	  (if (not scope)
-	      (progn
-                ;; Agenda expects a file buffer.  Skip over refreshing
-                ;; agenda cache for non-file buffers.
-                (when buffer-file-name
-		  (org-agenda-prepare-buffers
-		   (and buffer-file-name (list (current-buffer)))))
-		(setq res
-		      (org-scan-tags
-		       func matcher org--matcher-tags-todo-only start-level)))
-	    ;; Get the right scope
-	    (cond
-	     ((and scope (listp scope) (symbolp (car scope)))
-	      (setq scope (eval scope t)))
-	     ((eq scope 'agenda)
-	      (setq scope (org-agenda-files t)))
-	     ((eq scope 'agenda-with-archives)
-	      (setq scope (org-agenda-files t))
-              (require 'org-archive)
-	      (setq scope (org-add-archive-files scope)))
-	     ((eq scope 'file)
-	      (setq scope (and buffer-file-name (list buffer-file-name))))
-	     ((eq scope 'file-with-archives)
-	      (setq scope (org-add-archive-files (list (buffer-file-name))))))
-	    (org-agenda-prepare-buffers scope)
-	    (dolist (file scope)
-	      (with-current-buffer (org-find-base-buffer-visiting file)
-		(org-with-wide-buffer
-		 (goto-char (point-min))
-		 (setq res
-		       (append
-			res
-			(org-scan-tags
-			 func matcher org--matcher-tags-todo-only)))))))))
-      res)))
+	    (if (not scope)
+	        (progn
+                  ;; Agenda expects a file buffer.  Skip over refreshing
+                  ;; agenda cache for non-file buffers.
+                  (when buffer-file-name
+		    (org-agenda-prepare-buffers
+		     (and buffer-file-name (list (current-buffer)))))
+		  (setq res
+		        (org-scan-tags
+		         func matcher org--matcher-tags-todo-only start-level)))
+	      ;; Get the right scope
+	      (cond
+	       ((and scope (listp scope) (symbolp (car scope)))
+	        (setq scope (eval scope t)))
+	       ((eq scope 'agenda)
+	        (setq scope (org-agenda-files t)))
+	       ((eq scope 'agenda-with-archives)
+	        (setq scope (org-agenda-files t))
+                (require 'org-archive)
+	        (setq scope (org-add-archive-files scope)))
+	       ((eq scope 'file)
+	        (setq scope (and buffer-file-name (list buffer-file-name))))
+	       ((eq scope 'file-with-archives)
+	        (setq scope (org-add-archive-files (list (buffer-file-name))))))
+	      (org-agenda-prepare-buffers scope)
+	      (dolist (file scope)
+	        (with-current-buffer (org-find-base-buffer-visiting file)
+		  (org-with-wide-buffer
+		   (goto-char (point-min))
+		   (setq res
+		         (append
+			  res
+			  (org-scan-tags
+			   func matcher org--matcher-tags-todo-only)))))))))
+        res))))
 
 (provide 'org-agenda-search)
 

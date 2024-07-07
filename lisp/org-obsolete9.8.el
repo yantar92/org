@@ -45,7 +45,7 @@
 
 (defvar org-clock-mode-line-entry nil
   "Information for the mode line about the running clock.")
-(make-obsolete 'org-clock-mode-line-entry "unused" "9.8")
+(make-obsolete-variable 'org-clock-mode-line-entry "unused" "9.8")
 
 (define-obsolete-variable-alias 'org-ans1 'org-read-date--calendar-selected-date "9.8")
 (define-obsolete-variable-alias 'org-ans2 'org-read-date--calendar-keyboard-date "9.8")
@@ -57,13 +57,13 @@
 (define-obsolete-variable-alias 'org-ts-type 'org-sparse-tree--current-date-type "9.8")
 
 (defvar org-add-colon-after-tag-completion nil)  ;; dynamically scoped param
-(make-obsolete 'org-add-colon-after-tag-completion "unused" "9.8")
+(make-obsolete-variable 'org-add-colon-after-tag-completion "unused" "9.8")
 
 (defvar org-last-tag-selection-key nil)
-(make-obsolete 'org-last-tag-selection-key "unused" "9.8")
+(make-obsolete-variable 'org-last-tag-selection-key "unused" "9.8")
 
-(make-obsolete 'org-last-set-property-value "unused" "9.8")
-(make-obsolete 'org-last-set-property "unused" "9.8")
+(make-obsolete-variable 'org-last-set-property-value "unused" "9.8")
+(make-obsolete-variable 'org-last-set-property "unused" "9.8")
 
 (defcustom org-self-insert-cluster-for-undo nil
   "Non-nil means cluster self-insert commands for undo when possible.
@@ -73,8 +73,8 @@ This is configurable, because there is some impact on typing performance."
   :group 'org-table
   :type 'boolean)
 (defvar org-self-insert-command-undo-counter 0)
-(make-obsolete 'org-self-insert-cluster-for-undo "no longer needed" "9.8")
-(make-obsolete 'org-self-insert-command-undo-counter "no longer needed" "9.8")
+(make-obsolete-variable 'org-self-insert-cluster-for-undo "no longer needed" "9.8")
+(make-obsolete-variable 'org-self-insert-command-undo-counter "no longer needed" "9.8")
 
 (defvar-local org-keyword-properties nil
   "List of property/value pairs inherited by any entry.
@@ -85,100 +85,100 @@ PROPERTY keywords.
 Note that properties are defined also in property drawers.
 Properties defined there take precedence over properties defined
 as keywords.")
-(make-obsolete 'org-keyword-properties "Use (org-entry-get (org-element-org-data) \"PROPERTY\") instead" "9.8")
+(make-obsolete-variable 'org-keyword-properties "Use (org-entry-get (org-element-org-data) \"PROPERTY\") instead" "9.8")
 
 (defvar-local org-done-keywords nil)
-(make-obsolete 'org-done-keywords "Use (org-element-done-keywords) instead" "9.8")
+(make-obsolete-variable 'org-done-keywords "Use (org-element-done-keywords) instead" "9.8")
 
 (defvar-local org-not-done-keywords nil)
-(make-obsolete 'org-not-done-keywords "Use (org-element-not-done-keywords) instead" "9.8")
+(make-obsolete-variable 'org-not-done-keywords "Use (org-element-not-done-keywords) instead" "9.8")
 
 (defvar-local org-todo-keywords-1 nil
   "All TODO and DONE keywords active in a buffer.")
-(make-obsolete 'org-todo-keywords-1 "Use (org-element-all-todo-keywords) instead" "9.8")
+(make-obsolete-variable 'org-todo-keywords-1 "Use (org-element-all-todo-keywords) instead" "9.8")
 
 (defvar-local org-todo-heads nil)
-(make-obsolete 'org-todo-heads "Use (org-element-todo-sequences) instead" "9.8")
+(make-obsolete-variable 'org-todo-heads "Use (org-element-todo-sequences) instead" "9.8")
 
 (defvar-local org-todo-sets nil)
-(make-obsolete 'org-todo-sets "Use (org-element-todo-sequences) instead" "9.8")
+(make-obsolete-variable 'org-todo-sets "Use (org-element-todo-sequences) instead" "9.8")
 
 (defvar-local org-todo-kwd-alist nil)
-(make-obsolete 'org-todo-kwd-alist "Use (org-element-todo-sequences) instead" "9.8")
+(make-obsolete-variable 'org-todo-kwd-alist "Use (org-element-todo-sequences) instead" "9.8")
 
 (defvar-local org-todo-key-alist nil)
-(make-obsolete 'org-todo-key-alist "Use (org-todo-keyword-binding-alist) instead" "9.8")
+(make-obsolete-variable 'org-todo-key-alist "Use (org-todo-keyword-binding-alist) instead" "9.8")
 
 (defvar-local org-todo-key-trigger nil)
-(make-obsolete 'org-todo-key-trigger "Use (org-todo-keyword-binding-alist nil 'no-auto) instead" "9.8")
+(make-obsolete-variable 'org-todo-key-trigger "Use (org-todo-keyword-binding-alist nil 'no-auto) instead" "9.8")
 
 (defvar org-todo-keyword-alist-for-agenda nil
   "Combined `org-todo-keyword-alist' from all agenda files.
 The agenda files are the files processed by
 `org-agenda-prepare-buffers'.")
-(make-obsolete 'org-todo-keyword-alist-for-agenda "No longer used" "9.8")
+(make-obsolete-variable 'org-todo-keyword-alist-for-agenda "No longer used" "9.8")
 
 (defvar org-tag-alist-for-agenda nil
   "Alist of all tags from all agenda files.
 The agenda files are the files processed by
 `org-agenda-prepare-buffers'.")
-(make-obsolete 'org-tag-alist-for-agenda "No longer used" "9.8")
+(make-obsolete-variable 'org-tag-alist-for-agenda "No longer used" "9.8")
 
 (defvar org-tag-groups-alist-for-agenda nil
   "Alist of all groups tags from all current agenda files.
 The agenda files are the files processed by
 `org-agenda-prepare-buffers'.")
-(make-obsolete 'org-tag-groups-alist-for-agenda "No longer used" "9.8")
+(make-obsolete-variable 'org-tag-groups-alist-for-agenda "No longer used" "9.8")
 
 (defvar-local org-current-tag-alist nil
   "Alist of all tag groups in current buffer.
 This variable takes into consideration `org-tag-alist',
 `org-tag-persistent-alist' and TAGS keywords in the buffer.")
-(make-obsolete 'org-current-tag-alist "Use `org-local-tags-alist' or `org-overriding-tag-alist' instead" "9.8")
+(make-obsolete-variable 'org-current-tag-alist "Use `org-local-tags-alist' or `org-overriding-tag-alist' instead" "9.8")
 
 (defvar-local org-tag-groups-alist nil)
-(make-obsolete 'org-tag-groups-alist "Use (org-tag-alist-to-groups (org-local-tags-alist)) instead" "9.8")
+(make-obsolete-variable 'org-tag-groups-alist "Use (org-tag-alist-to-groups (org-local-tags-alist)) instead" "9.8")
 
 (defvar-local org-link-abbrev-alist-local nil
   "Buffer-local version of `org-link-abbrev-alist', which see.
 The value of this is taken from the LINK keywords.")
-(make-obsolete 'org-link-abbrev-alist-local "Use (org-element-property :link-abbrevs (org-element-org-data)) instead" "9.8")
+(make-obsolete-variable 'org-link-abbrev-alist-local "Use (org-element-property :link-abbrevs (org-element-org-data)) instead" "9.8")
 
 (defvar org-file-tags nil
   "List of tags that can be inherited by all entries in the file.
 The tags will be inherited if the variable `org-use-tag-inheritance'
 says they should be.
 This variable is populated from #+FILETAGS lines.")
-(make-obsolete 'org-file-tags "Use (org-element-property :tags (org-element-org-data)) instead" "9.8")
+(make-obsolete-variable 'org-file-tags "Use (org-element-property :tags (org-element-org-data)) instead" "9.8")
 
 (defvar-local org-todo-regexp nil
   "Matches any of the TODO state keywords.
 Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
-(make-obsolete 'org-todo-regexp "Use (org-todo-regexp) instead" "9.8")
+(make-obsolete-variable 'org-todo-regexp "Use (org-todo-regexp) instead" "9.8")
 
 (defvar-local org-not-done-regexp nil
   "Matches any of the TODO state keywords except the last one.
 Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
-(make-obsolete 'org-not-done-regexp "Use (org-not-done-regexp) instead" "9.8")
+(make-obsolete-variable 'org-not-done-regexp "Use (org-not-done-regexp) instead" "9.8")
 
 (defvar-local org-not-done-heading-regexp nil
   "Matches a TODO headline that is not done.
 Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
-(make-obsolete 'org-not-done-heading-regexp "Use (format org-heading-keyword-regexp-format (org-not-done-regexp)) instead" "9.8")
+(make-obsolete-variable 'org-not-done-heading-regexp "Use (format org-heading-keyword-regexp-format (org-not-done-regexp)) instead" "9.8")
 
 (defvar-local org-todo-line-regexp nil
   "Matches a headline and puts TODO state into group 2 if present.
 Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
-(make-obsolete 'org-todo-line-regexp "Use (format org-heading-keyword-maybe-regexp-format (org-todo-regexp)) instead" "9.8")
+(make-obsolete-variable 'org-todo-line-regexp "Use (format org-heading-keyword-maybe-regexp-format (org-todo-regexp)) instead" "9.8")
 
 (defvar-local org-todo-line-tags-regexp nil
   "Matches a headline and puts TODO state into group 2 if present.
 Also put tags into group 4 if tags are present.")
-(make-obsolete 'org-todo-line-tags-regexp "No longer used" "9.8")
+(make-obsolete-variable 'org-todo-line-tags-regexp "No longer used" "9.8")
 
 (defvar-local org-complex-heading-regexp nil
   "Matches a headline and puts everything into groups:
@@ -191,7 +191,7 @@ group 5: Tags
 
 Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
-(make-obsolete 'org-complex-heading-regexp "Use (org-complex-heading-regexp) instead" "9.8")
+(make-obsolete-variable 'org-complex-heading-regexp "Use (org-complex-heading-regexp) instead" "9.8")
 
 (defvar-local org-complex-heading-regexp-format nil
   "Printf format to make regexp to match an exact headline.
@@ -199,15 +199,15 @@ This regexp will match the headline of any node which has the
 exact headline text that is put into the format, but may have any
 TODO state, priority, tags, statistics cookies (at the beginning
 or end of the headline title), or COMMENT keyword.")
-(make-obsolete 'org-complex-heading-regexp-format
-               "Use (org-complex-heading-regexp-format) instead"
-               "9.8")
+(make-obsolete-variable 'org-complex-heading-regexp-format
+                        "Use (org-complex-heading-regexp-format) instead"
+                        "9.8")
 
 (defvar-local org-table-formula-constants-local nil
   "Local version of `org-table-formula-constants'.")
-(make-obsolete 'org-table-formula-constants-local
-               "Use (org-table-formula-constants-local) instead"
-               "9.8")
+(make-obsolete-variable 'org-table-formula-constants-local
+                        "Use (org-table-formula-constants-local) instead"
+                        "9.8")
 
 ;;;; Obsolete functions and macros
 

@@ -189,7 +189,7 @@ inserted into the buffer."
              (string-match "\\\\(" regex-template))
     (setq regex-template (replace-match "\\(?1:" nil t regex-template)))
   (let ((re (if match-title
-                (format org-complex-heading-regexp-format
+                (format (org-complex-heading-regexp-format)
                         (format regex-template year month day))
               (format regex-template year month day)))
 	match)
