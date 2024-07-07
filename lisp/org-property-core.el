@@ -144,17 +144,20 @@ Value is a list whose car is the base value for PROPERTY and cdr
 a list of accumulated values.  Return nil if neither is found in
 the entry.  Also return nil when PROPERTY is set to \"nil\",
 unless LITERAL-NIL is non-nil."
-  (setq epom
-        (org-element-lineage
-         (org-element-at-point epom)
-         '(headline inlinetask org-data)
-         'with-self))
-  (let* ((base-value  (org-element-property (intern (concat ":" (upcase property)    )) epom))
-         (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) epom))
-         (extra-value (if (listp extra-value) extra-value (list extra-value)))
-         (value (if literal-nil (cons base-value extra-value)
-                  (cons (org-not-nil base-value) (org-not-nil extra-value)))))
-    (and (not (equal value '(nil))) value)))
+  ;; PROPERTY+ cannot by itself represent a property - it is a
+  ;; complement to base PROPERTY.
+  (unless (string-match-p "\\+$" property)
+    (setq epom
+          (org-element-lineage
+           (org-element-at-point epom)
+           '(headline inlinetask org-data)
+           'with-self))
+    (let* ((base-value  (org-element-property (intern (concat ":" (upcase property)    )) epom))
+           (extra-value (org-element-property (intern (concat ":" (upcase property) "+")) epom))
+           (extra-value (if (listp extra-value) extra-value (list extra-value)))
+           (value (if literal-nil (cons base-value extra-value)
+                    (cons (org-not-nil base-value) (org-not-nil extra-value)))))
+      (and (not (equal value '(nil))) value))))
 
 (defun org--property-global-or-keyword-value (property literal-nil)
   "Return value for PROPERTY as defined by global properties or by keyword.

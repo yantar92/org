@@ -6939,6 +6939,11 @@ Paragraph<point>"
 	  (org-test-with-temp-text
 	      "* H\n:PROPERTIES:\n:A+: 2\n:A: 1\n:A+: 3\n:END:"
 	    (org-entry-get (point) "A"))))
+  ;; PROPERTY+ value is always nil.
+  (should-not
+   (org-test-with-temp-text
+       "* H\n:PROPERTIES:\n:A+: 2\n:A: 1\n:A+: 3\n:END:"
+     (org-entry-get (point) "A+")))
   ;; Empty values are returned as the empty string.
   (should
    (equal ""
