@@ -223,7 +223,7 @@ See `org--entry-timestamp' for more details about the return value."
 (declare-function org-make-tag-string "org-tags-core" (tags))
 (declare-function org-duration-from-minutes "org-duration"
                   (minutes &optional fmt canonical))
-(defun org-entry-properties (&optional epom which)
+(defun org-entry-properties (&optional epom which local-category)
   "Get all properties of the current entry.
 
 When EPOM is a buffer position, marker, or element, get all properties
@@ -236,6 +236,9 @@ defined in the entry.
 If WHICH is nil or `all', get all properties.  If WHICH is
 `special' or `standard', only get that subclass.  If WHICH is
 a string, only get that property.
+
+When optional argument LOCAL-CATEGORY is non-nil, only consider
+explicitly set CATEGORY property in heading's property drawer.
 
 Return value is an alist.  Keys are properties, as upcased
 strings."
@@ -276,8 +279,9 @@ strings."
             (setq props (delq nil props)))
 	  ;; Get the standard properties, like :PROP:.
 	  (when (memq which '(nil all standard))
-	    (push (cons "CATEGORY" (org-get-category heading)) props)
-	    (when (string= specific "CATEGORY") (throw 'exit props))
+            (unless local-category
+	      (push (cons "CATEGORY" (org-get-category heading)) props)
+	      (when (string= specific "CATEGORY") (throw 'exit props)))
             (if specific
                 (throw 'exit
                        (list (cons specific
@@ -291,7 +295,7 @@ strings."
 	           ;; exception for "CATEGORY", since it can be also set
 	           ;; through keywords (i.e. #+CATEGORY).
                    (when (and (equal name (upcase name)) ; Only local properties.
-                              (not (equal name "CATEGORY")))
+                              (or local-category (not (equal name "CATEGORY"))))
                      (when-let ((value (org-entry-get heading name nil t)))
                        (push (cons name value) props)))))
                heading)))
@@ -458,13 +462,10 @@ COLUMN formats in the current buffer."
     ;; Add headline properties.
     (org-element-cache-map
      (lambda (heading)
-       (dolist (pair (org-entry-properties heading 'standard))
+       (dolist (pair (org-entry-properties heading 'standard 'local-category))
          (when (and columns (equal (car pair) "COLUMNS"))
            ;; Special case: add properties listed in COLUMNS.
            (funcall add-column-props (cdr pair)))
-         ;; Special case: `org-entry-properties' always includes
-         ;; "CATEGORY", while we only want it when it is actually
-         ;; present in the heading.
          (unless (or (gethash (car pair) props-hash)
                      (and (equal (car pair) "CATEGORY")
                           (not (org-element-property :CATEGORY heading))))
