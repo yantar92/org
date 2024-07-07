@@ -1319,6 +1319,20 @@ Return nothing immediately."
     (funcall (org-pending-reglock-user-cancel-function reglock) reglock))
   nil)
 
+(defun org-pending-unlock-NOW! (reglock)
+  "Unlock the region immediately, whatever the consequences.
+
+This function ignores why the region has been locked; you may loose
+data, you may leak ressources, etc.
+
+Use `org-pending-cancel' instead if possible.
+
+Return nothing immediately."
+  (when (org-pending-reglock-live-p reglock)
+    (org-pending--user-cancel-default))
+  nil)
+
+
 ;;; Managing outcomes
 ;;
 (defun org-pending-delete-outcome-marks (sstart slimit)
