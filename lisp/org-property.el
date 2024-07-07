@@ -243,7 +243,7 @@ strings."
     (when (and (derived-mode-p 'org-mode)
 	       (org-back-to-heading-or-point-min t))
       (catch 'exit
-	(let* ((heading (or (org-headline-at-point) (org-element-org-data)))
+	(let* ((heading (or (org-headline-at-point epom) (org-element-org-data epom)))
 	       (specific (and (stringp which) (upcase which)))
 	       (which (cond ((not specific) which)
 			    ((member specific org-special-properties) 'special)
