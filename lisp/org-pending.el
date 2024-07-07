@@ -835,6 +835,9 @@ the end of the description buffer, and call that function with REGLOCK,
                      (multi-line label value)
                    (one-line label tv)))))
 
+          (setq-local header-line-format
+                      (format "Reglock info probed at %s, hit 'g' to refresh."
+                              (format-time-string "%T")))
           ;; ... ok, back to real work.
           (one-line "Id"
                     (org-pending-reglock-id reglock))
