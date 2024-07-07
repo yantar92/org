@@ -243,64 +243,62 @@ explicitly set CATEGORY property in heading's property drawer.
 Return value is an alist.  Keys are properties, as upcased
 strings."
   (org-with-point-at epom
-    (when (and (derived-mode-p 'org-mode)
-	       (org-back-to-heading-or-point-min t))
-      (catch 'exit
-	(let* ((heading (or (org-headline-at-point epom) (org-element-org-data epom)))
-	       (specific (and (stringp which) (upcase which)))
-	       (which (cond ((not specific) which)
-			    ((member specific org-special-properties) 'special)
-			    (t 'standard)))
-               (special-prop-rules
-                '(("CLOCKSUM" . org--entry-clocksum)
-                  ("CLOCKSUM_T" . org--entry-clocksum-today)
-                  ("ITEM" . org--entry-item)
-                  ("TODO" . org--entry-todo)
-                  ("PRIORITY" . org--entry-priority)
-                  ("FILE" . org--entry-file)
-                  ("TAGS" . org--entry-tags)
-                  ("ALLTAGS" . org--entry-alltags)
-                  ("BLOCKED" . org--entry-blocked)
-                  ("CLOSED" . org--entry-closed)
-                  ("DEADLINE" . org--entry-deadline)
-                  ("SCHEDULED" . org--entry-scheduled)
-                  ("TIMESTAMP" . org--entry-timestamp)
-                  ("TIMESTAMP_IA" . org--entry-timestamp-inactive)))
-	       props)
-	  ;; Get the special properties, like TODO and TAGS.
-	  (when (memq which '(nil all special))
-            (when-let ((fun (and specific
-                                 (cdr (assoc-string
-                                       specific special-prop-rules)))))
-              (throw 'exit (list (funcall fun heading))))
-            (unless specific
-              (dolist (pair special-prop-rules)
-                (push (funcall (cdr pair) heading) props)))
-            (setq props (delq nil props)))
-	  ;; Get the standard properties, like :PROP:.
-	  (when (memq which '(nil all standard))
-            (unless local-category
-	      (push (cons "CATEGORY" (org-get-category heading)) props)
-	      (when (string= specific "CATEGORY") (throw 'exit props)))
-            (if specific
-                (throw 'exit
-                       (list (cons specific
-                                   (org-entry-get
-                                    heading specific nil t))))
-              (org-element-properties-mapc
-               (lambda (property _ heading)
-                 (let ((name (substring (symbol-name property) 1)))
-	           ;; If we are looking after a specific property, delegate
-	           ;; to `org-entry-get', which is faster.  However, make an
-	           ;; exception for "CATEGORY", since it can be also set
-	           ;; through keywords (i.e. #+CATEGORY).
-                   (when (and (equal name (upcase name)) ; Only local properties.
-                              (or local-category (not (equal name "CATEGORY"))))
-                     (when-let ((value (org-entry-get heading name nil t)))
-                       (push (cons name value) props)))))
-               heading)))
-	  ;; Return value.
-	  props)))))
+    (catch 'exit
+      (let* ((heading (or (org-headline-at-point epom) (org-element-org-data epom)))
+	     (specific (and (stringp which) (upcase which)))
+	     (which (cond ((not specific) which)
+			  ((member specific org-special-properties) 'special)
+			  (t 'standard)))
+             (special-prop-rules
+              '(("CLOCKSUM" . org--entry-clocksum)
+                ("CLOCKSUM_T" . org--entry-clocksum-today)
+                ("ITEM" . org--entry-item)
+                ("TODO" . org--entry-todo)
+                ("PRIORITY" . org--entry-priority)
+                ("FILE" . org--entry-file)
+                ("TAGS" . org--entry-tags)
+                ("ALLTAGS" . org--entry-alltags)
+                ("BLOCKED" . org--entry-blocked)
+                ("CLOSED" . org--entry-closed)
+                ("DEADLINE" . org--entry-deadline)
+                ("SCHEDULED" . org--entry-scheduled)
+                ("TIMESTAMP" . org--entry-timestamp)
+                ("TIMESTAMP_IA" . org--entry-timestamp-inactive)))
+	     props)
+	;; Get the special properties, like TODO and TAGS.
+	(when (memq which '(nil all special))
+          (when-let ((fun (and specific
+                               (cdr (assoc-string
+                                     specific special-prop-rules)))))
+            (throw 'exit (list (funcall fun heading))))
+          (unless specific
+            (dolist (pair special-prop-rules)
+              (push (funcall (cdr pair) heading) props)))
+          (setq props (delq nil props)))
+	;; Get the standard properties, like :PROP:.
+	(when (memq which '(nil all standard))
+          (unless local-category
+	    (push (cons "CATEGORY" (org-get-category heading)) props)
+	    (when (string= specific "CATEGORY") (throw 'exit props)))
+          (if specific
+              (throw 'exit
+                     (list (cons specific
+                                 (org-entry-get
+                                  heading specific nil t))))
+            (org-element-properties-mapc
+             (lambda (property _ heading)
+               (let ((name (substring (symbol-name property) 1)))
+	         ;; If we are looking after a specific property, delegate
+	         ;; to `org-entry-get', which is faster.  However, make an
+	         ;; exception for "CATEGORY", since it can be also set
+	         ;; through keywords (i.e. #+CATEGORY).
+                 (when (and (equal name (upcase name)) ; Only local properties.
+                            (or local-category (not (equal name "CATEGORY"))))
+                   (when-let ((value (org-entry-get heading name nil t)))
+                     (push (cons name value) props)))))
+             heading)))
+	;; Return value.
+	props))))
 
 ;;;###autoload
 (defun org-entry-get (epom property &optional inherit literal-nil)
