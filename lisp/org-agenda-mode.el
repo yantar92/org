@@ -127,9 +127,10 @@ FILTER-ALIST is an alist of filters we need to apply when
                 (effort . ,org-agenda-effort-filter-preset)))
         (org-agenda-prepare-buffers (org-agenda-files nil 'ifmode))
 	(setq org-agenda-last-prefix-arg current-prefix-arg)
-	(setq org-agenda-this-buffer-name org-agenda-buffer-name)
-	(and name (not org-agenda-name)
-	     (setq-local org-agenda-name name)))
+        (with-no-warnings ;; FIXME: `org-agenda-name' is obsolete.
+          (and name (not org-agenda-name)
+               (setq-local org-agenda-name name)))
+	(setq org-agenda-this-buffer-name org-agenda-buffer-name))
       (setq buffer-read-only nil))))
 
 ;;; Startup

@@ -209,6 +209,9 @@ or end of the headline title), or COMMENT keyword.")
                         "Use (org-table-formula-constants-local) instead"
                         "9.8")
 
+(defvar org-agenda-name nil)
+(make-obsolete-variable 'org-agenda-name "unused" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

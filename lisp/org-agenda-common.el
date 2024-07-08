@@ -95,7 +95,6 @@ When nil, `q' will kill the single agenda buffer."
 
 (defvar org-agenda-keep-modes nil)
 (defvar org-agenda-multi nil)
-(defvar org-agenda-name nil) ; FIXME: Unused
 (defvar org-agenda-overriding-cmd nil)
 (defvar org-agenda-overriding-arguments nil)
 (defvar org-agenda-overriding-cmd-arguments nil)
