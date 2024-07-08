@@ -855,7 +855,6 @@ generating a new one."
 (defun org-agenda-redo (&optional all)
   "Rebuild possibly ALL agenda view(s) in the current buffer."
   (interactive "P")
-  (defvar org-agenda-tag-filter-while-redo) ;FIXME: Where is this var used?
   (let* ((p (or (and (looking-at "\\'") (1- (point))) (point)))
 	 (cpa (unless (eq all t) current-prefix-arg))
 	 (org-agenda-doing-sticky-redo org-agenda-sticky)
@@ -872,7 +871,6 @@ generating a new one."
 	 (re-preset (assoc-default 'regexp org-agenda-filters-preset))
 	 (effort-filter org-agenda-effort-filter)
 	 (effort-preset (assoc-default 'effort org-agenda-filters-preset))
-	 (org-agenda-tag-filter-while-redo (or tag-filter tag-preset))
 	 (cols org-agenda-columns-active)
 	 (line (org-current-line))
 	 (window-line (- line (org-current-line (window-start))))
