@@ -46,7 +46,6 @@ This variable has no effect when `org-agenda-start-on-weekday' is set
 and agenda spans 7 or 14 days.")
 
 (defvar org-starting-day nil) ; local variable in the agenda buffer
-(defvar org-arg-loc nil) ; local variable
 
 (defvar org-agenda-current-span nil
   "The current span used in the agenda view.") ; local variable in the agenda buffer
@@ -351,7 +350,6 @@ items if they have an hour specification like [h]h:mm."
       (setq clocktable-start (car day-numbers)
 	    clocktable-end (1+ (or (org-last day-numbers) 0)))
       (setq-local org-starting-day (car day-numbers))
-      (setq-local org-arg-loc arg)
       (setq-local org-agenda-current-span (org-agenda-ndays-to-span span))
       (unless org-agenda-compact-blocks
 	(let* ((d1 (car day-numbers))
