@@ -792,6 +792,8 @@ details about these, see the documentation of
         ((date date))
       (dolist (arg args (apply #'nconc (nreverse results)))
 	(pcase arg
+          ;; FIXME: :todo ARG is not documented anywhere and is no
+          ;; longer used.
 	  ((and :todo (guard (org-agenda-today-p date)))
 	   (push (org-agenda-get-todos) results))
 	  (:timestamp
@@ -946,12 +948,16 @@ timestamp and the timestamp type relevant for the sorting strategy in
       (cons (when ts (ignore-errors (org-time-string-to-absolute ts)))
 	    ts-date-type))))
 
-(defvar org-select-this-todo-keyword nil
-  "Keyword selector for todo agenda.
-Should either be a keyword, \"*\", or \"|\"-separated list of todo
-keywords.")
-(defun org-agenda-get-todos ()
-  "Return the TODO information for agenda display."
+(defun org-agenda-get-todos (&optional selector)
+  "Return the TODO information for agenda display.
+When SELECTOR is nil return all the not-done TODO keywords.
+When non-nil, it should be a string definining which keywords to choose:
+1. A single keyword name
+2. A string \"*\", to select all the keywords, including done.
+3. \"KWD1|KWD2|KWD3|...\" to select multiple keywords."
+  (with-no-warnings
+    ;; FIXME: `org-select-this-todo-keyword' is obsolete.
+    (unless selector (setq selector org-select-this-todo-keyword)))
   (let* ((props (list 'face nil
 		      'done-face 'org-agenda-done
 		      'org-not-done-regexp (org-not-done-regexp)
@@ -964,15 +970,13 @@ keywords.")
 	 (case-fold-search nil)
 	 (regexp (format org-heading-keyword-regexp-format
 			 (cond
-			  ((and org-select-this-todo-keyword
-				(equal org-select-this-todo-keyword "*"))
+			  ((and selector (equal selector "*"))
 			   (org-todo-regexp))
-			  (org-select-this-todo-keyword
+			  (selector
 			   (concat "\\("
 				   (mapconcat #'regexp-quote
 				              (org-split-string
-				               org-select-this-todo-keyword
-				               "|")
+				               selector "|")
 				              "\\|")
 				   "\\)"))
 			  (t (org-not-done-regexp)))))

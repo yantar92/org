@@ -216,6 +216,12 @@ or end of the headline title), or COMMENT keyword.")
   "Active date when building the agenda.")
 (make-obsolete-variable 'org-agenda-current-date "unused" "9.8")
 
+(defvar org-select-this-todo-keyword nil
+  "Keyword selector for todo agenda.
+Should either be a keyword, \"*\", or \"|\"-separated list of todo
+keywords.")
+(make-obsolete-variable 'org-select-this-todo-keyword "pass argument to `org-agenda-get-todos' instead" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

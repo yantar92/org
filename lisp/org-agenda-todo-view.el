@@ -75,8 +75,7 @@ all the todo keywords in buffer (`org-element-all-todo-keywords')."
   (when org-agenda-overriding-arguments
     (setq arg org-agenda-overriding-arguments))
   
-  (let* ((today (calendar-gregorian-from-absolute (org-today)))
-         (org-select-this-todo-keyword
+  (let* ((selector
           (cond
            ((org-string-nw-p arg) arg)
            ((and (integerp arg) (> arg 0))
@@ -98,13 +97,12 @@ all the todo keywords in buffer (`org-element-all-todo-keywords')."
            ((entries
              (apply #'nconc
                     (org-agenda-map-files
-                     (lambda () (org-agenda-get-day-entries-1
-                            today :todo))))))
+                     (lambda () (org-agenda-get-todos selector))))))
          (insert (org-agenda-finalize-entries entries 'todo) "\n")))
-     :suggested-buffer-name (cons "todo" org-select-this-todo-keyword)
+     :suggested-buffer-name (cons "todo" selector)
      :block-header (org-agenda--todo-block-header
                     org-todo-keywords-for-agenda
-                    org-select-this-todo-keyword)
+                    selector)
      :redo-command `(org-todo-list ,arg)
      :block-args arg)))
 
