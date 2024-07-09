@@ -890,6 +890,75 @@ This is based on `org-agenda-timegrid-use-ampm'."
 	  (cl-return (cadr entry))
 	(cl-return (apply #'create-image (cdr entry)))))))
 
+(cl-defun org-agenda-insert-block ( block-type insert-body-function
+                                    &key suggested-buffer-name
+                                    redo-command
+                                    block-args
+                                    block-header)
+  "Insert an agenda block at point using INSERT-BODY-FUNCTION.
+
+INSERT-BODY-FUNCTION is a function called with no arguments to insert
+the main block body.
+
+SUGGESTED-BUFFER-NAME is the name (string) to be used when agenda is
+sticky (`org-agenda-sticky') and the inserted block is the only block
+in the agenda.  The name can also be a cons cell of a form
+ (COMMAND-OR-KEY . MATCH).  Then, the sticky buffer name will be set
+to either \"*Org Agenda(COMMAND-OR-KEY:MATCH)*\" or \"*Org
+Agenda(COMMAND-OR-KEY)*\" (if MATCH is nil or empty string).
+When `org-keys' or `org-match' are non-nil non-empty, they will override
+the provided COMMAND-OR-KEY and/or MATCH.
+
+BLOCK-TYPE is the block type as a symbol.  This symbol is used to
+refer to the block in `org-agenda-prefix-format' and in
+`org-agenda-sorting-strategy'.
+
+REDO-COMMAND is an sexp that can be used to re-insert the same block.
+BLOCK-ARGS is a set of arguments/settings used to build the block.
+These settings should be compatible with
+`org-agenda-overriding-arguments'.
+
+BLOCK-HEADER is the suggested title of the block.  It will be used
+unless overriding header is defined by the user.  The value is either
+a string or a cons cell of title string and text property list to be
+applied to the inserted header."
+  (catch 'exit
+    (setq org-agenda-buffer-name
+	  (org-agenda--get-buffer-name
+           (if (stringp suggested-buffer-name) suggested-buffer-name
+             (when (consp suggested-buffer-name)
+               (if (seq-empty-p (or org-match (cdr suggested-buffer-name)))
+                   (format "*Org Agenda(%s)*"
+                           (or org-keys (car suggested-buffer-name)))
+                 (format "*Org Agenda(%s:%s)*"
+                         (or org-keys (car suggested-buffer-name))
+                         (or org-match (cdr suggested-buffer-name))))))))
+    (org-agenda-prepare)
+    (org-compile-prefix-format block-type)
+    (org-set-sorting-strategy block-type)
+    (let ((origin (point))
+          (default-header (if (stringp block-header)
+                              block-header
+                            (or (car-safe block-header) "")))
+          (props (cdr-safe block-header)))
+      (unless org-agenda-compact-blocks
+        (org-agenda--insert-overriding-header default-header))
+      (when (> (point) origin) ; we actually inserted something
+        (when props (add-text-properties origin (1- (point)) props))
+	(org-agenda-mark-header-line origin)))
+    (setq org-agenda-redo-command redo-command)
+    (funcall insert-body-function)
+    (add-text-properties
+     (point-min) (point-max)
+     `( org-agenda-type ,block-type
+        org-last-args ,block-args
+        org-redo-cmd ,redo-command
+        org-series-cmd ,org-cmd))
+    (goto-char (point-min))
+    (or org-agenda-multi (org-agenda-fit-window-to-buffer))
+    (org-agenda-finalize)
+    (setq buffer-read-only t)))
+
 (provide 'org-agenda-line-format)
 
 ;;; org-agenda-line-format.el ends here

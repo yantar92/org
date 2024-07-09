@@ -90,7 +90,7 @@ When nil, `q' will kill the single agenda buffer."
 (defun org-agenda--get-buffer-name (sticky-name)
   (or org-agenda-buffer-tmp-name
       (and org-agenda-doing-sticky-redo org-agenda-buffer-name)
-      sticky-name
+      (and org-agenda-sticky sticky-name)
       "*Org Agenda*"))
 
 (defvar org-agenda-keep-modes nil)

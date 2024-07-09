@@ -34,6 +34,28 @@
 (require 'org-agenda-mode)
 (require 'org-agenda-search)
 
+(defun org-agenda--tags-block-header (match)
+  "Produce block header for tags block displaying tags MATCH."
+  (with-temp-buffer
+    (let (pos)
+      (insert "Headlines with TAGS match: ")
+      (add-text-properties (point-min) (1- (point))
+			   (list 'face 'org-agenda-structure
+			         'short-heading
+			         (concat "Match: " match)))
+      (setq pos (point))
+      (insert match "\n")
+      (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-filter))
+      (setq pos (point))
+      (unless org-agenda-multi
+        (insert (substitute-command-keys
+	         "Press \
+\\<org-agenda-mode-map>`\\[universal-argument] \\[org-agenda-redo]' \
+to search again\n")))
+      (add-text-properties pos (1- (point))
+			   (list 'face 'org-agenda-structure-secondary))
+      (buffer-string))))
+
 ;;;###autoload
 (defun org-tags-view (&optional todo-only match)
   "Show all headlines for all `org-agenda-files' matching a TAGS criterion.
@@ -46,88 +68,53 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
 	  org-tags-match-list-sublevels)
 	 (completion-ignore-case t)
 	 (org--matcher-tags-todo-only todo-only)
-	 rtn rtnall files file pos matcher
-	 buffer)
+	 rtn rtnall files file matcher buffer)
+
     (when (and (stringp match) (not (string-match "\\S-" match)))
       (setq match nil))
-    (catch 'exit
-      (setq org-agenda-buffer-name
-	    (org-agenda--get-buffer-name
-	     (and org-agenda-sticky
-		  (if (stringp match)
-		      (format "*Org Agenda(%s:%s)*"
-			      (or org-keys (or (and todo-only "M") "m"))
-			      match)
-		    (format "*Org Agenda(%s)*"
-			    (or (and todo-only "M") "m"))))))
-      (setq matcher (org-make-tags-matcher match))
-      (org-agenda-prepare (concat "TAGS " match))
-      (setq match (car matcher)
-	    matcher (cdr matcher))
-      (org-compile-prefix-format 'tags)
-      (org-set-sorting-strategy 'tags)
-      (setq org-agenda-query-string match)
-      (setq org-agenda-redo-command
-	    (list 'org-tags-view
-		  `(quote ,org--matcher-tags-todo-only)
-		  `(if current-prefix-arg nil ,org-agenda-query-string)))
-      (setq files (org-agenda-files nil 'ifmode)
-	    rtnall nil)
-      (while (setq file (pop files))
-	(catch 'nextfile
-	  (org-check-agenda-file file)
-	  (setq buffer (if (file-exists-p file)
-			   (org-get-agenda-file-buffer file)
-			 (error "No such file %s" file)))
-	  (if (not buffer)
-	      ;; If file does not exist, error message to agenda
-	      (setq rtn (list
-			 (format "ORG-AGENDA-ERROR: No such org-file %s" file))
-		    rtnall (append rtnall rtn))
-	    (with-current-buffer buffer
-	      (unless (derived-mode-p 'org-mode)
-		(error "Agenda file %s is not in Org mode" file))
-	      (save-excursion
-		(save-restriction
-		  (if (eq buffer org-agenda-restrict)
-		      (narrow-to-region org-agenda-restrict-begin
-					org-agenda-restrict-end)
-		    (widen))
-		  (setq rtn (org-agenda-get-tags
-			     matcher org--matcher-tags-todo-only))
-		  (setq rtnall (append rtnall rtn))))))))
-      (org-agenda--insert-overriding-header
-        (with-temp-buffer
-	  (insert "Headlines with TAGS match: ")
-	  (add-text-properties (point-min) (1- (point))
-			       (list 'face 'org-agenda-structure
-				     'short-heading
-				     (concat "Match: " match)))
-	  (setq pos (point))
-	  (insert match "\n")
-	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-filter))
-	  (setq pos (point))
-	  (unless org-agenda-multi
-	    (insert (substitute-command-keys
-		     "Press \
-\\<org-agenda-mode-map>`\\[universal-argument] \\[org-agenda-redo]' \
-to search again\n")))
-	  (add-text-properties pos (1- (point))
-			       (list 'face 'org-agenda-structure-secondary))
-	  (buffer-string)))
-      (org-agenda-mark-header-line (point-min))
-      (when rtnall
-	(insert (org-agenda-finalize-entries rtnall 'tags) "\n"))
-      (goto-char (point-min))
-      (or org-agenda-multi (org-agenda-fit-window-to-buffer))
-      (add-text-properties
-       (point-min) (point-max)
-       `(org-agenda-type tags
-			 org-last-args (,org--matcher-tags-todo-only ,match)
-			 org-redo-cmd ,org-agenda-redo-command
-			 org-series-cmd ,org-cmd))
-      (org-agenda-finalize)
-      (setq buffer-read-only t))))
+
+    (setq matcher (org-make-tags-matcher match))
+    (setq match (car matcher)
+	  matcher (cdr matcher))
+    (setq org-agenda-query-string match)
+
+    (org-agenda-insert-block
+     'tags
+     (lambda ()
+       (setq files (org-agenda-files nil 'ifmode)
+	     rtnall nil)
+       (while (setq file (pop files))
+         (catch 'nextfile
+	   (org-check-agenda-file file)
+	   (setq buffer (if (file-exists-p file)
+			    (org-get-agenda-file-buffer file)
+			  (error "No such file %s" file)))
+	   (if (not buffer)
+	       ;; If file does not exist, error message to agenda
+	       (setq rtn (list
+			  (format "ORG-AGENDA-ERROR: No such org-file %s" file))
+		     rtnall (append rtnall rtn))
+	     (with-current-buffer buffer
+	       (unless (derived-mode-p 'org-mode)
+	         (error "Agenda file %s is not in Org mode" file))
+	       (save-excursion
+	         (save-restriction
+		   (if (eq buffer org-agenda-restrict)
+		       (narrow-to-region org-agenda-restrict-begin
+				         org-agenda-restrict-end)
+		     (widen))
+		   (setq rtn (org-agenda-get-tags
+			      matcher org--matcher-tags-todo-only))
+		   (setq rtnall (append rtnall rtn))))))))
+       (when rtnall
+         (insert (org-agenda-finalize-entries rtnall 'tags) "\n")))
+     :suggested-buffer-name (cons (if todo-only "tags-todo" "tags") match)
+     :block-header (org-agenda--tags-block-header match)
+     :redo-command
+     (list 'org-tags-view
+	   `(quote ,org--matcher-tags-todo-only)
+	   `(if current-prefix-arg nil ,org-agenda-query-string))
+     :block-args (list org--matcher-tags-todo-only match))))
 
 (provide 'org-agenda-tags-view)
 

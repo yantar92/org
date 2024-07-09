@@ -91,6 +91,28 @@ value, don't limit agenda view by outline level."
   :package-version '(Org . "8.3")
   :type 'integer)
 
+(defun org-agenda--search-block-header (search-string)
+  "Produce block header for search block searching SEARCH-STRING."
+  (with-temp-buffer
+    (let (pos)
+      (insert "Search words: ")
+      (add-text-properties (point-min) (1- (point))
+			   (list 'face 'org-agenda-structure))
+      (setq pos (point))
+      (insert search-string "\n")
+      (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-filter))
+      (setq pos (point))
+      (unless org-agenda-multi
+        (insert (substitute-command-keys "\\<org-agenda-mode-map>\
+Press `\\[org-agenda-manipulate-query-add]', \
+`\\[org-agenda-manipulate-query-subtract]' to add/sub word, \
+`\\[org-agenda-manipulate-query-add-re]', \
+`\\[org-agenda-manipulate-query-subtract-re]' to add/sub regexp, \
+`\\[universal-argument] \\[org-agenda-redo]' for a fresh search\n"))
+        (add-text-properties pos (1- (point))
+			     (list 'face 'org-agenda-structure-secondary)))
+      (buffer-string))))
+
 (declare-function org-add-archive-files "org-archive" (files))
 ;;;###autoload
 (defun org-search-view (&optional todo-only string edit-at)
@@ -144,8 +166,9 @@ is active."
 	  edit-at (nth 2 org-agenda-overriding-arguments)))
   (let* ((full-words org-agenda-search-view-force-full-words)
 	 (org-agenda-text-search-extra-files org-agenda-text-search-extra-files)
-	 rtn rtnall files file pos
+	 rtn rtnall files file
 	 c neg re boolean words regexps+ regexps- hdl-only buffer)
+
     (unless (and (not edit-at)
 		 (stringp string)
 		 (string-match "\\S-" string))
@@ -157,153 +180,119 @@ is active."
 		     ((integerp edit-at) (cons string edit-at))
 		     (edit-at string))
 		    'org-agenda-search-history)))
-    (catch 'exit
-      (setq org-agenda-buffer-name
-	    (org-agenda--get-buffer-name
-	     (and org-agenda-sticky
-		  (if (stringp string)
-		      (format "*Org Agenda(%s:%s)*"
-			      (or org-keys (or (and todo-only "S") "s"))
-			      string)
-		    (format "*Org Agenda(%s)*"
-			    (or (and todo-only "S") "s"))))))
-      (org-agenda-prepare "SEARCH")
-      (org-compile-prefix-format 'search)
-      (org-set-sorting-strategy 'search)
-      (setq org-agenda-redo-command
-	    (list 'org-search-view (if todo-only t nil)
-		  (list 'if 'current-prefix-arg nil string)))
-      (setq org-agenda-query-string string)
-      (if (equal (string-to-char string) ?*)
-	  (setq hdl-only t
-		words (substring string 1))
-	(setq words string))
-      (when (equal (string-to-char words) ?!)
-	(setq todo-only t
-	      words (substring words 1)))
-      (when (equal (string-to-char words) ?:)
-	(setq full-words t
-	      words (substring words 1)))
-      (when (or org-agenda-search-view-always-boolean
-		(member (string-to-char words) '(?- ?+ ?\{)))
-	(setq boolean t))
-      (setq words (split-string words))
-      (let (www w)
-	(while (setq w (pop words))
-	  (while (and (string-match "\\\\\\'" w) words)
-	    (setq w (concat (substring w 0 -1) " " (pop words))))
-	  (push w www))
-	(setq words (nreverse www) www nil)
-	(while (setq w (pop words))
-	  (when (and (string-match "\\`[-+]?{" w)
-		     (not (string-match "}\\'" w)))
-	    (while (and words (not (string-match "}\\'" (car words))))
-	      (setq w (concat w " " (pop words))))
+
+    (setq org-agenda-query-string string)
+    (if (equal (string-to-char string) ?*)
+	(setq hdl-only t
+	      words (substring string 1))
+      (setq words string))
+    (when (equal (string-to-char words) ?!)
+      (setq todo-only t
+	    words (substring words 1)))
+    (when (equal (string-to-char words) ?:)
+      (setq full-words t
+	    words (substring words 1)))
+    (when (or org-agenda-search-view-always-boolean
+	      (member (string-to-char words) '(?- ?+ ?\{)))
+      (setq boolean t))
+    (setq words (split-string words))
+    (let (www w)
+      (while (setq w (pop words))
+	(while (and (string-match "\\\\\\'" w) words)
+	  (setq w (concat (substring w 0 -1) " " (pop words))))
+	(push w www))
+      (setq words (nreverse www) www nil)
+      (while (setq w (pop words))
+	(when (and (string-match "\\`[-+]?{" w)
+		   (not (string-match "}\\'" w)))
+	  (while (and words (not (string-match "}\\'" (car words))))
 	    (setq w (concat w " " (pop words))))
-	  (push w www))
-	(setq words (nreverse www)))
-      (setq org-agenda-last-search-view-search-was-boolean boolean)
-      (when boolean
-	(let (wds w)
-	  (while (setq w (pop words))
-	    (when (or (equal (substring w 0 1) "\"")
-		      (and (> (length w) 1)
-			   (member (substring w 0 1) '("+" "-"))
-			   (equal (substring w 1 2) "\"")))
-	      (while (and words (not (equal (substring w -1) "\"")))
-		(setq w (concat w " " (pop words)))))
-	    (and (string-match "\\`\\([-+]?\\)\"" w)
-		 (setq w (replace-match "\\1" nil nil w)))
-	    (and (equal (substring w -1) "\"") (setq w (substring w 0 -1)))
-	    (push w wds))
-	  (setq words (nreverse wds))))
-      (if boolean
-	  (mapc (lambda (w)
-		  (setq c (string-to-char w))
-		  (if (equal c ?-)
-		      (setq neg t w (substring w 1))
-		    (if (equal c ?+)
-			(setq neg nil w (substring w 1))
-		      (setq neg nil)))
-		  (if (string-match "\\`{.*}\\'" w)
-		      (setq re (substring w 1 -1))
-		    (if full-words
-			(setq re (concat "\\<" (regexp-quote (downcase w)) "\\>"))
-		      (setq re (regexp-quote (downcase w)))))
-		  (if neg (push re regexps-) (push re regexps+)))
-		words)
-	(push (mapconcat #'regexp-quote words "\\s-+")
-	      regexps+))
-      (setq regexps+ (sort regexps+ (lambda (a b) (> (length a) (length b)))))
-      (setq files (org-agenda-files nil 'ifmode))
-      ;; Add `org-agenda-text-search-extra-files' unless there is some
-      ;; restriction.
-      (when (eq (car org-agenda-text-search-extra-files) 'agenda-archives)
-	(pop org-agenda-text-search-extra-files)
-	(unless (get 'org-agenda-files 'org-restrict)
-	  (setq files (org-add-archive-files files))))
-      ;; Uniquify files.  However, let `org-check-agenda-file' handle
-      ;; non-existent ones.
-      (setq files (cl-remove-duplicates
-		   (append files org-agenda-text-search-extra-files)
-		   :test (lambda (a b)
-			   (and (file-exists-p a)
-				(file-exists-p b)
-				(file-equal-p a b))))
-	    rtnall nil)
-      (while (setq file (pop files))
-	(org-check-agenda-file file)
-	(setq buffer (if (file-exists-p file)
-			 (org-get-agenda-file-buffer file)
-		       (error "No such file %s" file)))
-	(unless buffer
-	  ;; If file does not exist, make sure an error message is sent
-	  (setq rtn (list (format "ORG-AGENDA-ERROR: No such org-file %s"
-				  file))))
-	(with-current-buffer buffer
-          (unless (derived-mode-p 'org-mode)
-            (error "Agenda file %s is not in Org mode" file))
-          (save-excursion
-            (save-restriction
-              (if (eq buffer org-agenda-restrict)
-		  (narrow-to-region org-agenda-restrict-begin
-				    org-agenda-restrict-end)
-		(widen))
-              (setq rtn (org-agenda-get-regexps
-                         regexps+ regexps- hdl-only todo-only
-                         org-agenda-search-view-max-outline-level)))))
-	(setq rtnall (append rtnall rtn)))
-      (org-agenda--insert-overriding-header
-	(with-temp-buffer
-	  (insert "Search words: ")
-	  (add-text-properties (point-min) (1- (point))
-			       (list 'face 'org-agenda-structure))
-	  (setq pos (point))
-	  (insert string "\n")
-	  (add-text-properties pos (1- (point)) (list 'face 'org-agenda-structure-filter))
-	  (setq pos (point))
-	  (unless org-agenda-multi
-	    (insert (substitute-command-keys "\\<org-agenda-mode-map>\
-Press `\\[org-agenda-manipulate-query-add]', \
-`\\[org-agenda-manipulate-query-subtract]' to add/sub word, \
-`\\[org-agenda-manipulate-query-add-re]', \
-`\\[org-agenda-manipulate-query-subtract-re]' to add/sub regexp, \
-`\\[universal-argument] \\[org-agenda-redo]' for a fresh search\n"))
-	    (add-text-properties pos (1- (point))
-				 (list 'face 'org-agenda-structure-secondary)))
-	  (buffer-string)))
-      (org-agenda-mark-header-line (point-min))
-      (when rtnall
-	(insert (org-agenda-finalize-entries rtnall 'search) "\n"))
-      (goto-char (point-min))
-      (or org-agenda-multi (org-agenda-fit-window-to-buffer))
-      (add-text-properties (point-min) (point-max)
-			   `(org-agenda-type search
-					     org-last-args (,todo-only ,string ,edit-at)
-					     org-redo-cmd ,org-agenda-redo-command
-					     org-series-cmd ,org-cmd))
-      (org-agenda-finalize)
-      (setq buffer-read-only t))))
+	  (setq w (concat w " " (pop words))))
+	(push w www))
+      (setq words (nreverse www)))
+    (setq org-agenda-last-search-view-search-was-boolean boolean)
+    (when boolean
+      (let (wds w)
+	(while (setq w (pop words))
+	  (when (or (equal (substring w 0 1) "\"")
+		    (and (> (length w) 1)
+			 (member (substring w 0 1) '("+" "-"))
+			 (equal (substring w 1 2) "\"")))
+	    (while (and words (not (equal (substring w -1) "\"")))
+	      (setq w (concat w " " (pop words)))))
+	  (and (string-match "\\`\\([-+]?\\)\"" w)
+	       (setq w (replace-match "\\1" nil nil w)))
+	  (and (equal (substring w -1) "\"") (setq w (substring w 0 -1)))
+	  (push w wds))
+	(setq words (nreverse wds))))
+    (if boolean
+	(mapc (lambda (w)
+		(setq c (string-to-char w))
+		(if (equal c ?-)
+		    (setq neg t w (substring w 1))
+		  (if (equal c ?+)
+		      (setq neg nil w (substring w 1))
+		    (setq neg nil)))
+		(if (string-match "\\`{.*}\\'" w)
+		    (setq re (substring w 1 -1))
+		  (if full-words
+		      (setq re (concat "\\<" (regexp-quote (downcase w)) "\\>"))
+		    (setq re (regexp-quote (downcase w)))))
+		(if neg (push re regexps-) (push re regexps+)))
+	      words)
+      (push (mapconcat #'regexp-quote words "\\s-+")
+	    regexps+))
+    (setq regexps+ (sort regexps+ (lambda (a b) (> (length a) (length b)))))
+
+    (org-agenda-insert-block
+     'search
+     (lambda ()
+       (setq files (org-agenda-files nil 'ifmode))
+       ;; Add `org-agenda-text-search-extra-files' unless there is some
+       ;; restriction.
+       (when (eq (car org-agenda-text-search-extra-files) 'agenda-archives)
+         (pop org-agenda-text-search-extra-files)
+         (unless (get 'org-agenda-files 'org-restrict)
+	   (setq files (org-add-archive-files files))))
+       ;; Uniquify files.  However, let `org-check-agenda-file' handle
+       ;; non-existent ones.
+       (setq files (cl-remove-duplicates
+		    (append files org-agenda-text-search-extra-files)
+		    :test (lambda (a b)
+			    (and (file-exists-p a)
+			         (file-exists-p b)
+			         (file-equal-p a b))))
+	     rtnall nil)
+       (while (setq file (pop files))
+         (org-check-agenda-file file)
+         (setq buffer (if (file-exists-p file)
+			  (org-get-agenda-file-buffer file)
+		        (error "No such file %s" file)))
+         (unless buffer
+	   ;; If file does not exist, make sure an error message is sent
+	   (setq rtn (list (format "ORG-AGENDA-ERROR: No such org-file %s"
+				   file))))
+         (with-current-buffer buffer
+           (unless (derived-mode-p 'org-mode)
+             (error "Agenda file %s is not in Org mode" file))
+           (save-excursion
+             (save-restriction
+               (if (eq buffer org-agenda-restrict)
+		   (narrow-to-region org-agenda-restrict-begin
+				     org-agenda-restrict-end)
+	         (widen))
+               (setq rtn (org-agenda-get-regexps
+                          regexps+ regexps- hdl-only todo-only
+                          org-agenda-search-view-max-outline-level)))))
+         (setq rtnall (append rtnall rtn)))
+       (when rtnall
+         (insert (org-agenda-finalize-entries rtnall 'search) "\n")))
+     :suggested-buffer-name (cons (if todo-only "search-todo" "search") string)
+     :block-header (org-agenda--search-block-header string)
+     :redo-command
+     (list 'org-search-view (if todo-only t nil)
+	   (list 'if 'current-prefix-arg nil string))
+     :block-args (list todo-only string edit-at))))
 
 (provide 'org-agenda-search-view)
 
