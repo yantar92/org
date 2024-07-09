@@ -361,13 +361,6 @@ items if they have an hour specification like [h]h:mm."
 	     (catch 'nextfile
 	       (org-check-agenda-file file)
 	       (let ((org-agenda-entry-types org-agenda-entry-types))
-	         ;; Starred types override non-starred equivalents
-	         (when (member :deadline* org-agenda-entry-types)
-		   (setq org-agenda-entry-types
-		         (delq :deadline org-agenda-entry-types)))
-	         (when (member :scheduled* org-agenda-entry-types)
-		   (setq org-agenda-entry-types
-		         (delq :scheduled org-agenda-entry-types)))
 	         ;; Honor with-hour
 	         (when with-hour
 		   (when (member :deadline org-agenda-entry-types)

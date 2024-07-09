@@ -787,18 +787,23 @@ the documentation of `org-agenda-entry-types'."
 		(narrow-to-region org-agenda-restrict-begin
 				  org-agenda-restrict-end)
 	      (widen))
-	    ;; Rationalize ARGS.  Also make sure `:deadline' comes
-	    ;; first in order to populate DEADLINES before passing it.
+	    ;; Rationalize ARGS.
 	    ;;
 	    ;; We use `delq' since `org-uniquify' duplicates ARGS,
 	    ;; guarding us from modifying `org-agenda-entry-types'.
 	    (setf args (org-uniquify (or args org-agenda-entry-types)))
+            ;; When both :scheduled/deadline and :scheduled*/deadline*
+            ;; are present, ignore non-starred versions, as we promise
+            ;; in `org-agenda-entry-types' docstring.
 	    (when (and (memq :scheduled args) (memq :scheduled* args))
-	      (setf args (delq :scheduled* args)))
-	    (cond
+	      (setf args (delq :scheduled args)))
+            (when (and (memq :deadline args) (memq :deadline* args))
+	      (setf args (delq :deadline args)))
+            ;; Make sure `:deadline' comes first in order to populate
+	    ;; DEADLINES before passing it.
+            (cond
 	     ((memq :deadline args)
-	      (setf args (cons :deadline
-			       (delq :deadline (delq :deadline* args)))))
+	      (setf args (cons :deadline (delq :deadline args))))
 	     ((memq :deadline* args)
 	      (setf args (cons :deadline* (delq :deadline* args)))))
 	    ;; Collect list of headlines.  Return them flattened.
