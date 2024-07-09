@@ -285,6 +285,24 @@ DAY-NUMBERS is the list of displayed days."
                   (t (format " (W%02d-W%02d)" w1 w2)))
 	    ":\n")))
 
+(defun org-agenda--insert-clock-report (tstart tend)
+  "Insert clock report at point in agenda for TSTART..TEND period."
+  (let ((params (copy-sequence org-agenda-clockreport-parameter-plist))
+	tbl)
+    (setq params (plist-put params :tstart tstart))
+    (setq params (org-plist-delete params :block))
+    (setq params (plist-put params :tend tend))
+    ;; Default 'agenda scope for clock table ignores agenda restriction.
+    ;; So, we need to list contributing files explicitly.
+    (setq params (plist-put params :scope (org-agenda-files nil 'ifmode)))
+    (require 'org-clocktable)
+    (setq tbl (apply #'org-clock-get-clocktable params))
+    (when org-agenda-clock-report-header
+      (insert (propertize org-agenda-clock-report-header 'face 'org-agenda-structure))
+      (unless (string-suffix-p "\n" org-agenda-clock-report-header)
+        (insert "\n")))
+    (insert tbl)))
+
 (declare-function org-clock-get-clocktable "org-clocktable" (&rest props))
 (declare-function org-get-entries-from-diary "org-agenda-diary" (date))
 (declare-function org-read-date "org-read-date"
@@ -310,136 +328,134 @@ items if they have an hour specification like [h]h:mm."
     (setq arg (car org-agenda-overriding-arguments)
 	  start-day (nth 1 org-agenda-overriding-arguments)
 	  span (nth 2 org-agenda-overriding-arguments)))
-  (when (and (integerp arg) (> arg 0))
-    (setq span arg arg nil))
-  (when (numberp span)
-    (unless (< 0 span)
-      (user-error "Agenda creation impossible for this span(=%d days)" span)))
-  (setq start-day (or start-day org-agenda-start-day))
-  (when (stringp start-day)
-    ;; Convert to an absolute day number
-    (setq start-day (time-to-days (org-read-date nil t start-day))))
-  (setq span (org-agenda-ndays-to-span (or span org-agenda-span)))
-  (let* ((today (org-today))
-	 (sd (or start-day today))
-	 (ndays (org-agenda-span-to-ndays span sd))
-         (org-agenda-start-on-weekday
-	  (and (or (eq ndays 7) (eq ndays 14))
-	       org-agenda-start-on-weekday))
-         (start (if (or (null org-agenda-start-on-weekday)
-			(< ndays 7))
-		    sd
-		  (let* ((nt (calendar-day-of-week
-			      (calendar-gregorian-from-absolute sd)))
-			 (n1 org-agenda-start-on-weekday)
-			 (d (- nt n1)))
-		    (- sd (+ (if (< d 0) 7 0) d)))))
-         (day-numbers (list start)))
-    (dotimes (_ (1- ndays))
-      (push (1+ (car day-numbers)) day-numbers))
-    (setq day-numbers (nreverse day-numbers))
 
-    (org-agenda-insert-block
-     'agenda
-     (lambda ()
-       (let* ((thefiles (org-agenda-files nil 'ifmode))
-	      (files thefiles)
-	      (day-cnt 0)
-	      s rtn rtnall file date d todayp
-	      clocktable-start clocktable-end)
-         (setq clocktable-start (car day-numbers)
-	       clocktable-end (1+ (or (org-last day-numbers) 0)))
-         (setq-local org-starting-day (car day-numbers))
-         (setq-local org-agenda-current-span (org-agenda-ndays-to-span span))
-         (while (setq d (pop day-numbers))
-	   (setq date (calendar-gregorian-from-absolute d)
-	         s (point))
-           (setq todayp (= d today))
-	   (setq files thefiles
-	         rtnall nil)
-	   (while (setq file (pop files))
-	     (catch 'nextfile
-	       (org-check-agenda-file file)
-	       (let ((org-agenda-entry-types org-agenda-entry-types))
-	         ;; Honor with-hour
-	         (when with-hour
-		   (when (member :deadline org-agenda-entry-types)
-		     (setq org-agenda-entry-types
-			   (delq :deadline org-agenda-entry-types))
-		     (push :deadline* org-agenda-entry-types))
-		   (when (member :scheduled org-agenda-entry-types)
-		     (setq org-agenda-entry-types
-			   (delq :scheduled org-agenda-entry-types))
-		     (push :scheduled* org-agenda-entry-types)))
-	         (unless org-agenda-include-deadlines
-		   (setq org-agenda-entry-types
-		         (delq :deadline* (delq :deadline org-agenda-entry-types))))
-	         (cond
-	          ((memq org-agenda-show-log '(only clockcheck))
-		   (setq rtn (org-agenda-get-day-entries
-			      file date :closed)))
-	          (org-agenda-show-log
-		   (setq rtn (apply #'org-agenda-get-day-entries
-				    file date
-				    (append '(:closed) org-agenda-entry-types))))
-	          (t
-		   (setq rtn (apply #'org-agenda-get-day-entries
-				    file date
-				    org-agenda-entry-types)))))
-	       (setq rtnall (append rtnall rtn)))) ;; all entries
-	   (when org-agenda-include-diary
-	     (let ((org-agenda-search-headline-for-time t))
-	       (require 'org-agenda-diary)
-	       (setq rtn (org-get-entries-from-diary date))
-	       (setq rtnall (append rtnall rtn))))
-	   (when (or rtnall org-agenda-show-all-dates)
-	     (setq day-cnt (1+ day-cnt))
-	     (insert
-	      (if (stringp org-agenda-format-date)
-	          (format-time-string org-agenda-format-date
-				      (org-time-from-absolute date))
-	        (funcall org-agenda-format-date date))
-	      "\n")
-	     (put-text-property s (1- (point)) 'face
-			        (org-agenda-get-day-face date))
-	     (put-text-property s (1- (point)) 'org-date-line t)
-	     (put-text-property s (1- (point)) 'org-agenda-date-header t)
-	     (put-text-property s (1- (point)) 'org-day-cnt day-cnt)
-	     (when todayp
-	       (put-text-property s (1- (point)) 'org-today t))
-	     (setq rtnall
-		   (org-agenda-add-time-grid-maybe rtnall ndays todayp))
-	     (when rtnall (insert ;; all entries
-			   (org-agenda-finalize-entries rtnall 'agenda)
-			   "\n"))
-	     (put-text-property s (1- (point)) 'day d)
-	     (put-text-property s (1- (point)) 'org-day-cnt day-cnt)))
-         (when (and org-agenda-clockreport-mode clocktable-start)
-	   (let ((org-agenda-files (org-agenda-files nil 'ifmode))
-	         ;; the above line is to ensure the restricted range!
-	         (p (copy-sequence org-agenda-clockreport-parameter-plist))
-	         tbl)
-	     (setq p (org-plist-delete p :block))
-	     (setq p (plist-put p :tstart clocktable-start))
-	     (setq p (plist-put p :tend clocktable-end))
-	     (setq p (plist-put p :scope 'agenda))
-             (require 'org-clocktable)
-	     (setq tbl (apply #'org-clock-get-clocktable p))
-             (when org-agenda-clock-report-header
-               (insert (propertize org-agenda-clock-report-header 'face 'org-agenda-structure))
-               (unless (string-suffix-p "\n" org-agenda-clock-report-header)
-                 (insert "\n")))
-	     (insert tbl)))
-         (when (eq org-agenda-show-log 'clockcheck)
-	   (org-agenda-show-clocking-issues))))
-     :suggested-buffer-name (cons "agenda" nil)
-     :block-header
-     (cons (org-agenda--agenda-block-header span day-numbers)
-           '( face org-agenda-structure
-              org-date-line t))
-     :redo-command
-     (list 'org-agenda-list (list 'quote arg) start-day (list 'quote span) with-hour)
-     :block-args (list arg start-day span with-hour))))
+  (let ((today (org-today))
+        (entry-types (copy-sequence org-agenda-entry-types)))
+    
+    (when (and (integerp arg) (> arg 0))
+      (setq span arg
+            arg nil))
+    (when (numberp span)
+      (unless (< 0 span)
+        (user-error "Agenda creation impossible for this span(=%d days)" span)))
+    (setq span (org-agenda-ndays-to-span (or span org-agenda-span)))
+    
+    (setq start-day (or start-day org-agenda-start-day today))
+    (when (stringp start-day)
+      ;; Convert to an absolute day number
+      (setq start-day (time-to-days (org-read-date nil t start-day))))
+
+    ;; Honor with-hour
+    (when with-hour
+      (when (member :deadline entry-types)
+	(setq entry-types (delq :deadline entry-types))
+	(push :deadline* entry-types))
+      (when (member :scheduled entry-types)
+	(setq entry-types (delq :scheduled entry-types))
+	(push :scheduled* entry-types)))
+
+    ;; Honor `org-agenda-include-deadlines'.
+    (unless org-agenda-include-deadlines
+      (setq entry-types (delq :deadline* (delq :deadline entry-types))))
+    
+    (let* ((ndays (org-agenda-span-to-ndays span start-day))
+           (start (if (or (null org-agenda-start-on-weekday)
+			  (< ndays 7))
+		      start-day
+		    (let* ((nt (calendar-day-of-week
+			        (calendar-gregorian-from-absolute start-day)))
+			   (n1
+                            (and (or (eq ndays 7) (eq ndays 14))
+	                         org-agenda-start-on-weekday))
+			   (d (- nt n1)))
+		      (- start-day (+ (if (< d 0) 7 0) d)))))
+           (day-numbers (list start)))
+      
+      (dotimes (_ (1- ndays))
+        (push (1+ (car day-numbers)) day-numbers))
+      (setq day-numbers (nreverse day-numbers))
+
+      (setq-local org-starting-day (car day-numbers))
+      (setq-local org-agenda-current-span (org-agenda-ndays-to-span span))
+
+      (org-agenda-insert-block
+       'agenda
+       (lambda ()
+         (let* ((day-cnt 0) origin date todayp)
+           ;; Insert list of entries for each day in the agenda span.
+           (dolist (current-day-number day-numbers)
+	     (setq date (calendar-gregorian-from-absolute current-day-number)
+                   todayp (= current-day-number today)
+                   day-cnt (1+ day-cnt)
+	           origin (point))
+             ;; Insert entries for DATE.
+             (let ((day-entries nil))
+               (setq day-entries
+                     (org-agenda-mapcan-files
+                      (lambda ()
+                        (apply
+                         #'org-agenda-get-day-entries-1
+                         date
+                         (cond
+                          ((memq org-agenda-show-log '(only clockcheck))
+                           '(:closed))
+                          (org-agenda-show-log
+                           (append '(:closed) entry-types))
+                          (t entry-types))))))
+	       
+	       (when org-agenda-include-diary
+	         (let ((org-agenda-search-headline-for-time t))
+	           (require 'org-agenda-diary)
+	           (setq day-entries
+                         (append day-entries
+                                 (org-get-entries-from-diary date)))))
+
+               ;; Only insert date header when there are actual enties
+               ;; on that date, or when user requests to show all
+               ;; dates by force.
+	       (when (or day-entries org-agenda-show-all-dates)
+                 ;; Date header
+	         (insert
+	          (if (stringp org-agenda-format-date)
+	              (format-time-string org-agenda-format-date
+				          (org-time-from-absolute date))
+	            (funcall org-agenda-format-date date))
+	          "\n")
+
+                 (add-text-properties
+                  origin (1- (point))
+                  `( face ,(org-agenda-get-day-face date)
+                     org-date-line t
+                     org-agenda-date-header t
+                     org-day-cnt ,day-cnt))
+	         (when todayp
+	           (put-text-property origin (1- (point)) 'org-today t))
+                 
+	         (setq day-entries
+		       (org-agenda-add-time-grid-maybe day-entries ndays todayp))
+	         (when day-entries
+                   (insert (org-agenda-finalize-entries day-entries 'agenda) "\n"))
+                 
+                 (add-text-properties
+                  origin (1- (point))
+                  `( org-day-cnt ,day-cnt
+                     day ,current-day-number)))))
+           ;; Append clock report after all the day listings as needed.
+           (when org-agenda-clockreport-mode
+             (org-agenda--insert-clock-report
+              (car day-numbers)
+              (1+ (or (org-last day-numbers) 0))))
+           ;; Display clockcheck overlays.
+           (when (eq org-agenda-show-log 'clockcheck)
+	     (org-agenda-show-clocking-issues))))
+       :suggested-buffer-name (cons "agenda" nil)
+       :block-header
+       (cons (org-agenda--agenda-block-header span day-numbers)
+             '( face org-agenda-structure
+                org-date-line t))
+       :redo-command
+       `(org-agenda-list (quote ,arg) ,start-day (quote ,span) ,with-hour)
+       :block-args (list arg start-day span with-hour)))))
 
 (defun org-agenda-ndays-to-span (n)
   "Return a span symbol for a span of N days, or N if none matches."
