@@ -823,10 +823,9 @@ FILE is the path to a file to be checked for entries.  DATE is date like
 the one returned by `calendar-current-date'.  ARGS are symbols indicating
 which kind of entries should be extracted.  For details about these, see
 the documentation of `org-agenda-entry-types'."
-  (car
-   (org-agenda-map-files
-    (lambda () (apply #'org-agenda-get-day-entries-1 date args))
-    (list file))))
+  (org-agenda-mapcan-files
+   (lambda () (apply #'org-agenda-get-day-entries-1 date args))
+   (list file)))
 
 (defun org-agenda-todo-custom-ignore-p (time n)
   "Check whether timestamp is farther away than n number of days.

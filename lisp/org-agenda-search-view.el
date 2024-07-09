@@ -261,13 +261,12 @@ is active."
      (lambda ()
 
        (when-let ((entries
-                   (apply #'nconc
-                          (org-agenda-map-files
-                           (lambda ()
-                             (org-agenda-get-regexps
-                              regexps+ regexps- hdl-only todo-only
-                              org-agenda-search-view-max-outline-level))
-                           files))))
+                   (org-agenda-mapcan-files
+                    (lambda ()
+                      (org-agenda-get-regexps
+                       regexps+ regexps- hdl-only todo-only
+                       org-agenda-search-view-max-outline-level))
+                    files)))
          (insert (org-agenda-finalize-entries entries 'search) "\n")))
      :suggested-buffer-name (cons (if todo-only "search-todo" "search") string)
      :block-header (org-agenda--search-block-header string)

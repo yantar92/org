@@ -95,9 +95,8 @@ all the todo keywords in buffer (`org-element-all-todo-keywords')."
      (lambda ()
        (when-let
            ((entries
-             (apply #'nconc
-                    (org-agenda-map-files
-                     (lambda () (org-agenda-get-todos selector))))))
+             (org-agenda-mapcan-files
+              (lambda () (org-agenda-get-todos selector)))))
          (insert (org-agenda-finalize-entries entries 'todo) "\n")))
      :suggested-buffer-name (cons "todo" selector)
      :block-header (org-agenda--todo-block-header

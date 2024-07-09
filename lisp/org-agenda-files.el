@@ -514,17 +514,18 @@ The agenda files are the files processed by
     (when org-agenda-file-menu-enabled
       (org-install-agenda-files-menu))))
 
-(defun org-agenda-map-files (collect-function &optional files)
+(defun org-agenda-mapcan-files (collect-function &optional files)
   "Map COLLECT-FUNCTION on agenda files or FILES, honoring agenda restrictions.
-COLLECT-FUNCTION will be called with no arguments and its return
-values will be collected into the returned list.
+COLLECT-FUNCTION will be called with no arguments and its return value
+(which must be a list) will be merged via `nconc' into the returned
+list.
 
 The function will be called with current file possibly narrowed
 according to agenda restriction.
 
 If any of the FILES (or agenda files) is not yet open, it will be
-opened.  If opening fails, an entry (\"ORG-AGENDA-ERROR: No such
-org-file <filename>\") will be pushed to the returned list.
+opened.  If opening fails, an entry \"ORG-AGENDA-ERROR: No such
+org-file <filename>\" will be pushed to the returned list.
 
 Throw an error if any agenda file is either missing or not in Org
 mode."
@@ -552,7 +553,7 @@ mode."
 				      org-agenda-restrict-end)
 		  (widen))
 		(push (funcall collect-function) result)))))))
-    (nreverse result)))
+    (apply #'nconc (nreverse result))))
 
 ;;; User commands to manage Org agenda files
 
