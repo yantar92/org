@@ -70,9 +70,6 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
 	 (org--matcher-tags-todo-only todo-only)
 	 rtn rtnall files file matcher buffer)
 
-    (when (and (stringp match) (not (string-match "\\S-" match)))
-      (setq match nil))
-
     (setq matcher (org-make-tags-matcher match))
     (setq match (car matcher)
 	  matcher (cdr matcher))

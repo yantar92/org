@@ -606,7 +606,7 @@ table, only get buffer tags.
 
 See also `org-scan-tags'."
   (require 'org-mode)
-  (unless match
+  (unless (org-string-nw-p match)
     ;; Get a new match request, with completion against the global
     ;; tags table and the local tags in current buffer.
     (require 'org-tags)
