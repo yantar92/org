@@ -765,7 +765,7 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 FILE is the path to a file to be checked for entries.  DATE is date like
 the one returned by `calendar-current-date'.  ARGS are symbols indicating
 which kind of entries should be extracted.  For details about these, see
-the documentation of `org-diary'."
+the documentation of `org-agenda-entry-types'."
   (require 'org-mode)
   (defvar org-startup-folded)
   (defvar org-startup-align-all-tables)
