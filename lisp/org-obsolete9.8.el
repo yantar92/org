@@ -212,6 +212,10 @@ or end of the headline title), or COMMENT keyword.")
 (defvar org-agenda-name nil)
 (make-obsolete-variable 'org-agenda-name "unused" "9.8")
 
+(defvar org-agenda-current-date nil
+  "Active date when building the agenda.")
+(make-obsolete-variable 'org-agenda-current-date "unused" "9.8")
+
 ;;;; Obsolete functions and macros
 
 (declare-function org-check-and-save-marker "org-track-markers"

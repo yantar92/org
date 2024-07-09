@@ -166,8 +166,7 @@ is active."
 	  edit-at (nth 2 org-agenda-overriding-arguments)))
   (let* ((full-words org-agenda-search-view-force-full-words)
 	 (org-agenda-text-search-extra-files org-agenda-text-search-extra-files)
-	 rtn rtnall files file
-	 c neg re boolean words regexps+ regexps- hdl-only buffer)
+	 files c neg re boolean words regexps+ regexps- hdl-only)
 
     (unless (and (not edit-at)
 		 (stringp string)
@@ -244,49 +243,32 @@ is active."
 	    regexps+))
     (setq regexps+ (sort regexps+ (lambda (a b) (> (length a) (length b)))))
 
+    (setq files (org-agenda-files nil 'ifmode))
+    (when (eq (car org-agenda-text-search-extra-files) 'agenda-archives)
+      (pop org-agenda-text-search-extra-files)
+      (setq files (org-add-archive-files files)))
+    ;; Uniquify files.  However, let `org-check-agenda-file' handle
+    ;; non-existent ones.
+    (setq files (cl-remove-duplicates
+		 (append files org-agenda-text-search-extra-files)
+		 :test (lambda (a b)
+			 (and (file-exists-p a)
+			      (file-exists-p b)
+			      (file-equal-p a b)))))
+
     (org-agenda-insert-block
      'search
      (lambda ()
-       (setq files (org-agenda-files nil 'ifmode))
-       ;; Add `org-agenda-text-search-extra-files' unless there is some
-       ;; restriction.
-       (when (eq (car org-agenda-text-search-extra-files) 'agenda-archives)
-         (pop org-agenda-text-search-extra-files)
-         (unless (get 'org-agenda-files 'org-restrict)
-	   (setq files (org-add-archive-files files))))
-       ;; Uniquify files.  However, let `org-check-agenda-file' handle
-       ;; non-existent ones.
-       (setq files (cl-remove-duplicates
-		    (append files org-agenda-text-search-extra-files)
-		    :test (lambda (a b)
-			    (and (file-exists-p a)
-			         (file-exists-p b)
-			         (file-equal-p a b))))
-	     rtnall nil)
-       (while (setq file (pop files))
-         (org-check-agenda-file file)
-         (setq buffer (if (file-exists-p file)
-			  (org-get-agenda-file-buffer file)
-		        (error "No such file %s" file)))
-         (unless buffer
-	   ;; If file does not exist, make sure an error message is sent
-	   (setq rtn (list (format "ORG-AGENDA-ERROR: No such org-file %s"
-				   file))))
-         (with-current-buffer buffer
-           (unless (derived-mode-p 'org-mode)
-             (error "Agenda file %s is not in Org mode" file))
-           (save-excursion
-             (save-restriction
-               (if (eq buffer org-agenda-restrict)
-		   (narrow-to-region org-agenda-restrict-begin
-				     org-agenda-restrict-end)
-	         (widen))
-               (setq rtn (org-agenda-get-regexps
-                          regexps+ regexps- hdl-only todo-only
-                          org-agenda-search-view-max-outline-level)))))
-         (setq rtnall (append rtnall rtn)))
-       (when rtnall
-         (insert (org-agenda-finalize-entries rtnall 'search) "\n")))
+
+       (when-let ((entries
+                   (apply #'nconc
+                          (org-agenda-map-files
+                           (lambda ()
+                             (org-agenda-get-regexps
+                              regexps+ regexps- hdl-only todo-only
+                              org-agenda-search-view-max-outline-level))
+                           files))))
+         (insert (org-agenda-finalize-entries entries 'search) "\n")))
      :suggested-buffer-name (cons (if todo-only "search-todo" "search") string)
      :block-header (org-agenda--search-block-header string)
      :redo-command

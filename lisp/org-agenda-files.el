@@ -514,6 +514,46 @@ The agenda files are the files processed by
     (when org-agenda-file-menu-enabled
       (org-install-agenda-files-menu))))
 
+(defun org-agenda-map-files (collect-function &optional files)
+  "Map COLLECT-FUNCTION on agenda files or FILES, honoring agenda restrictions.
+COLLECT-FUNCTION will be called with no arguments and its return
+values will be collected into the returned list.
+
+The function will be called with current file possibly narrowed
+according to agenda restriction.
+
+If any of the FILES (or agenda files) is not yet open, it will be
+opened.  If opening fails, an entry (\"ORG-AGENDA-ERROR: No such
+org-file <filename>\") will be pushed to the returned list.
+
+Throw an error if any agenda file is either missing or not in Org
+mode."
+  (let ((org-agenda-files (or org-agenda-files files))
+        (org-inhibit-startup org-agenda-inhibit-startup)
+        (result nil)
+        buffer)
+    (dolist (file (org-agenda-files nil 'ifmode))
+      (catch 'nextfile
+	(org-check-agenda-file file)
+	(setq buffer (if (file-exists-p file)
+			 (org-get-agenda-file-buffer file)
+		       (error "No such file %s" file)))
+	(if (not buffer)
+	    ;; If file does not exist, error message to agenda
+	    (push (list (format "ORG-AGENDA-ERROR: No such org-file %s" file))
+	          result)
+	  (with-current-buffer buffer
+	    (unless (derived-mode-p 'org-mode)
+	      (error "Agenda file %s is not in Org mode" file))
+	    (save-excursion
+	      (save-restriction
+		(if (eq buffer org-agenda-restrict)
+		    (narrow-to-region org-agenda-restrict-begin
+				      org-agenda-restrict-end)
+		  (widen))
+		(push (funcall collect-function) result)))))))
+    (nreverse result)))
+
 ;;; User commands to manage Org agenda files
 
 (defun org-store-new-agenda-file-list (list)

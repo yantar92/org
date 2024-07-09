@@ -67,51 +67,27 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
   (let* ((org-tags-match-list-sublevels
 	  org-tags-match-list-sublevels)
 	 (completion-ignore-case t)
-	 (org--matcher-tags-todo-only todo-only)
-	 rtn rtnall files file matcher buffer)
+	 (matcher (org-make-tags-matcher match)))
 
-    (setq matcher (org-make-tags-matcher match))
     (setq match (car matcher)
 	  matcher (cdr matcher))
+
     (setq org-agenda-query-string match)
 
     (org-agenda-insert-block
      'tags
      (lambda ()
-       (setq files (org-agenda-files nil 'ifmode)
-	     rtnall nil)
-       (while (setq file (pop files))
-         (catch 'nextfile
-	   (org-check-agenda-file file)
-	   (setq buffer (if (file-exists-p file)
-			    (org-get-agenda-file-buffer file)
-			  (error "No such file %s" file)))
-	   (if (not buffer)
-	       ;; If file does not exist, error message to agenda
-	       (setq rtn (list
-			  (format "ORG-AGENDA-ERROR: No such org-file %s" file))
-		     rtnall (append rtnall rtn))
-	     (with-current-buffer buffer
-	       (unless (derived-mode-p 'org-mode)
-	         (error "Agenda file %s is not in Org mode" file))
-	       (save-excursion
-	         (save-restriction
-		   (if (eq buffer org-agenda-restrict)
-		       (narrow-to-region org-agenda-restrict-begin
-				         org-agenda-restrict-end)
-		     (widen))
-		   (setq rtn (org-agenda-get-tags
-			      matcher org--matcher-tags-todo-only))
-		   (setq rtnall (append rtnall rtn))))))))
-       (when rtnall
-         (insert (org-agenda-finalize-entries rtnall 'tags) "\n")))
+       (when-let ((entries
+                   (apply #'nconc
+                          (org-agenda-map-files
+                           (lambda ()
+                             (org-agenda-get-tags matcher todo-only))))))
+         (insert (org-agenda-finalize-entries entries 'tags) "\n")))
+     
      :suggested-buffer-name (cons (if todo-only "tags-todo" "tags") match)
      :block-header (org-agenda--tags-block-header match)
-     :redo-command
-     (list 'org-tags-view
-	   `(quote ,org--matcher-tags-todo-only)
-	   `(if current-prefix-arg nil ,org-agenda-query-string))
-     :block-args (list org--matcher-tags-todo-only match))))
+     :redo-command `(org-tags-view (quote ,todo-only) ,match)
+     :block-args (list todo-only match))))
 
 (provide 'org-agenda-tags-view)
 

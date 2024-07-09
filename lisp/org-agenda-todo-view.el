@@ -89,21 +89,18 @@ all the todo keywords in buffer (`org-element-all-todo-keywords')."
                (completing-read-multiple
                 "Keyword (or KWD1|KWD2|...): "
                 (mapcar #'list org-todo-keywords-for-agenda) nil nil))
-             "|"))))
-         (all-todo-entries nil))
+             "|")))))
 
     (org-agenda-insert-block
      'todo
      (lambda ()
-       (dolist (file (org-agenda-files nil 'ifmode))
-	 (catch 'nextfile
-	   (org-check-agenda-file file)
-	   (setq all-todo-entries
-                 (append
-                  all-todo-entries
-                  (org-agenda-get-day-entries file today :todo)))))
-       (when all-todo-entries
-	 (insert (org-agenda-finalize-entries all-todo-entries 'todo) "\n")))
+       (when-let
+           ((entries
+             (apply #'nconc
+                    (org-agenda-map-files
+                     (lambda () (org-agenda-get-day-entries-1
+                            today :todo))))))
+         (insert (org-agenda-finalize-entries entries 'todo) "\n")))
      :suggested-buffer-name (cons "todo" org-select-this-todo-keyword)
      :block-header (org-agenda--todo-block-header
                     org-todo-keywords-for-agenda

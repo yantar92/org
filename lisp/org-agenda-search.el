@@ -757,8 +757,63 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 
 ;;; Searching Org agenda files
 
-(defvar org-agenda-current-date nil
-  "Active date when building the agenda.")
+(defun org-agenda-get-day-entries-1 (date &rest args)
+  "Does the work for `org-diary' and `org-agenda' in current buffer.
+DATE is date like the one returned by `calendar-current-date'.  ARGS
+are symbols indicating which kind of entries should be extracted.  For
+details about these, see the documentation of
+`org-agenda-entry-types'."
+  (setq org-agenda-buffer (or org-agenda-buffer (current-buffer)))
+  ;; FIXME `org-agenda-current-date' is obsolete.
+  (with-no-warnings
+    (setf org-agenda-current-date date))
+  ;; Rationalize ARGS.
+  ;;
+  ;; We use `delq' since `org-uniquify' duplicates ARGS,
+  ;; guarding us from modifying `org-agenda-entry-types'.
+  (setf args (org-uniquify (or args org-agenda-entry-types)))
+  ;; When both :scheduled/deadline and :scheduled*/deadline*
+  ;; are present, ignore non-starred versions, as we promise
+  ;; in `org-agenda-entry-types' docstring.
+  (when (and (memq :scheduled args) (memq :scheduled* args))
+    (setf args (delq :scheduled args)))
+  (when (and (memq :deadline args) (memq :deadline* args))
+    (setf args (delq :deadline args)))
+  ;; Make sure `:deadline' comes first in order to populate
+  ;; DEADLINES before passing it.
+  (cond
+   ((memq :deadline args)
+    (setf args (cons :deadline (delq :deadline args))))
+   ((memq :deadline* args)
+    (setf args (cons :deadline* (delq :deadline* args)))))
+  ;; Collect list of headlines.  Return them flattened.
+  (let ((case-fold-search nil) results deadlines)
+    (org-dlet
+        ((date date))
+      (dolist (arg args (apply #'nconc (nreverse results)))
+	(pcase arg
+	  ((and :todo (guard (org-agenda-today-p date)))
+	   (push (org-agenda-get-todos) results))
+	  (:timestamp
+	   (push (org-agenda-get-blocks) results)
+	   (push (org-agenda-get-timestamps deadlines) results))
+	  (:sexp
+	   (push (org-agenda-get-sexps) results))
+	  (:scheduled
+	   (push (org-agenda-get-scheduled deadlines) results))
+	  (:scheduled*
+	   (push (org-agenda-get-scheduled deadlines t) results))
+	  (:closed
+	   (push (org-agenda-get-progress
+                  (if (eq org-agenda-show-log 'clockcheck) '(clock)
+                    org-agenda-show-log))
+                 results))
+	  (:deadline
+	   (setf deadlines (org-agenda-get-deadlines))
+	   (push deadlines results))
+	  (:deadline*
+	   (setf deadlines (org-agenda-get-deadlines t))
+	   (push deadlines results)))))))
 
 (defun org-agenda-get-day-entries (file date &rest args)
   "Does the work for `org-diary' and `org-agenda'.
@@ -766,74 +821,10 @@ FILE is the path to a file to be checked for entries.  DATE is date like
 the one returned by `calendar-current-date'.  ARGS are symbols indicating
 which kind of entries should be extracted.  For details about these, see
 the documentation of `org-agenda-entry-types'."
-  (require 'org-mode)
-  (defvar org-startup-folded)
-  (defvar org-startup-align-all-tables)
-  (let* ((org-startup-folded nil)
-	 (org-startup-align-all-tables nil)
-	 (buffer (if (file-exists-p file) (org-get-agenda-file-buffer file)
-		   (error "No such file %s" file))))
-    (if (not buffer)
-	;; If file does not exist, signal it in diary nonetheless.
-	(list (format "ORG-AGENDA-ERROR: No such org-file %s" file))
-      (with-current-buffer buffer
-	(unless (derived-mode-p 'org-mode)
-	  (error "Agenda file %s is not in Org mode" file))
-	(setq org-agenda-buffer (or org-agenda-buffer buffer))
-	(setf org-agenda-current-date date)
-	(save-excursion
-	  (save-restriction
-	    (if (eq buffer org-agenda-restrict)
-		(narrow-to-region org-agenda-restrict-begin
-				  org-agenda-restrict-end)
-	      (widen))
-	    ;; Rationalize ARGS.
-	    ;;
-	    ;; We use `delq' since `org-uniquify' duplicates ARGS,
-	    ;; guarding us from modifying `org-agenda-entry-types'.
-	    (setf args (org-uniquify (or args org-agenda-entry-types)))
-            ;; When both :scheduled/deadline and :scheduled*/deadline*
-            ;; are present, ignore non-starred versions, as we promise
-            ;; in `org-agenda-entry-types' docstring.
-	    (when (and (memq :scheduled args) (memq :scheduled* args))
-	      (setf args (delq :scheduled args)))
-            (when (and (memq :deadline args) (memq :deadline* args))
-	      (setf args (delq :deadline args)))
-            ;; Make sure `:deadline' comes first in order to populate
-	    ;; DEADLINES before passing it.
-            (cond
-	     ((memq :deadline args)
-	      (setf args (cons :deadline (delq :deadline args))))
-	     ((memq :deadline* args)
-	      (setf args (cons :deadline* (delq :deadline* args)))))
-	    ;; Collect list of headlines.  Return them flattened.
-	    (let ((case-fold-search nil) results deadlines)
-              (org-dlet
-                  ((date date))
-	        (dolist (arg args (apply #'nconc (nreverse results)))
-		  (pcase arg
-		    ((and :todo (guard (org-agenda-today-p date)))
-		     (push (org-agenda-get-todos) results))
-		    (:timestamp
-		     (push (org-agenda-get-blocks) results)
-		     (push (org-agenda-get-timestamps deadlines) results))
-		    (:sexp
-		     (push (org-agenda-get-sexps) results))
-		    (:scheduled
-		     (push (org-agenda-get-scheduled deadlines) results))
-		    (:scheduled*
-		     (push (org-agenda-get-scheduled deadlines t) results))
-		    (:closed
-		     (push (org-agenda-get-progress
-                            (if (eq org-agenda-show-log 'clockcheck) '(clock)
-                              org-agenda-show-log))
-                           results))
-		    (:deadline
-		     (setf deadlines (org-agenda-get-deadlines))
-		     (push deadlines results))
-		    (:deadline*
-		     (setf deadlines (org-agenda-get-deadlines t))
-		     (push deadlines results))))))))))))
+  (car
+   (org-agenda-map-files
+    (lambda () (apply #'org-agenda-get-day-entries-1 date args))
+    (list file))))
 
 (defun org-agenda-todo-custom-ignore-p (time n)
   "Check whether timestamp is farther away than n number of days.
