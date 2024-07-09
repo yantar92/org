@@ -74,48 +74,41 @@ all the todo keywords in buffer (`org-element-all-todo-keywords')."
   (interactive "P")
   (when org-agenda-overriding-arguments
     (setq arg org-agenda-overriding-arguments))
-  (when (and (stringp arg) (not (string-match "\\S-" arg)))
-    (setq arg nil))
+  
   (let* ((today (calendar-gregorian-from-absolute (org-today)))
-	 (completion-ignore-case t)
-         todo-keywords org-select-this-todo-keyword todo-entries all-todo-entries files file)
-
-    (setq todo-keywords org-todo-keywords-for-agenda
-          org-select-this-todo-keyword (cond ((stringp arg) arg)
-                                             ((and (integerp arg) (> arg 0))
-                                              (nth (1- arg) todo-keywords))))
-    (when (equal arg '(4))
-      (setq org-select-this-todo-keyword
-            (mapconcat #'identity
-                       (let ((crm-separator "|"))
-                         (completing-read-multiple
-                          "Keyword (or KWD1|KWD2|...): "
-                          (mapcar #'list todo-keywords) nil nil))
-                       "|")))
-    (when (equal arg 0)
-      (setq org-select-this-todo-keyword nil))
+         (org-select-this-todo-keyword
+          (cond
+           ((org-string-nw-p arg) arg)
+           ((and (integerp arg) (> arg 0))
+            (nth (1- arg) org-todo-keywords-for-agenda))
+           ((equal arg '(4))
+            (mapconcat
+             #'identity
+             (let ((crm-separator "|")
+                   (completion-ignore-case t))
+               (completing-read-multiple
+                "Keyword (or KWD1|KWD2|...): "
+                (mapcar #'list org-todo-keywords-for-agenda) nil nil))
+             "|"))))
+         (all-todo-entries nil))
 
     (org-agenda-insert-block
      'todo
      (lambda ()
-       (setq files (org-agenda-files nil 'ifmode)
-	     all-todo-entries nil)
-       (while (setq file (pop files))
+       (dolist (file (org-agenda-files nil 'ifmode))
 	 (catch 'nextfile
 	   (org-check-agenda-file file)
-	   (setq todo-entries (org-agenda-get-day-entries file today :todo))
-	   (setq all-todo-entries (append all-todo-entries todo-entries))))
+	   (setq all-todo-entries
+                 (append
+                  all-todo-entries
+                  (org-agenda-get-day-entries file today :todo)))))
        (when all-todo-entries
 	 (insert (org-agenda-finalize-entries all-todo-entries 'todo) "\n")))
      :suggested-buffer-name (cons "todo" org-select-this-todo-keyword)
      :block-header (org-agenda--todo-block-header
-                    todo-keywords org-select-this-todo-keyword)
-     :redo-command
-     `(org-todo-list
-       (or (and (numberp current-prefix-arg) current-prefix-arg)
-	   ,org-select-this-todo-keyword
-	   current-prefix-arg
-           ,arg))
+                    org-todo-keywords-for-agenda
+                    org-select-this-todo-keyword)
+     :redo-command `(org-todo-list ,arg)
      :block-args arg)))
 
 (defun org-agenda-propertize-selected-todo-keywords (keywords)
