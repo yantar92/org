@@ -261,7 +261,11 @@ Return non-nil when the entry was actually encrypted."
 	              (if (and (equal crypt-key key)
 		               (string= checksum (sha1 contents)))
 		          (get-text-property 0 'org-crypt-text contents)
-		        (epg-encrypt-string epg-context contents crypt-key))))
+                        (condition-case err
+		            (epg-encrypt-string epg-context contents crypt-key)
+                          (error (error "Org-crypt (%s): %S"
+                                        (current-buffer)
+                                        (error-message-string err)))))))
 	         (insert encrypted-text)
                  (backward-char) ; make sure that we are not at the next heading
                  (pcase (org-at-encrypted-entry-p)
@@ -304,7 +308,11 @@ Return non-nil when the entry was actually encrypted."
                 (if (equal (sha1 encrypted-text)
                            (get-text-property beg 'org-crypt-checksum))
                     (get-text-property beg 'org-crypt-text)
-		  (epg-decrypt-string epg-context encrypted-text))
+                  (condition-case err
+		      (epg-decrypt-string epg-context encrypted-text)
+                    (error (error "Org-crypt (%s): %S"
+                                  (current-buffer)
+                                  (error-message-string err)))))
 		'utf-8))
               origin-marker)
 	 ;; Delete region starting just before point, because the
