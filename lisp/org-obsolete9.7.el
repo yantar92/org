@@ -29,6 +29,8 @@
 
 ;;; Code:
 
+(require 'org-element-ast)
+
 ;;;; Prevent breakage of third-party packages that rely upon
 ;;;; outline.el functions working in Org mode.
 
