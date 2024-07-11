@@ -230,7 +230,8 @@ Assume `epg-context' is set."
 
 ;;;###autoload
 (defun org-encrypt-entry ()
-  "Encrypt the content of the current headline."
+  "Encrypt the content of the current headline.
+Return non-nil when the entry was actually encrypted."
   (interactive)
   (unless (org-at-encrypted-entry-p)
     (require 'epg)
@@ -278,7 +279,7 @@ Assume `epg-context' is set."
 	 (when folded-heading
 	   (goto-char folded-heading)
 	   (org-fold-subtree t))
-	 nil)))))
+	 t)))))
 
 (defvar org-outline-regexp-bol)
 ;;;###autoload
@@ -369,11 +370,11 @@ Assume `epg-context' is set."
   "Encrypt all the entries matching `org-crypt-tag-matcher' in buffer.
 When optional argument HOOK-FUNCTION is non-nil, it should be a function
 accepting 0 arguments.  The function will be called with point at
-encrypted entry."
+encrypted entry if the entry was actually encrypted."
   (interactive)
   (org-encrypt--map-items
    (if hook-function
-       (lambda () (org-encrypt-entry) (funcall hook-function))
+       (lambda () (when (org-encrypt-entry) (funcall hook-function)))
      #'org-encrypt-entry)))
 
 ;;;###autoload
