@@ -418,7 +418,10 @@ Return nil."
       (error
        ;; Disable auto-save.
        (auto-save-mode -1)
-       (error "org-crypt: Encryption failed.  Not saving the buffer.\nError: %s"
+       (error "Org-crypt: Encryption failed.  Not saving the buffer.
+Use %s to disable auto-encryption in all the Org buffers
+Error: %s"
+              (substitute-command-keys "\\[universal-argument] \\[org-crypt-use-before-save-magic]")
               (error-message-string err)))))
   ;; Return nil to continue saving as usual.
   nil)
@@ -442,6 +445,7 @@ Return nil."
 (defun org-crypt-use-before-save-magic (&optional remove-hook)
   "Add hooks to automatically encrypt entries before a file is saved to disk.
 When REMOVE-HOOK is non-nil, remove the hook instead."
+  (interactive "P")
   (let ((setup
          (if remove-hook
              (lambda ()
@@ -451,7 +455,12 @@ When REMOVE-HOOK is non-nil, remove the hook instead."
     (dolist (buf (org-buffer-list))
       (with-current-buffer buf
         (funcall setup)))
-    (add-hook 'org-mode-hook setup)))
+    (add-hook 'org-mode-hook setup)
+    (when (called-interactively-p 'any)
+      (if remove-hook
+          (message "Org-crypt: Automatic encrypion on save OFF.  WARNING: Unencrypted data may leak to disk\n%s"
+                   (substitute-command-keys "Use \\[org-crypt-use-before-save-magic] to re-enable auto-encryption"))
+        (message "Org-crypt: Automatic encrypion on save ON")))))
 
 (add-hook 'org-fold-reveal-start-hook 'org-decrypt-entry)
 
