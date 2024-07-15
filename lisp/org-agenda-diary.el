@@ -110,10 +110,12 @@ top-level         as top-level entries at the end of the file."
       (setq entries
 	    (mapcar
 	     (lambda (x)
-	       (setq x (org-agenda-format-item "" x nil "Diary" nil 'time))
+	       (setq x (org-agenda-format-line x :category "Diary" :dotime 'auto))
 	       ;; Extend the text properties to the beginning of the line
 	       (org-add-props x (text-properties-at (1- (length x)) x)
-		 'type "diary" 'date date 'face 'org-agenda-diary))
+		 'type "diary"
+                 'date date
+                 'face 'org-agenda-diary))
 	     entries)))))
 
 (defvar org-agenda-cleanup-fancy-diary-hook nil
@@ -301,30 +303,28 @@ the resulting entry will not be shown.  When TEXT is empty, switch to
        (insert (format "%%%%(org-anniversary %d %2d %2d) %s"
 		       (nth 2 d1) (car d1) (nth 1 d1) text)))
       (day
-       (let ((org-prefix-has-time t)
-	     (org-agenda-time-leading-zero t)
-	     fmt time time2)
+       (let (time)
 	 (when org-agenda-insert-diary-extract-time
-	   ;; Use org-agenda-format-item to parse text for a time-range and
-	   ;; remove it.  FIXME: This is a hack, we should refactor
-	   ;; that function to make time extraction available separately
-	   (setq fmt (org-agenda-format-item nil text nil nil nil t)
-		 time (get-text-property 0 'time fmt)
-		 time2 (if (> (length time) 0)
-			   ;; split-string removes trailing ...... if
-			   ;; no end time given.  First space
-			   ;; separates time from date.
-			   (concat " " (car (split-string time "\\.")))
-			 nil)
-		 text (get-text-property 0 'txt fmt)))
-	 (if (eq org-agenda-insert-diary-strategy 'top-level)
-	     (org-agenda-insert-diary-as-top-level text)
-	   (require 'org-datetree)
-	   (org-datetree-find-date-create d1)
-	   (org-agenda-insert-diary-make-new-entry text))
-	 (org-insert-timestamp (org-time-from-absolute
-				(calendar-absolute-from-gregorian d1))
-			       nil nil nil nil time2))
+           (pcase-let
+               ((`(,matched-time ,start-time ,end-time)
+                 (org-agenda--find-time-in-string text)))
+             ;; Normalize the time(s) to 24 hour.
+             (let ((org-agenda-time-leading-zero t))
+	       (when start-time (setq start-time (org-get-time-of-day start-time t)))
+	       (when end-time (setq end-time (org-get-time-of-day end-time t))))
+             (when matched-time
+	       (when (string-match (concat (regexp-quote matched-time) " *") text)
+	         (setq text (replace-match "" nil nil text)))
+               (setq time (if end-time (format " %s-%s" start-time end-time)
+                            (format " %s" start-time)))))
+	   (if (eq org-agenda-insert-diary-strategy 'top-level)
+	       (org-agenda-insert-diary-as-top-level text)
+	     (require 'org-datetree)
+	     (org-datetree-find-date-create d1)
+	     (org-agenda-insert-diary-make-new-entry text))
+	   (org-insert-timestamp (org-time-from-absolute
+				  (calendar-absolute-from-gregorian d1))
+			         nil nil nil nil time)))
        (end-of-line 0))
       ((block) ;; Wrap this in (strictly unnecessary) parens because
        ;; otherwise the indentation gets confused by the

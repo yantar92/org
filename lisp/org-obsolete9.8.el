@@ -361,6 +361,258 @@ which see."
       (_ nil))))
 (make-obsolete 'org-tags-completion-function "no longer used" "9.8")
 
+(defun org-agenda-format-item (extra txt &optional with-level with-category tags dotime
+				     remove-re habitp)
+  "Format TXT to be inserted into the agenda buffer.
+In particular, add the prefix and corresponding text properties.
+
+EXTRA must be a string to replace the `%s' specifier in the prefix format.
+WITH-LEVEL may be a string to replace the `%l' specifier.
+WITH-CATEGORY (a string, a symbol or nil) may be used to overrule the default
+category taken from local variable or file name.  It will replace the `%c'
+specifier in the format.
+DOTIME, when non-nil, indicates that a time-of-day should be extracted from
+TXT for sorting of this entry, and for the `%t' specifier in the format.
+When DOTIME is a string, this string is searched for a time before TXT is.
+TAGS can be the tags of the headline.
+Any match of REMOVE-RE will be removed from TXT."
+  ;; We keep the org-prefix-* variable values along with a compiled
+  ;; formatter, so that multiple agendas existing at the same time do
+  ;; not step on each other toes.
+  ;;
+  ;; It was inconvenient to make these variables buffer local in
+  ;; Agenda buffers, because this function expects to be called with
+  ;; the buffer where item comes from being current, and not agenda
+  ;; buffer
+  (require 'org-agenda-line-format)
+  (defvar org-prefix-format-compiled)
+  (defvar org-agenda-hide-tags-regexp)
+  (defvar org-agenda-time-grid)
+  (defvar org-agenda-search-headline-for-time)
+  (defvar org-prefix-has-time)
+  (defvar org-prefix-has-tag)
+  (defvar org-prefix-has-breadcrumbs)
+  (defvar org-agenda-remove-times-when-in-prefix)
+  (defvar org-agenda-default-appointment-duration)
+  (defvar org-agenda-remove-tags)
+  (defvar org-agenda-timegrid-use-ampm)
+  (defvar org-prefix-category-length)
+  (defvar org-prefix-category-max-length)
+  (defvar org-agenda-breadcrumbs-separator)
+  (declare-function org-agenda-fix-displayed-tags "org-agenda-line-format"
+                    (txt tags add-inherited hide-re))
+  (declare-function org-agenda-get-category-icon "org-agenda-line-format" (category))
+  (declare-function org-get-time-of-day "org-agenda-line-format" (s &optional string))
+  (declare-function org-agenda-time-of-day-to-ampm-maybe "org-agenda-line-format" (time))
+  (require 'org-agenda-common)
+  (defvar org-agenda-show-inherited-tags)
+  (defvar org-agenda-contributing-files)
+  (require 'org-element)
+  (defvar org-ts-regexp-both)
+  (defvar org-link-bracket-re)
+  (require 'org-regexps)
+  (defvar org-stamp-time-of-day-regexp)
+  (defvar org-plain-time-of-day-regexp)
+  (defvar org-tag-group-re)
+  (require 'org-duration)
+  (declare-function org-duration-from-minutes "org-duration"
+                    (minutes &optional fmt canonical))
+  (declare-function org-duration-to-minutes "org-duration" (duration &optional canonical))
+  (require 'org-outline)
+  (declare-function org-get-outline-path "org-outline" (&optional with-self use-cache))
+  (declare-function org-format-outline-path "org-outline" (path &optional width prefix separator))
+  (require 'org-priority-common)
+  (defvar org-priority-highest)
+  (defvar org-priority-lowest)
+  (let* ((bindings (car org-prefix-format-compiled))
+	 (formatter (cadr org-prefix-format-compiled)))
+    (cl-loop for (var value) in bindings
+	     do (set var value))
+    (save-match-data
+      ;; Diary entries sometimes have extra whitespace at the beginning
+      (setq txt (org-trim txt))
+
+      ;; Fix the tags part in txt
+      (setq txt (org-agenda-fix-displayed-tags
+		 txt tags
+		 org-agenda-show-inherited-tags
+		 org-agenda-hide-tags-regexp))
+
+      (with-no-warnings
+	;; `time', `tag', `effort' are needed for the eval of the prefix format.
+	;; Based on what I see in `org-compile-prefix-format', I added
+	;; a few more.
+        (defvar breadcrumbs) (defvar category) (defvar category-icon)
+        (defvar effort) (defvar extra)
+        (defvar level) (defvar tag) (defvar time))
+      (let* ((category (or with-category
+			   (if buffer-file-name
+			       (file-name-sans-extension
+				(file-name-nondirectory buffer-file-name))
+			     "")))
+             (full-category category)
+	     (category-icon (org-agenda-get-category-icon category))
+	     (category-icon (if category-icon
+				(propertize " " 'display category-icon)
+			      ""))
+	     (effort (and (not (string= txt ""))
+			  (get-text-property 1 'effort txt)))
+	     (tag (if tags (nth (1- (length tags)) tags) ""))
+	     (time-grid-trailing-characters (nth 2 org-agenda-time-grid))
+	     (extra (or (and (not habitp) extra) ""))
+	     time
+	     (string-containing-time
+              (when dotime (concat
+			    (if (stringp dotime) dotime "")
+			    (and org-agenda-search-headline-for-time
+                                 ;; Do not search inside
+                                 ;; timestamps.  They are handled
+                                 ;; separately.
+                                 (replace-regexp-in-string
+                                  org-ts-regexp-both ""
+                                  txt)))))
+	     (time-of-day (and dotime (org-get-time-of-day string-containing-time)))
+	     timestamp-range? plain-time? date-range-same-day?
+             time-string start-time end-time rtn
+	     duration breadcrumbs)
+	(and (derived-mode-p 'org-mode) buffer-file-name
+	     (add-to-list 'org-agenda-contributing-files buffer-file-name))
+	(when (and dotime time-of-day)
+	  ;; Extract starting and ending time and move them to prefix
+	  (when (or (setq timestamp-range?
+                          (string-match org-stamp-time-of-day-regexp
+                                        string-containing-time))
+		    (setq plain-time?
+                          (string-match org-plain-time-of-day-regexp
+                                        string-containing-time)))
+	    (setq time-string (match-string 0 string-containing-time)
+		  date-range-same-day? (and timestamp-range? (match-end 3))
+		  start-time (match-string (if plain-time? 1 2)
+                                           string-containing-time)
+		  end-time (match-string (if plain-time? 8
+                                           (if date-range-same-day? 4 6))
+                                         string-containing-time))
+
+	    ;; If the times are in TXT (not in DOTIMES), and the prefix will list
+	    ;; them, we might want to remove them there to avoid duplication.
+	    ;; The user can turn this off with a variable.
+	    (when (and org-prefix-has-time
+		       org-agenda-remove-times-when-in-prefix
+                       (or timestamp-range? plain-time?)
+		       (string-match (concat (regexp-quote time-string) " *") txt)
+		       (not (equal ?\] (string-to-char (substring txt (match-end 0)))))
+		       (if (eq org-agenda-remove-times-when-in-prefix 'beg)
+			   (= (match-beginning 0) 0)
+			 t))
+	      (setq txt (replace-match "" nil nil txt))))
+          ;; Normalize the time(s) to 24 hour.
+	  (when start-time (setq start-time (org-get-time-of-day start-time t)))
+	  (when end-time (setq end-time (org-get-time-of-day end-time t)))
+	  ;; Try to set s2 if s1 and
+	  ;; `org-agenda-default-appointment-duration' are set
+	  (when (and start-time (not end-time)
+                     org-agenda-default-appointment-duration)
+	    (setq end-time
+	          (org-duration-from-minutes
+	           (+ (org-duration-to-minutes start-time t)
+		      org-agenda-default-appointment-duration)
+	           nil t)))
+	  ;; Compute the duration
+	  (when end-time
+	    (setq duration (- (org-duration-to-minutes end-time)
+			      (org-duration-to-minutes start-time))))
+          ;; Format S1 and S2 for display.
+	  (when start-time
+            (setq start-time (format "%5s" (org-get-time-of-day start-time 'overtime))))
+	  (when end-time
+            (setq end-time (org-get-time-of-day end-time 'overtime))))
+	(when (string-match org-tag-group-re txt)
+	  ;; Tags are in the string
+	  (if (or (eq org-agenda-remove-tags t)
+		  (and org-agenda-remove-tags
+		       org-prefix-has-tag))
+	      (setq txt (replace-match "" t t txt))
+	    (setq txt (replace-match
+		       (concat (make-string (max (- 50 (length txt)) 1) ?\ )
+			       (match-string 1 txt))
+		       t t txt))))
+
+	(when remove-re
+	  (while (string-match remove-re txt)
+	    (setq txt (replace-match "" t t txt))))
+
+	;; Set org-heading property on `txt' to mark the start of the
+	;; heading.
+	(add-text-properties 0 (length txt) '(org-heading t) txt)
+
+	;; Prepare the variables needed in the eval of the compiled format
+	(when org-prefix-has-breadcrumbs
+	  (setq breadcrumbs
+                ;; When called from Org buffer, remain in position.
+                ;; When called from Agenda buffer, jump to headline position first.
+                (org-with-point-at (org-get-at-bol 'org-marker)
+		  (let ((s (if (derived-mode-p 'org-mode)
+                               (org-format-outline-path (org-get-outline-path)
+						        (1- (frame-width))
+						        nil org-agenda-breadcrumbs-separator)
+                             ;; Not in Org buffer.  This can happen,
+                             ;; for example, in
+                             ;; `org-agenda-add-time-grid-maybe' where
+                             ;; time grid does not correspond to a
+                             ;; particular heading.
+                             "")))
+		    (if (equal "" s) "" (concat s org-agenda-breadcrumbs-separator))))))
+	(setq time (cond (end-time
+                          (concat
+			   (org-agenda-time-of-day-to-ampm-maybe start-time)
+			   "-" (org-agenda-time-of-day-to-ampm-maybe end-time)
+			   (when org-agenda-timegrid-use-ampm " ")))
+			 (start-time
+                          (concat
+			   (org-agenda-time-of-day-to-ampm-maybe start-time)
+			   (if org-agenda-timegrid-use-ampm
+                               (concat time-grid-trailing-characters " ")
+                             time-grid-trailing-characters)))
+			 (t ""))
+	      category (if (symbolp category) (symbol-name category) category)
+	      level (or with-level ""))
+	(if (string-match org-link-bracket-re category)
+	    (let ((link-width (string-width (or (match-string 2) (match-string 1)))))
+	      (when (< link-width (or org-prefix-category-length 0))
+	        (setq category (copy-sequence category))
+	        (org-add-props category nil
+		  'extra-space (make-string
+			        (- org-prefix-category-length link-width 1) ?\ ))))
+	  (when (and org-prefix-category-max-length
+		     (>= (length category) org-prefix-category-max-length))
+	    (setq category (substring category 0 (1- org-prefix-category-max-length)))))
+	;; Evaluate the compiled format
+	(setq rtn (concat (eval formatter t) txt))
+
+	;; And finally add the text properties
+	(remove-text-properties 0 (length rtn) '(line-prefix t wrap-prefix t) rtn)
+	(org-add-props rtn nil
+          ;; CATEGORY might be truncated.  Store the full category in
+          ;; the properties.
+	  'org-category full-category
+          'tags tags
+          'org-priority-highest org-priority-highest
+	  'org-priority-lowest org-priority-lowest
+	  'time-of-day time-of-day
+	  'duration duration
+	  'breadcrumbs breadcrumbs
+	  'txt txt
+	  'level level
+	  'time time
+	  'extra extra
+	  'format org-prefix-format-compiled
+	  'dotime dotime)))))
+(make-obsolete
+ 'org-agenda-format-item
+ "Use `org-agenda-format-heading' or `org-agenda-format-line' instead"
+ "9.8")
+
+
 (defun org--set-obsolete-regexps-and-options (org-data &optional tags-only)
   "Set obsolete regexp variables in current buffer according to ORG-DATA.
 When TAGS-ONLY is non-nil, only set tag-related variables."
