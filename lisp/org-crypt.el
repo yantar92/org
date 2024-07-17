@@ -401,11 +401,20 @@ Do not throw errors.  Do not mark headings for future auto-decryption."
         (with-demoted-errors "%S"
           (org-crypt--encrypt-and-mark-entries 'no-mark))))))
 
+(defvar-local org-crypt--point-before-encryption nil
+  "Point position before encrypt+mark -> decrypt cycle.
+See `org-crypt--encrypt-and-mark-entries',
+`org-crypt--decrypt-marked-entries', and
+`org-crypt--setup-save-hooks'.")
 (defun org-crypt--encrypt-and-mark-entries (&optional no-mark)
   "Encrypt entries and mark them with `org-crypt-auto-encrypted' property.
 When optional argument NO-MARK is non-nil, do not mark.
 Return nil."
   (let ((modified-flag (buffer-modified-p)))
+    ;; Store point position before we start encryption to restore it
+    ;; later in case if encryption moves point that is inside entry to
+    ;; be encrypted.
+    (unless no-mark (setq org-crypt--point-before-encryption (point)))
     (condition-case err
         (unwind-protect
             (org-encrypt-entries
@@ -416,6 +425,7 @@ Return nil."
                     (put-text-property beg end 'org-crypt-auto-encrypted t))))))
           (set-buffer-modified-p modified-flag))
       (error
+       (unless no-mark (setq org-crypt--point-before-encryption nil))
        ;; Disable auto-save.
        (auto-save-mode -1)
        (error "Org-crypt: Encryption failed.  Not saving the buffer.
@@ -434,7 +444,10 @@ Error: %s"
        (when (get-text-property (point) 'org-crypt-auto-encrypted)
          (org-decrypt-entry))
        (goto-char (next-single-char-property-change (point) 'org-crypt-auto-encrypted))))
-    (set-buffer-modified-p modified-flag)))
+    (set-buffer-modified-p modified-flag)
+    (when org-crypt--point-before-encryption
+      (goto-char org-crypt--point-before-encryption)
+      (setq org-crypt--point-before-encryption nil))))
 
 (defun org-crypt--setup-save-hooks ()
   "Setup encryption before saving buffer to disk."
