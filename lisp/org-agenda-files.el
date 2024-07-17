@@ -514,45 +514,72 @@ The agenda files are the files processed by
     (when org-agenda-file-menu-enabled
       (org-install-agenda-files-menu))))
 
-(defun org-agenda-mapcan-files (collect-function &optional files)
-  "Map COLLECT-FUNCTION on agenda files or FILES, honoring agenda restrictions.
+(defun org-agenda-mapcan-files (collect-function &optional files-or-buffers)
+  "Map COLLECT-FUNCTION on agenda files or FILES-OR-BUFFERS.
+Honor agenda restrictions, if any.
+
 COLLECT-FUNCTION will be called with no arguments and its return value
-(which must be a list) will be merged via `nconc' into the returned
+\\(which must be a list) will be merged via `nconc' into the returned
 list.
 
 The function will be called with current file possibly narrowed
-according to agenda restriction.
+according to agenda restriction.  The function may throw `:break'
+signal to stop collecting and return the result immediately.
 
-If any of the FILES (or agenda files) is not yet open, it will be
-opened.  If opening fails, an entry \"ORG-AGENDA-ERROR: No such
-org-file <filename>\" will be pushed to the returned list.
+FILES-OR-BUFFERS can be nil (to use `org-agenda-files'), a file, a
+buffer, or a list of files/buffers.  FILES-OR-BUFFERS may also be a
+function that will be called with 0 arguments.  It must produce the
+list of files/buffers then.
+
+If any of the FILES-OR-BUFFERS (or agenda files) is not yet open, it
+will be opened.  If opening fails, an entry \"ORG-AGENDA-ERROR: No
+such org-file <filename>\" will be pushed to the returned list.
 
 Throw an error if any agenda file is either missing or not in Org
 mode."
-  (let ((org-agenda-files (or org-agenda-files files))
+  (pcase files-or-buffers
+    ((or (pred bufferp) (pred stringp))
+     (setq files-or-buffers (list files-or-buffers)))
+    ((pred listp) nil)
+    ((pred functionp)
+     (setq files-or-buffers (funcall files-or-buffers)))
+    (_ (error "org-agenda-mapcan-files: Not a file/buffer list %S"
+              files-or-buffers)))
+  (let ((org-agenda-files (if files-or-buffers
+                              ;; Just file part
+                              (seq-filter #'stringp files-or-buffers)
+                            org-agenda-files))
         (org-inhibit-startup org-agenda-inhibit-startup)
         (result nil)
         buffer)
-    (dolist (file (org-agenda-files nil 'ifmode))
-      (catch 'nextfile
-	(org-check-agenda-file file)
-	(setq buffer (if (file-exists-p file)
-			 (org-get-agenda-file-buffer file)
-		       (error "No such file %s" file)))
-	(if (not buffer)
-	    ;; If file does not exist, error message to agenda
-	    (push (list (format "ORG-AGENDA-ERROR: No such org-file %s" file))
-	          result)
-	  (with-current-buffer buffer
-	    (unless (derived-mode-p 'org-mode)
-	      (error "Agenda file %s is not in Org mode" file))
-	    (save-excursion
-	      (save-restriction
-		(if (eq buffer org-agenda-restrict)
-		    (narrow-to-region org-agenda-restrict-begin
-				      org-agenda-restrict-end)
-		  (widen))
-		(push (funcall collect-function) result)))))))
+    (catch :break
+      (dolist (file-or-buffer (append
+                               (seq-filter #'bufferp files-or-buffers)
+                               (org-agenda-files nil 'ifmode)))
+        (catch 'nextfile
+          (unless (bufferp file-or-buffer)
+	    (org-check-agenda-file file-or-buffer))
+	  (setq buffer
+                (if (bufferp file-or-buffer) file-or-buffer
+                  (if (file-exists-p file-or-buffer)
+		      (org-get-agenda-file-buffer file-or-buffer)
+		    (error "No such file %s" file-or-buffer))))
+	  (if (not buffer)
+	      ;; If file does not exist, error message to agenda
+	      (push (list (format "ORG-AGENDA-ERROR: No such org-file %s"
+                                  file-or-buffer))
+	            result)
+	    (with-current-buffer buffer
+	      (unless (derived-mode-p 'org-mode)
+	        (error "Agenda file %s is not in Org mode"
+                       file-or-buffer))
+	      (save-excursion
+	        (save-restriction
+		  (if (eq buffer org-agenda-restrict)
+		      (narrow-to-region org-agenda-restrict-begin
+				        org-agenda-restrict-end)
+		    (widen))
+		  (push (funcall collect-function) result))))))))
     (apply #'nconc (nreverse result))))
 
 ;;; User commands to manage Org agenda files

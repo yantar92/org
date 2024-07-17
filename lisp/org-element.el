@@ -10239,6 +10239,22 @@ EPOM is a marker, point, node, or nil."
 EPOM is a marker, point, node, or nil."
   (member keyword (org-element-not-done-keywords epom)))
 
+;;;###autoload
+(defun org-element-current-section (&optional epom)
+  "Return `section' node associated with EPOM.
+EPOM is an element, point, or marker.
+When point is on headline/inlinetask, return the child section or nil
+when there is no section inside.  Otherwise, return section containing
+EPOM."
+  (let ((node (org-element-lineage
+               (or (org-element-at-point epom)
+                   (org-element-org-data epom))
+               '(section inlinetask headline org-data) t)))
+    (if (eq 'section (org-element-type node)) node
+      (and (org-element-contents-begin node)
+           (org-element-current-section
+            (org-element-contents-begin node))))))
+
 (defun org-element-swap-A-B (elem-A elem-B)
   "Swap elements ELEM-A and ELEM-B.
 Assume ELEM-B is after ELEM-A in the buffer.  Leave point at the
