@@ -873,15 +873,55 @@ the documentation of `org-agenda-entry-types'."
    (list file)))
 
 (defun org-agenda-todo-custom-ignore-p (time n)
-  "Check whether timestamp is farther away than n number of days.
+  "Check whether TIME string is farther away than N number of days.
 This function is invoked if `org-agenda-todo-ignore-deadlines',
 `org-agenda-todo-ignore-scheduled' or
-`org-agenda-todo-ignore-timestamp' is set to an integer."
+`org-agenda-todo-ignore-timestamp' is set to an integer.
+N can also be symbol `future' or `past'."
   (let ((days (org-timestamp-to-now
 	       time org-agenda-todo-ignore-time-comparison-use-seconds)))
-    (if (>= n 0)
-	(>= days n)
-      (<= days n))))
+    (pcase n
+      (`future (> days 0))
+      (`past (<= days 0))
+      (_ (if (>= n 0) (>= days n) (<= days n))))))
+
+(defun org-agenda--skip-todo-due-to-timestamp (&optional epom)
+  "Return non-nil when we should skip todo heading at EPOM.
+This functions performs checks according to
+`org-agenda-todo-ignore-with-date',
+`org-agenda-todo-ignore-scheduled',
+`org-agenda-todo-ignore-deadlines', `
+`org-agenda-todo-ignore-scheduled', and
+`org-agenda-todo-ignore-timestamp'."
+  (setq epom (org-headline-at-point epom))
+  (when (or org-agenda-todo-ignore-with-date
+	    org-agenda-todo-ignore-scheduled
+	    org-agenda-todo-ignore-deadlines
+	    org-agenda-todo-ignore-timestamp)
+    (or (and org-agenda-todo-ignore-with-date
+             (or (org-entry-get epom "SCHEDULED")
+                 (org-entry-get epom "DEADLINE")
+                 (org-entry-get epom "TIMESTAMP")))
+        (and org-agenda-todo-ignore-scheduled
+             (when-let ((scheduled-ts (org-entry-get epom "SCHEDULED")))
+               (pcase org-agenda-todo-ignore-scheduled
+                 ((and (or `future `past (pred numberp)) n)
+                  (org-agenda-todo-custom-ignore-p scheduled-ts n))
+                 (_ t))))
+        (and org-agenda-todo-ignore-deadlines
+             (when-let ((deadline-ts (org-entry-get epom "DEADLINE")))
+               (pcase org-agenda-todo-ignore-deadlines
+                 (`all t)
+                 (`far (not (org-deadline-close-p deadline-ts nil epom)))
+                 ((and (or `future `past (pred numberp)) n)
+                  (org-agenda-todo-custom-ignore-p deadline-ts n))
+                 (_ (org-deadline-close-p deadline-ts nil epom)))))
+        (and org-agenda-todo-ignore-timestamp
+             (when-let ((ts (org-entry-get epom "TIMESTAMP")))
+               (pcase org-agenda-todo-ignore-timestamp
+                 ((and (or `future `past (pred numberp)) n)
+                  (org-agenda-todo-custom-ignore-p ts n))
+                 (_ t)))))))
 
 ;;;###autoload
 (defun org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item
@@ -958,8 +998,8 @@ This function is invoked if `org-agenda-todo-ignore-deadlines',
 			(match-string 1) org-agenda-todo-ignore-timestamp))
 		      (t))))))))))
 
-(defun org-agenda-get-todos (&optional selector)
-  "Return the TODO information for agenda display.
+(defun org-agenda-select-todos (&optional selector)
+  "Return the list of TODO heading nodes in current buffer for agenda.
 When SELECTOR is nil return all the not-done TODO keywords.
 When non-nil, it should be a string definining which keywords to choose:
 1. A single keyword name
@@ -969,44 +1009,57 @@ When non-nil, it should be a string definining which keywords to choose:
     ;; FIXME: `org-select-this-todo-keyword' is obsolete.
     (unless selector (setq selector org-select-this-todo-keyword)))
   (let* ((case-fold-search nil)
-	 (regexp (format org-heading-keyword-regexp-format
-			 (cond
-			  ((and selector (equal selector "*"))
-			   (org-todo-regexp))
-			  (selector
-			   (concat "\\("
-				   (mapconcat #'regexp-quote
+         (selected-kwds (and (stringp selector)
+                             (org-split-string selector "|")))
+         (regexp (format org-heading-keyword-regexp-format
+		         (cond
+		          ((and selector (equal selector "*"))
+		           (org-todo-regexp))
+		          (selector
+		           (concat "\\("
+			           (mapconcat #'regexp-quote
 				              (org-split-string
 				               selector "|")
 				              "\\|")
-				   "\\)"))
-			  (t (org-not-done-regexp)))))
-	 ee txt beg end)
-    (goto-char (point-min))
-    (while (re-search-forward regexp nil t)
-      (catch :skip
-	(save-match-data
-	  (forward-line 0)
-	  (org-agenda-skip)
-	  (setq beg (point) end (save-excursion (outline-next-heading) (point)))
-	  (unless (org-get-todo-state)
-	    (goto-char end)
-	    (throw :skip nil))
-	  (when (org-agenda-check-for-timestamp-as-reason-to-ignore-todo-item end)
-	    (goto-char (1+ beg))
-	    (or org-agenda-todo-list-sublevels (org-end-of-subtree 'invisible))
-	    (throw :skip nil)))
-	(goto-char (match-beginning 2))
-        (setq txt (org-agenda-format-heading nil :dotime 'auto))
-        (org-add-props txt
-            nil
-          'urgency (1+ (get-text-property 0 'priority txt))
-          'type (concat "todo" (get-text-property 0 'type txt)))
-	(push txt ee)
-	(if org-agenda-todo-list-sublevels
-	    (goto-char end)
-	  (org-end-of-subtree 'invisible))))
-    (nreverse ee)))
+			           "\\)"))
+		          (t (org-not-done-regexp))))))
+    (org-agenda-map-regexp
+     regexp (current-buffer)
+     :query
+     (lambda (el)
+       (setq el (org-headline-at-point el))
+       (prog1
+           ;; Should we use this heading?
+           (and
+            (pcase selector
+              (`nil (eq 'todo (org-element-property :todo-type el)))
+              ("*" (org-element-property :todo-type el))
+              (_ (member (org-element-property :todo-keyword el) selected-kwds)))
+            (not (org-agenda--skip-todo-due-to-timestamp el))
+            el)
+         ;; Continue searching from next heading/subtree.
+         (goto-char
+          (if org-agenda-todo-list-sublevels
+              (or (org-element-end (org-element-current-section el))
+                  (org-element-end el))
+            (org-element-end el))))))))
+
+(defun org-agenda-get-todos (&optional selector)
+  "Return the TODO information for agenda display.
+When SELECTOR is nil return all the not-done TODO keywords.
+When non-nil, it should be a string definining which keywords to choose:
+1. A single keyword name
+2. A string \"*\", to select all the keywords, including done.
+3. \"KWD1|KWD2|KWD3|...\" to select multiple keywords."
+  (let (txt)
+    (mapcar
+     (lambda (el)
+       (setq txt (org-agenda-format-heading el :dotime 'auto))
+       (org-add-props txt
+           nil
+         'urgency (1+ (get-text-property 0 'priority txt))
+         'type (concat "todo" (get-text-property 0 'type txt))))
+     (org-agenda-select-todos selector))))
 
 (defun org-agenda--timestamp-to-absolute (&rest args)
   "Call `org-time-string-to-absolute' with ARGS.
@@ -1290,11 +1343,12 @@ see.  When ENTRY-TYPES is nil, use `org-agenda-log-mode-items'."
         (goto-char (line-end-position))))
     (nreverse ee)))
 
-(defun org-deadline-close-p (timestamp-string &optional ndays)
-  "Is the time in TIMESTAMP-STRING close to the current date?"
+(defun org-deadline-close-p (timestamp-string &optional ndays epom)
+  "Is the time in TIMESTAMP-STRING close to the current date?
+EPOM is an element inside the containing heading."
   (setq ndays (or ndays (org-get-wdays timestamp-string)))
   (and (<= (org-timestamp-to-now timestamp-string) ndays)
-       (not (org-entry-is-done-p))))
+       (not (org-entry-is-done-p epom))))
 
 (defun org-get-wdays (ts &optional delay zero-delay)
   "Get the deadline lead time appropriate for timestring TS.
