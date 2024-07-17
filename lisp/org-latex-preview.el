@@ -2012,34 +2012,30 @@ image are cached as per `org-latex-preview-cache', which see."
              fragment-info))
      (setq prev-fg fg prev-bg bg))
 
-    ;; Generate fragment previews
-    (when fragment-info
-      (apply #'org-async-wait-for
-             (org-latex-preview--create-image-async
-              processing-type
-              (nreverse fragment-info)
-              :latex-preamble preamble
-              :appearance-options appearance-options)))
     (when (and image-dir (not (file-directory-p image-dir)))
       (make-directory image-dir 'parents)
       (setq image-dir (expand-file-name image-dir)))
+
+    ;; Generate fragment previews
+    (let ((org-latex-preview-cache (or image-dir org-latex-preview-cache)))
+      (when fragment-info
+        (apply #'org-async-wait-for
+               (org-latex-preview--create-image-async
+                processing-type
+                (nreverse fragment-info)
+                :latex-preamble preamble
+                :appearance-options appearance-options))))
+
     ;; Fragments generated, update the hash table
     (cl-loop for element in elements
              for hash = (gethash element element-preview-hash-table)
-             for (source-file . image-info) = (org-latex-preview--get-cached hash)
-             if (not (and source-file (file-exists-p source-file)))
-             do (display-warning
-                 '(org latex-preview get-cache)
-                 (format "No image generated for fragment:\n%s"
-                         (org-element-property :value element)))
-             else do
-             (if image-dir
-                 (let ((image-path (file-name-with-extension
-                                    (file-name-concat image-dir (substring hash 0 11))
-                                    (file-name-extension source-file))))
-                   (copy-file source-file image-path 'replace)
-                   (puthash element (cons image-path image-info) element-preview-hash-table))
-               (puthash element (cons source-file image-info) element-preview-hash-table))
+             for (source-file . image-info) = (org-latex-preview--get-cached hash image-dir)
+             if (and source-file (file-exists-p source-file))
+             do (puthash element (cons source-file image-info) element-preview-hash-table)
+             else do (display-warning
+                      '(org latex-preview get-cache)
+                      (format "No image generated for fragment:\n%s"
+                              (org-element-property :value element)))
              finally return element-preview-hash-table)))
 
 (cl-defun org-latex-preview--create-image-async (processing-type fragments-info &key latex-processor latex-preamble appearance-options place-preview-p)
