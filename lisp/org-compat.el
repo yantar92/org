@@ -975,6 +975,7 @@ The overlay will be above BEG if OVERLAYS is non-nil."
 ;;;###autoload (autoload 'org-latex-preview-compiler-command-map "org-latex-preview")
 
 (defvar org-latex-preview-compiler-command-map)
+(defvar org-latex-precompile)
 
 ;; FIXME: Unused; obsoleted; to be removed.
 (defun org-create-formula-image
@@ -1006,14 +1007,15 @@ a HTML file."
 			 '(".dvi" ".xdv" ".pdf" ".tex" ".aux" ".log"
 			   ".svg" ".png" ".jpg" ".jpeg" ".out")))
 	 (latex-header
-	  (or (plist-get processing-info :latex-header)
-	      (org-latex-make-preamble
-	       (org-export-get-environment (org-export-get-backend 'latex))
-	       org-format-latex-header
-	       'snippet)))
-	 (latex-compiler
-          (cdr (assoc (plist-get extended-info :latex-processor)
-                      org-latex-preview-compiler-command-map)))
+	  (let ((org-latex-precompile nil))
+            (or (plist-get processing-info :latex-header)
+	        (org-latex-make-preamble
+	         (org-export-get-environment (org-export-get-backend 'latex))
+	         org-format-latex-header
+	         'snippet))))
+	 (latex-compiler (plist-get processing-info :latex-compiler))
+         (org-tex-compiler (cdr (assoc org-latex-compiler
+                                       org-latex-preview-compiler-command-map)))
 	 (tmpdir temporary-file-directory)
 	 (texfilebase (make-temp-name
 		       (expand-file-name "orgtex" tmpdir)))
@@ -1028,9 +1030,11 @@ a HTML file."
 	 (bg (or (plist-get options (if buffer :background :html-background))
 		 "Transparent"))
 	 (image-converter
-          (or (and (string= bg "Transparent")
-                   (plist-get processing-info :transparent-image-converter))
-              (plist-get processing-info :image-converter)))
+          (mapcar (lambda (s) (replace-regexp-in-string "%B.*?\\." "%B." s))
+                  (ensure-list
+                   (or (and (string= bg "Transparent")
+                            (plist-get processing-info :transparent-image-converter))
+                       (plist-get processing-info :image-converter)))))
          (log-buf (get-buffer-create "*Org Preview LaTeX Output*"))
 	 (resize-mini-windows nil)) ;Fix Emacs flicker when creating image.
     (dolist (program programs)
@@ -1061,16 +1065,17 @@ a HTML file."
     (let* ((err-msg (format "Please adjust `%s' part of \
 `org-preview-latex-process-alist'."
 			    processing-type))
+           (spec `((?D . ,(shell-quote-argument (format "%s" dpi)))
+	           (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
+                   (?B . ,(shell-quote-argument texfilebase))
+                   (?l . ,org-tex-compiler)
+                   (?L . ,(car (split-string org-tex-compiler)))))
 	   (image-input-file
 	    (org-compile-file
-	     texfile latex-compiler image-input-type err-msg log-buf))
+	     texfile latex-compiler image-input-type err-msg log-buf spec))
 	   (image-output-file
 	    (org-compile-file
-	     image-input-file image-converter image-output-type err-msg log-buf
-	     `((?D . ,(shell-quote-argument (format "%s" dpi)))
-	       (?S . ,(shell-quote-argument (format "%s" (/ dpi 140.0))))
-               (?l . ,latex-compiler)
-               (?L . ,(car (split-string latex-compiler)))))))
+	     image-input-file image-converter image-output-type err-msg log-buf spec)))
       (copy-file image-output-file tofile 'replace)
       (dolist (e post-clean)
 	(when (file-exists-p (concat texfilebase e))
