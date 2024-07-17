@@ -1236,13 +1236,15 @@ This is meant to be called via `org-src-mode-hook'."
       ;; former:
       (with-current-buffer org-buf
         (setq element (org-element-context))
-        (when (eq (org-element-type element) 'latex-environment)
-          (setq skip-env-p
-                (and (save-excursion
-                       (goto-char (or (org-element-property :post-affiliated element)
-                                      (org-element-property :begin element)))
-                       (looking-at "\\\\begin{\\([^}]+\\)}"))
-                     (member (match-string 1) org-latex-preview-auto-ignored-environments))))
+        (pcase (org-element-type element)
+          ('export-block (setq skip-env-p t))
+          ('latex-environment
+           (setq skip-env-p
+                 (and (save-excursion
+                        (goto-char (or (org-element-property :post-affiliated element)
+                                       (org-element-property :begin element)))
+                        (looking-at "\\\\begin{\\([^}]+\\)}"))
+                      (member (match-string 1) org-latex-preview-auto-ignored-environments)))))
         (when (and (not skip-env-p)
                    (setq orig-ov
                          (let ((props (get-char-property-and-overlay
