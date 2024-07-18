@@ -502,7 +502,7 @@ or (:failure ERROR)")
     "When non-nil, function called before Emacs kills this REGLOCK, with the
 REGLOCK as argument.")
 
-  ( user-cancel-function nil
+  ( user-cancel-function #'org-pending--user-cancel-default
     :documentation
     "Function called when the user wish to cancel this REGLOCK,
 with the REGLOCK as argument.  This function must return immediately; it
@@ -707,7 +707,6 @@ for more information about all reglock fields."
 
     (setq reglock (org-pending--make
                    :scheduled-at (float-time)
-                   :user-cancel-function #'org-pending--user-cancel-default
                    :-creation-point (point-marker)
                    :-on-outcome on-outcome
                    ;; useless-p returns non-nil when a reglock becomes
