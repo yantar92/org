@@ -147,7 +147,7 @@
 ;;;; Interface provided to the Emacs user
 ;;
 ;; The library makes locks visible to the user using text properties
-;; and/or overlays.  It diplays and updates the status while the
+;; and/or overlays.  It displays and updates the status while the
 ;; region is locked: the initial status is :scheduled, then, when
 ;; receiving progress it becomes :pending (with progress information
 ;; if any).  org-pending allows to diplay a description of the lock in
