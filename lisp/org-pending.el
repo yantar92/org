@@ -1341,7 +1341,7 @@ Use `org-pending-cancel' instead if possible.
 
 Return nothing immediately."
   (when (org-pending-reglock-live-p reglock)
-    (org-pending--user-cancel-default))
+    (funcall (org-pending--user-cancel-default reglock) reglock))
   nil)
 
 
