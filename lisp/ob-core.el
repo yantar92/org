@@ -903,7 +903,7 @@ result region, create a new empty one."
                       :anchor anchor)))
         (setf (org-pending-reglock-property reglock 'source) (point-marker))
         (setf (org-pending-reglock-insert-details-function reglock)
-              (lambda (_ _start _end)
+              (lambda (_)
                 (let ((src (org-pending-reglock-property reglock 'source)))
                   (cl-labels
                       ((insert-link (m)

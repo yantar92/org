@@ -201,7 +201,7 @@
 ;; `insert-details-function' like this:
 ;;
 ;;     (setf (org-pending-reglock-insert-details-function reglock)
-;;           `(lambda (rlock &rest _)
+;;           `(lambda (rlock)
 ;;              ;; We add the current state at the end of the description
 ;;              ;; buffer.
 ;;              (insert (format "State: %s\n"
@@ -515,13 +515,10 @@ REGLOCK destroyed). The default value is
   ( insert-details-function nil
     :documentation
     "When non-nil, function called to insert custom details at the end of
-`org-pending-describe-reglock'.  The function is called with a REGLOCK,
-a START position and an END position, it must insert details at
-point. Assuming B is a (virtual) buffer containing all detailed human
-readable information, insert at point details from START to END.  Handle
-cases where START, END are nil or out of bounds without raising an
-error.  The function may use text properties, overlays, etc.  See
-`org-pending-describe-reglock'")
+`org-pending-describe-reglock'.  The function is called with a REGLOCK;
+it must insert the details at point; it may use text properties,
+overlays, etc.  See `org-pending-describe-reglock'")
+
   ( properties nil
     :documentation
     "A alist of properties.  Useful to attach custom features to this REGLOCK." )
@@ -782,8 +779,7 @@ Describe position REGLOCK.
 The information is displayed in new buffer.
 
 If the REGLOCK field insert-details-function is non-nil, move point to
-the end of the description buffer, and call that function with REGLOCK,
-0 and some reasonable size."
+the end of the description buffer, and call that function with REGLOCK."
   (let ((buffer (get-buffer-create "*Region Lock*")))
     (with-output-to-temp-buffer buffer
       (with-current-buffer buffer
@@ -906,7 +902,7 @@ the end of the description buffer, and call that function with REGLOCK,
           (multi-line "Details"
                       (lambda ()
                         (when-let ((insert-details (org-pending-reglock-insert-details-function reglock)))
-                          (funcall insert-details reglock nil (* 1024 1024))))))))))
+                          (funcall insert-details reglock)))))))))
 
 (defun org-pending--describe-reglock-at-point ()
   "Describe the lock at point.
@@ -1565,7 +1561,7 @@ unique if needed."
                 (kill-buffer edit-buffer)))))
 
     (setf (org-pending-reglock-insert-details-function reglock)
-          (lambda (_rl _start _end)
+          (lambda (_rl)
             (let ((insert-link
                    (lambda (b)
                      (insert-button (format "%s" (buffer-name b))
