@@ -312,14 +312,11 @@ a function that blocks until the result is available and returns it."
         (when reglock
           (add-function
            :after (org-pending-reglock-insert-details-function reglock)
-           (lambda (_reglock start end)
+           (lambda (_reglock)
              (when result-log
                (let ((to-insert (with-temp-buffer
                                   (insert result-log)
-                                  (buffer-substring (or (and start (max (point-min) start))
-                                                        (point-min))
-                                                    (or (and end (min (point-max) end))
-                                                        (point-max))))))
+                                  (buffer-substring (point-min) (point-max)))))
                  (insert to-insert))))))
         (let* ((outcome-ready-p
                 (lambda ()

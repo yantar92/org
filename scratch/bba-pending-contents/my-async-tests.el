@@ -558,7 +558,7 @@ Execute the code providing callbacks to get the result."
                (push p progress-items)))
 
     (setf (org-pending-reglock-insert-details-function reglock)
-          (lambda (_rl _start _end)
+          (lambda (_rl)
             (dolist (it (nreverse progress-items)) (insert (format "%s\n" it)))))
     (lambda ()
             (my-elib-async-wait-outcome (lambda () outcome)))))
