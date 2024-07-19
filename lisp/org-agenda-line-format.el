@@ -600,6 +600,7 @@ see."
           (heading (org-headline-at-point epom))
           (hd-marker (org-agenda-new-marker)))
       (unless heading (error "org-agenda-format-heading: There is no heading at %S" epom))
+      (goto-char (org-element-begin heading))
       ;; Get heading text right from inside the Org buffer to retain fontification.
       (skip-chars-forward "* ")
       (let* ((heading-string
