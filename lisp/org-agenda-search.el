@@ -1050,33 +1050,102 @@ When non-nil, it should be a string definining which keywords to choose:
          'type (concat "todo" (get-text-property 0 'type txt))))
      (org-agenda-select-todos selector))))
 
-(defun org-agenda--timestamp-to-absolute (&rest args)
-  "Call `org-time-string-to-absolute' with ARGS.
+(defun org-agenda--timestamp-to-absolute (timestamp &optional daynr prefer buffer pos)
+  "Call `org-time-string-to-absolute' on TIMESTAMP.
+The optional arguments DAYNR, PREFER, BUFFER, and POS are passed as is.
+TIMESTAMP can be a string or timestamp object.
 However, throw `:skip' whenever an error is raised."
+  (when (org-element-type-p timestamp 'timestamp)
+    (setq timestamp (substring (org-element-property :raw-value timestamp) 1 -1)))
   (condition-case e
-      (apply #'org-time-string-to-absolute args)
+      (funcall #'org-time-string-to-absolute timestamp daynr prefer buffer pos)
     (org-diary-sexp-no-match (throw :skip nil))
     (error
      (message "%s; Skipping entry" (error-message-string e))
      (throw :skip nil))))
 
+(defun org-agenda--skip-timestamp-for-date (timestamp agenda-day today)
+  "Return non-nil when TIMESTAMP should not be shown on DATE in agenda.
+TIMESTAMP is a timestamp object.  AGENDA-DAY is an absolute day in
+agenda.  TODAY is the today's absolute day number.
+
+Whether TIMESTAMP should be skipped depends whether TIMESTAMP or its
+repetitions around AGENDA-DAY/TODAY matches AGENDA-DAY.  Selection of
+repetition center is affected by `org-agenda-prefer-last-repeat' and
+`org-agenda-show-future-repeats', which see."
+  (with-no-warnings (defvar date)) ; required for diary timestamp resolution
+  (let* ((date (calendar-gregorian-from-absolute agenda-day))
+         (past
+	  ;; A repeating time stamp is shown at its base
+	  ;; date and every repeated date up to TODAY.  If
+	  ;; `org-agenda-prefer-last-repeat' is non-nil,
+	  ;; however, only the last repeat before today
+	  ;; (inclusive) is shown.
+          (catch :skip ; return nil when no match for diary
+	    (org-agenda--timestamp-to-absolute
+	     timestamp
+	     (if (or (> agenda-day today)
+		     (eq org-agenda-prefer-last-repeat t)
+		     (member
+                      (org-element-property
+                       :todo-keyword
+                       (org-headline-at-point timestamp))
+                      org-agenda-prefer-last-repeat))
+	         today
+	       agenda-day)
+	     'past
+             (org-element-property :buffer timestamp)
+             (org-element-begin timestamp))))
+	 (future
+	  ;;  Display every repeated date past TODAY
+	  ;;  (exclusive) unless
+	  ;;  `org-agenda-show-future-repeats' is nil.  If
+	  ;;  this variable is set to `next', only display
+	  ;;  the first repeated date after TODAY
+	  ;;  (exclusive).
+	  (cond
+	   ((<= agenda-day today) past)
+	   ((not org-agenda-show-future-repeats) past)
+	   (t
+	    (let ((base (if (eq org-agenda-show-future-repeats 'next)
+			    (1+ today)
+			  agenda-day)))
+              (catch :skip ; return nil when no match for diary
+	        (org-agenda--timestamp-to-absolute
+	         timestamp
+                 base
+                 'future
+                 (org-element-property :buffer timestamp)
+                 (org-element-begin timestamp))))))))
+    ;; Skip non-matching.
+    (and (not (equal agenda-day past)) (not (equal agenda-day future)))))
+
 (defvar org-agenda-include-inactive-timestamps nil
   "Non-nil means include inactive time stamps in agenda.
 Dynamically scoped.")
-(defun org-agenda-get-timestamps (&optional deadlines)
-  "Return the date stamp information for agenda display.
-Optional argument DEADLINES is a list of deadline items to be
-displayed in agenda view."
-  (with-no-warnings (defvar date))
-  (let* ((current (calendar-absolute-from-gregorian date))
-	 (today (org-today))
-	 (deadline-position-alist
-	  (mapcar (lambda (d)
-		    (let ((m (get-text-property 0 'org-hd-marker d)))
-		      (and m (marker-position m))))
-		  deadlines))
-	 ;; Match timestamps set to current date, timestamps with
-	 ;; a repeater, and S-exp timestamps.
+(defun org-agenda-select-timestamps (date &optional excluded-headings)
+  "Return timestamps matching DATE in current buffer.
+DATE is calendar date: list in the form (month day year).
+
+Optional argument EXCLUDED-HEADINGS is a list of :begin properties of
+headings to be ignored, even if they contain timestamps.
+
+By default, only consider active timestamps.  When
+`org-agenda-include-inactive-timestamps' is non-nil, also include
+headings with inactive timestamps.
+
+For repeating timestamps, only consider repeats relative to
+`org-today' date.  See `org-agenda-prefer-last-repeat',
+`org-agenda-show-future-repeats', and
+`org-agenda--skip-timestamp-for-date'.
+
+When `org-agenda-skip-additional-timestamps-same-entry' is non-nil, skip
+any additional timestamps under the same heading, except the first
+matching."
+  (let* ((agenda-day (calendar-absolute-from-gregorian date))
+         (today (org-today))
+	 ;; Match timestamps set to current agenda date, timestamps
+	 ;; with a repeater, and S-exp timestamps.
 	 (regexp
 	  (concat
 	   (if org-agenda-include-inactive-timestamps "[[<]" "<")
@@ -1086,102 +1155,97 @@ displayed in agenda view."
 	     (org-encode-time	; DATE bound by calendar
 	      0 0 0 (nth 1 date) (car date) (nth 2 date))))
 	   "\\|\\(<[0-9]+-[0-9]+-[0-9]+[^>\n]+?\\+[0-9]+[hdwmy]>\\)"
-	   "\\|\\(<%%\\(([^>\n]+)\\)\\([^\n>]*\\)>\\)"))
-	 timestamp-items)
-    (goto-char (point-min))
-    (while (re-search-forward regexp nil t)
-      ;; Skip date ranges, scheduled and deadlines, which are handled
-      ;; specially.  Also skip timestamps before first headline as
-      ;; there would be no entry to add to the agenda.  Eventually,
-      ;; ignore clock entries.
-      (catch :skip
-	(save-match-data
-	  (when (or (org-at-date-range-p t)
-		    (org-at-planning-p)
-		    (org-before-first-heading-p)
-		    (and org-agenda-include-inactive-timestamps
-			 (org-at-clock-log-p))
-                    (not (org-at-timestamp-p 'agenda)))
-	    (throw :skip nil))
-	  (org-agenda-skip (org-element-at-point)))
-	(let* ((pos (match-beginning 0))
-	       (repeat (match-string 1))
-	       (sexp-entry (match-string 3))
-	       (timestamp (if (or repeat sexp-entry) (match-string 0)
-			    (save-excursion
-			      (goto-char pos)
-			      (looking-at org-ts-regexp-both)
-			      (match-string 0))))
-	       (todo-state (org-get-todo-state))
-	       (done? (org-element-keyword-done-p todo-state)))
-	  ;; Possibly skip done tasks.
-	  (when (and done? org-agenda-skip-timestamp-if-done)
-	    (throw :skip t))
-	  ;; S-exp entry doesn't match current day: skip it.
-	  (when (and sexp-entry (not (org-diary-sexp-entry sexp-entry "" date)))
-	    (throw :skip nil))
-	  (when repeat
-	    (let* ((past
-		    ;; A repeating time stamp is shown at its base
-		    ;; date and every repeated date up to TODAY.  If
-		    ;; `org-agenda-prefer-last-repeat' is non-nil,
-		    ;; however, only the last repeat before today
-		    ;; (inclusive) is shown.
-		    (org-agenda--timestamp-to-absolute
-		     repeat
-		     (if (or (> current today)
-			     (eq org-agenda-prefer-last-repeat t)
-			     (member todo-state org-agenda-prefer-last-repeat))
-			 today
-		       current)
-		     'past (current-buffer) pos))
-		   (future
-		    ;;  Display every repeated date past TODAY
-		    ;;  (exclusive) unless
-		    ;;  `org-agenda-show-future-repeats' is nil.  If
-		    ;;  this variable is set to `next', only display
-		    ;;  the first repeated date after TODAY
-		    ;;  (exclusive).
-		    (cond
-		     ((<= current today) past)
-		     ((not org-agenda-show-future-repeats) past)
-		     (t
-		      (let ((base (if (eq org-agenda-show-future-repeats 'next)
-				      (1+ today)
-				    current)))
-			(org-agenda--timestamp-to-absolute
-			 repeat base 'future (current-buffer) pos))))))
-	      (when (and (/= current past) (/= current future))
-		(throw :skip nil))))
-	  (save-excursion
-	    (re-search-backward org-outline-regexp-bol nil t)
-	    ;; Possibly skip timestamp when a deadline is set.
-	    (when (and org-agenda-skip-timestamp-if-deadline-is-shown
-		       (assq (point) deadline-position-alist))
-	      (throw :skip nil))
-	    (let* ((inactive? (= (char-after pos) ?\[))
-		   (habit? (and (fboundp 'org-is-habit-p) (org-is-habit-p)))
-		   item)
-              (setq item
-                    (org-agenda-format-heading
-                     nil
-                     :scheduling-info
-                     (and inactive? (not habit?) org-agenda-inactive-leader)
-                     :dotime timestamp
-                     :remove-re org-ts-regexp))
-              (org-add-props item nil
-                'urgency (if habit?
- 			     (org-habit-get-urgency (org-habit-parse-todo))
-			   (org-get-priority item))
-                'face 'org-agenda-calendar-event
-                'date date
-                'ts-date (if repeat (org-agenda--timestamp-to-absolute repeat)
-			   current)
-                'type "timestamp")
-	      (push item timestamp-items))))
-	(when org-agenda-skip-additional-timestamps-same-entry
-	  (outline-next-heading))))
-    (nreverse timestamp-items)))
+	   "\\|\\(<%%\\(([^>\n]+)\\)\\([^\n>]*\\)>\\)")))
+    (org-agenda-map-regexp
+     regexp
+     (lambda (element)
+       (let ((heading (org-headline-at-point element))
+             timestamp)
+         (when
+             (and
+              heading ; not before first heading
+              ;; Not a planning line
+              (not (org-element-type-p element 'planning))
+              (not
+               (and org-agenda-skip-timestamp-if-done
+                    (eq 'done (org-element-property :todo-type heading))))
+              ;; Current heading is not one of the provided.
+              ;; We compare by :begin because provided headline nodes
+              ;; may or may not be copies from cache.
+              (not (seq-find
+                  (lambda (h) (= (org-element-begin heading)
+                            (org-element-begin h)))
+                  excluded-headings)))
+           (setq
+            timestamp
+            (let ((context (org-element-context element)))
+              (if (org-element-type-p context 'timestamp)
+                  context
+                ;; Directly call the parser since we may match
+                ;; timestamps inside property drawers, which are not
+                ;; normally recognized.  See `org-at-timestamp-p'.
+                (save-excursion
+                  (goto-char (match-beginning 0))
+                  (org-element-timestamp-parser)))))
+           ;; Make sure that TIMESTAMP has reference to the AST
+           ;; context.  This is needed for `org-agenda-format-heading'
+           ;; to accept the returned timestamp object.
+           (when (and timestamp (not (org-element-parent timestamp)))
+             (setf (org-element-parent timestamp) element))
+           (when
+               (and
+                timestamp
+                ;; Timestamp must be either diary or non-range.
+                (memq (org-element-property :type timestamp)
+                      (if org-agenda-include-inactive-timestamps
+                          '(active inactive diary)
+                        '(active diary)))
+                (not (org-element-type-p element 'clock))
+                (org-at-timestamp-p 'agenda)
+                (not (org-agenda--skip-timestamp-for-date
+                    timestamp agenda-day today)))
+             (prog1 timestamp ; Return value.
+               ;; Maybe skip other timestamps under the same heading.
+               (when org-agenda-skip-additional-timestamps-same-entry
+	         (goto-char
+                  (or (org-element-end
+                       (org-element-current-section heading))
+                      (org-element-end heading)))))))))
+     (current-buffer))))
+
+(defun org-agenda-get-timestamps (&optional deadlines)
+  "Return the date stamp information for agenda display.
+Optional argument DEADLINES is a list of deadline items to be
+displayed in agenda view.
+
+See `org-agenda-select-timestamps' for more details on how timestamps
+are selected."
+  (with-no-warnings (defvar date))
+  (let (item habit?)
+    (mapcar
+     (lambda (timestamp)
+       (setq habit? (and (fboundp 'org-is-habit-p)
+                         (org-is-habit-p timestamp)))
+       (setq item
+             (org-agenda-format-heading
+              timestamp
+              :scheduling-info
+              (and (eq (org-element-property :type timestamp) 'inactive)
+                   (not habit?)
+                   org-agenda-inactive-leader)
+              :dotime (org-element-property :raw-value timestamp)
+              :remove-re org-ts-regexp))
+       (org-add-props item nil
+         'urgency (if habit?
+ 		      (org-habit-get-urgency
+                       (org-habit-parse-todo
+                        (org-element-begin timestamp)))
+		    (org-get-priority item))
+         'face 'org-agenda-calendar-event
+         'date date
+         'ts-date (calendar-absolute-from-gregorian date)
+         'type "timestamp"))
+     (org-agenda-select-timestamps date deadlines))))
 
 (defun org-agenda-get-sexps ()
   "Return the sexp information for agenda display."
