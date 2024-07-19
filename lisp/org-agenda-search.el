@@ -758,48 +758,37 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 ;;; Searching Org agenda files
 
 (cl-defun org-agenda-map-regexp
-    ( regexp &optional buffers-or-files &key query action)
-  "Map over elements containing REGEXP in BUFFERS-OR-FILES.
+    ( regexp func &optional buffers-or-files)
+  "Map FUNC over elements containing REGEXP in BUFFERS-OR-FILES.
+Collect FUNC non-nil return values into the result.
 
 BUFFERS-OR-FILES is a file or buffer, a list of files and/or buffers,
 or a nullary function which returns such a list.
 
 When agenda restriction is active, honor it.
 
-QUERY must be a function that will be called on with point at the end
-of REGEXP match with a single argument - node at point.  QUERY can
-move point to further location to continue looping over the REGEXP.
+FUNC must be a function that will be called on with point at the end
+of REGEXP match with a single argument - node at point.  The match
+data will be set according to REGEXP match.  FUNC can move point to
+further location to continue searching REGEXP from.
 
 All the places that should not appear in agenda views according to
 `org-agenda-skip' will be unconditionally ignored.  See
 `org-agenda-skip-archived-trees', `org-agenda-archives-mode',
 `org-agenda-skip-comment-trees', `org-agenda-skip-function-global',
 and `org-agenda-skip-function'.  In addition, all REGEXP matches
-inside comments and src blocks will be skipped.
-
-When QUERY returns non-nil, its return value is passed to ACTION to
-retrieve the return value.  ACTION can be:
-1. nil or symbol `heading' to return the parent headline node
-2. A function that will be called with a single argument headline AST
-   node.  The function return value will be collected.
-
-ACTION can also move point as needed."
+inside comments and src blocks will be skipped."
   (org-agenda-mapcan-files
    (lambda ()
      (let (current-node result)
        (save-excursion
          (goto-char (point-min))
          (while (re-search-forward regexp nil t)
-           (setq current-node (org-element-at-point))
+           (setq current-node (save-match-data (org-element-at-point)))
            (catch :skip
-             (when (funcall query current-node)
-               (org-agenda-skip current-node)
-               (push
-                (pcase action
-                  ((or `nil `heading) current-node)
-                  (_ (funcall action current-node)))
-                result))))
-         (nreverse result))))
+             (org-agenda-skip current-node)
+             (push (funcall func current-node) result)))
+         (nreverse (delq nil result)))))
    buffers-or-files))
 
 (defun org-agenda-get-day-entries-1 (date &rest args)
@@ -1024,8 +1013,7 @@ When non-nil, it should be a string definining which keywords to choose:
 			           "\\)"))
 		          (t (org-not-done-regexp))))))
     (org-agenda-map-regexp
-     regexp (current-buffer)
-     :query
+     regexp
      (lambda (el)
        (setq el (org-headline-at-point el))
        (prog1
@@ -1042,7 +1030,8 @@ When non-nil, it should be a string definining which keywords to choose:
           (if org-agenda-todo-list-sublevels
               (or (org-element-end (org-element-current-section el))
                   (org-element-end el))
-            (org-element-end el))))))))
+            (org-element-end el)))))
+     (current-buffer))))
 
 (defun org-agenda-get-todos (&optional selector)
   "Return the TODO information for agenda display.
