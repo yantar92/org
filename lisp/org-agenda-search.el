@@ -1247,63 +1247,86 @@ are selected."
          'type "timestamp"))
      (org-agenda-select-timestamps date deadlines))))
 
+
+(defun org-agenda-select-sexps (date)
+  "Return a list of diary sexps matching DATE in current buffer.
+Each sexp node will have its :diary-sexp-entry value set to its
+resolved value, as returned by `org-diary-sexp-entry'."
+  (require 'diary-lib)
+  (with-no-warnings (defvar date) (defvar entry))
+  (org-agenda-mapcan-files
+   (lambda ()
+     (let* ((regexp "^&?%%(")
+	    ;; FIXME: Is this `entry' binding intended to be dynamic,
+            ;; so as to "hide" any current binding for it?
+            entry result results b sexp sexp-entry sexp-element)
+       (goto-char (point-min))
+       (while (re-search-forward regexp nil t)
+         (catch :skip
+           ;; We do not run `org-agenda-skip' right away because every single sexp
+           ;; in the buffer is matched here, unlike day-specific search
+           ;; in ordinary timestamps.  Most of the sexps will not match
+           ;; the agenda day and it is quicker to run `org-agenda-skip' only for
+           ;; matching sexps later on.
+	   (goto-char (1- (match-end 0)))
+	   (setq b (point))
+	   (forward-sexp 1)
+	   (setq sexp (buffer-substring b (point)))
+	   (setq sexp-entry (if (looking-at "[ \t]*\\(\\S-.*\\)")
+                                (buffer-substring
+                                 (match-beginning 1)
+                                 (save-excursion
+                                   (goto-char (match-end 1))
+                                   (skip-chars-backward "[:blank:]")
+                                   (point)))
+			      ""))
+	   (setq result (org-diary-sexp-entry sexp sexp-entry date))
+	   (when result
+             ;; Copy element to avoid overwriting cached data.
+             (setq sexp-element (org-element-copy (org-element-at-point)))
+             ;; Only check if entry should be skipped on matching sexps.
+             (org-agenda-skip sexp-element)
+             (push
+              (org-element-put-property sexp-element :diary-sexp-entry result)
+              results))))
+       (nreverse results)))
+   (current-buffer)))
+
 (defun org-agenda-get-sexps ()
   "Return the sexp information for agenda display."
   (require 'diary-lib)
-  (with-no-warnings (defvar date) (defvar entry))
-  (let* ((regexp "^&?%%(")
-	 ;; FIXME: Is this `entry' binding intended to be dynamic,
-         ;; so as to "hide" any current binding for it?
-         entry
-         extra ee txt result b sexp sexp-entry)
-    (goto-char (point-min))
-    (while (re-search-forward regexp nil t)
-      (catch :skip
-        ;; We do not run `org-agenda-skip' right away because every single sexp
-        ;; in the buffer is matched here, unlike day-specific search
-        ;; in ordinary timestamps.  Most of the sexps will not match
-        ;; the agenda day and it is quicker to run `org-agenda-skip' only for
-        ;; matching sexps later on.
-	(goto-char (1- (match-end 0)))
-	(setq b (point))
-	(forward-sexp 1)
-	(setq sexp (buffer-substring b (point)))
-	(setq sexp-entry (if (looking-at "[ \t]*\\(\\S-.*\\)")
-                             (buffer-substring
-                              (match-beginning 1)
-                              (save-excursion
-                                (goto-char (match-end 1))
-                                (skip-chars-backward "[:blank:]")
-                                (point)))
-			   ""))
-	(setq result (org-diary-sexp-entry sexp sexp-entry date))
-	(when result
-          ;; Only check if entry should be skipped on matching sexps.
-          (org-agenda-skip (org-element-at-point))
-	  (setq extra nil)
-	  (dolist (r (if (stringp result)
-			 (list result)
-		       result)) ;; we expect a list here
-	    (when (and org-agenda-diary-sexp-prefix
-		       (string-match org-agenda-diary-sexp-prefix r))
-	      (setq extra (match-string 0 r)
-		    r (replace-match "" nil nil r)))
-	    (if (string-match "\\S-" r)
-		(setq txt r)
-	      (setq txt "SEXP entry returned empty string"))
-	    (setq txt
-                  (org-agenda-format-heading
-                   nil
-                   :scheduling-info extra
-                   :overriding-title txt
-                   :dotime 'auto))
-	    (org-add-props txt
-                nil
-              'face 'org-agenda-calendar-sexp
-	      'date date
-              'type "sexp")
-	    (push txt ee)))))
-    (nreverse ee)))
+  (with-no-warnings (defvar date))
+  (let (scheduling-info diary-sexp-entry agenda-line)
+    (mapcan
+     (lambda (sexp-element)
+       (setq diary-sexp-entry (org-element-property :diary-sexp-entry sexp-element))
+       (setq scheduling-info nil)
+       ;; A single sexp may define multiple agenda lines.
+       (mapcar
+        (lambda (sexp-record)
+          ;; Maybe extract `org-agenda-diary-sexp-prefix'
+	  (when (and org-agenda-diary-sexp-prefix
+		     (string-match org-agenda-diary-sexp-prefix sexp-record))
+	    (setq scheduling-info (match-string 0 sexp-record)
+		  sexp-record (replace-match "" nil nil sexp-record)))
+          ;; Mark non-empty records
+	  (if (string-match "\\S-" sexp-record)
+	      (setq agenda-line sexp-record)
+	    (setq agenda-line "SEXP entry returned empty string"))
+	  (setq agenda-line
+                (org-agenda-format-heading
+                 sexp-element
+                 :scheduling-info scheduling-info
+                 :overriding-title agenda-line
+                 :dotime 'auto))
+	  (org-add-props agenda-line
+              nil
+            'face 'org-agenda-calendar-sexp
+	    'date date
+            'type "sexp"))
+        (if (stringp diary-sexp-entry) (list diary-sexp-entry)
+	  diary-sexp-entry)))
+     (org-agenda-select-sexps date))))
 
 (defalias 'org-get-closed #'org-agenda-get-progress)
 (defun org-agenda-get-progress (&optional entry-types)
