@@ -228,6 +228,29 @@ Assume `epg-context' is set."
 	     (message "No crypt key set, using symmetric encryption.")
 	     nil))))
 
+(defun org-encrypt--set-reveal-callback (beg end context)
+  "Set callback that displays BEG..END before it is encrypted/decrypted in CONTEXT.
+The BEG..END is a region defined by markers to be displayed and
+highlighted."
+  (setf (epg-context-pinentry-mode epg-context) 'loopback)
+  (epg-context-set-passphrase-callback
+   context
+   (let ((old-callback (epg-context-passphrase-callback context)))
+     (cons
+      (lambda (context key-id handback)
+        (save-window-excursion
+          (with-current-buffer (marker-buffer beg)
+            (display-buffer (marker-buffer beg))
+            (goto-char (marker-position beg))
+            (org-fold-show-set-visibility 'local)
+            (let ((ov (make-overlay beg end)))
+              (overlay-put ov 'face 'highlight)
+              (unwind-protect
+                  (funcall (car old-callback)
+                           context key-id handback)
+                (delete-overlay ov))))))
+      (cdr old-callback)))))
+
 ;;;###autoload
 (defun org-encrypt-entry ()
   "Encrypt the content of the current headline.
@@ -238,6 +261,8 @@ Return non-nil when the entry was actually encrypted."
     (setq-local epg-context (epg-make-context nil t t))
     (org-with-wide-buffer
      (org-back-to-heading t)
+     (setcdr (epg-context-passphrase-callback epg-context)
+             (format "encrypting \"%s\"" (org-get-heading t t t t)))
      (let ((start-heading (point))
 	   (crypt-key (org-crypt-key-for-heading))
 	   (folded? (org-invisible-p (line-beginning-position))))
@@ -251,35 +276,32 @@ Return non-nil when the entry was actually encrypted."
 	 (goto-char start-heading)
 	 (org-end-of-subtree t t)
 	 (org-back-over-empty-lines)
-	 (let* ((contents (delete-and-extract-region beg (point)))
+         ;; Display heading to be encrypted when querying the passphrase.
+         (org-encrypt--set-reveal-callback (copy-marker beg) (point-marker) epg-context)
+	 (let* ((contents (buffer-substring beg (point)))
 		(key (get-text-property 0 'org-crypt-key contents))
 		(checksum (get-text-property 0 'org-crypt-checksum contents)))
-	   (condition-case err
-               (let ((encrypted-text
-                      ;; Text and key have to be identical, otherwise we
-	              ;; re-crypt.
-	              (if (and (equal crypt-key key)
-		               (string= checksum (sha1 contents)))
-		          (get-text-property 0 'org-crypt-text contents)
-                        (condition-case err
-		            (epg-encrypt-string epg-context contents crypt-key)
-                          (error (error "Org-crypt (%s): %S"
-                                        (current-buffer)
-                                        (error-message-string err)))))))
-	         (insert encrypted-text)
-                 (backward-char) ; make sure that we are not at the next heading
-                 (pcase (org-at-encrypted-entry-p)
-                   (`(,beg . ,end)
-                    (let ((encrypted-text (org-crypt--encrypted-text beg end)))
-                      (add-text-properties
-                       beg end
-                       `( org-crypt-checksum ,(sha1 encrypted-text)
-                          org-crypt-text ,contents))))))
-	     ;; If encryption failed, make sure to insert back entry
-	     ;; contents in the buffer.
-	     (error
-	      (insert contents)
-	      (error "%s" (error-message-string err)))))
+           (let ((encrypted-text
+                  ;; Text and key have to be identical, otherwise we
+	          ;; re-crypt.
+	          (if (and (equal crypt-key key)
+		           (string= checksum (sha1 contents)))
+		      (get-text-property 0 'org-crypt-text contents)
+                    (condition-case err
+		        (epg-encrypt-string epg-context contents crypt-key)
+                      (error (error "Org-crypt (%s): %S"
+                                    (current-buffer)
+                                    (error-message-string err)))))))
+             (delete-region beg (point))
+	     (insert encrypted-text)
+             (backward-char) ; make sure that we are not at the next heading
+             (pcase (org-at-encrypted-entry-p)
+               (`(,beg . ,end)
+                (let ((encrypted-text (org-crypt--encrypted-text beg end)))
+                  (add-text-properties
+                   beg end
+                   `( org-crypt-checksum ,(sha1 encrypted-text)
+                      org-crypt-text ,contents)))))))
 	 (when folded-heading
 	   (goto-char folded-heading)
 	   (org-fold-subtree t))
@@ -294,8 +316,12 @@ Return non-nil when the entry was actually encrypted."
     (`(,beg . ,end)
      (require 'epg)
      (setq-local epg-context (epg-make-context nil t t))
+     (setcdr (epg-context-passphrase-callback epg-context)
+             (format "decrypting \"%s\"" (org-get-heading t t t t)))
      (org-with-point-at beg
        (org-crypt-check-auto-save)
+       ;; Display heading to be encrypted when querying the passphrase.
+       (org-encrypt--set-reveal-callback (copy-marker beg) (copy-marker end) epg-context)
        (let* ((folded-heading
 	       (and (org-invisible-p)
 		    (save-excursion
