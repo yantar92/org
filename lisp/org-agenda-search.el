@@ -758,7 +758,7 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 ;;; Searching Org agenda files
 
 (cl-defun org-agenda-map-regexp
-    ( regexp func &optional buffers-or-files)
+    ( regexp func &optional buffers-or-files delay-user-skip-function)
   "Map FUNC over elements containing REGEXP in BUFFERS-OR-FILES.
 Collect FUNC non-nil return values into the result.
 
@@ -777,7 +777,11 @@ All the places that should not appear in agenda views according to
 `org-agenda-skip-archived-trees', `org-agenda-archives-mode',
 `org-agenda-skip-comment-trees', `org-agenda-skip-function-global',
 and `org-agenda-skip-function'.  In addition, all REGEXP matches
-inside comments and src blocks will be skipped."
+inside comments and src blocks will be skipped.
+
+When DELAY-USER-SKIP-FUNCTION is non-nil, `org-agenda-skip-function' and
+`org-agenda-skip-function-global' will only run after FUNC, when FUNC
+returns non-nil.  If they return non-nil, FUNC result will be discarded."
   (org-agenda-mapcan-files
    (lambda ()
      (let (current-node result)
@@ -786,8 +790,21 @@ inside comments and src blocks will be skipped."
          (while (re-search-forward regexp nil t)
            (setq current-node (save-match-data (org-element-at-point)))
            (catch :skip
-             (org-agenda-skip current-node)
-             (push (funcall func current-node) result)))
+             (if (null delay-user-skip-function)
+                 (progn
+                   (org-agenda-skip current-node)
+                   (push (funcall func current-node) result))
+               (let ((org-agenda-skip-function-global nil)
+                     (org-agenda-skip-function nil))
+                 (org-agenda-skip current-node))
+               (when-let* ((pos (point))
+                           (ret (funcall func current-node)))
+                 (org-with-point-at pos
+                   (when-let ((to (or (org-agenda-skip-eval org-agenda-skip-function-global)
+		                      (org-agenda-skip-eval org-agenda-skip-function))))
+                     (setq pos (max pos to))))
+                 (goto-char pos)
+                 (push ret result)))))
          (nreverse (delq nil result)))))
    buffers-or-files))
 
@@ -1031,7 +1048,8 @@ When non-nil, it should be a string definining which keywords to choose:
               (or (org-element-end (org-element-current-section el))
                   (org-element-end el))
             (org-element-end el)))))
-     (current-buffer))))
+     (current-buffer)
+     'delay-user-skip)))
 
 (defun org-agenda-get-todos (&optional selector)
   "Return the TODO information for agenda display.
@@ -1254,43 +1272,37 @@ Each sexp node will have its :diary-sexp-entry value set to its
 resolved value, as returned by `org-diary-sexp-entry'."
   (require 'diary-lib)
   (with-no-warnings (defvar date) (defvar entry))
-  (org-agenda-mapcan-files
-   (lambda ()
-     (let* ((regexp "^&?%%(")
-	    ;; FIXME: Is this `entry' binding intended to be dynamic,
-            ;; so as to "hide" any current binding for it?
-            entry result results b sexp sexp-entry sexp-element)
-       (goto-char (point-min))
-       (while (re-search-forward regexp nil t)
-         (catch :skip
-           ;; We do not run `org-agenda-skip' right away because every single sexp
-           ;; in the buffer is matched here, unlike day-specific search
-           ;; in ordinary timestamps.  Most of the sexps will not match
-           ;; the agenda day and it is quicker to run `org-agenda-skip' only for
-           ;; matching sexps later on.
-	   (goto-char (1- (match-end 0)))
-	   (setq b (point))
-	   (forward-sexp 1)
-	   (setq sexp (buffer-substring b (point)))
-	   (setq sexp-entry (if (looking-at "[ \t]*\\(\\S-.*\\)")
-                                (buffer-substring
-                                 (match-beginning 1)
-                                 (save-excursion
-                                   (goto-char (match-end 1))
-                                   (skip-chars-backward "[:blank:]")
-                                   (point)))
-			      ""))
-	   (setq result (org-diary-sexp-entry sexp sexp-entry date))
-	   (when result
-             ;; Copy element to avoid overwriting cached data.
-             (setq sexp-element (org-element-copy (org-element-at-point)))
-             ;; Only check if entry should be skipped on matching sexps.
-             (org-agenda-skip sexp-element)
-             (push
-              (org-element-put-property sexp-element :diary-sexp-entry result)
-              results))))
-       (nreverse results)))
-   (current-buffer)))
+  (let (b sexp sexp-entry result)
+    (org-agenda-map-regexp
+     "^&?%%("
+     (lambda (sexp-element)
+       (goto-char (1- (match-end 0)))
+       (setq b (point))
+       (forward-sexp 1)
+       (setq sexp (buffer-substring b (point)))
+       (setq sexp-entry (if (looking-at "[ \t]*\\(\\S-.*\\)")
+                            (buffer-substring
+                             (match-beginning 1)
+                             (save-excursion
+                               (goto-char (match-end 1))
+                               (skip-chars-backward "[:blank:]")
+                               (point)))
+			  ""))
+       (setq result (org-diary-sexp-entry sexp sexp-entry date))
+       (when result
+         ;; Copy element to avoid overwriting cached data.
+         (setq sexp-element (org-element-put-property
+                             (org-element-copy sexp-element)
+                             :parent
+                             (org-element-parent sexp-element)))
+         (org-element-put-property sexp-element :diary-sexp-entry result)))
+     (current-buffer)
+     ;; We do not run `org-agenda-skip' right away because every single sexp
+     ;; in the buffer is matched here, unlike day-specific search
+     ;; in ordinary timestamps.  Most of the sexps will not match
+     ;; the agenda day and it is quicker to run `org-agenda-skip' only for
+     ;; matching sexps later on.
+     'delay-user-skip)))
 
 (defun org-agenda-get-sexps ()
   "Return the sexp information for agenda display."
