@@ -60,15 +60,7 @@
 (require 'org-macs)
 (require 'org-compat)
 
-(declare-function epg-decrypt-string "epg" (context cipher))
-(declare-function epg-list-keys "epg" (context &optional name mode))
-(declare-function epg-make-context "epg"
-		  (&optional protocol armor textmode include-certs
-			     cipher-algorithm digest-algorithm
-			     compress-algorithm))
-(declare-function epg-encrypt-string "epg"
-		  (context plain recipients &optional sign always-trust))
-(defvar epg-context)
+(require 'epg)
 
 (declare-function org-back-over-empty-lines "org" ())
 (declare-function org-current-level "org" ())
@@ -78,11 +70,13 @@
 (declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading element))
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
 (declare-function org-fold-subtree "org-fold" (flag))
+(declare-function org-fold-show-set-visibility "org-fold" (detail))
 (declare-function org-make-tags-matcher "org" (match &optional only-local-tags))
 (declare-function org-previous-visible-heading "org" (arg))
 (declare-function org-scan-tags "org" (action matcher todo-only &optional start-level))
 (declare-function org-set-property "org" (property value))
 (declare-function org-cycle-set-startup-visibility "org-cycle" ())
+(declare-function org-get-heading "org" (&optional no-tags no-todo no-priority no-comment))
 
 (defgroup org-crypt nil
   "Org Crypt."
