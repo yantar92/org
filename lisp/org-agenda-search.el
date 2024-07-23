@@ -1485,10 +1485,17 @@ don't try to find the delay cookie in the scheduled timestamp."
      (t tv))))
 
 (defun org-agenda-select-deadlines (date &optional with-hour)
-  "Return a list of planning nodes for DATE.
+  "Return a list of planning nodes with deadline for DATE.
 Each node will have its properties :past-repeat and
-:future-repeat set to the absolute day of past/future repeat and
-:warning-days property set to the number of warning days.
+:future-repeat set to the absolute day of past/future deadline repeat,
+according to `org-agenda-prefer-last-repeat' and
+`org-agenda-show-future-repeats'.
+
+The deadlines are selected according to
+`org-agenda-skip-deadline-prewarning-if-scheduled',
+`org-deadline-warning-days', and `org-agenda-skip-deadline-if-done',
+which see.
+
 When WITH-HOUR is non-nil, only consider deadlines with an hour
 specification like [h]h:mm."
   (let* ((today (org-today))
