@@ -1648,224 +1648,220 @@ specification like [h]h:mm."
 (defvar org-habit-scheduled-past-days) ; org-habit.el
 (declare-function org-habit-parse-todo "org-habit" (&optional pom))
 (declare-function org-habit-get-urgency "org-habit" (habit &optional moment))
+(defun org-agenda-select-scheduled (date &optional with-hour displayed-deadlines)
+  "Return a list of planning nodes scheduled for DATE.
+Each node will have its properties :past-repeat and
+:future-repeat set to the absolute day of past/future schedule repeat,
+according to `org-agenda-prefer-last-repeat' and
+`org-agenda-show-future-repeats'.
+
+The scheduled items are selected according to habit status,
+`org-agenda-skip-scheduled-delay-if-deadline',
+`org-scheduled-delay-days', `org-habit-show-all-today',
+`org-habit-show-habits-only-for-today', `org-habit-show-habits',
+`org-habit-scheduled-past-days', `org-agenda-skip-scheduled-if-done',
+`org-agenda-skip-scheduled-repeats-after-deadline', and
+`org-agenda-skip-scheduled-if-deadline-is-shown', which see.
+
+When WITH-HOUR is non-nil, only consider scheduled with an hour
+specification like [h]h:mm.
+
+DISPLAYED-DEADLINE is a list of :begin properties of headlines where
+deadlines will be displayed.  They are used to honor
+`org-agenda-skip-scheduled-if-deadline-is-shown'."
+  (let* ((today (org-today))
+	 (today? (org-agenda-today-p date))
+	 (agenda-day (calendar-absolute-from-gregorian date))
+         deadline scheduled headline)
+    (org-agenda-map-regexp
+     (if with-hour org-scheduled-time-hour-regexp org-scheduled-time-regexp)
+     (lambda (planning)
+       (setq scheduled (org-element-property :scheduled planning))
+       (setq headline (org-headline-at-point planning))
+       (when (and scheduled
+                  ;; Only consider active timestamp values.
+                  (memq (org-element-property :type scheduled)
+                        '(diary active active-range))
+                  (or (not with-hour)
+                      (org-element-property :hour-start scheduled)
+                      (org-element-property :hour-end scheduled)))
+         (setq deadline (org-element-property :deadline planning))
+         (let*
+             (;; PAST-REPEAT is the scheduled date for the entry.  It is
+	      ;; either the base date or the last repeat, according
+	      ;; to `org-agenda-prefer-last-repeat'.
+              (past-repeat (org-agenda--get-past-repeat
+                            scheduled agenda-day today))
+	      ;; FUTURE-REPEAT is the future repeat closest from
+	      ;; AGENDA-DAY, according to
+	      ;; `org-agenda-show-future-repeats'. If the latter is
+	      ;; nil, or if the time stamp has no repeat part,
+	      ;; default to SCHEDULED.
+              (future-repeat (org-agenda--get-future-repeat
+                              scheduled agenda-day today))
+              (habitp (and (fboundp 'org-is-habit-p)
+                           (string= "habit" (org-element-property :STYLE headline))))
+              (max-delay-days
+	       (cond
+		((or (not deadline) (not past-repeat)
+                     (not org-agenda-skip-scheduled-delay-if-deadline))
+                 most-positive-fixnum)
+		;; The current item has a deadline date, so
+		;; evaluate its delay time.
+		((integerp org-agenda-skip-scheduled-delay-if-deadline)
+                 ;; Use global delay time.
+		 (- org-agenda-skip-scheduled-delay-if-deadline))
+		((eq org-agenda-skip-scheduled-delay-if-deadline
+		     'post-deadline)
+		 ;; Set pre-warning to no earlier than SCHEDULED.
+		 (min (- past-repeat
+			 (org-agenda--timestamp-to-absolute deadline))
+		      org-scheduled-delay-days))
+		;; Set pre-warning to deadline.
+		(t 0)))
+              (delay-days (min max-delay-days (org-get-wdays scheduled t))))
+           (when past-repeat
+             ;; Copy element to avoid overwriting cached data.
+             (setq planning (org-element-put-property
+                             (org-element-copy planning)
+                             :parent
+                             (org-element-parent planning)))
+             ;; Save properties.
+             (org-element-put-property planning :past-repeat past-repeat)
+             (org-element-put-property planning :future-repeat future-repeat)
+             (catch :skip
+	       ;; Display scheduled items at base date (PAST-REPEAT),
+	       ;; today if scheduled before the agenda date, and at any
+	       ;; repeat past today.  However, skip delayed items and
+	       ;; items that have been displayed for more than
+	       ;; `org-scheduled-past-days'.
+               (unless (and today? habitp
+		            (bound-and-true-p org-habit-show-all-today))
+	         (when (or (and (> delay-days 0)
+                                (< (- agenda-day past-repeat) delay-days))
+		           (> (- agenda-day past-repeat)
+                              (or (and habitp org-habit-scheduled-past-days)
+				  org-scheduled-past-days))
+		           (> past-repeat agenda-day)
+		           (and (/= agenda-day past-repeat)
+			        (/= agenda-day today)
+			        (/= agenda-day future-repeat)))
+	           (throw :skip nil)))
+               ;; Possibly skip done tasks.
+	       (when (and (eq 'done (org-element-property :todo-type headline))
+		          (or org-agenda-skip-scheduled-if-done
+			      (/= past-repeat agenda-day)))
+	         (throw :skip nil))
+               ;; Skip entry if it already appears as a deadline, per
+	       ;; `org-agenda-skip-scheduled-if-deadline-is-shown'.  This
+	       ;; doesn't apply to habits.
+               (when (or org-agenda-skip-scheduled-repeats-after-deadline
+                         ;; FIXME: Backwards-compatibility.
+                         (eq org-agenda-skip-scheduled-if-deadline-is-shown
+                             'repeated-after-deadline))
+                 (let ((deadline-day (org-agenda--timestamp-to-absolute deadline)))
+	           (when (and (or (<= past-repeat deadline-day)
+                                  (not (= past-repeat agenda-day)))
+                              (> agenda-day deadline-day))
+                     (throw :skip nil))))
+               (unless (or habitp
+                           (not (member (org-element-begin headline)
+                                      displayed-deadlines)))
+	         (when (pcase org-agenda-skip-scheduled-if-deadline-is-shown
+		         (`not-today (< past-repeat today))
+		         (`t t)
+		         (_ nil))
+	           (throw :skip nil)))
+               ;; Skip habits if `org-habit-show-habits' is nil, or if we
+	       ;; only show them for today.  Also skip done habits.
+	       (when (and habitp
+		          (or (eq 'done (org-element-property :todo-type headline))
+			      (not (bound-and-true-p org-habit-show-habits))
+			      (and (not today?)
+			           (bound-and-true-p
+			            org-habit-show-habits-only-for-today))))
+	         (throw :skip nil))
+               ;; No reason to skip anything.  Return planning.
+               planning)))))
+     (current-buffer))))
+
 (defun org-agenda-get-scheduled (&optional deadlines with-hour)
   "Return the scheduled information for agenda display.
 Optional argument DEADLINES is a list of deadline items to be
 displayed in agenda view.  When WITH-HOUR is non-nil, only return
 scheduled items with an hour specification like [h]h:mm."
   (with-no-warnings (defvar date))
-  (let* ((regexp (if with-hour
-		     org-scheduled-time-hour-regexp
-		   org-scheduled-time-regexp))
-	 (today (org-today))
-	 (todayp (org-agenda-today-p date)) ; DATE bound by calendar.
-	 (current (calendar-absolute-from-gregorian date))
-	 (deadline-pos
-	  (mapcar (lambda (d)
-		    (let ((m (get-text-property 0 'org-hd-marker d)))
-		      (and m (marker-position m))))
-		  deadlines))
-         scheduled-items)
-    (org-element-cache-map
-     (lambda (el)
-       (when (and (org-element-property :scheduled el)
-                  ;; Only consider active timestamp values.
-                  (memq (org-element-property
-                         :type
-                         (org-element-property :scheduled el))
-                        '(diary active active-range))
-                  (or (not with-hour)
-                      (org-element-property
-                       :hour-start
-                       (org-element-property :scheduled el))
-                      (org-element-property
-                       :hour-end
-                       (org-element-property :scheduled el))))
-         (goto-char (org-element-contents-begin el))
-         (catch :skip
-           (org-agenda-skip el)
-           (let* ((s (substring (org-element-property
-                                 :raw-value
-                                 (org-element-property :scheduled el))
-                                1 -1))
-                  (pos (save-excursion
-                         (goto-char (org-element-contents-begin el))
-                         ;; We intentionally leave NOERROR
-                         ;; argument in `re-search-forward' nil.  If
-                         ;; the search fails here, something went
-                         ;; wrong and we are looking at
-                         ;; non-matching headline.
-                         (re-search-forward regexp (line-end-position))
-                         (1- (match-beginning 1))))
-                  (todo-state (org-element-property :todo-keyword el))
-	          (donep (eq 'done (org-element-property :todo-type el)))
-	          (sexp? (eq 'diary
-                             (org-element-property
-                              :type (org-element-property :scheduled el))))
-	          ;; SCHEDULE is the scheduled date for the entry.  It is
-	          ;; either the bare date or the last repeat, according
-	          ;; to `org-agenda-prefer-last-repeat'.
-	          (schedule
-		   (cond
-		    (sexp? (org-agenda--timestamp-to-absolute s current))
-		    ((or (eq org-agenda-prefer-last-repeat t)
-		         (member todo-state org-agenda-prefer-last-repeat))
-		     (org-agenda--timestamp-to-absolute
-		      s today 'past (current-buffer) pos))
-		    (t (org-agenda--timestamp-to-absolute s))))
-	          ;; REPEAT is the future repeat closest from CURRENT,
-	          ;; according to `org-agenda-show-future-repeats'. If
-	          ;; the latter is nil, or if the time stamp has no
-	          ;; repeat part, default to SCHEDULE.
-	          (repeat
-		   (cond
-		    (sexp? schedule)
-		    ((<= current today) schedule)
-		    ((not org-agenda-show-future-repeats) schedule)
-		    (t
-		     (let ((base (if (eq org-agenda-show-future-repeats 'next)
-				     (1+ today)
-				   current)))
-		       (org-agenda--timestamp-to-absolute
-		        s base 'future (current-buffer) pos)))))
-	          (diff (- current schedule))
-	          (pastschedp (< schedule today))
-	          (futureschedp (> schedule today))
-	          (habitp (and (fboundp 'org-is-habit-p)
-                               (string= "habit" (org-element-property :STYLE el))))
-	          (max-delay-days
-		   (let ((deadline (and org-agenda-skip-scheduled-delay-if-deadline
-                                        (org-element-property
-                                         :raw-value
-                                         (org-element-property :deadline el)))))
-		     (cond
-		      ((not deadline) most-positive-fixnum)
-		      ;; The current item has a deadline date, so
-		      ;; evaluate its delay time.
-		      ((integerp org-agenda-skip-scheduled-delay-if-deadline)
-		       ;; Use global delay time.
-		       (- org-agenda-skip-scheduled-delay-if-deadline))
-		      ((eq org-agenda-skip-scheduled-delay-if-deadline
-			   'post-deadline)
-		       ;; Set delay to no later than DEADLINE.
-		       (min (- schedule
-			       (org-agenda--timestamp-to-absolute deadline))
-			    org-scheduled-delay-days))
-		      (t 0))))
-	          (delay-days
-		   (cond
-		    ;; Nullify delay when a repeater triggered already
-		    ;; and the delay is of the form --Xd.
-		    ((and (string-match-p "--[0-9]+[hdwmy]" s)
-		          (> schedule (org-agenda--timestamp-to-absolute s)))
-		     0)
-		    (t (min max-delay-days (org-get-wdays s t))))))
-	     ;; Display scheduled items at base date (SCHEDULE), today if
-	     ;; scheduled before the current date, and at any repeat past
-	     ;; today.  However, skip delayed items and items that have
-	     ;; been displayed for more than `org-scheduled-past-days'.
-	     (unless (and todayp
-		          habitp
-		          (bound-and-true-p org-habit-show-all-today))
-	       (when (or (and (> delay-days 0) (< diff delay-days))
-		         (> diff (or (and habitp org-habit-scheduled-past-days)
-				     org-scheduled-past-days))
-		         (> schedule current)
-		         (and (/= current schedule)
-			      (/= current today)
-			      (/= current repeat)))
-	         (throw :skip nil)))
-	     ;; Possibly skip done tasks.
-	     (when (and donep
-		        (or org-agenda-skip-scheduled-if-done
-			    (/= schedule current)))
-	       (throw :skip nil))
-	     ;; Skip entry if it already appears as a deadline, per
-	     ;; `org-agenda-skip-scheduled-if-deadline-is-shown'.  This
-	     ;; doesn't apply to habits.
-             (when (or org-agenda-skip-scheduled-repeats-after-deadline
-                       ;; FIXME: Backwards-compatibility.
-                       (eq org-agenda-skip-scheduled-if-deadline-is-shown
-                           'repeated-after-deadline))
-               (let ((deadline
-                      (time-to-days
-                       (when (org-element-property :deadline el)
-                         (org-time-string-to-time
-                          (org-element-interpret-data
-                           (org-element-property :deadline el)))))))
-		 (when (and (or (<= (org-agenda--timestamp-to-absolute s) deadline)
-                                (not (= schedule current)))
-                            (> current deadline))
-                   (throw :skip nil))))
-	     (when (pcase org-agenda-skip-scheduled-if-deadline-is-shown
-		     ((guard
-		       (or (not (memq (line-beginning-position 0) deadline-pos))
-			   habitp))
-		      nil)
-		     (`not-today pastschedp)
-		     (`t t)
-		     (_ nil))
-	       (throw :skip nil))
-	     ;; Skip habits if `org-habit-show-habits' is nil, or if we
-	     ;; only show them for today.  Also skip done habits.
-	     (when (and habitp
-		        (or donep
-			    (not (bound-and-true-p org-habit-show-habits))
-			    (and (not todayp)
-			         (bound-and-true-p
-			          org-habit-show-habits-only-for-today))))
-	       (throw :skip nil))
-	     (save-excursion
-               (goto-char (org-element-begin el))
-	       (let* ((time
-		       (cond
-		        ;; No time of day designation if it is only a
-		        ;; reminder, except for habits, which always show
-		        ;; the time of day.  Habits are an exception
-		        ;; because if there is a time of day, that is
-		        ;; interpreted to mean they should usually happen
-		        ;; then, even if doing the habit was missed.
-		        ((and
-		          (not habitp)
-		          (/= current schedule)
-		          (/= current repeat))
-		         nil)
-		        ((string-match " \\([012]?[0-9]:[0-9][0-9]\\)" s)
-		         (concat (substring s (match-beginning 1)) " "))
-		        (t 'time)))
-		      (item
-                       (org-agenda-format-heading
-                        el
-                        :scheduling-info
-                        (unless habitp
-                          (pcase-let ((`(,first ,past) org-agenda-scheduled-leaders))
-		            ;; Show a reminder of a past scheduled today.
-		            (if (and todayp pastschedp)
-			        (format past diff)
-			      first)))
-                        :dotime time))
-		      (face (cond ((and (not habitp) pastschedp)
-				   'org-scheduled-previously)
-			          ((and habitp futureschedp)
-				   'org-agenda-done)
-			          (todayp 'org-scheduled-today)
-			          (t 'org-scheduled)))
-		      (habitp (and habitp (org-habit-parse-todo (org-element-begin el)))))
-	         (org-add-props item
-                     nil
-		   'undone-face face
-		   'face (if donep 'org-agenda-done face)
-		   'type (if pastschedp "past-scheduled" "scheduled")
-		   'date (if pastschedp schedule date)
-		   'ts-date schedule
-		   'urgency (if habitp (org-habit-get-urgency habitp)
-			      (+ 99 diff (org-get-priority item)))
-		   'org-habit-p habitp)
-	         (push item scheduled-items)))))))
-     :next-re regexp
-     :fail-re regexp
-     :narrow t)
-    (nreverse scheduled-items)))
+  (let ((agenda-day (calendar-absolute-from-gregorian date))
+        (today? (org-agenda-today-p date)))
+    (mapcar
+     (lambda (planning)
+       (let* ((past-repeat (org-element-property :past-repeat planning))
+              (future-repeat (org-element-property :future-repeat planning))
+              (pastschedp (< past-repeat agenda-day))
+              (diff (- agenda-day past-repeat))
+              (habitp (and (fboundp 'org-is-habit-p)
+                           (string= "habit"
+                                    (org-element-property
+                                     :STYLE
+                                     (org-headline-at-point planning)))))
+              (time
+	       (cond
+		;; No time of day designation if it is only a
+		;; reminder, except for habits, which always show
+		;; the time of day.  Habits are an exception
+		;; because if there is a time of day, that is
+		;; interpreted to mean they should usually happen
+		;; then, even if doing the habit was missed.
+	        ((and (not habitp)
+                      (/= agenda-day past-repeat)
+                      (/= agenda-day future-repeat))
+                 nil)
+	        ((let ((raw (org-element-property
+                             :raw-value
+                             (org-element-property :scheduled planning))))
+                   (and
+                    (string-match " \\([012]?[0-9]:[0-9][0-9]\\)" raw)
+	            (concat (substring raw (match-beginning 1)) " "))))
+	        (t 'time)))
+	      (item
+               (org-agenda-format-heading
+                planning
+                :scheduling-info
+                (unless habitp
+                  (pcase-let ((`(,first ,past) org-agenda-scheduled-leaders))
+		    ;; Show a reminder of a past scheduled today.
+		    (if (and today? pastschedp)
+			(format past diff)
+		      first)))
+                :dotime time))
+              (face (cond ((and (not habitp) pastschedp)
+			   'org-scheduled-previously)
+			  ((and habitp (> past-repeat agenda-day))
+			   'org-agenda-done)
+			  (today? 'org-scheduled-today)
+			  (t 'org-scheduled)))
+              (habit-obj (and habitp (org-habit-parse-todo (org-element-begin planning)))))
+         (org-add-props item
+             nil
+	   'ts-date past-repeat
+	   'urgency
+           (if habit-obj (org-habit-get-urgency habit-obj)
+	     (+ 99 diff (org-get-priority item)))
+	   'type (if pastschedp "past-scheduled" "scheduled")
+	   'date (if pastschedp past-repeat date)
+	   'face (if (eq 'done
+                         (org-element-property
+                          :todo-type (org-headline-at-point planning)))
+                     'org-agenda-done
+                   face)
+	   'undone-face face)))
+     (org-agenda-select-scheduled
+      date
+      with-hour
+      (mapcar
+       (lambda (item)
+         (get-text-property 0 'org-hd-marker item))
+       deadlines)))))
 
 (defun org-agenda-get-blocks ()
   "Return the date-range information for agenda display."
