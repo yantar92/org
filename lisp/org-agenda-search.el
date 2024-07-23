@@ -1205,10 +1205,7 @@ matching."
               ;; Current heading is not one of the provided.
               ;; We compare by :begin because provided headline nodes
               ;; may or may not be copies from cache.
-              (not (seq-find
-                  (lambda (h) (= (org-element-begin heading)
-                            (org-element-begin h)))
-                  excluded-headings)))
+              (not (member (org-element-begin heading) excluded-headings)))
            (setq
             timestamp
             (let ((context (org-element-context element)))
@@ -1278,8 +1275,11 @@ are selected."
          'date date
          'ts-date (calendar-absolute-from-gregorian date)
          'type "timestamp"))
-     (org-agenda-select-timestamps date deadlines))))
-
+     (org-agenda-select-timestamps
+      date
+      (mapcar (lambda (item)
+                (get-text-property 0 'org-hd-marker item))
+              deadlines)))))
 
 (defun org-agenda-select-sexps (date)
   "Return a list of diary sexps matching DATE in current buffer.
