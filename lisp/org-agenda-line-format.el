@@ -596,9 +596,9 @@ The following text properties are applied to the returned string:
 18. Additional properties assigned by `org-agenda-format-line', which
 see."
   (org-with-point-at epom
-    (let ((marker (when (number-or-marker-p epom) (copy-marker epom)))
-          (heading (org-headline-at-point epom))
-          (hd-marker (org-agenda-new-marker)))
+    (let* ((marker (when (number-or-marker-p epom) (copy-marker epom)))
+           (heading (org-headline-at-point epom))
+           (hd-marker (org-agenda-new-marker (org-element-begin heading))))
       (unless heading (error "org-agenda-format-heading: There is no heading at %S" epom))
       (goto-char (org-element-begin heading))
       ;; Get heading text right from inside the Org buffer to retain fontification.
