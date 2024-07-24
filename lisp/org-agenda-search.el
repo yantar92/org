@@ -1863,95 +1863,91 @@ scheduled items with an hour specification like [h]h:mm."
          (get-text-property 0 'org-hd-marker item))
        deadlines)))))
 
+(defun org-agenda-select-blocks (date)
+  "Return a list of range timestamps for agenda display at DATE."
+  (let ((agenda-day (calendar-absolute-from-gregorian date))
+        start-day end-day)
+    (org-agenda-map-regexp
+     (if org-agenda-include-inactive-timestamps
+         org-tr-regexp-both org-tr-regexp)
+     (lambda (element)
+       (let ((heading (org-headline-at-point element))
+             timestamp)
+         (when (and heading ; not before first heading
+                    (not (and org-agenda-skip-timestamp-if-done
+                            (eq 'done (org-element-property
+                                       :todo-type heading)))))
+           (setq
+            timestamp
+            (let ((context (org-element-context element)))
+              (if (org-element-type-p context 'timestamp)
+                  context
+                ;; Directly call the parser since we may match
+                ;; timestamps inside property drawers, which are not
+                ;; normally recognized.  See `org-at-timestamp-p'.
+                (save-excursion
+                  (goto-char (match-beginning 0))
+                  (org-element-timestamp-parser)))))
+           ;; Make sure that TIMESTAMP has reference to the AST
+           ;; context.  This is needed for `org-agenda-format-heading'
+           ;; to accept the returned timestamp object.
+           (when (and timestamp (not (org-element-parent timestamp)))
+             (setf (org-element-parent timestamp) element))
+           (when (and timestamp
+                      (memq (org-element-property :type timestamp)
+                            (if org-agenda-include-inactive-timestamps
+                                '(active-range inactive-range)
+                              '(active-range))))
+             (setq start-day (time-to-days (org-timestamp-to-time timestamp))
+                   end-day (time-to-days (org-timestamp-to-time timestamp 'end)))
+             (when (and (> (- agenda-day start-day) -1)
+                        (> (- end-day agenda-day) -1))
+               timestamp)))))
+     (current-buffer))))
+
 (defun org-agenda-get-blocks ()
   "Return the date-range information for agenda display."
   (with-no-warnings (defvar date))
-  (let* (;; Group 1: starting date timestamp without braces
-         ;; Group 2: ending date timestamp without braces
-	 (regexp (if org-agenda-include-inactive-timestamps
-                     org-tr-regexp-both org-tr-regexp))
-	 (agenda-today (calendar-absolute-from-gregorian date))
-         face block-list txt start-day end-day
-         todo-state pos donep inactive?)
-    (goto-char (point-min))
-    (while (re-search-forward regexp nil t)
-      (catch :skip
-	(org-agenda-skip)
-	(setq pos (point))
-        (setq inactive? (eq ?\[ (char-after (match-beginning 0))))
-	(let ((start-time (match-string 1))
-	      (end-time (match-string 2)))
-	  (setq start-day (time-to-days
-		           (condition-case err
-			       (org-time-string-to-time start-time)
-		             (error
-		              (error
-			       "Bad timestamp %S at %d in buffer %S\nError was: %s"
-			       start-time
-			       pos
-			       (current-buffer)
-			       (error-message-string err)))))
-		end-day (time-to-days
-		         (condition-case err
-			     (org-time-string-to-time end-time)
-		           (error
-		            (error
-			     "Bad timestamp %S at %d in buffer %S\nError was: %s"
-			     end-time
-			     pos
-                             (current-buffer)
-			     (error-message-string err))))))
-	  (when (and (> (- agenda-today start-day) -1)
-                     (> (- end-day agenda-today) -1))
-            ;; Only allow days between the limits, because the normal
-	    ;; date stamps will catch the limits.
-	    (save-excursion
-	      (setq todo-state (org-get-todo-state))
-	      (setq donep (org-element-keyword-done-p todo-state))
-	      (when (and donep org-agenda-skip-timestamp-if-done)
-		(throw :skip t))
-              (setq face (if (= start-day end-day)
-                             'org-agenda-calendar-event
-                           'org-agenda-calendar-daterange))
-	      (if (not (re-search-backward org-outline-regexp-bol nil t))
-		  (throw :skip nil)
-		(goto-char (match-beginning 0))
-		(let ((remove-re
-		       (if org-agenda-remove-timeranges-from-blocks
-			   (concat
-			    "<" (regexp-quote start-time) ".*?>"
-			    "--"
-			    "<" (regexp-quote end-time) ".*?>")
-			 nil)))
-		  (setq txt
-                        (org-agenda-format-heading
-                         nil
-                         :scheduling-info
-                         (concat
-                          (when inactive? org-agenda-inactive-leader)
-			  (format
-			   (nth (if (= start-day end-day) 0 1)
-				org-agenda-timerange-leaders)
-			   (1+ (- agenda-today start-day)) (1+ (- end-day start-day))))
-                         :dotime
-                         (cond
-                          ((and (= start-day agenda-today) (= end-day agenda-today))
-			   (concat "<" start-time ">--<" end-time ">"))
-                          ((= start-day agenda-today)
-			   (concat "<" start-time ">"))
-			  ((= end-day agenda-today)
-			   (concat "<" end-time ">")))
-                         :default-duration nil
-                         :remove-re remove-re))))
-	      (org-add-props txt
-                  nil
-                'face face
-		'type "block"
-                'date date)
-	      (push txt block-list))))
-	(goto-char pos)))
-    ;; Sort the entries by expiration date.
-    (nreverse block-list)))
+  (let ((agenda-day (calendar-absolute-from-gregorian date))
+        start-day end-day)
+    (mapcar
+     (lambda (timestamp)
+       (setq start-day (time-to-days (org-timestamp-to-time timestamp))
+             end-day (time-to-days (org-timestamp-to-time timestamp 'end)))
+       (org-add-props
+           (org-agenda-format-heading
+            timestamp
+            :scheduling-info
+            (concat
+             (when (eq (org-element-property :type timestamp) 'inactive-range)
+               org-agenda-inactive-leader)
+	     (format
+	      (nth (if (= start-day end-day) 0 1)
+		   org-agenda-timerange-leaders)
+	      (1+ (- agenda-day start-day)) (1+ (- end-day start-day))))
+            :dotime
+            (cond
+             ((and (= start-day agenda-day) (= end-day agenda-day))
+	      (org-element-property :raw-value timestamp))
+             ((= start-day agenda-day)
+              (org-element-property
+               :raw-value
+               (org-timestamp-split-range timestamp)))
+	     ((= end-day agenda-day)
+	      (org-element-property
+               :raw-value
+               (org-timestamp-split-range timestamp 'end))))
+            :default-duration nil
+            :remove-re
+            (regexp-quote (org-element-property
+                           :raw-value timestamp)))
+           nil
+         'face (if (= start-day end-day)
+                   'org-agenda-calendar-event
+                 'org-agenda-calendar-daterange)
+	 'type "block"
+         'date date))
+     (org-agenda-select-blocks date))))
 
 (defvar org-search-syntax-table nil
   "Special syntax table for Org search.
