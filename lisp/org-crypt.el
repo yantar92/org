@@ -69,6 +69,8 @@
 (declare-function org-end-of-meta-data "org" (&optional full))
 (declare-function org-end-of-subtree "org" (&optional invisible-ok to-heading element))
 (declare-function org-entry-get "org" (pom property &optional inherit literal-nil))
+(declare-function org-at-heading-p "org" (&optional invisible-not-ok))
+(declare-function org-get-tags "org" (&optional epom local))
 (declare-function org-fold-subtree "org-fold" (flag))
 (declare-function org-fold-show-set-visibility "org-fold" (detail))
 (declare-function org-make-tags-matcher "org" (match &optional only-local-tags))
@@ -374,22 +376,22 @@ Return non-nil when the entry was actually encrypted."
 
 (defvar org--matcher-tags-todo-only)
 
+(defun org-encrypt--map-items-simple (func)
+  "Like `org-encrypt--map-items', but only look for :crypt: tags."
+  (org-with-wide-buffer
+   (goto-char (point-min))
+   (while (re-search-forward ":crypt:" nil t)
+     (when (and (org-at-heading-p)
+                (member "crypt" (org-get-tags nil 'local)))
+       (funcall func)))))
+
 (defun org-encrypt--map-items (func)
   "Run FUNC at every entry matching `org-crypt-tag-matcher'."
-  (let* ((org--matcher-tags-todo-only nil))
-    (when (or (not (equal org-crypt-tag-matcher "crypt"))
-              (org-with-wide-buffer
-               (goto-char (point-min))
-               (re-search-forward ":crypt:" nil t)))
+  (if (equal org-crypt-tag-matcher "crypt")
+      (org-encrypt--map-items-simple func)
+    (let* ((org--matcher-tags-todo-only nil))
       (org-scan-tags
-       (lambda ()
-         (funcall func)
-         ;; FIXME: Ad-hoc optimization to speed-up encryption when
-         ;; using defaults.  It is difficult to generalize it to
-         ;; completely arbitrary `org-crypt-tag-matcher'.
-         (when (equal org-crypt-tag-matcher "crypt")
-           (re-search-forward ":crypt:" nil 'move)
-           (org-back-to-heading t)))
+       func
        (cdr (org-make-tags-matcher org-crypt-tag-matcher))
        org--matcher-tags-todo-only))))
 
