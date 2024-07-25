@@ -1883,9 +1883,11 @@ not exported."
 INFO is a plist containing export directives."
   (let ((type (org-element-type blob)))
     ;; Return contents only for complete parse trees.
-    (if (eq type 'org-data) (lambda (_datum contents _info) contents)
-      (let ((transcoder (cdr (assq type (plist-get info :translate-alist)))))
-	(and (functionp transcoder) transcoder)))))
+    (let ((transcoder (cdr (assq type (plist-get info :translate-alist)))))
+      (cond
+       ((functionp transcoder) transcoder)
+       ;; Use default org-data transcoder unless specified.
+       ((eq type 'org-data) #'org-export-transcode-org-data)))))
 
 (defun org-export--keep-spaces (data info)
   "Non-nil, when post-blank spaces after removing DATA should be preserved.
@@ -1928,7 +1930,7 @@ string.  INFO is a plist holding export options.
 
 The `:filter-parse-tree' filters are not applied.
 
-Return a string."
+Return a string or a list of strings."
   (or (gethash data (plist-get info :exported-data))
       ;; Handle broken links according to
       ;; `org-export-with-broken-links'.
@@ -2967,7 +2969,9 @@ Optional argument EXT-PLIST, when provided, is a property list
 with external parameters overriding Org default settings, but
 still inferior to file-local settings.
 
-Return code as a string."
+Return code as a string or a list of strings.
+The returned strings will have their `org-export-info' property set to
+export information channel."
   (when (symbolp backend) (setq backend (org-export-get-backend backend)))
   (org-export-barf-if-invalid-backend backend)
   (org-fold-core-ignore-modifications
@@ -3004,31 +3008,44 @@ Return code as a string."
                        backend info subtreep visible-only ext-plist))
 	   ;; Eventually transcode TREE.  Wrap the resulting string into
 	   ;; a template.
-	   (let* ((body (org-element-normalize-string
-		         (or (org-export-data (plist-get info :parse-tree) info)
-                             "")))
-		  (inner-template (cdr (assq 'inner-template
-					     (plist-get info :translate-alist))))
-		  (full-body (org-export-filter-apply-functions
-			      (plist-get info :filter-body)
-			      (if (not (functionp inner-template)) body
-			        (funcall inner-template body info))
-			      info))
-		  (template (cdr (assq 'template
-				       (plist-get info :translate-alist))))
-                  (output
-                   (if (or (not (functionp template)) body-only) full-body
-	             (funcall template full-body info))))
+	   (let ((output
+                  (or (org-export-data (plist-get info :parse-tree) info)
+                      "")))
+             (setq output (ensure-list output))
              ;; Call citation export finalizer.
              (when (plist-get info :with-cite-processors)
-               (setq output (org-cite-finalize-export output info)))
-	     ;; Remove all text properties since they cannot be
-	     ;; retrieved from an external process.  Finally call
-	     ;; final-output filter and return result.
-	     (org-no-properties
-	      (org-export-filter-apply-functions
-	       (plist-get info :filter-final-output)
-	       output info)))))))))
+               (setq output
+                     (mapcar
+                      (lambda (o) (org-cite-finalize-export o info))
+                      output)))
+             (let ((filters (plist-get info :filter-final-output)))
+               ;; Call final-output filter and return result.
+               (setq output
+                     (mapcar
+                      (lambda (o) (org-export-filter-apply-functions filters o info))
+                      output)))
+             ;; Apply org-export-info property.
+             (setq output
+                   (mapcar
+                    (lambda (o) (org-add-props o nil 'org-export-info info))
+                    output))
+             (if (length= output 1) (car output) output))))))))
+
+(defun org-export-transcode-org-data (_ body info)
+  "Transcode `org-data' node with BODY.  Return transcoded string.
+INFO is the communication channel plist."
+  (let* ((inner-template (cdr (assq 'inner-template
+				    (plist-get info :translate-alist))))
+	 (full-body (org-export-filter-apply-functions
+		     (plist-get info :filter-body)
+		     (if (not (functionp inner-template)) body
+		       (funcall inner-template body info))
+		     info))
+	 (template (cdr (assq 'template
+			      (plist-get info :translate-alist))))
+         (body-only (memq 'body-only (plist-get info :export-options))))
+    (if (or (not (functionp template)) body-only) full-body
+      (funcall template full-body info))))
 
 (defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
   "Annotate the INFO plist according to the BACKEND.
@@ -6813,6 +6830,31 @@ This function returns BUFFER."
 	(switch-to-buffer-other-window buffer))
       buffer)))
 
+(defun org-export--write-output (output encoding)
+  "Write OUTPUT to file with ENCODING.
+OUTPUT may be a string or a list of strings.
+The target file is retrieved from :output-file OUTPUT property or
+:output-file property in plist stored in `org-export-info' property of
+each string.
+
+Return the file name or a list of file names."
+  (if (listp output) (mapcar #'org-export--write-output output)
+    (let ((file (or
+                 (get-text-property 0 :output-file output)
+                 (plist-get
+                  (get-text-property 0 'org-export-info output)
+                  :output-file))))
+      (with-temp-buffer
+        (insert output)
+        ;; Ensure final newline.  This is what was done
+        ;; historically, when we used `write-file'.
+        ;; Note that adding a newline is only safe for
+        ;; non-binary data.
+        (unless (bolp) (insert "\n"))
+        (let ((coding-system-for-write encoding))
+	  (write-region nil nil file))
+        file))))
+
 ;;;###autoload
 (defun org-export-to-file
     (backend file &optional async subtreep visible-only body-only ext-plist
@@ -6861,33 +6903,23 @@ or FILE."
 	    `(let ((output
 		    (org-export-as
 		     ',backend ,subtreep ,visible-only ,body-only
-		     ',ext-plist)))
-	       (with-temp-buffer
-		 (insert output)
-                 ;; Ensure final newline.  This is what was done
-                 ;; historically, when we used `write-file'.
-                 ;; Note that adding a newline is only safe for
-                 ;; non-binary data.
-                 (unless (bolp) (insert "\n"))
-		 (let ((coding-system-for-write ',encoding))
-		   (write-region nil nil ,file)))
-	       (or (ignore-errors (funcall ',post-process ,file)) ,file)))
+		     ',ext-plist))
+                   file)
+               (setq file (org-export--write-output output ',encoding))
+               (let ((post (lambda (f) (or (ignore-errors (funcall ',post-process f)) f))))
+                 (if (listp file) (mapcar post file) (funcall post file)))))
         (let ((output (org-export-as
-                       backend subtreep visible-only body-only ext-plist)))
-          (with-temp-buffer
-            (insert output)
-            ;; Ensure final newline.  This is what was done
-            ;; historically, when we used `write-file'.
-            ;; Note that adding a newline is only safe for
-            ;; non-binary data.
-            (unless (bolp) (insert "\n"))
-            (let ((coding-system-for-write encoding))
-	      (write-region nil nil file)))
+                       backend subtreep visible-only body-only ext-plist))
+              file)
+          (setq file (org-export--write-output output encoding))
           (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
             (org-kill-new output))
           ;; Get proper return value.
-          (or (and (functionp post-process) (funcall post-process file))
-	      file))))))
+          (let ((post (lambda (f)
+                        (or (and (functionp post-process)
+                                 (funcall post-process f))
+	                    f))))
+            (if (listp file) (mapcar post file) (funcall post file))))))))
 
 (defun org-export-output-file-name (extension &optional subtreep pub-dir)
   "Return output file's name according to buffer specifications.
