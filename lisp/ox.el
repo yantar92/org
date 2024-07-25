@@ -6157,6 +6157,26 @@ them."
      ("uk" :html "&#1040;&#1074;&#1090;&#1086;&#1088;" :utf-8 "Автор")
      ("zh-CN" :html "&#20316;&#32773;" :utf-8 "作者")
      ("zh-TW" :html "&#20316;&#32773;" :utf-8 "作者"))
+    ("Chapter %s"
+     ("ar" :default "الفصل %s")
+     ("cs" :default "kapitola %s")
+     ("da" :default "kapitel %s")
+     ("de" :default "Kapitel %s")
+     ("es" :ascii "capitulo %s" :html "cap&iacute;tulo %s" :default "capítulo %s")
+     ("et" :html "peat&#252;kk %s" :utf-8 "peatükk %s")
+     ("fa" :default "فصل %s")
+     ("fr" :default "chapitre %s")
+     ("it" :default "capitolo %s")
+     ("ja" :default "章 %s")
+     ("nl" :default "hoofdstuk %s"
+      :html "hoofdstuk&nbsp;%s" :latex "hoofdstuk~%s")
+     ("pt_BR" :ascii "capitulo %s" :html "cap&iacute;tulo %s" :default "capítulo %s")
+     ("ro" :default "capitol %s")
+     ("ru" :html "&#1075;&#1083;&#1072;&#1074;&#1072;&nbsp;%s"
+      :utf-8 "глава %s")
+     ("sl" :default "odsek %s")
+     ("tr" :html "b&#246;l&#252;m" :default "bölüm %s")
+     ("zh-CN" :html "&#31456;&#33410;" :utf-8 "章节 %s"))
     ("Continued from previous page"
      ("ar" :default "تتمة الصفحة السابقة")
      ("cs" :default "Pokračování z předchozí strany")
@@ -6286,6 +6306,8 @@ them."
      ("sv" :default "Illustration")
      ("tr" :default "Şekil")
      ("zh-CN" :html "&#22270;" :utf-8 "图"))
+    ("Fig. %s"
+     ("de" :default "Abb. %s"))
     ("Figure %d:"
      ("ar" :default "شكل %d:")
      ("cs" :default "Obrázek %d:")
@@ -6453,6 +6475,28 @@ them."
      ("sl" :default "Reference")
      ("sv" :default "Referenser")
      ("tr" :default "Referanslar"))
+    ("Section %s"
+     ("ar" :default "انظر قسم %s")
+     ("cs" :default "sekce %s")
+     ("da" :default "afsnit %s")
+     ("de" :default "Abschnitt %s")
+     ("es" :ascii "seccion %s" :html "secci&oacute;n %s" :default "sección %s")
+     ("et" :html "peat&#252;kki %s" :utf-8 "peatükki %s")
+     ;;          ("fa" :default "نمایش بخش %s")
+     ("fr" :default "section %s")
+     ("it" :default "sezione %s")
+     ;;          ("ja" :default "セクション %s を参照")
+     ("nl" :default "sectie %s"
+      :html "sectie&nbsp;%s" :latex "sectie~%s")
+     ("pt_BR" :html "se&ccedil;&atilde;o %s" :default "seção %s"
+      :ascii "secao %s")
+     ("ro" :default "secțiunea %s")
+     ("ru" :html "&&#1088;&#1072;&#1079;&#1076;&#1077;&#1083; %s"
+      :utf-8 "раздел %s")
+     ("sl" :default "poglavje %d")
+     ("tr" :default "bölüm %s")
+     ;;          ("zh-CN" :html "&#21442;&#35265;&#31532;%s&#33410;" :utf-8 "参见第%s节")
+     )
     ("See figure %s"
      ("cs" :default "Viz obrázek %s")
      ("et" :default "Vaata joonist %s")
