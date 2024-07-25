@@ -500,7 +500,10 @@ These will be lower-case, for filtering."
 If the line does not have an effort defined, return nil."
   ;; `effort-minutes' property cannot be extracted directly from
   ;; current line but is stored as a property in `txt'.
-  (let ((effort (get-text-property 0 'effort-minutes (org-get-at-bol 'txt))))
+  (let ((effort (or
+                 (org-get-at-bol 'effort-minutes)
+                 ;; FIXME: Storing effort data in TXT is obsolete.
+                 (get-text-property 0 'effort-minutes (org-get-at-bol 'txt)))))
     (funcall op
 	     (or effort (if org-agenda-sort-noeffort-is-high 32767 -1))
 	     value)))

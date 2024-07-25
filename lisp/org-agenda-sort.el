@@ -327,12 +327,18 @@ The ENTRIES are dropped/retained according to `org-agenda-max-todos',
   (let* ((def (if org-agenda-sort-noeffort-is-high 32767 -1))
 	 ;; `effort-minutes' property is not directly accessible from
 	 ;; the strings, but is stored as a property in `txt'.
-	 (ea (or (get-text-property
-		  0 'effort-minutes (get-text-property 0 'txt a))
-		 def))
-	 (eb (or (get-text-property
-		  0 'effort-minutes (get-text-property 0 'txt b))
-		 def)))
+	 (ea (or
+              (get-text-property 0 'effort-minutes a)
+              ;; FIXME: Storing effort data in TXT is obsolete.
+              (get-text-property
+	       0 'effort-minutes (get-text-property 0 'txt a))
+	      def))
+	 (eb (or
+              (get-text-property 0 'effort-minutes b)
+              ;; FIXME: Storing effort data in TXT is obsolete.
+              (get-text-property
+	       0 'effort-minutes (get-text-property 0 'txt b))
+	      def)))
     (cond ((> ea eb) +1)
 	  ((< ea eb) -1))))
 
