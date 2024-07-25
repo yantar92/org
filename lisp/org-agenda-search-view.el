@@ -259,7 +259,6 @@ is active."
     (org-agenda-insert-block
      'search
      (lambda ()
-
        (when-let ((entries
                    (org-agenda-mapcan-files
                     (lambda ()

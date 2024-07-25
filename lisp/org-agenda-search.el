@@ -1961,6 +1961,61 @@ that when \"+Ameli\" is searched as a work, it will also match \"Ameli's\"")
     (modify-syntax-entry ?` "." org-search-syntax-table))
   org-search-syntax-table)
 
+(defun org-agenda-select-regexps
+    ( regexps+ regexps-
+      &optional headline-only todo-only max-outline-level)
+  "Return headlines containing REGEXP+ matches but not REGEXP- matches.
+REGEXPS+ and REGEXPS- are lists of regexps to match/skip.
+
+When HEADLINE-ONLY is non-nil, match only against headline titles.
+When TODO-ONLY is non-nil, match only against todo items.
+When MAX-OUTLINE-LEVEL is non-nil and not 0, limit matching against
+headlines of up to that level."
+  (unless max-outline-level (setq max-outline-level 0))
+  (with-syntax-table (org-search-syntax-table)
+    (let ((case-fold-search t)
+          (headline-re
+           (org-with-limited-levels
+            (if (zerop max-outline-level)
+                org-outline-regexp-bol
+              (org-headline-re
+               (org-reduced-level
+                (org-get-valid-level max-outline-level))))))
+          headline limit)
+      (org-agenda-map-regexp
+       (if (and headline-only regexps+)
+           (concat headline-re ".*?" (pop regexps+))
+         (or (pop regexps+) headline-re))
+       (lambda (element)
+         (setq headline (org-headline-at-point element))
+         (when (and headline
+                    (or (zerop max-outline-level)
+                        (<= (org-element-property :level headline)
+                           max-outline-level))
+                    (or (not todo-only)
+                        (eq 'todo (org-element-property :todo-type headline))))
+           (goto-char (org-element-begin headline))
+           (skip-chars-forward "* ")
+           (and (re-search-forward headline-re nil 'move)
+                (goto-char (match-beginning 0)))
+           (setq limit
+                 (if (or headline-only todo-only)
+                     (or (org-element-contents-begin headline)
+                         (org-element-end headline))
+                   (point)))
+           (catch :skip
+             (save-excursion
+               (dolist (regexp- regexps-)
+                 (goto-char (org-element-begin headline))
+                 (when (re-search-forward regexp- limit t)
+                   (throw :skip t)))
+               (dolist (regexp+ regexps+)
+                 (goto-char (org-element-begin headline))
+                 (unless (re-search-forward regexp+ limit t)
+                   (throw :skip t)))
+               headline))))
+       (current-buffer)))))
+
 (defun org-agenda-get-regexps ( regexps+ regexps-
                                 &optional headline-only todo-only max-outline-level)
   "Return REGEXPS+ matches for agenda display omitting REGEXPS- matches.
@@ -1970,69 +2025,18 @@ When HEADLINE-ONLY is non-nil, match only against headlines.
 When TODO-ONLY is non-nil, match only against todo items.
 When MAX-OUTLINE-LEVEL is non-nil and not 0, limit matching against
 headlines of up to that level."
-  (catch 'nextfile
-    (let (last-search-end beg end str regexp ee)
-      (if (not regexps+)
-	  (setq regexp org-outline-regexp-bol)
-        (setq regexp (pop regexps+))
-        (when headline-only
-          (setq regexp (concat org-outline-regexp-bol ".*?"
-			       regexp))))
-      (with-syntax-table (org-search-syntax-table)
-        (let ((case-fold-search t))
-	  (goto-char (point-min))
-	  (unless (or (org-at-heading-p)
-		      (outline-next-heading))
-	    (throw 'nextfile nil))
-	  (goto-char (max (point-min) (1- (point))))
-	  (while (re-search-forward regexp nil t)
-            (setq last-search-end (point))
-	    (org-back-to-heading t)
-	    (while (and (not (zerop max-outline-level))
-		        (> (org-reduced-level (org-outline-level))
-			   max-outline-level)
-		        (forward-line -1)
-		        (org-back-to-heading t)))
-	    (skip-chars-forward "* ")
-            (setq beg (line-beginning-position)
-		  end (progn
-		        (outline-next-heading)
-		        (while (and (not (zerop max-outline-level))
-				    (> (org-reduced-level (org-outline-level))
-				       max-outline-level)
-				    (forward-line 1)
-				    (outline-next-heading)))
-		        (point)))
-	    (catch :skip
-	      (goto-char beg)
-	      (org-agenda-skip)
-	      (setq str (buffer-substring-no-properties
-                         (line-beginning-position)
-                         (if headline-only (line-end-position) end)))
-	      (mapc (lambda (wr) (when (string-match wr str)
-			      (goto-char (1- end))
-			      (throw :skip t)))
-		    regexps-)
-	      (mapc (lambda (wr) (unless (string-match wr str)
-			      (goto-char (1- end))
-			      (throw :skip t)))
-		    (if todo-only
-		        (cons (concat "^\\*+[ \t]+"
-                                      (org-not-done-regexp))
-			      regexps+)
-		      regexps+))
-	      (goto-char beg)
-	      (push
-               (org-add-props
-                   (org-agenda-format-heading nil :dotime 'auto)
-                   nil
-                 'face nil
-                 'urgency 1000
-	         'priority 1000
-	         'type "search")
-               ee)
-	      (goto-char (max (1- end) last-search-end))))))
-      (nreverse ee))))
+  (mapcar
+   (lambda (headline)
+     (org-add-props
+         (org-agenda-format-heading headline :dotime 'auto)
+         nil
+       'face nil
+       'urgency 1000
+       'priority 1000
+       'type "search"))
+   (org-agenda-select-regexps
+    regexps+ regexps-
+    headline-only todo-only max-outline-level)))
 
 (defun org-agenda-get-tags (matcher &optional todo-only)
   "Return entries matching tag MATCHER for agenda display.
