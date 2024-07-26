@@ -3047,7 +3047,7 @@ INFO is the communication channel plist."
     (if (or (not (functionp template)) body-only) full-body
       (funcall template full-body info))))
 
-(defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
+or(defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
   "Annotate the INFO plist according to the BACKEND.
 
 This is run in the context of the current buffer.
