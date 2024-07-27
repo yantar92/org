@@ -531,7 +531,7 @@ timestamp and the timestamp type relevant for the sorting strategy in
       &key
       scheduling-info remove-re
       dotime (default-duration org-agenda-default-appointment-duration)
-      overriding-headline)
+      (headline-format '(headline tags)))
   "Format Org heading at point or EPOM for insertion into agenda buffer.
 EPOM is an element, point, or marker.
 
@@ -554,8 +554,14 @@ which see.
 REMOVE-RE, when non-nil, is a regular expression.  All its matches will
 be removed from heading and its tags line in the returned string.
 
-OVERRIDING-HEADLINE is the headline to be used instead of actual
-headline at EPOM.
+HEADLINE-FORMAT is the headline text to be used.
+It can be a string to be displayed in place of the headline or a list
+of strings or symbols representing headline components.  When a list,
+its components will be concatenated.  Recognized list elements:
+- a string    :: used as is
+- `headline'  :: headline without stars and tags
+- `tags'      :: tags, with leading spaces
+- nil          :: ignored
 
 Return a string suitable for insertion into agenda, with approprtiate
 text properties applied.
@@ -600,12 +606,38 @@ see."
            (heading (org-headline-at-point epom))
            (hd-marker (org-agenda-new-marker (org-element-begin heading))))
       (unless heading (error "org-agenda-format-heading: There is no heading at %S" epom))
-      (goto-char (org-element-begin heading))
-      ;; Get heading text right from inside the Org buffer to retain fontification.
-      (skip-chars-forward "* ")
       (let* ((heading-string
-              (or overriding-headline
-                  (org-buffer-substring-fontified (point) (line-end-position))))
+              (pcase headline-format
+                ((pred stringp) headline-format)
+                ((pred listp)
+                 (goto-char (org-element-begin heading))
+                 ;; Get heading text right from inside the Org buffer to retain fontification.
+                 (let ((case-fold-search nil))
+                   (cl-assert (looking-at (org-complex-heading-regexp))))
+                 (let ((headline
+                        (when (or (match-beginning 2)
+                                  (match-beginning 3)
+                                  (match-beginning 4))
+                          (org-buffer-substring-fontified
+                           (or (match-beginning 2)
+                               (match-beginning 3)
+                               (match-beginning 4))
+                           (or (match-beginning 5) (match-end 0)))))
+                       (tags (when (match-beginning 5)
+                               (org-buffer-substring-fontified
+                                (match-beginning 5) (match-end 5)))))
+                   (mapconcat
+                    (lambda (segment)
+                      (pcase segment
+                        ((pred stringp) segment)
+                        (`headline headline)
+                        (`tags tags)
+                        (`nil "")
+                        (_ (error "org-agenda-format-heading: Unknown format segment %S"
+                                  segment))))
+                    headline-format "")))
+                (_ (error "org-agenda-format-heading: Unknown headline format %S"
+                          headline-format))))
              (category (org-get-category heading))
              (effort (org-entry-get heading org-effort-property))
              (effort-minutes (when effort (org-duration-to-minutes effort)))

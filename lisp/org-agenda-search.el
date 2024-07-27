@@ -1334,7 +1334,7 @@ resolved value, as returned by `org-diary-sexp-entry'."
                 (org-agenda-format-heading
                  sexp-element
                  :scheduling-info scheduling-info
-                 :overriding-title agenda-line
+                 :headline-format agenda-line
                  :dotime 'auto))
 	  (org-add-props agenda-line
               nil
