@@ -119,7 +119,7 @@
   '(?h "Export to HTML"
        ((?H "As HTML buffer" org-html-export-as-html)
 	(?h "As HTML file" org-html-export-to-html)
-	(?m "As HTML Multipage files" org-html-export-to-multipage-html)
+	(?m "As HTML Multipage files" org-html-export-to-multipage)
 	(?o "As HTML file and open"
 	    (lambda (a s v b)
 	      (if a (org-html-export-to-html t s v b)
@@ -172,7 +172,7 @@
     (:html-multipage-export-directory
      nil "html-multipage-export-directory" org-html-multipage-export-directory)
     (:html-multipage-nav-format nil nil org-html-multipage-nav-format)
-    (:html-multipage-split nil "html-multipage-split" org-html-multipage-split)
+    (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
     (:html-multipage-open nil "html-multipage-open" org-html-multipage-open)
     (:html-multipage-toc-to-top nil "html-multipage-toc-to-top" org-html-multipage-toc-to-top)
     (:html-multipage-top-insert nil "html-multipage-top-insert" org-html-multipage-top-insert)
@@ -1857,7 +1857,7 @@ export."
   :package-version '(Org . "9.8")
   :type '(choice (const browser) (const buffer) (const nil)))
 
-(defcustom org-html-multipage-split 'toc
+(defcustom org-html-multipage-split-level 'toc
   "How to split the ORG file into multiple HTML pages.
 
    toc - split each entry of the toc into a separate page.
@@ -4654,19 +4654,17 @@ used as a communication channel."
           ;; Body.
           body))
 
-(defun org-html-multipage-ensure-export-dir (info)
-  "get the full pathname of `html-multipage-export-directory'
-and ensure it exists."
-  (let ((dir (plist-get info :html-multipage-export-directory)))
-    (when (symbolp dir) (setq dir (format "%s" dir)))
-    (unless (= (aref dir 0) 47)
-      (setq dir (concat (file-name-directory (buffer-file-name)) dir)))
-    (unless (file-directory-p dir)
-      (make-directory dir :parents))
-    dir))
+(defun org-html-multipage-ensure-export-dir (dir)
+  "get the full pathname of dir and ensure it exists."
+  (when (symbolp dir) (setq dir (format "%s" dir)))
+  (unless (= (aref dir 0) 47)
+    (setq dir (concat (file-name-directory (buffer-file-name)) dir)))
+  (unless (file-directory-p dir)
+    (make-directory dir :parents))
+  dir)
 
 (defun org-html-multipage-split-tree (info)
-  (let ((split-ref (plist-get info :html-multipage-split))
+  (let ((split-ref (plist-get info :html-multipage-split-level))
         (headline-numbering (plist-get info :headline-numbering)))
     (cond
      ((eq split-ref 'toc)
@@ -4684,138 +4682,34 @@ and ensure it exists."
                      headline-numbering :key 'cdr)
        info)))))
 
-(defun org-html-transcode-headline (headline info &optional body-only)
-  "transcode the headline tree into a string according to the
-backend and return the string."
-  (let* ((body (org-element-normalize-string
-		(or (org-export-data headline info) "")))
-	 (inner-template (if (plist-get info :multipage)
-                             (alist-get 'multipage-inner-template
-                                        (plist-get info :translate-alist))
-                           (alist-get 'inner-template
-                                        (plist-get info :translate-alist))))
-	 (full-body (org-export-filter-apply-functions
-		     (plist-get info :filter-body)
-		     (if (not (functionp inner-template)) body
-                         (funcall inner-template body info))
-		     info))
-	 (template (if (plist-get info :multipage)
-                       (cdr (assq 'multipage-template
-                                  (plist-get info :translate-alist)))
-                     (cdr (assq 'template
-                                  (plist-get info :translate-alist)))))
-         (output
-          (if (or (not (functionp template)) body-only) full-body
-	    (funcall template full-body info))))
-    ;; Call citation export finalizer.
-    (setq output (org-cite-finalize-export output info))
-    ;; Remove all text properties since they cannot be
-    ;; retrieved from an external process.  Finally call
-    ;; final-output filter and return result.
-    (org-no-properties
-     (org-export-filter-apply-functions
-      (plist-get info :filter-final-output)
-      output info))))
-
-(defun org-html-process-multipage (info &optional body-only)
+(defun org-html-transcode-multipage (info &optional body-only)
   "Central routine transcoding to multipage output called by
-`org-html-transcode-org-data' called from
-`org-export-as'. The pages to be exported of the document are are
-in the :multipage-org-pages property of info as a list of
-org-page pseudo elements. This function takes care of splitting
-the parse-tree into the subtrees for each page, determining the
-file names and writing them to file.
+`org-html-transcode-org-data' called from `org-export-as'.
+
+The pages to be exported are in the :multipage-org-pages property
+of info as a list of org-page pseudo elements. This function
+transcodes the org-pages and returns a list of the transcoded
+output strings with their filename as :output-file Text Property
+to be further processed by the function calling `org-export-as'.
 
 INFO is the communication channel.
 "
-  (let ((dir (org-html-multipage-ensure-export-dir info))
-        (async (plist-get info :async))
-        (post-process (plist-get info :post-process))
-        (encoding (or org-export-coding-system buffer-file-coding-system)))
+  (let ((async (plist-get info :async))
+        (post-process (plist-get info :post-process)))
     (declare (indent 2))
-    (if (not (file-writable-p dir)) (error "Output dir not writable")
-      (dolist (org-page (plist-get info :multipage-org-pages))
-        (let ((file (org-element-property :file org-page)))
-          (if async
-              (org-export-async-start
-                  (lambda (file) (org-export-add-to-stack (expand-file-name file) backend))
-                `(let ((output (org-html-transcode-org-page ,org-page ,info))
-                       (file (format "%s/%s" dir file)))
-                   (message "writing '%s'" file)
-                   (write-string-to-file output encoding file)
-                   (or (ignore-errors (funcall ',post-process ,file)) ,file)))
-            (let ((output (org-html-transcode-org-page org-page info)))
-              (message "writing '%s'" file)
-              (with-temp-buffer
-                (insert output)
-                ;; Ensure final newline.  This is what was done
-                ;; historically, when we used `write-file'.
-                ;; Note that adding a newline is only safe for
-                ;; non-binary data.
-                (unless (bolp) (insert "\n"))
-                (let ((coding-system-for-write encoding))
-                  (write-region nil nil file))
-                file)
-;;;                 (write-string-to-file output encoding file)
-              (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
-                (org-kill-new output))
-              ;; Get proper return value.
-              (or (and (functionp post-process) (funcall post-process file))
-                  file)))))
-      (message "done!")
-      (cl-case (plist-get info :html-multipage-open)
-        ('browser (org-open-file (format "%s/%s" dir (car (plist-get info :section-filenames)))))
-        ('buffer (find-file (format "%s/%s" dir (car (plist-get info :section-filenames)))))))))
-
-
-(defun org-html-process-multipage (info &optional body-only)
-  "Central routine transcoding to multipage output called by
-`org-html-transcode-org-data' called from
-`org-export-as'. The pages to be exported of the document are are
-in the :multipage-org-pages property of info as a list of
-org-page pseudo elements. This function takes care of splitting
-the parse-tree into the subtrees for each page, determining the
-file names and writing them to file.
-
-INFO is the communication channel.
-"
-  (let ((dir (org-html-multipage-ensure-export-dir info))
-        (async (plist-get info :async))
-        (post-process (plist-get info :post-process))
-        (encoding (or org-export-coding-system buffer-file-coding-system)))
-    (declare (indent 2))
-    (if (not (file-writable-p dir)) (error "Output dir not writable")
-      (cl-loop
-       for org-page in (plist-get info :multipage-org-pages)
-       collect (let ((file (org-element-property :file org-page)))
-                 (if async
-                     (org-export-async-start
-                         (lambda (file) (org-export-add-to-stack (expand-file-name file) backend))
-                       `(let ((output (org-html-transcode-org-page ,org-page ,info)))
-                          (write-string-to-file output encoding file)
-                          (or (ignore-errors (funcall ',post-process ,file)) ,file)))
-                   (let ((output (org-html-transcode-org-page org-page info)))
-                     (message "writing '%s'" file)
-                     (with-temp-buffer
-                       (insert output)
-                       ;; Ensure final newline.  This is what was done
-                       ;; historically, when we used `write-file'.
-                       ;; Note that adding a newline is only safe for
-                       ;; non-binary data.
-                       (unless (bolp) (insert "\n"))
-                       (let ((coding-system-for-write encoding))
-                         (write-region nil nil file))
-                       file)
-;;;                 (write-string-to-file output encoding file)
-                     (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
-                       (org-kill-new output))
-                     ;; Get proper return value.
-                     (or (and (functionp post-process) (funcall post-process file))
-                         file)))))
-      (message "done!")
-      (cl-case (plist-get info :html-multipage-open)
-        ('browser (org-open-file (format "%s/%s" dir (car (plist-get info :section-filenames)))))
-        ('buffer (find-file (format "%s/%s" dir (car (plist-get info :section-filenames)))))))))
+    (setq global-output
+          (cl-loop
+           for org-page in (plist-get info :multipage-org-pages)
+           collect (let ((file (org-element-property :output-file org-page)))
+                     (if async
+                         (org-export-async-start
+                             (lambda (file) (org-export-add-to-stack (expand-file-name file) backend))
+                           `(let ((output (org-html-transcode-org-page ,org-page ,info)))
+                              (put-text-property 0 1 :output-file ,file output)
+                              output))
+                       (let ((output (org-html-transcode-org-page org-page info)))
+                         (put-text-property 0 1 :output-file file output)
+                         output)))))))
 
 (defun org-html-multipage-filter (data _backend info)
   "Filter routine to collect all properties relevant to multipage
@@ -4834,7 +4728,7 @@ DATA is the completed parse-tree of the document.
 INFO is the communication channel.
 "
   (if (plist-get info :multipage)
-      (let ((dir (org-html-multipage-ensure-export-dir info))
+      (let ((dir (plist-get info :verified-export-directory))
             (async (plist-get info :async))
             (post-process (plist-get info :post-process)))
         (declare (indent 2))
@@ -4918,7 +4812,7 @@ INFO is the communication channel.
                           for tl-headline in section-trees
                           collect
                           (list 'org-page
-                                (list :file (format "%s/%s" dir file)
+                                (list :output-file (format "%s/%s" dir file)
                                       :tl-headline tl-headline
                                       :tl-headline-number
                                       (alist-get tl-headline stripped-section-headline-numbering))
@@ -5144,7 +5038,7 @@ INFO is used as communication channel."
       (plist-get info :filter-final-output)
       output info))))
 
-(defun org-html-export-to-multipage-html
+(defun org-html-export-to-multipage
     (&optional async subtreep visible-only body-only ext-plist post-process)
   "Export current buffer to multipage HTML files.
 
@@ -5178,15 +5072,47 @@ Return output directory's name."
 		     (or (plist-get ext-plist :html-extension)
 			 org-html-extension
 			 "html")))
-	 (org-export-coding-system org-html-coding-system))
-    (org-export-as 'html subtreep visible-only body-only
-                   (cl-list*
-                    :async async
-;;;                    :toc-section-num (or (if (plist-memebr :section-numbers))) (plist-get :section-numbers ext-plist)
-                    :post-process post-process
-                    :multipage t
-                    :multipage-split '(org-html-multipage-filter)
-                    ext-plist))))
+         (backend 'html)
+         (encoding (or org-export-coding-system buffer-file-coding-system))
+	 (org-export-coding-system org-html-coding-system)
+         (environment (org-export-get-environment 'html nil nil))
+         (dir (org-html-multipage-ensure-export-dir
+               (plist-get environment :html-multipage-export-directory))))
+    (if (not (file-writable-p dir)) (error "Output dir not writable")
+      (let ((output
+             (org-export-as backend subtreep visible-only body-only
+                            (cl-list*
+                             :async async
+                             :multipage t
+                             :verified-export-directory dir
+                             :multipage-split '(org-html-multipage-filter)
+                             ext-plist))))
+        (setq my-out output)
+        (dolist (out output)
+          (message "%s" (get-text-property 0 :output-file out))
+          (if async
+              (let ((file (get-text-property 0 :output-file out)))
+                (org-export-async-start
+                    (lambda (file)
+                      (org-export-add-to-stack (expand-file-name file) backend))
+                  `(let ((file (get-text-property 0 :file out)))
+                     (setq file (org-export--write-output output ',encoding))
+                     (let ((post (lambda (f) (or (ignore-errors (funcall ',post-process f)) f))))
+                       (if (listp file) (mapcar post file) (funcall post file))))))
+            (let (file)
+              (setq file (org-export--write-output out encoding))
+              (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
+                (org-kill-new output))
+              ;; Get proper return value.
+              (let ((post (lambda (f)
+                            (or (and (functionp post-process)
+                                     (funcall post-process f))
+                                f))))
+                (if (listp file) (mapcar post file) (funcall post file))))))
+        (message "done!!!\n")
+        (cl-case (plist-get environment :html-multipage-open)
+          ('browser (org-open-file (format "%s" (get-text-property 0 :output-file (car output)))))
+          ('buffer (find-file (format "%s" (get-text-property 0 :output-file (car output))))))))))
 
 (defun org-html--hidden-in-toc? (headline-number tl-headline-number)
   "Check if the entry of HEADLINE-NUMBER should be hidden in the
@@ -5369,12 +5295,19 @@ exported for multipage export.
             (org-html-nav-right section-nav-lookup))))
 
 (defun org-html-transcode-org-data (data content info)
+  "Transcode the top org-data node of the org file to export.
+
+It is called by `org-export-as' after all necessary information
+has been added to info and the final parse-tree has been
+generated. Multipage information has already been collected by
+calling `org-html-multipage-filter' in `org-export-annotate-info'
+using the :multipage-split property.
+
+INFO is a plist used as a communication channel."
   (if (plist-get info :multipage)
-      (progn
-        (org-html-process-multipage info)
-        ;; (dolist (page (plist-get info :multipage-org-pages))
-        ;;   (org-export-transcode-org-page page info))
-        "")
+      ;;; for multipage output we don't need data and content as all
+      ;;; information is already collected in info.
+      (org-html-transcode-multipage info)
     (org-export-transcode-org-data data content info)))
 
 (provide 'ox-html)

@@ -2994,7 +2994,6 @@ export information channel."
 	       (narrow-to-region (point) (point-max))))
         ;; Initialize communication channel with original buffer
         ;; attributes, unavailable in its copy.
-        (message "p1")
         (let* ((org-export-current-backend (org-export-backend-name backend))
 	       (info (org-combine-plists
 		      (org-export--get-export-attributes
@@ -3009,28 +3008,37 @@ export information channel."
                        backend info subtreep visible-only ext-plist))
 	   ;; Eventually transcode TREE.  Wrap the resulting string into
 	   ;; a template.
-	   (let ((output
-                  (or (org-export-data (plist-get info :parse-tree) info)
-                      "")))
+	   (let* ((output
+                   (or (org-export-data (plist-get info :parse-tree) info)
+                       "")))
              (setq output (ensure-list output))
-             ;; Call citation export finalizer.
-             (when (plist-get info :with-cite-processors)
+             ;; we need to capture the :output-file properties as they
+             ;; might get erased in the following filter stages.
+             (let ((output-files
+                    (mapcar
+                     (lambda (o)
+                       (get-text-property 0 :output-file o))
+                     output)))
+               ;; Call citation export finalizer.
+               (when (plist-get info :with-cite-processors)
+                 (setq output
+                       (mapcar
+                        (lambda (o) (org-cite-finalize-export o info))
+                        output)))
+               (let ((filters (plist-get info :filter-final-output)))
+                 ;; Call final-output filter and return result.
+                 (setq output
+                       (mapcar
+                        (lambda (o) (org-export-filter-apply-functions filters o info))
+                        output)))
+               ;; Apply org-export-info property and add back the
+               ;; :output-file property.
                (setq output
-                     (mapcar
-                      (lambda (o) (org-cite-finalize-export o info))
-                      output)))
-             (let ((filters (plist-get info :filter-final-output)))
-               ;; Call final-output filter and return result.
-               (setq output
-                     (mapcar
-                      (lambda (o) (org-export-filter-apply-functions filters o info))
-                      output)))
-             ;; Apply org-export-info property.
-             (setq output
-                   (mapcar
-                    (lambda (o) (org-add-props o nil 'org-export-info info))
-                    output))
-             (if (length= output 1) (car output) output))))))))
+                     (cl-mapcar
+                      (lambda (o file) (org-add-props o nil :output-file file 'org-export-info info))
+                      output
+                      output-files))
+               (if (length= output 1) (car output) output)))))))))
 
 (defun org-export-transcode-org-data (_ body info)
   "Transcode `org-data' node with BODY.  Return transcoded string.
@@ -6887,6 +6895,7 @@ each string.
 
 Return the file name or a list of file names."
   (if (listp output) (mapcar #'org-export--write-output output)
+    (setq tmp-debug output)
     (let ((file (or
                  (get-text-property 0 :output-file output)
                  (plist-get
