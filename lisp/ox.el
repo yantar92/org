@@ -2994,6 +2994,7 @@ export information channel."
 	       (narrow-to-region (point) (point-max))))
         ;; Initialize communication channel with original buffer
         ;; attributes, unavailable in its copy.
+        (message "p1")
         (let* ((org-export-current-backend (org-export-backend-name backend))
 	       (info (org-combine-plists
 		      (org-export--get-export-attributes
@@ -3047,7 +3048,7 @@ INFO is the communication channel plist."
     (if (or (not (functionp template)) body-only) full-body
       (funcall template full-body info))))
 
-or(defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
+(defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
   "Annotate the INFO plist according to the BACKEND.
 
 This is run in the context of the current buffer.
@@ -3148,6 +3149,9 @@ still inferior to file-local settings."
     ;; to communication channel.  This is responsible for setting
     ;; :parse-tree to TREE.
     (setq info (org-export--collect-tree-properties tree info))
+    (when (plist-get info :multipage)
+      (setq tree (org-export-filter-apply-functions
+                  (plist-get info :multipage-split) tree info)))
     ;; Process citations and bibliography.  Replace each citation
     ;; and "print_bibliography" keyword in the parse tree with
     ;; the output of the selected citation export processor.
