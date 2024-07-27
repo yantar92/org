@@ -2240,7 +2240,6 @@ Replaces invalid characters with \"_\"."
 (defun org-html-footnote-section (info)
   "Format the footnote section.
 INFO is a plist used as a communication channel."
-  (message "footnote: %s" (plist-get info :tl-headline))
   (pcase (org-export-collect-footnote-definitions info (plist-get info :tl-headline))
     (`nil nil)
     (definitions
@@ -3422,11 +3421,10 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
                        )
                   (setq global-key keyword)
                   (setq global-info2 info)
-                  (message "multipage-toc! %s %s" (length info) (length (plist-get info :headline-numbering)))
-                  ;; (org-html-multipage-toc depth (cl-list* :full-toc t
-                  ;;                                         :tl-headline (car tl-hl-numbering)
-                  ;;                                         :tl-headline-number (cdr tl-hl-numbering)
-                  ;;                                         info) scope)
+                  (org-html-multipage-toc depth (cl-list* :full-toc t
+;;                                                          :tl-headline (car tl-hl-numbering)
+                                                          ;; :tl-headline-number (cdr tl-hl-numbering)
+                                                          info) scope)
                   )
               (org-html-toc depth info scope))))
 	 ((string= "listings" value) (org-html-list-of-listings info))
@@ -4728,7 +4726,6 @@ determining the file names and writing them to file.
 
 INFO is the communication channel.
 "
-;;;  (message "writing '%s'" file)
   (let ((dir (org-html-multipage-ensure-export-dir info))
         (async (plist-get info :async))
         (post-process (plist-get info :post-process))
@@ -4889,11 +4886,10 @@ INFO is the communication channel.
             (async (plist-get info :async))
             (post-process (plist-get info :post-process)))
         (declare (indent 2))
-        (message "my-process-multipage")
-        ;; (plist-put info :headline-numbering
-        ;;            (org-export--collect-headline-numbering
-        ;;             (plist-get info :parse-tree)
-        ;;             (cl-list* :section-numbers t info)))
+        (plist-put info :headline-numbering
+                   (org-export--collect-headline-numbering
+                    (plist-get info :parse-tree)
+                    (cl-list* :section-numbers t info)))
         (setq global-info info)
         (if (not (file-writable-p dir)) (error "Output dir not writable")
           (let* ((encoding (or org-export-coding-system buffer-file-coding-system))
