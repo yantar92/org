@@ -757,15 +757,11 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 
 ;;; Searching Org agenda files
 
-(cl-defun org-agenda-map-regexp
-    ( regexp func &optional buffers-or-files delay-user-skip-function)
-  "Map FUNC over elements containing REGEXP in BUFFERS-OR-FILES.
+(cl-defun org-agenda-map-regexp (regexp func &optional delay-user-skip-function)
+  "Map FUNC over elements containing REGEXP in current buffer.
 Collect FUNC non-nil return values into the result.
 
-BUFFERS-OR-FILES is a file or buffer, a list of files and/or buffers,
-or a nullary function which returns such a list.
-
-When agenda restriction is active, honor it.
+Honor restriction.
 
 FUNC must be a function that will be called on with point at the end
 of REGEXP match with a single argument - node at point.  The match
@@ -782,31 +778,28 @@ inside comments and src blocks will be skipped.
 When DELAY-USER-SKIP-FUNCTION is non-nil, `org-agenda-skip-function' and
 `org-agenda-skip-function-global' will only run after FUNC, when FUNC
 returns non-nil.  If they return non-nil, FUNC result will be discarded."
-  (org-agenda-mapcan-files
-   (lambda ()
-     (let (current-node result)
-       (save-excursion
-         (goto-char (point-min))
-         (while (re-search-forward regexp nil t)
-           (setq current-node (save-match-data (org-element-at-point)))
-           (catch :skip
-             (if (null delay-user-skip-function)
-                 (progn
-                   (org-agenda-skip current-node)
-                   (push (funcall func current-node) result))
-               (let ((org-agenda-skip-function-global nil)
-                     (org-agenda-skip-function nil))
-                 (org-agenda-skip current-node))
-               (when-let* ((pos (point))
-                           (ret (funcall func current-node)))
-                 (org-with-point-at pos
-                   (when-let ((to (or (org-agenda-skip-eval org-agenda-skip-function-global)
-		                      (org-agenda-skip-eval org-agenda-skip-function))))
-                     (setq pos (max pos to))))
-                 (goto-char pos)
-                 (push ret result)))))
-         (nreverse (delq nil result)))))
-   buffers-or-files))
+  (let (current-node result)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward regexp nil t)
+        (setq current-node (save-match-data (org-element-at-point)))
+        (catch :skip
+          (if (null delay-user-skip-function)
+              (progn
+                (org-agenda-skip current-node)
+                (push (funcall func current-node) result))
+            (let ((org-agenda-skip-function-global nil)
+                  (org-agenda-skip-function nil))
+              (org-agenda-skip current-node))
+            (when-let* ((pos (point))
+                        (ret (funcall func current-node)))
+              (org-with-point-at pos
+                (when-let ((to (or (org-agenda-skip-eval org-agenda-skip-function-global)
+		                   (org-agenda-skip-eval org-agenda-skip-function))))
+                  (setq pos (max pos to))))
+              (goto-char pos)
+              (push ret result)))))
+      (nreverse (delq nil result)))))
 
 (defun org-agenda-get-day-entries-1 (date &rest args)
   "Does the work for `org-diary' and `org-agenda' in current buffer.
@@ -1048,7 +1041,6 @@ When non-nil, it should be a string definining which keywords to choose:
               (or (org-element-end (org-element-current-section el))
                   (org-element-end el))
             (org-element-end el)))))
-     (current-buffer)
      'delay-user-skip)))
 
 (defun org-agenda-get-todos (&optional selector)
@@ -1240,8 +1232,7 @@ matching."
 	         (goto-char
                   (or (org-element-end
                        (org-element-current-section heading))
-                      (org-element-end heading)))))))))
-     (current-buffer))))
+                      (org-element-end heading))))))))))))
 
 (defun org-agenda-get-timestamps (&optional deadlines)
   "Return the date stamp information for agenda display.
@@ -1311,7 +1302,6 @@ resolved value, as returned by `org-diary-sexp-entry'."
                              :parent
                              (org-element-parent sexp-element)))
          (org-element-put-property sexp-element :diary-sexp-entry result)))
-     (current-buffer)
      ;; We do not run `org-agenda-skip' right away because every single sexp
      ;; in the buffer is matched here, unlike day-specific search
      ;; in ordinary timestamps.  Most of the sexps will not match
@@ -1578,8 +1568,7 @@ specification like [h]h:mm."
 	    (t (unless
                    (< org-deadline-past-days
                       (- agenda-day past-repeat))
-                 planning))))))
-     (current-buffer))))
+                 planning)))))))))
 
 (defun org-agenda-get-deadlines (&optional with-hour)
   "Return the deadline information for agenda display.
@@ -1766,7 +1755,7 @@ deadlines will be displayed.  They are used to honor
                      (throw :skip nil))))
                (unless (or habitp
                            (not (member (org-element-begin headline)
-                                      displayed-deadlines)))
+                                        displayed-deadlines)))
 	         (when (pcase org-agenda-skip-scheduled-if-deadline-is-shown
 		         (`not-today (< past-repeat today))
 		         (`t t)
@@ -1782,8 +1771,7 @@ deadlines will be displayed.  They are used to honor
 			            org-habit-show-habits-only-for-today))))
 	         (throw :skip nil))
                ;; No reason to skip anything.  Return planning.
-               planning)))))
-     (current-buffer))))
+               planning))))))))
 
 (defun org-agenda-get-scheduled (&optional deadlines with-hour)
   "Return the scheduled information for agenda display.
@@ -1902,8 +1890,7 @@ scheduled items with an hour specification like [h]h:mm."
                    end-day (time-to-days (org-timestamp-to-time timestamp 'end)))
              (when (and (> (- agenda-day start-day) -1)
                         (> (- end-day agenda-day) -1))
-               timestamp)))))
-     (current-buffer))))
+               timestamp))))))))
 
 (defun org-agenda-get-blocks ()
   "Return the date-range information for agenda display."
@@ -2013,8 +2000,7 @@ headlines of up to that level."
                  (goto-char (org-element-begin headline))
                  (unless (re-search-forward regexp+ limit t)
                    (throw :skip t)))
-               headline))))
-       (current-buffer)))))
+               headline))))))))
 
 (defun org-agenda-get-regexps ( regexps+ regexps-
                                 &optional headline-only todo-only max-outline-level)
