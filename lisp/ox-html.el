@@ -4393,7 +4393,14 @@ CONTENTS is the exported HTML code.  INFO is the info plist."
     (delay-mode-hooks (set-auto-mode t))
     (when (plist-get info :html-indent)
       (indent-region (point-min) (point-max)))
-    (buffer-substring-no-properties (point-min) (point-max))))
+    (if (plist-get info :multipage)
+        (let ((output-file (get-text-property
+                            0 :output-file
+                            (buffer-substring (point-min) (point-max)))))
+          (put-text-property
+           0 1 :output-file output-file
+           (buffer-substring-no-properties (point-min) (point-max))))
+      (buffer-substring-no-properties (point-min) (point-max)))))
 
 
 ;;; End-user functions
