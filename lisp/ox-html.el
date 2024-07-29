@@ -171,9 +171,15 @@
      nil "html-multipage-join-empty-bodies" org-html-multipage-join-empty-bodies)
     (:html-multipage-export-directory
      nil "html-multipage-export-directory" org-html-multipage-export-directory)
+    (:html-multipage-clear-export-directory nil "html-multipage-clear-export-directory"
+                                            org-html-multipage-clear-export-directory)
     (:html-multipage-nav-format nil nil org-html-multipage-nav-format)
-    (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
     (:html-multipage-open nil "html-multipage-open" org-html-multipage-open)
+    (:html-multipage-postamble-position
+     nil "html-multipage-postamble-position" org-html-multipage-postamble-position)
+    (:html-multipage-preamble-position
+     nil "html-multipage-preamble-position" org-html-multipage-preamble-position)
+    (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
     (:html-multipage-toc-to-top nil "html-multipage-toc-to-top" org-html-multipage-toc-to-top)
     (:html-multipage-top-insert nil "html-multipage-top-insert" org-html-multipage-top-insert)
     (:html-numbered-link-format nil nil org-html-numbered-link-format)
@@ -190,6 +196,7 @@
      nil nil org-html-table-use-header-tags-for-first-column)
     (:html-tag-class-prefix nil nil org-html-tag-class-prefix)
     (:html-text-markup-alist nil nil org-html-text-markup-alist)
+    (:html-toc-title nil "html-toc-title" org-html-toc-title)
     (:html-todo-kwd-class-prefix nil nil org-html-todo-kwd-class-prefix)
     (:html-toplevel-hlevel nil nil org-html-toplevel-hlevel)
     (:html-use-infojs nil nil org-export-html-use-infojs)
@@ -206,7 +213,7 @@
     (:html-klipse-js nil nil org-html-klipse-js)
     (:html-klipse-selection-script nil nil org-html-klipse-selection-script)
     (:multipage-split nil nil org-html-multipage-split)
-    (:multipage nil nil org-html-multipage)
+;;;    (:multipage nil nil org-html-multipage)
     (:infojs-opt "INFOJS_OPT" nil nil)
     ;; Redefine regular options.
     (:creator "CREATOR" nil org-html-creator-string)
@@ -745,12 +752,12 @@ is a \"#+INFOJS_OPT:\" line in the buffer.  See also the variable
 	  (const :tag "When configured in buffer" when-configured)
 	  (const :tag "Always" t)))
 
-(defcustom org-html-multipage nil
-  "Boolean indicating multipage export."
-  :group 'org-export-html
-  :version "29.4"
-  :package-version '(Org . "9.8")
-  :type 'boolean)
+;; (defcustom org-html-multipage nil
+;;   "Boolean indicating multipage export."
+;;   :group 'org-export-html
+;;   :version "29.4"
+;;   :package-version '(Org . "9.8")
+;;   :type 'boolean)
 
 (defcustom org-html-multipage-split '(org-html-multipage-split)
   "Function to perform multipage splitting of org file."
@@ -1657,6 +1664,15 @@ like that: \"%%\"."
 	  (list (string :tag "Language")
 		(string :tag "Format string"))))
 
+(defcustom org-html-toc-title "Table of Contents"
+  "The string tp be used for the title of the table of contents. It
+will be passed to org-html-translate."
+  :group 'org-export-html
+  :package-version '(Org . "9.8")
+  :version "29.4"
+  :type 'string
+  :safe #'stringp)
+
 (defcustom org-html-validation-link
   "<a href=\"https://validator.w3.org/check?uri=referer\">Validate</a>"
   "Link to HTML validation service."
@@ -1829,8 +1845,17 @@ separate HTML page with empty content.
 (defcustom org-html-multipage-export-directory "html"
   "The default directory for exported HTML files."
   :group 'org-export-html
+  :version "29.4"
   :package-version '(Org . "9.8")
   :type 'string)
+
+(defcustom org-html-multipage-clear-export-directory t
+  "Should all .html files removed from the export directory before
+exporting?"
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type 'boolean)
 
 (defcustom org-html-multipage-nav-format
   '("<div id=\"org-div-nav-menu\">%s</div>"
@@ -1856,6 +1881,32 @@ export."
   :version "29.4"
   :package-version '(Org . "9.8")
   :type '(choice (const browser) (const buffer) (const nil)))
+
+(defcustom org-html-multipage-postamble-position 'bottom
+  "The position of the postamble in the html output.
+
+  bottom - at the bottom of the page, directly before </body>
+
+  text-content - at the bottom of the text-content.
+  "
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type '(choice (const bottom) (const text-content)))
+
+(defcustom org-html-multipage-preamble-position 'top
+  "If and where to open the top page of the multipage html after
+export.
+
+  top - at the top of the page, directly after <body>
+
+  text-content - at the top of the text-content.
+
+"
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type '(choice (const top) (const text-content)))
 
 (defcustom org-html-multipage-split-level 'toc
   "How to split the ORG file into multiple HTML pages.
@@ -2869,7 +2920,10 @@ of contents as a string, or nil if it is empty."
 		    (let ((top-level (plist-get info :html-toplevel-hlevel)))
 		      (format "<h%d>%s</h%d>\n"
 			      top-level
-			      (org-html--translate "Table of Contents" info)
+			      (org-html--translate
+                               (or (plist-get info :html-toc-title)
+                                   org-html-toc-title)
+                               info)
 			      top-level))
 		    toc
 		    (format "</%s>\n" outer-tag))))))))
@@ -2895,10 +2949,15 @@ relative level, as an integer."
               (setq prev-level level)
               (concat
                (org-html--make-string
-                times (cond ((> cnt 0) "\n<ul>\n<li>")
+                times (cond ((> cnt 0) (format "\n<ul class=\"ul-toc-level-%d\">\n<li>" level))
                             ((< cnt 0) "</li>\n</ul>\n")))
-               (if (> cnt 0) "\n<ul>\n<li%s>" "</li>\n<li%s>")))
-            (if hidden " class=\"toc-hidden\"" ""))
+               (if (> cnt 0)
+                   (concat "\n<ul"
+                           (format " class=\"ul-toc-level-%d\"" level)
+                           ">\n<li%s>")
+                 "</li>\n<li%s>")))
+            (if hidden (format " class=\"toc-hidden toc-level-%d\"" level)
+              (format " class=\"toc-level-%d\"" level)))
 	   headline)))
       toc-entries "")
      (org-html--make-string (- prev-level start-level) "</li>\n</ul>\n"))))
@@ -4517,7 +4576,7 @@ Return output file name."
 (defun reverse-assoc-list (assoc-list)
   (mapcar (lambda (entry) (cons (cdr entry) (car entry))) assoc-list))
 
-(defun org-element-title (element)
+(defun org-html-element-title (element)
   (org-element-property :raw-value element))
 
 (defun replace-chars-with-dash (chars string)
@@ -4613,7 +4672,10 @@ of contents as a string, or nil if it is empty."
 		    (let ((top-level (plist-get info :html-toplevel-hlevel)))
 		      (format "<h%d>%s</h%d>\n"
 			      top-level
-			      (org-html--translate "Table of Contents" info)
+			      (org-html--translate
+                               (or (plist-get info :html-toc-title)
+                                   org-html-toc-title)
+                               info)
 			      top-level))
 		    toc
 		    (format "</%s>\n" outer-tag))))))))
@@ -4711,24 +4773,26 @@ INFO is the communication channel.
                      (if async
                          (org-export-async-start
                              (lambda (file) (org-export-add-to-stack (expand-file-name file) backend))
+                           (message "transcoding: %s" file)
                            `(let ((output (org-html-transcode-org-page ,org-page ,info)))
                               (put-text-property 0 1 :output-file ,file output)
                               output))
                        (let ((output (org-html-transcode-org-page org-page info)))
+                         (message "transcoding: %s" file)
                          (put-text-property 0 1 :output-file file output)
                          output)))))))
 
-(defun org-html-multipage-filter (data _backend info)
+(defun org-html-multipage-split (data _backend info)
   "Filter routine to collect all properties relevant to multipage
 output. It is called in the context of calling all
 :filter-parse-tree alist functions in `org-export-annotate-info'
-after the parse-tree is completed The function takes care of
-splitting the parse-tree into the subtrees for each page,
-creating org-page pseudo elements and adding them in a list as
-:multipage-org-pages property to info. In addition lookup alists
-for the stripped pages, for the page-urls, the navigation
-elements, the toc, etc. are added to info, which are needed by
-the html transcoders.
+after the parse-tree is completed and its properties
+collected. The function takes care of splitting the parse-tree
+into the subtrees for each page, creating org-page pseudo
+elements, adding them in a list in the :multipage-org-pages
+property of info. In addition lookup alists for the stripped
+pages, for the page-urls, the navigation elements, the toc,
+etc. are added to info, which are needed by the html transcoders.
 
 DATA is the completed parse-tree of the document.
 
@@ -4757,13 +4821,14 @@ INFO is the communication channel.
                  (section-trees
                   (cl-loop
                    for section-entry in exported-headline-numbering
-                   collect (let* ((section-number (cdr section-entry)))
-                             (if (< (length section-number) max-toc-depth)
-                                 (org-element-remove-subheadlines
-                                  (car section-entry)
-                                  (plist-get info :html-multipage-join-empty-bodies)
-                                  max-toc-depth)
-                               (org-element-copy-element (car section-entry))))))
+                   collect
+                   (let* ((section-number (cdr section-entry)))
+                     (if (< (length section-number) max-toc-depth)
+                         (org-element-remove-subheadlines
+                          (car section-entry)
+                          (plist-get info :html-multipage-join-empty-bodies)
+                          max-toc-depth)
+                       (org-element-copy-element (car section-entry))))))
                  ;; stripped-section-headline-numbering is the equivalent of
                  ;; headline-numbering but replacing the car of its elements
                  ;; with the stripped version of the headlines.
@@ -4772,7 +4837,8 @@ INFO is the communication channel.
                              (cl-loop for section in section-trees
                                       ;; collect all subheadlines to match
                                       ;; headline-numbering:
-                                      append (org-element-map section 'headline (lambda (x) x)))
+                                      append (org-element-map section 'headline
+                                               'identity))
                              (mapcar 'cdr headline-numbering)))
                  ;; lookup from all toc headline-numbers to the tl-headline.
                  (tl-hl-lookup (reverse-assoc-list stripped-section-headline-numbering)))
@@ -4785,34 +4851,48 @@ INFO is the communication channel.
                         headline-numbering
                         stripped-section-headline-numbering))
             (plist-put info :section-trees section-trees)
-            (plist-put info :stripped-section-headline-numbering stripped-section-headline-numbering)
+            (plist-put info :stripped-section-headline-numbering
+                       stripped-section-headline-numbering)
             (plist-put info :tl-hl-lookup tl-hl-lookup)        
-                 ;; tl-url-lookup associates the stripped section headlines
-                 ;; with the names of the joined pages to export.
-
+            ;; tl-url-lookup associates the stripped section headlines
+            ;; with the names of the joined pages to export.
             (plist-put info :tl-url-lookup (org-html--generate-tl-url-lookup info))
-            (plist-put info :section-nav-lookup (org-export--make-section-nav-lookup info))
-            (let ((section-filenames (mapcar
-                                      (lambda (hl) (alist-get hl (plist-get info :tl-url-lookup)))
-                                      section-trees)))
+            ;; lookup for the navigation elements of each page.
+            (plist-put info :section-nav-lookup
+                       (org-export--make-section-nav-lookup info))
+            (let ((section-filenames
+                   (mapcar
+                    (lambda (hl) (alist-get hl (plist-get info :tl-url-lookup)))
+                    section-trees)))
               (plist-put info :section-filenames section-filenames)
-              (plist-put info :stripped-hl-to-parse-tree-hl
-                         (append
-                          (cl-mapcar 'cons
-                                     (mapcar 'car stripped-section-headline-numbering)
-                                     (mapcar 'car headline-numbering))
-                          (cl-mapcar 'cons
-                                     (mapcar 'car headline-numbering)
-                                     (mapcar 'car stripped-section-headline-numbering))))
+              ;; bidirectional lookup tables to map between the
+              ;; stripped-section headlines and their global
+              ;; parse-tree equvialent.
+              (plist-put
+               info :stripped-hl-to-parse-tree-hl
+               (append
+                (cl-mapcar 'cons
+                           (mapcar 'car stripped-section-headline-numbering)
+                           (mapcar 'car headline-numbering))
+                (cl-mapcar 'cons
+                           (mapcar 'car headline-numbering)
+                           (mapcar 'car stripped-section-headline-numbering))))
               (setq global-info info)
-              (plist-put info :multipage-toc-lookup (org-html--make-multipage-toc-lookup info))
+              ;; collect the toc information to avoid repeated
+              ;; recalculation in the toc transcoder for the
+              ;; individual pages.
+              (plist-put info :multipage-toc-lookup
+                         (org-html--make-multipage-toc-lookup info))
+              ;; The url for the "top" link on each page.
               (plist-put info :html-top-url
                          (alist-get
                           (car (plist-get info :section-trees))
                           (plist-get info :tl-url-lookup)))
+              ;; The title for the "top" link on each page.
               (plist-put info :html-top-title
-                         (org-element-title
+                         (org-html-element-title
                           (car (plist-get info :section-trees))))
+              ;; collect all org-pages to be exported.
               (plist-put info :multipage-org-pages
                          (cl-loop
                           for file in section-filenames
@@ -4822,7 +4902,9 @@ INFO is the communication channel.
                                 (list :output-file (format "%s/%s" dir file)
                                       :tl-headline tl-headline
                                       :tl-headline-number
-                                      (alist-get tl-headline stripped-section-headline-numbering))
+                                      (alist-get
+                                       tl-headline
+                                       stripped-section-headline-numbering))
                                 nil))))))))
   (setq global-info info)
   data)
@@ -4836,7 +4918,7 @@ and the url names of the page they're on."
     (mapcar
      (lambda (entry)
        (let* ((tl-elem (org-element-get-top-level entry))
-              (title (org-element-title tl-elem)))
+              (title (org-html-element-title tl-elem)))
          (cons
           entry
           (string-prepend-section-numbering
@@ -4856,9 +4938,9 @@ section and its navigation."
                         (let* ((hl-number (alist-get hl stripped-section-headline-numbering))
                                (up (cdr (assoc (butlast hl-number) hl-lookup))))
                           (list hl
-                                (org-element-title hl)
+                                (org-html-element-title hl)
                                 (org-html--full-reference hl info t)
-                                (org-element-title up)
+                                (org-html-element-title up)
                                 (and up (org-html--full-reference up info t)))))
                       (plist-get info :section-trees))))
     ;;; collect the info for prev, curr, next and up navigation for
@@ -5086,40 +5168,46 @@ Return output directory's name."
          (dir (org-html-multipage-ensure-export-dir
                (plist-get environment :html-multipage-export-directory))))
     (if (not (file-writable-p dir)) (error "Output dir not writable")
-      (let ((output
-             (org-export-as backend subtreep visible-only body-only
-                            (cl-list*
-                             :async async
-                             :multipage t
-                             :verified-export-directory dir
-                             :multipage-split '(org-html-multipage-filter)
-                             ext-plist))))
-        (setq my-out output)
-        (dolist (out output)
-          (message "%s" (get-text-property 0 :output-file out))
-          (if async
-              (let ((file (get-text-property 0 :output-file out)))
-                (org-export-async-start
-                    (lambda (file)
-                      (org-export-add-to-stack (expand-file-name file) backend))
-                  `(let ((file (get-text-property 0 :file out)))
-                     (setq file (org-export--write-output output ',encoding))
-                     (let ((post (lambda (f) (or (ignore-errors (funcall ',post-process f)) f))))
-                       (if (listp file) (mapcar post file) (funcall post file))))))
-            (let (file)
-              (setq file (org-export--write-output out encoding))
-              (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
-                (org-kill-new output))
-              ;; Get proper return value.
-              (let ((post (lambda (f)
-                            (or (and (functionp post-process)
-                                     (funcall post-process f))
-                                f))))
-                (if (listp file) (mapcar post file) (funcall post file))))))
-        (message "done!!!\n")
-        (cl-case (plist-get environment :html-multipage-open)
-          ('browser (org-open-file (format "%s" (get-text-property 0 :output-file (car output)))))
-          ('buffer (find-file (format "%s" (get-text-property 0 :output-file (car output))))))))))
+      (progn
+        (message "collecting multipage output...")
+       (let ((output
+              (org-export-as backend subtreep visible-only body-only
+                             (cl-list*
+                              :async async
+                              :multipage t
+                              :verified-export-directory dir
+                              :multipage-split '(org-html-multipage-split)
+                              ext-plist))))
+         (when (plist-get environment :html-multipage-clear-export-directory)
+           (message "clearing export-directory.")
+           (dolist
+               (file (directory-files dir nil ".html$"))
+             (delete-file (format "%s/%s" dir file))))
+         (dolist (out output)
+           (if async
+               (let ((file (get-text-property 0 :output-file out)))
+                 (org-export-async-start
+                     (lambda (file)
+                       (org-export-add-to-stack (expand-file-name file) backend))
+                   `(let ((file (get-text-property 0 :file out)))
+                      (setq file (org-export--write-output output ',encoding))
+                      (let ((post (lambda (f) (or (ignore-errors (funcall ',post-process f)) f))))
+                        (if (listp file) (mapcar post file) (funcall post file))))))
+             (let (file)
+               (setq file (org-export--write-output out encoding))
+               (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
+                 (org-kill-new output))
+               ;; Get proper return value.
+               (let ((post (lambda (f)
+                             (or (and (functionp post-process)
+                                      (funcall post-process f))
+                                 f))))
+                 (if (listp file) (mapcar post file) (funcall post file))))))
+         (shell-command (format "ln -s %s %s/index.html" (get-text-property 0 :output-file (car output)) dir))
+         (message "done!\n")
+         (cl-case (plist-get environment :html-multipage-open)
+           ('browser (org-open-file (format "%s" (get-text-property 0 :output-file (car output)))))
+           ('buffer (find-file (format "%s" (get-text-property 0 :output-file (car output)))))))))))
 
 (defun org-html--hidden-in-toc? (headline-number tl-headline-number)
   "Check if the entry of HEADLINE-NUMBER should be hidden in the
@@ -5174,6 +5262,35 @@ INFO is a plist used as a communication channel.
       (format "<nav id=\"nav-right\"><a href=\"%s\" class=\"nav-right\"><i class=\"angle-right-inactive\"></i></a></nav>"
               ""))))
 
+(defun org-html-multipage-nav (info)
+  "Return the string for the multipage navigation anchors.
+
+INFO is a plist used as a communication channel.
+"
+  (let ((section-nav-lookup
+          (alist-get
+           (plist-get info :tl-headline)
+           (plist-get info :section-nav-lookup)))
+         (nav-format (plist-get info :html-multipage-nav-format)))
+     (format (car nav-format)
+             (concat
+              (when (plist-get section-nav-lookup :next-url)
+                (format (cadr nav-format)
+                        (plist-get section-nav-lookup :next-url)
+                        (plist-get section-nav-lookup :next-title)))
+              (when (plist-get section-nav-lookup :prev-url)
+                (format (caddr nav-format)
+                        (plist-get section-nav-lookup :prev-url)
+                        (plist-get section-nav-lookup :prev-title)))
+              (when (plist-get section-nav-lookup :up-url)
+                    (format (cadddr nav-format)
+                            (plist-get section-nav-lookup :up-url)
+                            (plist-get section-nav-lookup :up-title)))
+              (when (plist-get info :html-top-url)
+                  (format (nth 4 nav-format)
+                          (plist-get info :html-top-url)
+                          (plist-get info :html-top-title)))))))
+
 (defun org-html-multipage-template (contents info)
   "Return complete document string after HTML conversion.
 CONTENTS is the transcoded contents string.  INFO is a plist
@@ -5209,32 +5326,12 @@ holding export options."
    (org-html--build-mathjax-config info)
    "</head>\n"
    "<body>\n"
-   (plist-get info :html-multipage-top-insert)
-   (let ((section-nav-lookup
-          (alist-get
-           (plist-get info :tl-headline)
-           (plist-get info :section-nav-lookup)))
-         (nav-format (plist-get info :html-multipage-nav-format)))
-     (format (car nav-format)
-             (concat
-              (when (plist-get section-nav-lookup :next-url)
-                (format (cadr nav-format)
-                        (plist-get section-nav-lookup :next-url)
-                        (plist-get section-nav-lookup :next-title)))
-              (when (plist-get section-nav-lookup :prev-url)
-                (format (caddr nav-format)
-                        (plist-get section-nav-lookup :prev-url)
-                        (plist-get section-nav-lookup :prev-title)))
-              (when (plist-get section-nav-lookup :up-url)
-                    (format (cadddr nav-format)
-                            (plist-get section-nav-lookup :up-url)
-                            (plist-get section-nav-lookup :up-title)))
-              (when (plist-get info :html-top-url)
-                  (format (nth 4 nav-format)
-                          (plist-get info :html-top-url)
-                          (plist-get info :html-top-title))))))
+   (when (eq org-html-multipage-preamble-position 'top)
+     (org-html--build-pre/postamble 'preamble info))
+   (org-html-multipage-nav info)
      ;; Preamble.
-   (org-html--build-pre/postamble 'preamble info)
+   (unless (eq org-html-multipage-preamble-position 'top)
+     (org-html--build-pre/postamble 'preamble info))
    ;; Document contents.
    (let ((div (assq 'content (plist-get info :html-divs))))
      (format "<%s id=\"%s\" class=\"%s\">\n"
@@ -5273,6 +5370,8 @@ holding export options."
 	     org-html-klipse-js
 	     "\"></script><link rel=\"stylesheet\" type=\"text/css\" href=\""
 	     org-html-klipse-css "\"/>"))
+   (when (eq org-html-multipage-postamble-position 'bottom)
+     (org-html--build-pre/postamble 'postamble info))
    ;; Closing document.
    "</body>\n</html>"))
 
@@ -5298,7 +5397,8 @@ exported for multipage export.
              ;; Footnotes section.
              (or (org-html-footnote-section info) "")
              ;; Postamble.
-             (org-html--build-pre/postamble 'postamble info))
+             (unless (eq org-html-multipage-postamble-position 'bottom)
+               (org-html--build-pre/postamble 'postamble info)))
             (org-html-nav-right section-nav-lookup))))
 
 (defun org-html-transcode-org-data (data content info)
