@@ -142,8 +142,7 @@
     (:html-head "HTML_HEAD" nil org-html-head newline)
     (:html-head-extra "HTML_HEAD_EXTRA" nil org-html-head-extra newline)
     (:subtitle "SUBTITLE" nil nil parse)
-    (:html-head-include-default-style
-     nil "html-style" org-html-head-include-default-style)
+    (:html-head-include-default-style nil "html-style" org-html-head-include-default-style)
     (:html-head-include-scripts nil "html-scripts" org-html-head-include-scripts)
     (:html-allow-name-attribute-in-anchors
      nil nil org-html-allow-name-attribute-in-anchors)
@@ -2441,9 +2440,9 @@ INFO is a plist used as a communication channel."
    (concat
     (if (plist-get info :multipage)
         (when (plist-get info :html-multipage-head-include-default-style)
-          (org-element-normalize-string org-html-multipage-style-default)))
-    (when (plist-get info :html-head-include-default-style)
-      (org-element-normalize-string org-html-style-default))
+          (org-element-normalize-string org-html-multipage-style-default))
+      (when (plist-get info :html-head-include-default-style)
+        (org-element-normalize-string org-html-style-default)))
     (org-html-normalize-string-or-function (plist-get info :html-head) info)
     (org-html-normalize-string-or-function (plist-get info :html-head-extra)
                                            info)
