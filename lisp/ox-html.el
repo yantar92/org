@@ -114,6 +114,7 @@
     (verse-block . org-html-verse-block))
   :filters-alist '((:filter-options . org-html-infojs-install-script)
 		   (:filter-parse-tree . org-html-image-link-filter)
+                   (:multipage-split . org-html-multipage-split)
 		   (:filter-final-output . org-html-final-function))
   :menu-entry
   '(?h "Export to HTML"
@@ -180,6 +181,7 @@
     (:html-multipage-preamble-position
      nil "html-multipage-preamble-position" org-html-multipage-preamble-position)
     (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
+    (:html-multipage-split-hooks nil nil org-html-multipage-split-hooks)
     (:html-multipage-toc-to-top nil "html-multipage-toc-to-top" org-html-multipage-toc-to-top)
     (:html-multipage-top-insert nil "html-multipage-top-insert" org-html-multipage-top-insert)
     (:html-numbered-link-format nil nil org-html-numbered-link-format)
@@ -212,7 +214,7 @@
     (:html-klipse-css nil nil org-html-klipse-css)
     (:html-klipse-js nil nil org-html-klipse-js)
     (:html-klipse-selection-script nil nil org-html-klipse-selection-script)
-    (:multipage-split nil nil org-html-multipage-split)
+;;;    (:multipage-split nil nil org-html-multipage-split)
 ;;;    (:multipage nil nil org-html-multipage)
     (:infojs-opt "INFOJS_OPT" nil nil)
     ;; Redefine regular options.
@@ -758,13 +760,6 @@ is a \"#+INFOJS_OPT:\" line in the buffer.  See also the variable
 ;;   :version "29.4"
 ;;   :package-version '(Org . "9.8")
 ;;   :type 'boolean)
-
-(defcustom org-html-multipage-split '(org-html-multipage-split)
-  "Function to perform multipage splitting of org file."
-  :group 'org-export-html
-  :version "29.4"
-  :package-version '(Org . "9.8")
-  :type 'list)
 
 (defcustom org-html-infojs-options
   (mapcar (lambda (x) (cons (car x) (nth 2 x))) org-html-infojs-opts-table)
@@ -1908,6 +1903,15 @@ export.
   :package-version '(Org . "9.8")
   :type '(choice (const top) (const text-content)))
 
+(defcustom org-html-multipage-split-hooks nil
+  "list of additional custom functions to be called with info as
+input after multipage splitting has taken place.
+"
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type 'list)
+
 (defcustom org-html-multipage-split-level 'toc
   "How to split the ORG file into multiple HTML pages.
 
@@ -1941,7 +1945,6 @@ element."
 (put 'org-html-head-include-default-style 'safe-local-variable 'booleanp)
 (put 'org-html-multipage-head-include-default-style 'safe-local-variable 'booleanp)
 (put 'org-html-multipage-join-empty-bodies 'safe-local-variable 'booleanp)
-(put 'org-html-multipage-split 'safe-local-variable 'stringp)
 
 (defcustom org-html-head ""
   "Org-wide head definitions for exported HTML files.
@@ -4573,33 +4576,33 @@ Return output file name."
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun reverse-assoc-list (assoc-list)
+(defun org-html-reverse-assoc-list (assoc-list)
   (mapcar (lambda (entry) (cons (cdr entry) (car entry))) assoc-list))
 
 (defun org-html-element-title (element)
   (org-element-property :raw-value element))
 
-(defun replace-chars-with-dash (chars string)
+(defun org-html-replace-chars-with-dash (chars string)
   (cl-reduce (lambda (accum x) (replace-regexp-in-string (format "%s+" x) "-" accum))
            chars
            :initial-value string))
 
-(defun remove-chars (chars string)
+(defun org-html-remove-chars (chars string)
   (cl-reduce (lambda (accum x) (replace-regexp-in-string (format "%s+" x) "" accum))
            chars
            :initial-value string))
 
-(defun string-to-backend-filename (string extension)
+(defun org-html-string-to-backend-filename (string extension)
    (format
     "%s.%s"
-    (remove-chars
-     '("(" ")" "," ";" "{" "}" "'" "\\")
-     (replace-chars-with-dash
+    (org-html-remove-chars
+     '("(" ")" "," ";" "{" "}" "'" "\\" "?")
+     (org-html-replace-chars-with-dash
       '(" " "_" ":" "/")
       (downcase (string-trim string))))
     extension))
 
-(defun string-prepend-section-numbering (string levels maxlevel)
+(defun org-html-string-prepend-section-numbering (string levels maxlevel)
   "Prepend the chapter outline numbers given in levels to
 string. Truncate levels to maxlevel or pad with zeroes if
 required."
@@ -4739,14 +4742,14 @@ used as a communication channel."
      ((eq split-ref 'toc)
       (let ((maxdepth (or (plist-get info :with-toc) 24)))
         (plist-put info :export-depth maxdepth)
-        (org-export-handle-join-empty-body
+        (org-html--handle-join-empty-body
          (cl-remove-if (lambda (hl-num) (> (length hl-num) maxdepth))
                        headline-numbering :key 'cdr)
          info)))
      ((eq split-ref 'export-filename))
      ((numberp split-ref)
       (plist-put info :export-depth split-ref)
-      (org-export-handle-join-empty-body
+      (org-html--handle-join-empty-body
        (cl-remove-if (lambda (hl-num) (> (length hl-num) split-ref))
                      headline-numbering :key 'cdr)
        info)))))
@@ -4770,17 +4773,11 @@ INFO is the communication channel.
           (cl-loop
            for org-page in (plist-get info :multipage-org-pages)
            collect (let ((file (org-element-property :output-file org-page)))
-                     (if async
-                         (org-export-async-start
-                             (lambda (file) (org-export-add-to-stack (expand-file-name file) backend))
-                           (message "transcoding: %s" file)
-                           `(let ((output (org-html-transcode-org-page ,org-page ,info)))
-                              (put-text-property 0 1 :output-file ,file output)
-                              output))
-                       (let ((output (org-html-transcode-org-page org-page info)))
-                         (message "transcoding: %s" file)
-                         (put-text-property 0 1 :output-file file output)
-                         output)))))))
+                     (message "transcoding: %s" file)
+                     (let ((output (org-html-transcode-org-page org-page info)))
+                       (put-text-property 0 1 :output-file file output)
+                       output))))))
+
 
 (defun org-html-multipage-split (data _backend info)
   "Filter routine to collect all properties relevant to multipage
@@ -4841,7 +4838,7 @@ INFO is the communication channel.
                                                'identity))
                              (mapcar 'cdr headline-numbering)))
                  ;; lookup from all toc headline-numbers to the tl-headline.
-                 (tl-hl-lookup (reverse-assoc-list stripped-section-headline-numbering)))
+                 (tl-hl-lookup (org-html-reverse-assoc-list stripped-section-headline-numbering)))
             ;; add stripped-section-headline-numbering to
             ;; :headline-numbering, to make their headline-numbering
             ;; accessible when generating the body of the individual
@@ -4906,6 +4903,7 @@ INFO is the communication channel.
                                        tl-headline
                                        stripped-section-headline-numbering))
                                 nil))))))))
+;;;  (dolist (hook org-html-multipage-split-hooks) (funcall hook info))
   (setq global-info info)
   data)
 
@@ -4921,8 +4919,8 @@ and the url names of the page they're on."
               (title (org-html-element-title tl-elem)))
          (cons
           entry
-          (string-prepend-section-numbering
-           (string-to-backend-filename title extension)
+          (org-html-string-prepend-section-numbering
+           (org-html-string-to-backend-filename title extension)
            (cdr (assoc tl-elem stripped-section-headline-numbering))
            org-export-headline-levels))))
      (plist-get info :section-trees))))
@@ -5052,37 +5050,29 @@ it with the :parent property optionally removed in the top node."
     (unless keep-parent (setf (org-element-property :parent new) nil))
     (apply 'org-element-adopt-elements new new-children)))
 
-(defun org-export-find-headline (headline-number headline-numbering)
+(defun org-html-find-headline (headline-number headline-numbering)
   "return the headline in headline numbering for a given
 headline-number."
   (cond
    ((null headline-numbering) nil)
    ((equal headline-number (cdar headline-numbering))
     (caar headline-numbering))
-   (t (org-export-find-headline headline-number (cdr headline-numbering)))))
+   (t (org-html-find-headline headline-number (cdr headline-numbering)))))
 
-(defun org-element-body-text? (element)
+(defun org-html-element-body-text? (element)
   "check if first child of element is *not* a headline."
   (not (eq (org-element-type (car (org-element-contents element)))
            'headline)))
 
-(defun org-export-handle-join-empty-body (headlines info)
+(defun org-html--handle-join-empty-body (headlines info)
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                while curr-headline
-               if (or (org-element-body-text? (car prev)) ;; prev has body text or is nil
+               if (or (org-html-element-body-text? (car prev)) ;; prev has body text or is nil
                       (>= (length (cdr prev)) ;; curr-headline is not a subheadline of prev.
                           (length (cdr curr-headline))))
                collect curr-headline)
     headlines))
-
-(defun write-string-to-file (string encoding filename)
-  (let ((coding-system-for-write 'binary)
-        (write-region-annotate-functions nil)
-        (write-region-post-annotation-function nil))
-    (write-region (encode-coding-string string encoding)
-                  nil filename nil :silent)
-    nil))
 
 (defun org-html-transcode-org-page (page info)
   "transcode the headline tree in the contents of the org-page
@@ -5176,7 +5166,6 @@ Return output directory's name."
                               :async async
                               :multipage t
                               :verified-export-directory dir
-                              :multipage-split '(org-html-multipage-split)
                               ext-plist))))
          (when (plist-get environment :html-multipage-clear-export-directory)
            (message "clearing export-directory.")
@@ -5185,14 +5174,13 @@ Return output directory's name."
              (delete-file (format "%s/%s" dir file))))
          (dolist (out output)
            (if async
-               (let ((file (get-text-property 0 :output-file out)))
-                 (org-export-async-start
-                     (lambda (file)
-                       (org-export-add-to-stack (expand-file-name file) backend))
-                   `(let ((file (get-text-property 0 :file out)))
-                      (setq file (org-export--write-output output ',encoding))
-                      (let ((post (lambda (f) (or (ignore-errors (funcall ',post-process f)) f))))
-                        (if (listp file) (mapcar post file) (funcall post file))))))
+               (org-export-async-start
+                   (lambda (file)
+                     (org-export-add-to-stack (expand-file-name file) backend))
+                 `(let ((file (get-text-property 0 :ouput-file out)))
+                    (setq file (org-export--write-output output ',encoding))
+                    (let ((post (lambda (f) (or (ignore-errors (funcall ',post-process f)) f))))
+                      (if (listp file) (mapcar post file) (funcall post file)))))
              (let (file)
                (setq file (org-export--write-output out encoding))
                (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
@@ -5203,7 +5191,8 @@ Return output directory's name."
                                       (funcall post-process f))
                                  f))))
                  (if (listp file) (mapcar post file) (funcall post file))))))
-         (shell-command (format "ln -s %s %s/index.html" (get-text-property 0 :output-file (car output)) dir))
+         (if (member system-type '(darwin gnu/linux gnu))
+             (shell-command (format "ln -s %s %s/index.html" (get-text-property 0 :output-file (car output)) dir)))
          (message "done!\n")
          (cl-case (plist-get environment :html-multipage-open)
            ('browser (org-open-file (format "%s" (get-text-property 0 :output-file (car output)))))

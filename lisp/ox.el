@@ -215,6 +215,7 @@ Properties redefined there have precedence over these.")
     (:filter-latex-fragment . org-export-filter-latex-fragment-functions)
     (:filter-line-break . org-export-filter-line-break-functions)
     (:filter-link . org-export-filter-link-functions)
+    (:multipage-split . org-export-multipage-split-functions)
     (:filter-node-property . org-export-filter-node-property-functions)
     (:filter-options . org-export-filter-options-functions)
     (:filter-paragraph . org-export-filter-paragraph-functions)
@@ -2196,6 +2197,9 @@ string, the backend, as a symbol, and the communication channel,
 as a plist.  It must return a string that will be used as the
 final export output.")
 
+(defvar org-export-multipage-split-functions nil
+  "List of functions applied when multipage output has to be split.")
+
 
 ;;;; Elements Filters
 
@@ -2539,6 +2543,7 @@ Return the updated communication channel."
   (let (plist)
     ;; Install user-defined filters with `org-export-filters-alist'
     ;; and filters already in INFO (through ext-plist mechanism).
+    (setq tmp-info info)
     (dolist (p org-export-filters-alist)
       (let* ((prop (car p))
 	     (info-value (plist-get info prop))
@@ -2550,6 +2555,7 @@ Return the updated communication channel."
 			 (append (if (listp info-value) info-value
 				   (list info-value))
 				 default-value)))))
+    (setq global-prop org-export-filters-alist)
     ;; Prepend backend specific filters to that list.
     (dolist (p (org-export-get-all-filters (plist-get info :back-end)))
       ;; Single values get consed, lists are appended.
@@ -2973,6 +2979,7 @@ Return code as a string or a list of strings.
 The returned strings will have their `org-export-info' property set to
 export information channel."
   (when (symbolp backend) (setq backend (org-export-get-backend backend)))
+  (message "1: %s" (plist-get ext-plist :multipage-split))
   (org-export-barf-if-invalid-backend backend)
   (org-fold-core-ignore-modifications
     (save-excursion
