@@ -289,7 +289,7 @@ loosing data, leaking ressources, etc."
     (t
      :underline t :inherit error))
   "Face used for the outcome when it's a failure."
-  :version "30.1")
+  :package-version '(Org . "9.7"))
 
 (defface org-pending-outcome-success
   `((((supports :underline (:style line)))
@@ -297,7 +297,8 @@ loosing data, leaking ressources, etc."
     (t
      :underline t :inherit error))
   "Face used for the outcome when it's a success."
-  :version "30.1")
+  :package-version '(Org . "9.7"))
+
 
 ;;; Status
 (defun org-pending-status-face (status)
