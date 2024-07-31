@@ -328,14 +328,16 @@ loosing data, leaking ressources, etc."
     (_ (error "Not a status"))))
 
 (defun org-pending--status-still-pending-p (status)
-  "Non-nil if status means the content is still pending."
+  "Non-nil if STATUS means the content is still pending."
   (memq status '(:scheduled :pending)))
 
 
 ;;; Keymaps
 ;;
 (cl-defun org-pending--new-button-like-keymap (&key read-only)
-  "Keymap for outcome overlays."
+  "Return a new keymap for use on reglock overlays.
+If READ-ONLY is non-nil, add bindings for read-only text else for
+editable text."
   (let ((map (make-sparse-keymap)))
     (dolist (k `([mouse-1] [mouse-2] [touchscreen-down]))
       (define-key map k 'org-pending--describe-reglock-at-point))
@@ -362,8 +364,9 @@ loosing data, leaking ressources, etc."
      help-echo "Overlay projection..."
      read-only t
      org-pending--overlay-projection t)
-  "Properties used to \"project\" an overlay as text.  See
-`org-pending--add-overlay-projection'.
+  "Properties used to \"project\" an overlay as text.
+
+See `org-pending--add-overlay-projection'.
 
 Note that the display is not always the requested one: Org font-lock
 rules do not comply with `font-lock-face' and may override/delete our
@@ -414,7 +417,7 @@ See `org-pending--add-overlay-projection'."
 ;;
 
 (defun org-pending--make-overlay (type beg-end)
-  "Create a pending overlay between BEG-END.
+  "Create a pending overlay of type TYPE between BEG-END.
 
 The pair BEG-END contains 2 positions (BEG . END).
 Create an overlay between BEGIN and END.  Return it.
@@ -589,8 +592,9 @@ updates from the same position." )
 
 
 (defun org-pending-reglock-owner (reglock)
-  "The buffer that owns this lock; it may be the base
-buffer or an indirect one.
+  "Return the buffer that owns REGLOCK.
+
+The buffer that owns REGLOCK may be a base buffer or an indirect one.
 
 A REGLOCK belongs to one buffer, the buffer that is current when it is
 created.  For example, if you lock a region as /pending/ in an indirect
@@ -620,7 +624,7 @@ about it."
   (funcall (org-pending-reglock--useless-p reglock)))
 
 (defun org-pending-reglock-duration (reglock)
-  "Return the duration between the scheduling and the outcome.
+  "Return REGLOCK duration between its scheduling and its outcome.
 If the outcome is not known, use the current time."
   (let ((start (org-pending-reglock-scheduled-at reglock))
         (end (or (org-pending-reglock-outcome-at reglock)
@@ -628,13 +632,14 @@ If the outcome is not known, use the current time."
     (- end start)))
 
 (defun org-pending-reglock-property (reglock prop)
-  "Get the value of the property on this REGLOCK.
+  "Get the value of the property PROP for this REGLOCK.
 This is a place: use `setf' to set it.
 See also `org-pending-reglock-set-property'."
   (cdr (assq prop (org-pending-reglock-properties reglock))))
 
 (defun org-pending-reglock-set-property (reglock prop val)
-  "See `org-pending-reglock-property'."
+  "Set the value of the property PROP for this REGLOCK.
+See also `org-pending-reglock-property'."
   (if-let ((b (assq prop (org-pending-reglock-properties reglock))))
       (setcdr b val)
     (push (cons prop val)
@@ -653,7 +658,7 @@ Default value for `org-pending-reglock-user-cancel-function'."
 
 (defun org-pending-reglock-delete-outcome-marks (reglock)
   "Delete visual hints of the outcome for this REGLOCK, if any.
-Do nothing if the outcome is not known. Do nothing if there are no
+Do nothing if the outcome is not known.  Do nothing if there are no
 visual hints."
   (funcall (org-pending-reglock--delete-outcome-marks reglock)))
 
@@ -951,8 +956,9 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 ;;
 (defvar org-pending-pre-insert-outcome-function
   #'org-pending-pre-insert-outcome-default
-  "Function called before displaying the outcome and
-releasing the lock.
+  "Function called before inserting the outcome.
+
+This function is called before releasing the lock.
 
 This function is called with two arguments: the lock and the update
 message (see `org-pending-send-update' for the definition of what an
@@ -960,8 +966,7 @@ update message is).")
 
 (defvar org-pending-post-insert-outcome-function
   #'org-pending-post-insert-outcome-default
-  "Function called after the outcome is displayed and
-released the lock.
+  "Function called after inserting the outcome.
 
 This function is called with three arguments: the lock, the update
 message (see `org-pending-send-update' for the definition of what an
@@ -1110,7 +1115,7 @@ The udpate UPD-MESSAGE must be one of the following:
 
 You may send as many :progress updates as you want (including none).
 Eventually, you must send one, and only one, of either a :success or a
-:failure. Until you do, the region stays locked, and protected from
+:failure.  Until you do, the region stays locked, and protected from
 modifications.
 
 Once the REGBLOCK got its outcome, it is dead.  Ignore updates that
@@ -1166,7 +1171,7 @@ error to send a :failure outcome to REGLOCK."
 ;;;; Helpers to define on-outcome handlers
 ;;
 (defun org-pending-on-outcome-replace (reglock outcome)
-  "Replace the REGLOCK region with the outcome value.
+  "Replace the REGLOCK region with OUTCOME.
 
 On :success, if the REGLOCK buffer is still live, replace the region
 with the value and return the region spanning the new text; if the
@@ -1256,7 +1261,9 @@ See also `org-pending-locks-in'."
 
 
 (defun org-pending-ensure-no-locks (begin end &optional error-info)
-  "Raise `org-pending-error' if BEGIN..END contains locks that are alive."
+  "Raise `org-pending-error' if BEGIN..END contains locks that are alive.
+
+Append ERROR-INFO to the error data when signaling an error."
   (when (org-pending-locks-in begin end)
     (signal 'org-pending-error (cons begin (cons end error-info)))))
 
@@ -1361,7 +1368,7 @@ Return nothing immediately."
   nil)
 
 (defun org-pending-unlock-NOW! (reglock)
-  "Unlock the region immediately, whatever the consequences.
+  "Unlock this REGLOCK region immediately, whatever the consequences.
 
 This function ignores why the region has been locked; you may loose
 data, you may leak ressources, etc.
@@ -1500,8 +1507,8 @@ Safe to call many times in a given buffer."
   "Lock the region START..END while executing BODY.
 
 Lock the region START..END (applying `org-pending' to the region and
-PROPS). Then, execute BODY while the region is locked, and, set the
-outcome (see `org-pending-sending-outcome-to'). Finally, unlock the
+PROPS).  Then, execute BODY while the region is locked, and, set the
+outcome (see `org-pending-sending-outcome-to').  Finally, unlock the
 region.
 
 Use the ON-OUTCOME property to update the region if/when you need to."
@@ -1611,7 +1618,7 @@ unique if needed."
 ;;
 
 (defvar org-pending-without-async-flag nil
-  "When non-nil, do not make asynchronous calls.
+  "Non-nil means to run without asynchronous calls.
 
 Used to disable asynchronous calls when Emacs doesn't support it (yet),
 or, when it's impossible by design.
@@ -1637,7 +1644,7 @@ Return the value of the last form."
 
 (defun org-pending--reset-buffer ()
   "Reset the current buffer, throwing away of pending decorations.
-Dev only. Use at your own risk."
+Dev only.  Use at your own risk."
   ;; TODO: Remove REGLOCKs from the manager if any.
   (save-excursion
     ;; First pass: removing pending overlays.
