@@ -778,7 +778,7 @@ for more information about all reglock fields."
                      (error "More than one status overlay"))
                    (setq reglock (overlay-get ovl 'org-pending-reglock)))))
              (when reglock
-               (user-error "This region is already scheduled or pending."))
+               (user-error "This region is already scheduled or pending"))
              ;; Delete previous pending decorations.
              (mapc (lambda (x) (org-pending--delete-overlay x))
                    ovls))))
@@ -828,7 +828,7 @@ of the description buffer, and call that function with REGLOCK."
                 ;; Revert if not destroyed.
                 (if (org-pending-reglock-region reglock)
                     (org-pending-describe-reglock reglock)
-                  (user-error "This region lock has been destroyed."))))
+                  (user-error "This region lock has been destroyed"))))
         (cl-labels
             ((time-to-string (x) (if x (format-time-string "%T" x) "-"))
              (bool-to-string (x) (if x "yes" "no"))
