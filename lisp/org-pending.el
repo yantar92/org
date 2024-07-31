@@ -1560,18 +1560,19 @@ Switch to a new buffer to edit the region between START..END.  Protect
 the region from modifications until the user finish editing.  Return the
 edit buffer.
 
-When the user finishes editing (with C-c C-c), replace the region with
+\\<string-edit-mode-map>
+When the user finishes editing (with \\[string-edit-done]), replace the region with
 the content and release the region.
 
-If the user aborts (with C-c C-k), discard the edit and release the
+If the user aborts (with \\[string-edit-abort]), discard the edit and release the
 region.
 
 PROMPT will be inserted at the start of the buffer, but will not be
 included in the region update.  If PROMPT is nil, no help text will be
 inserted.
 
-When non-nil, EDIT-NAME is the name to use for the edit buffer.  Make it
-unique if needed."
+When non-nil, use EDIT-NAME for edit buffer name; make it unique if
+needed."
   (let* ((to-update (buffer-substring start end))
          (reglock (org-pending
                    (cons start end)
@@ -1598,14 +1599,15 @@ unique if needed."
     ;; "Kill buffer" means "cancel the edit"
     (with-current-buffer edit-buffer
       ;; Before done and abort, set "closing" to t.
-      (cl-labels ((instrument (key cmd)
+      (cl-labels ((instrument (cmd)
                     (keymap-set string-edit-mode-map
-                                key (lambda ()
-                                      (interactive)
-                                      (setq closing t)
-                                      (funcall cmd)))))
-        (instrument "C-c C-c" #'string-edit-done)
-        (instrument "C-c C-k" #'string-edit-abort))
+                                (format "<remap> <%s>" cmd)
+                                (lambda ()
+                                  (interactive)
+                                  (setq closing t)
+                                  (funcall cmd)))))
+        (instrument 'string-edit-done)
+        (instrument 'string-edit-abort))
 
       ;; When killed and not closing, send a 'cancel' message.
       (make-local-variable 'kill-buffer-query-functions)
