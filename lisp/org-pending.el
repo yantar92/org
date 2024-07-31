@@ -883,9 +883,11 @@ of the description buffer, and call that function with REGLOCK."
                      (multi-line label value)
                    (one-line label tv)))))
 
-          (setq-local header-line-format
-                      (format "Lock info (at %s), hit 'g' to update."
-                              (format-time-string "%T")))
+          (setq-local
+           header-line-format
+           (substitute-command-keys
+            (concat (format "Lock info (at %s)" (format-time-string "%T"))
+                    ", use \\<help-mode-map> `\\[revert-buffer]' to update.")))
           ;; ... ok, back to real work.
           (one-line "Id"
                     (org-pending-reglock-id reglock))
@@ -898,16 +900,19 @@ of the description buffer, and call that function with REGLOCK."
              (lambda ()
                (insert " ")
                (if alive
-                   (insert-button "Cancel"
-                                  'action (lambda (b)
-                                            (interactive)
-                                            (org-pending-cancel reglock)
-                                            (message "Cancel request sent. Hit 'g' to update")
-                                            (let ((inhibit-read-only t))
-                                              (goto-char (button-start b))
-                                              (delete-region (button-start b) (button-end b))
-                                              (insert (propertize "Cancel sent. Hit 'g' to update."
-                                                                  'face 'italic)))))
+                   (let ((how-to-update
+                          (substitute-command-keys
+                           "Use \\<help-mode-map> `\\[revert-buffer]' to update.")))
+                     (insert-button "Cancel"
+                                    'action (lambda (b)
+                                              (interactive)
+                                              (org-pending-cancel reglock)
+                                              (message "Cancel request sent. %s" how-to-update)
+                                              (let ((inhibit-read-only t))
+                                                (goto-char (button-start b))
+                                                (delete-region (button-start b) (button-end b))
+                                                (insert (propertize (format "Cancel sent. %s" how-to-update)
+                                                                    'face 'italic))))))
                  (insert-button
                   "Forget"
                   'action (lambda (&rest _args)
