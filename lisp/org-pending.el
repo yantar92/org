@@ -262,6 +262,11 @@
 
 ;;; Configuration
 ;;
+(defgroup org-pending nil
+  "Options about pending region locks."
+  :tag "Org Pending"
+  :group 'tools)
+
 (defcustom org-pending-confirm-ignore-reglocks-on-exit t
   "Non-nil means that Emacs checks reglocks on exit.
 When non-nil, if there are pending locks when exiting Emacs, org pending
