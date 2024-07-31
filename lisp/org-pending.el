@@ -334,16 +334,21 @@ loosing data, leaking ressources, etc."
 
 ;;; Keymaps
 ;;
-(defvar org-pending-outcome-keymap
+(cl-defun org-pending--new-button-like-keymap (&key read-only)
+  "Keymap for outcome overlays."
   (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] 'org-pending--describe-reglock-at-point)
-    map)
+    (dolist (k `([mouse-1] [mouse-2] [touchscreen-down]))
+      (define-key map k 'org-pending--describe-reglock-at-point))
+    (when read-only
+      (define-key map [13] 'org-pending--describe-reglock-at-point))
+    map))
+
+(defvar org-pending-outcome-keymap
+  (org-pending--new-button-like-keymap :read-only nil)
   "Keymap for outcome overlays.")
 
 (defvar org-pending-pending-keymap
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] 'org-pending--describe-reglock-at-point)
-    map)
+  (org-pending--new-button-like-keymap :read-only t)
   "Keymap for pending region overlays.")
 
 ;;; Helpers
