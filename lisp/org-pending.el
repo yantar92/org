@@ -881,7 +881,7 @@ the end of the description buffer, and call that function with REGLOCK."
                     (org-pending-reglock-id reglock))
           (one-line "Status"
                     (substring (symbol-name (org-pending-reglock-status reglock)) 1))
-          (let ((alive (funcall (org-pending-reglock--get-live-p reglock))))
+          (let ((alive (org-pending-reglock-live-p reglock)))
             (one-line
              "Live?"
              (bool-to-string alive)
@@ -1115,7 +1115,7 @@ modifications.
 
 Once the REGBLOCK got its outcome, it is dead.  Ignore updates that
 come once the lock is dead."
-  (when (funcall (org-pending-reglock--get-live-p reglock))
+  (when (org-pending-reglock-live-p reglock)
     (let* ((pt (org-pending-reglock--creation-point reglock))
            (buf (marker-buffer pt)))
       (message "org-pending: Handling update message at %s@%s: %s"
