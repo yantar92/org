@@ -284,16 +284,16 @@ loosing data, leaking ressources, etc."
 ;;; Faces
 ;;
 (defface org-pending-outcome-failure
-  '((((supports :underline (:style line)))
-     :underline (:style line :color "Red1"))
+  `((((supports :underline (:style line)))
+     :underline (:style line :color ,(face-attribute 'error :foreground)))
     (t
      :underline t :inherit error))
   "Face used for the outcome when it's a failure."
   :version "30.1")
 
 (defface org-pending-outcome-success
-  '((((supports :underline (:style line)))
-     :underline (:style line :color "ForestGreen"))
+  `((((supports :underline (:style line)))
+     :underline (:style line :color ,(face-attribute 'success :foreground)))
     (t
      :underline t :inherit error))
   "Face used for the outcome when it's a success."
