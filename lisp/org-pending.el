@@ -666,7 +666,7 @@ visual hints."
 ;;
 
 (cl-defun org-pending (region
-                       &key anchor name
+                       &key anchor (name "REGLOCK")
                        (on-outcome #'org-pending-on-outcome-replace))
   "Lock the REGION and return its REGLOCK.
 
@@ -680,6 +680,9 @@ updates.  Do not delete the previous content of REGION.
 The argument ANCHOR, when given, is a pair (start position . end
 position).  Use the ANCHOR region to display the progress.  When ANCHOR
 is not given, use the first line of REGION.
+
+Use NAME to set the unique identifier `org-pending-reglock-id' of this
+new REGLOCK, possibly appending a number to it to make it unique.
 
 Assume the region REGION contains the region ANCHOR.
 
@@ -1307,10 +1310,9 @@ Append ERROR-INFO to the error data when signaling an error."
 
 (defun org-pending--mgr-handle-new-reglock (reglock name)
   "Handle this new lock REGLOCK.
-Update REGLOCK as needed. Return nothing."
+Derive a new identifier using NAME.  Update REGLOCK as needed.  Return nothing."
   (let* ((mgr (org-pending--manager)))
     (push reglock (org-pending--manager-reglocks mgr))
-    (unless name (setq name "REGLOCK"))
 
     ;; Making NAME unique.
     (let* ((ob (org-pending--manager-used-names mgr))
