@@ -1267,7 +1267,8 @@ See also `org-pending-locks-in'."
   (setq buffer (or (and buffer (get-buffer buffer))
                    (current-buffer)))
   (with-current-buffer buffer
-    (without-restriction
+    (save-restriction
+      (widen)
       (org-pending-locks-in (point-min) (point-max)
                             owned-only))))
 
