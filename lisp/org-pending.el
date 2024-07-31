@@ -947,7 +947,7 @@ of the description buffer, and call that function with REGLOCK."
                        (`(:failure ,v) v)
                        (_ "-"))
                    "-"))
-          ;; Insert up to 1M of log.
+          ;; Insert custom details.
           (multi-line "Details"
                       (lambda ()
                         (when-let ((insert-details (org-pending-reglock-insert-details-function reglock)))
