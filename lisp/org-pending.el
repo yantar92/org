@@ -318,13 +318,13 @@ loosing data, leaking ressources, etc."
 
 ;;; Keymaps
 ;;
-(defvar org-pending--outcome-keymap
+(defvar org-pending-outcome-keymap
   (let ((map (make-sparse-keymap)))
     (define-key map [mouse-1] 'org-pending--describe-reglock-at-point)
     map)
   "Keymap for outcome overlays.")
 
-(defvar org-pending--pending-keymap
+(defvar org-pending-pending-keymap
   (let ((map (make-sparse-keymap)))
     (define-key map [mouse-1] 'org-pending--describe-reglock-at-point)
     map)
@@ -426,7 +426,7 @@ See `org-pending--delete-overlay' to delete it."
         (with-silent-modifications
           (add-text-properties (car beg-end) (cdr beg-end)
                                (list 'org-pending--outcome-overlay overlay)))
-        (overlay-put overlay 'keymap org-pending--outcome-keymap)
+        (overlay-put overlay 'keymap org-pending-outcome-keymap)
         (overlay-put overlay 'evaporate t))
 
       (when (eq :region type)
@@ -451,7 +451,7 @@ See `org-pending--delete-overlay' to delete it."
                                                          'font-lock-face :not-used
                                                          'font-lock-fontified :not-used))
                            (font-lock-flush start end)))))
-        (overlay-put overlay 'keymap org-pending--pending-keymap))
+        (overlay-put overlay 'keymap org-pending-pending-keymap))
       (unless (memq type '(:success :failure))
         (make-read-only overlay))
       overlay)))
