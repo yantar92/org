@@ -1022,6 +1022,10 @@ even if the lock/buffer doesn't exist.")
 
 
 (cl-defun org-pending--update (reglock status data)
+  "Update REGLOCK to its new STATUS, using DATA.
+Update the REGLOCK display to match the status STATUS (:scheduled,
+:progress, :success, :failure).  Also update the REGLOCK as needed.
+Return nothing."
   (cl-labels
       ((add-style (status txt)
          "Add the style matching STATUS over the text TXT."
