@@ -340,9 +340,9 @@ If READ-ONLY is non-nil, add bindings for read-only text else for
 editable text."
   (let ((map (make-sparse-keymap)))
     (dolist (k `([touchscreen-down] [mouse-2] [mouse-1]))
-      (define-key map k 'org-pending--describe-reglock-at-point))
+      (define-key map k 'org-pending-describe-reglock-at-point))
     (when read-only
-      (define-key map [13] 'org-pending--describe-reglock-at-point))
+      (define-key map [13] 'org-pending-describe-reglock-at-point))
     map))
 
 (defvar org-pending-outcome-keymap
@@ -442,7 +442,7 @@ See `org-pending--delete-overlay' to delete it."
          (substitute-command-keys
           (concat "\\<org-pending-pending-keymap>"
                   "This content is pending. "
-                  "\\[org-pending--describe-reglock-at-point]"
+                  "\\[org-pending-describe-reglock-at-point]"
                   " to know more."))))
 
       ;; Hack to detect if our overlay has been copied into an other
@@ -953,7 +953,7 @@ of the description buffer, and call that function with REGLOCK."
                         (when-let ((insert-details (org-pending-reglock-insert-details-function reglock)))
                           (funcall insert-details reglock)))))))))
 
-(defun org-pending--describe-reglock-at-point ()
+(defun org-pending-describe-reglock-at-point ()
   "Describe the lock at point.
 Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 `org-pending-describe-reglock' to display it."
@@ -1018,7 +1018,7 @@ even if the lock/buffer doesn't exist.")
      (substitute-command-keys
       (concat "\\<org-pending-outcome-keymap>"
               "Last lock outcome, "
-              "\\[org-pending--describe-reglock-at-point]"
+              "\\[org-pending-describe-reglock-at-point]"
               " to display its full description.")))
 
     (overlay-put outcome-ovl 'face outcome-face)
