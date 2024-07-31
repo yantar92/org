@@ -339,7 +339,7 @@ loosing data, leaking ressources, etc."
 If READ-ONLY is non-nil, add bindings for read-only text else for
 editable text."
   (let ((map (make-sparse-keymap)))
-    (dolist (k `([mouse-1] [mouse-2] [touchscreen-down]))
+    (dolist (k `([touchscreen-down] [mouse-2] [mouse-1]))
       (define-key map k 'org-pending--describe-reglock-at-point))
     (when read-only
       (define-key map [13] 'org-pending--describe-reglock-at-point))
@@ -437,8 +437,13 @@ See `org-pending--delete-overlay' to delete it."
       (overlay-put overlay 'org-pending type)
       (unless (memq type '(:success :failure))
         (overlay-put overlay 'face 'secondary-selection)
-        (overlay-put overlay 'help-echo "This content is pending. Click to know more."))
-
+        (overlay-put
+         overlay 'help-echo
+         (substitute-command-keys
+          (concat "\\<org-pending-pending-keymap>"
+                  "This content is pending. "
+                  "\\[org-pending--describe-reglock-at-point]"
+                  " to know more."))))
 
       ;; Hack to detect if our overlay has been copied into an other
       ;; buffer.
@@ -1008,9 +1013,14 @@ even if the lock/buffer doesn't exist.")
                  'before-string (propertize
                                  "x" 'display
                                  `(left-fringe ,bitmap ,face)))
-    (overlay-put outcome-ovl
-                 'help-echo
-                 "Last lock outcome, click to popup its full description.")
+    (overlay-put
+     outcome-ovl 'help-echo
+     (substitute-command-keys
+      (concat "\\<org-pending-outcome-keymap>"
+              "Last lock outcome, "
+              "\\[org-pending--describe-reglock-at-point]"
+              " to display its full description.")))
+
     (overlay-put outcome-ovl 'face outcome-face)
     (overlay-put outcome-ovl 'org-pending-reglock lock)
     (push `(apply delete-overlay ,outcome-ovl) buffer-undo-list)
