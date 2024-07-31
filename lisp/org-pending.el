@@ -955,7 +955,7 @@ Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 ;;;; Updates
 ;;
 (defvar org-pending-pre-insert-outcome-function
-  #'org-pending-pre-insert-outcome-default
+  #'ignore
   "Function called before inserting the outcome.
 
 This function is called before releasing the lock.
@@ -978,8 +978,6 @@ This function must return how to remove the decoration: a function that
 will be called with no arguments; the returned function may be called
 even if the lock/buffer doesn't exist.")
 
-(defun org-pending-pre-insert-outcome-default (_lock _message)
-  "Default value for `org-pending-pre-insert-outcome-function'.")
 
 (defun org-pending-post-insert-outcome-default (lock message outcome-region)
   "Default value for `org-pending-post-insert-outcome-function'."
