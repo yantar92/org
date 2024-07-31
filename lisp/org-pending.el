@@ -808,16 +808,18 @@ for more information about all reglock fields."
 ;;;; Describing a lock for the user
 ;;
 
+(defvar org-pending-describe-buffer-name "*Region Lock*"
+  "Buffer name used to describe reglocks.")
+
 
 (defun org-pending-describe-reglock (reglock)
   "Describe REGLOCK in a buffer.
 
-Describe position REGLOCK.
-The information is displayed in new buffer.
-
-If the REGLOCK field insert-details-function is non-nil, move point to
-the end of the description buffer, and call that function with REGLOCK."
-  (let ((buffer (get-buffer-create "*Region Lock*")))
+Create or erase the buffer named `org-pending-describe-buffer-name'.
+Print the generic REGLOCK information in this buffer.  Then, when the
+REGLOCK field insert-details-function is non-nil, move point to the end
+of the description buffer, and call that function with REGLOCK."
+  (let ((buffer (get-buffer-create org-pending-describe-buffer-name)))
     (with-output-to-temp-buffer buffer
       (with-current-buffer buffer
         (erase-buffer)
