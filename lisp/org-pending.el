@@ -1204,26 +1204,28 @@ This is the default :on-outcome handler for the function `org-pending'."
        (when (buffer-live-p buf)
          (with-current-buffer buf
            (save-excursion
-             (if (> (- end start) 1)
-                 ;; Insert in the middle as it's more robust to
-                 ;; keep existing data (text properties, markers,
-                 ;; overlays).
-                 (let ((ipoint (+ 0 (goto-char (1+ start)))))
-                   (setq end (progn (goto-char end) (point-marker)))
-                   (goto-char ipoint)
+             (save-restriction
+               (widen)
+               (if (> (- end start) 1)
+                   ;; Insert in the middle as it's more robust to
+                   ;; keep existing data (text properties, markers,
+                   ;; overlays).
+                   (let ((ipoint (+ 0 (goto-char (1+ start)))))
+                     (setq end (progn (goto-char end) (point-marker)))
+                     (goto-char ipoint)
+                     (insert new-text)
+                     (delete-region (point) end)
+                     (delete-region start ipoint)
+                     (cons start (point-marker)))
+                 ;; Can't insert in the middle.
+                 (let ((old-end (point-marker))
+                       new-end)
+                   (set-marker-insertion-type old-end nil)
                    (insert new-text)
-                   (delete-region (point) end)
-                   (delete-region start ipoint)
-                   (cons start (point-marker)))
-               ;; Can't insert in the middle.
-               (let ((old-end (point-marker))
-                     new-end)
-                 (set-marker-insertion-type old-end nil)
-                 (insert new-text)
-                 (setq new-end (point-marker))
-                 (delete-region start old-end)
-                 (cons start new-end)
-                 )))))))))
+                   (setq new-end (point-marker))
+                   (delete-region start old-end)
+                   (cons start new-end)
+                   ))))))))))
 
 
 ;;; Checking for reglocks
