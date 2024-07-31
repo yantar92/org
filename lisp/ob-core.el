@@ -930,6 +930,13 @@ the result or raise the exception."
              schedule))
     (funcall await)))
 
+(defun org-babel--popup-failure-details (exc)
+  "Notify/display the error EXC."
+  (with-output-to-temp-buffer "*org pending content error*"
+    (princ (if (consp exc)
+               (format "%s\n%s\n" (car exc) (cdr exc))
+             (format "%s\n" exc)))))
+
 
 
 ;;;###autoload
@@ -1109,7 +1116,7 @@ guess will be made."
                 (let ((res-sb (make-symbol "result")))
                   (condition-case-unless-debug exc
                       (set res-sb (save-current-buffer (apply cmd cmd-args)))
-                    (error (org-pending--popup-failure-details exc)))
+                    (error (org-babel--popup-failure-details exc)))
                   (when (boundp res-sb)
                     (funcall handle-result (symbol-value res-sb) res-sb)
                     (symbol-value res-sb)))

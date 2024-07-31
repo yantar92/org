@@ -492,13 +492,6 @@ Assume OVL has been created with `org-pending--make-overlay'."
 ;;;; Error popup
 ;;
 
-(defun org-pending--popup-failure-details (exc)
-  "Notify/display the error EXC."
-  (with-output-to-temp-buffer "*org pending content error*"
-    (princ (if (consp exc)
-               (format "%s\n%s\n" (car exc) (cdr exc))
-             (format "%s\n" exc)))))
-
 
 
 
