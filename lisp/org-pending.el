@@ -259,6 +259,20 @@
 (require 'cl-lib)
 (require 'string-edit)
 
+;;; Configuration
+;;
+(defcustom org-pending-confirm-ignore-reglocks-on-exit t
+  "Non-nil means that Emacs checks reglocks on exit.
+When non-nil, if there are pending locks when exiting Emacs, org pending
+will offer you a chance to cancel the exit to not loose any data, leak
+ressources, etc.
+
+If you set this to nil, org pending will ignore pending locks, possibly
+loosing data, leaking ressources, etc."
+
+  :type 'boolean
+  :package-version '(Org . "9.7"))
+
 ;;; Errors
 (define-error 'org-pending-error
               "Some content is pending, cannot modify it")
@@ -1417,7 +1431,8 @@ If there are any lock, offer to abort killing Emacs."
   ;; TODO: Offer to jump to the list of the locks.
   (if (not (org-pending-no-locks-in-emacs-p))
       :ok-to-kill
-    (when (yes-or-no-p (format "There are pending locks, kill anyway?"))
+    (when (or (not org-pending-confirm-ignore-reglocks-on-exit)
+              (yes-or-no-p (format "There are pending locks, kill anyway?")))
       ;; Forced kill: cancel all pending regions
       (dolist (pi (org-pending-list))
         (org-pending--forced-destroy pi))
