@@ -671,7 +671,7 @@ where the REGLOCK was created.  If ON-OUTCOME returns a region (a
 pair (start position . end position)), use it to report the
 success/failure using visual hints on that region.  If ON-OUTCOME
 returns nothing, don't display outcome marks.  The default ON-OUTCOME
-function replaces the region on success and ignore failures; in all
+function replaces the region on success and ignores failures; in all
 cases, it returns the outcome region (see the function
 `org-pending-on-outcome-replace').
 
