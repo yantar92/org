@@ -258,6 +258,7 @@
 
 (require 'cl-lib)
 (require 'string-edit)
+(require 'compile)
 
 ;;; Configuration
 ;;
@@ -283,19 +284,35 @@ loosing data, leaking ressources, etc."
 
 ;;; Faces
 ;;
+(defface org-pending-scheduled
+  `((t :background ,(face-attribute
+                     'fringe
+                     :background  nil t)))
+  "Face for babel results for code blocks that are scheduled for execution."
+  :package-version '(Org . "9.7"))
+
+(defface org-pending-pending
+  `((t :background ,(face-attribute
+                     'compilation-mode-line-run
+                     :foreground nil t)))
+  "Face for babel results for code blocks that are running."
+  :package-version '(Org . "9.7"))
+
 (defface org-pending-outcome-failure
   `((((supports :underline (:style line)))
-     :underline (:style line :color ,(face-attribute 'error :foreground)))
+     :underline ( :style line
+                  :color ,(face-attribute 'error :foreground nil 'default)))
     (t
      :underline t :inherit error))
-  "Face used for the outcome when it's a failure."
+  "Face for babel results fused for the outcome when it's a failure."
   :package-version '(Org . "9.7"))
 
 (defface org-pending-outcome-success
   `((((supports :underline (:style line)))
-     :underline (:style line :color ,(face-attribute 'success :foreground)))
+     :underline ( :style line
+                  :color ,(face-attribute 'success :foreground nil 'default)))
     (t
-     :underline t :inherit error))
+     :underline t :inherit success))
   "Face used for the outcome when it's a success."
   :package-version '(Org . "9.7"))
 
@@ -304,12 +321,11 @@ loosing data, leaking ressources, etc."
 (defun org-pending-status-face (status)
   "Return the face to use to this STATUS."
   (pcase status
-    (:scheduled 'org-async-scheduled)
-    (:pending   'org-async-pending)
-    (:failure   'org-async-failure)
-    (:success   nil)
-    (_ (error "Not a status"))
-    ))
+    (:scheduled 'org-pending-scheduled)
+    (:pending   'org-pending-pending)
+    (:failure   'org-pending-outcome-failure)
+    (:success   'org-pending-outcome-success)
+    (_ (error "Not a status"))))
 
 (defun org-pending--status-still-pending-p (status)
   "Non-nil if status means the content is still pending."
