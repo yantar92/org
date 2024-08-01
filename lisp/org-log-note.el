@@ -324,6 +324,39 @@ EXTRA is additional text that will be inserted into the notes buffer."
         org-log-setup t)
   (add-hook 'post-command-hook 'org-add-log-note 'append))
 
+(defun org-state-note-re (&optional date)
+  "Return regexp matching state notes.
+The regexp will contain 2 match groups:
+Group 1: New todo state, if present
+Group 2: Old todo state, if present
+
+With optional argument DATE, return regexp matching state note taken
+at DATE."
+  (let ((date-re
+         (when date
+           (regexp-quote
+            (format-time-string
+             "%Y-%m-%d" ; We do not use `org-time-stamp-format' to not demand day name in timestamps.
+	     (org-encode-time  ; DATE bound by calendar
+	      0 0 0 (nth 1 date) (car date) (nth 2 date)))))))
+    (concat "[ \t]*- +"
+	    (replace-regexp-in-string
+	     " +" " +"
+	     (org-replace-escapes
+	      (regexp-quote (cdr (assq 'state org-log-note-headings)))
+	      `(("%d" . ,(if date (format "\\[%s[^]]+\\]" date-re)
+                           org-ts-regexp-inactive))
+	        ("%D" . ,(if date (format "<%s[^>]+>" date-re)
+                           org-ts-regexp))
+	        ("%s" . "\\(?1:\"\\S-+\"\\)")
+	        ("%S" . "\\(?2:\"\\S-+\"\\)")
+	        ("%t" . ,(if date (format "\\[%s[^]]+\\]" date-re)
+                           org-ts-regexp-inactive))
+	        ("%T" . ,(if date (format "<%s[^>]+>" date-re)
+                           org-ts-regexp))
+	        ("%u" . ".*?")
+	        ("%U" . ".*?")))))))
+
 (defun org-skip-over-state-notes ()
   "Skip past the list of State notes in an entry.
 The point is assumed to be on a list of State notes, each matching
@@ -333,20 +366,7 @@ items are State notes."
   (when (ignore-errors (goto-char (org-in-item-p)))
     (let* ((struct (org-list-struct))
 	   (prevs (org-list-prevs-alist struct))
-	   (regexp
-	    (concat "[ \t]*- +"
-		    (replace-regexp-in-string
-		     " +" " +"
-		     (org-replace-escapes
-		      (regexp-quote (cdr (assq 'state org-log-note-headings)))
-		      `(("%d" . ,org-ts-regexp-inactive)
-			("%D" . ,org-ts-regexp)
-			("%s" . "\\(?:\"\\S-+\"\\)?")
-			("%S" . "\\(?:\"\\S-+\"\\)?")
-			("%t" . ,org-ts-regexp-inactive)
-			("%T" . ,org-ts-regexp)
-			("%u" . ".*?")
-			("%U" . ".*?")))))))
+	   (regexp (org-state-note-re)))
       (while (looking-at-p regexp)
 	(goto-char (or (org-list-get-next-item (point) struct prevs)
 		       (org-list-get-item-end (point) struct)))))))

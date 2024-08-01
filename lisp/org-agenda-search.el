@@ -1345,6 +1345,77 @@ resolved value, as returned by `org-diary-sexp-entry'."
 	  diary-sexp-entry)))
      (org-agenda-select-sexps date))))
 
+(defun org-agenda-select-closed (date)
+  "Return a list of closed planning nodes matching DATE in current buffer."
+  (org-agenda-map-regexp
+   (concat "\\<" org-closed-string
+           " *\\["
+	   (regexp-quote
+	    (format-time-string
+             "%Y-%m-%d" ; We do not use `org-time-stamp-format' to not demand day name in timestamps.
+	     (org-encode-time  ; DATE bound by calendar
+	      0 0 0 (nth 1 date) (car date) (nth 2 date)))))
+   (lambda (planning)
+     (when (and (org-element-type-p planning 'planning)
+                (org-element-property :closed planning))
+       planning))))
+
+(defun org-agenda-select-clock (date)
+  "Return a list of clocks matching DATE in current buffer.
+Each clock will have its `:clock-note' property set to the first
+paragraph of the following list entry.
+Ignore clocks before the first heading."
+  (let (result-clock next-element next-paragraph)
+    (org-agenda-map-regexp
+     (concat "\\<" org-clock-string
+             " *\\["
+	     (regexp-quote
+	      (format-time-string
+               "%Y-%m-%d" ; We do not use `org-time-stamp-format' to not demand day name in timestamps.
+	       (org-encode-time  ; DATE bound by calendar
+	        0 0 0 (nth 1 date) (car date) (nth 2 date)))))
+     (lambda (clock)
+       (when (and (org-element-type-p clock 'clock)
+                  (org-element-lineage clock 'headline))
+         (setq result-clock
+               (org-element-put-property
+                (org-element-copy clock)
+                :parent (org-element-parent clock))
+               next-element (org-element-at-point (org-element-end clock)))
+         (when (and (org-element-type-p next-element 'plain-list)
+                    (org-element-type-p
+                     (setq next-paragraph
+                           (org-element-at-point (+ 2 (org-element-begin next-element))))
+                     'paragraph))
+           (org-element-put-property
+            result-clock :clock-note
+            (buffer-substring
+             (org-element-contents-begin next-paragraph)
+             (org-element-contents-end next-paragraph))))
+         result-clock)))))
+
+(defun org-agenda-select-state (date)
+  "Return a list of state change notes matching DATE in current buffer.
+The return values are paragraph elements containing the notes with
+`:new-todo-state' property set to the new state listed in the note.
+Ignore state notes before the first heading."
+  (require 'org-log-note)
+  (declare-function org-state-note-re "org-log-note" (&optional date))
+  (let (element-copy)
+    (org-agenda-map-regexp
+     (org-state-note-re date)
+     (lambda (element)
+       (when (and (org-element-lineage element 'item)
+                  (org-element-lineage element 'headline))
+         (setq element-copy (org-element-copy element))
+         (org-element-put-property
+          element-copy
+          :parent (org-element-parent element))
+         (org-element-put-property
+          element-copy
+          :new-todo-state (match-string 1))
+         element)))))
+
 (defalias 'org-get-closed #'org-agenda-get-progress)
 (defun org-agenda-get-progress (&optional entry-types)
   "Return the logged TODO entries for agenda display.
@@ -1354,87 +1425,80 @@ see.  When ENTRY-TYPES is nil, use `org-agenda-log-mode-items'."
   (with-no-warnings (defvar date))
   (let* ((items (if (consp entry-types) entry-types
 		  org-agenda-log-mode-items))
-	 (parts
-	  (delq nil
-		(list
-		 (when (memq 'closed items) (concat "\\<" org-closed-string))
-		 (when (memq 'clock items) (concat "\\<" org-clock-string))
-		 (when (memq 'state items)
-		   (format "- +State \"%s\".*?" (org-todo-regexp))))))
-	 (parts-re (if parts (mapconcat #'identity parts "\\|")
-		     (error "`org-agenda-log-mode-items' is empty")))
-	 (regexp (concat
-		  "\\(" parts-re "\\)"
-		  " *\\["
-		  (regexp-quote
-		   (format-time-string
-                    "%Y-%m-%d" ; We do not use `org-time-stamp-format' to not demand day name in timestamps.
-		    (org-encode-time  ; DATE bound by calendar
-		     0 0 0 (nth 1 date) (car date) (nth 2 date))))))
-	 (org-agenda-search-headline-for-time nil)
-	 closedp statep clockp state ee txt extra timestr rest clocked)
-    (goto-char (point-min))
-    (while (re-search-forward regexp nil t)
-      (catch :skip
-	(org-agenda-skip)
-	(setq closedp (equal (match-string 1) org-closed-string)
-	      statep (equal (string-to-char (match-string 1)) ?-)
-	      clockp (not (or closedp statep))
-	      state (and statep (match-string 2))
-	      timestr (buffer-substring (match-beginning 0) (line-end-position)))
-	(when (string-match org-ts-regexp-inactive timestr)
-	  ;; substring should only run to end of time stamp
-	  (setq rest (substring timestr (match-end 0))
-		timestr (substring timestr 0 (match-end 0)))
-	  (if (and (not closedp) (not statep)
-		   (string-match "\\([0-9]\\{1,2\\}:[0-9]\\{2\\}\\)\\].*?\\([0-9]\\{1,2\\}:[0-9]\\{2\\}\\)"
-				 rest))
-	      (progn (setq timestr (concat (substring timestr 0 -1)
-					   "-" (match-string 1 rest) "]"))
-		     (setq clocked (match-string 2 rest)))
-	    (setq clocked "-")))
-	(save-excursion
-	  (setq extra
-		(cond
-		 ((not org-agenda-log-mode-add-notes) nil)
-		 (statep
-		  (and (looking-at ".*\\\\\n[ \t]*\\([^-\n \t].*?\\)[ \t]*$")
-		       (match-string 1)))
-		 (clockp
-		  (and (looking-at ".*\n[ \t]*-[ \t]+\\([^-\n \t].*?\\)[ \t]*$")
-		       (match-string 1)))))
-	  (if (not (re-search-backward org-outline-regexp-bol nil t))
-	      (throw :skip nil)
-	    (goto-char (match-beginning 0))
-	    (looking-at "\\*+[ \t]+\\([^\r\n]+\\)")
-	    (setq txt (match-string 1))
-	    (when extra
-	      (if (string-match "\\([ \t]+\\)\\(:[^ \n\t]*?:\\)[ \t]*$" txt)
-		  (setq txt (concat (substring txt 0 (match-beginning 1))
-				    " - " extra " " (match-string 2 txt)))
-		(setq txt (concat txt " - " extra))))
-	    (setq txt
-                  (org-agenda-format-heading
-                   nil
-                   :scheduling-info
-                   (cond
-		    (closedp "Closed:    ")
-		    (statep (concat "State:     (" state ")"))
-		    (t (concat "Clocked:   (" clocked  ")")))
-                   :overriding-headline txt
-                   :dotime timestr)))
-	  (org-add-props txt
-              nil
-	    'face 'org-agenda-done
-	    'type (cond
-                   (closedp "closed")
-		   (statep "state")
-		   (t "clock"))
-            'date date
-	    'undone-face 'org-warning)
-	  (push txt ee))
-        (goto-char (line-end-position))))
-    (nreverse ee)))
+         (org-agenda-search-headline-for-time nil))
+    (sort ; Sort by item position in the buffer
+     (nconc
+      ;; Closed entries
+      (mapcar
+       (lambda (planning)
+         (org-add-props
+             (org-agenda-format-heading
+              planning
+              :scheduling-info "Closed:    "
+              :dotime (org-element-property :closed planning))
+             nil
+           'face 'org-agenda-done
+	   'type "closed"
+           'date date
+	   'undone-face 'org-warning))
+       (when (memq 'closed items) (org-agenda-select-closed date)))
+      ;; Clock entries
+      (mapcar
+       (lambda (clock)
+         (org-add-props
+             (org-agenda-format-heading
+              clock
+              :scheduling-info
+              (format
+               "Clocked:   (%s)"
+               (or (org-element-property :duration clock)
+                   "-"))
+              :headline-format
+              (if-let ((extra
+                        (and org-agenda-log-mode-add-notes
+                             (car (string-lines (org-element-property
+                                                 :clock-note clock))))))
+                  `(headline " - " ,extra tags)
+                `(headline tags))
+              :dotime (org-element-property :value clock))
+             nil
+           'face 'org-agenda-done
+	   'type "clock"
+           'date date
+	   'undone-face 'org-warning))
+       (when (memq 'clock items) (org-agenda-select-clock date)))
+      ;; State change notes
+      (let (note-lines)
+        (mapcar
+         (lambda (paragraph)
+           (setq note-lines
+                 (string-lines
+                  (buffer-substring
+                   (org-element-contents-begin paragraph)
+                   (org-element-contents-end paragraph))))
+           (org-add-props
+               (org-agenda-format-heading
+                paragraph
+                :scheduling-info
+                (format
+                 "State:     (%s)"
+                 (or (org-element-property :new-todo-state paragraph) ""))
+                :headline-format
+                (if-let ((extra
+                          (and org-agenda-log-mode-add-notes
+                               ;; Line 2
+                               (cadr note-lines))))
+                    `(headline " - " ,extra tags)
+                  `(headline tags))
+                :dotime (car note-lines))
+               nil
+             'face 'org-agenda-done
+	     'type "state"
+             'date date
+	     'undone-face 'org-warning))
+         (when (memq 'state items) (org-agenda-select-state date)))))
+     ;; Sort function.
+     (lambda (line) (get-text-property 0 'org-agenda-marker line)))))
 
 (defun org-deadline-close-p (timestamp-string &optional ndays epom)
   "Is the time in TIMESTAMP-STRING close to the current date?
