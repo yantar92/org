@@ -1809,8 +1809,8 @@ style information."
   :type 'boolean)
 
 (defcustom org-html-multipage-clear-export-directory t
-  "Should all .html files removed from the export directory before
-exporting?"
+  "Boolean. If non-nil remove all .html files from the export directory before
+exporting"
   :group 'org-export-html
   :version "29.4"
   :package-version '(Org . "9.8")
@@ -2641,7 +2641,11 @@ CONTENTS is the transcoded contents string.  INFO is a plist
 holding export options."
   (concat
    ;; Table of contents.
-   (let ((depth (plist-get info :with-toc)))
+   (let* ((with-toc (plist-get info :with-toc))
+          (depth (if with-toc
+                     (if (numberp with-toc)
+                         with-toc
+                       (plist-get info :headline-levels)))))
      (when depth (org-html-toc depth info)))
    ;; Document contents.
    contents
@@ -4762,13 +4766,12 @@ used as a communication channel."
      ((eq split-ref 'toc)
       (let ((maxdepth (if (numberp (plist-get info :with-toc))
                           (plist-get info :with-toc)
-                        4)))
+                        (plist-get info :headline-levels))))
         (plist-put info :export-depth maxdepth)
         (org-html--handle-join-empty-body
          (cl-remove-if (lambda (hl-num) (> (length hl-num) maxdepth))
                        headline-numbering :key 'cdr)
          info)))
-     ((eq split-ref 'export-filename))
      ((numberp split-ref)
       (plist-put info :export-depth split-ref)
       (org-html--handle-join-empty-body
@@ -5092,10 +5095,20 @@ headline-number."
     (caar headline-numbering))
    (t (org-html-find-headline headline-number (cdr headline-numbering)))))
 
+
 (defun org-html-element-body-text? (element)
   "check if first child of element is *not* a headline."
   (not (eq (org-element-type (car (org-element-contents element)))
            'headline)))
+
+(defun org-html-element-body-empty? (element)
+  "check if body of element contains no content before next headline
+or end."
+  (eq (org-element-type (car (org-element-contents element)))
+      'headline))
+
+(defun org-html-element-body-text? (element)
+  (not (org-html-element-body-empty? element)))
 
 (defun org-html--handle-join-empty-body (headlines info)
   (if (plist-get info :html-multipage-join-empty-bodies)
@@ -5256,7 +5269,12 @@ tl-headlines counterparts."
        (cdr
         (assoc (cdr (assoc global-headline headline-numbering))
                tl-headline-lookup)))
-     (org-export-collect-headlines info (or (plist-get info :with-toc) 24) scope))))
+     (org-export-collect-headlines
+      info
+      (if (numberp (plist-get info :with-toc))
+          (plist-get info :with-toc)
+        (plist-get info :headline-levels))
+      scope))))
 
 (defun org-html-nav-left (nav-lookup)
   "Return nav string for multipage Navigation in page-main-body.
@@ -5361,8 +5379,10 @@ holding export options."
              (nth 2 div)
              (plist-get info :html-content-class)))
    ;; Table of contents.
-   (let ((depth (plist-get info :with-toc)))
-     (when depth (org-html-multipage-toc (if (numberp depth) depth 24) info)))
+   (let ((depth (if (numberp (plist-get info :with-toc))
+                    (plist-get info :with-toc)
+                  (plist-get info :headline-levels))))
+     (when depth (org-html-multipage-toc depth info)))
    ;; Document title.
    (when (plist-get info :with-title)
      (let ((title (and (plist-get info :with-title)
