@@ -2979,7 +2979,6 @@ Return code as a string or a list of strings.
 The returned strings will have their `org-export-info' property set to
 export information channel."
   (when (symbolp backend) (setq backend (org-export-get-backend backend)))
-  (message "1: %s" (plist-get ext-plist :multipage-split))
   (org-export-barf-if-invalid-backend backend)
   (org-fold-core-ignore-modifications
     (save-excursion
@@ -3133,14 +3132,16 @@ still inferior to file-local settings."
         (_ nil)))
     ;; Install user's and developer's filters.
     (setq info (org-export-install-filters info))
+
     ;; Call options filters and update export options.  We do not
     ;; use `org-export-filter-apply-functions' here since the
     ;; arity of such filters is different.
     (let ((backend-name (org-export-backend-name backend)))
       (dolist (filter (plist-get info :filter-options))
-        (let ((result (funcall filter info backend-name)))
-          (when result (setq info result)))))
+          (let ((result (funcall filter info backend-name)))
+            (when result (setq info result)))))
     ;; Parse buffer.
+
     (setq tree (org-element-parse-buffer nil visible-only 'defer))
     ;; Prune tree from non-exported elements and transform
     ;; uninterpreted elements or objects in both parse tree and

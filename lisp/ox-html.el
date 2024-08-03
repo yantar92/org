@@ -165,15 +165,17 @@
     (:html-mathjax-options nil nil org-html-mathjax-options)
     (:html-mathjax-template nil nil org-html-mathjax-template)
     (:html-metadata-timestamp-format nil nil org-html-metadata-timestamp-format)
+    (:html-multipage-clear-export-directory nil "html-multipage-clear-export-directory"
+                                            org-html-multipage-clear-export-directory)
+    (:html-multipage-export-directory
+     nil "html-multipage-export-directory" org-html-multipage-export-directory)
     (:html-multipage-head-include-default-style
      nil "html-multipage-include-default-style" org-html-multipage-head-include-default-style)
     (:html-multipage-join-empty-bodies
      nil "html-multipage-join-empty-bodies" org-html-multipage-join-empty-bodies)
-    (:html-multipage-export-directory
-     nil "html-multipage-export-directory" org-html-multipage-export-directory)
-    (:html-multipage-clear-export-directory nil "html-multipage-clear-export-directory"
-                                            org-html-multipage-clear-export-directory)
     (:html-multipage-nav-format nil nil org-html-multipage-nav-format)
+    (:html-multipage-numbered-filenames nil "html-multipage-numbered-filenames"
+                                        org-html-multipage-numbered-filenames)
     (:html-multipage-open nil "html-multipage-open" org-html-multipage-open)
     (:html-multipage-postamble-position
      nil "html-multipage-postamble-position" org-html-multipage-postamble-position)
@@ -1806,6 +1808,21 @@ style information."
   :package-version '(Org . "8.0")
   :type 'boolean)
 
+(defcustom org-html-multipage-clear-export-directory t
+  "Should all .html files removed from the export directory before
+exporting?"
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type 'boolean)
+
+(defcustom org-html-multipage-export-directory "html"
+  "The default directory for exported HTML files."
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type 'string)
+
 (defcustom org-html-multipage-head-include-default-style t
   "Non-nil means include the default style in exported HTML files.
 The actual style is defined in `org-html-style-default' and
@@ -1836,21 +1853,6 @@ separate HTML page with empty content.
   :package-version '(Org . "9.8")
   :type 'boolean)
 
-(defcustom org-html-multipage-export-directory "html"
-  "The default directory for exported HTML files."
-  :group 'org-export-html
-  :version "29.4"
-  :package-version '(Org . "9.8")
-  :type 'string)
-
-(defcustom org-html-multipage-clear-export-directory t
-  "Should all .html files removed from the export directory before
-exporting?"
-  :group 'org-export-html
-  :version "29.4"
-  :package-version '(Org . "9.8")
-  :type 'boolean)
-
 (defcustom org-html-multipage-nav-format
   '("<div id=\"org-div-nav-menu\">%s</div>"
 "Next: <a accesskey=\"n\" href=\"%s\"> %s </a>,&nbsp;"
@@ -1867,6 +1869,16 @@ the second the title"
   :version "29.4"
   :package-version '(Org . "9.8")
   :type 'list)
+
+(defcustom org-html-multipage-numbered-filenames t
+  "Boolean indicating whether filenames in multipage export should
+get their headline-numbering prepended. Note: This option is
+independent of the num: option and the backend guarantees that
+filenames are unique in any case."
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type 'boolean)
 
 (defcustom org-html-multipage-open 'nil
   "If and where to open the top page of the multipage html after
@@ -3481,7 +3493,6 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 ;;;                     (tl-hl-numbering (org-export-get-multipage-headline-numbering keyword info))
                        )
                   (setq global-key keyword)
-                  (setq global-info2 info)
                   (org-html-multipage-toc depth (cl-list* :full-toc t
 ;;                                                          :tl-headline (car tl-hl-numbering)
                                                           ;; :tl-headline-number (cdr tl-hl-numbering)
@@ -4581,6 +4592,20 @@ Return output file name."
 (defun org-html-element-title (element)
   (org-element-property :raw-value element))
 
+(defun org-html-increment-string-idx (string)
+  (if (string-match "\\([0-9]+\\)$" string)
+      (replace-match (format "%s" (1+ (read (match-string 0 string)))) nil nil string)
+    (format "%s-1" string)))
+
+(defun org-html-unique-filename (string filenames)
+  "return a unique filename by appending -<num> to the string with
+<num> starting from 1 and incrementing until the string is
+unique in filenames."
+  (if (member string filenames)
+      (org-html-unique-filename
+       (org-html-increment-string-idx string) filenames)
+    string))
+
 (defun org-html-replace-chars-with-dash (chars string)
   (cl-reduce (lambda (accum x) (replace-regexp-in-string (format "%s+" x) "-" accum))
            chars
@@ -4591,15 +4616,16 @@ Return output file name."
            chars
            :initial-value string))
 
-(defun org-html-string-to-backend-filename (string extension)
-   (format
-    "%s.%s"
+(defun org-html-string-to-filename (string)
+   (replace-regexp-in-string
+    "-+"  "-"
     (org-html-remove-chars
-     '("(" ")" "," ";" "{" "}" "'" "\\" "?")
+     '("(" ")" "*" "," ";" "{" "}" "'" "\\" "?")
      (org-html-replace-chars-with-dash
       '(" " "_" ":" "/")
-      (downcase (string-trim string))))
-    extension))
+      (replace-regexp-in-string
+       "\\\\ast{}" "*"
+       (downcase (string-trim string)))))))
 
 (defun org-html-string-prepend-section-numbering (string levels maxlevel)
   "Prepend the chapter outline numbers given in levels to
@@ -4739,7 +4765,7 @@ used as a communication channel."
         (headline-numbering (plist-get info :headline-numbering)))
     (cond
      ((eq split-ref 'toc)
-      (let ((maxdepth (or (plist-get info :with-toc) 24)))
+      (let ((maxdepth (or (numberp (plist-get info :with-toc)) 4)))
         (plist-put info :export-depth maxdepth)
         (org-html--handle-join-empty-body
          (cl-remove-if (lambda (hl-num) (> (length hl-num) maxdepth))
@@ -4911,17 +4937,25 @@ INFO is the communication channel.
 and the url names of the page they're on."
   (let ((extension (plist-get info :html-extension))
         (stripped-section-headline-numbering
-         (plist-get info :stripped-section-headline-numbering)))
+         (plist-get info :stripped-section-headline-numbering))
+        filenames)
     (mapcar
      (lambda (entry)
        (let* ((tl-elem (org-element-get-top-level entry))
               (title (org-html-element-title tl-elem)))
          (cons
           entry
-          (org-html-string-prepend-section-numbering
-           (org-html-string-to-backend-filename title extension)
-           (cdr (assoc tl-elem stripped-section-headline-numbering))
-           org-export-headline-levels))))
+          (format "%s.%s"
+                  (if (plist-get info :html-multipage-numbered-filenames)
+                      (org-html-string-prepend-section-numbering
+                       (org-html-string-to-filename title)
+                       (cdr (assoc tl-elem stripped-section-headline-numbering))
+                       org-export-headline-levels)
+                    (car (push (org-html-unique-filename
+                                (org-html-string-to-filename title)
+                                filenames)
+                               filenames)))
+                  extension))))
      (plist-get info :section-trees))))
 
 (defun org-export--make-section-nav-lookup (info)
@@ -5067,6 +5101,7 @@ headline-number."
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                while curr-headline
+               do (message "%s %s" (caar curr-headline) (cdr curr-headline))
                if (or (org-html-element-body-text? (car prev)) ;; prev has body text or is nil
                       (>= (length (cdr prev)) ;; curr-headline is not a subheadline of prev.
                           (length (cdr curr-headline))))
@@ -5328,7 +5363,7 @@ holding export options."
              (plist-get info :html-content-class)))
    ;; Table of contents.
    (let ((depth (plist-get info :with-toc)))
-     (when depth (org-html-multipage-toc depth info)))
+     (when depth (org-html-multipage-toc (if (numberp depth) depth 24) info)))
    ;; Document title.
    (when (plist-get info :with-title)
      (let ((title (and (plist-get info :with-title)
