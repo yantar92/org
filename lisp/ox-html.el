@@ -1809,8 +1809,8 @@ style information."
   :type 'boolean)
 
 (defcustom org-html-multipage-clear-export-directory t
-  "Boolean. If non-nil remove all .html files from the export directory before
-exporting"
+  "Boolean. If non-nil remove all .html files from the export
+directory before exporting."
   :group 'org-export-html
   :version "29.4"
   :package-version '(Org . "9.8")
@@ -5008,7 +5008,7 @@ section and its navigation."
              :toc-body (org-html--get-toc-body hl info)
              :toc-hl-number (alist-get hl (plist-get info :headline-numbering))
              :page-hl-number (org-export-get-multipage-headline-number hl info))))
-   (org-export-collect-local-headlines info nil)))
+   (org-html-collect-local-headlines info nil)))
 
 (defun org-html-get-multipage-tl-headline (element info)
   "return the headline of the page containing
@@ -5095,26 +5095,32 @@ headline-number."
     (caar headline-numbering))
    (t (org-html-find-headline headline-number (cdr headline-numbering)))))
 
+(defun org-html-element-body-text (element info)
+  "check if transcoding of the contents of element until the next
+subheadline returns an empty string."
+  (string-trim
+   (apply 'concat
+    (with-temp-buffer
+      (cl-loop
+       for elem in (org-element-contents element)
+       while (not (eq 'headline (org-element-type elem)))
+       do (insert (org-export-data elem info)))
+      (dom-strings (libxml-parse-html-region (point-min) (point-max)))))))
 
-(defun org-html-element-body-text? (element)
+(defun org-html-element-body-text? (element info)
+  "check if first child of element is *not* a headline."
+  (not (eq "" (org-html-element-body-text element info))))
+
+(defun org-html-element-body-text? (element info)
   "check if first child of element is *not* a headline."
   (not (eq (org-element-type (car (org-element-contents element)))
            'headline)))
-
-(defun org-html-element-body-empty? (element)
-  "check if body of element contains no content before next headline
-or end."
-  (eq (org-element-type (car (org-element-contents element)))
-      'headline))
-
-(defun org-html-element-body-text? (element)
-  (not (org-html-element-body-empty? element)))
 
 (defun org-html--handle-join-empty-body (headlines info)
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                while curr-headline
-               if (or (org-html-element-body-text? (car prev)) ;; prev has body text or is nil
+               if (or (org-html-element-body-text? (car prev) info) ;; prev has body text or is nil
                       (>= (length (cdr prev)) ;; curr-headline is not a subheadline of prev.
                           (length (cdr curr-headline))))
                collect curr-headline)
@@ -5259,7 +5265,7 @@ toc of the page containing TL-HEADLINE-NUMBER."
       (t (not (equal (butlast headline-number)
                      (butlast (butlast tl-headline-number)))))))))
 
-(defun org-export-collect-local-headlines (info scope)
+(defun org-html-collect-local-headlines (info scope)
   "Collect all headlines of headline-numbering from their local
 tl-headlines counterparts."
   (let ((tl-headline-lookup (plist-get info :tl-hl-lookup))
