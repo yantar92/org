@@ -3209,7 +3209,10 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
    (let ((prev (org-export-get-previous-element footnote-reference info)))
      (when (org-element-type-p prev 'footnote-reference)
        (plist-get info :html-footnote-separator)))
-   (let* ((n (org-export-get-footnote-number footnote-reference info))
+   (let* ((n (org-export-get-footnote-number
+              footnote-reference info
+              (if (plist-get info :multipage)
+                  (org-html-get-multipage-tl-headline footnote-reference info))))
           (label (org-element-property :label footnote-reference))
           ;; Do not assign number labels as they appear in Org mode -
           ;; the footnotes are re-numbered by
@@ -4632,7 +4635,7 @@ required."
 (defun org-html--get-multipage-page-url (element info)
   "Return the url of the page containing ELEMENT."
   (alist-get
-   (org-export-get-multipage-tl-headline element info)
+   (org-html-get-multipage-tl-headline element info)
    (plist-get info :tl-url-lookup)))
 
 (defun org-html--full-reference (destination info &optional page-only)
@@ -5004,7 +5007,7 @@ section and its navigation."
              :page-hl-number (org-export-get-multipage-headline-number hl info))))
    (org-export-collect-local-headlines info nil)))
 
-(defun org-export-get-multipage-tl-headline (element info)
+(defun org-html-get-multipage-tl-headline (element info)
   "return the headline of the page containing
 element. This requires that :headline-numbering has already been
 added to info (done in org-export--collect-tree-properties)."
