@@ -4768,7 +4768,6 @@ used as a communication channel."
       (let ((maxdepth (if (numberp (plist-get info :with-toc))
                           (plist-get info :with-toc)
                         4)))
-        (message "maxdepth: %s" maxdepth)
         (plist-put info :export-depth maxdepth)
         (org-html--handle-join-empty-body
          (cl-remove-if (lambda (hl-num) (> (length hl-num) maxdepth))
@@ -4954,7 +4953,9 @@ and the url names of the page they're on."
                          (if (plist-get info :html-multipage-numbered-filenames)
                              (org-html-string-prepend-section-numbering
                               (org-html-string-to-filename title)
-                              (cdr (assoc tl-elem stripped-section-headline-numbering))
+                              (cdr (assoc
+                                    tl-elem
+                                    stripped-section-headline-numbering))
                               org-export-headline-levels)
                            (org-html-string-to-filename title))
                          filenames)
@@ -5105,7 +5106,6 @@ headline-number."
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                while curr-headline
-               do (message "%s %s" (caar curr-headline) (cdr curr-headline))
                if (or (org-html-element-body-text? (car prev)) ;; prev has body text or is nil
                       (>= (length (cdr prev)) ;; curr-headline is not a subheadline of prev.
                           (length (cdr curr-headline))))
