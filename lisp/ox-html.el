@@ -3487,17 +3487,9 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 		    (org-strip-quotes (match-string 1 value)) info))
 		  ((string-match-p "\\<local\\>" value) keyword)))) ;local
 	    (if (plist-get info :multipage)
-                (let
-                    (
-                       
-;;;                     (tl-hl-numbering (org-export-get-multipage-headline-numbering keyword info))
-                       )
+                (progn
                   (setq global-key keyword)
-                  (org-html-multipage-toc depth (cl-list* :full-toc t
-;;                                                          :tl-headline (car tl-hl-numbering)
-                                                          ;; :tl-headline-number (cdr tl-hl-numbering)
-                                                          info) scope)
-                  )
+                  (org-html-multipage-toc depth (cl-list* :full-toc t info) scope))
               (org-html-toc depth info scope))))
 	 ((string= "listings" value) (org-html-list-of-listings info))
 	 ((string= "tables" value) (org-html-list-of-tables info))))))))
