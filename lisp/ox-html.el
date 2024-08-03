@@ -4765,7 +4765,10 @@ used as a communication channel."
         (headline-numbering (plist-get info :headline-numbering)))
     (cond
      ((eq split-ref 'toc)
-      (let ((maxdepth (or (numberp (plist-get info :with-toc)) 4)))
+      (let ((maxdepth (if (numberp (plist-get info :with-toc))
+                          (plist-get info :with-toc)
+                        4)))
+        (message "maxdepth: %s" maxdepth)
         (plist-put info :export-depth maxdepth)
         (org-html--handle-join-empty-body
          (cl-remove-if (lambda (hl-num) (> (length hl-num) maxdepth))
@@ -4946,15 +4949,16 @@ and the url names of the page they're on."
          (cons
           entry
           (format "%s.%s"
-                  (if (plist-get info :html-multipage-numbered-filenames)
-                      (org-html-string-prepend-section-numbering
-                       (org-html-string-to-filename title)
-                       (cdr (assoc tl-elem stripped-section-headline-numbering))
-                       org-export-headline-levels)
-                    (car (push (org-html-unique-filename
-                                (org-html-string-to-filename title)
-                                filenames)
-                               filenames)))
+                  (car (push
+                        (org-html-unique-filename
+                         (if (plist-get info :html-multipage-numbered-filenames)
+                             (org-html-string-prepend-section-numbering
+                              (org-html-string-to-filename title)
+                              (cdr (assoc tl-elem stripped-section-headline-numbering))
+                              org-export-headline-levels)
+                           (org-html-string-to-filename title))
+                         filenames)
+                        filenames))
                   extension))))
      (plist-get info :section-trees))))
 
