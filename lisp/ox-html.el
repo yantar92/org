@@ -4768,13 +4768,13 @@ used as a communication channel."
                           (plist-get info :with-toc)
                         (plist-get info :headline-levels))))
         (plist-put info :export-depth maxdepth)
-        (org-html--handle-join-empty-body
+        (org-html-page-headlines
          (cl-remove-if (lambda (hl-num) (> (length hl-num) maxdepth))
                        headline-numbering :key 'cdr)
          info)))
      ((numberp split-ref)
       (plist-put info :export-depth split-ref)
-      (org-html--handle-join-empty-body
+      (org-html-page-headlines
        (cl-remove-if (lambda (hl-num) (> (length hl-num) split-ref))
                      headline-numbering :key 'cdr)
        info)))))
@@ -4802,7 +4802,6 @@ INFO is the communication channel.
                      (let ((output (org-html-transcode-org-page org-page info)))
                        (put-text-property 0 1 :output-file file output)
                        output))))))
-
 
 (defun org-html-multipage-split (data _backend info)
   "Filter routine to collect all properties relevant to multipage
@@ -4836,21 +4835,26 @@ INFO is the communication channel.
                  ;; each entry in exported-headline-numbering will become a
                  ;; single page in multipage output.
                  (exported-headline-numbering
-                  (org-html-multipage-split-tree info))
-                 (max-toc-depth (plist-get info :export-depth))
+                  (let ((tmp (org-html-multipage-split-tree info)))
+                    (plist-put info :exported-headline-numbering tmp)
+                    tmp))
+                 (max-toc-depth (if (numberp (plist-get info :with-toc))
+                                    (plist-get info :with-toc)
+                                  (plist-get info :headline-levels)))
                  ;; section-trees is a list of all sections which get
                  ;; exported to a single page
                  (section-trees
                   (cl-loop
                    for section-entry in exported-headline-numbering
+                   for keep-first-subhls in (plist-get info :keep-first-subhls)
                    collect
                    (let* ((section-number (cdr section-entry)))
                      (if (< (length section-number) max-toc-depth)
-                         (org-element-remove-subheadlines
+                         (org-html-element-remove-subheadlines
                           (car section-entry)
-                          (plist-get info :html-multipage-join-empty-bodies)
+                          keep-first-subhls
                           max-toc-depth)
-                       (org-element-copy-element (car section-entry))))))
+                       (org-html-element-copy-element (car section-entry))))))
                  ;; stripped-section-headline-numbering is the equivalent of
                  ;; headline-numbering but replacing the car of its elements
                  ;; with the stripped version of the headlines.
@@ -4941,7 +4945,7 @@ and the url names of the page they're on."
         filenames)
     (mapcar
      (lambda (entry)
-       (let* ((tl-elem (org-element-get-top-level entry))
+       (let* ((tl-elem (org-html-element-get-top-level entry))
               (title (org-html-element-title tl-elem)))
          (cons
           entry
@@ -5000,7 +5004,7 @@ section and its navigation."
   "Return an assoc-list containing info for the headlines of all toc entries."
   (mapcar
    (lambda (hl)
-     (let* ((tl-hl (org-element-get-top-level hl)))
+     (let* ((tl-hl (org-html-element-get-top-level hl)))
        (list hl
              :href (org-html--full-reference hl info (plist-get info :html-multipage-toc-to-top))
              :tl-hl tl-hl
@@ -5040,7 +5044,7 @@ element. This requires that :headline-numbering has already been
 added to info (done in org-export--collect-tree-properties)."
   (cdr (org-export-get-multipage-headline-numbering element info)))
 
-(defun org-element-get-top-level (element)
+(defun org-html-element-get-top-level (element)
   "Return the top-level element of ELEMENT by traversing the parse
 tree upwards until the parent of element is nil."
   (let ((elem element)
@@ -5050,7 +5054,7 @@ tree upwards until the parent of element is nil."
       (setq parent (org-element-property :parent elem)))
     elem))
 
-(defun org-element-copy-element (org-node &optional keep-parent)
+(defun org-html-element-copy-element (org-node &optional keep-parent)
   "copy ORG-NODE to a new org-node with elements not copied,
 but referenced."
   (let* (headline
@@ -5059,25 +5063,29 @@ but referenced."
     (unless keep-parent (setf (org-element-property :parent new) nil))
     (apply 'org-element-adopt-elements new (org-element-contents org-node))))
 
-(defun org-element-remove-subheadlines (org-node &optional join-empty-bodies max-toc-depth keep-parent)
+(defun org-html-element-remove-subheadlines (org-node &optional
+                                                      keep-first-subheadlines max-toc-depth keep-parent)
   "remove all elements starting with and including the first headline
 in the children of ORG-NODE if JOIN_EMPTY_BODIES is nil. Returns a
 new ast with all elements starting at START-CHILD-IDX copied into
 it with the :parent property optionally removed in the top node."
-  (let* (contents-end
+  (let* ((num-subheadlines 0)
+         contents-end
          headline
          (props (copy-sequence (nth 1 org-node)))
          (new (list (car org-node) props))
          (new-children (cl-loop
                         for x in (org-element-contents org-node)
-                        for i from 0
                         with exit = nil
                         do (if (and
                                 (consp x)
                                 (eq (org-element-type x) 'headline))
-                               (if (and join-empty-bodies (= i 0))
-                                   (if (< (org-element-property :level x) max-toc-depth)
-                                       (setq x (org-element-remove-subheadlines x join-empty-bodies max-toc-depth)))
+                               (if (and (car keep-first-subheadlines) (zerop num-subheadlines))
+                                   (progn
+                                     (setf num-subheadlines (1+ num-subheadlines))
+                                     (if (< (org-element-property :level x) max-toc-depth)
+                                         (setq x (org-html-element-remove-subheadlines
+                                                  x (cdr keep-first-subheadlines) max-toc-depth))))
                                  (progn
                                    (setq contents-end (org-element-property :begin x))
                                    (setq exit t))))
@@ -5109,32 +5117,45 @@ subheadline returns an empty string."
               (mapcar 'insert strings)
               (dom-strings (libxml-parse-html-region (point-min) (point-max))))))))
 
-(defun org-html-element-body-text? (element info)
-  "check if transcoded element doesn't produce any text."
-  (eq "" (org-html-element-body-text element info)))
+
 
 (defun org-html-element-body-text? (element info)
   "check if first child of element is *not* a headline."
   (not (eq (org-element-type (car (org-element-contents element)))
            'headline)))
 
-(defun org-html--handle-join-empty-body (headlines info)
+(defun org-html-element-body-text? (element info)
+  "check if transcoded element doesn't produce any text."
+  (not (eq "" (org-html-element-body-text element info))))
+
+(defun org-html-page-headlines (headlines info)
+  "collect all page headlines and keep track of subheadlines to be
+joined for each page-headline in :join-subhl"
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
+               with collect-hl = nil
+               with tmp = nil
+               with keep-shl = nil
                while curr-headline
-               do (message "collect: %s\n%s\n%s %s" (or (org-html-element-body-text? (car prev) info) ;; prev has body text or is nil
-                      (>= (length (cdr prev)) ;; curr-headline is not a subheadline of prev.
-                          (length (cdr curr-headline))))
-                           (org-html-element-body-text? (car prev) info)
-                           (length (cdr prev))
-                           (length (cdr curr-headline)))
-               if (or ;; collect curr-headline either
-                   (not prev) ;; when it is the first headline
-                   (>= (length (cdr prev)) ;; when it is not a subheadline of prev.
-                       (length (cdr curr-headline)))
-                   (org-html-element-body-text? (car prev) info)) ;; when prev headline has body text.
-               collect curr-headline)
-    headlines))
+               do (progn
+                    (setf
+                     collect-hl
+                     (or         ;; collect curr-headline either
+                      (not prev) ;; when it is the first headline
+                      (>= (length (cdr prev)) ;; when it is not a subheadline of prev.
+                          (length (cdr curr-headline)))
+                      ;; or when the previous headline contains body text
+                      (org-html-element-body-text? (car prev) info)))
+                    (if collect-hl
+                        (progn (push (reverse tmp) keep-shl)
+                               (setf tmp nil))
+                      (push t tmp)))
+               if collect-hl collect curr-headline
+               finally (progn (push tmp keep-shl)
+                              (plist-put info :keep-first-subhls (cdr (reverse keep-shl)))))
+    (progn
+      (plist-put info :keep-first-subhls (cl-loop for x in headlines collect nil))
+      headlines)))
 
 (defun org-html-transcode-org-page (page info)
   "transcode the headline tree in the contents of the org-page
