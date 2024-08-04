@@ -5098,18 +5098,20 @@ headline-number."
 (defun org-html-element-body-text (element info)
   "check if transcoding of the contents of element until the next
 subheadline returns an empty string."
-  (string-trim
-   (apply 'concat
-    (with-temp-buffer
-      (cl-loop
-       for elem in (org-element-contents element)
-       while (not (eq 'headline (org-element-type elem)))
-       do (insert (org-export-data elem info)))
-      (dom-strings (libxml-parse-html-region (point-min) (point-max)))))))
+  (let ((strings
+         (cl-loop
+          for elem in (org-element-contents element)
+          while (not (eq 'headline (org-element-type elem)))
+          collect (org-export-data elem info))))
+    (string-trim
+     (apply 'concat
+            (with-temp-buffer
+              (mapcar 'insert strings)
+              (dom-strings (libxml-parse-html-region (point-min) (point-max))))))))
 
 (defun org-html-element-body-text? (element info)
-  "check if first child of element is *not* a headline."
-  (not (eq "" (org-html-element-body-text element info))))
+  "check if transcoded element doesn't produce any text."
+  (eq "" (org-html-element-body-text element info)))
 
 (defun org-html-element-body-text? (element info)
   "check if first child of element is *not* a headline."
@@ -5120,9 +5122,17 @@ subheadline returns an empty string."
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                while curr-headline
-               if (or (org-html-element-body-text? (car prev) info) ;; prev has body text or is nil
+               do (message "collect: %s\n%s\n%s %s" (or (org-html-element-body-text? (car prev) info) ;; prev has body text or is nil
                       (>= (length (cdr prev)) ;; curr-headline is not a subheadline of prev.
                           (length (cdr curr-headline))))
+                           (org-html-element-body-text? (car prev) info)
+                           (length (cdr prev))
+                           (length (cdr curr-headline)))
+               if (or ;; collect curr-headline either
+                   (not prev) ;; when it is the first headline
+                   (>= (length (cdr prev)) ;; when it is not a subheadline of prev.
+                       (length (cdr curr-headline)))
+                   (org-html-element-body-text? (car prev) info)) ;; when prev headline has body text.
                collect curr-headline)
     headlines))
 
