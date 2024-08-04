@@ -772,10 +772,10 @@ The following commands jump to other headlines in the buffer.
   where you can use the following keys to find your destination:
 
   #+attr_texinfo: :columns 0.3 0.7
-  | {{{kbd(TAB)}}}            | Cycle visibility.               |
+  | {{{kbd(TAB)}}}                  | Cycle visibility.               |
   | {{{kbd(DOWN)}}} / {{{kbd(UP)}}} | Next/previous visible headline. |
-  | {{{kbd(RET)}}}            | Select this location.           |
-  | {{{kbd(/)}}}              | Do a Sparse-tree search         |
+  | {{{kbd(RET)}}}                  | Select this location.           |
+  | {{{kbd(/)}}}                    | Do a Sparse-tree search         |
 
   #+texinfo: @noindent
   The following keys work if you turn off ~org-goto-auto-isearch~
@@ -783,9 +783,9 @@ The following commands jump to other headlines in the buffer.
   #+attr_texinfo: :columns 0.3 0.7
   | {{{kbd(n)}}} / {{{kbd(p)}}}   | Next/previous visible headline.    |
   | {{{kbd(f)}}} / {{{kbd(b)}}}   | Next/previous headline same level. |
-  | {{{kbd(u)}}}            | One level up.                      |
+  | {{{kbd(u)}}}                  | One level up.                      |
   | {{{kbd(0)}}} ... {{{kbd(9)}}} | Digit argument.                    |
-  | {{{kbd(q)}}}            | Quit.                              |
+  | {{{kbd(q)}}}                  | Quit.                              |
 
   #+vindex: org-goto-interface
   #+texinfo: @noindent
@@ -2044,7 +2044,7 @@ correctly.  Examples:
 
 #+attr_texinfo: :columns 0.2 0.8
 | =$1..$3=      | first three fields in the current row                          |
-| =$P..$Q=      | range, using column names (see [[*Advanced features]])             |
+| =$P..$Q=      | range, using column names (see [[*Advanced features]])         |
 | =$<<<..$>>=   | start in third column, continue to the last but one            |
 | =@2$1..@4$3=  | nine fields between these two fields (same as =A2..C4=)        |
 | =@-1$-2..@-1= | 3 fields in the row above, starting from 2 columns on the left |
@@ -2248,8 +2248,8 @@ formatting[fn:9].  A few examples:
 | =$1+$2;%.2f=       | Same, format result to two decimals              |
 | =exp($2)+exp($1)=  | Math functions can be used                       |
 | =$0;%.1f=          | Reformat current cell to 1 decimal               |
-| =($3-32)*5/9=      | Degrees F \to C conversion                         |
-| =$c/$1/$cm=        | Hz \to cm conversion, using =constants.el=         |
+| =($3-32)*5/9=      | Degrees F \to C conversion                       |
+| =$c/$1/$cm=        | Hz \to cm conversion, using =constants.el=       |
 | =tan($1);Dp3s1=    | Compute in degrees, precision 3, display SCI 1   |
 | =sin($1);Dp3%.1e=  | Same, but use ~printf~ specifier for display     |
 | =vmean($2..$7)=    | Compute column range mean, using vector function |
@@ -11995,7 +11995,7 @@ The following command handles footnotes:
   #+attr_texinfo: :columns 0.1 0.9
   | {{{kbd(s)}}} | Sort the footnote definitions by reference sequence.               |
   | {{{kbd(r)}}} | Renumber the simple =fn:N= footnotes.                              |
-  | {{{kbd(S)}}} | Short for first {{{kbd(r)}}}, then {{{kbd(s)}}} action.                        |
+  | {{{kbd(S)}}} | Short for first {{{kbd(r)}}}, then {{{kbd(s)}}} action.            |
   | {{{kbd(n)}}} | Rename all footnotes into a =fn:1= ... =fn:n= sequence.            |
   | {{{kbd(d)}}} | Delete the footnote at point, including definition and references. |
 
@@ -16655,12 +16655,13 @@ backend or any other backend, such as /beamer/, derived from
 :UNNUMBERED: notoc
 :END:
 
-The Org export can filter not just for backends, but also for
-specific files through the =BIND= keyword.  Here is an example with
-two filters; one removes brackets from time stamps, and the other
-removes strike-through text.  The filter functions are defined in
-a code block in the same Org file, which is a handy location for
-debugging.
+The Org export can filter not just for backends, but also for specific
+files through the =BIND= keyword.  Here is an example with two
+filters; one removes brackets from time stamps, and the other removes
+strike-through text.  The filter functions are defined in a code block
+in the same Org file, which is a handy location for debugging.  Note
+that ~org-export-allow-bind-keywords~ has to be non-nil for this to
+work.
 
 #+begin_example
 ,#+BIND: org-export-filter-timestamp-functions (tmp-f-timestamp)

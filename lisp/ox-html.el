@@ -4710,7 +4710,7 @@ of contents as a string, or nil if it is empty."
 (defun org-html--get-toc-body (headline info)
   "Return the body of the toc entry of HEADLINE. INFO is a plist
 used as a communication channel."
-  (let* ((headline-number (org-export-get-multipage-headline-number headline info))
+  (let* ((headline-number (org-html-get-multipage-headline-number headline info))
 	 (todo (and (plist-get info :with-todo-keywords)
 		    (let ((todo (org-element-property :todo-keyword headline)))
 		      (and todo (org-export-data todo info)))))
@@ -5009,7 +5009,7 @@ section and its navigation."
              :relative-level (org-export-get-relative-level hl info)
              :toc-body (org-html--get-toc-body hl info)
              :toc-hl-number (alist-get hl (plist-get info :headline-numbering))
-             :page-hl-number (org-export-get-multipage-headline-number hl info))))
+             :page-hl-number (org-html-get-multipage-headline-number hl info))))
    (org-html-collect-local-headlines info nil)))
 
 (defun org-html-get-multipage-tl-headline (element info)
@@ -5023,7 +5023,7 @@ added to info (done in org-export--collect-tree-properties)."
       (setf parent (org-element-property :parent elem)))
     elem))
 
-(defun org-export-get-multipage-headline-numbering (element info)
+(defun org-html-get-multipage-headline-numbering (element info)
   "return the headline of the section containing
 element. This requires that :headline-numbering has already been
 added to info (done in org-export--collect-tree-properties)."
@@ -5036,11 +5036,11 @@ added to info (done in org-export--collect-tree-properties)."
       (setf hl-numbering (assoc elem (plist-get info :stripped-section-headline-numbering))))
     hl-numbering))
 
-(defun org-export-get-multipage-headline-number (element info)
+(defun org-html-get-multipage-headline-number (element info)
   "return the headline-number of the section containing
 element. This requires that :headline-numbering has already been
 added to info (done in org-export--collect-tree-properties)."
-  (cdr (org-export-get-multipage-headline-numbering element info)))
+  (cdr (org-html-get-multipage-headline-numbering element info)))
 
 (defun org-html-element-get-top-level (element)
   "Return the top-level element of ELEMENT by traversing the parse
@@ -5482,6 +5482,7 @@ calling `org-html-multipage-filter' in `org-export-annotate-info'
 using the :multipage-split property.
 
 INFO is a plist used as a communication channel."
+  (message "transcoding data!")
   (if (plist-get info :multipage)
       ;;; for multipage output we don't need data and content as all
       ;;; information is already collected in info.
