@@ -13283,6 +13283,17 @@ compatible with XHTML 1.0 strict standard.
 
   Exports to a temporary buffer.  Does not create a file.
 
+- {{{kbd(C-c C-e h m)}}} (~org-html-export-to-multipage~) ::
+  #+kindex: C-c C-e h m
+  #+findex: org-html-export-to-multipage
+
+  Export as multiple HTML files with a =.html= extension.  The
+  exported files are written into a directory specified with the
+  customization variable =org-html-multipage-export-dir=.  If
+  =org-html-clear-export-directory= is non-nil, all files with a
+  =.html= extension will be removed before writing the files.  Files
+  with duplicate names will be overwritten without warning.
+
 *** HTML specific export settings
 :PROPERTIES:
 :DESCRIPTION: Settings for HTML export.
