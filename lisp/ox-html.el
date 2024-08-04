@@ -4884,7 +4884,7 @@ INFO is the communication channel.
             (plist-put info :tl-url-lookup (org-html--generate-tl-url-lookup info))
             ;; lookup for the navigation elements of each page.
             (plist-put info :section-nav-lookup
-                       (org-export--make-section-nav-lookup info))
+                       (org-html--make-section-nav-lookup info))
             (let ((section-filenames
                    (mapcar
                     (lambda (hl) (alist-get hl (plist-get info :tl-url-lookup)))
@@ -4964,7 +4964,7 @@ and the url names of the page they're on."
                   extension))))
      (plist-get info :section-trees))))
 
-(defun org-export--make-section-nav-lookup (info)
+(defun org-html--make-section-nav-lookup (info)
   "Return an assoc-list for the headlines of all
 exported pages with a plist containing titles and urls for the
 section and its navigation."
@@ -5116,17 +5116,15 @@ subheadline returns an empty string."
               (dom-strings (libxml-parse-html-region (point-min) (point-max))))))))
 
 (defun org-html-element-body-text? (element info)
-  "check if first child of element is *not* a headline."
-  (not (eq (org-element-type (car (org-element-contents element)))
-           'headline)))
-
-(defun org-html-element-body-text? (element info)
-  "check if transcoded element doesn't produce any text."
+  "check if transcoded element produces any text."
   (not (eq "" (org-html-element-body-text element info))))
 
 (defun org-html-page-headlines (headlines info)
-  "collect all page headlines and keep track of subheadlines to be
-joined for each page-headline in :join-subhl"
+  "collect the headlines of all pages to export. In case of
+html-multipage-join-empty-bodies don't collect the headlines to
+be joined and keep track by collecting them for each page
+headline in :keep-first-subhls.
+`org-html-element-remove-subheadlines'"
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                with collect-hl = nil
@@ -5138,8 +5136,8 @@ joined for each page-headline in :join-subhl"
                      collect-hl
                      (or         ;; collect curr-headline either
                       (not prev) ;; when it is the first headline
-                      (>= (length (cdr prev)) ;; when it is not a subheadline of prev.
-                          (length (cdr curr-headline)))
+                      (<= (length (cdr curr-headline))
+                          (length (cdr prev))) ;; when it is not a subheadline of prev.
                       ;; or when the previous headline contains body text
                       (org-html-element-body-text? (car prev) info)))
                     (if collect-hl
