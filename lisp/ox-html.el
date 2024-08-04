@@ -4879,7 +4879,7 @@ INFO is the communication channel.
             (plist-put info :section-trees section-trees)
             (plist-put info :stripped-section-headline-numbering
                        stripped-section-headline-numbering)
-            (plist-put info :tl-hl-lookup tl-hl-lookup)        
+            (plist-put info :tl-hl-lookup tl-hl-lookup)
             ;; tl-url-lookup associates the stripped section headlines
             ;; with the names of the joined pages to export.
             (plist-put info :tl-url-lookup (org-html--generate-tl-url-lookup info))
@@ -4970,11 +4970,11 @@ and the url names of the page they're on."
 exported pages with a plist containing titles and urls for the
 section and its navigation."
   (let* ((stripped-section-headline-numbering (plist-get info :stripped-section-headline-numbering))
-         (hl-lookup (plist-get info :tl-hl-lookup))
+;;;         (hl-lookup (plist-get info :tl-hl-lookup))
          ;;; first collect navigation-info once for each page only
          (nav (mapcar (lambda (hl)
                         (let* ((hl-number (alist-get hl stripped-section-headline-numbering))
-                               (up (cdr (assoc (butlast hl-number) hl-lookup))))
+                               (up (car (rassoc (butlast hl-number) stripped-section-headline-numbering))))
                           (list hl
                                 (org-html-element-title hl)
                                 (org-html--full-reference hl info t)
@@ -5299,13 +5299,13 @@ toc of the page containing TL-HEADLINE-NUMBER."
 (defun org-html-collect-local-headlines (info scope)
   "Collect all headlines of headline-numbering from their local
 tl-headlines counterparts."
-  (let ((tl-headline-lookup (plist-get info :tl-hl-lookup))
+  (let ((stripped-section-headline-numbering (plist-get info :stripped-section-headline-numbering))
         (headline-numbering (plist-get info :headline-numbering)))
     (mapcar
      (lambda (global-headline)
-       (cdr
-        (assoc (cdr (assoc global-headline headline-numbering))
-               tl-headline-lookup)))
+       (car
+        (rassoc (cdr (assoc global-headline headline-numbering))
+                stripped-section-headline-numbering)))
      (org-export-collect-headlines
       info
       (if (numberp (plist-get info :with-toc))
