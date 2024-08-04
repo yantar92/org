@@ -4846,13 +4846,13 @@ INFO is the communication channel.
                  (section-trees
                   (cl-loop
                    for section-entry in exported-headline-numbering
-                   for keep-first-subhls in (plist-get info :keep-first-subhls)
+                   for keep-first-subhls = (plist-get info :keep-first-subhls) then (cdr keep-first-subhls)
                    collect
                    (let* ((section-number (cdr section-entry)))
                      (if (< (length section-number) max-toc-depth)
                          (org-html-element-remove-subheadlines
                           (car section-entry)
-                          keep-first-subhls
+                          (car keep-first-subhls)
                           max-toc-depth)
                        (org-html-element-copy-element (car section-entry))))))
                  ;; stripped-section-headline-numbering is the equivalent of
@@ -4867,7 +4867,7 @@ INFO is the communication channel.
                                                'identity))
                              (mapcar 'cdr headline-numbering)))
                  ;; lookup from all toc headline-numbers to the tl-headline.
-                 (tl-hl-lookup (org-html-reverse-assoc-list stripped-section-headline-numbering)))
+)
             ;; add stripped-section-headline-numbering to
             ;; :headline-numbering, to make their headline-numbering
             ;; accessible when generating the body of the individual
@@ -4879,7 +4879,6 @@ INFO is the communication channel.
             (plist-put info :section-trees section-trees)
             (plist-put info :stripped-section-headline-numbering
                        stripped-section-headline-numbering)
-            (plist-put info :tl-hl-lookup tl-hl-lookup)
             ;; tl-url-lookup associates the stripped section headlines
             ;; with the names of the joined pages to export.
             (plist-put info :tl-url-lookup (org-html--generate-tl-url-lookup info))
@@ -4970,7 +4969,6 @@ and the url names of the page they're on."
 exported pages with a plist containing titles and urls for the
 section and its navigation."
   (let* ((stripped-section-headline-numbering (plist-get info :stripped-section-headline-numbering))
-;;;         (hl-lookup (plist-get info :tl-hl-lookup))
          ;;; first collect navigation-info once for each page only
          (nav (mapcar (lambda (hl)
                         (let* ((hl-number (alist-get hl stripped-section-headline-numbering))
@@ -5117,8 +5115,6 @@ subheadline returns an empty string."
               (mapcar 'insert strings)
               (dom-strings (libxml-parse-html-region (point-min) (point-max))))))))
 
-
-
 (defun org-html-element-body-text? (element info)
   "check if first child of element is *not* a headline."
   (not (eq (org-element-type (car (org-element-contents element)))
@@ -5153,9 +5149,7 @@ joined for each page-headline in :join-subhl"
                if collect-hl collect curr-headline
                finally (progn (push tmp keep-shl)
                               (plist-put info :keep-first-subhls (cdr (reverse keep-shl)))))
-    (progn
-      (plist-put info :keep-first-subhls (cl-loop for x in headlines collect nil))
-      headlines)))
+    headlines))
 
 (defun org-html-transcode-org-page (page info)
   "transcode the headline tree in the contents of the org-page
