@@ -1096,7 +1096,10 @@ If FORCE-TAGS is non-nil, the car of it returns the new tags."
 	    (forward-line 0))
 	   (t (error "Line update did not work")))
 	  (save-restriction
-            (narrow-to-region (line-beginning-position) (line-end-position))
+            ;; Need to include the newline before updated heading to
+            ;; not leave empty line when filter hides the current line.
+            (narrow-to-region (max (point-min) (1- (line-beginning-position)))
+                              (line-end-position))
 	    (org-agenda-finalize)))
 	(forward-line -1)))))
 
