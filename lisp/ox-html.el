@@ -4821,7 +4821,6 @@ INFO is the communication channel.
                    (org-export--collect-headline-numbering
                     (plist-get info :parse-tree)
                     (cl-list* :section-numbers t info)))
-        (setq global-info info)
         (if (not (file-writable-p dir)) (error "Output dir not writable")
           (let* ((encoding (or org-export-coding-system buffer-file-coding-system))
                  (headline-numbering (plist-get info :headline-numbering))
@@ -4895,7 +4894,6 @@ INFO is the communication channel.
                 (cl-mapcar 'cons
                            (mapcar 'car headline-numbering)
                            (mapcar 'car stripped-section-headline-numbering))))
-              (setq global-info info)
               ;; collect the toc information to avoid repeated
               ;; recalculation in the toc transcoder for the
               ;; individual pages.
@@ -4924,8 +4922,6 @@ INFO is the communication channel.
                                        tl-headline
                                        stripped-section-headline-numbering))
                                 nil))))))))
-;;;  (dolist (hook org-html-multipage-split-hooks) (funcall hook info))
-  (setq global-info info)
   data)
 
 (defun org-html--generate-tl-url-lookup (info)
