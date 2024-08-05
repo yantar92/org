@@ -13834,9 +13834,11 @@ classes like for headlines, tables, etc.
 #+vindex: org-html-head-extra
 #+cindex: @samp{HTML_INCLUDE_STYLE}, keyword
 The HTML export backend includes a compact default style in each
-exported HTML file.  To override the default style with another style,
-use these keywords in the Org file.  They will replace the global
-defaults the HTML exporter uses.
+exported HTML file[fn:: The constant is called
+~org-html-style-default~ for single page output and
+~org-html-multipage-style-default~ for multipage output].  To override
+the default style with another style, use these keywords in the Org
+file.  They will replace the global defaults the HTML exporter uses.
 
 #+cindex: @samp{HTML_HEAD}, keyword
 #+cindex: @samp{HTML_HEAD_EXTRA}, keyword
@@ -13866,7 +13868,8 @@ styles for a particular headline, you can use the ID specified in
 a =CUSTOM_ID= property.  You can also assign a specific class to
 a headline with the =HTML_HEADLINE_CLASS= property.
 
-Never change the ~org-html-style-default~ constant.  Instead, use other
+Never change the ~org-html-style-default~ and
+~org-html-multipage-style-default~ constants.  Instead, use other
 simpler ways of customizing as described above.
 
 *** JavaScript supported display of web pages
@@ -13954,6 +13957,167 @@ options described below:
 You can choose default values for these options by customizing the
 variable ~org-infojs-options~.  If you always want to apply the script
 to your pages, configure the variable ~org-export-html-use-infojs~.
+
+*** Multipage HTML specific export options
+    The options and custom variables for HTML export also apply to
+    multipage export.  In addition the variables below are applying to
+    multipage export. They can be set using the listed variable name
+    or using an in buffer option using the name without the =org-= at
+    the beginning as in the following example:
+#+begin_src
+    #+OPTIONS: html-multipage-clear-export-directory:t
+#+end_src
+
+- ~org-html-multipage-clear-export-directory~ ::
+
+  #+vindex: org-html-multipage-clear-export-directory
+  Whether to clear all =.html= files in the export directory before
+  writing.
+  
+- ~org-html-multipage-export-directory~ ::
+
+  #+vindex: org-html-multipage-export-directory
+  The directory where the multiple files will be written. Relative to
+  the path of the Org document or absolute.
+  
+- ~org-html-multipage-head-include-default-style~ ::
+
+  #+vindex: org-html-multipage-head-include-default-style
+  Whether to include the default CSS style
+  (=org-html-multipage-style-default=) into every exported file.
+
+- ~org-html-multipage-join-empty-bodies~ ::
+
+  #+vindex: org-html-multipage-join-empty-bodies
+  Recursively join subheadlines, if a headline doesn't contain any
+  text before its subheadline.
+
+  Example:
+  #+begin_example
+,* Headline 1
+,** Subheadline 1.1
+,*** Subsubheadline 1.1.1
+    Text of Subsubheadline 1.1.1
+  #+end_example
+  will be put on the same HTML page if this option is set, otherwise
+  Headline 1 and Subheadline 1.1 will each be put on a separate HTML
+  page with empty content.
+
+- ~org-html-multipage-nav-format~ ::
+
+  #+vindex: org-html-multipage-nav-format
+  The HTML format string for the four navigation elements in the top
+  navigation menu of each page. See explanation of the variable
+  ~org-html-multipage-nav-format~.
+  
+- ~org-html-multipage-numbered-filenames~ ::
+
+  #+vindex: org-html-multipage-numbered-filenames
+  Boolean indicating whether filenames in multipage export should get
+  their headline-numbering prepended.  Note that this option is
+  independent of the =num:= option and that the backend guarantees
+  that filenames are unique in any case.
+  
+- ~org-html-multipage-open~ ::
+
+  #+vindex: org-html-multipage-open
+  If and where to open the top page of the multipage html after
+  export.  Possible values are =browser=, =buffer= or =nil=. Note that
+  all files will always be written, even for the =buffer= case.
+
+- ~org-html-multipage-postamble-position~ ::
+
+  #+vindex: org-html-multipage-postamble-position
+  The position of the postamble in the html output.
+  Possible choices are =bottom= or =text-content=.
+  See [[*Multipage HTML specific CSS support]]
+  
+- ~org-html-multipage-preamble-position~ ::
+
+  #+vindex: org-html-multipage-preamble-position
+  The position of the postamble in the html output.
+  Possible choices are =top= or =text-content=.
+  See [[*Multipage HTML specific CSS support]]
+
+- ~org-html-multipage-split-hooks~ ::
+
+  #+vindex: org-html-multipage-split-hooks
+  list of additional custom functions to be called during the export
+  after multipage splitting has taken place and before transcoding
+  with the =info= communication channel as input.
+  
+- ~org-html-multipage-split-level~ ::
+
+  #+vindex: org-html-multipage-split-level
+  Where to split the ORG file into multiple HTML pages. Can be either
+  =toc= for splitting into a separate page for each toc entry or a
+  number defining the maximum headline level for splitting.
+  
+- ~org-html-multipage-toc-to-top~ ::
+
+  #+vindex: org-html-multipage-toc-to-top
+  If t links in the table of contents will always point to the top of
+  the referenced page, otherwise it will link directly to the
+  referenced headline element.
+
+*** Multipage HTML specific CSS support
+:PROPERTIES:
+:DESCRIPTION: Changing the appearance of the Multipage HTML output.
+:END:
+#+cindex: CSS, for Multipage HTML export
+#+cindex: HTML Multipage export, CSS
+
+#+vindex: org-html-multipage-preamble-position
+#+vindex: org-html-multipage-preamble-position
+#+vindex: org-html-multipage-postamble-position
+In HTML multipage output each page will be generated with the
+following structure:
+
+#+begin_example
+,* html
+,** head
+,** body
+,*** preamble
+,*** org-div-nav-menu
+,*** content
+,**** table-of-contents
+,**** page-main-body
+,***** nav-left
+,***** page-text-body
+,***** nav-right
+,*** postamble
+#+end_example
+
+The default CSS shipped with org-mode will place a table of contents
+to the left of the page content below the preamble and the top
+navigation menu. This table of contents will contain /all/ headlines
+according to the =toc= option, ignoring any =notoc= option within the
+document to make every exported page of the document accessible.
+
+Preamble and postamble can be moved inside the page text body at its
+top and bottom using =org-html-multipage-preamble-position= and
+=org-html-multipage-postamble-position= respectively. Elements to be
+skipped can be hidden by setting their =display= property to =none= in
+the CSS.  Note that the table of contents will only be generated if
+
+In addition to the single page HTML CSS support (see [[*CSS support]])
+the HTML Multipage exporter assigns the following special CSS classes
+to appropriate parts of the document. They are mainly concerned with
+navigation elements. The table of contents CSS below refers to the
+table of contents generated for every page of the multipage HTML
+output and /not/ to any additional toc inside the text body.
+
+| ~#org-div-nav-menu~       | Top Navigation Menu                                                  |
+| ~#table-of-contents~      | the Table of Contents generated for every output page                |
+| ~#text-table-of-contents~ | the Table of Contents text area after its title                      |
+| ~.ul-toc-level-N~         | the ul element of a toc entry with level N.                          |
+| ~.toc-level-N~            | the li element of a toc entry with level N.                          |
+| ~.toc-hidden~             | the li element of a toc entry to be (optionally) hidden              |
+| ~.toc-entry~              | the a element of a toc entry.                                        |
+| ~.toc-entry-active~       | The anchor of the toc entry currently active.                        |
+| ~#nav-left~               | Navigation contained in the page-main-body div to the previous page. |
+| ~#nav-right~              | Navigation contained in the page-main-body div to the next page      |
+|                           |                                                                      |
 
 ** LaTeX Export
 :PROPERTIES:
