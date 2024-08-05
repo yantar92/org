@@ -181,10 +181,9 @@
      nil "html-multipage-postamble-position" org-html-multipage-postamble-position)
     (:html-multipage-preamble-position
      nil "html-multipage-preamble-position" org-html-multipage-preamble-position)
-    (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
     (:html-multipage-split-hooks nil nil org-html-multipage-split-hooks)
+    (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
     (:html-multipage-toc-to-top nil "html-multipage-toc-to-top" org-html-multipage-toc-to-top)
-    (:html-multipage-top-insert nil "html-multipage-top-insert" org-html-multipage-top-insert)
     (:html-numbered-link-format nil nil org-html-numbered-link-format)
     (:html-postamble-format nil nil org-html-postamble-format)
     (:html-preamble-format nil nil org-html-preamble-format)
@@ -1915,8 +1914,9 @@ export.
   :type '(choice (const top) (const text-content)))
 
 (defcustom org-html-multipage-split-hooks nil
-  "list of additional custom functions to be called with info as
-input after multipage splitting has taken place.
+  "list of additional custom functions to be called during the
+export after multipage splitting has taken place and before
+transcoding with info as input.
 "
   :group 'org-export-html
   :version "29.4"
@@ -1937,20 +1937,13 @@ input after multipage splitting has taken place.
   :type '(choice (const toc) (number :tag "Headline Level" 3)))
 
 (defcustom org-html-multipage-toc-to-top t
-  "If t Links in the TOC will always point to the top of the page,
+  "If t links in the TOC will always point to the top of the page,
 otherwise it will link directly to the referenced headline
 element."
   :group 'org-export-html
   :version "29.4"
   :package-version '(Org . "9.8")
   :type 'boolean)
-
-(defcustom org-html-multipage-top-insert ""
-  "Html string to insert at top of page just below <body> tag."
-  :group 'org-export-html
-  :version "29.4"
-  :package-version '(Org . "9.8")
-  :type 'string)
 
 ;;;###autoload
 (put 'org-html-head-include-default-style 'safe-local-variable 'booleanp)
