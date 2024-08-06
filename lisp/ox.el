@@ -215,7 +215,7 @@ Properties redefined there have precedence over these.")
     (:filter-latex-fragment . org-export-filter-latex-fragment-functions)
     (:filter-line-break . org-export-filter-line-break-functions)
     (:filter-link . org-export-filter-link-functions)
-    (:multipage-split . org-export-multipage-split-functions)
+    (:filter-multipage-split . org-export-multipage-split-functions)
     (:filter-node-property . org-export-filter-node-property-functions)
     (:filter-options . org-export-filter-options-functions)
     (:filter-paragraph . org-export-filter-paragraph-functions)
@@ -2198,8 +2198,12 @@ as a plist.  It must return a string that will be used as the
 final export output.")
 
 (defvar org-export-multipage-split-functions nil
-  "List of functions applied when multipage output has to be split.")
-
+  "List of functions applied to the parse tree after it has been
+split for multipage output. Each function is called with three
+arguments: The parse tree, as returned by
+`org-element-parse-buffer', the backend, as a symbol, and the
+communication channel, as a plist. It must return the modified
+parse tree to transcode.")
 
 ;;;; Elements Filters
 
@@ -3159,7 +3163,7 @@ still inferior to file-local settings."
     (setq info (org-export--collect-tree-properties tree info))
     (when (plist-get info :multipage)
       (setq tree (org-export-filter-apply-functions
-                  (plist-get info :multipage-split) tree info)))
+                  (plist-get info :filter-multipage-split) tree info)))
     ;; Process citations and bibliography.  Replace each citation
     ;; and "print_bibliography" keyword in the parse tree with
     ;; the output of the selected citation export processor.
