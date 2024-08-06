@@ -114,7 +114,7 @@
     (verse-block . org-html-verse-block))
   :filters-alist '((:filter-options . org-html-infojs-install-script)
 		   (:filter-parse-tree . org-html-image-link-filter)
-                   (:multipage-split . org-html-multipage-split)
+                   (:filter-multipage-split . org-html-multipage-split)
 		   (:filter-final-output . org-html-final-function))
   :menu-entry
   '(?h "Export to HTML"
@@ -4628,9 +4628,10 @@ required."
 
 (defun org-html--get-multipage-page-url (element info)
   "Return the url of the page containing ELEMENT."
-  (alist-get
-   (org-html-get-multipage-tl-headline element info)
-   (plist-get info :tl-url-lookup)))
+  (cdr
+   (assoc
+    (org-html-get-multipage-tl-headline element info)
+    (plist-get info :tl-url-lookup))))
 
 (defun org-html--full-reference (destination info &optional page-only)
   "Return an appropriate reference for DESTINATION. Like
@@ -4770,8 +4771,9 @@ used as a communication channel."
        info)))))
 
 (defun org-html-transcode-multipage (info &optional body-only)
-  "Central routine transcoding to multipage output called by
-`org-html-transcode-org-data' called from `org-export-as'.
+  "Central routine transcoding to multipage output called via
+`org-export-as' -> `org-export-data' ->
+`org-html-transcode-org-data'.
 
 The pages to be exported are in the :multipage-org-pages property
 of info as a list of org-page pseudo elements. This function
@@ -4916,7 +4918,25 @@ INFO is the communication channel.
                                     (alist-get
                                      tl-headline
                                      stripped-section-headline-numbering))
-                              nil)))))))
+                              nil)))
+            (setf (cddr data) nil)
+            (apply 'org-element-adopt-elements data
+                 (cl-loop
+                  for file in section-filenames
+                  for tl-headline in section-trees
+                  collect
+                  (let ((page
+                         (list 'org-page
+                               (list :output-file (format "%s/%s" dir file)
+                                     :tl-headline tl-headline
+                                     :tl-headline-number
+                                     (alist-get
+                                      tl-headline
+                                      stripped-section-headline-numbering)))))
+                    (org-element-adopt-elements page tl-headline)
+                    page)))))))
+  (setq global-data data)
+  (setq global-info info)
   data)
 
 (defun org-html--generate-tl-url-lookup (info)
@@ -4997,12 +5017,12 @@ section and its navigation."
    (org-html-collect-local-headlines info nil)))
 
 (defun org-html-get-multipage-tl-headline (element info)
-  "return the headline of the page containing
-element. This requires that :headline-numbering has already been
-added to info (done in org-export--collect-tree-properties)."
+  "return the headline of the page containing element. This requires
+that the page has already been split into org-page pseudo
+elements."
   (let* ((elem element)
          (parent (org-element-property :parent elem)))
-    (while parent
+    (while (and parent (not (eq (org-element-type parent) 'org-page)))
       (setf elem parent)
       (setf parent (org-element-property :parent elem)))
     elem))
