@@ -2558,7 +2558,6 @@ Return the updated communication channel."
 			 (append (if (listp info-value) info-value
 				   (list info-value))
 				 default-value)))))
-    (setq global-prop org-export-filters-alist)
     ;; Prepend backend specific filters to that list.
     (dolist (p (org-export-get-all-filters (plist-get info :back-end)))
       ;; Single values get consed, lists are appended.

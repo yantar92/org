@@ -88,7 +88,7 @@
     (multipage-template . org-html-multipage-template)
     (node-property . org-html-node-property)
     (org-data . org-html-transcode-org-data)
-;;;    (org-page . org-html-transcode-org-page)
+    (org-page . org-html-transcode-org-page)
     (paragraph . org-html-paragraph)
     (plain-list . org-html-plain-list)
     (plain-text . org-html-plain-text)
@@ -4770,30 +4770,6 @@ used as a communication channel."
                      headline-numbering :key 'cdr)
        info)))))
 
-(defun org-html-transcode-multipage (info &optional body-only)
-  "Central routine transcoding to multipage output called via
-`org-export-as' -> `org-export-data' ->
-`org-html-transcode-org-data'.
-
-The pages to be exported are in the :multipage-org-pages property
-of info as a list of org-page pseudo elements. This function
-transcodes the org-pages and returns a list of the transcoded
-output strings with their filename as :output-file Text Property
-to be further processed by the function calling `org-export-as'.
-
-INFO is the communication channel.
-"
-  (let ((async (plist-get info :async))
-        (post-process (plist-get info :post-process)))
-    (declare (indent 2))
-    (cl-loop
-     for org-page in (plist-get info :multipage-org-pages)
-     collect (let ((file (org-element-property :output-file org-page)))
-               (message "transcoding: %s" file)
-               (let ((output (org-html-transcode-org-page org-page info)))
-                 (put-text-property 0 1 :output-file file output)
-                 output)))))
-
 (defun org-html-multipage-split (data _backend info)
   "Filter routine to collect all properties relevant to multipage
 output. It is called in the context of calling all
@@ -5153,48 +5129,53 @@ headline in :keep-first-subhls.
                               (plist-put info :keep-first-subhls (cdr (reverse keep-shl)))))
     headlines))
 
-(defun org-html-transcode-org-page (page info)
+(defun org-html-transcode-org-page (org-page contents info)
   "transcode the headline tree in the contents of the org-page
-pseudo element PAGE into a string according to the backend and
+pseudo element ORG-PAGE into a string according to the backend and
 return the string.
 
 INFO is used as communication channel."
-  (let* ((body-only (org-element-property :body-only page))
-         (headline (org-element-property :tl-headline page))
-         (info (cl-list*
-                :tl-headline headline
-                :tl-headline-number (org-element-property :tl-headline-number page)
-                info))
-         (body (org-element-normalize-string
-                (or (org-export-data headline info)
-                    "")))
-	 (inner-template (if (plist-get info :multipage)
-                             (alist-get 'multipage-inner-template
-                                        (plist-get info :translate-alist))
-                           (alist-get 'inner-template
+  (let ((headline (org-element-property :tl-headline org-page)))
+    (message "transcoding %s" (org-html-element-title headline))
+    (let* ((body-only (org-element-property :body-only org-page))
+           (info (cl-list*
+                  :tl-headline headline
+                  :tl-headline-number (org-element-property :tl-headline-number org-page)
+                  info))
+           (body (org-element-normalize-string
+                  (or (org-export-data headline info)
+                      "")))
+           (inner-template (if (plist-get info :multipage)
+                               (alist-get 'multipage-inner-template
+                                          (plist-get info :translate-alist))
+                             (alist-get 'inner-template
                                         (plist-get info :translate-alist))))
-	 (full-body (org-export-filter-apply-functions
-		     (plist-get info :filter-body)
-		     (if (not (functionp inner-template)) body
+           (full-body (org-export-filter-apply-functions
+                       (plist-get info :filter-body)
+                       (if (not (functionp inner-template)) body
                          (funcall inner-template body info))
-		     info))
-	 (template (if (plist-get info :multipage)
-                       (cdr (assq 'multipage-template
-                                  (plist-get info :translate-alist)))
-                     (cdr (assq 'template
+                       info))
+           (template (if (plist-get info :multipage)
+                         (cdr (assq 'multipage-template
+                                    (plist-get info :translate-alist)))
+                       (cdr (assq 'template
                                   (plist-get info :translate-alist)))))
-         (output
-          (if (or (not (functionp template)) body-only) full-body
-	    (funcall template full-body info))))
-    ;; Call citation export finalizer.
-    (setq output (org-cite-finalize-export output info))
-    ;; Remove all text properties since they cannot be
-    ;; retrieved from an external process.  Finally call
-    ;; final-output filter and return result.
-    (org-no-properties
-     (org-export-filter-apply-functions
-      (plist-get info :filter-final-output)
-      output info))))
+           (output
+            (if (or (not (functionp template)) body-only) full-body
+              (funcall template full-body info))))
+      ;; Call citation export finalizer.
+      (setq output (org-cite-finalize-export output info))
+      ;; Remove all text properties since they cannot be
+      ;; retrieved from an external process.  Finally call
+      ;; final-output filter and return result.
+      (setq global-output output)
+      (let ((final-output (org-no-properties
+                           (org-export-filter-apply-functions
+                            (plist-get info :filter-final-output)
+                            output info))))
+        (put-text-property
+         0 1 :output-file (org-element-property :output-file org-page) final-output)
+        final-output))))
 
 (defun org-html-export-to-multipage
     (&optional async subtreep visible-only body-only ext-plist post-process)
@@ -5260,6 +5241,7 @@ Return output directory's name."
                      (if (listp file) (mapcar post file) (funcall post file)))))
             (let (file)
               (setq file (org-export--write-output out encoding))
+              (message "wrote %s" file)
               (when (and (org-export--copy-to-kill-ring-p) (org-string-nw-p output))
                 (org-kill-new output))
               ;; Get proper return value.
@@ -5487,7 +5469,9 @@ INFO is a plist used as a communication channel."
   (if (plist-get info :multipage)
       ;;; for multipage output we don't need data and content as all
       ;;; information is already collected in info.
-      (org-html-transcode-multipage info)
+      (mapcar (lambda (org-page)
+                (org-export-data org-page info))
+              (org-element-contents data))
     (org-export-transcode-org-data data content info)))
 
 (provide 'ox-html)
