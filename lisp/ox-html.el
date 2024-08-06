@@ -3475,7 +3475,6 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
      ((string= key "HTML") value)
      ((string= key "TOC")
       (let ((case-fold-search t))
-        (setq global-key keyword)
 	(cond
 	 ((string-match "\\<headlines\\>" value)
 	  (let ((depth (and (string-match "\\<[0-9]+\\>" value)
@@ -3487,9 +3486,7 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
 		    (org-strip-quotes (match-string 1 value)) info))
 		  ((string-match-p "\\<local\\>" value) keyword)))) ;local
 	    (if (plist-get info :multipage)
-                (progn
-                  (setq global-key keyword)
-                  (org-html-multipage-toc depth (cl-list* :full-toc t info) scope))
+                (org-html-multipage-toc depth (cl-list* :full-toc t info) scope)
               (org-html-toc depth info scope))))
 	 ((string= "listings" value) (org-html-list-of-listings info))
 	 ((string= "tables" value) (org-html-list-of-tables info))))))))
@@ -4787,14 +4784,13 @@ INFO is the communication channel.
   (let ((async (plist-get info :async))
         (post-process (plist-get info :post-process)))
     (declare (indent 2))
-    (setq global-output
-          (cl-loop
-           for org-page in (plist-get info :multipage-org-pages)
-           collect (let ((file (org-element-property :output-file org-page)))
-                     (message "transcoding: %s" file)
-                     (let ((output (org-html-transcode-org-page org-page info)))
-                       (put-text-property 0 1 :output-file file output)
-                       output))))))
+    (cl-loop
+     for org-page in (plist-get info :multipage-org-pages)
+     collect (let ((file (org-element-property :output-file org-page)))
+               (message "transcoding: %s" file)
+               (let ((output (org-html-transcode-org-page org-page info)))
+                 (put-text-property 0 1 :output-file file output)
+                 output)))))
 
 (defun org-html-multipage-split (data _backend info)
   "Filter routine to collect all properties relevant to multipage
@@ -5471,7 +5467,6 @@ calling `org-html-multipage-filter' in `org-export-annotate-info'
 using the :multipage-split property.
 
 INFO is a plist used as a communication channel."
-  (message "transcoding data!")
   (if (plist-get info :multipage)
       ;;; for multipage output we don't need data and content as all
       ;;; information is already collected in info.

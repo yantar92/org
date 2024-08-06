@@ -2543,7 +2543,6 @@ Return the updated communication channel."
   (let (plist)
     ;; Install user-defined filters with `org-export-filters-alist'
     ;; and filters already in INFO (through ext-plist mechanism).
-    (setq tmp-info info)
     (dolist (p org-export-filters-alist)
       (let* ((prop (car p))
 	     (info-value (plist-get info prop))
