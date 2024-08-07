@@ -187,7 +187,7 @@ end"
                     name file))))
     (format "%s = %s" name (org-babel-julia-quote-csv-field value))))
 
-(defun org-babel-julia-initiate-session (session params)
+(defun org-babel-julia-initiate-session (session _params)
   "If there is not a current julia process then create one."
   (unless (string= session "none")
     (let* ((session (or session "*Julia*"))
