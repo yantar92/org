@@ -1152,7 +1152,7 @@ Dynamically scoped.")
   "Return timestamps matching DATE in current buffer.
 DATE is calendar date: list in the form (month day year).
 
-Optional argument EXCLUDED-HEADINGS is a list of :begin properties of
+Optional argument EXCLUDED-HEADINGS is a list of :begin positions of
 headings to be ignored, even if they contain timestamps.
 
 By default, only consider active timestamps.  When
@@ -1197,7 +1197,9 @@ matching."
               ;; Current heading is not one of the provided.
               ;; We compare by :begin because provided headline nodes
               ;; may or may not be copies from cache.
-              (not (member (org-element-begin heading) excluded-headings)))
+              (not (cl-member (org-element-begin heading) excluded-headings
+                            ;; Allow marker/point comparison
+                            :test #'=)))
            (setq
             timestamp
             (let ((context (org-element-context element)))
@@ -1268,8 +1270,7 @@ are selected."
          'type "timestamp"))
      (org-agenda-select-timestamps
       date
-      (mapcar (lambda (item)
-                (get-text-property 0 'org-hd-marker item))
+      (mapcar (lambda (item) (get-text-property 0 'org-hd-marker item))
               deadlines)))))
 
 (defun org-agenda-select-sexps (date)
@@ -1818,8 +1819,11 @@ deadlines will be displayed.  They are used to honor
                               (> agenda-day deadline-day))
                      (throw :skip nil))))
                (unless (or habitp
-                           (not (member (org-element-begin headline)
-                                        displayed-deadlines)))
+                           (not (cl-member
+                               (org-element-begin headline)
+                               displayed-deadlines
+                               ;; Allow marker/point comparison
+                               :test #'=)))
 	         (when (pcase org-agenda-skip-scheduled-if-deadline-is-shown
 		         (`not-today (< past-repeat today))
 		         (`t t)
