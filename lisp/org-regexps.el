@@ -286,6 +286,31 @@ After a match, the following groups carry important information:
 2  the first time, range or not
 4  the second time, if it is a range.")
 
+(defconst org-stamp-time-of-day-regexp-both
+  (rx
+   (any "[<")
+   (group-n 1
+     (= 4 digit) "-" (= 2 digit) "-" (= 2 digit) ;; YYYY-MM-DD
+     (1+ blank) (1+ word) (1+ blank)) ;; YYYY-MM-DD dayname
+   (group-n 2 (any "0-2") digit ":" (any "0-5") digit) ;; HH:MM
+   ;; HH:MM-HH:MM
+   (opt "-" (group-n 3 (any "0-2") digit ":" (any "0-5") digit))
+   (minimal-match (0+ (not (any "\n\r>]"))))
+   (any ">]")
+   (opt
+    "-" (opt "-")
+    (any "<[")
+    (backref 1) ;; The same YYYY-MM-DD
+    (group-n 3 (any "0-2") digit ":" (any "0-5") digit) ;; HH:MM
+    (any ">]")))
+  "Regular expression to match a timestamp time or time range.
+After a match, the following groups carry important information:
+0  the full match
+1  date plus weekday, for back referencing to make sure
+     both times are on the same day
+2  the first time, range or not
+3  the second time, if it is a range.")
+
 ;;;; Clock and Planning
 
 (defvaralias 'org-closed-string 'org-element-closed-keyword)

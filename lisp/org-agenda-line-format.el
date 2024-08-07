@@ -739,18 +739,18 @@ matching `org-plain-time-of-day-regexp'.
 Return a list (MATCH START-TIME END-TIME), where MATCH is the matched
 time range in STRING, and START-TIME/END-TIME are strings representing
 time of day.  Return nil when no time range is found in STRING."
-  (let ( timestamp-range? plain-time? date-range-same-day?
-         time-string start-time end-time)
-    (when (or (setq timestamp-range?
-                    (string-match org-stamp-time-of-day-regexp string))
-	      (setq plain-time?
-                    (string-match org-plain-time-of-day-regexp string)))
+  (let (plain-time? time-string start-time end-time)
+    (when (or
+           ;; group 2: start time
+           ;; group 3: end time
+           (string-match org-stamp-time-of-day-regexp-both string)
+	   (setq plain-time?
+                 ;; group 1: start time
+                 ;; group 8: end time
+                 (string-match org-plain-time-of-day-regexp string)))
       (setq time-string (match-string 0 string)
-	    date-range-same-day? (and timestamp-range? (match-end 3))
 	    start-time (match-string (if plain-time? 1 2) string)
-	    end-time (match-string (if plain-time? 8
-                                     (if date-range-same-day? 4 6))
-                                   string))
+	    end-time (match-string (if plain-time? 8 3) string))
       (list time-string start-time end-time))))
 
 (defun org-agenda--format-breadcrumbs (marker &optional width)
