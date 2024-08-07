@@ -1219,11 +1219,18 @@ matching."
            (when
                (and
                 timestamp
-                ;; Timestamp must be either diary or non-range.
-                (memq (org-element-property :type timestamp)
-                      (if org-agenda-include-inactive-timestamps
-                          '(active inactive diary)
-                        '(active diary)))
+                ;; Timestamp must be diary, non-range, or time range.
+                (or
+                 (memq (org-element-property :type timestamp)
+                       (if org-agenda-include-inactive-timestamps
+                           '(active inactive diary)
+                         '(active diary)))
+                 (and
+                  (eq (org-element-property :range-type timestamp) 'timerange)
+                  (memq (org-element-property :type timestamp)
+                        (if org-agenda-include-inactive-timestamps
+                            '(active-range inactive-range)
+                          '(active-range)))))
                 (not (org-element-type-p element 'clock))
                 (org-at-timestamp-p 'agenda)
                 (not (org-agenda--skip-timestamp-for-date
