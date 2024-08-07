@@ -1,0 +1,32 @@
+* Active timestamp inside planning
+DEADLINE: <2024-07-06 Sat>
+* Active timestamp
+<2024-07-06 Sat>
+* DONE Active timestamp in done heading
+<2024-07-06 Sat>
+* Active timestamp other date
+<2024-07-01 Mon>
+* Active timestamp with time
+<2024-07-06 Sat 18:00>
+* Multiple active timestamps
+<2024-07-06 Sat 18:00>
+<2024-07-06 Sat 19:00-20:00>
+* Inactive timestamp with time
+[2024-07-06 Sat 18:00]
+* Active timestamp date range
+<2024-07-06 Sat>--<2024-07-08 Mon>
+* Active timestamp time range
+<2024-07-06 Sat 14:00-16:00>
+* Active timestamp date time range
+<2024-07-06 Sat 14:00>--<2024-07-07 Sun 10:00>
+* Active timestamp with matching deadline
+DEADLINE: <2024-07-06 Sat>
+<2024-07-06 Sat 14:00>
+* Active timestamp inside a property drawer
+:PROPERTIES:
+:PLANNED: <2024-07-06 Sat 14:00>
+:END:
+* Inactive timestamp inside clock line
+CLOCK: [2024-07-06 Sat 18:10]--[2024-07-06 Sat 19:25] =>  1:15
+* Diary timestamp
+<%%(diary-date 7 6 2024)>

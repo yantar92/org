@@ -316,6 +316,95 @@ See https://list.orgmode.org/20220101200103.GB29829@itccanarias.org/T/#t."
     (should (= 2 (count-lines (point-min) (point-max)))))
   (org-test-agenda--kill-all-agendas))
 
+(ert-deftest test-org-agenda/timestamp ()
+  "Test agenda display for active timestamps."
+  (cl-assert (not org-agenda-sticky) nil "precondition violation")
+  (cl-assert (not (org-test-agenda--agenda-buffers))
+	     nil "precondition violation")
+  (dolist (org-element-use-cache '(t nil))
+    (let ((org-agenda-span 'day)
+	  (org-agenda-files `(,(expand-file-name "examples/agenda-file-timestamp.org"
+					         org-test-dir)))
+          (org-agenda-entry-types '(:timestamp)))
+      ;; NOTE: Be aware that `org-agenda-list' may or may not display
+      ;; past scheduled items depending whether the date is today
+      ;; `org-today' or not.
+      (org-agenda-list nil "<2024-07-06 Sat>")
+      (set-buffer org-agenda-buffer-name)
+      ;; Timestamps inside planning are to be ignored
+      (goto-char (point-min))
+      (should-not (re-search-forward "Active timestamp inside planning$" nil t))
+      ;; Normal timestamp
+      (goto-char (point-min))
+      (should (re-search-forward "Active timestamp$" nil t))
+      ;; Non-matching timestamp
+      (goto-char (point-min))
+      (should-not (re-search-forward "Active timestamp other date$" nil t))
+      ;; Timestamp with time
+      (goto-char (point-min))
+      (should (re-search-forward "18:00.+ Active timestamp with time$" nil t))
+      ;; Timestamp with time range
+      (goto-char (point-min))
+      (should (re-search-forward "14:00-16:00 Active timestamp time range$" nil t))
+      ;; Timestamp with date range
+      (goto-char (point-min))
+      (should (re-search-forward "(1/3):  Active timestamp date range$" nil t))
+      ;; Timestamp with date+time range
+      (goto-char (point-min))
+      (should (re-search-forward "14:00.+ (1/2):  Active timestamp date time range$" nil t))
+      ;; Multiple timestamps
+      (goto-char (point-min))
+      (should (re-search-forward "18:00.+ Multiple active timestamps$" nil t))
+      ;; present multiple times
+      (should (re-search-forward "19:00-20:00 Multiple active timestamps$" nil t))
+      ;; Timestamp with deadline to be displayed when no deadline is shown
+      (goto-char (point-min))
+      (should (re-search-forward "14:00.+ Active timestamp with matching deadline$" nil t))
+      ;; Timestamps inside property drawers are displayed
+      (goto-char (point-min))
+      (should (re-search-forward "14:00.+ Active timestamp inside a property drawer$" nil t))
+      ;; Diary timestamps are displayed
+      (goto-char (point-min))
+      (should (re-search-forward "Diary timestamp$" nil t))
+      ;; `org-agenda-include-inactive-timestamps' is nil by default
+      (goto-char (point-min))
+      (should-not (re-search-forward "18:00.+ \\[ Inactive timestamp with time$" nil t))
+      (goto-char (point-min))
+      (should-not (re-search-forward "Inactive timestamp inside clock line$" nil t))
+      ;; `org-agenda-skip-timestamp-if-done' is nil by default
+      (goto-char (point-min))
+      (should (re-search-forward "DONE Active timestamp in done heading$" nil t))
+      (org-test-agenda--kill-all-agendas)
+      
+      ;; Now, test custom options.
+      
+      ;; `org-agenda-skip-timestamp-if-done'
+      (let ((org-agenda-skip-timestamp-if-done t))
+        (org-agenda-list nil "<2024-07-06 Sat>")
+        (set-buffer org-agenda-buffer-name)
+        (goto-char (point-min))
+        (should-not (re-search-forward "DONE Active timestamp in done heading$" nil t))
+        (org-test-agenda--kill-all-agendas))
+
+      ;; `org-agenda-include-inactive-timestamps'
+      (let ((org-agenda-include-inactive-timestamps t))
+        (org-agenda-list nil "<2024-07-06 Sat>")
+        (set-buffer org-agenda-buffer-name)
+        (goto-char (point-min))
+        (should (re-search-forward "Inactive timestamp with time$" nil t))
+        (goto-char (point-min))
+        (should (re-search-forward "Inactive timestamp inside clock line$" nil t))
+        (message (substring-no-properties (buffer-string)))
+        (org-test-agenda--kill-all-agendas))
+
+      ;; Skip timestamps when deadline is shown
+      (let ((org-agenda-entry-types '(:deadline :timestamp)))
+        (org-agenda-list nil "<2024-07-06 Sat>")
+        (set-buffer org-agenda-buffer-name)
+        (goto-char (point-min))
+        (should-not (re-search-forward "14:00.+ Active timestamp with matching deadline$" nil t))
+        (org-test-agenda--kill-all-agendas)))))
+
 (ert-deftest test-org-agenda/org-search-view ()
   "Test `org-search-view' specifications."
   (cl-assert (not org-agenda-sticky) nil "precondition violation")
