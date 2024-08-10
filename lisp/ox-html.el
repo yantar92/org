@@ -87,7 +87,6 @@
     (multipage-inner-template . org-html-multipage-inner-template)
     (multipage-template . org-html-multipage-template)
     (node-property . org-html-node-property)
-    (org-data . org-html-transcode-org-data)
     (org-page . org-html-transcode-org-page)
     (paragraph . org-html-paragraph)
     (plain-list . org-html-plain-list)
@@ -181,7 +180,6 @@
      nil "html-multipage-postamble-position" org-html-multipage-postamble-position)
     (:html-multipage-preamble-position
      nil "html-multipage-preamble-position" org-html-multipage-preamble-position)
-    (:html-multipage-split-hooks nil nil org-html-multipage-split-hooks)
     (:html-multipage-split-level nil "html-multipage-split-level" org-html-multipage-split-level)
     (:html-multipage-toc-to-top nil "html-multipage-toc-to-top" org-html-multipage-toc-to-top)
     (:html-numbered-link-format nil nil org-html-numbered-link-format)
@@ -214,8 +212,6 @@
     (:html-klipse-css nil nil org-html-klipse-css)
     (:html-klipse-js nil nil org-html-klipse-js)
     (:html-klipse-selection-script nil nil org-html-klipse-selection-script)
-;;;    (:multipage-split nil nil org-html-multipage-split)
-;;;    (:multipage nil nil org-html-multipage)
     (:infojs-opt "INFOJS_OPT" nil nil)
     ;; Redefine regular options.
     (:creator "CREATOR" nil org-html-creator-string)
@@ -1912,16 +1908,6 @@ export.
   :version "29.4"
   :package-version '(Org . "9.8")
   :type '(choice (const top) (const text-content)))
-
-(defcustom org-html-multipage-split-hooks nil
-  "list of additional custom functions to be called during the
-export after multipage splitting has taken place and before
-transcoding with info as input.
-"
-  :group 'org-export-html
-  :version "29.4"
-  :package-version '(Org . "9.8")
-  :type 'list)
 
 (defcustom org-html-multipage-split-level 'toc
   "How to split the ORG file into multiple HTML pages.
@@ -4770,6 +4756,15 @@ used as a communication channel."
                      headline-numbering :key 'cdr)
        info)))))
 
+(defun org-html-remove-links (info)
+  (let ((data-hash (plist-get info :exported-data)))
+    (maphash
+     (lambda (key value)
+       (when (eq (org-element-type key) 'link)
+         (remhash key data-hash)))
+     data-hash)
+    (plist-put info :exported-data data-hash)))
+
 (defun org-html-multipage-split (data _backend info)
   "Filter routine to collect all properties relevant to multipage
 output. It is called in the context of calling all
@@ -4786,134 +4781,132 @@ DATA is the completed parse-tree of the document.
 
 INFO is the communication channel.
 "
-  (if (plist-get info :multipage)
-      (let ((dir (plist-get info :verified-export-directory))
-            (async (plist-get info :async))
-            (post-process (plist-get info :post-process)))
-        (declare (indent 2))
-        (plist-put info :headline-numbering
-                   (org-export--collect-headline-numbering
-                    (plist-get info :parse-tree)
-                    (cl-list* :section-numbers t info)))
-        (let* ((encoding (or org-export-coding-system buffer-file-coding-system))
-               (headline-numbering (plist-get info :headline-numbering))
-               ;; each entry in exported-headline-numbering will become a
-               ;; single page in multipage output.
-               (exported-headline-numbering
-                (let ((tmp (org-html-multipage-split-tree info)))
-                  (plist-put info :exported-headline-numbering tmp)
-                  tmp))
-               (max-toc-depth (if (numberp (plist-get info :with-toc))
-                                  (plist-get info :with-toc)
-                                (plist-get info :headline-levels)))
-               ;; section-trees is a list of all sections which get
-               ;; exported to a single page
-               (section-trees
-                (cl-loop
-                 for section-entry in exported-headline-numbering
-                 for keep-first-subhls = (plist-get info :keep-first-subhls) then (cdr keep-first-subhls)
-                 collect
-                 (let* ((section-number (cdr section-entry)))
-                   (if (< (length section-number) max-toc-depth)
-                       (org-html-element-remove-subheadlines
-                        (car section-entry)
-                        (car keep-first-subhls)
-                        max-toc-depth)
-                     (org-html-element-copy-element (car section-entry))))))
-               ;; stripped-section-headline-numbering is the equivalent of
-               ;; headline-numbering but replacing the car of its elements
-               ;; with the stripped version of the headlines.
-               (stripped-section-headline-numbering
-                (cl-mapcar 'cons
-                           (cl-loop for section in section-trees
-                                    ;; collect all subheadlines to match
-                                    ;; headline-numbering:
-                                    append (org-element-map section 'headline
-                                             'identity))
-                           (mapcar 'cdr headline-numbering)))
-               ;; lookup from all toc headline-numbers to the tl-headline.
-               )
-          ;; add stripped-section-headline-numbering to
-          ;; :headline-numbering, to make their headline-numbering
-          ;; accessible when generating the body of the individual
-          ;; pages.
-          (plist-put info :headline-numbering
-                     (append
-                      headline-numbering
-                      stripped-section-headline-numbering))
-          (plist-put info :section-trees section-trees)
-          (plist-put info :stripped-section-headline-numbering
-                     stripped-section-headline-numbering)
-          ;; tl-url-lookup associates the stripped section headlines
-          ;; with the names of the joined pages to export.
-          (plist-put info :tl-url-lookup (org-html--generate-tl-url-lookup info))
-          ;; lookup for the navigation elements of each page.
-          (plist-put info :section-nav-lookup
-                     (org-html--make-section-nav-lookup info))
-          (let ((section-filenames
-                 (mapcar
-                  (lambda (hl) (alist-get hl (plist-get info :tl-url-lookup)))
-                  section-trees)))
-            (plist-put info :section-filenames section-filenames)
-            ;; bidirectional lookup tables to map between the
-            ;; stripped-section headlines and their global
-            ;; parse-tree equvialent.
-            (plist-put
-             info :stripped-hl-to-parse-tree-hl
-             (append
+  (let ((dir (plist-get info :verified-export-directory))
+        (async (plist-get info :async))
+        (post-process (plist-get info :post-process)))
+    (declare (indent 2))
+    (plist-put info :headline-numbering
+               (org-export--collect-headline-numbering
+                (plist-get info :parse-tree)
+                (cl-list* :section-numbers t info)))
+    (let* ((encoding (or org-export-coding-system buffer-file-coding-system))
+           (headline-numbering (plist-get info :headline-numbering))
+           ;; each entry in exported-headline-numbering will become a
+           ;; single page in multipage output.
+           (exported-headline-numbering
+            (let ((tmp (org-html-multipage-split-tree info)))
+              (plist-put info :exported-headline-numbering tmp)
+              (plist-put info :exported-data (make-hash-table :test #'eq :size 4001))
+              tmp))
+           (max-toc-depth (if (numberp (plist-get info :with-toc))
+                              (plist-get info :with-toc)
+                            (plist-get info :headline-levels)))
+           ;; section-trees is a list of all sections which get
+           ;; exported to a single page
+           (section-trees
+            (cl-loop
+             for section-entry in exported-headline-numbering
+             for keep-first-subhls = (plist-get info :keep-first-subhls) then (cdr keep-first-subhls)
+             collect
+             (let* ((section-number (cdr section-entry)))
+               (if (< (length section-number) max-toc-depth)
+                   (org-html-element-remove-subheadlines
+                    (car section-entry)
+                    (car keep-first-subhls)
+                    max-toc-depth)
+                 (org-html-element-copy-element (car section-entry))))))
+           ;; stripped-section-headline-numbering is the equivalent of
+           ;; headline-numbering but replacing the car of its elements
+           ;; with the stripped version of the headlines.
+             (stripped-section-headline-numbering
               (cl-mapcar 'cons
-                         (mapcar 'car stripped-section-headline-numbering)
-                         (mapcar 'car headline-numbering))
-              (cl-mapcar 'cons
-                         (mapcar 'car headline-numbering)
-                         (mapcar 'car stripped-section-headline-numbering))))
-            ;; collect the toc information to avoid repeated
-            ;; recalculation in the toc transcoder for the
-            ;; individual pages.
-            (plist-put info :multipage-toc-lookup
-                       (org-html--make-multipage-toc-lookup info))
-            ;; The url for the "top" link on each page.
-            (plist-put info :html-top-url
-                       (alist-get
-                        (car (plist-get info :section-trees))
-                        (plist-get info :tl-url-lookup)))
-            ;; The title for the "top" link on each page.
-            (plist-put info :html-top-title
-                       (org-html-element-title
-                        (car (plist-get info :section-trees))))
-            ;; collect all org-pages to be exported.
-            (plist-put info :multipage-org-pages
-                       (cl-loop
-                        for file in section-filenames
-                        for tl-headline in section-trees
-                        collect
-                        (list 'org-page
-                              (list :output-file (format "%s/%s" dir file)
-                                    :tl-headline tl-headline
-                                    :tl-headline-number
-                                    (alist-get
-                                     tl-headline
-                                     stripped-section-headline-numbering))
-                              nil)))
-            (setf (cddr data) nil)
-            (apply 'org-element-adopt-elements data
-                 (cl-loop
-                  for file in section-filenames
-                  for tl-headline in section-trees
-                  collect
-                  (let ((page
-                         (list 'org-page
-                               (list :output-file (format "%s/%s" dir file)
-                                     :tl-headline tl-headline
-                                     :tl-headline-number
-                                     (alist-get
-                                      tl-headline
-                                      stripped-section-headline-numbering)))))
-                    (org-element-adopt-elements page tl-headline)
-                    page)))))))
-  (setq global-data data)
-  (setq global-info info)
-  data)
+                         (cl-loop for section in section-trees
+                                  ;; collect all subheadlines to match
+                                  ;; headline-numbering:
+                                  append (org-element-map section 'headline
+                                           'identity))
+                         (mapcar 'cdr headline-numbering)))
+           ;; lookup from all toc headline-numbers to the tl-headline.
+           )
+      ;; add stripped-section-headline-numbering to
+      ;; :headline-numbering, to make their headline-numbering
+      ;; accessible when generating the body of the individual
+      ;; pages.
+      (plist-put info :headline-numbering
+                 (append
+                  headline-numbering
+                  stripped-section-headline-numbering))
+      (plist-put info :section-trees section-trees)
+      (plist-put info :stripped-section-headline-numbering
+                 stripped-section-headline-numbering)
+      ;; tl-url-lookup associates the stripped section headlines
+      ;; with the names of the joined pages to export.
+      (plist-put info :tl-url-lookup (org-html--generate-tl-url-lookup info))
+      ;; lookup for the navigation elements of each page.
+      (plist-put info :section-nav-lookup
+                 (org-html--make-section-nav-lookup info))
+      (let ((section-filenames
+             (mapcar
+              (lambda (hl) (alist-get hl (plist-get info :tl-url-lookup)))
+              section-trees)))
+        (plist-put info :section-filenames section-filenames)
+        ;; bidirectional lookup tables to map between the
+        ;; stripped-section headlines and their global
+        ;; parse-tree equvialent.
+        (plist-put
+         info :stripped-hl-to-parse-tree-hl
+         (append
+          (cl-mapcar 'cons
+                     (mapcar 'car stripped-section-headline-numbering)
+                     (mapcar 'car headline-numbering))
+          (cl-mapcar 'cons
+                     (mapcar 'car headline-numbering)
+                     (mapcar 'car stripped-section-headline-numbering))))
+        ;; collect the toc information to avoid repeated
+        ;; recalculation in the toc transcoder for the
+        ;; individual pages.
+        (plist-put info :multipage-toc-lookup
+                   (org-html--make-multipage-toc-lookup info))
+        ;; The url for the "top" link on each page.
+        (plist-put info :html-top-url
+                   (alist-get
+                    (car (plist-get info :section-trees))
+                    (plist-get info :tl-url-lookup)))
+        ;; The title for the "top" link on each page.
+        (plist-put info :html-top-title
+                   (org-html-element-title
+                    (car (plist-get info :section-trees))))
+        ;; collect all org-pages to be exported.
+        (plist-put info :multipage-org-pages
+                   (cl-loop
+                    for file in section-filenames
+                    for tl-headline in section-trees
+                    collect
+                    (list 'org-page
+                          (list :output-file (format "%s/%s" dir file)
+                                :tl-headline tl-headline
+                                :tl-headline-number
+                                (alist-get
+                                 tl-headline
+                                 stripped-section-headline-numbering))
+                          nil)))
+        (setf (cddr data) nil)
+        (apply 'org-element-adopt-elements data
+               (cl-loop
+                for file in section-filenames
+                for tl-headline in section-trees
+                collect
+                (let ((page
+                       (list 'org-page
+                             (list :output-file (format "%s/%s" dir file)
+                                   :tl-headline tl-headline
+                                   :tl-headline-number
+                                   (alist-get
+                                    tl-headline
+                                    stripped-section-headline-numbering)))))
+                  (org-element-adopt-elements page tl-headline)
+                  (setq global-info info)
+                  page)))))))
 
 (defun org-html--generate-tl-url-lookup (info)
   "Return an assoc list for all headlines appearing in the toc
@@ -5114,7 +5107,7 @@ headline in :keep-first-subhls.
                do (progn
                     (setf
                      collect-hl
-                     (or         ;; collect curr-headline either
+                     (or ;; collect curr-headline either
                       (not prev) ;; when it is the first headline
                       (<= (length (cdr curr-headline))
                           (length (cdr prev))) ;; when it is not a subheadline of prev.
@@ -5455,24 +5448,6 @@ exported for multipage export.
              (unless (eq org-html-multipage-postamble-position 'bottom)
                (org-html--build-pre/postamble 'postamble info)))
             (org-html-nav-right section-nav-lookup))))
-
-(defun org-html-transcode-org-data (data content info)
-  "Transcode the top org-data node of the org file to export.
-
-It is called by `org-export-as' after all necessary information
-has been added to info and the final parse-tree has been
-generated. Multipage information has already been collected by
-calling `org-html-multipage-filter' in `org-export-annotate-info'
-using the :multipage-split property.
-
-INFO is a plist used as a communication channel."
-  (if (plist-get info :multipage)
-      ;;; for multipage output we don't need data and content as all
-      ;;; information is already collected in info.
-      (mapcar (lambda (org-page)
-                (org-export-data org-page info))
-              (org-element-contents data))
-    (org-export-transcode-org-data data content info)))
 
 (provide 'ox-html)
 

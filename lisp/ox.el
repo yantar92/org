@@ -893,7 +893,7 @@ HTML code while every other backend will ignore it."
 	       (cl-every #'stringp (mapcar #'car x))
 	       (cl-every #'stringp (mapcar #'cdr x)))))
 
-(defcustom org-export-global-macros nil
+(defcustom org-export-global-org-modemacros nil
   "Alist between macro names and expansion templates.
 
 This variable defines macro expansion templates available
@@ -2015,22 +2015,22 @@ Return a string or a list of strings."
 				  info)))))))))
 	  ;; Final result will be memoized before being returned.
 	  (puthash
-	   data
-	   (cond
-	    ((not results) (or (org-export--keep-spaces data info) ""))
+           data
+           (cond
+            ((not results) (or (org-export--keep-spaces data info) ""))
             ((memq type '(nil org-data plain-text raw)) results)
-	    ;; Append the same white space between elements or objects
-	    ;; as in the original buffer, and call appropriate filters.
-	    (t
-	     (org-export-filter-apply-functions
-	      (plist-get info (intern (format ":filter-%s" type)))
-	      (let ((blank (or (org-element-post-blank data) 0)))
-		(if (eq (org-element-class data parent) 'object)
-		    (concat results (make-string blank ?\s))
-		  (concat (org-element-normalize-string results)
-			  (make-string blank ?\n))))
-	      info)))
-	   (plist-get info :exported-data))))))
+            ;; Append the same white space between elements or objects
+            ;; as in the original buffer, and call appropriate filters.
+            (t
+             (org-export-filter-apply-functions
+              (plist-get info (intern (format ":filter-%s" type)))
+              (let ((blank (or (org-element-post-blank data) 0)))
+                (if (eq (org-element-class data parent) 'object)
+                    (concat results (make-string blank ?\s))
+                  (concat (org-element-normalize-string results)
+                          (make-string blank ?\n))))
+              info)))
+           (plist-get info :exported-data))))))
 
 (defun org-export-data-with-backend (data backend info)
   "Convert DATA into BACKEND format.
@@ -3016,6 +3016,8 @@ export information channel."
                        backend info subtreep visible-only ext-plist))
 	   ;; Eventually transcode TREE.  Wrap the resulting string into
 	   ;; a template.
+           (setq global-info info)
+           (setq global-exported-pre (plist-get info :exported-data))
 	   (let ((output
                   (or (org-export-data (plist-get info :parse-tree) info)
                       "")))
@@ -3041,21 +3043,40 @@ export information channel."
                     output))
              (if (length= output 1) (car output) output))))))))
 
-(defun org-export-transcode-org-data (_ body info)
+(defun org-html-transcode-org-data (data content info)
+  "Transcode the top org-data node of the org file to export.
+
+It is called by `org-export-as' after all necessary information
+has been added to info and the final parse-tree has been
+generated. Multipage information has already been collected by
+calling `org-html-multipage-filter' in `org-export-annotate-info'
+using the :multipage-split property.
+
+INFO is a plist used as a communication channel."
+  (
+    (org-export-transcode-org-data data content info)))
+
+(defun org-export-transcode-org-data (data body info)
   "Transcode `org-data' node with BODY.  Return transcoded string.
 INFO is the communication channel plist."
-  (let* ((inner-template (cdr (assq 'inner-template
-				    (plist-get info :translate-alist))))
-	 (full-body (org-export-filter-apply-functions
-		     (plist-get info :filter-body)
-		     (if (not (functionp inner-template)) body
-		       (funcall inner-template body info))
-		     info))
-	 (template (cdr (assq 'template
-			      (plist-get info :translate-alist))))
-         (body-only (memq 'body-only (plist-get info :export-options))))
-    (if (or (not (functionp template)) body-only) full-body
-      (funcall template full-body info))))
+  (if (plist-get info :multipage)
+      ;;; for multipage output we don't need data and content as all
+      ;;; information is already collected in info.
+      (mapcar (lambda (org-page)
+                (org-export-data org-page info))
+              (org-element-contents data))
+    (let* ((inner-template (cdr (assq 'inner-template
+                                      (plist-get info :translate-alist))))
+           (full-body (org-export-filter-apply-functions
+                       (plist-get info :filter-body)
+                       (if (not (functionp inner-template)) body
+                         (funcall inner-template body info))
+                       info))
+           (template (cdr (assq 'template
+                                (plist-get info :translate-alist))))
+           (body-only (memq 'body-only (plist-get info :export-options))))
+      (if (or (not (functionp template)) body-only) full-body
+        (funcall template full-body info)))))
 
 (defun org-export--annotate-info (backend info &optional subtreep visible-only ext-plist)
   "Annotate the INFO plist according to the BACKEND.
