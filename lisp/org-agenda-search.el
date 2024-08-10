@@ -1628,7 +1628,7 @@ specification like [h]h:mm."
 	    ;; Only display deadlines at their base date, at future
 	    ;; repeat occurrences or in today agenda.
 	    ((= agenda-day past-repeat) planning)
-	    ((= agenda-day future-repeat) planning)
+	    ((equal agenda-day future-repeat) planning)
 	    ((not today?) nil)
 	    ;; Upcoming deadline: display within warning period WARNING-DAYS.
 	    ((> past-repeat agenda-day)
@@ -1661,7 +1661,7 @@ specification like [h]h:mm."
 	        ;; No time of day designation if it is only
 	        ;; a reminder.
 	        ((and (/= agenda-day past-repeat)
-                      (/= agenda-day future-repeat))
+                      (not (equal agenda-day future-repeat)))
                  nil)
 	        ((let ((raw (org-element-property
                              :raw-value
@@ -1806,7 +1806,7 @@ deadlines will be displayed.  They are used to honor
 		           (> past-repeat agenda-day)
 		           (and (/= agenda-day past-repeat)
 			        (/= agenda-day today)
-			        (/= agenda-day future-repeat)))
+			        (not (equal agenda-day future-repeat))))
 	           (throw :skip nil)))
                ;; Possibly skip done tasks.
 	       (when (and (eq 'done (org-element-property :todo-type headline))
@@ -1877,7 +1877,7 @@ scheduled items with an hour specification like [h]h:mm."
 		;; then, even if doing the habit was missed.
 	        ((and (not habitp)
                       (/= agenda-day past-repeat)
-                      (/= agenda-day future-repeat))
+                      (not (equal agenda-day future-repeat)))
                  nil)
 	        ((let ((raw (org-element-property
                              :raw-value
