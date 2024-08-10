@@ -4796,7 +4796,6 @@ INFO is the communication channel.
            (exported-headline-numbering
             (let ((tmp (org-html-multipage-split-tree info)))
               (plist-put info :exported-headline-numbering tmp)
-              (plist-put info :exported-data (make-hash-table :test #'eq :size 4001))
               tmp))
            (max-toc-depth (if (numberp (plist-get info :with-toc))
                               (plist-get info :with-toc)
@@ -5118,8 +5117,15 @@ headline in :keep-first-subhls.
                                (setf tmp nil))
                       (push t tmp)))
                if collect-hl collect curr-headline
-               finally (progn (push tmp keep-shl)
-                              (plist-put info :keep-first-subhls (cdr (reverse keep-shl)))))
+               finally
+               (progn
+                 ;; clear the :exported-data hashtable to remove
+                 ;; memoized refs in org-html-element-body-text, which
+                 ;; will break link lookup, etc. in later transcoding
+                 ;; stage.
+                 (plist-put info :exported-data (make-hash-table :test #'eq :size 4001))
+                 (push tmp keep-shl)
+                 (plist-put info :keep-first-subhls (cdr (reverse keep-shl)))))
     headlines))
 
 (defun org-html-transcode-org-page (org-page contents info)
