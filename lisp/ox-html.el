@@ -5092,11 +5092,21 @@ INFO is the communication channel."
           (throw 'exit t))))))
 
 (defun org-html-page-headlines (headlines info)
-  "collect the headlines of all pages to export. In case of
-html-multipage-join-empty-bodies don't collect the headlines to
-be joined and keep track by collecting them for each page
-headline in :keep-first-subhls.
-`org-html-element-remove-subheadlines'"
+  "collect the HEADLINES of all pages to export in multipage export.
+In case of html-multipage-join-empty-bodies don't collect the
+subheadlines to be joined and keep track of them by collecting a
+list of t values for each subheadline level to be joined for
+every page headline in :keep-first-subhls. This gets used in
+`org-html-element-remove-subheadlines'.
+
+Example: if :keep-first-subhls is '(nil (t t) nil), on page two
+the first subheadline and the first subheadline of the first
+subheadline need to be kept and *not* deleted by
+`org-html-element-remove-subheadlines'. On page one and three,
+all subheadlines have to get removed.
+
+INFO is used as communication channel.
+"
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                with collect-hl = nil
@@ -5120,18 +5130,19 @@ headline in :keep-first-subhls.
                finally
                (progn
                  ;; clear the :exported-data hashtable to remove
-                 ;; memoized refs in org-html-element-body-text, which
-                 ;; will break link lookup, etc. in later transcoding
-                 ;; stage.
+                 ;; memoized refs in org-html-element-body-text?,
+                 ;; which will break link lookup, etc. in later
+                 ;; transcoding stage.
                  (plist-put info :exported-data (make-hash-table :test #'eq :size 4001))
                  (push tmp keep-shl)
                  (plist-put info :keep-first-subhls (cdr (reverse keep-shl)))))
     headlines))
 
-(defun org-html-transcode-org-page (org-page contents info)
-  "transcode the headline tree in the contents of the org-page
-pseudo element ORG-PAGE into a string according to the backend and
-return the string.
+(defun org-html-transcode-org-page (org-page _ info)
+  "transcode ORG-PAGE into a string according to the backend.
+
+ORG-PAGE is a pseudo element containing the parse tree of one
+page with additional page specific properties.
 
 INFO is used as communication channel."
   (let ((headline (org-element-property :tl-headline org-page)))
@@ -5257,8 +5268,12 @@ Return output directory's name."
           ('buffer (find-file (format "%s" (get-text-property 0 :output-file (car output))))))))))
 
 (defun org-html--hidden-in-toc? (headline-number tl-headline-number)
-  "Check if the entry of HEADLINE-NUMBER should be hidden in the
-toc of the page containing TL-HEADLINE-NUMBER."
+  "Check if an entry should be hidden in a multipage toc.
+
+ HEADLINE-NUMBER is the headline-number of the toc entry to test.
+
+ TL-HEADLINE-NUMBER is the headline-number of the page containing
+ the toc."
   (and
    (> (length headline-number) 1)
    (let ((l1 (length headline-number))
