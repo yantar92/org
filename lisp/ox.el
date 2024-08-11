@@ -2198,11 +2198,13 @@ as a plist.  It must return a string that will be used as the
 final export output.")
 
 (defvar org-export-multipage-split-functions nil
-  "List of functions applied to the parse tree after it has been
-split for multipage output. Each function is called with three
+  "List of functions applied to the parse tree.
+The functions are applied only, when multipage output is
+requested.  They are called after the parse tree has been split
+for multipage output.  Each function is called with three
 arguments: The parse tree, as returned by
 `org-element-parse-buffer', the backend, as a symbol, and the
-communication channel, as a plist. It must return the modified
+communication channel, as a plist.  It must return the modified
 parse tree to transcode.")
 
 ;;;; Elements Filters
@@ -3043,21 +3045,9 @@ export information channel."
                     output))
              (if (length= output 1) (car output) output))))))))
 
-(defun org-html-transcode-org-data (data content info)
-  "Transcode the top org-data node of the org file to export.
-
-It is called by `org-export-as' after all necessary information
-has been added to info and the final parse-tree has been
-generated. Multipage information has already been collected by
-calling `org-html-multipage-filter' in `org-export-annotate-info'
-using the :multipage-split property.
-
-INFO is a plist used as a communication channel."
-  (
-    (org-export-transcode-org-data data content info)))
-
 (defun org-export-transcode-org-data (data body info)
   "Transcode `org-data' node with BODY.  Return transcoded string.
+DATA is the
 INFO is the communication channel plist."
   (if (plist-get info :multipage)
       ;;; for multipage output we don't need data and content as all
