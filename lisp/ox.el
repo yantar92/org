@@ -3050,13 +3050,13 @@ export information channel."
   "Transcode ORG-PAGE into a string according to the backend.
 
 ORG-PAGE is a pseudo element containing the parse tree of one
-page with additional page specific properties.
+page with (optional) additional page specific properties.
 
 INFO is used as communication channel."
   (let ((headline (car (org-element-map org-page 'headline 'identity t))))
     (message "transcoding %s" (org-html-element-title headline))
     (let* ((body-only (org-element-property :body-only org-page))
-           (info (cl-list*
+           (info (cl-list* ;; add :tl-headline and :tl-headline-number to info
                   :tl-headline headline
                   :tl-headline-number
                   (alist-get
