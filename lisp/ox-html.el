@@ -5079,18 +5079,17 @@ The check is performed by comparing the transcoded contents of
 element to the empty string until the next subheadline.
 
 INFO is the communication channel."
-  (let ((result
-         (cl-loop
-          for elem in (org-element-contents element)
-          with string
-          while (not (eq 'headline (org-element-type elem))) ;; return nil if first subheadline is encountered.
-          do (setf string (string-trim
-                           (apply 'concat
-                                  (with-temp-buffer
-                                    (insert (org-export-data elem info))
-                                    (dom-strings (libxml-parse-html-region (point-min) (point-max)))))))
-          if (not (eq string "")) return t))) ;; return t if elem transcodes to a non-empty string.
-    result))
+    (catch 'exit
+      (dolist (elem (org-element-contents element))
+        (cond
+         ((eq 'headline (org-element-type elem)) (throw 'exit nil))
+         ((not (eq "" (string-trim
+                       (apply 'concat
+                              (with-temp-buffer
+                                (insert (org-export-data elem info))
+                                (dom-strings (libxml-parse-html-region (point-min) (point-max))))))
+                   ""))
+          (throw 'exit t))))))
 
 (defun org-html-page-headlines (headlines info)
   "collect the headlines of all pages to export. In case of
