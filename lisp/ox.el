@@ -3046,12 +3046,13 @@ export information channel."
              (if (length= output 1) (car output) output))))))))
 
 (defun org-export-transcode-org-data (data body info)
-  "Transcode `org-data' node with BODY.  Return transcoded string.
-DATA is the
-INFO is the communication channel plist."
+  "Transcode DATA with BODY.  Return transcoded string.
+DATA is the top `org-data' node of the parse-tree.  INFO is the
+communication channel plist."
   (if (plist-get info :multipage)
-      ;;; for multipage output we don't need data and content as all
-      ;;; information is already collected in info.
+      ;;; for multipage output the `org-data' node contains `org-page'
+      ;;; pseudo elements as contents, so we call `org-export-data' on
+      ;;; each of them and return the collected results.
       (mapcar (lambda (org-page)
                 (org-export-data org-page info))
               (org-element-contents data))
