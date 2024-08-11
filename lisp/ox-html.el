@@ -4572,7 +4572,7 @@ Return output file name."
   (org-element-property :raw-value element))
 
 (defun org-html-increment-string-idx (string)
-  "Increment number at end of string.
+  "Increment number at end of STRING.
 Append -1 if no number present."
   (if (string-match "\\([0-9]+\\)$" string)
       (replace-match (format "%s" (1+ (read (match-string 0 string)))) nil nil string)
@@ -4602,7 +4602,7 @@ Return the modified string."
            :initial-value string))
 
 (defun org-html-string-to-filename (string)
-  "Turn a headline string into a filename."
+  "Turn headline STRING into a filename."
    (replace-regexp-in-string
     "-+"  "-"
     (org-html-remove-chars
@@ -4624,7 +4624,8 @@ or pad with zeroes if required."
    finally (return result)))
 
 (defun org-html--get-multipage-page-url (element info)
-  "Return the url of the page containing ELEMENT."
+  "Return the url of the page containing ELEMENT.
+INFO is a plist used as a communication channel."
   (cdr
    (assoc
     (org-html-get-multipage-tl-headline element info)
@@ -4723,7 +4724,11 @@ INFO is a plist used as a communication channel."
             todo todo-type priority text tags :section-number nil))))
 
 (defun org-html--format-mp-toc-headline (href body active full-toc)
-  "Return a table of contents entry for multipage output."
+  "Return a table of contents entry for multipage output.
+HREF is the reference, BODY is the body of the anchor.  ACTIVE
+indicates that the anchor is active and FULL-TOC indicates
+whether the entry is in a toc in the text-content of a page or in
+the toc generated for every page."
   (format "<a %s>%s</a>"
           ;; Target
           (format "href=\"%s\"%s"
@@ -4749,6 +4754,8 @@ INFO is a plist used as a communication channel."
   dir)
 
 (defun org-html-multipage-split-tree (info)
+  "Split the parse-tree in INFO into multiple pages.
+Return the list of the toplevel headlines of all pages."
   (let ((split-ref (plist-get info :html-multipage-split-level))
         (headline-numbering (plist-get info :headline-numbering)))
     (cond
@@ -4773,13 +4780,13 @@ INFO is a plist used as a communication channel."
 
 The function is called in the context of calling all
 :filter-parse-tree alist functions in `org-export-annotate-info'
-after the parse-tree is completed and its properties
-collected. The function takes care of splitting the parse-tree
-into the subtrees for each page, creating org-page pseudo
-elements, adding them in a list in the :multipage-org-pages
-property of info. In addition lookup alists for the stripped
-pages, for the page-urls, the navigation elements, the toc,
-etc. are added to info, which are needed by the html transcoders.
+after the parse-tree is completed and its properties collected.
+The function takes care of splitting the parse-tree into the
+subtrees for each page, creating org-page pseudo elements, adding
+them in a list in the :multipage-org-pages property of info.  In
+addition lookup alists for the stripped pages, for the page-urls,
+the navigation elements, the toc, etc. are added to info, which
+are needed by the html transcoders.
 
 DATA is the completed parse-tree of the document.
 
@@ -4945,7 +4952,9 @@ INFO is the communication channel."
 (defun org-html--make-section-nav-lookup (info)
   "Return an assoc-list for the headlines of all exported pages.
 The assoc-list associates the headlines with a plist containing
-titles and urls for the page and its navigation."
+titles and urls for the page and its navigation.
+
+INFO is a plist used as a communication channel."
   (let* ((stripped-section-headline-numbering (plist-get info :stripped-section-headline-numbering))
          ;;; first collect navigation-info once for each page only
          (nav (mapcar (lambda (hl)
@@ -4977,7 +4986,9 @@ titles and urls for the page and its navigation."
       (inner (cons nil nav) nav))))
 
 (defun org-html--make-multipage-toc-lookup (info)
-  "Return an assoc-list containing info for the headlines of all toc entries."
+  "Return an assoc-list containing info for the headlines of all toc entries.
+
+  INFO is a plist used as a communication channel."
   (mapcar
    (lambda (hl)
      (let* ((tl-hl (org-html-element-get-top-level hl)))
@@ -4991,9 +5002,11 @@ titles and urls for the page and its navigation."
    (org-html-collect-local-headlines info nil)))
 
 (defun org-html-get-multipage-tl-headline (element info)
-  "Return the headline of the page containing element.
+  "Return the headline of the page containing ELEMENT.
 This requires that the page has already been split into org-page
-pseudo elements."
+pseudo elements.
+
+INFO is a plist used as a communication channel."
   (let* ((elem element)
          (parent (org-element-property :parent elem)))
     (while (and parent (not (eq (org-element-type parent) 'org-page)))
@@ -5002,9 +5015,11 @@ pseudo elements."
     elem))
 
 (defun org-html-get-multipage-headline-numbering (element info)
-  "Return the headline of the section containing element.
+  "Return the headline of the section containing ELEMENT.
 This requires that :headline-numbering has already been added to
-info (done in org-export--collect-tree-properties)."
+INFO (done in `org-export--collect-tree-properties').
+
+INFO is a plist used as a communication channel."
   (let* ((elem element)
          (parent (org-element-property :parent elem))
          (hl-numbering (assoc elem (plist-get info :stripped-section-headline-numbering))))
@@ -5015,9 +5030,11 @@ info (done in org-export--collect-tree-properties)."
     hl-numbering))
 
 (defun org-html-get-multipage-headline-number (element info)
-  "Return the headline-number of the section containing element.
+  "Return the headline-number of the section containing ELEMENT.
 This requires that :headline-numbering has already been added to
-info (done in org-export--collect-tree-properties)."
+INFO (done in `org-export--collect-tree-properties').
+
+INFO is a plist used as a communication channel."
   (cdr (org-html-get-multipage-headline-numbering element info)))
 
 (defun org-html-element-get-top-level (element)
@@ -5033,7 +5050,9 @@ the parent of ELEMENT is nil."
 
 (defun org-html-element-copy-element (org-node &optional keep-parent)
   "Copy ORG-NODE to a new org-node.
-Return the new org-node with elements not copied, but referenced."
+Return the new org-node with elements not copied, but referenced.
+KEEP-PARENT indicates whether the :parent property will be kept
+in the copy or set to nil."
   (let* (headline
          (props (copy-sequence (nth 1 org-node)))
          (new (list (car org-node) props)))
@@ -5103,17 +5122,16 @@ INFO is the communication channel."
 In case of html-multipage-join-empty-bodies don't collect the
 subheadlines to be joined and keep track of them by collecting a
 list of t values for each subheadline level to be joined for
-every page headline in :keep-first-subhls. This gets used in
+every page headline in :keep-first-subhls.  This gets used in
 `org-html-element-remove-subheadlines'.
 
 Example: if :keep-first-subhls is '(nil (t t) nil), on page two
 the first subheadline and the first subheadline of the first
 subheadline need to be kept and *not* deleted by
-`org-html-element-remove-subheadlines'. On page one and three,
+`org-html-element-remove-subheadlines'.  On page one and three,
 all subheadlines have to get removed.
 
-INFO is used as communication channel.
-"
+INFO is used as communication channel."
   (if (plist-get info :html-multipage-join-empty-bodies)
       (cl-loop for (prev curr-headline) on (cons nil headlines)
                with collect-hl = nil
@@ -5221,6 +5239,9 @@ EXT-PLIST, when provided, is a property list with external
 parameters overriding Org default settings, but still inferior to
 file-local settings.
 
+POST-PROCESS is a function for post processing called on all
+exported files.
+
 Return output directory's name."
   (interactive)
   (let* ((extension (concat
@@ -5293,8 +5314,19 @@ Return output directory's name."
                      (butlast (butlast tl-headline-number)))))))))
 
 (defun org-html-collect-local-headlines (info scope)
-  "Collect all headlines of headline-numbering from their local
-tl-headlines counterparts."
+  "Collect all local headlines of headline-numbering.
+
+This function collects the local headlines of the multipage
+parse-trees from their global counterpart using
+:stripped-section-headline-numbering.
+
+INFO is a plist used as a communication channel.
+
+Optional argument SCOPE, when non-nil, is an element.  If it is
+a headline, only children of SCOPE are collected.  Otherwise,
+collect children of the headline containing provided element.  If
+there is no such headline, collect all headlines.  In any case,
+argument N becomes relative to the level of that headline."
   (let ((stripped-section-headline-numbering (plist-get info :stripped-section-headline-numbering))
         (headline-numbering (plist-get info :headline-numbering)))
     (mapcar
@@ -5312,8 +5344,7 @@ tl-headlines counterparts."
 (defun org-html-nav-left (nav-lookup)
   "Return nav string for multipage Navigation in page-main-body.
 
-INFO is a plist used as a communication channel.
-"
+NAV-LOOKUP is a plist with the navigation lookup."
   (let* ((prev-url (plist-get nav-lookup :prev-url))
          (prev-title (plist-get nav-lookup :prev-title)))
     (if prev-url
@@ -5325,7 +5356,7 @@ INFO is a plist used as a communication channel.
 (defun org-html-nav-right (nav-lookup)
   "Return nav string for multipage Navigation in page-main-body.
 
-INFO is a plist used as a communication channel."
+NAV-LOOKUP is a plist with the navigation lookup."
   (let* ((next-url (plist-get nav-lookup :next-url))
          (next-title (plist-get nav-lookup :next-title)))
     (if next-url
@@ -5454,8 +5485,7 @@ CONTENTS is the transcoded contents string.  INFO is a plist
 holding export options.
 
 DATA contains the subtree of the parse tree of the section to be
-exported for multipage export.
-"
+exported for multipage export."
   ;; Navigation
   (let* ((data (plist-get info :tl-headline))
          (section-nav-lookup
