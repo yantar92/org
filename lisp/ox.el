@@ -1888,6 +1888,7 @@ INFO is a plist containing export directives."
       (cond
        ((functionp transcoder) transcoder)
        ;; Use default org-data transcoder unless specified.
+       ((eq type 'org-page) #'org-export-transcode-org-page)
        ((eq type 'org-data) #'org-export-transcode-org-data)))))
 
 (defun org-export--keep-spaces (data info)
@@ -3044,6 +3045,58 @@ export information channel."
                              'org-export-info info))
                     output))
              (if (length= output 1) (car output) output))))))))
+
+(defun org-export-transcode-org-page (org-page _ info)
+  "Transcode ORG-PAGE into a string according to the backend.
+
+ORG-PAGE is a pseudo element containing the parse tree of one
+page with additional page specific properties.
+
+INFO is used as communication channel."
+  (let ((headline (car (org-element-map org-page 'headline 'identity t))))
+    (message "transcoding %s" (org-html-element-title headline))
+    (let* ((body-only (org-element-property :body-only org-page))
+           (info (cl-list*
+                  :tl-headline headline
+                  :tl-headline-number
+                  (alist-get
+                   headline
+                   (plist-get info :headline-numbering))
+                  info))
+           (body (org-element-normalize-string
+                  (or (org-export-data headline info)
+                      "")))
+           (inner-template (if (plist-get info :multipage)
+                               (alist-get 'multipage-inner-template
+                                          (plist-get info :translate-alist))
+                             (alist-get 'inner-template
+                                        (plist-get info :translate-alist))))
+           (full-body (org-export-filter-apply-functions
+                       (plist-get info :filter-body)
+                       (if (not (functionp inner-template)) body
+                         (funcall inner-template body info))
+                       info))
+           (template (if (plist-get info :multipage)
+                         (cdr (assq 'multipage-template
+                                    (plist-get info :translate-alist)))
+                       (cdr (assq 'template
+                                  (plist-get info :translate-alist)))))
+           (output
+            (if (or (not (functionp template)) body-only) full-body
+              (funcall template full-body info))))
+      ;; Call citation export finalizer.
+      (setq output (org-cite-finalize-export output info))
+      ;; Remove all text properties since they cannot be
+      ;; retrieved from an external process.  Finally call
+      ;; final-output filter and return result.
+      (setq global-output output)
+      (let ((final-output (org-no-properties
+                           (org-export-filter-apply-functions
+                            (plist-get info :filter-final-output)
+                            output info))))
+        (put-text-property
+         0 1 :output-file (org-element-property :output-file org-page) final-output)
+        final-output))))
 
 (defun org-export-transcode-org-data (data body info)
   "Transcode DATA with BODY.  Return transcoded string.
