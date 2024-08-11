@@ -5073,23 +5073,24 @@ headline-number."
     (caar headline-numbering))
    (t (org-html-find-headline headline-number (cdr headline-numbering)))))
 
-(defun org-html-element-body-text (element info)
-  "check if transcoding of the contents of element until the next
-subheadline returns an empty string."
-  (let ((strings
+(defun org-html-element-body-text? (element info)
+  "check for body text in ELEMENT until the next subheadline.
+The check is performed by comparing the transcoded contents of
+element to the empty string until the next subheadline.
+
+INFO is the communication channel."
+  (let ((result
          (cl-loop
           for elem in (org-element-contents element)
-          while (not (eq 'headline (org-element-type elem)))
-          collect (org-export-data elem info))))
-    (string-trim
-     (apply 'concat
-            (with-temp-buffer
-              (mapcar 'insert strings)
-              (dom-strings (libxml-parse-html-region (point-min) (point-max))))))))
-
-(defun org-html-element-body-text? (element info)
-  "check if transcoded element produces any text."
-  (not (eq "" (org-html-element-body-text element info))))
+          with string
+          while (not (eq 'headline (org-element-type elem))) ;; return nil if first subheadline is encountered.
+          do (setf string (string-trim
+                           (apply 'concat
+                                  (with-temp-buffer
+                                    (insert (org-export-data elem info))
+                                    (dom-strings (libxml-parse-html-region (point-min) (point-max)))))))
+          if (not (eq string "")) return t))) ;; return t if elem transcodes to a non-empty string.
+    result))
 
 (defun org-html-page-headlines (headlines info)
   "collect the headlines of all pages to export. In case of
