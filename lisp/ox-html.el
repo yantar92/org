@@ -5095,8 +5095,7 @@ INFO is the communication channel."
                        (apply 'concat
                               (with-temp-buffer
                                 (insert (org-export-data elem info))
-                                (dom-strings (libxml-parse-html-region (point-min) (point-max))))))
-                   ""))
+                                (dom-strings (libxml-parse-html-region (point-min) (point-max))))))))
           (throw 'exit t))))))
 
 (defun org-html-page-headlines (headlines info)
