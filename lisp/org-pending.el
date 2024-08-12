@@ -295,35 +295,28 @@ loosing data, leaking ressources, etc."
 ;;; Faces
 ;;
 (defface org-pending-scheduled
-  `((t :background ,(face-attribute
-                     'fringe
-                     :background  nil t)))
-  "Face for babel results for code blocks that are scheduled for execution."
+  `((t :inherit lazy-highlight))
+  "Face for pending region anchors, when locked scheduled."
   :package-version '(Org . "9.7"))
 
 (defface org-pending-pending
-  `((t :background ,(face-attribute
-                     'compilation-mode-line-run
-                     :foreground nil t)))
-  "Face for babel results for code blocks that are running."
+  `((t :inherit next-error))
+  "Face for pending region anchors, when locked pending."
+  :package-version '(Org . "9.7"))
+
+(defface org-pending-locked
+  `((t :inherit secondary-selection))
+  "Face for pending regions, when locked."
   :package-version '(Org . "9.7"))
 
 (defface org-pending-outcome-failure
-  `((((supports :underline (:style line)))
-     :underline ( :style line
-                  :color ,(face-attribute 'error :foreground nil 'default)))
-    (t
-     :underline t :inherit error))
-  "Face for babel results fused for the outcome when it's a failure."
+  `((t :inherit error))
+  "Face for pending outcomes, on failure."
   :package-version '(Org . "9.7"))
 
 (defface org-pending-outcome-success
-  `((((supports :underline (:style line)))
-     :underline ( :style line
-                  :color ,(face-attribute 'success :foreground nil 'default)))
-    (t
-     :underline t :inherit success))
-  "Face used for the outcome when it's a success."
+  `((t :inherit success))
+  "Face for pending outcomes, on success."
   :package-version '(Org . "9.7"))
 
 
@@ -369,7 +362,7 @@ editable text."
 ;;;; Overlay projections
 ;;
 (defvar org-pending--overlay-projection-props
-  `( face secondary-selection
+  `( face org-pending-locked
      font-lock-face secondary-selection
      help-echo "Overlay projection..."
      read-only t
@@ -446,7 +439,7 @@ See `org-pending--delete-overlay' to delete it."
                (overlay-put ovl 'insert-behind-hooks read-only)))
       (overlay-put overlay 'org-pending type)
       (unless (memq type '(:success :failure))
-        (overlay-put overlay 'face 'secondary-selection)
+        (overlay-put overlay 'face 'org-pending-locked)
         (overlay-put
          overlay 'help-echo
          (substitute-command-keys
