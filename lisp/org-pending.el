@@ -639,8 +639,10 @@ about it."
   (funcall (org-pending-reglock--useless-p reglock)))
 
 (defun org-pending-reglock-duration (reglock)
-  "Return REGLOCK duration between its scheduling and its outcome.
-If the outcome is not known, use the current time."
+  "Return REGLOCK duration in seconds.
+
+Return duration between its scheduling and its outcome.  If the outcome
+is not known, return duration between its scheduling and now."
   (let ((start (org-pending-reglock-scheduled-at reglock))
         (end (or (org-pending-reglock-outcome-at reglock)
                  (float-time))))
