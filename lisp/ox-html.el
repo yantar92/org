@@ -111,9 +111,9 @@
     (underline . org-html-underline)
     (verbatim . org-html-verbatim)
     (verse-block . org-html-verse-block))
-  :filters-alist '((:filter-options . org-html-infojs-install-script)
+  :filters-alist '((:filter-multipage . nil)
+                   (:filter-options . org-html-infojs-install-script)
 		   (:filter-parse-tree . org-html-image-link-filter)
-                   (:filter-multipage-split . org-html-multipage-split)
 		   (:filter-final-output . org-html-final-function))
   :menu-entry
   '(?h "Export to HTML"
@@ -214,6 +214,7 @@
     (:html-klipse-css nil nil org-html-klipse-css)
     (:html-klipse-js nil nil org-html-klipse-js)
     (:html-klipse-selection-script nil nil org-html-klipse-selection-script)
+    (:multipage-split-function nil nil org-html-multipage-split-function)
     (:infojs-opt "INFOJS_OPT" nil nil)
     ;; Redefine regular options.
     (:creator "CREATOR" nil org-html-creator-string)
@@ -1913,6 +1914,20 @@ nil - don't open."
   :version "29.4"
   :package-version '(Org . "9.8")
   :type '(choice (const top) (const text-content)))
+
+(defcustom org-html-multipage-split-function
+  'org-html-multipage-split
+  "Function to call when multipage output is requested.
+This function is called on the final parse tree.  The function
+has to accept two arguments:
+
+- DATA is the completed parse tree before splitting
+
+- INFO is a plist used as a communication channel."
+  :group 'org-export-html
+  :version "29.4"
+  :package-version '(Org . "9.8")
+  :type 'function)
 
 (defcustom org-html-multipage-split-level 'toc
   "How to split the ORG file into multiple HTML pages.
@@ -4775,18 +4790,17 @@ Return the list of the toplevel headlines of all pages."
                      headline-numbering :key 'cdr)
        info)))))
 
-(defun org-html-multipage-split (data _backend info)
+(defun org-html-multipage-split (data info)
   "Collect all properties relevant to multipage output.
 
-The function is called in the context of calling all
-:filter-parse-tree alist functions in `org-export-annotate-info'
-after the parse-tree is completed and its properties collected.
-The function takes care of splitting the parse-tree into the
-subtrees for each page, creating org-page pseudo elements, adding
-them in a list in the :multipage-org-pages property of info.  In
-addition lookup alists for the stripped pages, for the page-urls,
-the navigation elements, the toc, etc. are added to info, which
-are needed by the html transcoders.
+The function is called in `org-export-annotate-info' after the
+parse-tree is completed and its properties collected.  The
+function takes care of splitting the parse-tree into the subtrees
+for each page, creating org-page pseudo elements, adding them in
+a list in the :multipage-org-pages property of info.  In addition
+lookup alists for the stripped pages, for the page-urls, the
+navigation elements, the toc, etc. are added to info, which are
+needed by the html transcoders.
 
 DATA is the completed parse-tree of the document.
 
@@ -4815,7 +4829,8 @@ INFO is the communication channel."
            (section-trees
             (cl-loop
              for section-entry in exported-headline-numbering
-             for keep-first-subhls = (plist-get info :keep-first-subhls) then (cdr keep-first-subhls)
+             for keep-first-subhls = (plist-get info :keep-first-subhls)
+             then (cdr keep-first-subhls)
              collect
              (let* ((section-number (cdr section-entry)))
                (if (< (length section-number) max-toc-depth)

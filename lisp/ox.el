@@ -215,7 +215,7 @@ Properties redefined there have precedence over these.")
     (:filter-latex-fragment . org-export-filter-latex-fragment-functions)
     (:filter-line-break . org-export-filter-line-break-functions)
     (:filter-link . org-export-filter-link-functions)
-    (:filter-multipage-split . org-export-multipage-split-functions)
+    (:filter-multipage . org-export-filter-multipage-functions)
     (:filter-node-property . org-export-filter-node-property-functions)
     (:filter-options . org-export-filter-options-functions)
     (:filter-paragraph . org-export-filter-paragraph-functions)
@@ -2198,12 +2198,12 @@ string, the backend, as a symbol, and the communication channel,
 as a plist.  It must return a string that will be used as the
 final export output.")
 
-(defvar org-export-multipage-split-functions nil
+(defvar org-export-filter-multipage-functions nil
   "List of functions applied to the parse tree.
 The functions are applied only, when multipage output is
 requested.  They are called after the parse tree has been split
 for multipage output.  Each function is called with three
-arguments: The parse tree, as returned by
+arguments:  The parse tree, as returned by
 `org-element-parse-buffer', the backend, as a symbol, and the
 communication channel, as a plist.  It must return the modified
 parse tree to transcode.")
@@ -3019,7 +3019,6 @@ export information channel."
                        backend info subtreep visible-only ext-plist))
 	   ;; Eventually transcode TREE.  Wrap the resulting string into
 	   ;; a template.
-           (setq global-info info)
            (setq global-exported-pre (plist-get info :exported-data))
 	   (let ((output
                   (or (org-export-data (plist-get info :parse-tree) info)
@@ -3205,8 +3204,8 @@ still inferior to file-local settings."
     ;; arity of such filters is different.
     (let ((backend-name (org-export-backend-name backend)))
       (dolist (filter (plist-get info :filter-options))
-          (let ((result (funcall filter info backend-name)))
-            (when result (setq info result)))))
+        (let ((result (funcall filter info backend-name)))
+          (when result (setq info result)))))
     ;; Parse buffer.
 
     (setq tree (org-element-parse-buffer nil visible-only 'defer))
@@ -3227,7 +3226,10 @@ still inferior to file-local settings."
     (setq info (org-export--collect-tree-properties tree info))
     (when (plist-get info :multipage)
       (setq tree (org-export-filter-apply-functions
-                  (plist-get info :filter-multipage-split) tree info)))
+                  (plist-get info :filter-multipage)
+                  (funcall
+                   (plist-get info :multipage-split-function) tree info)
+                  info)))
     ;; Process citations and bibliography.  Replace each citation
     ;; and "print_bibliography" keyword in the parse tree with
     ;; the output of the selected citation export processor.
@@ -4732,7 +4734,7 @@ Return value can be an object or an element:
 		   fullname)))))
 
 (defun org-export-link-remote-p (link)
-  "Returns non-nil if the link refers to a remote resource."
+  "Return non-nil if LINK refers to a remote resource."
   (or (member (org-element-property :type link) '("http" "https" "ftp"))
       (and (string= (org-element-property :type link) "file")
            (file-remote-p (org-element-property :path link)))))
