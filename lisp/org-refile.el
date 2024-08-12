@@ -477,7 +477,7 @@ prefix argument (`C-u C-u C-u C-c C-w')."
         (start-point (point-marker)))
     (condition-case-unless-debug  _exc
         (org-refile-1 arg default-buffer rfloc msg)
-      (org-pending-error
+      (org-pending-error-read-only
        (with-current-buffer start-buffer
          (goto-char start-point))
        (user-error "Cannot refile a region that contains pending contents")))))

@@ -309,7 +309,7 @@ direct children of this heading."
 	        ;; which would lead to duplication of subtrees
 	        (let (this-command)
                   (org-copy-subtree 1 nil t nil :no-pendings))
-              (org-pending-error
+              (org-pending-error-read-only
                (user-error "Cannot archive a region that contains pending contents")))
 	    (set-buffer buffer)
 	    ;; Enforce Org mode for the archive buffer

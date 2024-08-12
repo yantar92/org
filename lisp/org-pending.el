@@ -281,11 +281,16 @@ loosing data, leaking ressources, etc."
 
 ;;; Errors
 (define-error 'org-pending-error
-              "Some content is pending, cannot modify it")
+              "Parent for all org-pending errors")
+
+(define-error 'org-pending-error-read-only
+              "Some content is pending, cannot modify it"
+              'org-pending-error)
 
 
 (define-error 'org-pending-user-cancel
-              "The user canceled this update")
+              "The user canceled this update"
+              'org-pending-error)
 
 ;;; Faces
 ;;
@@ -432,7 +437,7 @@ See `org-pending--delete-overlay' to delete it."
         (read-only
 	 (list
 	  (lambda (&rest _)
-	    (signal 'org-pending-error
+	    (signal 'org-pending-error-read-only
 	            (list "Cannot modify a region containing pending content"))))))
     (cl-flet ((make-read-only (ovl)
                 "Make the overly OVL read-only."
@@ -1291,11 +1296,11 @@ See also `org-pending-locks-in'."
 
 
 (defun org-pending-ensure-no-locks (begin end &optional error-info)
-  "Raise `org-pending-error' if BEGIN..END contains locks that are alive.
+  "Raise `org-pending-error-read-only' if BEGIN..END contains locks that are alive.
 
 Append ERROR-INFO to the error data when signaling an error."
   (when (org-pending-locks-in begin end)
-    (signal 'org-pending-error (cons begin (cons end error-info)))))
+    (signal 'org-pending-error-read-only (cons begin (cons end error-info)))))
 
 (defun org-pending-no-locks-in-emacs-p ()
   "Return non-nil if any buffer contains some pending contents."

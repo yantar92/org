@@ -7204,8 +7204,8 @@ If CUT is non-nil, actually cut the subtree.
 If FORCE-STORE-MARKERS is non-nil, store the relative locations
 of some markers in the region, even if CUT is non-nil.  This is
 useful if the caller implements cut-and-paste as copy-then-paste-then-cut.
-If NO-PENDINGS is non-nil, raise a org-pending-error if the region to
-copy contains any pending contents."
+If NO-PENDINGS is non-nil, raise the `org-pending-error-read-only' if
+the region to copy contains some pending contents."
   (interactive "p")
   (org-preserve-local-variables
    (let (beg end folded (beg0 (point)))
