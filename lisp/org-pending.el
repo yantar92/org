@@ -1522,7 +1522,7 @@ Fix our data, after creating an indirect clone."
           (let ((inhibit-modification-hooks t)
                 (inhibit-read-only t))
             (remove-text-properties (car region) (cdr region)
-                                    (list 'face :not-used))))))))
+                                    '(face :not-used))))))))
 
 
 (defun org-pending--ensure-buffer-setup ()
