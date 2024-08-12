@@ -423,7 +423,7 @@ See `org-pending--add-overlay-projection'."
   (signal 'org-pending-error-read-only
 	  (list "Cannot modify a region containing pending content")))
 
-(defun org-pending--make-overlay (type begin-end)
+(defun org-pending--make-overlay (reglock type begin-end)
   "Create a pending overlay of type TYPE between BEGIN-END.
 
 The variable TYPE may be one of `:status',`:region', `:success' or
@@ -445,6 +445,7 @@ See `org-pending--delete-overlay' to delete it."
                (overlay-put ovl 'modification-hooks read-only)
                (overlay-put ovl 'insert-in-front-hooks read-only)
                (overlay-put ovl 'insert-behind-hooks read-only)))
+      (overlay-put overlay 'org-pending-reglock reglock)
       (overlay-put overlay 'org-pending type)
       (unless (memq type '(:success :failure))
         (overlay-put overlay 'face 'org-pending-locked)
@@ -803,17 +804,13 @@ for more information about all reglock fields."
 
       ;; Create the overlays for the anchor and for the region.
       (setf (org-pending-reglock--region-ovl reglock)
-            (org-pending--make-overlay :region region))
+            (org-pending--make-overlay reglock :region region))
       (setf (org-pending-reglock--anchor-ovl reglock)
-            (org-pending--make-overlay :status anchor))
+            (org-pending--make-overlay reglock :status anchor))
 
       ;; Flag the result as ":scheduled".
       (org-pending--update reglock :scheduled nil)
 
-      (overlay-put (org-pending-reglock--region-ovl reglock)
-                   'org-pending-reglock reglock)
-      (overlay-put (org-pending-reglock--anchor-ovl reglock)
-                   'org-pending-reglock reglock)
       (org-pending--mgr-handle-new-reglock reglock name)
 
       (org-pending--ensure-buffer-setup)
@@ -1010,7 +1007,7 @@ even if the lock/buffer doesn't exist.")
   ;; We add some outcome decorations to let the user know what
   ;; happened and allow him to explore the details.
   (let* ((status (car message))
-         (outcome-ovl (org-pending--make-overlay status outcome-region))
+         (outcome-ovl (org-pending--make-overlay lock status outcome-region))
          (bitmap (pcase status
                   (:success 'large-circle)
                   (:failure 'exclamation-mark)))
@@ -1033,7 +1030,6 @@ even if the lock/buffer doesn't exist.")
               " to display its full description.")))
 
     (overlay-put outcome-ovl 'face outcome-face)
-    (overlay-put outcome-ovl 'org-pending-reglock lock)
     (push `(apply delete-overlay ,outcome-ovl) buffer-undo-list)
     ;; Return how to remove our decoration.
     (lambda ()
