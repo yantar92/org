@@ -459,10 +459,12 @@ See `org-pending--delete-overlay' to delete it."
 
       (when (memq type '(:success :failure))
         ;; Add a link to the outcome overlay so that we may remove it
-        ;; from any buffer.
+        ;; from any buffer, indirect or not: see
+        ;; `org-pending-delete-outcome-marks'.
         (with-silent-modifications
           (add-text-properties (car begin-end) (cdr begin-end)
                                (list 'org-pending--outcome-overlay overlay)))
+
         (overlay-put overlay 'keymap org-pending-outcome-keymap)
         (overlay-put overlay 'evaporate t))
 
