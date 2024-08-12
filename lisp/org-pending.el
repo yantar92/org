@@ -468,15 +468,36 @@ See `org-pending--delete-overlay' to delete it."
       (overlay-put overlay 'org-pending--real-owner (overlay-buffer overlay))
 
       (when (memq type '(:success :failure))
-        ;; Add a link to the outcome overlay so that we may remove it
-        ;; from any buffer, indirect or not: see
-        ;; `org-pending-delete-outcome-marks'.
-        (with-silent-modifications
-          (add-text-properties (car begin-end) (cdr begin-end)
-                               (list 'org-pending--outcome-overlay overlay)))
+        (let ((bitmap (pcase type
+                        (:success 'large-circle)
+                        (:failure 'exclamation-mark)))
+              (face (pcase type
+                      (:success 'org-done)
+                      (:failure 'org-todo)))
+              (outcome-face (pcase type
+                              (:success 'org-pending-outcome-success)
+                              (:failure 'org-pending-outcome-failure))))
+          (overlay-put overlay
+                       'before-string (propertize
+                                       "x" 'display
+                                       `(left-fringe ,bitmap ,face)))
+          (overlay-put
+           overlay 'help-echo
+           (substitute-command-keys
+            (concat "\\<org-pending-outcome-keymap>"
+                    "Last lock outcome, "
+                    "\\[org-pending-describe-reglock-at-point]"
+                    " to display its full description.")))
+          (overlay-put overlay 'face outcome-face)
+          (overlay-put overlay 'keymap org-pending-outcome-keymap)
+          (overlay-put overlay 'evaporate t)
 
-        (overlay-put overlay 'keymap org-pending-outcome-keymap)
-        (overlay-put overlay 'evaporate t))
+          ;; Add a link to the outcome overlay so that we may remove it
+          ;; from any buffer, indirect or not: see
+          ;; `org-pending-delete-outcome-marks'.
+          (with-silent-modifications
+            (add-text-properties (car begin-end) (cdr begin-end)
+                                 (list 'org-pending--outcome-overlay overlay)))))
 
       (when (eq :region type)
         ;; Cleanup outcome overlays if any.
@@ -1009,30 +1030,8 @@ even if the lock/buffer doesn't exist.")
   "Default value for `org-pending-post-insert-outcome-function'."
   ;; We add some outcome decorations to let the user know what
   ;; happened and allow him to explore the details.
-  (let* ((status (car message))
-         (outcome-ovl (org-pending--make-overlay lock status outcome-region))
-         (bitmap (pcase status
-                  (:success 'large-circle)
-                  (:failure 'exclamation-mark)))
-         (face (pcase status
-                 (:success 'org-done)
-                 (:failure 'org-todo)))
-         (outcome-face (pcase status
-                         (:success 'org-pending-outcome-success)
-                         (:failure 'org-pending-outcome-failure))))
-    (overlay-put outcome-ovl
-                 'before-string (propertize
-                                 "x" 'display
-                                 `(left-fringe ,bitmap ,face)))
-    (overlay-put
-     outcome-ovl 'help-echo
-     (substitute-command-keys
-      (concat "\\<org-pending-outcome-keymap>"
-              "Last lock outcome, "
-              "\\[org-pending-describe-reglock-at-point]"
-              " to display its full description.")))
-
-    (overlay-put outcome-ovl 'face outcome-face)
+  (let* ((outcome-ovl (org-pending--make-overlay lock (car message)
+                                                 outcome-region)))
     (push `(apply delete-overlay ,outcome-ovl) buffer-undo-list)
     ;; Return how to remove our decoration.
     (lambda ()
