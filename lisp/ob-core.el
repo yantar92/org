@@ -924,7 +924,7 @@ result region, create a new empty one."
   "Execute the function SCHEDULE synchronously.
 Start the asynchronous execution, wait for its outcome, finally return
 the result or raise the exception."
-  (let ((await (funcall schedule lang body params nil)))
+  (let ((await (funcall schedule lang body params (lambda (_o)) nil)))
     (unless await
       (error "Function `%s' didn't return a function to wait for the result."
              schedule))
@@ -943,8 +943,9 @@ the result or raise the exception."
 (defun org-babel-execute-src-block (&optional arg info params executor-type)
   "Execute or schedule the current source code block.
 
-When synchronous, return the result; when asynchronous, mark the result
-region as \"pending\" (using `org-pending') and return the REGLOCK.
+When synchronous, return the result. When asynchronous, if there is a
+result, mark the result region as \"pending\" (using `org-pending') and
+return the REGLOCK; else, when there is no result, return nil.
 
 When the result is available, insert it into the buffer.  Source code
 execution and the collection and formatting of results can be controlled
@@ -1127,14 +1128,29 @@ guess will be made."
               (org-pending-without-async
                (let* ((reglock
                        (org-babel--async-pending
-                        info handle-result result-params exec-start-time)))
-                 (if reglock
-                     ;; We have a reglock, we can use it to report the error.
-                     (condition-case-unless-debug exc
-                         (apply cmd (nconc cmd-args (list reglock)))
-                       (error (org-pending-send-update reglock (list :failure exc))))
-                   ;; Let the error go through as we don't know what to do with it.
-                   (apply cmd (nconc cmd-args (list reglock))))
+                        info handle-result result-params exec-start-time))
+                      (outcome-handler
+                       ;; The outcome-handler takes care of the
+                       ;; outcome, including sending the final update
+                       ;; to the reglock when available.
+                       (if reglock
+                           (lambda (o) (org-pending-send-update reglock o))
+                         (lambda (o)
+                           (pcase o
+                             (`(:success ,result)
+                              (funcall handle-result result))
+                             (`(:failure ,err)
+                              ;; TODO: We raise an error from a background task...
+                              ;;       Could we do better?
+                              (signal (car err) (cdr err)))))
+                         )))
+                 ;; We pass the reglock (if any) to the asynchronous
+                 ;; execution *only* for additional, optional
+                 ;; features: progress, improved description of the
+                 ;; lock, etc.  CMD must always eventually call
+                 ;; OUTCOME-HANDLER once, to report the outcome, even
+                 ;; on cancelation.
+                 (apply cmd (nconc cmd-args (list outcome-handler reglock)))
                  reglock))))))))))
 
 
