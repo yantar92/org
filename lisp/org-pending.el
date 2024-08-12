@@ -618,12 +618,12 @@ of that lock must happen in that buffer."
     (marker-buffer (car region))))
 
 (defun org-pending-reglock-status (reglock)
-  "Return the status of REGLOCK.
+  "Return the status of REGLOCK as a keyword.
 The possible status are, in chronological order:
-  :scheduled =>
-     :pending =>
-         :success
-         or :failure."
+  `:scheduled' =>
+     `:pending' =>
+         `:success'
+         or `:failure'."
   (org-pending-reglock--status reglock))
 
 (defun org-pending-reglock-live-p (reglock)
