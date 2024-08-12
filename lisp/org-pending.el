@@ -423,14 +423,22 @@ See `org-pending--add-overlay-projection'."
   (signal 'org-pending-error-read-only
 	  (list "Cannot modify a region containing pending content")))
 
-(defun org-pending--make-overlay (type beg-end)
-  "Create a pending overlay of type TYPE between BEG-END.
+(defun org-pending--make-overlay (type begin-end)
+  "Create a pending overlay of type TYPE between BEGIN-END.
 
-The pair BEG-END contains 2 positions (BEG . END).
-Create an overlay between BEGIN and END.  Return it.
+The variable TYPE may be one of `:status',`:region', `:success' or
+`:failure'.  The pair BEGIN-END contains 2 positions (BEGIN . END).
+
+Create an overlay between BEGIN and END.  When TYPE is `:status' or
+`:region', forbid modification between BEGIN and END in all buffers
+sharing the same base buffer; set the overlay keymap to
+`org-pending-pending-keymap'.  When TYPE is `:success' or `:failure',
+set the overlay keymap to `org-pending-outcome-keymap'.
+
+Return the created overlay.
 
 See `org-pending--delete-overlay' to delete it."
-  (let ((overlay (make-overlay (car beg-end) (cdr beg-end)))
+  (let ((overlay (make-overlay (car begin-end) (cdr begin-end)))
         (read-only (list #'org-pending--overlay-signal-read-only-error)))
     (cl-flet ((make-read-only (ovl)
                 "Make the overly OVL read-only."
@@ -456,14 +464,14 @@ See `org-pending--delete-overlay' to delete it."
         ;; Add a link to the outcome overlay so that we may remove it
         ;; from any buffer.
         (with-silent-modifications
-          (add-text-properties (car beg-end) (cdr beg-end)
+          (add-text-properties (car begin-end) (cdr begin-end)
                                (list 'org-pending--outcome-overlay overlay)))
         (overlay-put overlay 'keymap org-pending-outcome-keymap)
         (overlay-put overlay 'evaporate t))
 
       (when (eq :region type)
         ;; Cleanup outcome overlays if any.
-        (org-pending-delete-outcome-marks (car beg-end) (cdr beg-end))
+        (org-pending-delete-outcome-marks (car begin-end) (cdr begin-end))
 
         (org-pending--add-overlay-projection overlay read-only)
         (overlay-put overlay 'org-pending--before-delete
