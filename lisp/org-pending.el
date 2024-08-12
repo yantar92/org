@@ -475,23 +475,6 @@ See `org-pending--delete-overlay' to delete it."
         (org-pending-delete-outcome-marks (car begin-end) (cdr begin-end))
 
         (org-pending--add-overlay-projection overlay read-only)
-        (overlay-put overlay 'org-pending--before-delete
-                     (lambda ()
-                       (let ((inhibit-modification-hooks t)
-                             (inhibit-read-only t))
-                         (overlay-put overlay 'modification-hooks nil)
-                         (overlay-put overlay 'insert-in-front-hooks nil)
-                         (overlay-put overlay 'insert-behind-hooks nil)
-                         (org-pending--remove-overlay-projection overlay)
-                         ;; Force refontification of the result
-                         ;; (working around indirect buffers hacks).
-                         (let ((start (overlay-start overlay))
-                               (end   (overlay-end overlay)))
-                           (remove-text-properties start end
-                                                   (list 'fontified :not-used
-                                                         'font-lock-face :not-used
-                                                         'font-lock-fontified :not-used))
-                           (font-lock-flush start end)))))
         (overlay-put overlay 'keymap org-pending-pending-keymap))
       (unless (memq type '(:success :failure))
         (make-read-only overlay))
@@ -504,8 +487,22 @@ See `org-pending--delete-overlay' to delete it."
 (defun org-pending--delete-overlay (ovl)
   "Delete the overlay OVL.
 Assume OVL has been created with `org-pending--make-overlay'."
-  (when-let ((before-delete (overlay-get ovl 'org-pending--before-delete)))
-    (funcall before-delete))
+  (when (eq :region (overlay-get ovl 'org-pending))
+    (let ((inhibit-modification-hooks t)
+          (inhibit-read-only t))
+      (overlay-put ovl 'modification-hooks nil)
+      (overlay-put ovl 'insert-in-front-hooks nil)
+      (overlay-put ovl 'insert-behind-hooks nil)
+      (org-pending--remove-overlay-projection ovl)
+      ;; Force refontification of the result
+      ;; (working around indirect buffers hacks).
+      (let ((start (overlay-start ovl))
+            (end   (overlay-end ovl)))
+        (remove-text-properties start end
+                                `( fontified :not-used
+                                   font-lock-face :not-used
+                                   font-lock-fontified :not-used))
+        (font-lock-flush start end))))
   (delete-overlay ovl))
 
 
