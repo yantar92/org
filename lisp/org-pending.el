@@ -424,16 +424,22 @@ See `org-pending--add-overlay-projection'."
 	  (list "Cannot modify a region containing pending content")))
 
 (defun org-pending--make-overlay (reglock type begin-end)
-  "Create a pending overlay of type TYPE between BEGIN-END.
+  "Create an overlay owned by REGLOCK of type TYPE between BEGIN-END.
 
 The variable TYPE may be one of `:status',`:region', `:success' or
 `:failure'.  The pair BEGIN-END contains 2 positions (BEGIN . END).
 
-Create an overlay between BEGIN and END.  When TYPE is `:status' or
-`:region', forbid modification between BEGIN and END in all buffers
+When type is `:region', delete outcome marks between BEGIN and END if
+any.  Create an overlay between BEGIN and END.  When TYPE is `:status'
+or `:region', forbid modification between BEGIN and END in all buffers
 sharing the same base buffer; set the overlay keymap to
 `org-pending-pending-keymap'.  When TYPE is `:success' or `:failure',
-set the overlay keymap to `org-pending-outcome-keymap'.
+set the overlay keymap to `org-pending-outcome-keymap', display a large
+circle in the fringe on `success', using the face `org-done', and an
+exclamation mark on failure using the face `org-todo'; set the overlay
+face to `org-pending-outcome-success' on `:success' and
+`org-pending-outcome-failure' on `:failure'; configure the orverlay to
+evaporate.
 
 Return the created overlay.
 
