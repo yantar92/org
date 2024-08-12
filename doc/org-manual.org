@@ -13498,7 +13498,6 @@ set to ~auto~ (its default value), which makes the HTML exporter build
 a postamble from looking up author's name, email address, creator's
 name, and date.
 
-
 *** Exporting to minimal HTML
 :PROPERTIES:
 :DESCRIPTION: Exporting HTML without CSS, Javascript, etc.
@@ -14039,12 +14038,17 @@ to your pages, configure the variable ~org-export-html-use-infojs~.
   Possible choices are =top= or =text-content=.
   See [[*Multipage HTML specific CSS support]]
 
-- ~org-html-multipage-split-hooks~ ::
+- ~multipage-split-function~ ::
 
-  #+vindex: org-html-multipage-split-hooks
-  list of additional custom functions to be called during the export
-  after multipage splitting has taken place and before transcoding
-  with the =info= communication channel as input.
+  #+vindex: multipage-split-function
+  The function to call when multipage output is requested.
+
+  This function is called on the final parse tree.  The function has
+  to accept two arguments:
+
+  - DATA is the completed parse tree before splitting
+
+  - INFO is a plist used as a communication channel.
   
 - ~org-html-multipage-split-level~ ::
 
