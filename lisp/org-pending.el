@@ -1604,15 +1604,18 @@ needed."
     ;; "Kill buffer" means "cancel the edit"
     (with-current-buffer edit-buffer
       ;; Before done and abort, set "closing" to t.
-      (cl-labels ((instrument (cmd)
-                    (keymap-set string-edit-mode-map
-                                (format "<remap> <%s>" cmd)
-                                (lambda ()
-                                  (interactive)
-                                  (setq closing t)
-                                  (funcall cmd)))))
-        (instrument 'string-edit-done)
-        (instrument 'string-edit-abort))
+      (let ((lkm (make-sparse-keymap)))
+        (set-keymap-parent lkm (current-local-map))
+        (cl-labels ((instrument (cmd)
+                      (keymap-set lkm
+                                  (format "<remap> <%s>" cmd)
+                                  (lambda ()
+                                    (interactive)
+                                    (setq closing t)
+                                    (funcall cmd)))))
+          (instrument 'string-edit-done)
+          (instrument 'string-edit-abort))
+        (use-local-map lkm))
 
       ;; When killed and not closing, send a 'cancel' message.
       (make-local-variable 'kill-buffer-query-functions)
