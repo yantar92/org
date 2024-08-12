@@ -703,8 +703,11 @@ See also `org-pending-reglock-property'."
   "Send a cancel message to REGLOCK to close it.
 Default value for `org-pending-reglock-user-cancel-function'."
   (org-pending-send-update
-   reglock (list :failure (list 'org-pending-user-cancel
-                                "Canceled"))))
+   reglock
+   ;; We create a new message on each call as we send this message to
+   ;; unknown consumers, and they may take the liberty to mutate it.
+   (list :failure (list 'org-pending-user-cancel
+                        "Canceled"))))
 
 (defun org-pending-reglock-delete-outcome-marks (reglock)
   "Delete visual hints of the outcome for this REGLOCK, if any.
