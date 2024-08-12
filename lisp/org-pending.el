@@ -1519,7 +1519,7 @@ Safe to call many times in a given buffer."
   (add-hook 'kill-buffer-query-functions
             #'org-pending--kill-buffer-query nil :local)
   (add-hook 'clone-indirect-buffer-hook
-            #'org-pending--after-indirect-clone :local))
+            #'org-pending--after-indirect-clone 100 :local))
 
 
 ;;; Basic use of locks
