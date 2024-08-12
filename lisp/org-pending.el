@@ -964,12 +964,9 @@ of the description buffer, and call that function with REGLOCK."
 Get the REGLOCK at point, for a locked region or an outcome mark.  Use
 `org-pending-describe-reglock' to display it."
   (interactive)
-  (let ((reglock (or (get-char-property (point) 'org-pending-reglock)
-                   (when-let ((ovl (get-char-property (point) 'org-pending--projection-of)))
-                     (overlay-get ovl 'org-pending-reglock)))))
-    (if reglock
-        (org-pending-describe-reglock reglock)
-      (user-error "No pending content at point"))))
+  (if-let ((reglock (org-pending-lock-or-outcome-at-point)))
+      (org-pending-describe-reglock reglock)
+    (user-error "No lock or outcome at point")))
 
 
 
@@ -1244,6 +1241,17 @@ This is the default :on-outcome handler for the function `org-pending'."
 
 
 ;;; Checking for reglocks
+
+
+(defun org-pending-lock-or-outcome-at-point ()
+  "Return the REGLOCK at point if any.
+If there is a lock or an outcome mark at point, in any buffer sharing
+the same base buffer as the current one, return its reglock.  Else,
+return nil."
+  (or (get-char-property (point) 'org-pending-reglock)
+                     (when-let ((ovl (get-char-property (point) 'org-pending--projection-of)))
+                       (overlay-get ovl 'org-pending-reglock))))
+
 
 (defun org-pending-locks-in (start end &optional owned)
   "Return the list of locks in START..END.
