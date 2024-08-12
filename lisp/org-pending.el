@@ -628,7 +628,8 @@ The possible status are, in chronological order:
 
 (defun org-pending-reglock-live-p (reglock)
   "Return non-nil if REGLOCK is still live.
-A REGLOCK stays live until it receives its outcome: :success or :failure."
+A REGLOCK stays live until it receives its outcome: `:success' or
+`:failure'."
   (funcall (org-pending-reglock--get-live-p reglock)))
 
 (defun org-pending-reglock-useless-p (reglock)
