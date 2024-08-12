@@ -343,9 +343,9 @@ If READ-ONLY is non-nil, add bindings for read-only text else for
 editable text."
   (let ((map (make-sparse-keymap)))
     (dolist (k `([touchscreen-down] [mouse-2] [mouse-1]))
-      (define-key map k 'org-pending-describe-reglock-at-point))
+      (define-key map k #'org-pending-describe-reglock-at-point))
     (when read-only
-      (define-key map [13] 'org-pending-describe-reglock-at-point))
+      (keymap-set map "RET" #'org-pending-describe-reglock-at-point))
     map))
 
 (defvar org-pending-outcome-keymap
