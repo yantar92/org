@@ -418,6 +418,10 @@ See `org-pending--add-overlay-projection'."
 
 ;;;; Overlays
 ;;
+(defun org-pending--overlay-signal-read-only-error (&rest _)
+  "For the overlay modification hooks, when modifications are not allowed."
+  (signal 'org-pending-error-read-only
+	  (list "Cannot modify a region containing pending content")))
 
 (defun org-pending--make-overlay (type beg-end)
   "Create a pending overlay of type TYPE between BEG-END.
@@ -427,11 +431,7 @@ Create an overlay between BEGIN and END.  Return it.
 
 See `org-pending--delete-overlay' to delete it."
   (let ((overlay (make-overlay (car beg-end) (cdr beg-end)))
-        (read-only
-	 (list
-	  (lambda (&rest _)
-	    (signal 'org-pending-error-read-only
-	            (list "Cannot modify a region containing pending content"))))))
+        (read-only (list #'org-pending--overlay-signal-read-only-error)))
     (cl-flet ((make-read-only (ovl)
                 "Make the overly OVL read-only."
                (overlay-put ovl 'modification-hooks read-only)
