@@ -652,15 +652,13 @@ is not known, return duration between its scheduling and now."
   "Get the value of the property PROP for this REGLOCK.
 This is a place: use `setf' to set it.
 See also `org-pending-reglock-set-property'."
-  (cdr (assq prop (org-pending-reglock-properties reglock))))
+  (alist-get prop (org-pending-reglock-properties reglock)))
 
 (defun org-pending-reglock-set-property (reglock prop val)
   "Set the value of the property PROP for this REGLOCK.
 See also `org-pending-reglock-property'."
-  (if-let ((b (assq prop (org-pending-reglock-properties reglock))))
-      (setcdr b val)
-    (push (cons prop val)
-          (org-pending-reglock-properties reglock))))
+  (setf (alist-get prop (org-pending-reglock-properties reglock)) val))
+
 
 (gv-define-simple-setter org-pending-reglock-property
                          org-pending-reglock-set-property)
