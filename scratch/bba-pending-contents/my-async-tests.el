@@ -80,18 +80,22 @@
 ;;
 ;;;;; Asynchronous case: my-org-babel-schedule
 ;;
-(defun my-org-babel-schedule (lang body params reglock)
+(defun my-org-babel-schedule (lang body params outcome-handler &optional reglock)
   "Schedule the execution of BODY according to PARAMS.
 Called by `org-babel-execute-src-block', async case.  Return a task
 controller."
+  (unless (functionp outcome-handler)
+    (error "Back to a callback, no more reglock"))
   (when (equal "bash" lang) (setq lang "shell"))
   (let ((exec-sb (intern-soft (concat "my-org-babel-how-to-execute-"
                                    lang)))
         exec)
     (unless (and exec-sb (symbol-function exec-sb))
       (error "Not implemented my-org-babel-schedule for lang '%s'" lang))
-    (setq exec (funcall (symbol-function exec-sb) body params reglock))
-    (my-elib-async-comint-queue--push exec :reglock reglock)))
+    (setq exec (funcall (symbol-function exec-sb) body params outcome-handler reglock))
+    (my-elib-async-comint-queue--push exec
+                                      :reglock reglock
+                                      :outcome-handler outcome-handler)))
 
 
 ;;;;; Synchronous case: my-org-babel-execute
@@ -104,7 +108,7 @@ This function is called by `org-babel-execute-src-block'."
 
 ;;;; How to execute Shell
 ;;
-(defun my-org-babel-how-to-execute-shell (body params _reglock)
+(defun my-org-babel-how-to-execute-shell (body params _outcome-handler _reglock)
   "Return how to execute BODY using a POSIX shell.
 Return how to execute, as expected by
 `my-elib-async-comint-queue--execution'."
@@ -239,7 +243,7 @@ Return how to execute, as expected by
 ;;;; How to execute Python
 ;;
 
-(defun my-org-babel-how-to-execute-python (body params _reglock)
+(defun my-org-babel-how-to-execute-python (body params _outcome-handler _reglock)
   "Return how to execute BODY using python.
 Return how to execute, as expected by
 `my-elib-async-comint-queue--execution'."
@@ -349,7 +353,7 @@ Return how to execute, as expected by
 ;;;; How to execute Ruby
 ;;
 
-(defun my-org-babel-how-to-execute-ruby (body params _reglock)
+(defun my-org-babel-how-to-execute-ruby (body params _outcome-handler _reglock)
   "Return how to execute BODY using ruby.
 Return how to execute, as expected by
 `my-elib-async-comint-queue--execution'."
@@ -442,7 +446,7 @@ Return how to execute, as expected by
 ;;; Demo executing elisp using threads
 ;;
 
-(defun my-use-threads-schedule (lang body params reglock)
+(defun my-use-threads-schedule (lang body params outcome-handler reglock)
   "Schedule emacs-lisp code BODY according to PARAMS.
 Execute the code in a separate thread."
   ;; Code adapted from: `org-babel-execute:emacs-lisp'.
@@ -485,8 +489,7 @@ Execute the code in a separate thread."
 		                                 (org-babel-emacs-lisp-lexical lexical))))
                           (error (list :failure exc)))))
                    ;; Finger crossed: we run the feedback handler in a thread.
-                   (when reglock
-                     (org-pending-send-update reglock oc))
+                   (funcall outcome-handler oc)
                    (with-mutex outcome-lock
                      (setq outcome oc)))
                    (message "org babel thread done.")))
@@ -504,7 +507,7 @@ Execute the code in a separate thread."
 ;;; Demo executing elisp using callbacks
 ;;
 
-(defun my-use-callbacks-schedule (lang body params reglock)
+(defun my-use-callbacks-schedule (lang body params outcome-handler reglock)
   "Schedule emacs-lisp code BODY according to PARAMS.
 Execute the code providing callbacks to get the result."
   ;; Code adapted from: `org-babel-execute:emacs-lisp'.
@@ -535,7 +538,7 @@ Execute the code providing callbacks to get the result."
          (progress-items)
          (report-outcome
           (lambda (oc)
-            (when reglock (org-pending-send-update reglock oc))
+            (funcall outcome-handler oc)
             (setq outcome oc))))
 
     (when reglock

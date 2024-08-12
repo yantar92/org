@@ -260,22 +260,20 @@ Assume we are called from the comint buffer."
 (define-error 'my-elib-async-comint-queue-task-error
               "Task failure.")
 
-(cl-defun my-elib-async-comint-queue--push (exec &key reglock)
+(cl-defun my-elib-async-comint-queue--push (exec &key reglock outcome-handler)
   "Push the execution of EXEC into the FIFO queue.
 When the task completed, call SENTINEL with its outcome.  Return
 a function that blocks until the result is available and returns it."
   (let* ((tid (org-id-uuid))
          (start-tag (format "MY-ELIB-ASYNC_START_%s" tid))
          (end-tag (format "MY-ELIB-ASYNC_END___%s" tid))
-         (sentinel (when reglock
-                     (lambda (msg) (org-pending-send-update reglock msg))))
          (outcome-sb (make-symbol "outcome"))
          result-log
          (on-start
           (lambda (_)
             ;; TODO: Use (point) in session to link back to it.
-            (when sentinel
-              (funcall sentinel '(:progress "running")))))
+            (when reglock
+              (org-pending-send-update reglock '(:progress "running")))))
          (on-result
           (lambda (result)
             ;; Get the result, and report success using SENTINEL.
@@ -286,7 +284,7 @@ a function that blocks until the result is available and returns it."
                        (condition-case-unless-debug exc
                            (list :success (funcall exec :post-process result))
                          (error (list :failure exc)))))
-                  (when sentinel (save-excursion (funcall sentinel outcome)))
+                  (funcall outcome-handler outcome)
                   (set outcome-sb outcome))
               (funcall exec :finally)))))
 

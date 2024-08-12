@@ -124,8 +124,8 @@ multiprocessing, multithreadings, timers, comint, callbacks, etc.
 
 ** lisp/org-pending
 
-This implements "pending" regions in Emacs. See its section
-"Commentary".
+The library org-pending implements "pending" regions in Emacs. See its
+section "Commentary".
 
 ** Integration with org babel: new keyword ":nasync"
 For asynchronous executions, org now calls `org-babel-schedule:LANG'
@@ -135,25 +135,27 @@ to schedule the execution of the source code blocks (instead of
 The function `org-babel-schedule:LANG' must be defined like this:
 
     #+begin_src elisp
-    (defun org-babel-schedule:LANG (body params reglock)
+    (defun org-babel-schedule:LANG (body params outcome-handler reglock)
       ...
       )
     #+end_src
 
-that is, compared to `org-babel-execute:LANG', it takes one extra
-parameter: a REGLOCK, i.e. the lock of the region that waits for the
-result.
+that is, compared to `org-babel-execute:LANG', it takes two extra
+arguments: a function OUTCOME-HANDLER that must be called once with
+the outcome, and a REGLOCK, that is either nil or a REGLOCK, i.e. the
+lock of the region that waits for the result; when available, it may
+be used to report progress or other information, see the org-pending
+library.
 
 The function `org-babel-schedule:LANG' may schedule the execution
-using any possible technique: processes, threads, timers, etc.  It
-must use ~org-pending-send-update~ to report progress and
-the outcome. It must return immediately nothing.
+using any possible technique: processes, threads, timers, etc.  It may
+use the REGLOCK to report progress; it must evenutally call
+OUTCOME-HANDLER with the outcome. It must return immediately nothing.
 
-Org locks the block result, calling `org-pending', which returns
-REGLOCK (for REGion LOCK).  Org then call `org-babel-schedule:LANG'
-with the lock; `org-babel-schedule:LANG' needs to send updates to this
-REGLOCK; it must return a function that waits for the result and
-returns it.
+When executing a code block, Org locks the block result, if there is
+one, using `org-pending' to create the lock.  Org then calls
+`org-babel-schedule:LANG' with the relevant OUTCOME-HANDLER, and the
+lock (which is `nil' when there is no block result).
 
 
 
@@ -1215,7 +1217,7 @@ To unlock the previous pending content, execute the following block.
    #+end_src
 
 
-** Some slow executions to test indirect buffers (org-tree-to-indirect-buffer)
+** Some slow executions to test indirect buffers (org-tree-to-indirect-buffer :prolifer)
 
    #+begin_src python
    import time; time.sleep(10)
