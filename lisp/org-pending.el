@@ -457,10 +457,6 @@ See `org-pending--delete-overlay' to delete it."
                   "\\[org-pending-describe-reglock-at-point]"
                   " to know more."))))
 
-      ;; Hack to detect if our overlay has been copied into an other
-      ;; buffer.
-      (overlay-put overlay 'org-pending--owner (overlay-buffer overlay))
-
       (when (memq type '(:success :failure))
         ;; Add a link to the outcome overlay so that we may remove it
         ;; from any buffer.
@@ -1502,14 +1498,6 @@ If there are any lock, offer to abort killing Emacs."
 Fix our data, after creating an indirect clone."
   (unless (buffer-base-buffer (current-buffer))
     (error "Bad call: not an indirect buffer: %s" (current-buffer)))
-
-  ;; Try to detect and delete overlays that have been wrongly copied
-  ;; from other buffers.
-  (mapc (lambda (o)
-          (when-let ((owner (overlay-get o 'org-pending--owner)))
-            (unless (eq owner (overlay-buffer o))
-              (delete-overlay o))))
-        (overlays-in (point-min) (point-max)))
 
   ;; jit-lock does not work in indirect buffers; let's say that, if
   ;; there is a face property on our pendings, it can only be the
