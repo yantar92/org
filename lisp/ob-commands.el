@@ -245,6 +245,7 @@ is non-nil."
   (or (org-babel-execute-src-block-maybe)
       (org-babel-lob-execute-maybe)))
 
+;;;###autoload
 (defun org-babel-execute-src-block-maybe ()
   "Conditionally execute a source block.
 Detect if this is context for a Babel src-block and if so
@@ -477,6 +478,7 @@ completion from lists of common args and values."
 (add-hook 'org-cycle-tab-first-hook 'org-babel-header-arg-expand)
 
 (declare-function org-indent-block "org-indent-static" ())
+;;;###autoload
 (defun org-babel-demarcate-block (&optional arg)
   "Wrap or split the code in an active region or at point.
 
@@ -608,6 +610,7 @@ block of the same language as the previous."
 (defvar org-babel-hide-result-overlays nil
   "Overlays hiding results.")
 
+;;;###autoload
 (defun org-babel-result-hide-all ()
   "Fold all results in the current buffer."
   (interactive)
@@ -631,6 +634,7 @@ block of the same language as the previous."
     (and (org-match-line org-babel-result-regexp)
          (progn (org-babel-hide-result-toggle) t))))
 
+;;;###autoload
 (defun org-babel-hide-result-toggle (&optional force)
   "Toggle the visibility of the current result.
 When FORCE is symbol `off', unconditionally display the result.
@@ -752,6 +756,7 @@ a window into the `org-babel-get-src-block-info' function."
       (push-mark (match-end 5) nil t)
       (goto-char (match-beginning 5)))))
 
+;;;###autoload
 (defun org-babel-remove-result-one-or-many (arg)
   "Remove the result of the current source block.
 If called with prefix argument ARG, remove all result blocks in the
