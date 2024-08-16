@@ -401,7 +401,9 @@ items if they have an hour specification like [h]h:mm."
                            '(:closed))
                           (org-agenda-show-log
                            (append '(:closed) entry-types))
-                          (t entry-types))))))
+                          (t entry-types))))
+                      :files-or-buffers 'current-agenda
+                      :restriction 'agenda-restriction))
 	       
 	       (when org-agenda-include-diary
 	         (let ((org-agenda-search-headline-for-time t))

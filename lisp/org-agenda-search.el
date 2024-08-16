@@ -32,6 +32,7 @@
 (require 'org-tags-core)
 (require 'org-time)
 (require 'org-agenda-sort)
+(require 'org-map)
 
 (defgroup org-agenda-todo-list nil
   "Options concerning the global todo list agenda view."
@@ -581,12 +582,15 @@ to scope it dynamically into the agenda-constructing command.
 A good way to set it is through options in `org-agenda-custom-commands'.")
 
 (defvar org-agenda-archives-mode)
-(defun org-agenda-skip (&optional element)
+(defun org-agenda-skip (&optional element disable-user-skip)
   "Throw to `:skip' in places that should be skipped.
 Also moves point to the end of the skipped region, so that search can
 continue from there.
 
-Optional argument ELEMENT contains element at point."
+Optional argument ELEMENT contains element at point.
+
+When DISABLE-USER-SKIP is non-nil, ignore `org-agenda-skip-function' and
+`org-agenda-skip-function-global."
   (save-match-data
     (when (or
            (if element
@@ -595,7 +599,7 @@ Optional argument ELEMENT contains element at point."
                (goto-char (line-beginning-position))
                (looking-at comment-start-skip)))
 	   (and org-agenda-skip-archived-trees (not org-agenda-archives-mode)
-	        (or (and (save-match-data (org-in-archived-heading-p nil element))
+	        (or (and (org-in-archived-heading-p nil element)
 		         (org-end-of-subtree t element))
 		    (and (member org-archive-tag
                                  (org-element-property :tags (org-element-org-data)))
@@ -603,26 +607,14 @@ Optional argument ELEMENT contains element at point."
 	   (and org-agenda-skip-comment-trees
                 (org-in-commented-heading-p nil element)
 	        (org-end-of-subtree t element))
-           (let ((to (or (org-agenda-skip-eval org-agenda-skip-function-global)
-		         (org-agenda-skip-eval org-agenda-skip-function))))
-             (and to (goto-char to)))
-	   (org-in-src-block-p t element))
+           (org-in-src-block-p t element)
+           (and (not disable-user-skip)
+                (when-let
+                    ((to (save-excursion
+                           (or (org-eval-form org-agenda-skip-function-global)
+		               (org-eval-form org-agenda-skip-function)))))
+                  (goto-char to))))
       (throw :skip t))))
-
-(defun org-agenda-skip-eval (form)
-  "If FORM is a function or a list, call (or eval) it and return the result.
-`save-excursion' and `save-match-data' are wrapped around the call, so point
-and match data are returned to the previous state no matter what these
-functions do."
-  (let (fp)
-    (and form
-	 (or (setq fp (functionp form))
-	     (consp form))
-	 (save-excursion
-	   (save-match-data
-	     (if fp
-		 (funcall form)
-	       (eval form t)))))))
 
 (defun org-agenda-skip-entry-if (&rest conditions)
   "Skip entry if any of CONDITIONS is true.
@@ -757,7 +749,7 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 
 ;;; Searching Org agenda files
 
-(cl-defun org-agenda-map-regexp (regexp func &optional delay-user-skip-function)
+(cl-defun org-agenda-map-regexp (regexp func &optional delay-skip-function)
   "Map FUNC over elements containing REGEXP in current buffer.
 Collect FUNC non-nil return values into the result.
 
@@ -775,31 +767,25 @@ All the places that should not appear in agenda views according to
 and `org-agenda-skip-function'.  In addition, all REGEXP matches
 inside comments and src blocks will be skipped.
 
-When DELAY-USER-SKIP-FUNCTION is non-nil, `org-agenda-skip-function' and
+When DELAY-SKIP-FUNCTION is non-nil, `org-agenda-skip-function' and
 `org-agenda-skip-function-global' will only run after FUNC, when FUNC
 returns non-nil.  If they return non-nil, FUNC result will be discarded."
-  (let (current-node result)
-    (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward regexp nil t)
-        (setq current-node (save-match-data (org-element-at-point)))
-        (catch :skip
-          (if (null delay-user-skip-function)
-              (progn
-                (org-agenda-skip current-node)
-                (push (funcall func current-node) result))
-            (let ((org-agenda-skip-function-global nil)
-                  (org-agenda-skip-function nil))
-              (org-agenda-skip current-node))
-            (when-let* ((pos (point))
-                        (ret (funcall func current-node)))
-              (org-with-point-at pos
-                (when-let ((to (or (org-agenda-skip-eval org-agenda-skip-function-global)
-		                   (org-agenda-skip-eval org-agenda-skip-function))))
-                  (setq pos (max pos to))))
-              (goto-char pos)
-              (push ret result)))))
-      (nreverse (delq nil result)))))
+  (org-map-regexp
+   regexp
+   (lambda (current-node)
+     (let (result)
+       (catch :skip
+         (unless delay-skip-function (org-agenda-skip current-node))
+         (setq result (funcall func current-node))
+         (when (and result delay-skip-function)
+           (let ((res result))
+             ;; Assign result to be nil in case if we need to skip the
+             ;; match.
+             (setq result nil)
+             (org-agenda-skip current-node)
+             ;; Not skipping, keep the result.
+             (setq result res))))
+       result))))
 
 (defun org-agenda-get-day-entries-1 (date &rest args)
   "Does the work for `org-diary' and `org-agenda' in current buffer.
@@ -869,7 +855,8 @@ which kind of entries should be extracted.  For details about these, see
 the documentation of `org-agenda-entry-types'."
   (org-agenda-mapcan-files
    (lambda () (apply #'org-agenda-get-day-entries-1 date args))
-   (list file)))
+   :files-or-buffers file
+   :restriction 'agenda-restriction))
 
 (defun org-agenda-todo-custom-ignore-p (time n)
   "Check whether TIME string is farther away than N number of days.

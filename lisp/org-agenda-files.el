@@ -32,6 +32,7 @@
 (require 'org-mode-common)
 (require 'org-tags-common)
 (require 'org-move)
+(require 'org-map)
 
 ;;; Customizing files managed by Org mode.
 
@@ -514,22 +515,57 @@ The agenda files are the files processed by
     (when org-agenda-file-menu-enabled
       (org-install-agenda-files-menu))))
 
-(defun org-agenda-mapcan-files (collect-function &optional files-or-buffers)
-  "Map COLLECT-FUNCTION on agenda files or FILES-OR-BUFFERS.
-Honor agenda restrictions, if any.
+(cl-defun org-agenda-mapcan-files
+    (collect-function
+     &key
+     (files-or-buffers 'current-agenda)
+     (restriction 'agenda-restriction))
+  "Map COLLECT-FUNCTION over agenda files or FILES-OR-BUFFERS.
 
 COLLECT-FUNCTION will be called with no arguments and its return value
-\\(which must be a list) will be merged via `nconc' into the returned
+\\\\(which must be a list) will be merged via `nconc' into the returned
 list.
 
-The function will be called with current file possibly narrowed
-according to agenda restriction.  The function may throw `:break'
-signal to stop collecting and return the result immediately.
+The function will be called with current file possibily narrowed
+according current agenda restriction.  The function may throw
+`org-map-break' signal to stop collecting and return the result
+immediately.
 
-FILES-OR-BUFFERS can be nil (to use `org-agenda-files'), a file, a
-buffer, or a list of files/buffers.  FILES-OR-BUFFERS may also be a
-function that will be called with 0 arguments.  It must produce the
-list of files/buffers then.
+Optional argument RESTRICTION defines buffer restriction to be used.
+By default (symbol `agenda-restriction'), honor agenda restriction.
+Otherwise, the value can be any restriction accepted by
+`org-with-restriction', which see.
+
+Note: when RESTRICTION is symbol `tree' or symbol `region', and
+multiple files are to be looped over, the point where restriction will
+be applied is undefined.
+
+FILES-OR-BUFFERS can be:
+symbol `current-agenda' (default)
+        Use (org-agenda-files nil \\='ifmode) - all agenda files
+        honording agenda file restriction, possibly adding the
+        archives, if current major mode is `agenda-mode' and
+        `org-agenda-archives-mode' is t.
+symbol `file' or nil
+        The current buffer
+symbol `file-with-archives'
+        The current buffer, and any archives associated with it
+symbol `agenda'
+        All agenda files, honoring agenda file restriction
+symbol `agenda-unrestricted'
+        All agenda files, ignoring agenda file restriction
+symbol `agenda-with-archives'
+        All agenda files with any archive files associated with them,
+        ignoring agenda file restriction
+\"filename\"
+        File to be used
+buffer  Buffer to be used
+\(file1 buffer2 ...)
+        If this is a list, all files/buffers in the list will be
+        scanned
+function
+        A function that will be called with 0 arguments.  It must
+        produce the list of files/buffers then.
 
 If any of the FILES-OR-BUFFERS (or agenda files) is not yet open, it
 will be opened.  If opening fails, an entry \"ORG-AGENDA-ERROR: No
@@ -538,6 +574,15 @@ such org-file <filename>\" will be pushed to the returned list.
 Throw an error if any agenda file is either missing or not in Org
 mode."
   (pcase files-or-buffers
+    (`file
+     (setq files-or-buffers (list (current-buffer))))
+    (`file-with-archives
+     (setq files-or-buffers (org-add-archive-files
+                             (list (buffer-file-name)))))
+    (`current-agenda (setq files-or-buffers (org-agenda-files nil 'ifmode)))
+    (`agenda (setq files-or-buffers (org-agenda-files)))
+    (`agenda-unrestricted (setq files-or-buffers (org-agenda-files t)))
+    (`agenda-with-archives (setq files-or-buffers (org-agenda-files t t)))
     ((or (pred bufferp) (pred stringp))
      (setq files-or-buffers (list files-or-buffers)))
     ((pred listp) nil)
@@ -545,14 +590,15 @@ mode."
      (setq files-or-buffers (funcall files-or-buffers)))
     (_ (error "org-agenda-mapcan-files: Not a file/buffer list %S"
               files-or-buffers)))
-  (let ((org-agenda-files (if files-or-buffers
-                              ;; Just file part
-                              (seq-filter #'stringp files-or-buffers)
-                            org-agenda-files))
+  (let ((org-agenda-files
+         (if files-or-buffers
+             ;; Just file part
+             (seq-filter #'stringp files-or-buffers)
+           org-agenda-files))
         (org-inhibit-startup org-agenda-inhibit-startup)
         (result nil)
         buffer)
-    (catch :break
+    (catch 'org-map-break
       (dolist (file-or-buffer (append
                                (seq-filter #'bufferp files-or-buffers)
                                (org-agenda-files nil 'ifmode)))
@@ -566,6 +612,8 @@ mode."
 		    (error "No such file %s" file-or-buffer))))
 	  (if (not buffer)
 	      ;; If file does not exist, error message to agenda
+              ;; FIXME: Is this really necessary? Does it even ever
+              ;; trigger?
 	      (push (list (format "ORG-AGENDA-ERROR: No such org-file %s"
                                   file-or-buffer))
 	            result)
@@ -573,13 +621,8 @@ mode."
 	      (unless (derived-mode-p 'org-mode)
 	        (error "Agenda file %s is not in Org mode"
                        file-or-buffer))
-	      (save-excursion
-	        (save-restriction
-		  (if (eq buffer org-agenda-restrict)
-		      (narrow-to-region org-agenda-restrict-begin
-				        org-agenda-restrict-end)
-		    (widen))
-		  (push (funcall collect-function) result))))))))
+              (org-with-restriction restriction
+                  (push (funcall collect-function) result)))))))
     (apply #'nconc (nreverse result))))
 
 ;;; User commands to manage Org agenda files

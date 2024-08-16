@@ -612,6 +612,26 @@ Any match of REMOVE-RE will be removed from TXT."
  "Use `org-agenda-format-heading' or `org-agenda-format-line' instead"
  "9.8")
 
+(defun org-agenda-skip-eval (form)
+  "If FORM is a function or a list, call (or eval) it and return the result.
+`save-excursion' and `save-match-data' are wrapped around the call, so point
+and match data are returned to the previous state no matter what these
+functions do."
+  (let (fp)
+    (and form
+	 (or (setq fp (functionp form))
+	     (consp form))
+	 (save-excursion
+	   (save-match-data
+	     (if fp
+		 (funcall form)
+	       (eval form t)))))))
+(make-obsolete
+ 'org-agenda-skip-eval
+ "Use `org-eval-form'instead"
+ "9.8")
+
+;;;; Helpers
 
 (defun org--set-obsolete-regexps-and-options (org-data &optional tags-only)
   "Set obsolete regexp variables in current buffer according to ORG-DATA.

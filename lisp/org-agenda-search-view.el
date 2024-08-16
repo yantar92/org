@@ -265,7 +265,8 @@ is active."
                       (org-agenda-get-regexps
                        regexps+ regexps- hdl-only todo-only
                        org-agenda-search-view-max-outline-level))
-                    files)))
+                    :files-or-buffers files
+                    :restriction 'agenda-restriction)))
          (insert (org-agenda-finalize-entries entries 'search) "\n")))
      :suggested-buffer-name (cons (if todo-only "search-todo" "search") string)
      :block-header (org-agenda--search-block-header string)

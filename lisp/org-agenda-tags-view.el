@@ -79,7 +79,9 @@ The prefix arg TODO-ONLY limits the search to TODO entries."
      (lambda ()
        (when-let ((entries
                    (org-agenda-mapcan-files
-                    (lambda () (org-agenda-get-tags matcher todo-only)))))
+                    (lambda () (org-agenda-get-tags matcher todo-only))
+                    :files-or-buffers 'current-agenda
+                    :restriction 'agenda-restriction)))
          (insert (org-agenda-finalize-entries entries 'tags) "\n")))
      
      :suggested-buffer-name (cons (if todo-only "tags-todo" "tags") match)

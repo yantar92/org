@@ -800,6 +800,18 @@ program is needed for, so that the error message can be more informative."
 	(error "Can't find `%s'%s" cmd
 	       (if use (format " (%s)" use) "")))))
 
+(defun org-eval-form (form &optional bindings &rest args)
+  "If FORM is a function or a list, call (or eval) it and return the result.
+When FORM is a function call it passing ARGS.  When a list, let-bind
+ARGS to BINDINGS (list of variable symbols) and eval FORM.
+If FORM is not a list of a function, return nil."
+  (pcase form
+    ((pred functionp) (apply form args))
+    ((pred consp)
+     (cl-progv bindings args
+       (eval form t)))
+    (_ nil)))
+
 (defun org-display-warning (message)
   "Display the given MESSAGE as a warning."
   (display-warning 'org message :warning))

@@ -31,6 +31,90 @@
 (require 'org-move)
 (require 'org-element)
 
+(defmacro org-with-restriction (scope &rest body)
+  "Evaluate BODY within SCOPE.
+SCOPE can be
+nil or symbol `keep'
+  keep current narrowing
+symbol `buffer'
+  widen the buffer
+symbol `agenda-restriction'
+  agenda restriction, if any, or widen the buffer
+tree
+  current subtree
+region
+  region, adjusted to make sure that the last heading in the region
+  includes its section in full.  When no region is active, keep
+  current buffer narrowing."
+  (declare (indent 2))
+  `(save-restriction
+     (pcase ,scope
+       ((or `nil `keep) ,@body)
+       (`buffer (widen) ,@body)
+       (`agenda-restriction
+        (defvar org-agenda-restrict-begin) ; org-agenda-files.el
+        (defvar org-agenda-restrict-end)   ; org-agenda-files.el
+	(if (eq (current-buffer) (bound-and-true-p org-agenda-restrict))
+	    (narrow-to-region org-agenda-restrict-begin
+			      org-agenda-restrict-end)
+	  (widen))
+	,@body)
+       (`tree
+        (widen)
+        (org-back-to-heading t)
+        (require 'org-narrow)
+        (declare-function org-narrow-to-subtree "org-narrow" (&optional element))
+        (org-narrow-to-subtree)
+        ,@body)
+       (`region
+        (when (use-region-p)
+          (narrow-to-region
+           (region-beginning)
+           (save-excursion
+	     (goto-char (region-end))
+	     (unless (and (bolp) (org-at-heading-p))
+	       (outline-next-heading))
+	     (point))))
+        ,@body)
+       (unknown-scope
+        (error "org-with-restriction: Unknown scope %S" unknown-scope)))))
+
+(cl-defun org-map-regexp (regexp action &key skip-when)
+  "Map FORM over elements containing REGEXP in current buffer.
+Collect non-nil return values into the result.
+
+Honor restriction.
+
+ACTION may be a function or sexp to be evaluated.
+
+ACTION will be called with point at the end of REGEXP match.  The match
+data will be set according to REGEXP match.  ACTION can move point to
+further location to continue searching REGEXP from.
+
+When ACTION is a function, it will be called with a single argument -
+node at point.  Otherwise, dynamically bound variable `node' will hold
+the node at point.
+
+Optional argument SKIP-WHEN is a function or sexp.  It will be called
+before FUNC.  If SKIP-WHEN returns nil, the current match should not be
+skipped.  Otherwise, SKIP-WHEN must return a position from where
+the search should be continued.
+SKIP-WHEN calling convention is the same as for ACTION."
+  (let (current-node result skip-to)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward regexp nil t)
+        (setq current-node (save-match-data (org-element-at-point))
+              skip-to nil)
+        (when skip-when
+          (setq skip-to
+                (save-excursion
+                  (save-match-data
+                    (org-eval-form skip-when '(node) current-node)))))
+        (if skip-to (goto-char skip-to)
+          (push (org-eval-form action '(node) current-node) result)))
+      (nreverse (delq nil result)))))
+
 (defun org-map-tree (fun)
   "Call FUN for every heading underneath the current one."
   (org-back-to-heading t)
