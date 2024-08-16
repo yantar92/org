@@ -394,7 +394,6 @@ See https://list.orgmode.org/20220101200103.GB29829@itccanarias.org/T/#t."
         (should (re-search-forward "Inactive timestamp with time$" nil t))
         (goto-char (point-min))
         (should (re-search-forward "Inactive timestamp inside clock line$" nil t))
-        (message (substring-no-properties (buffer-string)))
         (org-test-agenda--kill-all-agendas))
 
       ;; Skip timestamps when deadline is shown
