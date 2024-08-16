@@ -428,6 +428,7 @@ first entry, and vice-versa."
     (org-refile arg default-buffer rfloc msg)))
 
 (declare-function org-add-log-setup "org-log-note" (&optional purpose state prev-state how extra))
+(declare-function org-mark-ring-push "org-mark-ring" (&optional pos buffer))
 ;;;###autoload
 (defun org-refile (&optional arg default-buffer rfloc msg)
   "Move the entry or entries at point to another heading.
