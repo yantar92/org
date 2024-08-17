@@ -223,6 +223,12 @@ This way, attachments will remain accessible when opening symlinked Org file.
 When no attach dir exists, Org mode will still prefer creating it in
 the "default" directory - where the symlink is located.
 
+*** improved description of how summary types in column definitions for columnview work
+
+Made the manual more explicit about how summary types work for
+non-special and special properties, and when which property's value
+gets updated in the buffer when a columnview is updated.
+
 * Version 9.7
 
 ** Important announcements and breaking changes

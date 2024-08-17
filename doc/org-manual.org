@@ -5734,10 +5734,8 @@ optional.  The individual parts have the following meaning:
 
 - {{{var(SUMMARY-TYPE)}}} ::
 
-  The summary type.  If specified, the column values for parent nodes
-  are computed from the children[fn:: If more than one summary type
-  applies to the same property, the parent values are computed
-  according to the first of them.].
+  The summary type.  If specified, the column and property values for
+  ancestor nodes are computed from their descendants.
 
   Supported summary types are:
 
@@ -5809,6 +5807,39 @@ and for the =Approved= column, by providing an =[X]= status if all
 children have been checked.  The =CLOCKSUM= and =CLOCKSUM_T= columns
 are special, they list the sums of CLOCK intervals in the subtree,
 either for all clocks or just for today.
+
+When using summary types for non-special properties like the
+=Time_Estimate= column in the example, the collection of data for the
+summary in each subtree within scope will start at the furthest
+descendant nodes which have the respective property.  When any of
+their sibling nodes also have the property in question, all the
+siblings' values of the property are used to compute the summary
+result according to the summary type specified.  Then the closest
+ancestor node which also has the respective property is located, and
+the buffer is modified as the value of that node's property is updated
+with the summary result of its descendant nodes.  This process is
+repeated starting from each updated node, until the top of each
+subtree has been reached, and all branches of the subtree have been
+traversed.  Since the property values of ancestor nodes get updated in
+this process, only the furthest descendant nodes which have the
+respective property along each subtree axis will contribute to the
+summary results.
+
+When a non-special property appears more than once in a columns
+definition, and with different summary type specifications (including
+with none), the values of that property present on any ancestor nodes
+will be updated according to the summary type specification (if any)
+of the first instance of the property in the columns definition.
+Hence, when the first occurrence of a property in a columns definition
+has no summary type specification, the property values of ancestor
+nodes will not be updated.
+
+When using summary types with columns for the special properties
+=CLOCKSUM= and =CLOCKSUM_T=, the summary process will be different.
+First, as these are special properties that are not stored in property
+drawers, no updates will be made to any nodes involved.  Secondly, the
+summary value will be computed not just from the furthest descendant
+nodes, but from the special property values of all nodes in a subtree.
 
 *** Using column view
 :PROPERTIES:
