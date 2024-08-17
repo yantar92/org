@@ -5734,10 +5734,8 @@ optional.  The individual parts have the following meaning:
 
 - {{{var(SUMMARY-TYPE)}}} ::
 
-  The summary type.  If specified, the column values for parent nodes
-  are computed from the children[fn:: If more than one summary type
-  applies to the same property, the parent values are computed
-  according to the first of them.].
+  The summary type.  If specified, the column and property values for
+  ancestor nodes are computed from their descendants.
 
   Supported summary types are:
 
@@ -5809,6 +5807,211 @@ and for the =Approved= column, by providing an =[X]= status if all
 children have been checked.  The =CLOCKSUM= and =CLOCKSUM_T= columns
 are special, they list the sums of CLOCK intervals in the subtree,
 either for all clocks or just for today.
+
+When using summary types for non-special properties like the
+=Time_Estimate= column in the example, the collection of data for the
+summary in each subtree within scope will start at the furthest
+descendant nodes which have the respective property.  When any of
+their sibling nodes also have the property in question, all the
+siblings's values of the property are used to compute the summary
+result according to the summary type specified.  Then the closest
+ancestor node which also has the respective property is located, and
+the buffer is modified as the value of that node's property is updated
+with the summary result of its descendant nodes.  This process is
+repeated starting from each updated node, until the top of each
+subtree has been reached, and all branches of the subtree have been
+traversed.  Since the property values of ancestor nodes get updated in
+this process, only the furthest descendant nodes which have the
+respective property along each subtree axis will contribute to the
+summary results.
+
+When a non-special property appears more than once in a columns
+definition, and with different summary type specifications (including
+with none), the values of that property present on any ancestor nodes
+will be updated according to the summary type specification (if any)
+of the first instance of the property in the columns definition.
+Hence, when the first occurrence of a property in a columns definition
+has no summary type specification, the property values of ancestor
+nodes will not be updated.
+
+When using summary types with columns for the special properties
+=CLOCKSUM= and =CLOCKSUM_T=, the summary process will be different.
+First, as these are special properties that are not stored in property
+drawers, no updates will be made to any nodes involved.  Secondly, the
+summary value will be computed not just from the furthest descendant
+nodes, but from the special property values of all nodes in a subtree.
+
+The following example illustrates how special, and non-special
+properties contribute to the summary results, and how the property
+values of the headlines get updated.  Consider the following buffer
+contents (the =#+BEGIN= must be on a single line, and is wrapped here
+for readability only):
+
+#+begin_example
+,#+BEGIN: columnview :indent t :format "%ITEM(Task) \
+          %EFFORT(Estimated Total){:} %EFFORT(Estimated) \
+          %CLOCKSUM(Clocked Total){:} %CLOCKSUM(Clocked)" :id global
+,#+END:
+
+,* Task 1
+:PROPERTIES:
+:EFFORT:   2d
+:END:
+:LOGBOOK:
+CLOCK:  => 48:00
+:END:
+
+,** Task 1.1
+:PROPERTIES:
+:EFFORT:   2d
+:END:
+
+,*** Task 1.1.1
+:PROPERTIES:
+:EFFORT:   3d
+:END:
+:LOGBOOK:
+CLOCK:  => 72:00
+:END:
+
+,*** Task 1.1.2
+:PROPERTIES:
+:EFFORT:   4d
+:END:
+:LOGBOOK:
+CLOCK:  => 96:00
+:END:
+
+,** Task 1.2
+:PROPERTIES:
+:EFFORT:   4d
+:END:
+:LOGBOOK:
+CLOCK:  => 96:00
+:END:
+#+end_example
+
+When the colmnview dynamic block is now updated by {{{kbd(C-c C-c)}}}
+or {{{kbd(C-c C-x C-u)}}} (~org-dblock-update~) with the cursor
+somewhere on the =#+BEGIN= line, the buffer contents shown below will
+result.  Note how the values of the =EFFORT= property of =Task 1= and
+=Task 1.1= were updated to eleven days, and to seven days
+respectively.  Note also, how the =CLOCKSUM= of thirteen days for
+=Task 1= includes the two days which were clocked on the headline
+itself.  Comparing the two estimated, and the two clocksum columns
+with each other in the table shows how the first summary type
+specification determines the summary calculation for a given property.
+
+#+begin_example
+,#+BEGIN: columnview :indent t :format "%ITEM(Task) \
+          %EFFORT(Estimated Total){:} %EFFORT(Estimated) \
+          %CLOCKSUM(Clocked Total){:} %CLOCKSUM(Clocked)" :id global
+| Task             | Estimated Total | Estimated | Clocked Total | Clocked  |
+|------------------+-----------------+-----------+---------------+----------|
+| Task 1           |        11d 0:00 |  11d 0:00 | 13d 0:00      | 13d 0:00 |
+| \_  Task 1.1     |         7d 0:00 |   7d 0:00 | 7d 0:00       | 7d 0:00  |
+| \_    Task 1.1.1 |              3d |        3d | 3d 0:00       | 3d 0:00  |
+| \_    Task 1.1.2 |              4d |        4d | 4d 0:00       | 4d 0:00  |
+| \_  Task 1.2     |              4d |        4d | 4d 0:00       | 4d 0:00  |
+,#+END:
+
+,* Task 1
+:PROPERTIES:
+:EFFORT:   11d 0:00
+:END:
+:LOGBOOK:
+CLOCK:  => 48:00
+:END:
+
+,** Task 1.1
+:PROPERTIES:
+:EFFORT:   7d 0:00
+:END:
+
+,*** Task 1.1.1
+:PROPERTIES:
+:EFFORT:   3d
+:END:
+:LOGBOOK:
+CLOCK:  => 72:00
+:END:
+
+,*** Task 1.1.2
+:PROPERTIES:
+:EFFORT:   4d
+:END:
+:LOGBOOK:
+        CLOCK:  => 96:00
+:END:
+
+,** Task 1.2
+:PROPERTIES:
+:EFFORT:   4d
+:END:
+:LOGBOOK:
+CLOCK:  => 96:00
+:END:
+#+end_example
+
+Starting again from the same initial example buffer content, but with
+a modified =#+BEGIN= line that swaps the order of the two estimated,
+and the two clocksum columns, the result of updating the columnview
+dynamic block will be as shown below.  Note the different results in
+the estimated column without a summary type.  Also note that the
+=EFFORT= properties of the =Task 1= and =Task 1.1= headlines were not
+updated in this case, because the first column specification for the
+=EFFORT= property has no summary type.
+
+#+begin_example
+,#+BEGIN: columnview :indent t :format "%ITEM(Task) \
+          %EFFORT(Estimated) %EFFORT(Estimated Total){:} \
+          %CLOCKSUM(Clocked) %CLOCKSUM(Clocked Total){:}" :id global
+| Task             | Estimated | Estimated Total | Clocked  | Clocked Total |
+|------------------+-----------+-----------------+----------+---------------|
+| Task 1           |        2d |        11d 0:00 | 13d 0:00 | 13d 0:00      |
+| \_  Task 1.1     |        2d |         7d 0:00 | 7d 0:00  | 7d 0:00       |
+| \_    Task 1.1.1 |        3d |              3d | 3d 0:00  | 3d 0:00       |
+| \_    Task 1.1.2 |        4d |              4d | 4d 0:00  | 4d 0:00       |
+| \_  Task 1.2     |        4d |              4d | 4d 0:00  | 4d 0:00       |
+,#+END:
+
+,* Task 1
+:PROPERTIES:
+:EFFORT:   2d
+:END:
+:LOGBOOK:
+CLOCK:  => 48:00
+:END:
+
+,** Task 1.1
+:PROPERTIES:
+:EFFORT:   2d
+:END:
+
+,*** Task 1.1.1
+:PROPERTIES:
+:EFFORT:   3d
+:END:
+:LOGBOOK:
+CLOCK:  => 72:00
+:END:
+
+,*** Task 1.1.2
+:PROPERTIES:
+:EFFORT:   4d
+:END:
+:LOGBOOK:
+CLOCK:  => 96:00
+:END:
+
+,** Task 1.2
+:PROPERTIES:
+:EFFORT:   4d
+:END:
+:LOGBOOK:
+CLOCK:  => 96:00
+:END:
+#+end_example
 
 *** Using column view
 :PROPERTIES:
