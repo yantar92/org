@@ -1025,10 +1025,9 @@ When non-nil, it should be a string definining which keywords to choose:
             el)
          ;; Continue searching from next heading/subtree.
          (goto-char
-          (if org-agenda-todo-list-sublevels
-              (or (org-element-end (org-element-current-section el))
-                  (org-element-end el))
-            (org-element-end el)))))
+          (or (and org-agenda-todo-list-sublevels
+                   (org-element-end (org-element-current-section el)))
+              (org-element-end el)))))
      'delay-user-skip)))
 
 (defun org-agenda-get-todos (&optional selector)
