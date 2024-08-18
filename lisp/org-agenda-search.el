@@ -749,16 +749,17 @@ a list of TODO keywords, or a state symbol `todo' or `done' or
 
 ;;; Searching Org agenda files
 
-(cl-defun org-agenda-map-regexp (regexp func &optional delay-skip-function)
-  "Map FUNC over elements containing REGEXP in current buffer.
-Collect FUNC non-nil return values into the result.
+(cl-defun org-agenda-map-regexp (regexp action &optional delay-skip-function)
+  "Map ACTION over elements containing REGEXP in current buffer.
+Collect ACTION non-nil return values into the result.
 
 Honor restriction.
 
-FUNC must be a function that will be called on with point at the end
-of REGEXP match with a single argument - node at point.  The match
-data will be set according to REGEXP match.  FUNC can move point to
-further location to continue searching REGEXP from.
+ACTION is a function or sexp that will be called with point at the end
+of the match.  When function, it will be called with a single argument
+- node at point.  Otherwise, node at point will be dynamically bound
+to `node' variable.  ACTION can move point to further location to
+continue searching REGEXP from.
 
 All the places that should not appear in agenda views according to
 `org-agenda-skip' will be unconditionally ignored.  See
@@ -776,7 +777,7 @@ returns non-nil.  If they return non-nil, FUNC result will be discarded."
      (let (result)
        (catch :skip
          (unless delay-skip-function (org-agenda-skip current-node))
-         (setq result (funcall func current-node))
+         (setq result (org-eval-form action '(node) current-node))
          (when (and result delay-skip-function)
            (let ((res result))
              ;; Assign result to be nil in case if we need to skip the
