@@ -82,6 +82,13 @@
 (declare-function org-src-source-type "org-src" ())
 (declare-function org-time-stamp-format "org" (&optional long inactive))
 (declare-function outline-next-heading "outline" ())
+(declare-function image-flush "image" (spec &optional frame))
+(declare-function org-entry-end-position "org" ())
+(declare-function org-element-contents-begin "org-element" (node))
+(declare-function org-attach-expand "org-attach" (file))
+(declare-function org-display-inline-image--width "org" (link))
+(declare-function org-image--align "org" (link))
+(declare-function org--create-inline-image "org" (file width))
 
 
 ;;; Customization
@@ -170,6 +177,14 @@ link.
   function takes one argument, which is the path.
 
   The default face is `org-link'.
+
+`:preview'
+
+  Function to run when generating an in-buffer preview for the
+  link.  It must accept three arguments:
+  - an overlay placed from the start to the end of the link.
+  - the link type, as a string.
+  - the path, as a string.
 
 `:help-echo'
 
@@ -649,6 +664,13 @@ exact and fuzzy text search.")
 (defvar org-link--search-failed nil
   "Non-nil when last link search failed.")
 
+(defvar-local org-link-preview-overlays nil)
+;; Preserve when switching modes or when restarting Org.
+;; If we clear the overlay list and later enable Or mode, the existing
+;; image overlays will never be cleared by `org-link-preview'
+;; and `org-link-preview-clear'.
+(put 'org-link-preview-overlays 'permanent-local t)
+
 
 ;;; Internal Functions
 
@@ -880,6 +902,28 @@ Return t when a link has been stored in `org-link-store-props'."
          (setq link (format "%s::%s" link search-string))
          (setq desc search-desc))))
     (cons link desc)))
+
+(defun org-link-preview--get-overlays (&optional beg end)
+  "Return link preview overlays between BEG and END."
+  (let* ((beg (or beg (point-min)))
+         (end (or end (point-max)))
+         (overlays (overlays-in beg end))
+         result)
+    (dolist (ov overlays result)
+      (when (memq ov org-link-preview-overlays)
+        (push ov result)))))
+
+(defun org-link-preview--remove-overlay (ov after _beg _end &optional _len)
+  "Remove link-preview overlay OV if a corresponding region is modified.
+
+AFTER is true when this function is called post-change."
+  (when (and ov after)
+    (setq org-link-preview-overlays (delete ov org-link-preview-overlays))
+    ;; Clear image from cache to avoid image not updating upon
+    ;; changing on disk.  See Emacs bug#59902.
+    (when (overlay-get ov 'org-image-overlay)
+      (image-flush (overlay-get ov 'display)))
+    (delete-overlay ov)))
 
 
 ;;; Public API
@@ -1573,6 +1617,195 @@ If there is no description, use the link target."
   (unless (equal (substring s -1) ">") (setq s (concat s ">")))
   s)
 
+;;;###autoload
+(defun org-link-preview (&optional arg beg end)
+  "Toggle display of link previews in the buffer.
+
+When region BEG..END is active, preview links in the
+region.
+
+When point is at a link, display a preview for that link only.
+Otherwise, display previews for links in current entry.
+
+With numeric prefix ARG 1, preview links with description as
+well.
+
+With prefix ARG `\\[universal-argument]', clear link previews at
+point or in the current entry.
+
+With prefix ARG `\\[universal-argument] \\[universal-argument]',
+ display link previews in the accessible portion of the
+ buffer.  With numeric prefix ARG 11, do the same, but include
+ links with descriptions.
+
+With prefix ARG `\\[universal-argument] \\[universal-argument] \\[universal-argument]',
+hide all link previews in the accessible portion of the buffer.
+
+This command is designed for interactive use.  From Elisp, you can
+also use `org-link-preview-region'."
+  (interactive (cons current-prefix-arg
+                     (when (use-region-p)
+                       (list (region-beginning) (region-end)))))
+  (let* ((include-linked
+          (cond
+           ((member arg '(nil (4) (16)) ) nil)
+           ((member arg '(1 11)) 'include-linked)
+           (t 'include-linked)))
+         (interactive? (called-interactively-p 'any))
+         (toggle-images
+          (lambda (&optional beg end scope remove)
+            (let* ((beg (or beg (point-min)))
+                   (end (or end (point-max)))
+                   (old (org-link-preview--get-overlays beg end))
+                   (scope (or scope (format "%d:%d" beg end))))
+              (if remove
+                  (progn
+                    (org-link-preview-clear beg end)
+                    (when interactive?
+                      (message
+                       "[%s] Inline link previews turned off (removed %d images)"
+                       scope (length old))))
+	        (org-link-preview-region include-linked t beg end)
+                (when interactive?
+                  (let ((new (org-link-preview--get-overlays beg end)))
+                    (message
+                     (if new
+		         (format "[%s] %d images displayed inline %s"
+			         scope (length new)
+                                 (if include-linked "(including images with description)"
+                                   ""))
+		       (format "[%s] No images to display inline" scope))))))))))
+    (cond
+     ((not (display-graphic-p))
+      (message "Your Emacs does not support displaying images!"))
+     ;; Region selected :: display previews in region.
+     ((and beg end)
+      (funcall toggle-images beg end "region"
+               (and (equal arg '(4)) 'remove)))
+     ;; C-u argument: clear image at point or in entry
+     ((equal arg '(4))
+      (if (get-char-property (point) 'org-image-overlay)
+          ;; clear link preview at point
+          (when-let ((context (org-element-context))
+                     ((org-element-type-p context 'link)))
+            (funcall toggle-images
+                     (org-element-begin context)
+                     (org-element-end context)
+                     "preview at point" 'remove))
+        ;; Clear link previews in entry
+        (funcall toggle-images
+                 (if (org-before-first-heading-p) (point-min)
+                   (save-excursion
+                     (org-with-limited-levels (org-back-to-heading t) (point))))
+                 (org-with-limited-levels (org-entry-end-position))
+                 "current section" 'remove)))
+     ;; C-u C-u or C-11 argument :: display images in the whole buffer.
+     ((member arg '(11 (16))) (funcall toggle-images nil nil "buffer"))
+     ;; C-u C-u C-u argument :: unconditionally hide images in the buffer.
+     ((equal arg '(64)) (funcall toggle-images nil nil "buffer" 'remove))
+     ;; Argument nil or 1, no region selected :: display images in
+     ;; current section or image link at point.
+     ((and (member arg '(nil 1)) (null beg) (null end))
+      (let ((context (org-element-context)))
+        ;; toggle display of inline image link at point.
+        (if (org-element-type-p context 'link)
+            (let* ((ov (cdr-safe (get-char-property-and-overlay
+                                  (point) 'org-image-overlay)))
+                   (remove? (and ov (memq ov org-link-preview-overlays)
+                                 'remove)))
+              (funcall toggle-images
+                       (org-element-begin context)
+                       (org-element-end context)
+                       "image at point" remove?))
+          (let ((beg (if (org-before-first-heading-p) (point-min)
+	               (save-excursion
+	                 (org-with-limited-levels (org-back-to-heading t) (point)))))
+                (end (org-with-limited-levels (org-entry-end-position))))
+            (funcall toggle-images beg end "current section")))))
+     ;; Any other non-nil argument.
+     ((not (null arg)) (funcall toggle-images beg end "region")))))
+
+(defun org-link-preview-region (&optional include-linked refresh beg end)
+  "Display link previews.
+
+A previewable link type is one that has a `:preview' link
+parameter, see `org-link-parameters'.
+
+By default, a file link or attachment is previewable if it
+follows either of these conventions:
+
+  1. Its path is a file with an extension matching return value
+     from `image-file-name-regexp' and it has no contents.
+
+  2. Its description consists in a single link of the previous
+     type.  In this case, that link must be a well-formed plain
+     or angle link, i.e., it must have an explicit \"file\" or
+     \"attachment\" type.
+
+File links are equipped with the keymap `image-map'.
+
+When optional argument INCLUDE-LINKED is non-nil, links with a
+text description part will also be inlined.  This can be nice for
+a quick look at those images, but it does not reflect what
+exported files will look like.
+
+When optional argument REFRESH is non-nil, refresh existing
+images between BEG and END.  This will create new image displays
+only if necessary.
+
+BEG and END define the considered part.  They default to the
+buffer boundaries with possible narrowing."
+  (interactive "P")
+  (when (display-graphic-p)
+    (when refresh (org-link-preview-clear beg end))
+    (when (fboundp 'clear-image-cache) (clear-image-cache)))
+  (org-with-point-at (or beg (point-min))
+    (let ((case-fold-search t))
+      (while (re-search-forward org-link-any-re end t)
+        (when-let* ((link (org-element-lineage
+                           (save-match-data (org-element-context))
+                           'link t))
+                    (linktype (org-element-property :type link))
+                    (preview-func (org-link-get-parameter linktype :preview))
+                    (path (and (or include-linked
+                                   (not (org-element-contents-begin link)))
+                               (org-element-property :path link))))
+          ;; Create an overlay to hold the preview
+          (let ((ov (make-overlay
+                     (org-element-begin link)
+                     (progn
+		       (goto-char
+			(org-element-end link))
+		       (unless (eolp) (skip-chars-backward " \t"))
+		       (point)))))
+            ;; TODO: Change this overlay property to `org-link-preview' everywhere.
+            (overlay-put ov 'org-image-overlay t)
+            (overlay-put ov 'modification-hooks
+                         (list 'org-link-preview--remove-overlay))
+            ;; call preview function for link type
+            (funcall preview-func ov linktype path)
+            ;; If overlay still exists, add it to the list
+            (when (overlay-buffer ov)
+              (push ov org-link-preview-overlays))))))))
+
+(defun org-link-preview-clear (&optional beg end)
+  "Clear link previews in region BEG to END."
+  (interactive (and (use-region-p) (list (region-beginning) (region-end))))
+  (let* ((beg (or beg (point-min)))
+         (end (or end (point-max)))
+         (overlays (overlays-in beg end)))
+    (dolist (ov overlays)
+      (when (memq ov org-link-preview-overlays)
+        (when-let ((image (overlay-get ov 'display))
+                   ((imagep image)))
+          (image-flush image))
+        (setq org-link-preview-overlays (delq ov org-link-preview-overlays))
+        (delete-overlay ov)))
+    ;; Clear removed overlays.
+    (dolist (ov org-link-preview-overlays)
+      (unless (overlay-buffer ov)
+        (setq org-link-preview-overlays (delq ov org-link-preview-overlays))))))
+
 
 ;;; Built-in link types
 
@@ -1595,7 +1828,62 @@ PATH is the sexp to evaluate, as a string."
 (org-link-set-parameters "elisp" :follow #'org-link--open-elisp)
 
 ;;;; "file" link type
-(org-link-set-parameters "file" :complete #'org-link-complete-file)
+(org-link-set-parameters "file"
+                         :complete #'org-link-complete-file
+                         :preview #'org-link-preview-file)
+
+(defun org-link-preview-file (ov linktype path)
+  "Display image file PATH in overlay OV.
+
+LINKTYPE is the Org link type used to preview PATH, either
+\"file\" or \"attachment\".
+
+Equip each image with the keymap `image-map'.
+
+This is intended to be used as the `:preview' link property of
+file links, see `org-link-parameters'."
+  (if-let ((file-full
+            (if (equal "attachment" linktype)
+		(progn
+                  (require 'org-attach)
+		  (ignore-errors (org-attach-expand path)))
+              (expand-file-name path)))
+           (file (substitute-in-file-name file-full))
+           ((string-match-p (image-file-name-regexp) file))
+           ((file-exists-p file)))
+      (let* ((link (org-element-lineage
+		    (save-excursion
+                      (goto-char (overlay-start ov))
+                      (save-match-data (org-element-context)))
+		    'link t))
+             (width (org-display-inline-image--width link))
+	     (align (org-image--align link))
+             (image (org--create-inline-image file width)))
+	(if (not image)
+            ;; Image not available, clean up overlay
+            (delete-overlay ov)
+          ;; Add image to overlay:
+
+	  ;; See bug#59902.  We cannot rely
+          ;; on Emacs to update image if the file
+          ;; has changed.
+          (image-flush image)
+	  (overlay-put ov 'display image)
+	  (overlay-put ov 'face 'default)
+	  (overlay-put ov 'org-image-overlay t)
+	  (when (boundp 'image-map)
+	    (overlay-put ov 'keymap image-map))
+          (when align
+            (overlay-put
+             ov 'before-string
+             (propertize
+              " " 'face 'default
+              'display
+              (pcase align
+                ("center" `(space :align-to (- center (0.5 . ,image))))
+                ("right"  `(space :align-to (- right ,image)))))))))
+    ;; file or image not available, clean up overlay
+    (delete-overlay ov)))
 
 ;;;; "help" link type
 (defun org-link--open-help (path _)

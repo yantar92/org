@@ -40,14 +40,14 @@
 (declare-function org-element-post-affiliated "org-element" (node))
 (declare-function org-element-lineage "org-element-ast" (datum &optional types with-self))
 (declare-function org-element-at-point "org-element" (&optional pom cached-only))
-(declare-function org-display-inline-images "org" (&optional include-linked refresh beg end))
+(declare-function org-link-preview-region "ol" (&optional include-linked refresh beg end))
 (declare-function org-get-tags "org" (&optional pos local fontify))
 (declare-function org-subtree-end-visible-p "org" ())
 (declare-function org-narrow-to-subtree "org" (&optional element))
 (declare-function org-next-visible-heading "org" (arg))
 (declare-function org-at-property-p "org" ())
 (declare-function org-re-property "org" (property &optional literal allow-null value))
-(declare-function org-remove-inline-images "org" (&optional beg end))
+(declare-function org-link-preview-clear "ol" (&optional beg end))
 (declare-function org-item-beginning-re "org" ())
 (declare-function org-at-heading-p "org" (&optional invisible-not-ok))
 (declare-function org-at-item-p "org" ())
@@ -817,19 +817,19 @@ symbols `content', `all', `folded', `children', or `subtree'."
         ;; If has nested headlines, beg,end only from parent headline
         ;; to first child headline which reference to upper
         ;; let-binding `org-next-visible-heading'.
-        (org-display-inline-images
+        (org-link-preview-region
          nil nil
          (point-min) (progn (org-next-visible-heading 1) (point)))))
       ('subtree
        (org-with-wide-buffer
         (org-narrow-to-subtree)
         ;; If has nested headlines, also inline display images under all sub-headlines.
-        (org-display-inline-images nil nil (point-min) (point-max))))
+        (org-link-preview-region nil nil (point-min) (point-max))))
       ('folded
        (org-with-wide-buffer
         (org-narrow-to-subtree)
         (if (numberp (point-max))
-            (org-remove-inline-images (point-min) (point-max))
+            (org-link-preview-clear (point-min) (point-max))
           (ignore)))))))
 
 (provide 'org-cycle)

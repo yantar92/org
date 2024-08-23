@@ -797,9 +797,11 @@ It is meant to be added to `org-export-before-parsing-hook'."
 See `org-open-file' for details about ARG."
   (org-link-open-as-file (org-attach-expand file) arg))
 
+(declare-function org-link-preview-file "org-link-preview")
 (org-link-set-parameters "attachment"
 			 :follow #'org-attach-follow
-                         :complete #'org-attach-complete-link)
+                         :complete #'org-attach-complete-link
+                         :preview #'org-link-preview-file)
 
 (defun org-attach-complete-link ()
   "Advise the user with the available files in the attachment directory."

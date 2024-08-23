@@ -5079,7 +5079,7 @@ The following commands are available:
     ;; modifications to make cache updates work reliably.
     (org-unmodified
      (when org-startup-with-beamer-mode (org-beamer-mode))
-     (when org-startup-with-inline-images (org-display-inline-images))
+     (when org-startup-with-inline-images (org-link-preview '(16)))
      (when org-startup-with-latex-preview (org-latex-preview '(16)))
      (unless org-inhibit-startup-visibility-stuff (org-cycle-set-startup-visibility))
      (when org-startup-truncated (setq truncate-lines t))
@@ -16651,126 +16651,6 @@ SNIPPETS-P indicates if this is run to create snippet images for HTML."
 
 ;; Image display
 
-(defvar-local org-inline-image-overlays nil)
-;; Preserve when switching modes or when restarting Org.
-;; If we clear the overlay list and later enable Or mode, the existing
-;; image overlays will never be cleared by `org-toggle-inline-images'
-;; and `org-toggle-inline-images-command'.
-(put 'org-inline-image-overlays 'permanent-local t)
-
-(defun org--inline-image-overlays (&optional beg end)
-  "Return image overlays between BEG and END."
-  (let* ((beg (or beg (point-min)))
-         (end (or end (point-max)))
-         (overlays (overlays-in beg end))
-         result)
-    (dolist (ov overlays result)
-      (when (memq ov org-inline-image-overlays)
-        (push ov result)))))
-
-(defun org-toggle-inline-images-command (&optional arg beg end)
-  "Toggle display of inline images without description at point.
-
-When point is at an image link, toggle displaying that image.
-Otherwise, toggle displaying images in current entry.
-
-When region BEG..END is active, toggle displaying images in the
-region.
-
-With numeric prefix ARG 1, display images with description as well.
-
-With prefix ARG `\\[universal-argument]', toggle displaying images in
-the accessible portion of the buffer.  With numeric prefix ARG 11, do
-the same, but include images with description.
-
-With prefix ARG `\\[universal-argument] \\[universal-argument]', hide
-all the images in accessible portion of the buffer.
-
-This command is designed for interactive use.  From Elisp, you can
-also use `org-toggle-inline-images'."
-  (interactive (cons current-prefix-arg
-                     (when (use-region-p)
-                       (list (region-beginning) (region-end)))))
-  (let* ((include-linked
-          (cond
-           ((member arg '(nil (4) (16)) ) nil)
-           ((member arg '(1 11)) 'include-linked)
-           (t 'include-linked)))
-         (interactive? (called-interactively-p 'any))
-         (toggle-images
-          (lambda (&optional beg end scope force-remove)
-            (let* ((beg (or beg (point-min)))
-                   (end (or end (point-max)))
-                   (old (org--inline-image-overlays beg end))
-                   (scope (or scope (format "%d:%d" beg end))))
-              (if (or old force-remove)
-                  (progn
-                    (org-remove-inline-images beg end)
-                    (when interactive?
-                      (message
-                       "[%s] Inline image display turned off (removed %d images)"
-                       scope (length old))))
-	        (org-display-inline-images include-linked t beg end)
-                (when interactive?
-                  (let ((new (org--inline-image-overlays beg end)))
-                    (message
-                     (if new
-		         (format "[%s] %d images displayed inline %s"
-			         scope (length new)
-                                 (if include-linked "(including images with description)"
-                                   ""))
-		       (format "[%s] No images to display inline" scope))))))))))
-    (cond
-     ((not (display-graphic-p))
-      (message "Your Emacs does not support displaying images!"))
-     ;; Region selected :: toggle images in region.
-     ((and beg end) (funcall toggle-images beg end "region"))
-     ;; C-u or C-11 argument :: toggle images in the whole buffer.
-     ((member arg '(11 (4))) (funcall toggle-images nil nil "buffer"))
-     ;; C-u C-u argument :: unconditionally hide images in the buffer.
-     ((equal arg '(16)) (funcall toggle-images nil nil "buffer" 'remove))
-     ;; Argument nil or 1, no region selected :: toggle (display or hide
-     ;; dwim) images in current section or image link at point.
-     ((and (member arg '(nil 1)) (null beg) (null end))
-      (let ((context (org-element-context)))
-        ;; toggle display of inline image link at point.
-        (if (org-element-type-p context 'link)
-            (funcall toggle-images
-                     (org-element-begin context)
-                     (org-element-end context)
-                     "image at point")
-          (let ((beg (if (org-before-first-heading-p) (point-min)
-	               (save-excursion
-	                 (org-with-limited-levels (org-back-to-heading t) (point)))))
-                (end (org-with-limited-levels (org-entry-end-position))))
-            (funcall toggle-images beg end "current section")))))
-     ;; Any other non-nil argument.
-     ((not (null arg)) (funcall toggle-images beg end "region")))))
-
-(defun org-toggle-inline-images (&optional include-linked beg end)
-  "Toggle the display of inline images.
-INCLUDE-LINKED is passed to `org-display-inline-images'."
-  (interactive "P")
-  (if (org--inline-image-overlays beg end)
-      (progn
-        (org-remove-inline-images beg end)
-        (when (called-interactively-p 'interactive)
-	  (message "Inline image display turned off")))
-    (org-display-inline-images include-linked nil beg end)
-    (when (called-interactively-p 'interactive)
-      (let ((new (org--inline-image-overlays beg end)))
-        (message (if new
-		     (format "%d images displayed inline"
-			     (length new))
-		   "No images to display inline"))))))
-
-(defun org-redisplay-inline-images ()
-  "Assure display of inline images and refresh them."
-  (interactive)
-  (org-toggle-inline-images)
-  (unless org-inline-image-overlays
-    (org-toggle-inline-images)))
-
 ;; For without-x builds.
 (declare-function image-flush "image" (spec &optional frame))
 
@@ -16793,7 +16673,7 @@ cache       Display remote images, and open them in separate buffers
   :safe #'symbolp)
 
 (defcustom org-image-align 'left
-  "How to align images previewed using `org-display-inline-images'.
+  "How to align images previewed using `org-link-preview-region'.
 
 Only stand-alone image links are affected by this setting.  These
 are links without surrounding text.
@@ -16849,139 +16729,6 @@ according to the value of `org-display-remote-inline-images'."
                       (_ (error "Unsupported value of `org-image-max-width': %S"
                                 org-image-max-width)))
                     :scale 1))))
-
-(defun org-display-inline-images (&optional include-linked refresh beg end)
-  "Display inline images.
-
-An inline image is a link which follows either of these
-conventions:
-
-  1. Its path is a file with an extension matching return value
-     from `image-file-name-regexp' and it has no contents.
-
-  2. Its description consists in a single link of the previous
-     type.  In this case, that link must be a well-formed plain
-     or angle link, i.e., it must have an explicit \"file\" or
-     \"attachment\" type.
-
-Equip each image with the key-map `image-map'.
-
-When optional argument INCLUDE-LINKED is non-nil, also links with
-a text description part will be inlined.  This can be nice for
-a quick look at those images, but it does not reflect what
-exported files will look like.
-
-When optional argument REFRESH is non-nil, refresh existing
-images between BEG and END.  This will create new image displays
-only if necessary.
-
-BEG and END define the considered part.  They default to the
-buffer boundaries with possible narrowing."
-  (interactive "P")
-  (when (display-graphic-p)
-    (when refresh
-      (org-remove-inline-images beg end)
-      (when (fboundp 'clear-image-cache) (clear-image-cache)))
-    (let ((end (or end (point-max))))
-      (org-with-point-at (or beg (point-min))
-	(let* ((case-fold-search t)
-	       (file-extension-re (image-file-name-regexp))
-	       (link-abbrevs (mapcar #'car
-				     (append org-link-abbrev-alist-local
-					     org-link-abbrev-alist)))
-	       ;; Check absolute, relative file names and explicit
-	       ;; "file:" links.  Also check link abbreviations since
-	       ;; some might expand to "file" links.
-	       (file-types-re
-		(format "\\[\\[\\(?:file%s:\\|attachment:\\|[./~]\\)\\|\\]\\[\\(<?\\(?:file\\|attachment\\):\\)"
-			(if (not link-abbrevs) ""
-			  (concat "\\|" (regexp-opt link-abbrevs))))))
-	  (while (re-search-forward file-types-re end t)
-	    (let* ((link (org-element-lineage
-			  (save-match-data (org-element-context))
-			  'link t))
-                   (linktype (org-element-property :type link))
-		   (inner-start (match-beginning 1))
-		   (path
-		    (cond
-		     ;; No link at point; no inline image.
-		     ((not link) nil)
-		     ;; File link without a description.  Also handle
-		     ;; INCLUDE-LINKED here since it should have
-		     ;; precedence over the next case.  I.e., if link
-		     ;; contains filenames in both the path and the
-		     ;; description, prioritize the path only when
-		     ;; INCLUDE-LINKED is non-nil.
-		     ((or (not (org-element-contents-begin link))
-			  include-linked)
-		      (and (or (equal "file" linktype)
-                               (equal "attachment" linktype))
-			   (org-element-property :path link)))
-		     ;; Link with a description.  Check if description
-		     ;; is a filename.  Even if Org doesn't have syntax
-		     ;; for those -- clickable image -- constructs, fake
-		     ;; them, as in `org-export-insert-image-links'.
-		     ((not inner-start) nil)
-		     (t
-		      (org-with-point-at inner-start
-			(and (looking-at
-			      (if (char-equal ?< (char-after inner-start))
-				  org-link-angle-re
-				org-link-plain-re))
-			     ;; File name must fill the whole
-			     ;; description.
-			     (= (org-element-contents-end link)
-				(match-end 0))
-			     (progn
-                               (setq linktype (match-string 1))
-                               (match-string 2))))))))
-	      (when (and path (string-match-p file-extension-re path))
-		(let ((file (if (equal "attachment" linktype)
-				(progn
-                                  (require 'org-attach)
-				  (ignore-errors (org-attach-expand path)))
-                              (expand-file-name path))))
-                  ;; Expand environment variables.
-                  (when file (setq file (substitute-in-file-name file)))
-		  (when (and file (file-exists-p file))
-		    (let ((width (org-display-inline-image--width link))
-			  (align (org-image--align link))
-                          (old (get-char-property-and-overlay
-				(org-element-begin link)
-				'org-image-overlay)))
-		      (if (and (car-safe old) refresh)
-                          (image-flush (overlay-get (cdr old) 'display))
-			(let ((image (org--create-inline-image file width)))
-			  (when image
-			    (let ((ov (make-overlay
-				       (org-element-begin link)
-				       (progn
-					 (goto-char
-					  (org-element-end link))
-					 (unless (eolp) (skip-chars-backward " \t"))
-					 (point)))))
-                              ;; See bug#59902.  We cannot rely
-                              ;; on Emacs to update image if the file
-                              ;; has changed.
-                              (image-flush image)
-			      (overlay-put ov 'display image)
-			      (overlay-put ov 'face 'default)
-			      (overlay-put ov 'org-image-overlay t)
-			      (overlay-put
-			       ov 'modification-hooks
-			       (list 'org-display-inline-remove-overlay))
-			      (when (boundp 'image-map)
-				(overlay-put ov 'keymap image-map))
-                              (when align
-                                (overlay-put
-                                 ov 'before-string
-                                 (propertize
-                                  " " 'face 'default
-                                  'display
-                                  (pcase align
-                                    ("center" `(space :align-to (- center (0.5 . ,image))))
-                                    ("right"  `(space :align-to (- right ,image)))))))
-			      (push ov org-inline-image-overlays))))))))))))))))
 
 (declare-function org-export-read-attribute "ox"
                   (attribute element &optional property))
@@ -17134,32 +16881,6 @@ implies no special alignment."
             ;; No image-specific keyword, check global alignment property
             (when (memq org-image-align '(center right))
               (symbol-name org-image-align))))))))
-
-
-(defun org-display-inline-remove-overlay (ov after _beg _end &optional _len)
-  "Remove inline-display overlay if a corresponding region is modified."
-  (when (and ov after)
-    (setq org-inline-image-overlays (delete ov org-inline-image-overlays))
-    ;; Clear image from cache to avoid image not updating upon
-    ;; changing on disk.  See Emacs bug#59902.
-    (when (overlay-get ov 'org-image-overlay)
-      (image-flush (overlay-get ov 'display)))
-    (delete-overlay ov)))
-
-(defun org-remove-inline-images (&optional beg end)
-  "Remove inline display of images."
-  (interactive)
-  (let* ((beg (or beg (point-min)))
-         (end (or end (point-max)))
-         (overlays (overlays-in beg end)))
-    (dolist (ov overlays)
-      (when (memq ov org-inline-image-overlays)
-        (setq org-inline-image-overlays (delq ov org-inline-image-overlays))
-        (delete-overlay ov)))
-    ;; Clear removed overlays.
-    (dolist (ov org-inline-image-overlays)
-      (unless (overlay-buffer ov)
-        (setq org-inline-image-overlays (delq ov org-inline-image-overlays))))))
 
 (defvar org-self-insert-command-undo-counter 0)
 (defvar org-speed-command nil)
