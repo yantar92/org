@@ -1745,7 +1745,10 @@ The template may still contain \"%?\" for cursor positioning.
 INITIAL content and/or ANNOTATION may be specified, but will be overridden
 by their respective `org-store-link-plist' properties if present.
 
-Expansion occurs in a temporary Org mode buffer."
+Expansion occurs in a temporary Org mode buffer that will be displayed
+if the template expansion triggers user prompt.  Beware that displaying
+the temporary buffer may alter point position in the already displayed
+buffers."
   (let* ((template (or template (org-capture-get :template)))
 	 (buffer (org-capture-get :buffer))
 	 (file (buffer-file-name (or (buffer-base-buffer buffer) buffer)))
