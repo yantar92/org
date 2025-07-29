@@ -161,6 +161,12 @@ Previously, the whole contents of drawer, including blank lines at the beginning
 parsed as paragraph.  Now, the blank lines at the beginning are stored in ~:pre-blank~
 property, just as in other greater elements.
 
+*** The deprecated =show= parameter to =org-priority= has been removed
+
+The =show= parameter for the =org-priority= function was deprecated in
+Org 9.2 (released in 2017). Sufficient time has passed and it is being
+removed as part of refactoring for numeric priorities.
+
 ** New features
 
 # We list the most important features, and the features that may

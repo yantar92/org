@@ -11313,7 +11313,7 @@ This regular expression matches these groups:
   (interactive)
   (org-priority 'down))
 
-(defun org-priority (&optional action show)
+(defun org-priority (&optional action)
   "Change the priority of an item.
 
 When called interactively with a `\\[universal-argument]' prefix,
@@ -11322,10 +11322,6 @@ show the priority in the minibuffer instead of changing it.
 When called programmatically, ACTION can be `set', `up', `down',
 or a character."
   (interactive "P")
-  (when show
-    ;; Deprecation warning inserted for Org 9.2; once enough time has
-    ;; passed the SHOW argument should be removed.
-    (warn "`org-priority' called with deprecated SHOW argument"))
   (if (equal action '(4))
       (org-priority-show)
     (unless org-priority-enable-commands
