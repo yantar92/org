@@ -2428,7 +2428,6 @@ set a priority."
   :type 'boolean)
 
 (defvaralias 'org-highest-priority 'org-priority-highest)
-
 (defcustom org-priority-highest ?A
   "The highest priority of TODO items.
 
@@ -2446,9 +2445,8 @@ smaller than `org-priority-lowest': for example, if \"A\" is the
 highest priority, it is smaller than the lowest \"C\" priority:
 65 < 67."
   :group 'org-priorities
-  :type '(choice
-	  (character :tag "Character")
-	  (integer :tag "Integer (< 65)")))
+  :type '(restricted-sexp :tag "Number 0-64 or uppercase character A-Z"
+          :match-alternatives ((lambda (val) (org-priority-valid-value-p val t)))))
 
 (defvaralias 'org-lowest-priority 'org-priority-lowest)
 (defcustom org-priority-lowest ?C
@@ -2468,9 +2466,8 @@ than `org-priority-highest': for example, if \"C\" is the lowest
 priority, it is greater than the highest \"A\" priority: 67 >
 65."
   :group 'org-priorities
-  :type '(choice
-	  (character :tag "Character")
-	  (integer :tag "Integer (< 65)")))
+  :type '(restricted-sexp :tag "Number 0-64 or uppercase character A-Z"
+          :match-alternatives ((lambda (val) (org-priority-valid-value-p val t)))))
 
 (defvaralias 'org-default-priority 'org-priority-default)
 (defcustom org-priority-default ?B
@@ -2484,9 +2481,8 @@ in this range exclusive or inclusive to the range boundaries.  Else the
 first step refuses to set the default and the second will fall back on
 \(depending on the command used) the highest or lowest priority."
   :group 'org-priorities
-  :type '(choice
-	  (character :tag "Character")
-	  (integer :tag "Integer (< 65)")))
+  :type '(restricted-sexp :tag "Number 0-64 or uppercase character A-Z"
+          :match-alternatives ((lambda (val) (org-priority-valid-value-p val t)))))
 
 (defcustom org-priority-start-cycle-with-default t
   "Non-nil means start with default priority when starting to cycle.
@@ -11295,13 +11291,62 @@ from the `before-change-functions' in the current buffer."
 
 ;;;; Priorities
 
-(defvar org-priority-regexp ".*?\\(\\[#\\([A-Z0-9]+\\)\\] ?\\)"
+(defvar org-priority-value-regexp "[A-Z]\\|[0-9]\\|[1-5][0-9]\\|6[0-4]"
+  "Regular expression matching valid priority values.
+The priority value must be a capital Latin
+alphabetic character, A through Z, or can be an integer value in the range 0
+through 64.")
+
+(defvar org-priority-regexp
+  (format ".*?\\(\\[#\\(%s\\)\\] ?\\)" org-priority-value-regexp)
   "Regular expression matching the priority indicator.
 A priority indicator can be e.g. [#A] or [#1].
+The value of the priority cookie must be a capital Latin
+alphabetic character, A through Z, or can be an integer value in
+the range 0 through 64.
 This regular expression matches these groups:
 0 : the whole match, e.g. \"TODO [#A] Hack\"
 1 : the priority cookie, e.g. \"[#A]\"
 2 : the value of the priority cookie, e.g. \"A\".")
+
+(defun org-priority-valid-cookie-string-p (priority)
+  "Return t if the PRIORITY is a valid priority cookie, nil otherwise."
+  (cond
+   ((stringp priority)
+    (let ((case-fold-search nil)) ;; Force case-sensitive match
+      ;; (and ... t) to force explicit t/nil
+      (and (string-match-p org-priority-regexp priority) t)))))
+
+(defun org-priority-valid-value-p (priority &optional ignore-user-bounds)
+  "Return t if the PRIORITY is a valid priority value (0-64, A-Z), nil otherwise.
+Also validate that the priority value is within the current bounds of
+ `org-priority-lowest' and `org-priority-highest' unless IGNORE-USER-BOUNDS is
+non-nil."
+  ;; Although we can have either numeric or alphabetic priorities,
+  ;; we simplify here by treating everything as integers because the ASCII
+  ;; alphabetic range also fits in an integer range.
+  (and (integerp priority)
+       ;; validate that the value is within valid ranges
+       (or (<= 0 priority 64)
+           (<= ?A priority ?Z))
+       ;; more specifically, validate within the current high/low ranges
+       ;; unless the caller is ignoring the range
+       (or ignore-user-bounds
+           (>= org-priority-lowest priority org-priority-highest))))
+
+(defun org-priority-number-p (priority)
+  "Return t if the PRIORITY is an integer 0 through 64, inclusive, nil otherwise."
+  (and (integerp priority)
+       (<= 0 priority 64)))
+
+(defun org-priority-to-string (priority)
+  "Return a string form of PRIORITY based on whether it's numeric or alphabetic."
+  ;; we check whether this is even a valid value, ignoring the current high/low bounds
+  (if (org-priority-valid-value-p priority t)
+      (if (org-priority-number-p priority)
+          (number-to-string priority)
+        (format "%c" priority))
+    (error "Invalid priority value `%s'" priority)))
 
 (defun org-priority-up ()
   "Increase the priority of the current item."
@@ -11319,57 +11364,74 @@ This regular expression matches these groups:
 When called interactively with a `\\[universal-argument]' prefix,
 show the priority in the minibuffer instead of changing it.
 
-When called programmatically, ACTION can be `set', `up', `down',
-or a character."
+When called programmatically, ACTION can be `set', `up', `down', `remove', an
+uppercase alphabetic character A through Z, or an integer 0 through 64,
+inclusive.  If a lower-case character is passed as ACTION or entered via
+interactive prompt, it will automatically be converted to uppercase."
   (interactive "P")
   (if (equal action '(4))
       (org-priority-show)
     (unless org-priority-enable-commands
       (user-error "Priority commands are disabled"))
+    ;; If action was not provided, default to "set", which will prompt the user
     (setq action (or action 'set))
-    (let ((nump (< org-priority-lowest 65))
-	  current new news have remove)
+    (let ((is-numeric-priority (org-priority-number-p org-priority-lowest))
+	  current-value new-value new-value-string has-existing-cookie remove)
       (save-excursion
 	(org-back-to-heading t)
 	(when (looking-at org-priority-regexp)
 	  (let ((ms (match-string 2)))
-	    (setq current (org-priority-to-value ms)
-		  have t)))
+	    (setq current-value (org-priority-to-value ms)
+		  has-existing-cookie t)))
 	(cond
 	 ((eq action 'remove)
-	  (setq remove t new ?\ ))
+	  (setq remove t new-value ?\s))
+         ;; set and a value are treated similarly, but only if the
+         ;; value is a valid priority
 	 ((or (eq action 'set)
-	      (integerp action))
+	      (org-priority-valid-value-p action))
 	  (if (not (eq action 'set))
-	      (setq new action)
+	      (setq new-value action)
 	    (setq
-	     new
-	     (if nump
-                 (let* ((msg (format "Priority %s-%s, SPC to remove: "
-                                     (number-to-string org-priority-highest)
-                                     (number-to-string org-priority-lowest)))
-                        (s (if (< 9 org-priority-lowest)
-                               (read-string msg)
-                             (message msg)
-                             (char-to-string (read-char-exclusive)))))
-                   (if (equal s " ") ?\s (string-to-number s)))
-	       (progn (message "Priority %c-%c, SPC to remove: "
-			       org-priority-highest org-priority-lowest)
-		      (save-match-data
-			(setq new (read-char-exclusive)))))))
-	  (when (and (= (upcase org-priority-highest) org-priority-highest)
-		     (= (upcase org-priority-lowest) org-priority-lowest))
-	    (setq new (upcase new)))
-	  (cond ((equal new ?\s) (setq remove t))
-		((or (< (upcase new) org-priority-highest) (> (upcase new) org-priority-lowest))
-		 (user-error
-		  (if nump
-		      "Priority must be between `%s' and `%s'"
-		    "Priority must be between `%c' and `%c'")
-		  org-priority-highest org-priority-lowest))))
+	     new-value
+             (let* ((msg (format "Priority %s-%s, SPC to remove: "
+                                 (org-priority-to-string org-priority-highest)
+                                 (org-priority-to-string org-priority-lowest)))
+                    ;; Read input as a string if the current high/low range could
+                    ;; be two digits. Otherwise, we can just read a single
+                    ;; character and save the user from pressing <enter>
+                    (s (if (and is-numeric-priority
+                                (>= org-priority-lowest 10))
+                           (read-string msg)
+                         (char-to-string (read-char-exclusive msg)))))
+               ;; Space is a special value indicating removal. For numeric
+               ;; priorities, parse the numeric value or ensure an upper case
+               ;; character (and convert back to a character for validation)
+               (if (string-equal s " ")
+                   ?\s
+                 (if is-numeric-priority
+                     (progn
+                       ;; Validate the input string to ensure it's a valid value because
+                       ;; string-to-number returns zero for a non-numeric string, which could
+                       ;; be a valid priority
+                       (unless (string-match-p org-priority-value-regexp s)
+                         (user-error "Priority must be a number between `%s' and `%s'"
+		                     (org-priority-to-string org-priority-highest)
+                                     (org-priority-to-string org-priority-lowest)))
+                       (string-to-number s))
+                   ;; Validation of non-numerics is handled next
+                   (string-to-char (upcase s)))))))
+          ;; After reading interactive input, set removal flag if needed and
+          ;; perform validation on the new value
+	  (cond
+           ((equal new-value ?\s) (setq remove t))
+	   ((not (org-priority-valid-value-p new-value))
+	    (user-error "Priority must be between `%s' and `%s'"
+		        (org-priority-to-string org-priority-highest)
+                        (org-priority-to-string org-priority-lowest)))))
 	 ((eq action 'up)
-	  (setq new (if have
-			(1- current)  ; normal cycling
+	  (setq new-value (if has-existing-cookie
+			(1- current-value)  ; normal cycling
 		      ;; last priority was empty
 		      (if (eq last-command this-command)
 			  org-priority-lowest  ; wrap around empty to lowest
@@ -11378,8 +11440,8 @@ or a character."
 			    org-priority-default
 			  (1- org-priority-default))))))
 	 ((eq action 'down)
-	  (setq new (if have
-			(1+ current)  ; normal cycling
+	  (setq new-value (if has-existing-cookie
+			(1+ current-value)  ; normal cycling
 		      ;; last priority was empty
 		      (if (eq last-command this-command)
 			  org-priority-highest  ; wrap around empty to highest
@@ -11388,36 +11450,34 @@ or a character."
 			    org-priority-default
 			  (1+ org-priority-default))))))
 	 (t (user-error "Invalid action")))
-	(when (or (< (upcase new) org-priority-highest)
-		  (> (upcase new) org-priority-lowest))
+        ;; Check against the current high/low range if we need to wrap
+	(when (not (org-priority-valid-value-p new-value))
 	  (if (and (memq action '(up down))
-		   (not have) (not (eq last-command this-command)))
-	      ;; `new' is from default priority
+		   (not has-existing-cookie) (not (eq last-command this-command)))
+	      ;; `new-value' is from default priority
 	      (error
 	       "The default can not be set, see `org-priority-default' why")
-	    ;; normal cycling: `new' is beyond highest/lowest priority
+	    ;; normal cycling: `new-value' is beyond highest/lowest priority
 	    ;; and is wrapped around to the empty priority
 	    (setq remove t)))
-	;; Numerical priorities are limited to 64, beyond that number,
-	;; assume the priority cookie is a character.
-	(setq news (if (> new 64) (format "%c" new) (format "%s" new)))
-	(if have
+	(setq new-value-string (org-priority-to-string new-value))
+	(if has-existing-cookie
 	    (if remove
 		(replace-match "" t t nil 1)
-	      (replace-match news t t nil 2))
+	      (replace-match new-value-string t t nil 2))
 	  (if remove
 	      (user-error "No priority cookie found in line")
 	    (let ((case-fold-search nil)) (looking-at org-todo-line-regexp))
 	    (if (match-end 2)
 		(progn
 		  (goto-char (match-end 2))
-		  (insert " [#" news "]"))
+		  (insert " [#" new-value-string "]"))
 	      (goto-char (match-beginning 3))
-	      (insert "[#" news "] "))))
+	      (insert "[#" new-value-string "] "))))
 	(when org-auto-align-tags (org-align-tags)))
       (if remove
 	  (message "Priority removed")
-	(message "Priority of current item set to %s" news)))))
+	(message "Priority of current item set to %s" new-value-string)))))
 
 (defalias 'org-show-priority 'org-priority-show)
 (defun org-priority-show ()
@@ -13460,7 +13520,7 @@ decreases scheduled or deadline date by one day."
 	 (org-todo value)
 	 (when org-auto-align-tags (org-align-tags)))
         ((equal property "PRIORITY")
-	 (org-priority (if (org-string-nw-p value) (string-to-char value) ?\s))
+	 (org-priority (if (org-string-nw-p value) (string-to-char value) 'remove))
 	 (when org-auto-align-tags (org-align-tags)))
         ((equal property "SCHEDULED")
 	 (forward-line)

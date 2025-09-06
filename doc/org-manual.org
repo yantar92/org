@@ -4627,7 +4627,7 @@ You can also use numeric values for priorities, such as
 
 When using numeric priorities, you need to set ~org-priority-highest~,
 ~org-priority-lowest~ and ~org-priority-default~ to integers, which
-must all be strictly inferior to 65.
+must all be a non-negative integer between 0 and 64, inclusive.
 
 Priorities can be attached to any heading; they do not need to be
 TODO items.
@@ -4662,8 +4662,10 @@ TODO items.
 #+vindex: org-priority-default
 You can change the range of allowed priorities by setting the
 variables ~org-priority-highest~, ~org-priority-lowest~, and
-~org-priority-default~.  For an individual buffer, you may set these
-values (highest, lowest, default) like this (please make sure that the
+~org-priority-default~.  Valid priority values are single uppercase
+Latin alphabetical characters A-Z, and non-negative integers in between 0
+and 64, inclusive.  For an individual buffer, you may set these values
+(highest, lowest, default) like this (please make sure that the
 highest priority is earlier in the alphabet than the lowest priority):
 
 #+cindex: @samp{PRIORITIES}, keyword

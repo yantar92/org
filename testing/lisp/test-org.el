@@ -10056,6 +10056,103 @@ two
           (execute-kbd-macro (kbd "C-a C-f C-f C-f C-f TAB"))
           (should (equal (minibuffer-contents) "test|uniq+test")))))))
 
+;;; Priority customization validation
+(ert-deftest test-org/priority-customization ()
+  "Test validation of priority customization."
+  (cl-flet ((validatef (lambda (variable value)
+                     (widget-apply (widget-convert (get variable 'custom-type)) :match value))))
+    ;; Valid numeric values for high/low/default
+    (seq-every-p (lambda (var)
+                   (should (validatef var 0))
+                   (should (validatef var 42))
+                   (should (validatef var 64)))
+                 '(org-priority-highest org-priority-lowest org-priority-default))
+    ;; Valid alphabetic values for high/low/default
+    (seq-every-p (lambda (var)
+                   (should (validatef var ?A))
+                   (should (validatef var ?M))
+                   (should (validatef var ?Z)))
+                 '(org-priority-highest org-priority-lowest org-priority-default))
+    ;; Invalid numeric values for high/low/default
+    (seq-every-p (lambda (var)
+                   (should-not (validatef var -1))
+                   (should-not (validatef var 200)))
+                   '(org-priority-highest org-priority-lowest org-priority-default))
+    ;; Invalid alphabetic values for high/low/default
+    (seq-every-p (lambda (var)
+                   (should-not (validatef var ?a))
+                   (should-not (validatef var ?z)))
+                   '(org-priority-highest org-priority-lowest org-priority-default))))
+
+;;; Priority validation and handling
+(ert-deftest test-org/priority-validation ()
+  "Test validation of priority cookies."
+  ;; Simple bounds checks on single alphabetic characters
+  (should
+   (seq-every-p (lambda (p)
+                  (let ((cookie (format "[#%c]" p)))
+                    (org-priority-valid-cookie-string-p cookie)))
+                (number-sequence ?A ?Z)))
+  ;; Test all valid numbers
+  (should
+   (seq-every-p (lambda (p)
+                  (let ((cookie (format "[#%d]" p)))
+                    (org-priority-valid-cookie-string-p cookie)))
+                (number-sequence 0 64)))
+  ;; Invalid characters (not exhaustive)
+  (should
+   (not (org-priority-valid-cookie-string-p "[#$]")))
+  ;; Don't accept lower-case
+  (should
+   (seq-every-p (lambda (p)
+                  (let ((cookie (format "[#%c]" p)))
+                    (not (org-priority-valid-cookie-string-p cookie))))
+                (number-sequence ?a ?z)))
+  ;; Invalid numberic values (< 0 or > 64)
+  (should
+   (not (org-priority-valid-cookie-string-p "[#-1]")))
+  (should
+   (not (org-priority-valid-cookie-string-p "[#65]")))
+  ;; Value tests (as opposed to cookie tests)
+  ;;
+  ;; Numeric, full range
+  (should
+   (let ((org-priority-highest 0)
+         (org-priority-lowest 64))
+     (seq-every-p (lambda (pv) (org-priority-valid-value-p pv))
+                  (number-sequence 0 64))))
+  ;; Numeric, valid value, but out of range
+  (should-not
+   (let ((org-priority-highest 10)
+         (org-priority-lowest 20))
+     (seq-every-p (lambda (pv) (org-priority-valid-value-p pv))
+                  '(0 5 9 21 42 64))))
+  ;; Numeric, valid value, out of range, but we ignore the range
+  (should
+   (let ((org-priority-highest 10)
+         (org-priority-lowest 20))
+     (seq-every-p (lambda (pv) (org-priority-valid-value-p pv t))
+                  '(0 5 9 21 42 64))))
+  ;; ;; Alphabetic, full range
+  (should
+   (let ((org-priority-highest ?A)
+         (org-priority-lowest ?Z))
+     (seq-every-p (lambda (pv) (org-priority-valid-value-p pv))
+                  (number-sequence ?A ?Z))))
+  ;; Alphabetic, valid value, but out of range
+  (should-not
+   (let ((org-priority-highest ?C)
+         (org-priority-lowest ?K))
+     (seq-every-p (lambda (pv) (org-priority-valid-value-p pv))
+                  '(?A ?L ?N ?Z))))
+  ;; Alphabetic, valid value, out of range, but we ignore the range
+  (should
+   (let ((org-priority-highest ?C)
+         (org-priority-lowest ?K))
+     (seq-every-p (lambda (pv) (org-priority-valid-value-p pv t))
+                  '(?A ?L ?N ?Z)))))
+
 (provide 'test-org)
 
 ;;; test-org.el ends here
+
