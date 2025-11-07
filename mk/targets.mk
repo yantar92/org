@@ -9,6 +9,9 @@ SUBDIRS       = $(OTHERDIRS) $(LISPDIRS)
 INSTSUB       = $(SUBDIRS:%=install-%)
 ORG_MAKE_DOC ?= info html pdf
 
+GITDIR        = .git/hooks
+GITHOOKS      = commit-msg commit-msg-files.awk post-commit pre-commit prepare-commit-msg pre-push
+
 ifneq ($(wildcard .git),)
   # Use the org.el header.
   ORGVERSION := $(patsubst %-dev,%,$(shell $(BATCH) --eval "(require 'lisp-mnt)" \
@@ -130,12 +133,21 @@ autoloads: lisp
 repro: cleanall autoloads
 	-@$(REPRO) &
 
+# Implicit rule to copy Git hooks in
+$(GITDIR)/%: git-hooks/%
+	cp -f $< $@
+
+githooks: $(addprefix $(GITDIR)/,$(GITHOOKS))
+
+cleangithooks:
+	$(RM) $(addprefix $(GITDIR)/,$(GITHOOKS))
+
 cleandirs:
 	$(foreach dir, $(SUBDIRS), $(MAKE) -C $(dir) cleanall;)
 
 clean:	cleanlisp cleandoc
 
-cleanall: cleandirs cleantest
+cleanall: cleandirs cleantest cleangithooks
 	-$(FIND) . \( -name \*~ -o -name \*# -o -name .#\* \) -exec $(RM) {} +
 	-$(FIND) $(CLEANDIRS) \( -name \*~ -o -name \*.elc \) -exec $(RM) {} +
 

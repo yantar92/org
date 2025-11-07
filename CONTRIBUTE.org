@@ -16,6 +16,11 @@ You can contribute with bug reports and patches.
 
 See these [[https://orgmode.org/worg/org-contribute.html#org069b83a][directions]].
 
+** Git Hooks
+
+We provide several git hook scripts to facilitate validation of commit
+messages and structure. See [[https://orgmode.org/worg/org-contribute.html#git-hooks][these directions]] for how to set them up.
+
 * As an Org maintainer
 
 We encourage you to volunteer to maintain one of the Org files.
