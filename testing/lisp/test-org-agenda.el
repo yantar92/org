@@ -765,6 +765,73 @@ TODO ping [1/4]
 TODO [#C] habit [2/4]
 TODO pong [3/4]")))))
 
+(ert-deftest test-org-agenda/sorting/time ()
+  "Test if `org-agenda' sorts according to `org-agenda-sorting-strategy'."
+  :expected-result :failed
+  ;; FIXME: test the following
+  ;; timestamp-up
+  ;; tsia-up
+  ;; ts-up
+  ;; time-up
+  (cl-flet ((call-agenda-with-priority (priority)
+              (let ((org-agenda-custom-commands
+                     `(("f" "no fluff" todo ""
+                        ((org-agenda-todo-keyword-format "")
+                         (org-agenda-overriding-header "")
+                         (org-agenda-prefix-format "")
+                         (org-agenda-sorting-strategy ',priority))))))
+                (org-agenda nil "f")
+                (string-trim
+                 (substring-no-properties
+                  (buffer-string))))))
+    (org-test-at-time "2025-11-07"
+      (org-test-agenda-with-agenda
+          "* TODO scheduled yesterday
+SCHEDULED: <2025-11-06>
+* TODO scheduled today
+SCHEDULED: <2025-11-07>
+* TODO scheduled tomorrow
+SCHEDULED: <2025-11-08>
+* TODO deadline yesterday
+DEADLINE: <2025-11-06>
+* TODO deadline today
+DEADLINE: <2025-11-07>
+* TODO deadline tomorrow
+DEADLINE: <2025-11-08>
+* TODO both yesterday
+SCHEDULED: <2025-11-06> DEADLINE: <2025-11-06>
+* TODO both today
+SCHEDULED: <2025-11-07> DEADLINE: <2025-11-07>
+* TODO both tomorrow
+SCHEDULED: <2025-11-08> DEADLINE: <2025-11-08>
+* TODO nothing"
+        (should
+         (string-equal
+          (call-agenda-with-priority '(deadline-up scheduled-up))
+          "both yesterday
+deadline yesterday
+both today
+deadline today
+both tomorrow
+deadline tomorrow
+scheduled yesterday
+scheduled today
+scheduled tomorrow
+nothing"))
+        (should
+         (string-equal
+          (call-agenda-with-priority '(scheduled-down deadline-down))
+          "nothing
+deadline tomorrow
+deadline today
+deadline yesterday
+scheduled tomorrow
+both tomorrow
+scheduled today
+both today
+scheduled yesterday
+both yesterday"))))))
+
 (ert-deftest test-org-agenda/tags-sorting ()
   "Test if `org-agenda' sorts tags according to `org-tags-sort-function'."
   (let ((string-length< (lambda (s1 s2)
