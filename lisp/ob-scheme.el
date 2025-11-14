@@ -262,6 +262,14 @@ Emacs-lisp table, otherwise return the results as a string."
                converted)))
 	  (t res))))
 
+(defun org-babel-scheme--get-impl (&optional params)
+  "Return Scheme implementation to be used according to PARAMS."
+  (or (when (cdr (assq :scheme params))
+	(intern (cdr (assq :scheme params))))
+      geiser-scheme-implementation
+      geiser-default-implementation
+      (car geiser-active-implementations)))
+
 (defun org-babel-execute:scheme (body params)
   "Execute a block of Scheme code with org-babel.
 This function is called by `org-babel-execute-src-block'."
@@ -271,11 +279,7 @@ This function is called by `org-babel-execute-src-block'."
 			      (buffer-name source-buffer))))
     (save-excursion
       (let* ((result-type (cdr (assq :result-type params)))
-	     (impl (or (when (cdr (assq :scheme params))
-			 (intern (cdr (assq :scheme params))))
-		       geiser-scheme-implementation
-		       geiser-default-implementation
-		       (car geiser-active-implementations)))
+	     (impl (org-babel-scheme--get-impl params))
              (host (cdr (assq :host params)))
              (port (cdr (assq :port params)))
 	     (session (org-babel-scheme-make-session-name
@@ -300,6 +304,38 @@ This function is called by `org-babel-execute-src-block'."
 	  (org-babel-result-cond result-params
 	    result
 	    (org-babel-scheme--table-or-string table)))))))
+
+(defun org-babel-scheme-initiate-session (session params)
+  "Return scheme buffer for SESSION according to PARAMS.
+
+Creates new session buffer if necessary."
+  (let ((impl (org-babel-scheme--get-impl params))
+        (host (cdr (assq :host params)))
+        (port (cdr (assq :port params))))
+    (save-current-buffer
+      (org-babel-scheme-get-repl impl
+                                 session
+                                 host
+                                 port))))
+
+(defun org-babel-prep-session:scheme (session params)
+  "Prepare SESSION according to header arguments in PARAMS."
+  (let ((repl (org-babel-scheme-initiate-session session params)))
+    (org-babel-scheme-execute-with-geiser
+     (org-babel-scheme-expand-header-arg-vars (org-babel--get-vars params))
+     nil
+     (org-babel-scheme--get-impl params)
+     session)
+    repl))
+
+(defun org-babel-load-session:scheme (session body params)
+  "Load BODY into SESSION.
+
+Also evaluates any variable assignments in PARAMS before loading BODY."
+  (with-current-buffer (org-babel-prep-session:scheme session params)
+    (goto-char (process-mark (get-buffer-process (current-buffer))))
+    (insert (org-babel-chomp body))
+    (current-buffer)))
 
 (provide 'ob-scheme)
 
