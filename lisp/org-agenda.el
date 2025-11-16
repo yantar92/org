@@ -7585,15 +7585,14 @@ When TYPE is \"scheduled\", \"deadline\", \"timestamp\" or
 \"timestamp_ia\", compare within each of these type.  When TYPE
 is the empty string, compare all timestamps without respect of
 their type."
-  (let* ((def (if org-agenda-sort-notime-is-late most-positive-fixnum -1))
-	 (ta (or (and (string-match type (or (get-text-property 1 'type a) ""))
-		      (get-text-property 1 'ts-date a))
-		 def))
-	 (tb (or (and (string-match type (or (get-text-property 1 'type b) ""))
-		      (get-text-property 1 'ts-date b))
-		 def)))
-    (cond ((if ta (and tb (< ta tb)) tb) -1)
-	  ((if tb (and ta (< tb ta)) ta) +1))))
+  (cl-flet ((get-timestamp (entry)
+              (or (and (string-match type (or (get-text-property 1 'type entry) ""))
+                       (get-text-property 1 'ts-date entry))
+                  (if org-agenda-sort-notime-is-late most-positive-fixnum -1))))
+    (let ((ta (get-timestamp a))
+          (tb (get-timestamp b)))
+      (cond ((< ta tb) -1)
+            ((< tb ta) +1)))))
 
 (defsubst org-cmp-habit-p (a b)
   "Compare the todo states of strings A and B."
