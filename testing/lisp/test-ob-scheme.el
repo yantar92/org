@@ -54,15 +54,27 @@
 	    (buffer-substring-no-properties (line-beginning-position 2)
 					    (point-max))))))
 
-(ert-deftest test-ob-scheme/list ()
-  "Test list output."
+(ert-deftest test-ob-scheme/cons-cell ()
+  "Test cons cell output."
+  (should
+   (equal ": (1 . 2)\n"
+	  (org-test-with-temp-text
+           "#+begin_src scheme\n(cons 1 2)\n#+end_src"
+	   (org-babel-execute-maybe)
+	   (let ((case-fold-search t)) (search-forward "#+results"))
+	   (buffer-substring-no-properties (line-beginning-position 2)
+					   (point-max))))))
+
+(ert-deftest test-ob-scheme/proper-list ()
+  "Test proper list output."
   (should
    (equal "- 1\n- 2\n- 3\n"
-	  (org-test-with-temp-text "#+begin_src scheme :results list\n'(1 2 3)\n#+end_src"
-	    (org-babel-execute-maybe)
-	    (let ((case-fold-search t)) (search-forward "#+results"))
-	    (buffer-substring-no-properties (line-beginning-position 2)
-					    (point-max))))))
+	  (org-test-with-temp-text
+           "#+begin_src scheme :results list\n'(1 2 3)\n#+end_src"
+	   (org-babel-execute-maybe)
+	   (let ((case-fold-search t)) (search-forward "#+results"))
+	   (buffer-substring-no-properties (line-beginning-position 2)
+					   (point-max))))))
 
 (ert-deftest test-ob-scheme/list-conversion ()
   "Test list conversion from Scheme to Elisp."

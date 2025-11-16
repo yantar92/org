@@ -69,7 +69,7 @@
 (declare-function geiser-eval--error-msg "ext:geiser-eval" (err))
 
 (defcustom org-babel-scheme-null-to 'hline
-  "Replace `null' and empty lists in scheme tables with this before returning."
+  "Replacement for `()' and `null' in tabulated Scheme results."
   :group 'org-babel
   :version "26.1"
   :package-version '(Org . "9.1")
@@ -232,9 +232,9 @@ is true; otherwise returns the last value."
     result))
 
 (defun org-babel-scheme--table-or-string (results)
-  "Convert RESULTS into an appropriate elisp value.
-If the results look like a list or tuple, then convert them into an
-Emacs-lisp table, otherwise return the results as a string."
+  "Convert RESULTS into an appropriate Elisp value.
+If the results are in the form of a proper list, then convert them into
+an Emacs Lisp table, otherwise return the results as a string."
   (let ((res (and results (org-babel-script-escape results))))
     (cond ((proper-list-p res)
            (mapcar (lambda (el)
