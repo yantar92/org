@@ -130,12 +130,17 @@ If the variables HOST and PORT are set, connect to the running Scheme REPL."
   (let ((buffer (org-babel-scheme-get-session-buffer name)))
     (or buffer
 	(progn
-          (if (fboundp 'geiser)
-              (if (and host port)
-                  (geiser-connect impl host port)
-                (geiser impl))
-            ;; Obsolete since Geiser 0.26.
-	    (run-geiser impl))
+          (let ((geiser-repl-window-allow-split nil)
+	        (geiser-repl-use-other-window nil)
+                (switch-to-buffer-obey-display-actions t)
+                (display-buffer-overriding-action '(display-buffer-no-window
+                                                    (allow-no-window t))))
+            (if (fboundp 'geiser)
+                (if (and host port)
+                    (geiser-connect impl host port)
+                  (geiser impl))
+              ;; Obsolete since Geiser 0.26.
+	      (run-geiser impl)))
 	  (when name
 	    (rename-buffer name t)
 	    (org-babel-scheme-set-session-buffer name (current-buffer)))
@@ -184,9 +189,7 @@ is true; otherwise returns the last value."
       (let ((beg (point)))
         (insert code)
         (geiser-mode)
-        (let ((geiser-repl-window-allow-split nil)
-	      (geiser-repl-use-other-window nil))
-	  (let ((repl-buffer (save-current-buffer
+        (let ((repl-buffer (save-current-buffer
 			       (org-babel-scheme-get-repl impl repl host port))))
 	    (when (not (eq impl (org-babel-scheme-get-buffer-impl
 			       (current-buffer))))
@@ -225,7 +228,7 @@ is true; otherwise returns the last value."
 		    (let ((msg (geiser-eval--error-msg err)))
 		      (org-babel-eval-error-notify
 		       nil
-		       (concat (if (listp msg) (car msg) msg) "\n")))))))))))
+		       (concat (if (listp msg) (car msg) msg) "\n"))))))))))
     result))
 
 (defun org-babel-scheme--table-or-string (results)
