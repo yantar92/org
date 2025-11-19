@@ -5403,16 +5403,17 @@ Properties can also be defined using lines like:
 #+cindex: @samp{+} suffix, in properties
 If you want to add to the value of an existing property, append a =+=
 to the property name.  The following results in the property =var=
-having the value =foo=1 bar=2=.
+having the values =foo= and =bar=.
 
 #+begin_example
-,#+PROPERTY: var  foo=1
-,#+PROPERTY: var+ bar=2
+,#+PROPERTY: var  foo
+,#+PROPERTY: var+ bar
 #+end_example
 
-It is also possible to add to the values of inherited properties.  The
-following results in the =Genres= property having the value =Classic
-Baroque= under the =Goldberg Variations= subtree.
+Using the appended =+=, it is also possible to add to the values of
+inherited properties.  The following results in the =Genres= property
+having the values =Classic=, =Baroque=, and =Keyboard music= under the
+=Goldberg Variations= subtree.
 
 #+begin_example
 ,* CD collection
@@ -5428,10 +5429,13 @@ Baroque= under the =Goldberg Variations= subtree.
     :Publisher: Deutsche Grammophon
     :NDisks:    1
     :Genres+:   Baroque
+    :Genres+:   Keyboard music
     :END:
 #+end_example
 
-Note that a property can only have one entry per drawer.
+Note that a property can only have multiple entries per drawer when
+used with the appended =+=.  When a property has multiple entries
+without =+=, the result is undefined.
 
 #+vindex: org-global-properties
 Property values set with the global variable ~org-global-properties~
