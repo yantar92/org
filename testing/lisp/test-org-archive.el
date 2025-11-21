@@ -97,6 +97,98 @@
 	  (org-archive-subtree)
 	  (buffer-string)))))))
 
+(ert-deftest test-org-archive/context ()
+  "Test that `org-archive-subtree' creates context info.
+Context info is controlled by `org-archive-save-context-info'."
+  (let ((org-archive-location "::* Archived Tasks"))
+    (org-test-at-time "<2020-07-05 Sun>"
+      (org-test-with-temp-text-in-file "* a\n"
+        (should
+         (string-equal
+          (concat
+           "* Archived Tasks
+
+** a
+:PROPERTIES:
+:ARCHIVE_TIME: 2020-07-05 Sun 00:00\n"
+           ":ARCHIVE_FILE: " buffer-file-name "\n"
+           ":ARCHIVE_CATEGORY: " (file-name-nondirectory buffer-file-name) "\n"
+           ":END:")
+          (progn
+            (org-archive-subtree)
+            (string-trim (buffer-string))))))
+      (org-test-with-temp-text-in-file "* a\n** b"
+        (should
+         (string-equal
+          (concat "* Archived Tasks
+
+** a
+:PROPERTIES:
+:ARCHIVE_TIME: 2020-07-05 Sun 00:00\n"
+                  ":ARCHIVE_FILE: " buffer-file-name "\n"
+                  ":ARCHIVE_CATEGORY: " (file-name-nondirectory buffer-file-name) "\n"
+                  ":END:
+*** b")
+          (progn
+            (org-archive-subtree)
+            (string-trim (buffer-string))))))
+      (org-test-with-temp-text-in-file "* a\n<point>** TODO b"
+        (should
+         (string-equal
+          (concat
+           "* a
+* Archived Tasks
+
+** TODO b
+:PROPERTIES:
+:ARCHIVE_TIME: 2020-07-05 Sun 00:00\n"
+           ":ARCHIVE_FILE: " buffer-file-name "\n"
+           ":ARCHIVE_OLPATH: a\n"
+           ":ARCHIVE_CATEGORY: " (file-name-nondirectory buffer-file-name) "\n"
+           ":ARCHIVE_TODO: TODO\n"
+           ":END:")
+          (progn
+            (org-archive-subtree)
+            (string-trim (buffer-string))))))
+      (org-test-with-temp-text-in-file "* a\\q [/] slashes\n<point>** b"
+        (should
+         (string-equal
+          (concat
+           "* a\\q [/] slashes
+* Archived Tasks
+
+** b
+:PROPERTIES:
+:ARCHIVE_TIME: 2020-07-05 Sun 00:00\n"
+           ":ARCHIVE_FILE: " buffer-file-name "\n"
+           ":ARCHIVE_OLPATH: a\\q [/] slashes\n"
+           ":ARCHIVE_CATEGORY: " (file-name-nondirectory buffer-file-name) "\n"
+
+           ":END:")
+          (progn
+            (org-archive-subtree)
+            (string-trim (buffer-string)))))))
+    (let ((org-tags-column -10))
+      (dolist (org-archive-save-context-info '((ltags) (itags) (ltags itags)))
+        (org-test-with-temp-text-in-file "* a  :top:\n<point>** b  :b_tag:\n"
+          (should
+           (string-equal
+            (concat "* a  :top:
+* Archived Tasks
+
+** b :top:b_tag:
+:PROPERTIES:\n"
+                    (if (memq 'ltags org-archive-save-context-info)
+                        ":ARCHIVE_LTAGS: b_tag\n"
+                      "")
+                    (if (memq 'itags org-archive-save-context-info)
+                        ":ARCHIVE_ITAGS: top\n"
+                      "")
+                    ":END:")
+            (progn
+              (org-archive-subtree)
+              (string-trim (buffer-string))))))))))
+
 (ert-deftest test-org-archive/to-archive-sibling ()
   "Test `org-archive-to-archive-sibling' specifications."
   ;; Archive sibling before or after archive heading.
