@@ -91,8 +91,7 @@
     (verbatim . org-odt-verbatim)
     (verse-block . org-odt-verse-block))
   :filters-alist '((:filter-parse-tree
-		    . (org-odt--strip-trailing-newlines
-                       org-odt--translate-latex-fragments
+		    . (org-odt--translate-latex-fragments
 		       org-odt--translate-description-lists
 		       org-odt--translate-list-tables
 		       org-odt--translate-image-links)))
@@ -3719,27 +3718,6 @@ contextual information."
 
 
 ;;; Filters
-
-;;; Plain text
-
-;; Trailing newlines appear as spaces in ODT.
-;; We do not want that in, for example, in paragraphs where
-;; end of paragraph is already signaled by ODT tag.
-(defun org-odt--strip-trailing-newlines (data _backend info)
-  "Strip trailing newlines in DATA at the end of contents.
-INFO is the communication channel."
-  (org-element-map data org-element-all-elements
-    (lambda (el)
-      (when-let* ((last-child (car (last (org-element-contents el)))))
-        (when (and (org-element-type-p last-child 'plain-text)
-                   (string-suffix-p "\n" last-child))
-          (when (length> last-child 1)
-            (org-element-insert-before
-             (substring last-child 0 (1- (length last-child)))
-             last-child))
-          (org-element-extract last-child))))
-    info nil nil t)
-  data)
 
 ;;; Images
 
