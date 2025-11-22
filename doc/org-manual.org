@@ -12933,8 +12933,9 @@ exported.
 
 #+cindex: @samp{BEGIN_COMMENT}
 #+cindex: comment block
-Likewise, regions surrounded by =#+BEGIN_COMMENT= ... =#+END_COMMENT=
-are not exported.
+Likewise, comment blocks =#+BEGIN_COMMENT= ... =#+END_COMMENT= are not
+exported. [fn::Just like in [[*Literal Examples]], you need to escape
+leading =*= with =,= to avoid interpreting them as headings.]
 
 #+cindex: comment trees
 Finally, a =COMMENT= keyword at the beginning of an entry, but after
