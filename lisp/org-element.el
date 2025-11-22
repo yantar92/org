@@ -7075,6 +7075,14 @@ If you observe Emacs hangs frequently, please report this to Org mode mailing li
                (unless (save-excursion
                          (org-skip-whitespace)
                          (eobp))
+                 (unless (>= end (point))
+                   (org-element--cache-warn
+                    "Invalid LIMIT boundary during parsing. Please report it to Org mode mailing list (M-x org-submit-bug-report).\n Backtrace:\n%S"
+                    (when (and (fboundp 'backtrace-get-frames)
+                               (fboundp 'backtrace-to-string))
+                      (backtrace-to-string (backtrace-get-frames 'backtrace))
+                      (org-element-cache-reset)
+                      (error "org-element--cache: Emergency exit"))))
                  (setq element (org-element--current-element
 			        end 'element mode
 			        (org-element-property :structure parent))))
