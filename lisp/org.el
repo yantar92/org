@@ -8711,14 +8711,15 @@ If the file does not exist, throw an error."
     (funcall save-position-maybe)))
 
 ;;;###autoload
-(defun org-open-at-point-global ()
+(defun org-open-at-point-global (&optional arg)
   "Follow a link or a timestamp like Org mode does.
+Pass ARG to `org-link-open-to-string'.
 Also follow links and emails as seen by `thing-at-point'.
 This command can be called in any mode to follow an external
 link or a timestamp that has Org mode syntax.  Its behavior
 is undefined when called on internal links like fuzzy links.
 Raise a user error when there is nothing to follow."
-  (interactive)
+  (interactive "P")
   (let ((tap-url (thing-at-point 'url))
 	(tap-email (thing-at-point 'email)))
     (cond ((org-in-regexp
@@ -8731,13 +8732,14 @@ Raise a user error when there is nothing to follow."
                (save-excursion
                  (forward-paragraph)
                  (count-lines origin (point))))))
-	   (org-link-open-from-string (match-string-no-properties 0)))
+	   (org-link-open-from-string (match-string-no-properties 0) arg))
 	  ((or (org-in-regexp org-ts-regexp-both nil t)
 	       (org-in-regexp org-tsr-regexp-both nil t))
 	   (org-follow-timestamp-link))
-	  (tap-url (org-link-open-from-string tap-url))
+	  (tap-url (org-link-open-from-string tap-url arg))
 	  (tap-email (org-link-open-from-string
-		      (concat "mailto:" tap-email)))
+		      (concat "mailto:" tap-email)
+                      arg))
 	  (t (user-error "No link found")))))
 
 (defvar org-open-at-point-functions nil

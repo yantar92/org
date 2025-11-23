@@ -628,6 +628,11 @@ has been made obsolete. Its value is still used in place of default
 parameter -jar if the variable is defined.
 
 ** Miscellaneous
+*** ~org-open-at-point-global~ now accepts prefix argument
+
+The argument is passed through to ~org-link-open~, allowing alternative
+way to open links, if link ~:follow~ function supports it.
+
 *** Inline tasks in a clocktable will be indented to a level below their heading
 
 Previously a clocktable that contained an inline task would show the
