@@ -29,7 +29,7 @@
 
 
 
-(ert-deftest text-ox-latex/protect-square-brackets ()
+(ert-deftest test-ox-latex/protect-square-brackets ()
   "Test [foo] being interpreted as plain text even after LaTeX commands."
   (org-test-with-exported-text
       'latex
@@ -283,6 +283,33 @@ is suppressed
     (goto-char (point-min))
     (should (search-forward
              "\\section[\\(\\psi\\) wraps too]{\\(\\phi\\) wraps}"))))
+
+(ert-deftest test-ox-latex/numeric-priority-headline ()
+  "Test numeric priorities in headlines."
+  (org-test-with-exported-text
+   'latex
+   "#+OPTIONS: pri:t
+* [#3] Test
+"
+   (goto-char (point-min))
+   (should (search-forward "\\framebox{\\#3}")))
+  (org-test-with-exported-text
+   'latex
+   "#+OPTIONS: pri:t
+* [#42] Test
+"
+   (goto-char (point-min))
+   (should (search-forward "\\framebox{\\#42}"))))
+
+(ert-deftest test-ox-latex/alphabetical-priority-headline ()
+  "Test numeric priorities in headlines."
+  (org-test-with-exported-text
+   'latex
+   "#+OPTIONS: pri:t
+* [#C] Test
+"
+   (goto-char (point-min))
+   (should (search-forward "\\framebox{\\#C}"))))
 
 (provide 'test-ox-latex)
 ;;; test-ox-latex.el ends here
