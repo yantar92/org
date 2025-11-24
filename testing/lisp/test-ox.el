@@ -3149,6 +3149,29 @@ Para2"
 		(org-export-as (org-test-default-backend)
 			       nil nil nil '(:with-tasks nil))))))))
 
+(ert-deftest test-org-export/handle-numeric-priorities ()
+  "Test handling of numeric priorities in headers and inlinetasks."
+  ;; Properly handle numeric priorities in normal headers
+  (should
+   (equal "* [#3] H2\nContents\n"
+          (let ()
+            (org-test-with-temp-text "* [#3] H2\nContents"
+                                     (org-export-as (org-test-default-backend))))))
+  ;; Properly handle numeric priorities in inline tasks
+    (should
+     (equal "* H2\n*** [#8] Inline\nContents\n"
+            (let ((org-inlinetask-min-level 3))
+              (org-test-with-temp-text "* H2\n*** [#8] Inline\nContents"
+                                       (org-export-as (org-test-default-backend)
+                                                      nil nil nil '(:with-tasks t))))))
+    (should
+     (equal "* H2\n*** [#37] Inline\nContents\n"
+            (let ((org-inlinetask-min-level 3))
+              (org-test-with-temp-text "* H2\n*** [#37] Inline\nContents"
+                                       (org-export-as (org-test-default-backend)
+                                                      nil nil nil '(:with-tasks t))))))
+  )
+
 
 
 ;;; Keywords

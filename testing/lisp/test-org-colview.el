@@ -1783,5 +1783,32 @@ there are 4 parameters
      (let ((org-columns-default-format "%ITEM")) (org-update-dblock))
      (buffer-substring-no-properties (point) (point-max))))))
 
+(ert-deftest test-org-colview/priorities ()
+  "Test that column view properly handles priorities."
+  ;; test alphabetic priorities
+  (should
+   (equal "B"
+          (org-test-with-temp-text
+           "* [#B] Test"
+           (let ((org-columns-default-format "%PRIORITY"))
+             (org-columns)
+             (get-char-property (point) 'org-columns-value)))))
+  ;; test numeric single-digit priorities
+  (should
+   (equal "6"
+          (org-test-with-temp-text
+           "* [#6] Test"
+           (let ((org-columns-default-format "%PRIORITY"))
+             (org-columns)
+             (get-char-property (point) 'org-columns-value)))))
+  ;; test numeric double-digit priorities
+  (should
+   (equal "15"
+          (org-test-with-temp-text
+           "* [#15] Test"
+           (let ((org-columns-default-format "%PRIORITY"))
+             (org-columns)
+             (get-char-property (point) 'org-columns-value)))))  )
+
 (provide 'test-org-colview)
 ;;; test-org-colview.el ends here

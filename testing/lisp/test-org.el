@@ -10152,6 +10152,15 @@ two
      (seq-every-p (lambda (pv) (org-priority-valid-value-p pv t))
                   '(?A ?L ?N ?Z)))))
 
+(ert-deftest test-org/priority-parsing ()
+  "Test parsing of priority values."
+  ;; single digit
+  (should (eq 7 (org-priority-to-value "7")))
+  ;; double digit
+  (should (eq 42 (org-priority-to-value "42")))
+  ;; alphabetic
+  (should (eq ?G (org-priority-to-value "G"))))
+
 (provide 'test-org)
 
 ;;; test-org.el ends here
