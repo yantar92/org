@@ -242,24 +242,6 @@ an Emacs Lisp table, otherwise return the results as a string."
 			 org-babel-scheme-null-to
 		       el))
                    res))
-          ((consp res) ; improper list ending with cons cell
-           (cl-labels ((maybe-convert (el)
-                         (if (or (null el) (eq el 'null))
-                             org-babel-scheme-null-to
-                           el)))
-             (let* ((converted (cons (maybe-convert (car res)) nil))
-                    (tail converted))
-               (setq res (cdr res))
-               (while res
-                 (if (not (consp res))
-                     ;; end of cons
-                     (progn
-                       (setcdr tail res)
-                       (setq res nil))
-                   (setcdr tail (list (maybe-convert (car res))))
-                   (setq tail (cdr tail))
-                   (setq res (cdr res))))
-               converted)))
 	  (t res))))
 
 (defun org-babel-scheme--get-impl (&optional params)
