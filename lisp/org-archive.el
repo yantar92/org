@@ -207,8 +207,9 @@ an error if LOCATION is not a valid archive location."
   "Move the current subtree to the archive.
 The archive can be a certain top-level heading in the current
 file, or in a different file.  The tree will be moved to that
-location, the subtree heading be marked DONE, and the current
-time will be added.
+location.  If `org-archive-mark-done' is non-nil and the subtree
+has a TODO keyword, the subtree heading will be marked DONE.
+And the current time will be added.
 
 When called with a single prefix argument FIND-DONE, find whole
 trees without any open TODO items and archive them (after getting
