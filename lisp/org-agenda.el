@@ -7378,7 +7378,7 @@ The optional argument TYPE tells the agenda type."
       (setq list (org-agenda-limit-entries
 		  list 'effort-minutes max-effort
 		  (lambda (e) (or e (if org-agenda-sort-noeffort-is-high
-					32767 -1))))))
+					most-positive-fixnum -1))))))
     (when max-todo
       (setq list (org-agenda-limit-entries list 'todo-state max-todo)))
     (when max-tags
@@ -7495,7 +7495,7 @@ The optional argument TYPE tells the agenda type."
 
 (defsubst org-cmp-effort (a b)
   "Compare the effort values of string A and B."
-  (let* ((def (if org-agenda-sort-noeffort-is-high 32767 -1))
+  (let* ((def (if org-agenda-sort-noeffort-is-high most-positive-fixnum -1))
 	 ;; `effort-minutes' property is not directly accessible from
 	 ;; the strings, but is stored as a property in `txt'.
 	 (ea (or (get-text-property
@@ -7585,7 +7585,7 @@ When TYPE is \"scheduled\", \"deadline\", \"timestamp\" or
 \"timestamp_ia\", compare within each of these type.  When TYPE
 is the empty string, compare all timestamps without respect of
 their type."
-  (let* ((def (if org-agenda-sort-notime-is-late 99999999 -1))
+  (let* ((def (if org-agenda-sort-notime-is-late most-positive-fixnum -1))
 	 (ta (or (and (string-match type (or (get-text-property 1 'type a) ""))
 		      (get-text-property 1 'ts-date a))
 		 def))
@@ -8471,7 +8471,7 @@ If the line does not have an effort defined, return nil."
   ;; current line but is stored as a property in `txt'.
   (let ((effort (get-text-property 0 'effort-minutes (org-get-at-bol 'txt))))
     (funcall op
-	     (or effort (if org-agenda-sort-noeffort-is-high 32767 -1))
+	     (or effort (if org-agenda-sort-noeffort-is-high most-positive-fixnum -1))
 	     value)))
 
 (defun org-agenda-filter-expand-tags (filter &optional no-operator)
