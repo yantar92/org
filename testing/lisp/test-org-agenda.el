@@ -672,7 +672,6 @@ Sunday      7 January 2024
 
 (ert-deftest test-org-agenda/sorting ()
   "Test if `org-agenda' sorts according to `org-agenda-sorting-strategy'."
-  :expected-result :failed
   ;; FIXME: test the following
   ;; urgency-up
   ;; category-up

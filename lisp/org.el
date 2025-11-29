@@ -8407,7 +8407,8 @@ the whole buffer."
 		 (stats (cond ((not denominator) numerator) ;percent
 			      ((= denominator 0) 0)
 			      (t (/ (* numerator 100) denominator)))))
-	    (put-text-property (point) (progn (org-end-of-subtree t t) (point))
+	    (put-text-property (line-beginning-position)
+                               (progn (org-end-of-subtree t t) (point))
 			       'org-stats stats)))))))
 
 (defun org-refresh-effort-properties ()
