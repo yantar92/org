@@ -670,6 +670,102 @@ Sunday      7 January 2024
               (buffer-string))))))
       (org-test-agenda--kill-all-agendas))))
 
+(ert-deftest test-org-agenda/sorting ()
+  "Test if `org-agenda' sorts according to `org-agenda-sorting-strategy'."
+  :expected-result :failed
+  ;; FIXME: test the following
+  ;; urgency-up
+  ;; category-up
+  ;; category-keep
+  ;; user-defined-up
+  (cl-flet ((call-agenda-with-priority (priority)
+              (let ((org-agenda-custom-commands
+                     `(("f" "no fluff" todo ""
+                        ((org-agenda-tags-column -10)
+                         (org-agenda-overriding-header "")
+                         (org-agenda-prefix-format "")
+                         (org-agenda-sorting-strategy ',priority))))))
+                (org-agenda nil "f")
+                (string-trim
+                 (substring-no-properties
+                  (buffer-string))))))
+    (org-test-agenda-with-agenda
+        "#+TODO: TODO WAIT DONE
+* TODO a   :a:
+* WAIT a   :b:
+* TODO b   :a:
+* WAIT b   :b:"
+      (should
+       (string-equal
+        (call-agenda-with-priority '(tag-up alpha-up))
+        "TODO a :a:
+TODO b :a:
+WAIT a :b:
+WAIT b :b:"))
+      (should
+       (string-equal
+        (call-agenda-with-priority '(alpha-up tag-down))
+        ;; This result seems unexpected.  It is because the
+        ;; alphabetical sort is done on the full heading title
+        ;; including tags (ex. "a :b:").
+        ;; FIXME: This is probably not what users want.
+        "TODO a :a:
+WAIT a :b:
+TODO b :a:
+WAIT b :b:"))
+      (should
+       (string-equal
+        (call-agenda-with-priority '(todo-state-up alpha-down))
+        "TODO b :a:
+TODO a :a:
+WAIT b :b:
+WAIT a :b:")))
+    (org-test-agenda-with-agenda
+        "* TODO [#A] foo
+:PROPERTIES:
+:Effort:   10m
+:END:
+* TODO [#B] bar
+:PROPERTIES:
+:Effort:   5m
+:END:
+* TODO [#C] habit [2/4]
+:PROPERTIES:
+:STYLE:    habit
+:END:
+* TODO ping [1/4]
+:PROPERTIES:
+:Effort:   1y
+:END:
+* TODO pong [3/4]
+:PROPERTIES:
+:Effort:   10m
+:END:"
+      (should
+       (string-equal
+        (call-agenda-with-priority '(effort-up priority-down))
+        "TODO [#B] bar
+TODO [#A] foo
+TODO pong [3/4]
+TODO ping [1/4]
+TODO [#C] habit [2/4]"))
+      (should
+       (string-equal
+        (call-agenda-with-priority '(habit-up priority-up))
+        "TODO [#C] habit [2/4]
+TODO [#B] bar
+TODO ping [1/4]
+TODO pong [3/4]
+TODO [#A] foo"))
+      (should
+       (string-equal
+        (call-agenda-with-priority '(stats-up priority-up))
+        "TODO [#B] bar
+TODO [#A] foo
+TODO ping [1/4]
+TODO [#C] habit [2/4]
+TODO pong [3/4]")))))
+
 (ert-deftest test-org-agenda/tags-sorting ()
   "Test if `org-agenda' sorts tags according to `org-tags-sort-function'."
   (let ((string-length< (lambda (s1 s2)
