@@ -1519,8 +1519,8 @@ CONTENTS is the contents of the element."
 	  (concat (make-string (if org-odd-levels-only (1- (* level 2)) level)
 			       ?*)
 		  (and todo (concat " " todo))
-		  (and commentedp (concat " " org-element-comment-string))
 		  (and priority (format " [#%s]" (org-priority-to-string priority)))
+		  (and commentedp (concat " " org-element-comment-string))
 		  " "
 		  (if (and org-footnote-section
 			   (org-element-property :footnote-section-p headline))

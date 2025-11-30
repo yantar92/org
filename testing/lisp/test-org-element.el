@@ -3591,6 +3591,14 @@ Test.\n")
    (equal (let ((org-comment-string "COMMENT"))
 	    (org-test-parse-and-interpret "* COMMENT Headline"))
 	  "* COMMENT Headline\n"))
+  (should
+   (equal (let ((org-comment-string "COMMENT"))
+	    (org-test-parse-and-interpret "* [#A] COMMENT Headline"))
+	  "* [#A] COMMENT Headline\n"))
+  (should
+   (equal (let ((org-comment-string "COMMENT"))
+	    (org-test-parse-and-interpret "* TODO [#A] COMMENT Headline"))
+	  "* TODO [#A] COMMENT Headline\n"))
   ;; 6. Keep same number of blank lines before body.
   (should
    (equal (org-test-parse-and-interpret
