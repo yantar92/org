@@ -2566,10 +2566,12 @@ These are overlaid over the default ISO format if the variable
 end of the second format.  The custom formats are also honored by export
 commands, if custom time display is turned on at the time of export.
 
-This variable also affects how timestamps are exported.
+This variable also affects how timestamps are exported when
+`org-display-custom-times' is set.
 
-Leading \"<\" and trailing \">\" pair will be stripped from the format
-strings."
+Leading \"<\" or \"[\" and trailing \">\" or \"]\" pair will be
+stripped from the format strings in Emacs buffers.  The brackets
+will be preserved on export."
   :group 'org-time
   :package-version '(Org . "9.6")
   :type '(cons string string))
@@ -2585,20 +2587,23 @@ time.
 
 When optional argument INACTIVE is nil, format active timestamp.
 When `no-brackets', strip timestamp brackets.
+When `keep-format', keep as is.
 Otherwise, format inactive timestamp."
   (let ((format (funcall
                  (if with-time #'cdr #'car)
                  (if custom
                      org-timestamp-custom-formats
                    org-timestamp-formats))))
-    ;; Strip brackets, if any.
-    (when (or (and (string-prefix-p "<" format)
-                   (string-suffix-p ">" format))
-              (and (string-prefix-p "[" format)
-                   (string-suffix-p "]" format)))
-      (setq format (substring format 1 -1)))
+    (unless (eq inactive 'keep-format)
+      ;; Strip brackets, if any.
+      (when (or (and (string-prefix-p "<" format)
+                     (string-suffix-p ">" format))
+                (and (string-prefix-p "[" format)
+                     (string-suffix-p "]" format)))
+        (setq format (substring format 1 -1))))
     (pcase inactive
       (`no-brackets format)
+      (`keep-format format)
       (`nil (concat "<" format ">"))
       (_ (concat "[" format "]")))))
 
@@ -20598,7 +20603,7 @@ it has a `diary' type."
     (if (or (not org-display-custom-times) (eq type 'diary))
 	(org-element-interpret-data timestamp)
       (let ((fmt (org-time-stamp-format
-                  (org-timestamp-has-time-p timestamp) nil 'custom)))
+                  (org-timestamp-has-time-p timestamp) 'keep-format 'custom)))
 	(if (and (not boundary) (memq type '(active-range inactive-range)))
 	    (concat (org-format-timestamp timestamp fmt)
 		    "--"

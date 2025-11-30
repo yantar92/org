@@ -9448,6 +9448,13 @@ CLOSED: %s
   "Test `org-timestamp-translate' specifications."
   ;; Translate whole date range.
   (should
+   (equal "29"
+	  (org-test-with-temp-text "<2012-03-29 Thu>"
+	    (let ((org-display-custom-times t)
+		  (org-timestamp-custom-formats '("%d" . "%d")))
+	      (org-timestamp-translate (org-element-context))))))
+  ;; Translate whole date range.
+  (should
    (equal "<29>--<30>"
 	  (org-test-with-temp-text "<2012-03-29 Thu>--<2012-03-30 Fri>"
 	    (let ((org-display-custom-times t)
