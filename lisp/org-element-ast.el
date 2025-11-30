@@ -137,6 +137,9 @@
 ;; properties.  This is useful to generate pure (in functional sense)
 ;; AST.
 ;;
+;; To force resolving deferred properties, you can use
+;; `org-element-properties-resolve'.
+;;
 ;; The properties listed in `org-element--standard-properties', except
 ;; `:deferred' and `:parent' are never considered to have deferred value.
 ;; This constraint makes org-element API significantly faster.
@@ -646,7 +649,7 @@ Return the modified NODE."
    (if force-undefer
        #'org-element--deferred-resolve-force-rec
      #'org-element--deferred-resolve-rec)
-   node 'set 'no-standard)
+   node 'set)
   node)
 
 (defsubst org-element-properties-mapc (fun node &optional undefer)
@@ -831,6 +834,7 @@ When DATUM is `plain-text', all the properties are removed."
            (while contents
              (setcar contents (org-element-copy (car contents) t))
              (setq contents (cdr contents)))))
+       (org-element-resolve-deferred node-copy 'force)
        node-copy))))
 
 ;;;; AST queries
