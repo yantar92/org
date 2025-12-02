@@ -763,9 +763,9 @@
             (let* ((file (buffer-file-name))
                    (org-blank-before-new-entry
                     '((plain-list-item . nil)))
-        	   (org-capture-templates
-        	    `(("t" "Test" item (file ,file) "- X"
-        	       :immediate-finish t :empty-lines 1))))
+                   (org-capture-templates
+                    `(("t" "Test" item (file ,file) "- X"
+                       :immediate-finish t :empty-lines 1))))
               (org-capture nil "t")
               (buffer-string))))))
 

@@ -363,19 +363,19 @@ at the beginning of a line."
 	test-line
       (goto-char (point-min)) (org-babel-execute-maybe)
       (should (string=
-                      (concat test-line " {{{results(=1=)}}}")
-       	       (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+               (concat test-line " {{{results(=1=)}}}")
+               (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
       (forward-char) (org-babel-execute-maybe)
       (should (string=
-                      (concat test-line " {{{results(=1=)}}}")
-       	       (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+               (concat test-line " {{{results(=1=)}}}")
+               (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
       (re-search-forward "{{{")
-     ;;(should-error (org-ctrl-c-ctrl-c))
+      ;;(should-error (org-ctrl-c-ctrl-c))
       (backward-char 4) ;; last char of block body
       (org-babel-execute-maybe)
       (should (string=
-                      (concat test-line " {{{results(=1=)}}}")
-       	       (buffer-substring-no-properties (line-beginning-position) (line-end-position)))))
+               (concat test-line " {{{results(=1=)}}}")
+               (buffer-substring-no-properties (line-beginning-position) (line-end-position)))))
     ;; src_ follows space line 1...
     (let ((test-line " src_emacs-lisp{ 1 }"))
       (org-test-with-temp-text
@@ -465,7 +465,7 @@ at the beginning of a line."
       (should-error (org-ctrl-c-ctrl-c))
       (forward-char) (org-babel-execute-maybe)
       (should (string=
-              (concat test-line " {{{results(=x=)}}}")
+               (concat test-line " {{{results(=x=)}}}")
       	       (buffer-substring-no-properties
 		(line-beginning-position) (line-end-position))))))
   (let ((test-line (concat " Some text prior to block "
@@ -476,12 +476,12 @@ at the beginning of a line."
       (insert (concat "\n" test-line " end"))
       (re-search-backward "src") (org-babel-execute-maybe)
       (should (string=
-              (concat test-line " {{{results(=y=)}}} end")
-    	       (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+               (concat test-line " {{{results(=y=)}}} end")
+               (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
       (re-search-forward "\" ") (org-babel-execute-maybe)
       (should (string=
-              (concat test-line " {{{results(=y=)}}} end")
-    	       (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+               (concat test-line " {{{results(=y=)}}} end")
+               (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
       (forward-char 3)
       (should-error (org-ctrl-c-ctrl-c)))))
 

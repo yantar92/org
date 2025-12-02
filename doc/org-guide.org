@@ -886,9 +886,10 @@ mode has extensive support for tags.
 
 Every headline can contain a list of tags; they occur at the end of
 the headline.  Tags are normal words containing letters, numbers, =_=,
-and =@=.  Tags must be preceded and followed by a single colon, e.g.,
-=:work:=.  Several tags can be specified, as in =:work:urgent:=.  Tags
-by default are in bold face with the same color as the headline.
+=@=, =#=, and =%=.  Tags must be preceded and followed by a single
+colon, e.g., =:work:=.  Several tags can be specified, as in
+=:work:urgent:=.  Tags by default are in bold face with the same color
+as the headline.
 
 ** Tag inheritance
 :PROPERTIES:
