@@ -13145,7 +13145,7 @@ strings."
 	      (push (cons "PRIORITY"
 			  (if (looking-at org-priority-regexp)
 			      (match-string-no-properties 2)
-			    (char-to-string org-priority-default)))
+			    (org-priority-to-string org-priority-default)))
 		    props)
 	      (when specific (throw 'exit props)))
 	    (when (or (not specific) (string= specific "FILE"))
