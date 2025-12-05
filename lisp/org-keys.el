@@ -691,7 +691,10 @@ star at the beginning of the headline, you can do this:
   (setopt org-use-speed-commands
           (lambda ()
             (and (looking-at org-outline-regexp)
-                 (looking-back \"^\\\\**\"))))"
+                 (looking-back \"^\\\\**\"))))
+
+Note that prior to Emacs 29, `setopt' is unavailable, and
+`custom-set-variables' or `setq' is used instead."
   :group 'org-structure
   :type '(choice
 	  (const :tag "Never" nil)
