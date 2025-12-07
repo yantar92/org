@@ -765,7 +765,7 @@ string.  Alternatively, TYPE can be a string.  When TYPE is nil or
                 (setq props (nbutlast props 2)
                       ptail nil)
               (setcar ptail (nth 2 ptail))
-              (setcdr ptail (seq-drop ptail 3))))))))
+              (setcdr ptail (cdddr ptail))))))))
   (pcase type
     ((or `nil `anonymous)
      (cl-assert (null props))
