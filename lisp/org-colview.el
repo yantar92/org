@@ -273,9 +273,9 @@ value for ITEM property."
 	(`(,(or "DEADLINE" "SCHEDULED" "TIMESTAMP") . ,_)
 	 (replace-regexp-in-string org-ts-regexp "[\\1]" value))
 	(`(,_ ,_ ,_ ,_ nil) value)
-	;; If PRINTF is set, assume we are displaying a number and
+	;; If FMT is set, assume we are displaying a number and
 	;; obey to the format string.
-	(`(,_ ,_ ,_ ,_ ,printf) (format printf (string-to-number value)))
+	(`(,_ ,_ ,_ ,_ ,fmt) (format fmt (string-to-number value)))
 	(_ (error "Invalid column specification format: %S" spec)))))
 
 (defun org-columns--collect-values (&optional compiled-fmt agenda-marker)
@@ -1189,13 +1189,13 @@ COMPILED is an alist, as returned by `org-columns-compile-format'."
   (mapconcat
    (lambda (spec)
      (pcase spec
-       (`(,prop ,title ,width ,op ,printf)
+       (`(,prop ,title ,width ,op ,fmt)
 	(concat "%"
 		(and width (number-to-string width))
 		prop
 		(and title (not (equal prop title)) (format "(%s)" title))
 		(cond ((not op) nil)
-		      (printf (format "{%s;%s}" op printf))
+		      (fmt (format "{%s;%s}" op fmt))
 		      (t (format "{%s}" op)))))))
    compiled " "))
 
@@ -1208,7 +1208,7 @@ property    the property name, as an upper-case string
 title       the title field for the columns, as a string
 width       the column width in characters, can be nil for automatic width
 operator    the summary operator, as a string, or nil
-printf      a printf format for computed values, as a string, or nil
+format      a `format' string for computed values, or nil
 
 This function updates `org-columns-current-fmt-compiled'."
   (setq org-columns-current-fmt-compiled nil)
@@ -1227,11 +1227,11 @@ This function updates `org-columns-current-fmt-compiled'."
 	     (title (or (org-string-nw-p (match-string-no-properties 3 fmt)) prop))
 	     (operator (org-string-nw-p (match-string-no-properties 4 fmt))))
 	(push (if (not operator) (list (upcase prop) title width nil nil)
-		(let (printf)
+		(let (fmt)
 		  (when (string-match ";" operator)
-		    (setq printf (substring operator (match-end 0)))
+		    (setq fmt (substring operator (match-end 0)))
 		    (setq operator (substring operator 0 (match-beginning 0))))
-		  (list (upcase prop) title width operator printf)))
+		  (list (upcase prop) title width operator fmt)))
 	      org-columns-current-fmt-compiled)))
     (setq org-columns-current-fmt-compiled
 	  (nreverse org-columns-current-fmt-compiled))))
@@ -1278,7 +1278,7 @@ properties drawers."
 	 (inminlevel lmax)
 	 (last-level lmax)
 	 (property (car spec))
-	 (printf (nth 4 spec))
+	 (fmt (nth 4 spec))
          ;; Special properties cannot be collected nor summarized, as
          ;; they have their own way to be computed.  Therefore, ignore
          ;; any operator attached to them.
@@ -1310,7 +1310,7 @@ properties drawers."
 			(let ((values
                                (cl-loop for l from (1+ level) to lmax
                                         append (aref lvals l))))
-			  (and values (funcall summarize values printf))))))
+			  (and values (funcall summarize values fmt))))))
 	     ;; Leaf values are not summaries: do not mark them.
 	     (when summary
 	       (let* ((summaries-alist (get-text-property pos 'org-summaries))
@@ -1366,10 +1366,10 @@ column specification."
 	(org-columns--compute-spec spec (not (member property seen)))
 	(push property seen)))))
 
-(defun org-columns--summary-sum (values printf)
+(defun org-columns--summary-sum (values fmt)
   "Compute the sum of VALUES.
-When PRINTF is non-nil, use it to format the result."
-  (format (or printf "%s") (apply #'+ (mapcar #'string-to-number values))))
+When FMT is non-nil, use it to format the result."
+  (format (or fmt "%s") (apply #'+ (mapcar #'string-to-number values))))
 
 (defun org-columns--summary-currencies (values _)
   "Compute the sum of VALUES, with two decimals."
@@ -1398,22 +1398,22 @@ When PRINTF is non-nil, use it to format the result."
 				       check-boxes))
 		 (length check-boxes))))
 
-(defun org-columns--summary-min (values printf)
+(defun org-columns--summary-min (values fmt)
   "Compute the minimum of VALUES.
-When PRINTF is non-nil, use it to format the result."
-  (format (or printf "%s")
+When FMT is non-nil, use it to format the result."
+  (format (or fmt "%s")
 	  (apply #'min (mapcar #'string-to-number values))))
 
-(defun org-columns--summary-max (values printf)
+(defun org-columns--summary-max (values fmt)
   "Compute the maximum of VALUES.
-When PRINTF is non-nil, use it to format the result."
-  (format (or printf "%s")
+When FMT is non-nil, use it to format the result."
+  (format (or fmt "%s")
 	  (apply #'max (mapcar #'string-to-number values))))
 
-(defun org-columns--summary-mean (values printf)
+(defun org-columns--summary-mean (values fmt)
   "Compute the mean of VALUES.
-When PRINTF is non-nil, use it to format the result."
-  (format (or printf "%s")
+When FMT is non-nil, use it to format the result."
+  (format (or fmt "%s")
 	  (/ (apply #'+ (mapcar #'string-to-number values))
 	     (float (length values)))))
 
@@ -1848,7 +1848,7 @@ This will add overlays to the date lines, to show the summary for each day."
 				    (line-end-position))))
 			 (list spec date date)))
 		      (`(,_ ,_ ,_ nil ,_) (list spec "" ""))
-		      (`(,_ ,_ ,_ ,operator ,printf)
+		      (`(,_ ,_ ,_ ,operator ,fmt)
 		       (let* ((summarize (org-columns--summarize operator))
 			      (values
 			       ;; Use real values for summary, not
@@ -1856,10 +1856,10 @@ This will add overlays to the date lines, to show the summary for each day."
 			       (delq nil
 				     (mapcar
 				      (lambda (e) (org-string-nw-p
-					           (nth 1 (assoc spec e))))
+					      (nth 1 (assoc spec e))))
 				      entries)))
 			      (final (if values
-					 (funcall summarize values printf)
+					 (funcall summarize values fmt)
 				       "")))
 			 (unless (equal final "")
 			   (put-text-property 0 (length final)

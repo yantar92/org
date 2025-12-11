@@ -703,17 +703,17 @@ The value will be passed as an argument to `format' as the following
 ;;;; Timestamps
 
 (defcustom org-latex-active-timestamp-format "\\textit{%s}"
-  "A printf format string to be applied to active timestamps."
+  "A `format' string to be applied to active timestamps."
   :group 'org-export-latex
   :type 'string)
 
 (defcustom org-latex-inactive-timestamp-format "\\textit{%s}"
-  "A printf format string to be applied to inactive timestamps."
+  "A `format' string to be applied to inactive timestamps."
   :group 'org-export-latex
   :type 'string)
 
 (defcustom org-latex-diary-timestamp-format "\\textit{%s}"
-  "A printf format string to be applied to diary timestamps."
+  "A `format' string to be applied to diary timestamps."
   :group 'org-export-latex
   :type 'string)
 

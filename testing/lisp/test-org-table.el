@@ -763,8 +763,8 @@ Begin range with \"@II\" to handle multiline header.  Convert
 integer to float with \"+.0\" for sub-total of items c1 and c2.
 Sum empty fields as value zero but without ignoring them for
 \"vlen\" with format specifier \"EN\".  Format possibly empty
-results with the Calc formatter \"f-1\" instead of the printf
-formatter \"%.1f\"."
+results with the Calc formatter \"f-1\" instead of the `format'
+string \"%.1f\"."
   (org-test-table-target-expect
    "
 |-------+---------+---------|

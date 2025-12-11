@@ -247,15 +247,15 @@ be placed after the end of the title."
 ;;;; Timestamps
 
 (defcustom org-texinfo-active-timestamp-format "@emph{%s}"
-  "A printf format string to be applied to active timestamps."
+  "A `format' string to be applied to active timestamps."
   :type 'string)
 
 (defcustom org-texinfo-inactive-timestamp-format "@emph{%s}"
-  "A printf format string to be applied to inactive timestamps."
+  "A `format' string to be applied to inactive timestamps."
   :type 'string)
 
 (defcustom org-texinfo-diary-timestamp-format "@emph{%s}"
-  "A printf format string to be applied to diary timestamps."
+  "A `format' string to be applied to diary timestamps."
   :type 'string)
 
 ;;;; Links

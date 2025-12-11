@@ -49,7 +49,7 @@
   (should
    (equal "%ITEM{+}"
           (org-columns-uncompile-format `(("ITEM" "ITEM" nil "+" nil)))))
-  ;; Read operator printf
+  ;; Read operator format
   (should
    (equal "%ITEM{+;%.1f}"
           (org-columns-uncompile-format  `(("ITEM" "ITEM" nil "+" "%.1f"))))))
@@ -86,7 +86,7 @@
    (equal `(("ITEM" "ITEM" nil "+" nil))
           (org-columns-compile-format
            "%ITEM{+}")))
-  ;; Read operator printf
+  ;; Read operator format
   (should
    (equal `(("ITEM" "ITEM" nil "+" "%.1f"))
           (org-columns-compile-format

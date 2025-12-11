@@ -639,14 +639,14 @@ Group 1 contains drawer's name or \"END\".")
 
 (defconst org-heading-keyword-regexp-format
   "^\\(\\*+\\)\\(?: +%s\\)\\(?: +\\(.*?\\)\\)?[ \t]*$"
-  "Printf format for a regexp matching a headline with some keyword.
+  "`format' string for a regexp matching a headline with some keyword.
 This regexp will match the headline of any node which has the
 exact keyword that is put into the format.  The keyword isn't in
 any group by default, but the stars and the body are.")
 
 (defconst org-heading-keyword-maybe-regexp-format
   "^\\(\\*+\\)\\(?: +%s\\)?\\(?: +\\(.*?\\)\\)?[ \t]*$"
-  "Printf format for a regexp matching a headline, possibly with some keyword.
+  "`format' string for a regexp matching a headline, possibly with some keyword.
 This regexp can match any headline with the specified keyword, or
 without a keyword.  The keyword isn't in any group by default,
 but the stars and the body are.")
@@ -4161,7 +4161,7 @@ Since TODO keywords are case-sensitive, `case-fold-search' is
 expected to be bound to nil when matching against this regexp.")
 
 (defvar-local org-complex-heading-regexp-format nil
-  "Printf format to make regexp to match an exact headline.
+  "`format' string to make regexp to match an exact headline.
 This regexp will match the headline of any node which has the
 exact headline text that is put into the format, but may have any
 TODO state, priority, tags, statistics cookies (at the beginning
