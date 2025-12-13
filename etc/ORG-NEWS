@@ -425,6 +425,12 @@ This option makes ~org-cite~'s ~basic~ insert processor use
 It can also be set to dynamically compute ~crm-separator~ so that the
 separator does not appear in completion candidates.
 
+*** New option ~org-cite-bibtex-bibliography-style~
+
+This option adds a fallback bibliography style for BibTeX when none is
+provided in the =#+CITE_EXPORT= options.  The default style is
+"plain".
+
 *** New Option ~org-md-link-org-files-as-md~
 
 This option makes it possible to disable mapping of linked org files
