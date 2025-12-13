@@ -1249,7 +1249,7 @@ Use \"export %s\" instead"
 	   (funcall verify
 		    datum
 		    nil
-		    (cl-mapcan #'org-babel-parse-header-arguments
+		    (cl-mapcan (lambda (s) (org-babel-parse-header-arguments s 'no-eval))
 			       (list
 				(org-element-property :inside-header datum)
 				(org-element-property :end-header datum)))))
@@ -1258,7 +1258,8 @@ Use \"export %s\" instead"
 		    datum
 		    (org-element-property :language datum)
 		    (org-babel-parse-header-arguments
-		     (org-element-property :parameters datum))))
+		     (org-element-property :parameters datum)
+                     'no-eval)))
 	  (`keyword
 	   (when (string= (org-element-property :key datum) "PROPERTY")
 	     (let ((value (org-element-property :value datum)))
@@ -1270,7 +1271,8 @@ Use \"export %s\" instead"
 			  datum
 			  (match-string 1 value)
 			  (org-babel-parse-header-arguments
-			   (substring value (match-end 0))))))))
+			   (substring value (match-end 0))
+                           'no-eval))))))
 	  (`node-property
 	   (let ((key (org-element-property :key datum)))
 	     (when (let ((case-fold-search t))
@@ -1282,12 +1284,13 @@ Use \"export %s\" instead"
 			datum
 			(match-string 1 key)
 			(org-babel-parse-header-arguments
-			 (org-element-property :value datum))))))
+			 (org-element-property :value datum)
+                         'no-eval)))))
 	  (`src-block
 	   (funcall verify
 		    datum
 		    (org-element-property :language datum)
-		    (cl-mapcan #'org-babel-parse-header-arguments
+		    (cl-mapcan (lambda (s) (org-babel-parse-header-arguments s 'no-eval))
 			       (cons (org-element-property :parameters datum)
 				     (org-element-property :header datum))))))))
     reports))
@@ -1352,7 +1355,8 @@ Use \"export %s\" instead"
 		     (concat
 		      (org-element-property :inside-header datum)
 		      " "
-		      (org-element-property :end-header datum))))))))
+		      (org-element-property :end-header datum)))))
+                 'no-eval)))
 	  (dolist (header datum-header-values)
 	    (let ((allowed-values
 		   (cdr (assoc-string (substring (symbol-name (car header)) 1)
