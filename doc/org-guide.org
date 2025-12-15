@@ -99,7 +99,7 @@ reports, see the [[info:org][main manual]].
 :END:
 
 Org is an outliner.  Outlines allow a document to be organized in
-a hierarchical structure, which, least for me, is the best
+a hierarchical structure, which, at least for me, is the best
 representation of notes and thoughts.  An overview of this structure
 is achieved by folding, i.e., hiding large parts of the document to
 show only the general document structure and the parts currently being
@@ -553,7 +553,7 @@ the colon.  Here are some examples:
 File links can contain additional information to make Emacs jump to
 a particular location in the file when following a link. This can be
 a line number or a search option after a double colon. Here are a few
-examples,, together with an explanation:
+examples, together with an explanation:
 
 | =file:~/code/main.c::255=          | Find line 255               |
 | =file:~/xx.org::My Target=         | Find =<<My Target>>=        |
@@ -727,7 +727,7 @@ command ~org-todo~ with a prefix argument.
 
 #+attr_texinfo: :sep ,
 - {{{kbd(C-u C-c C-t)}}} (~org-todo~) ::
-  Prompt for a note and record a the time of the TODO state change.
+  Prompt for a note and record the time of the TODO state change.
 
 Org mode can also automatically record a timestamp and optionally a
 note when you mark a TODO item as DONE, or even each time you change
@@ -983,9 +983,9 @@ or, if tags in the group should be mutually exclusive:
 
 : #+TAGS: { Context : @Home @Work }
 
-When you search for a group tag, it return matches for all members in
+When you search for a group tag, it returns matches for all members in
 the group and its subgroups.  In an agenda view, filtering by a group
-tag displays or hide headlines tagged with at least one of the members
+tag displays or hides headlines tagged with at least one of the members
 of the group or any of its subgroups.
 
 If you want to ignore group tags temporarily, toggle group tags

@@ -485,7 +485,7 @@ call ~org-table-move-column-right~.
 #+cindex: document structure
 #+cindex: structure of document
 Org is an outliner.  Outlines allow a document to be organized in
-a hierarchical structure, which, least for me, is the best
+a hierarchical structure, which, at least for me, is the best
 representation of notes and thoughts.  An overview of this structure
 is achieved by folding, i.e., hiding large parts of the document to
 show only the general document structure and the parts currently being
@@ -5191,7 +5191,7 @@ to classify nodes in a document or set of documents.
 
 When you search for a group tag, it returns matches for all members in
 the group and its subgroups.  In an agenda view, filtering by a group
-tag displays or hide headlines tagged with at least one of the members
+tag displays or hides headlines tagged with at least one of the members
 of the group or any of its subgroups.  This makes tag searches and
 filters even more flexible.
 
@@ -22032,7 +22032,7 @@ A review of =ol-man.el=:
 :END:
 #+cindex: hyperlinks, adding preview behavior
 
-By default, Org supports previewing external links for links ot type
+By default, Org supports previewing external links for links of type
 =file= and =attachment= that point to image files. (See [[*Images]].)
 
 Support for previewing other link types inline can be added to Org in
