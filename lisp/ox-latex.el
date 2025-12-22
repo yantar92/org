@@ -1427,7 +1427,12 @@ Can also be set in buffers via #+LATEX_COMPILER.  See also
 	  (const :tag "LuaLaTeX" "lualatex")
 	  (const :tag "Unset" ""))
   :version "26.1"
-  :package-version '(Org . "9.0"))
+  :package-version '(Org . "9.0")
+  :safe (lambda (s)
+          (and (stringp s)              ; must be a string
+               ;; either an empty string or one of the supported compilers
+               (or (length= s 0)
+                   (member s org-latex-compilers)))))
 
 (defconst org-latex-compilers '("pdflatex" "xelatex" "lualatex")
   "Known LaTeX compilers.
