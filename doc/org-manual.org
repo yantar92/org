@@ -13750,6 +13750,11 @@ following lines before the table in the Org file:
 ,#+ATTR_HTML: :border 2 :rules all :frame border
 #+end_example
 
+Note that table attributes are deprecated in HTML5 in favor of CSS.
+When the doctype is set to HTML5 (see [[*HTML doctypes]]), Org ignores
+~org-html-table-default-attributes~.  =#+ATTR_HTML:= is still
+respected, but not recommended.
+
 The HTML export backend preserves column groupings in Org tables (see
 [[*Column Groups]]) when exporting to HTML.
 
