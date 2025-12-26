@@ -374,6 +374,7 @@ be replaced with content and expanded:
               %-escapes, those can be used to fill the expression.
               The evaluation happens with Org mode set as major mode
               in a temporary buffer.
+              Examples: %(org-id-new), %(eval default-directory)
   %<...>      The result of `format-time-string' on the ... format
               specification.
   %t          Time stamp, date only.  The time stamp is the current

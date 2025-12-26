@@ -1760,11 +1760,12 @@ meaning:
   %t   the HH:MM time-of-day specification if one applies to the entry
   %s   Scheduling/Deadline information, a short string
   %b   show breadcrumbs, i.e., the names of the higher levels
-  %(expression) Eval EXPRESSION and replace the control string
-                by the result.
+  %(expression) Eval `(EXPRESSION)' and replace the control string by
+                the result.
+                
 
-EXPRESSION is evaluated with point and buffer associated with agenda
-entry/line being rendered.  For example, heading lines will be
+`(EXPRESSION)' is evaluated with point and buffer associated with
+agenda entry/line being rendered.  For example, heading lines will be
 evaluated with point in the Org buffer at that corresponding heading.
 However, diary records will not be evaluated in an Org buffer, but
 inside diary buffer.  Auxiliary agenda lines like time grids will be
