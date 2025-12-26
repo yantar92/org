@@ -13968,7 +13968,7 @@ from https://mirrors.ctan.org/info/latex-doc-ptr/latex-doc-ptr.pdf]
   any buffer.
 
 #+vindex: org-latex-compiler
-#+vindex: org-latex-bibtex-compiler
+#+vindex: org-latex-bib-compiler
 #+vindex: org-latex-default-packages-alist
 #+cindex: pdflatex
 #+cindex: xelatex
@@ -13981,7 +13981,7 @@ LaTeX export backend finds the compiler version to use from
 ~org-latex-compiler~ variable or the =#+LATEX_COMPILER= keyword in the
 Org file.  See the docstring for the
 ~org-latex-default-packages-alist~ for loading packages with certain
-compilers.  Also see ~org-latex-bibtex-compiler~ to set the
+compilers.  Also see ~org-latex-bib-compiler~ to set the
 bibliography compiler[fn:48].
 
 *** LaTeX specific export settings
