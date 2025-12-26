@@ -480,7 +480,10 @@ Example:
       (when (= (org-element-post-blank keyword) 0)
         (let ((next-element (org-with-point-at (org-element-end keyword)
                               (org-element-at-point))))
-          (when (< (org-element-begin next-element) (org-element-post-affiliated next-element))
+          (when (and
+                 ;; KEYWORD being the last in the file is OK.
+                 (not (equal (org-element-begin next-element) (org-element-begin keyword)))
+                 (< (org-element-begin next-element) (org-element-post-affiliated next-element)))
             ;; A keyword followed without blank lines by an element with affiliated keywords.
             ;; The keyword may be confused with affiliated keywords.
             (list (org-element-begin keyword)
